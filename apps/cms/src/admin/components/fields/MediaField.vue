@@ -1,15 +1,20 @@
 <script setup lang="ts">
 /**
- * Media field. Binds to ids; thumbnails come from the form's media registry.
+ * Media field.
+ *
+ * The value is a path into the content repository. There is no registry and no
+ * id to resolve any more: the path *is* the reference, the preview URL follows
+ * from it, and the filename is its last segment. A whole layer of indirection
+ * went away with the media table.
  */
 
 import { computed, ref } from "vue";
 
-import type { MediaField, MediaRef } from "@micacms/model";
+import type { MediaField } from "@micacms/model";
 
 import FieldShell from "./FieldShell.vue";
 import MediaPicker from "@/components/MediaPicker.vue";
-import { useMediaRegistry } from "@/composables/mediaRegistry";
+import { api, type MediaItem } from "@/api";
 import { useField, type FieldProps } from "@/composables/useField";
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
@@ -17,37 +22,41 @@ const emit = defineEmits<{ "update:modelValue": [string | string[] | null] }>();
 
 const field = computed(() => props.field as MediaField);
 const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
-const registry = useMediaRegistry();
 
 const pickerOpen = ref(false);
 
-const ids = computed<string[]>(() => {
+const paths = computed<string[]>(() => {
   if (field.value.multiple) {
     return Array.isArray(props.modelValue) ? (props.modelValue as string[]) : [];
   }
-  return typeof props.modelValue === "string" ? [props.modelValue] : [];
+  return typeof props.modelValue === "string" && props.modelValue ? [props.modelValue] : [];
 });
 
-/** An id with no known reference means the file was deleted underneath us. */
-const refs = computed(() =>
-  ids.value.map((id) => ({ id, ref: registry.resolve(id) as MediaRef | undefined })),
+const items = computed(() =>
+  paths.value.map((path) => ({
+    path,
+    filename: path.split("/").pop() ?? path,
+    url: api.media.url(path),
+    // From the extension: the picker knows the real type, but a field rendering
+    // a saved path has only the path.
+    isImage: /\.(jpe?g|png|webp|avif|gif|svg)$/i.test(path),
+  })),
 );
 
 const atLimit = computed(
-  () => field.value.multiple && field.value.max !== undefined && ids.value.length >= field.value.max,
+  () =>
+    field.value.multiple && field.value.max !== undefined && paths.value.length >= field.value.max,
 );
 
-function onChoose(chosen: MediaRef[]): void {
-  registry.add(chosen);
-
+function onChoose(chosen: MediaItem[]): void {
   if (!field.value.multiple) {
-    emit("update:modelValue", chosen[0]?.id ?? null);
+    emit("update:modelValue", chosen[0]?.path ?? null);
     return;
   }
 
   // Skip anything already present rather than duplicating it.
-  const next = [...ids.value];
-  for (const item of chosen) if (!next.includes(item.id)) next.push(item.id);
+  const next = [...paths.value];
+  for (const item of chosen) if (!next.includes(item.path)) next.push(item.path);
   emit("update:modelValue", field.value.max ? next.slice(0, field.value.max) : next);
 }
 
@@ -58,15 +67,15 @@ function removeAt(index: number): void {
   }
   emit(
     "update:modelValue",
-    ids.value.filter((_, position) => position !== index),
+    paths.value.filter((_, position) => position !== index),
   );
 }
 
 function move(index: number, direction: -1 | 1): void {
   const target = index + direction;
-  if (target < 0 || target >= ids.value.length) return;
+  if (target < 0 || target >= paths.value.length) return;
 
-  const next = [...ids.value];
+  const next = [...paths.value];
   [next[index], next[target]] = [next[target]!, next[index]!];
   emit("update:modelValue", next);
 }
@@ -84,15 +93,15 @@ function move(index: number, direction: -1 | 1): void {
   >
     <div :aria-describedby="describedBy">
       <ul
-        v-if="refs.length"
+        v-if="items.length"
         :class="[
           'mb-2 gap-2',
           field.multiple ? 'grid grid-cols-3 sm:grid-cols-5' : 'flex',
         ]"
       >
         <li
-          v-for="(item, index) in refs"
-          :key="`${item.id}-${index}`"
+          v-for="(item, index) in items"
+          :key="`${item.path}-${index}`"
           :class="[
             'group relative overflow-hidden rounded-lg border border-line bg-canvas',
             field.multiple ? '' : 'w-40',
@@ -100,9 +109,9 @@ function move(index: number, direction: -1 | 1): void {
         >
           <div class="aspect-4/3">
             <img
-              v-if="item.ref?.mimeType.startsWith('image/')"
-              :src="item.ref.url"
-              :alt="item.ref.alt ?? ''"
+              v-if="item.isImage"
+              :src="item.url"
+              alt=""
               class="h-full w-full object-cover"
             />
             <div
@@ -110,16 +119,13 @@ function move(index: number, direction: -1 | 1): void {
               class="flex h-full w-full flex-col items-center justify-center gap-1 p-2 text-center"
             >
               <span class="text-[11px] font-semibold uppercase text-muted">
-                {{ item.ref ? item.ref.mimeType.split("/")[1] : "missing" }}
-              </span>
-              <span v-if="!item.ref" class="text-[10px] text-danger">
-                File deleted
+                {{ item.filename.split(".").pop() }}
               </span>
             </div>
           </div>
 
-          <p v-if="item.ref" class="truncate px-1.5 py-1 text-[11px] text-muted">
-            {{ item.ref.filename }}
+          <p class="truncate px-1.5 py-1 text-[11px] text-muted" :title="item.path">
+            {{ item.filename }}
           </p>
 
           <!-- Controls are always in the DOM so they are reachable by keyboard,
@@ -134,16 +140,16 @@ function move(index: number, direction: -1 | 1): void {
               :disabled="disabled"
               @click="move(index, -1)"
             >
-              ←<span class="sr-only">Move {{ item.ref?.filename }} earlier</span>
+              ←<span class="sr-only">Move {{ item.filename }} earlier</span>
             </button>
             <button
-              v-if="field.multiple && index < refs.length - 1"
+              v-if="field.multiple && index < items.length - 1"
               type="button"
               class="rounded bg-white/90 px-1.5 text-xs font-semibold hover:bg-white"
               :disabled="disabled"
               @click="move(index, 1)"
             >
-              →<span class="sr-only">Move {{ item.ref?.filename }} later</span>
+              →<span class="sr-only">Move {{ item.filename }} later</span>
             </button>
             <button
               type="button"
@@ -151,7 +157,7 @@ function move(index: number, direction: -1 | 1): void {
               :disabled="disabled"
               @click="removeAt(index)"
             >
-              ×<span class="sr-only">Remove {{ item.ref?.filename ?? "file" }}</span>
+              ×<span class="sr-only">Remove {{ item.filename }}</span>
             </button>
           </div>
         </li>
@@ -167,7 +173,7 @@ function move(index: number, direction: -1 | 1): void {
         <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75">
           <path d="M10 4v12M4 10h12" stroke-linecap="round" />
         </svg>
-        {{ refs.length && !field.multiple ? "Replace" : "Add" }}
+        {{ items.length && !field.multiple ? "Replace" : "Add" }}
       </button>
 
       <span v-if="atLimit" class="ml-2 text-xs text-muted">
@@ -179,7 +185,7 @@ function move(index: number, direction: -1 | 1): void {
       :open="pickerOpen"
       :accept="field.accept ?? 'any'"
       :multiple="field.multiple"
-      :selected="ids"
+      :selected="paths"
       @close="pickerOpen = false"
       @choose="onChoose"
     />

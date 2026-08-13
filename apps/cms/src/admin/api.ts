@@ -133,72 +133,56 @@ export interface AdminUser {
 }
 
 export interface EntrySummary {
-  id: string;
   collection: string;
+  /** The entry's identity. There is no id: the slug is the path. */
   slug: string;
-  status: EntryStatus;
   title: string;
   position: number;
   data: Record<string, unknown>;
-  updatedAt: string;
-  publishedAt: string | null;
 }
 
 export interface EntryDetail extends EntrySummary {
-  /** Form-shaped payload: media and relations are ids, not expanded objects. */
-  raw: Record<string, unknown>;
-  media: MediaRef[];
-  version: number;
-  createdAt: string;
+  /**
+   * The version of this entry the form was opened against.
+   *
+   * Sent back with the save. `null` means the entry did not exist, which is
+   * what makes two people creating the same slug fail rather than one of them
+   * silently losing their work.
+   */
+  revision: string | null;
 }
 
-export interface GlobalDetail {
-  name: string;
-  raw: Record<string, unknown>;
-  media: MediaRef[];
-  version: number;
-  updatedAt: string | null;
-}
-
-export interface RevisionSummary {
-  id: string;
-  version: number;
+export interface SavedEntry {
+  slug: string;
   title: string;
-  status: string | null;
-  note: string;
-  createdAt: string;
-  authorName: string | null;
-  authorEmail: string | null;
+  revision: string;
+  /** True when the save moved the entry to a new slug. */
+  renamed: boolean;
 }
 
-export interface MediaItem extends MediaRef {
-  createdAt: string;
-  inUse: boolean;
+export interface SingletonDetail {
+  name: string;
+  label: string;
+  data: Record<string, unknown>;
+  revision: string | null;
 }
 
-export interface PublisherStatus {
-  pending: number;
-  lastAttemptAt: string | null;
-  lastSuccessAt: string | null;
-  lastError: string | null;
-  configured: boolean;
+/** A file in the content repository. */
+export interface MediaItem {
+  /** Path relative to the content root — the value a media field holds. */
+  path: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
 }
 
 export interface Overview {
-  collections: Array<{ name: string; label: string; total: number; drafts: number; published: number }>;
+  collections: Array<{ name: string; label: string; total: number }>;
   media: { files: number; bytes: number; readable: string };
   users: number;
-  recent: Array<{
-    id: string;
-    collection: string;
-    collectionLabel: string;
-    slug: string;
-    status: EntryStatus;
-    title: string;
-    updatedAt: string;
-  }>;
-  publisher: PublisherStatus;
-  contentVersion: string;
+  repository: string;
 }
 
 export interface FieldCounts {
@@ -257,7 +241,6 @@ export interface SystemInfo {
     database: { version: number; bytes: number | null };
     media: { files: number; bytes: number; readable: string };
   };
-  publisher: PublisherStatus;
   deployment: {
     baseUrl: string;
     schemaPath: string;
@@ -311,64 +294,57 @@ export const api = {
         `/admin/collections/${collection}/entries`,
         { query },
       ),
-    get: (id: string) => request<EntryDetail>(`/admin/entries/${id}`),
-    create: (collection: string, body: { data: unknown; status?: EntryStatus; slug?: string }) =>
+    get: (collection: string, slug: string) =>
+      request<EntryDetail>(`/admin/collections/${collection}/entries/${slug}`),
+    create: (collection: string, body: { data: unknown; revision?: string | null }) =>
       request<EntryDetail>(`/admin/collections/${collection}/entries`, { method: "POST", body }),
-    update: (id: string, body: { data: unknown; status?: EntryStatus; slug?: string }) =>
-      request<EntryDetail>(`/admin/entries/${id}`, { method: "PUT", body }),
-    setStatus: (id: string, status: EntryStatus) =>
-      request<EntryDetail>(`/admin/entries/${id}/status`, { method: "POST", body: { status } }),
-    remove: (id: string) => request<{ ok: true }>(`/admin/entries/${id}`, { method: "DELETE" }),
-    reorder: (collection: string, ids: string[]) =>
+    update: (collection: string, slug: string, body: { data: unknown; revision?: string | null }) =>
+      request<SavedEntry>(`/admin/collections/${collection}/entries/${slug}`, {
+        method: "PUT",
+        body,
+      }),
+    remove: (collection: string, slug: string) =>
+      request<{ ok: true }>(`/admin/collections/${collection}/entries/${slug}`, {
+        method: "DELETE",
+      }),
+    reorder: (collection: string, slugs: string[]) =>
       request<{ ok: true }>(`/admin/collections/${collection}/reorder`, {
         method: "POST",
-        body: { ids },
+        body: { slugs },
       }),
     suggestSlug: (collection: string, source: string, except?: string) =>
       request<{ slug: string }>(`/admin/collections/${collection}/slug`, {
         query: { source, except },
       }),
-    references: (id: string) =>
-      request<{ references: Array<{ collection: string; id: string; title: string; slug: string }> }>(
-        `/admin/entries/${id}/references`,
+    references: (collection: string, slug: string) =>
+      request<{ references: Array<{ collection: string; title: string; slug: string }> }>(
+        `/admin/collections/${collection}/entries/${slug}/references`,
       ),
-    revisions: (id: string) =>
-      request<{ revisions: RevisionSummary[] }>(`/admin/entries/${id}/revisions`),
-    revision: (id: string, revisionId: string) =>
-      request<{ revision: RevisionSummary & { data: Record<string, unknown> } }>(
-        `/admin/entries/${id}/revisions/${revisionId}`,
-      ),
-    restore: (id: string, revisionId: string) =>
-      request<EntryDetail>(`/admin/entries/${id}/revisions/${revisionId}/restore`, {
-        method: "POST",
-      }),
   },
 
-  globals: {
-    get: (name: string) => request<GlobalDetail>(`/admin/globals/${name}`),
-    save: (name: string, data: unknown) =>
-      request<GlobalDetail>(`/admin/globals/${name}`, { method: "PUT", body: { data } }),
-    revisions: (name: string) =>
-      request<{ revisions: RevisionSummary[] }>(`/admin/globals/${name}/revisions`),
-    restore: (name: string, revisionId: string) =>
-      request<GlobalDetail>(`/admin/globals/${name}/revisions/${revisionId}/restore`, {
-        method: "POST",
+  singletons: {
+    get: (name: string) => request<SingletonDetail>(`/admin/singletons/${name}`),
+    save: (name: string, data: unknown, revision?: string | null) =>
+      request<{ revision: string }>(`/admin/singletons/${name}`, {
+        method: "PUT",
+        body: { data, revision },
       }),
   },
 
   media: {
-    list: (query: RequestOptions["query"] = {}) =>
-      request<{ items: MediaItem[]; total: number }>("/admin/media", { query }),
-    upload: (files: File[], accept?: string) => {
+    list: () => request<{ items: MediaItem[] }>("/admin/media"),
+    upload: (files: File[], options: { accept?: string; directory?: string } = {}) => {
       const form = new FormData();
       for (const file of files) form.append("file", file);
-      if (accept) form.append("accept", accept);
-      return request<{ items: MediaRef[] }>("/admin/media", { method: "POST", body: form });
+      if (options.accept) form.append("accept", options.accept);
+      // Where the file goes in the repository. An entry's own `media/`
+      // directory keeps the entry self-contained and its rename cheap.
+      if (options.directory) form.append("directory", options.directory);
+      return request<{ items: MediaItem[] }>("/admin/media", { method: "POST", body: form });
     },
-    update: (id: string, patch: { filename?: string; altText?: string }) =>
-      request<MediaRef>(`/admin/media/${id}`, { method: "PATCH", body: patch }),
-    remove: (id: string, force = false) =>
-      request<{ ok: true }>(`/admin/media/${id}`, { method: "DELETE", query: { force } }),
+    /** Absolute URL for previewing a repository file inside the admin. */
+    url: (path: string) =>
+      `${BASE}/admin/media/file/${path.split("/").map(encodeURIComponent).join("/")}`,
   },
 
   users: {
