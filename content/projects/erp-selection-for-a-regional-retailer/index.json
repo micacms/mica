@@ -1,0 +1,28 @@
+{
+  "title": "ERP selection for a regional retailer",
+  "slug": "erp-selection-for-a-regional-retailer",
+  "year": 2025,
+  "category": "commercial",
+  "location": {
+    "address": "Bahnhofstrasse 7",
+    "city": "Zug",
+    "postalCode": "6300",
+    "position": {
+      "lat": 47.1735,
+      "lng": 8.5155
+    }
+  },
+  "facts": [
+    {
+      "label": "Vendors assessed",
+      "value": "9"
+    },
+    {
+      "label": "Licence cost",
+      "value": "−22%"
+    }
+  ],
+  "gallery": [],
+  "team": [],
+  "featured": true
+}

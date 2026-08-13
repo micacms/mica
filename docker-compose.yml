@@ -1,0 +1,93 @@
+# Reference deployment (TRD §21.1).
+#
+#   cp .env.example .env      # fill in the secrets
+#   pnpm build:schema         # mica.config.ts -> mica.config.json
+#   docker compose up -d
+#
+# One container, one SQLite file, one media directory. No database server, no
+# cache, no queue, no object storage.
+#
+# The image carries no content model. `mica.config.json` is mounted in, which is
+# why the same published image serves any project — and why changing the model
+# is a `pnpm build:schema` plus a restart, not a rebuild.
+
+services:
+  cms:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: micacms/cms:1.0.0
+    restart: unless-stopped
+
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /data
+
+    ports:
+      # Bound to loopback: put a reverse proxy in front for TLS. Change to
+      # "4000:4000" only if the host itself is not reachable from the internet.
+      - "127.0.0.1:4000:4000"
+
+    volumes:
+      # The entire backup surface is this one volume.
+      - cms-data:/data
+      # The project's content model. Read-only: the CMS is given a schema, it
+      # never writes one. Rebuild with `pnpm build:schema` after editing
+      # mica.config.ts, then `docker compose restart cms`.
+      - ./mica.config.json:/app/schema.json:ro
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    # SQLite writes are the only state; a container that cannot write should
+    # fail loudly rather than silently serve stale content.
+    stop_grace_period: 20s
+
+    security_opt:
+      - no-new-privileges:true
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Scheduled backups. Runs `VACUUM INTO` plus a media copy into ./backups on
+  # the host, which is then whatever your off-site sync picks up.
+  #
+  # Enable with:  docker compose --profile backup up -d
+  backup:
+    profiles: ["backup"]
+    image: micacms/cms:1.0.0
+    restart: unless-stopped
+    depends_on:
+      - cms
+    env_file: .env
+    environment:
+      DATA_DIR: /data
+    volumes:
+      # Read-write, not `:ro` — a WAL-mode database needs to touch its -shm and
+      # -wal files even to be read. `VACUUM INTO` still only takes a read lock,
+      # so editors are never blocked.
+      - cms-data:/data
+      - ./backups:/backups
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          node dist/server/scripts/backup.js --out /backups || echo "backup failed"
+          # Daily, offset from midnight so it does not collide with other jobs.
+          sleep 86400
+        done
+
+volumes:
+  cms-data:

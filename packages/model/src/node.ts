@@ -1,0 +1,82 @@
+/**
+ * @micacms/model/node — the parts that need a filesystem.
+ *
+ * A separate entry point because the main one is bundled into the editor, which
+ * runs in a browser. A `node:fs` import in that graph is at best dead weight and
+ * at worst a build failure, so the boundary is drawn here rather than left to a
+ * bundler to work out.
+ */
+
+import { readdir, readFile } from "node:fs/promises";
+import { isAbsolute, resolve, sep } from "node:path";
+
+import { ContentSourceError, type ContentSource, type DirectoryEntry } from "./source.js";
+
+/**
+ * Reads a content directory in a checked-out repository.
+ *
+ * A missing file is not an error: an entry with no rich text has no `.mdoc`
+ * beside it, and a collection an editor has not filled in yet is an empty
+ * directory. Refusing to build over either would be wrong. Anything else — a
+ * permission problem, a path that escapes the root — is raised, because it
+ * means the content that was asked for is not there.
+ */
+export function fileSystemSource(root: string): ContentSource {
+  const base = resolve(root);
+
+  return {
+    origin: base,
+
+    async read(path) {
+      try {
+        return await readFile(within(base, path), "utf8");
+      } catch (error) {
+        if (isMissing(error)) return null;
+        throw error;
+      }
+    },
+
+    async list(path) {
+      let items;
+      try {
+        items = await readdir(within(base, path), { withFileTypes: true });
+      } catch (error) {
+        if (isMissing(error)) return [];
+        throw error;
+      }
+
+      return items
+        .filter((item) => item.isFile() || item.isDirectory())
+        // Sorted here rather than at each call site, so that a build never
+        // depends on the order a filesystem happens to report.
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .map((item): DirectoryEntry => ({ name: item.name, type: item.isFile() ? "file" : "directory" }));
+    },
+  };
+}
+
+/**
+ * Resolves `path` inside `base`, or refuses.
+ *
+ * Exported because every filesystem-backed implementation needs exactly this
+ * check, and it is the boundary where a traversal would become a real read or
+ * a real write.
+ */
+export function within(base: string, path: string): string {
+  if (isAbsolute(path)) {
+    throw new ContentSourceError(`Content path "${path}" must be relative to the content root.`);
+  }
+
+  const full = resolve(base, path);
+  // `startsWith(base)` alone would accept a sibling called `content-old`.
+  if (full !== base && !full.startsWith(base + sep)) {
+    throw new ContentSourceError(`Content path "${path}" escapes the content root.`);
+  }
+  return full;
+}
+
+/** ENOENT, and ENOTDIR for a path whose parent turned out to be a file. */
+export function isMissing(error: unknown): boolean {
+  const code = (error as NodeJS.ErrnoException | null)?.code;
+  return code === "ENOENT" || code === "ENOTDIR";
+}

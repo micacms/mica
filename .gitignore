@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.astro/
+data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+.env
+.env.local
+.DS_Store
+apps/cms/public/admin/
+*.tsbuildinfo
+backups/
+
+# Build output of `pnpm build:schema`; mica.config.ts is the source.
+mica.config.json

@@ -1,0 +1,68 @@
+---
+/**
+ * Renders a content media reference as an optimised, static image.
+ *
+ * The reference is a path into the content repository, so the file is on disk
+ * when the build runs and `astro:assets` treats it as a local asset: it is
+ * re-encoded and emitted into `_astro/`. Nothing a visitor loads points at a
+ * CMS, and no origin has to be allowlisted for it to work.
+ *
+ * Alt text is a prop rather than a property of the file. Media in Git is a
+ * file, not a record with metadata attached — so where alt text matters, the
+ * model should carry it, next to the `media()` field that needs it.
+ */
+
+import { Image } from "astro:assets";
+
+import { isVector, resolveMedia } from "@/lib/images";
+
+interface Props {
+  /** Content-root-relative path, as the loader emits it. */
+  media: string | null;
+  /** Pass "" for a decorative image. */
+  alt?: string;
+  class?: string;
+  widths?: number[];
+  sizes?: string;
+  loading?: "lazy" | "eager";
+  /** Hint to the browser that this is the largest element above the fold. */
+  priority?: boolean;
+}
+
+const {
+  media,
+  alt = "",
+  class: className,
+  widths,
+  sizes,
+  loading,
+  priority = false,
+} = Astro.props;
+
+const image = resolveMedia(media);
+---
+
+{
+  image && !isVector(image) ? (
+    <Image
+      src={image}
+      alt={alt}
+      class={className}
+      widths={widths}
+      sizes={sizes}
+      loading={priority ? "eager" : (loading ?? "lazy")}
+      fetchpriority={priority ? "high" : undefined}
+      decoding={priority ? "sync" : "async"}
+    />
+  ) : image ? (
+    <img
+      src={image.src}
+      alt={alt}
+      class={className}
+      width={image.width || undefined}
+      height={image.height || undefined}
+      loading={priority ? "eager" : (loading ?? "lazy")}
+      decoding="async"
+    />
+  ) : null
+}

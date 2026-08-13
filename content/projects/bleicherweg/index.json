@@ -1,0 +1,24 @@
+{
+  "title": "Bleicherweg",
+  "slug": "bleicherweg",
+  "year": 2022,
+  "category": "commercial",
+  "location": {
+    "address": "Bleicherweg 5",
+    "city": "Zürich",
+    "postalCode": "8002",
+    "position": {
+      "lat": 47.3688,
+      "lng": 8.5359
+    }
+  },
+  "facts": [
+    {
+      "label": "Floor area",
+      "value": "1 240 m²"
+    }
+  ],
+  "gallery": [],
+  "team": [],
+  "featured": false
+}

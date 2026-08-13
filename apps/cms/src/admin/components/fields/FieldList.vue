@@ -1,0 +1,114 @@
+<script setup lang="ts">
+/**
+ * Renders a field map as a form.
+ *
+ * Fields declaring the same `group` are boxed together with a heading; the rest
+ * flow in declaration order. Widths come from the model (`full` / `half` /
+ * `third`) over a twelve-column grid.
+ */
+
+import { computed } from "vue";
+
+import type { AnyField, FieldIssue, FieldMap } from "@micacms/model";
+
+import FieldRenderer from "./FieldRenderer.vue";
+import { widthClass } from "@/composables/useField";
+
+const props = defineProps<{
+  fields: FieldMap;
+  modelValue: Record<string, unknown>;
+  /** Prefix for child paths; empty at the top level. */
+  path?: string;
+  issues?: FieldIssue[];
+  disabled?: boolean;
+  collection?: string;
+  entryId?: string;
+}>();
+
+const emit = defineEmits<{ "update:modelValue": [Record<string, unknown>] }>();
+
+interface Entry {
+  key: string;
+  field: AnyField;
+}
+
+interface Group {
+  name: string | null;
+  entries: Entry[];
+}
+
+const groups = computed<Group[]>(() => {
+  const result: Group[] = [];
+
+  for (const [key, field] of Object.entries(props.fields)) {
+    if (field.hidden) continue;
+
+    const name = field.group ?? null;
+    const last = result.at(-1);
+
+    // Consecutive fields sharing a group name form one box; a different group
+    // (or none) starts a new one, so declaration order is preserved.
+    if (last && last.name === name) last.entries.push({ key, field });
+    else result.push({ name, entries: [{ key, field }] });
+  }
+
+  return result;
+});
+
+const childPath = (key: string): string => (props.path ? `${props.path}.${key}` : key);
+
+function update(key: string, value: unknown): void {
+  emit("update:modelValue", { ...props.modelValue, [key]: value });
+}
+
+/** Slug fields follow a sibling; hand them its current value. */
+function sourceFor(field: AnyField): string | null {
+  if (field.kind !== "slug" || !field.from) return null;
+  const value = props.modelValue[field.from];
+  return typeof value === "string" ? value : null;
+}
+</script>
+
+<template>
+  <div class="space-y-6">
+    <template v-for="(group, index) in groups" :key="`${group.name ?? 'ungrouped'}-${index}`">
+      <fieldset v-if="group.name" class="card p-4 sm:p-5">
+        <legend class="px-1 text-xs font-semibold uppercase tracking-wider text-muted">
+          {{ group.name }}
+        </legend>
+
+        <div class="mt-3 grid grid-cols-12 gap-x-4 gap-y-5">
+          <div v-for="entry in group.entries" :key="entry.key" :class="widthClass(entry.field)">
+            <FieldRenderer
+              :field="entry.field"
+              :path="childPath(entry.key)"
+              :model-value="modelValue[entry.key]"
+              :issues="issues"
+              :disabled="disabled"
+              :collection="collection"
+              :entry-id="entryId"
+              :source="sourceFor(entry.field)"
+              @update:model-value="update(entry.key, $event)"
+            />
+          </div>
+        </div>
+      </fieldset>
+
+      <div v-else class="grid grid-cols-12 gap-x-4 gap-y-5">
+        <div v-for="entry in group.entries" :key="entry.key" :class="widthClass(entry.field)">
+          <FieldRenderer
+            :field="entry.field"
+            :path="childPath(entry.key)"
+            :model-value="modelValue[entry.key]"
+            :issues="issues"
+            :disabled="disabled"
+            :collection="collection"
+            :entry-id="entryId"
+            :source="sourceFor(entry.field)"
+            @update:model-value="update(entry.key, $event)"
+          />
+        </div>
+      </div>
+    </template>
+  </div>
+</template>

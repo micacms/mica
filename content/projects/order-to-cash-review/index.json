@@ -1,0 +1,32 @@
+{
+  "title": "Order-to-cash review",
+  "slug": "order-to-cash-review",
+  "year": 2025,
+  "category": "commercial",
+  "location": {
+    "address": "Industriestrasse 14",
+    "city": "Winterthur",
+    "postalCode": "8404",
+    "position": {
+      "lat": 47.5056,
+      "lng": 8.7241
+    }
+  },
+  "facts": [
+    {
+      "label": "Duration",
+      "value": "4 months"
+    },
+    {
+      "label": "Team",
+      "value": "3 consultants"
+    },
+    {
+      "label": "Lead time",
+      "value": "−35%"
+    }
+  ],
+  "gallery": [],
+  "team": [],
+  "featured": true
+}

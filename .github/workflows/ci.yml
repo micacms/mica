@@ -1,0 +1,109 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build packages
+        run: pnpm --filter "./packages/**" build
+
+      # The website is excluded here: Astro generates its collection types from
+      # live content, so `astro check` needs a running CMS. It is checked below,
+      # once one is up.
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm -r test
+
+      # The website needs a running CMS, so build it against a freshly seeded
+      # one — which also proves the whole chain still works end to end.
+      - name: Seed and start the CMS
+        env:
+          DATA_DIR: ./data
+          SESSION_SECRET: ci-session-secret-0000000000000000
+          CMS_READ_TOKEN: ci-read-token-000000
+          CMS_BASE_URL: http://localhost:4000
+        run: |
+          pnpm --filter @micacms/cms build
+          pnpm --filter @micacms/cms seed
+          node apps/cms/dist/server/index.js &
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:4000/health && break
+            sleep 1
+          done
+
+      - name: Typecheck the website
+        env:
+          CMS_URL: http://localhost:4000
+          CMS_READ_TOKEN: ci-read-token-000000
+        run: pnpm typecheck:web
+
+      - name: Build the website
+        env:
+          CMS_URL: http://localhost:4000
+          CMS_READ_TOKEN: ci-read-token-000000
+          SITE_URL: https://example.com
+        run: pnpm --filter @micacms/web build
+
+      - name: Assert the output is self-contained
+        run: |
+          if grep -rl "localhost:4000" apps/web/dist; then
+            echo "::error::The static output still references the CMS."
+            exit 1
+          fi
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the CMS image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: micacms/cms:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Boot it and check health
+        run: |
+          docker run -d --name cms \
+            -e SESSION_SECRET=ci-session-secret-0000000000000000 \
+            -e CMS_READ_TOKEN=ci-read-token-000000 \
+            -e CMS_BASE_URL=http://localhost:4000 \
+            -p 4000:4000 micacms/cms:ci
+
+          for i in $(seq 1 30); do
+            curl -fsS http://localhost:4000/health && exit 0
+            sleep 2
+          done
+
+          echo "::error::The container never became healthy."
+          docker logs cms
+          exit 1

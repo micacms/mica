@@ -1,0 +1,161 @@
+@import "tailwindcss";
+
+/**
+ * Design tokens.
+ *
+ * Declared in `@theme` so Tailwind generates matching utilities — `bg-canvas`,
+ * `text-ink`, `border-line` and so on. Adjusting a customer's palette is then a
+ * change to these values alone.
+ */
+@theme {
+  --color-surface: #ffffff;
+  --color-canvas: #f6f7f9;
+  --color-line: #e4e7ec;
+  --color-ink: #101828;
+  --color-muted: #667085;
+  --color-brand: #1e3a5f;
+  --color-brand-soft: #eef2f7;
+  --color-danger: #b42318;
+  --color-success: #067647;
+  --color-warning: #b54708;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    /* Editors work in long sessions; comfortable defaults matter. */
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* A visible, consistent focus ring is the backbone of keyboard use. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+
+  [hidden] {
+    display: none !important;
+  }
+}
+
+/*
+ * Custom utilities rather than plain classes in `@layer components`: only a
+ * registered utility can be composed with `@apply`, which is what lets the
+ * button variants share one base.
+ */
+@utility field-label {
+  @apply block text-sm font-medium text-ink;
+}
+
+@utility field-hint {
+  @apply mt-1 text-xs text-muted;
+}
+
+@utility field-error {
+  @apply mt-1 text-xs font-medium text-danger;
+}
+
+@utility input {
+  @apply block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink
+    shadow-xs transition
+    placeholder:text-muted/70
+    focus:border-brand focus:ring-2 focus:ring-brand/15
+    disabled:cursor-not-allowed disabled:bg-canvas disabled:text-muted;
+}
+
+@utility input-invalid {
+  @apply border-danger focus:border-danger focus:ring-danger/15;
+}
+
+@utility btn {
+  @apply inline-flex select-none items-center justify-center gap-2 rounded-lg px-3.5 py-2
+    text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55;
+}
+
+@utility btn-primary {
+  @apply btn bg-brand text-white hover:bg-brand/90;
+}
+
+@utility btn-secondary {
+  @apply btn border border-line bg-white text-ink hover:bg-canvas;
+}
+
+@utility btn-ghost {
+  @apply btn text-muted hover:bg-canvas hover:text-ink;
+}
+
+@utility btn-danger {
+  @apply btn border border-danger/25 bg-white text-danger hover:bg-danger/5;
+}
+
+@utility card {
+  @apply rounded-xl border border-line bg-surface;
+}
+
+@utility badge {
+  @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium;
+}
+
+/* Tiptap's editable region has no classes of its own to hook onto. */
+.rich-text .ProseMirror {
+  @apply min-h-40 px-3 py-2.5 text-sm leading-relaxed outline-none;
+}
+
+.rich-text .ProseMirror > * + * {
+  @apply mt-3;
+}
+
+.rich-text .ProseMirror h2 {
+  @apply mt-5 text-lg font-semibold;
+}
+
+.rich-text .ProseMirror h3 {
+  @apply mt-4 text-base font-semibold;
+}
+
+.rich-text .ProseMirror ul {
+  @apply list-disc pl-5;
+}
+
+.rich-text .ProseMirror ol {
+  @apply list-decimal pl-5;
+}
+
+.rich-text .ProseMirror blockquote {
+  @apply border-l-2 border-line pl-4 text-muted;
+}
+
+.rich-text .ProseMirror a {
+  @apply text-brand underline underline-offset-2;
+}
+
+.rich-text .ProseMirror hr {
+  @apply my-5 border-t border-line;
+}
+
+/* Placeholder for an empty document. */
+.rich-text .ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  @apply pointer-events-none float-left h-0 text-muted/70;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

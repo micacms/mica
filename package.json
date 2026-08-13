@@ -1,0 +1,35 @@
+{
+  "name": "mica",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mica CMS — a small, schema-driven content backend for static Astro business websites.",
+  "packageManager": "pnpm@11.3.0",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "build:packages": "pnpm --filter \"./packages/**\" build",
+    "dev": "pnpm build:packages && pnpm --filter @micacms/cms dev",
+    "dev:cms": "pnpm build:packages && pnpm --filter @micacms/cms dev",
+    "//typecheck": "The website is included: its collection types now come from files in the repository, so nothing has to be running.",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "//build:schema": "Compiles mica.config.ts into the JSON artifact the CMS container is given.",
+    "build:schema": "pnpm --filter @micacms/cms build-schema",
+    "//cms:export-content": "One-off migration: writes the SQLite content out as a content repository.",
+    "cms:export-content": "pnpm --filter @micacms/cms export-content -- --out ../../content",
+    "cms:seed": "pnpm --filter @micacms/cms seed",
+    "cms:create-user": "pnpm --filter @micacms/cms create-user",
+    "cms:backup": "pnpm --filter @micacms/cms backup",
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules packages/*/dist apps/*/dist"
+  },
+  "//dependencies": "mica.config.ts is this project's content model and imports the DSL, the same way a customer project would.",
+  "dependencies": {
+    "@micacms/model": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  }
+}

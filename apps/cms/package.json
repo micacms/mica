@@ -1,0 +1,47 @@
+{
+  "name": "@micacms/cms",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Mica CMS — Hono API plus the Vue administration SPA it serves.",
+  "scripts": {
+    "dev": "concurrently -n api,admin -c blue,magenta \"pnpm dev:api\" \"pnpm dev:admin\"",
+    "dev:api": "tsx watch --clear-screen=false src/server/index.ts",
+    "dev:admin": "vite",
+    "build": "pnpm build:admin && pnpm build:server",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:admin": "vite build",
+    "start": "node dist/server/index.js",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && vue-tsc -p tsconfig.json --noEmit",
+    "test": "tsc -p tsconfig.server.json --noEmit && node --test --import tsx test/**/*.test.ts",
+    "create-user": "tsx src/server/scripts/create-user.ts",
+    "seed": "tsx src/server/scripts/seed.ts",
+    "backup": "tsx src/server/scripts/backup.ts",
+    "build-schema": "tsx src/server/scripts/build-schema.ts",
+    "export-content": "tsx src/server/scripts/export-content.ts"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.8",
+    "@micacms/model": "workspace:*",
+    "hono": "^4.6.20",
+    "image-size": "^1.2.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.0.0",
+    "@tiptap/core": "^2.11.0",
+    "@tiptap/extension-link": "^2.11.0",
+    "@tiptap/starter-kit": "^2.11.0",
+    "@tiptap/vue-3": "^2.11.0",
+    "@types/node": "^22.20.1",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "concurrently": "^9.1.2",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "vue-tsc": "^2.2.0"
+  }
+}

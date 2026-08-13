@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+/**
+ * Design tokens (TRD §17).
+ *
+ * Each token reads a `--theme-*` custom property with a sensible fallback. The
+ * layout writes those properties from the CMS `theme` singleton, so an editor
+ * changing the accent colour changes every utility that references it — with no
+ * Tailwind rebuild and no arbitrary CSS in the CMS.
+ */
+@theme {
+  --color-primary: var(--theme-primary, #1f2937);
+  --color-accent: var(--theme-accent, #0ea5e9);
+
+  --color-ink: #111827;
+  --color-muted: #5b6472;
+  --color-line: #e5e7eb;
+  --color-canvas: #ffffff;
+  --color-sunken: #f7f8fa;
+
+  --font-sans: var(--theme-font), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-theme: var(--theme-radius, 0.5rem);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  /* Editors supply landscape and portrait images alike; never let one overflow. */
+  img,
+  video {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+@utility container-page {
+  @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+}
+
+@utility container-prose {
+  @apply mx-auto w-full max-w-2xl px-5 sm:px-8;
+}
+
+@utility btn-solid {
+  @apply inline-flex items-center justify-center gap-2 bg-primary px-5 py-2.5 text-sm
+    font-medium text-white transition hover:opacity-90;
+  border-radius: var(--radius-theme);
+}
+
+@utility btn-outline {
+  @apply inline-flex items-center justify-center gap-2 border border-line px-5 py-2.5
+    text-sm font-medium transition hover:border-primary hover:text-primary;
+  border-radius: var(--radius-theme);
+}
+
+@utility card-surface {
+  @apply border border-line bg-canvas;
+  border-radius: var(--radius-theme);
+}
+
+/**
+ * Rich-text output.
+ *
+ * The CMS constrains the editor to these nodes, so this is the complete list —
+ * there is no way for an editor to produce markup with no styles behind it.
+ */
+.prose-cms {
+  @apply text-[15px] leading-relaxed text-ink/90;
+}
+
+.prose-cms > * + * {
+  @apply mt-4;
+}
+
+.prose-cms h2 {
+  @apply mt-10 text-xl font-semibold tracking-tight text-ink sm:text-2xl;
+}
+
+.prose-cms h3 {
+  @apply mt-8 text-lg font-semibold tracking-tight text-ink;
+}
+
+.prose-cms ul {
+  @apply list-disc space-y-1 pl-5;
+}
+
+.prose-cms ol {
+  @apply list-decimal space-y-1 pl-5;
+}
+
+.prose-cms blockquote {
+  @apply border-l-2 border-accent pl-5 text-lg text-muted italic;
+}
+
+.prose-cms a {
+  @apply text-primary underline decoration-accent/50 underline-offset-2 hover:decoration-accent;
+}
+
+.prose-cms hr {
+  @apply my-10 border-t border-line;
+}
+
+.prose-cms strong {
+  @apply font-semibold text-ink;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

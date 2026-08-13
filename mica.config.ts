@@ -1,0 +1,410 @@
+/**
+ * The content model for this project.
+ *
+ * This file belongs to the *project*, not to the CMS. Everything downstream —
+ * the database payload validation, the admin navigation and forms, the public
+ * API, the Astro collections and their TypeScript types — follows from it.
+ * Changing a field here requires no SQL migration: entry payloads are JSON,
+ * validated against whatever this file currently says.
+ *
+ * Two consumers read it, and they read it differently:
+ *
+ *   - The Astro build imports it directly, which is what makes
+ *     `getCollection("projects")` statically typed with no code generation.
+ *   - The CMS server receives it as data. `pnpm build:schema` compiles this
+ *     file to `mica.config.js`, which is mounted into the container and named
+ *     by `MICA_SCHEMA`. The server ships with no model of its own.
+ */
+
+import {
+  boolean,
+  collection,
+  color,
+  coordinates,
+  date,
+  defineSite,
+  email,
+  media,
+  number,
+  object,
+  relation,
+  repeater,
+  richText,
+  select,
+  singleton,
+  slug,
+  text,
+  textarea,
+  url,
+} from "@micacms/model";
+
+export const site = defineSite({
+  collections: {
+    pages: collection({
+      label: "Pages",
+      labelSingular: "Page",
+      description: "Standalone pages such as About, Services or Contact.",
+      defaultSort: { field: "position", direction: "asc" },
+      sortable: true,
+      fields: {
+        title: text({
+          label: "Title",
+          required: true,
+          maxLength: 120,
+          listed: true,
+        }),
+        slug: slug({
+          label: "URL",
+          from: "title",
+          description: "The address of the page, e.g. /about.",
+        }),
+        intro: textarea({
+          label: "Introduction",
+          rows: 3,
+          maxLength: 400,
+          description: "Short lead paragraph shown below the page title.",
+        }),
+        heroImage: media({
+          label: "Hero image",
+          accept: "image",
+        }),
+        body: richText({
+          label: "Content",
+          toolbar: [
+            "bold",
+            "italic",
+            "heading",
+            "bulletList",
+            "orderedList",
+            "blockquote",
+            "link",
+            "horizontalRule",
+          ],
+        }),
+        sections: repeater({
+          label: "Extra sections",
+          itemLabel: "heading",
+          addLabel: "Add section",
+          fields: {
+            heading: text({ label: "Heading", required: true }),
+            text: richText({ label: "Text" }),
+            image: media({ label: "Image", accept: "image" }),
+            layout: select({
+              label: "Layout",
+              options: [
+                { label: "Image right", value: "image-right" },
+                { label: "Image left", value: "image-left" },
+                { label: "Full width", value: "full" },
+              ],
+              default: "image-right",
+            }),
+          },
+        }),
+        seo: object({
+          label: "SEO",
+          group: "Metadata",
+          collapsible: true,
+          collapsed: true,
+          fields: {
+            metaTitle: text({ label: "Meta title", maxLength: 60 }),
+            metaDescription: textarea({
+              label: "Meta description",
+              rows: 2,
+              maxLength: 160,
+            }),
+            ogImage: media({ label: "Social sharing image", accept: "image" }),
+            noindex: boolean({ label: "Hide from search engines" }),
+          },
+        }),
+      },
+    }),
+
+    projects: collection({
+      label: "Projects",
+      labelSingular: "Project",
+      description: "Reference projects shown in the portfolio.",
+      defaultSort: { field: "publishedAt", direction: "desc" },
+      fields: {
+        title: text({
+          label: "Title",
+          required: true,
+          maxLength: 120,
+          listed: true,
+        }),
+        slug: slug({ label: "URL", from: "title" }),
+        year: number({
+          label: "Year",
+          integer: true,
+          min: 1900,
+          max: 2100,
+          listed: true,
+          width: "half",
+        }),
+        category: select({
+          label: "Category",
+          width: "half",
+          listed: true,
+          options: [
+            { label: "Residential", value: "residential" },
+            { label: "Commercial", value: "commercial" },
+            { label: "Public", value: "public" },
+            { label: "Renovation", value: "renovation" },
+          ],
+        }),
+        description: richText({ label: "Description" }),
+        location: object({
+          label: "Location",
+          fields: {
+            address: text({ label: "Address" }),
+            city: text({ label: "City", width: "half" }),
+            postalCode: text({
+              label: "Postal code",
+              width: "half",
+              maxLength: 12,
+            }),
+            position: coordinates({
+              label: "Map position",
+              defaultCenter: { lat: 47.3769, lng: 8.5417 },
+              defaultZoom: 12,
+            }),
+          },
+        }),
+        facts: repeater({
+          label: "Key facts",
+          itemLabel: "label",
+          addLabel: "Add fact",
+          max: 8,
+          fields: {
+            label: text({ label: "Label", required: true, width: "half" }),
+            value: text({ label: "Value", required: true, width: "half" }),
+          },
+        }),
+        gallery: media({
+          label: "Images",
+          accept: "image",
+          multiple: true,
+          description: "The first image is used as the preview.",
+        }),
+        team: relation({
+          label: "Team involved",
+          collection: "team",
+          multiple: true,
+        }),
+        featured: boolean({
+          label: "Show on the homepage",
+        }),
+      },
+    }),
+
+    news: collection({
+      label: "News",
+      labelSingular: "Article",
+      defaultSort: { field: "publishedAt", direction: "desc" },
+      fields: {
+        title: text({
+          label: "Title",
+          required: true,
+          maxLength: 140,
+          listed: true,
+        }),
+        slug: slug({ label: "URL", from: "title" }),
+        publishDate: date({ label: "Date", listed: true, width: "half" }),
+        author: relation({
+          label: "Author",
+          collection: "team",
+          width: "half",
+        }),
+        excerpt: textarea({ label: "Teaser", rows: 3, maxLength: 300 }),
+        coverImage: media({ label: "Cover image", accept: "image" }),
+        body: richText({ label: "Article" }),
+      },
+    }),
+
+    team: collection({
+      label: "Team",
+      labelSingular: "Team member",
+      defaultSort: { field: "position", direction: "asc" },
+      sortable: true,
+      fields: {
+        name: text({ label: "Name", required: true, listed: true }),
+        slug: slug({ label: "URL", from: "name" }),
+        role: text({ label: "Role", listed: true, width: "half" }),
+        email: email({ label: "Email", width: "half" }),
+        phone: text({ label: "Phone", width: "half" }),
+        portrait: media({ label: "Portrait", accept: "image" }),
+        bio: textarea({ label: "Short biography", rows: 4, maxLength: 600 }),
+        featured: boolean({ label: "Show on the team page", default: false }),
+      },
+    }),
+  },
+
+  singletons: {
+    site: singleton({
+      label: "Website",
+      description: "Company details, contact information and default SEO.",
+      fields: {
+        companyName: text({ label: "Company name", required: true }),
+        logo: media({ label: "Logo", accept: "image" }),
+        tagline: text({ label: "Tagline", maxLength: 160 }),
+        address: textarea({ label: "Address", rows: 3, group: "Contact" }),
+        email: email({ label: "Email", group: "Contact", width: "half" }),
+        phone: text({ label: "Phone", group: "Contact", width: "half" }),
+        openingHours: textarea({
+          label: "Opening hours",
+          rows: 3,
+          group: "Contact",
+        }),
+        position: coordinates({
+          label: "Map position",
+          group: "Contact",
+          defaultCenter: { lat: 47.3769, lng: 8.5417 },
+          defaultZoom: 14,
+        }),
+        social: repeater({
+          label: "Social links",
+          group: "Contact",
+          itemLabel: "platform",
+          addLabel: "Add link",
+          fields: {
+            platform: select({
+              label: "Platform",
+              width: "half",
+              options: [
+                { label: "LinkedIn", value: "linkedin" },
+                { label: "Instagram", value: "instagram" },
+                { label: "Facebook", value: "facebook" },
+                { label: "YouTube", value: "youtube" },
+                { label: "X", value: "x" },
+              ],
+            }),
+            url: url({ label: "URL", required: true, width: "half" }),
+          },
+        }),
+        seo: object({
+          label: "Default SEO",
+          group: "Metadata",
+          collapsible: true,
+          fields: {
+            titleSuffix: text({
+              label: "Title suffix",
+              description: 'Appended to every page title, e.g. " — Muster AG".',
+            }),
+            defaultDescription: textarea({
+              label: "Default description",
+              rows: 2,
+              maxLength: 160,
+            }),
+            defaultImage: media({
+              label: "Default sharing image",
+              accept: "image",
+            }),
+          },
+        }),
+        analytics: object({
+          label: "Analytics",
+          group: "Metadata",
+          collapsible: true,
+          collapsed: true,
+          fields: {
+            provider: select({
+              label: "Provider",
+              options: [
+                { label: "None", value: "none" },
+                { label: "Plausible", value: "plausible" },
+                { label: "Matomo", value: "matomo" },
+              ],
+              default: "none",
+            }),
+            siteId: text({ label: "Site ID" }),
+            scriptUrl: url({ label: "Script URL" }),
+          },
+        }),
+      },
+    }),
+
+    navigation: singleton({
+      label: "Navigation",
+      description: "Main menu and footer links.",
+      fields: {
+        main: repeater({
+          label: "Main menu",
+          itemLabel: "label",
+          addLabel: "Add menu item",
+          fields: {
+            label: text({ label: "Label", required: true, width: "half" }),
+            href: text({
+              label: "Link",
+              required: true,
+              width: "half",
+              placeholder: "/projects",
+            }),
+            children: repeater({
+              label: "Submenu",
+              itemLabel: "label",
+              addLabel: "Add submenu item",
+              fields: {
+                label: text({ label: "Label", required: true, width: "half" }),
+                href: text({ label: "Link", required: true, width: "half" }),
+              },
+            }),
+          },
+        }),
+        footer: repeater({
+          label: "Footer links",
+          itemLabel: "label",
+          addLabel: "Add footer link",
+          fields: {
+            label: text({ label: "Label", required: true, width: "half" }),
+            href: text({ label: "Link", required: true, width: "half" }),
+          },
+        }),
+        footerNote: textarea({ label: "Footer note", rows: 2 }),
+      },
+    }),
+
+    theme: singleton({
+      label: "Theme",
+      description: "Colours and typography for the public website.",
+      fields: {
+        primaryColor: color({
+          label: "Primary colour",
+          default: "#1f2937",
+          width: "half",
+          presets: ["#1f2937", "#0f766e", "#1d4ed8", "#b91c1c", "#a16207"],
+        }),
+        accentColor: color({
+          label: "Accent colour",
+          default: "#0ea5e9",
+          width: "half",
+          presets: ["#0ea5e9", "#f97316", "#22c55e", "#e11d48", "#8b5cf6"],
+        }),
+        fontFamily: select({
+          label: "Typeface",
+          width: "half",
+          default: "sans",
+          options: [
+            { label: "Sans serif", value: "sans" },
+            { label: "Serif", value: "serif" },
+            { label: "Grotesque", value: "grotesque" },
+          ],
+        }),
+        borderRadius: select({
+          label: "Corner rounding",
+          width: "half",
+          default: "md",
+          options: [
+            { label: "Square", value: "none" },
+            { label: "Subtle", value: "sm" },
+            { label: "Rounded", value: "md" },
+            { label: "Very rounded", value: "lg" },
+          ],
+        }),
+      },
+    }),
+  },
+});
+
+export type Site = typeof site;
+
+// The default export is what the CMS loads and what the Astro config imports.
+export default site;

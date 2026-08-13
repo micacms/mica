@@ -1,0 +1,53 @@
+---
+import CmsImage from "@/components/CmsImage.astro";
+import type { CollectionEntry } from "astro:content";
+
+interface Props {
+  project: CollectionEntry<"projects">;
+  priority?: boolean;
+}
+
+const { project, priority = false } = Astro.props;
+const { title, year, category, gallery, location } = project.data;
+
+const CATEGORY_LABELS: Record<string, string> = {
+  residential: "Residential",
+  commercial: "Commercial",
+  public: "Public",
+  renovation: "Renovation",
+};
+
+const cover = gallery[0] ?? null;
+---
+
+<article class="group">
+  <a href={`/projects/${project.id}/`} class="block">
+    <div class="aspect-4/3 overflow-hidden bg-sunken" style="border-radius: var(--radius-theme)">
+      {
+        cover ? (
+          <CmsImage
+            media={cover}
+            alt=""
+            class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+            widths={[400, 800, 1200]}
+            sizes="(min-width: 1024px) 380px, (min-width: 640px) 45vw, 90vw"
+            priority={priority}
+          />
+        ) : (
+          <div class="flex h-full items-center justify-center text-sm text-muted">No image yet</div>
+        )
+      }
+    </div>
+
+    <div class="mt-4">
+      <h3 class="text-base font-semibold tracking-tight group-hover:text-primary">
+        {title}
+      </h3>
+      <p class="mt-1 text-sm text-muted">
+        {[category ? CATEGORY_LABELS[category] : null, location?.city, year]
+          .filter(Boolean)
+          .join(" · ")}
+      </p>
+    </div>
+  </a>
+</article>

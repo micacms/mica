@@ -1,0 +1,28 @@
+{
+  "title": "Hirzenbach I",
+  "slug": "hirzenbach-i",
+  "year": 2023,
+  "category": "renovation",
+  "location": {
+    "address": "Hirzenbachstrasse 41",
+    "city": "Zürich",
+    "postalCode": "8051",
+    "position": {
+      "lat": 47.4055,
+      "lng": 8.5836
+    }
+  },
+  "facts": [
+    {
+      "label": "Units",
+      "value": "24"
+    },
+    {
+      "label": "Energy saving",
+      "value": "62%"
+    }
+  ],
+  "gallery": [],
+  "team": [],
+  "featured": true
+}

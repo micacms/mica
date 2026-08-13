@@ -1,0 +1,98 @@
+---
+/**
+ * A location, shown as a map when one is configured and as an address with a
+ * link otherwise.
+ *
+ * MapLibre needs a tile provider, and requiring one would make the site depend
+ * on a third-party service at runtime — against the project's "no mandatory
+ * external services" principle. So the map is opt-in via
+ * `PUBLIC_MAP_STYLE_URL`, and the fallback is genuinely useful rather than a
+ * broken-looking placeholder.
+ *
+ * The MapLibre bundle is imported dynamically from the client script, so a site
+ * without a style URL never downloads it.
+ */
+
+import type { Coordinates } from "@micacms/model";
+
+interface Props {
+  position: Coordinates | null;
+  label: string;
+  address?: string | null;
+  zoom?: number;
+  class?: string;
+}
+
+const { position, label, address, zoom = 15, class: className } = Astro.props;
+
+const styleUrl = import.meta.env.PUBLIC_MAP_STYLE_URL as string | undefined;
+
+const osmUrl = position
+  ? `https://www.openstreetmap.org/?mlat=${position.lat}&mlon=${position.lng}#map=${zoom}/${position.lat}/${position.lng}`
+  : null;
+---
+
+{
+  position && (
+    <div class:list={["overflow-hidden card-surface", className]}>
+      {styleUrl ? (
+        <div
+          data-map
+          data-lat={position.lat}
+          data-lng={position.lng}
+          data-zoom={zoom}
+          data-style={styleUrl}
+          data-label={label}
+          class="h-72 w-full bg-sunken sm:h-96"
+          role="img"
+          aria-label={`Map showing ${label}`}
+        />
+      ) : (
+        <div class="flex flex-col items-start gap-3 p-6">
+          <p class="text-sm font-medium">{label}</p>
+          {address && <p class="whitespace-pre-line text-sm text-muted">{address}</p>}
+          <p class="font-mono text-xs text-muted">
+            {position.lat.toFixed(5)}, {position.lng.toFixed(5)}
+          </p>
+          <a href={osmUrl!} target="_blank" rel="noopener noreferrer" class="btn-outline mt-1">
+            Open in OpenStreetMap
+          </a>
+        </div>
+      )}
+    </div>
+  )
+}
+
+<script>
+  /**
+   * Only runs when a map element is present, and only then pulls in MapLibre —
+   * keeping the library out of every other page's payload.
+   */
+  const elements = document.querySelectorAll<HTMLElement>("[data-map]");
+
+  if (elements.length > 0) {
+    const [{ Map, Marker, NavigationControl }] = await Promise.all([
+      import("maplibre-gl"),
+      import("maplibre-gl/dist/maplibre-gl.css"),
+    ]);
+
+    for (const element of elements) {
+      const lat = Number(element.dataset.lat);
+      const lng = Number(element.dataset.lng);
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+
+      const map = new Map({
+        container: element,
+        style: element.dataset.style!,
+        center: [lng, lat],
+        zoom: Number(element.dataset.zoom) || 15,
+        attributionControl: { compact: true },
+        // The map is illustrative; let the page keep scrolling past it.
+        scrollZoom: false,
+      });
+
+      map.addControl(new NavigationControl({ showCompass: false }), "top-right");
+      new Marker().setLngLat([lng, lat]).addTo(map);
+    }
+  }
+</script>

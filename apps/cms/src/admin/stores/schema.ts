@@ -1,0 +1,47 @@
+/**
+ * The content model, fetched once per session.
+ *
+ * The admin ships no knowledge of any particular collection: navigation,
+ * tables and forms are all generated from this. Adding a field to
+ * `packages/model` therefore requires no change in this app.
+ */
+
+import { computed, ref } from "vue";
+
+import { api, type Schema, type SchemaCollection, type SchemaGlobal } from "@/api";
+
+const schema = ref<Schema | null>(null);
+let inFlight: Promise<Schema> | null = null;
+
+export function useSchema() {
+  return {
+    schema: computed(() => schema.value),
+    collections: computed<SchemaCollection[]>(() => schema.value?.collections ?? []),
+    globals: computed<SchemaGlobal[]>(() => schema.value?.globals ?? []),
+    loaded: computed(() => schema.value !== null),
+
+    /** Concurrent callers share one request. */
+    async load(force = false): Promise<Schema> {
+      if (schema.value && !force) return schema.value;
+      inFlight ??= api.schema().then((result) => {
+        schema.value = result;
+        inFlight = null;
+        return result;
+      });
+      return inFlight;
+    },
+
+    collection(name: string): SchemaCollection | undefined {
+      return schema.value?.collections.find((item) => item.name === name);
+    },
+
+    global(name: string): SchemaGlobal | undefined {
+      return schema.value?.globals.find((item) => item.name === name);
+    },
+
+    reset(): void {
+      schema.value = null;
+      inFlight = null;
+    },
+  };
+}
