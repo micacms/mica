@@ -3,44 +3,37 @@
  *
  * Everything is constructed here and passed down explicitly — no module-level
  * singletons, no service locator. That is what lets a test build a complete
- * application against an in-memory database and a stub publisher.
+ * application against an in-memory database and a temporary content directory.
+ *
+ * Note what the database is now for: users and sessions. Content, media and
+ * their history live in the repository, reached through a connector. Losing
+ * this database costs everyone their login, and nothing else.
  */
 
+import { createContentStore, localConnector, type ContentStore, type RepositoryConnector } from "@micacms/connectors";
 import type { Site } from "@micacms/model";
 
 import type { Config } from "./config.js";
 import { openDatabase, type SqlDatabase } from "./db/index.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
-import { createEntryRepository } from "./repositories/entries.js";
-import { createGlobalRepository } from "./repositories/globals.js";
-import { createMediaRepository } from "./repositories/media.js";
-import { createRevisionRepository } from "./repositories/revisions.js";
 import { createSessionRepository } from "./repositories/sessions.js";
 import { createUserRepository } from "./repositories/users.js";
-import { createContentService, type ContentService } from "./services/content.js";
 import { createMediaService, type MediaService } from "./services/media.js";
-import { noopPublisher, webhook, type Publisher } from "./services/publisher.js";
 import { createSessionService, type SessionService } from "./services/session.js";
-import { localStorage, type MediaStorage } from "./services/storage.js";
 
 export interface AppContext {
   config: Config;
   site: Site;
   logger: Logger;
   db: SqlDatabase;
-  storage: MediaStorage;
-  publisher: Publisher;
+  connector: RepositoryConnector;
   repositories: {
-    entries: ReturnType<typeof createEntryRepository>;
-    globals: ReturnType<typeof createGlobalRepository>;
-    media: ReturnType<typeof createMediaRepository>;
-    revisions: ReturnType<typeof createRevisionRepository>;
     sessions: ReturnType<typeof createSessionRepository>;
     users: ReturnType<typeof createUserRepository>;
   };
   services: {
-    content: ContentService;
+    content: ContentStore;
     media: MediaService;
     sessions: SessionService;
   };
@@ -48,17 +41,16 @@ export interface AppContext {
     login: RateLimiter;
     api: RateLimiter;
   };
-  /** Releases timers, database handle and pending webhook deliveries. */
+  /** Releases timers and the database handle. */
   shutdown(): Promise<void>;
 }
 
 export interface CreateContextOptions {
   config: Config;
   site: Site;
-  /** Overrides for tests: in-memory database, stub publisher, fake storage. */
+  /** Overrides for tests: in-memory database, temporary content directory. */
   db?: SqlDatabase;
-  publisher?: Publisher;
-  storage?: MediaStorage;
+  connector?: RepositoryConnector;
   logger?: Logger;
 }
 
@@ -73,45 +65,25 @@ export function createContext(options: CreateContextOptions): AppContext {
     });
 
   const db = options.db ?? openDatabase(config.databasePath, { logger });
-  const storage = options.storage ?? localStorage({ directory: config.mediaDir });
 
-  const publisher =
-    options.publisher ??
-    (config.BUILD_WEBHOOK_URL
-      ? webhook({
-          url: config.BUILD_WEBHOOK_URL,
-          secret: config.BUILD_WEBHOOK_SECRET,
-          debounceMs: config.PUBLISH_DEBOUNCE_MS,
-          logger: logger.child({ component: "publisher" }),
-        })
-      : noopPublisher(logger.child({ component: "publisher" })));
+  /**
+   * The local connector for now.
+   *
+   * It writes into a working tree, which is exactly right for `mica dev` and
+   * for a self-hosted deployment whose content repository is checked out beside
+   * it. A GitHub or GitLab connector drops in here without anything above this
+   * line changing — that is what the interface is for.
+   */
+  const connector = options.connector ?? localConnector({ root: config.contentRoot });
 
   const repositories = {
-    entries: createEntryRepository(db),
-    globals: createGlobalRepository(db),
-    media: createMediaRepository(db),
-    revisions: createRevisionRepository(db),
     sessions: createSessionRepository(db),
     users: createUserRepository(db),
   };
 
   const services = {
-    content: createContentService({
-      site,
-      db,
-      entries: repositories.entries,
-      globals: repositories.globals,
-      revisions: repositories.revisions,
-      media: repositories.media,
-      publisher,
-      baseUrl: config.CMS_BASE_URL,
-    }),
-    media: createMediaService({
-      media: repositories.media,
-      storage,
-      maxBytes: config.MAX_UPLOAD_BYTES,
-      logger: logger.child({ component: "media" }),
-    }),
+    content: createContentStore(site, connector),
+    media: createMediaService({ connector, maxBytes: config.MAX_UPLOAD_BYTES }),
     sessions: createSessionService(repositories.sessions, config),
   };
 
@@ -139,8 +111,7 @@ export function createContext(options: CreateContextOptions): AppContext {
     site,
     logger,
     db,
-    storage,
-    publisher,
+    connector,
     repositories,
     services,
     limiters,
@@ -149,10 +120,6 @@ export function createContext(options: CreateContextOptions): AppContext {
       clearInterval(sessionSweep);
       limiters.login.stop();
       limiters.api.stop();
-      // Deliver anything queued before the process goes away.
-      await publisher.flush().catch((error: unknown) => {
-        logger.error("Failed to flush publisher on shutdown", { error: String(error) });
-      });
       db.close();
     },
   };

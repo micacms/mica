@@ -27,10 +27,18 @@ const schema = z
     /** Public origin of the CMS itself. Used for cookies, CORS and media URLs. */
     CMS_BASE_URL: z.string().url().default("http://localhost:4000"),
 
-    /** Everything persistent lives under here; this is the volume to back up. */
+    /**
+     * The content repository this Mica serves.
+     *
+     * Content and media live here, and Git is what makes them durable. Mica's
+     * own database holds users and sessions only — losing it must never mean
+     * losing website content.
+     */
+    CONTENT_ROOT: z.string().default("../../content"),
+
+    /** Operational state only: users and sessions. */
     DATA_DIR: z.string().default("./data"),
     DATABASE_PATH: z.string().optional(),
-    MEDIA_DIR: z.string().optional(),
 
     /**
      * The project's compiled content model — the file the server is a CMS *for*.
@@ -46,14 +54,6 @@ const schema = z
     SESSION_SECRET: z.string().min(32).optional(),
     SESSION_TTL_HOURS: z.coerce.number().int().positive().default(24 * 14),
     SESSION_IDLE_HOURS: z.coerce.number().int().positive().default(24 * 3),
-
-    /** Bearer token the Astro build presents to the public content API. */
-    CMS_READ_TOKEN: z.string().min(16).optional(),
-
-    BUILD_WEBHOOK_URL: z.string().url().optional(),
-    BUILD_WEBHOOK_SECRET: z.string().optional(),
-    /** Coalescing window so a burst of publishes triggers one build. */
-    PUBLISH_DEBOUNCE_MS: z.coerce.number().int().min(0).default(10_000),
 
     MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(25 * 1024 * 1024),
 
@@ -77,7 +77,7 @@ const schema = z
       schemaPath: path.resolve(env.MICA_SCHEMA ?? "../../mica.config.ts"),
       dataDir,
       databasePath: path.resolve(env.DATABASE_PATH ?? path.join(dataDir, "cms.sqlite")),
-      mediaDir: path.resolve(env.MEDIA_DIR ?? path.join(dataDir, "media")),
+      contentRoot: path.resolve(env.CONTENT_ROOT),
       adminOrigins: (env.ADMIN_ORIGINS ?? "")
         .split(",")
         .map((origin) => origin.trim())
@@ -87,7 +87,6 @@ const schema = z
 
 export type Config = z.infer<typeof schema> & {
   sessionSecret: string;
-  readToken: string;
   cookieSecure: boolean;
 };
 
@@ -152,7 +151,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   // everyone out on restart, which is the correct trade-off locally.
   const missing: string[] = [];
   if (!config.SESSION_SECRET) missing.push("SESSION_SECRET");
-  if (!config.CMS_READ_TOKEN) missing.push("CMS_READ_TOKEN");
 
   if (config.isProduction && missing.length > 0) {
     throw new ConfigError(
@@ -177,19 +175,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
   }
 
   const sessionSecret = config.SESSION_SECRET ?? randomBytes(32).toString("hex");
-  const readToken = config.CMS_READ_TOKEN ?? "dev-read-token-not-for-production";
-
-  if (config.BUILD_WEBHOOK_URL && !config.BUILD_WEBHOOK_SECRET && config.isProduction) {
-    throw new ConfigError(
-      "BUILD_WEBHOOK_URL is set without BUILD_WEBHOOK_SECRET. " +
-        "An unsigned build webhook can be triggered by anyone who learns the URL.",
-    );
-  }
 
   return {
     ...config,
     sessionSecret,
-    readToken,
     // Secure cookies are not sent over plain HTTP, which would break local dev.
     cookieSecure: config.CMS_BASE_URL.startsWith("https://"),
     devSecrets: missing,

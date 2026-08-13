@@ -5,11 +5,17 @@
  *          │
  *          ▼
  *         Hono
- *   ┌──────┼──────────┬─────────┐
- *   │      │          │         │
- * /api/*  /media/*  /admin/*  /health
- *   │      │          │
- * SQLite  files    Vue SPA
+ *   ┌──────┴───┬──────────┐
+ *   │          │          │
+ * /api/*    /admin/*   /health
+ *   │          │
+ * connector  Vue SPA
+ *   │
+ * content repository
+ *
+ * There is no public content API and no `/media/*`. A website is built from the
+ * repository, not from this server, so nothing here has to be reachable for a
+ * site to deploy — or to stay up.
  */
 
 import { Hono } from "hono";
@@ -26,7 +32,6 @@ import {
   requestContext,
   requireAdmin,
   requireAuth,
-  requireReadToken,
   securityHeaders,
 } from "./middleware/index.js";
 import { adminContentRoutes } from "./routes/admin-content.js";
@@ -36,8 +41,6 @@ import { adminSystemRoutes } from "./routes/admin-system.js";
 import { adminUserRoutes } from "./routes/admin-users.js";
 import { authRoutes } from "./routes/auth.js";
 import { healthRoutes } from "./routes/health.js";
-import { mediaFileRoutes } from "./routes/media-files.js";
-import { publicRoutes } from "./routes/public.js";
 
 export interface CreateAppOptions {
   /** Overridden by the tests; defaults to the directory Vite builds into. */
@@ -56,12 +59,6 @@ export function createApp(ctx: AppContext, options: CreateAppOptions = {}): Hono
   /* ------------------------------------------------------------ health */
 
   app.route("/health", healthRoutes());
-
-  /* ------------------------------------------------------------- media */
-
-  // Public: these URLs are fetched by the image pipeline during `astro build`,
-  // which cannot present credentials. See routes/media-files.ts.
-  app.route("/media", mediaFileRoutes());
 
   /* --------------------------------------------------------------- API */
 
@@ -97,13 +94,6 @@ export function createApp(ctx: AppContext, options: CreateAppOptions = {}): Hono
   app.route("/api/admin", adminContentRoutes());
   app.route("/api/admin/media", adminMediaRoutes());
   app.route("/api/admin/users", adminUserRoutes());
-
-  /* ------------------------------------------------------ public API */
-
-  for (const path of ["/api/version", "/api/manifest", "/api/content/*", "/api/globals/*"]) {
-    app.use(path, requireReadToken());
-  }
-  app.route("/api", publicRoutes());
 
   app.all("/api/*", (c) =>
     c.json({ error: { code: "not_found" as const, message: "No such endpoint." } }, 404),

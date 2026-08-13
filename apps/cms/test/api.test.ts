@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
 import { collection, defineSite, slug, text } from "@micacms/model";
@@ -15,7 +17,6 @@ import {
   type TestHarness,
 } from "./helpers.js";
 
-const READ_TOKEN = "test-read-token-0123456789";
 
 describe("health", () => {
   let harness: TestHarness;
@@ -24,14 +25,16 @@ describe("health", () => {
   });
   after(() => harness.close());
 
-  it("reports ok and actually touches the database", async () => {
+  it("reports ok, and actually touches both stores", async () => {
     const response = await harness.request("/health");
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), {
       status: "ok",
       uptimeSeconds: 0,
       database: "ok",
-      publisher: "configured",
+      // Named, because a check that does not say which repository it reached
+      // cannot tell a misconfigured content root from a healthy one.
+      repository: harness.contentRoot,
     });
   });
 });
@@ -194,13 +197,31 @@ describe("content", () => {
   let harness: TestHarness;
   let session: Session;
 
-  const createEntry = async (data: Record<string, unknown>, status?: string) =>
+  const create = (data: Record<string, unknown>) =>
     harness.request("/api/admin/collections/projects/entries", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ data, status }),
+      body: JSON.stringify({ data }),
       session,
     });
+
+  const get = async (slug: string) => {
+    const response = await harness.request(
+      `/api/admin/collections/projects/entries/${slug}`,
+      { session },
+    );
+    return { response, body: (await response.json()) as Record<string, any> };
+  };
+
+  const update = (slug: string, data: Record<string, unknown>, revision?: string | null) =>
+    harness.request(`/api/admin/collections/projects/entries/${slug}`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ data, revision }),
+      session,
+    });
+
+  const file = (path: string) => readFileSync(join(harness.contentRoot, path), "utf8");
 
   before(async () => {
     harness = await createHarness();
@@ -220,299 +241,154 @@ describe("content", () => {
     assert.ok("gallery" in projects.fields);
   });
 
-  it("derives a slug from the title", async () => {
-    const response = await createEntry({ title: "Haus am Zürichsee" });
-    const entry = (await response.json()) as { slug: string };
-    assert.equal(entry.slug, "haus-am-zuerichsee");
+  it("writes an entry to the repository, not to a table", async () => {
+    const response = await create({ title: "Haus am Zürichsee", year: 2024, summary: "# Hello" });
+    assert.equal(response.status, 201);
+
+    const { slug } = (await response.json()) as { slug: string };
+    assert.equal(slug, "haus-am-zuerichsee");
+
+    // The files are the product. Assert on them directly.
+    assert.match(file(`projects/${slug}/index.json`), /"title": "Haus am Zürichsee"/);
+    assert.equal(file(`projects/${slug}/summary.mdoc`), "# Hello\n");
   });
 
   it("disambiguates a duplicate slug", async () => {
-    await createEntry({ title: "Doppelt" });
-    const second = await createEntry({ title: "Doppelt" });
+    await create({ title: "Doppelt" });
+    const second = await create({ title: "Doppelt" });
+
     const entry = (await second.json()) as { slug: string };
     assert.equal(entry.slug, "doppelt-2");
   });
 
-  it("saves an incomplete draft but refuses to publish it", async () => {
-    const draft = await createEntry({ title: "", year: 2024 });
-    assert.equal(draft.status, 201);
-
-    const { id } = (await draft.json()) as { id: string };
-    const published = await harness.request(`/api/admin/entries/${id}/status`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status: "published" }),
-      session,
-    });
-
-    assert.equal(published.status, 422);
-    const body = (await published.json()) as { error: { issues: Array<{ path: string }> } };
-    assert.equal(body.error.issues[0]?.path, "title");
-  });
-
-  it("enforces field constraints on save", async () => {
-    const response = await createEntry({ title: "Ok", year: 1500, category: "z" });
+  it("refuses an entry the model rejects, and names the fields", async () => {
+    const response = await create({ title: "", year: 2024 });
     assert.equal(response.status, 422);
 
     const body = (await response.json()) as { error: { issues: Array<{ path: string }> } };
-    const paths = body.error.issues.map((issue) => issue.path).sort();
-    assert.deepEqual(paths, ["category", "year"]);
+    assert.ok(body.error.issues.some((issue) => issue.path === "title"));
   });
 
-  it("keeps a draft out of the public API until it is published", async () => {
-    const created = await createEntry({ title: "Not yet" });
-    const { id, slug } = (await created.json()) as { id: string; slug: string };
+  it("hands out a revision, and requires it back", async () => {
+    await create({ title: "Concurrency" });
+    const { body } = await get("concurrency");
+    assert.ok(body.revision, "reading an entry must say which version it is");
 
-    const beforePublish = await harness.request("/api/content/projects", {
-      headers: { authorization: `Bearer ${READ_TOKEN}` },
+    const first = await update("concurrency", { ...body.data, year: 2024 }, body.revision);
+    assert.equal(first.status, 200);
+
+    // The same revision a second time: another editor got there first.
+    const second = await update("concurrency", { ...body.data, year: 1999 }, body.revision);
+    assert.equal(second.status, 409);
+
+    const after = await get("concurrency");
+    assert.equal(after.body.data.year, 2024, "the first save must survive");
+  });
+
+  it("renames by moving the entry's directory", async () => {
+    await create({ title: "Before" });
+    const { body } = await get("before");
+
+    const response = await update("before", { ...body.data, slug: "after" }, body.revision);
+    assert.equal(response.status, 200);
+
+    const saved = (await response.json()) as { slug: string; renamed: boolean };
+    assert.equal(saved.slug, "after");
+    assert.equal(saved.renamed, true);
+    assert.match(file("projects/after/index.json"), /"slug": "after"/);
+    assert.throws(() => file("projects/before/index.json"));
+  });
+
+  it("removes the whole entry on delete", async () => {
+    await create({ title: "Doomed", summary: "Text." });
+
+    const response = await harness.request("/api/admin/collections/projects/entries/doomed", {
+      method: "DELETE",
+      session,
     });
-    const before = (await beforePublish.json()) as { items: Array<{ slug: string }> };
-    assert.ok(!before.items.some((item) => item.slug === slug));
 
-    await harness.request(`/api/admin/entries/${id}/status`, {
+    assert.equal(response.status, 200);
+    assert.throws(() => file("projects/doomed/index.json"));
+    assert.throws(() => file("projects/doomed/summary.mdoc"));
+  });
+
+  it("reports what points at an entry, so a delete can be warned about", async () => {
+    await harness.request("/api/admin/collections/team/entries", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status: "published" }),
+      body: JSON.stringify({ data: { name: "Anna Vogt" } }),
       session,
     });
+    await create({ title: "Led project", lead: "anna-vogt" });
 
-    const afterPublish = await harness.request("/api/content/projects", {
-      headers: { authorization: `Bearer ${READ_TOKEN}` },
-    });
-    const after = (await afterPublish.json()) as { items: Array<{ slug: string }> };
-    assert.ok(after.items.some((item) => item.slug === slug));
-  });
-
-  it("notifies the publisher only for changes that touch live content", async () => {
-    const before = harness.publisher.events.length;
-
-    const draft = await createEntry({ title: "Quiet draft" });
-    const { id } = (await draft.json()) as { id: string };
-    assert.equal(harness.publisher.events.length, before, "a draft must not trigger a build");
-
-    await harness.request(`/api/admin/entries/${id}/status`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ status: "published" }),
-      session,
-    });
-
-    const latest = harness.publisher.events.at(-1)!;
-    assert.equal(latest.type, "entry.published");
-    assert.equal(latest.collection, "projects");
-  });
-
-  it("records a revision on every change and restores a previous version", async () => {
-    const created = await createEntry({ title: "Version one" });
-    const { id } = (await created.json()) as { id: string };
-
-    await harness.request(`/api/admin/entries/${id}`, {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ data: { title: "Version two" } }),
-      session,
-    });
-
-    const listed = await harness.request(`/api/admin/entries/${id}/revisions`, { session });
-    const { revisions } = (await listed.json()) as {
-      revisions: Array<{ id: string; title: string; authorEmail: string }>;
-    };
-
-    assert.equal(revisions.length, 1);
-    assert.equal(revisions[0]!.title, "Version one");
-    assert.equal(revisions[0]!.authorEmail, ADMIN_EMAIL, "the editor must be identifiable");
-
-    const restored = await harness.request(
-      `/api/admin/entries/${id}/revisions/${revisions[0]!.id}/restore`,
-      { method: "POST", session },
+    const response = await harness.request(
+      "/api/admin/collections/team/entries/anna-vogt/references",
+      { session },
     );
 
-    const entry = (await restored.json()) as { data: { title: string } };
-    assert.equal(entry.data.title, "Version one");
+    const body = (await response.json()) as { references: Array<{ slug: string }> };
+    assert.deepEqual(body.references.map((item) => item.slug), ["led-project"]);
   });
 
-  it("drops fields that are no longer in the model", async () => {
-    const response = await createEntry({ title: "Clean", removedField: "stale" });
-    const entry = (await response.json()) as { data: Record<string, unknown> };
-    assert.ok(!("removedField" in entry.data));
-  });
-
-  it("saves and reads a singleton", async () => {
-    const saved = await harness.request("/api/admin/globals/site", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ data: { companyName: "Muster AG" } }),
-      session,
-    });
-    assert.equal(saved.status, 200);
-
-    const read = await harness.request("/api/globals/site", {
-      headers: { authorization: `Bearer ${READ_TOKEN}` },
-    });
-    assert.deepEqual(await read.json(), { companyName: "Muster AG", logo: null });
-  });
-
-  it("rejects a singleton that fails validation", async () => {
-    const response = await harness.request("/api/admin/globals/site", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ data: { companyName: "" } }),
-      session,
-    });
-    assert.equal(response.status, 422);
-  });
-
-  it("finds the entries that point at a team member", async () => {
-    const member = await harness.request("/api/admin/collections/team/entries", {
+  it("records a manual order as one file", async () => {
+    const response = await harness.request("/api/admin/collections/projects/reorder", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ data: { name: "Anna Muster" } }),
+      body: JSON.stringify({ slugs: ["doppelt-2", "doppelt"] }),
       session,
     });
-    const { id: memberId, slug: memberSlug } = (await member.json()) as {
-      id: string;
-      slug: string;
-    };
-
-    await createEntry({ title: "Led by Anna", lead: memberSlug });
-
-    // Asked of the team member: which projects would break if it were deleted?
-    const response = await harness.request(`/api/admin/entries/${memberId}/references`, {
-      session,
-    });
-    const body = (await response.json()) as {
-      references: Array<{ collection: string; title: string }>;
-    };
 
     assert.equal(response.status, 200);
-    assert.deepEqual(body.references, [
-      { collection: "projects", id: body.references[0]?.id ?? "", title: "Led by Anna", slug: "led-by-anna" },
-    ]);
-  });
-});
-
-describe("public content API", () => {
-  let harness: TestHarness;
-
-  before(async () => {
-    harness = await createHarness();
-  });
-  after(() => harness.close());
-
-  it("requires a read token", async () => {
-    assert.equal((await harness.request("/api/content/projects")).status, 401);
+    assert.deepEqual(JSON.parse(file("projects/_order.json")), ["doppelt-2", "doppelt"]);
   });
 
-  it("rejects an incorrect token", async () => {
-    const response = await harness.request("/api/content/projects", {
-      headers: { authorization: "Bearer wrong-token-wrong-token" },
-    });
-    assert.equal(response.status, 401);
-  });
-
-  it("accepts the token and returns published content only", async () => {
-    const response = await harness.request("/api/content/projects", {
-      headers: { authorization: `Bearer ${READ_TOKEN}` },
-    });
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { items: [], total: 0 });
-  });
-
-  it("serves every collection and global in one manifest", async () => {
-    const response = await harness.request("/api/manifest", {
-      headers: { authorization: `Bearer ${READ_TOKEN}` },
-    });
-    const body = (await response.json()) as {
-      collections: Record<string, unknown[]>;
-      globals: Record<string, unknown>;
-      version: string;
-    };
-
-    assert.deepEqual(Object.keys(body.collections).sort(), ["projects", "team"]);
-    assert.ok("site" in body.globals);
-    assert.ok(body.version);
-  });
-
-  it("changes the content version when content changes", async () => {
-    const session = await harness.signIn();
-    const before = await (
-      await harness.request("/api/version", { headers: { authorization: `Bearer ${READ_TOKEN}` } })
-    ).json();
-
-    await harness.request("/api/admin/collections/projects/entries", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ data: { title: "Fresh" }, status: "published" }),
-      session,
-    });
-
-    const after = await (
-      await harness.request("/api/version", { headers: { authorization: `Bearer ${READ_TOKEN}` } })
-    ).json();
-
-    assert.notDeepEqual(before, after);
-  });
-
-  it("holds the content version still when nothing changes", async () => {
-    const read = async () =>
-      (
-        await (
-          await harness.request("/api/version", {
-            headers: { authorization: `Bearer ${READ_TOKEN}` },
-          })
-        ).json()
-      ).version as string;
-
-    assert.equal(await read(), await read());
-  });
-
-  it("changes the content version when the model changes", async () => {
-    // The token is what every consumer uses to decide whether to look again, so
-    // it has to cover the model too: payloads are projected through it, and a
-    // field added to `mica.config.ts` moves nothing in the database. Without
-    // this, a website's persisted content cache outlives the change that was
-    // supposed to invalidate it.
-    const extended = defineSite({
-      collections: {
-        ...testSite.collections,
-        team: collection({
-          label: "Team",
-          fields: {
-            name: text({ label: "Name", required: true }),
-            slug: slug({ from: "name" }),
-            role: text({ label: "Role" }),
-          },
-        }),
-      },
-      singletons: testSite.singletons,
-    });
-
-    const other = await createHarness({}, { site: extended });
-    try {
-      const version = async (h: TestHarness) =>
-        (
-          await (
-            await h.request("/api/version", { headers: { authorization: `Bearer ${READ_TOKEN}` } })
-          ).json()
-        ).version as string;
-
-      // Both databases are empty, so every content-derived signal is identical.
-      const plain = await createHarness();
-      try {
-        assert.notEqual(await version(plain), await version(other));
-      } finally {
-        plain.close();
-      }
-    } finally {
-      other.close();
-    }
-  });
-
-  it("returns 404 for an unknown collection", async () => {
-    const response = await harness.request("/api/content/nope", {
-      headers: { authorization: `Bearer ${READ_TOKEN}` },
-    });
+  it("404s for an entry that is not in the repository", async () => {
+    const { response } = await get("never-existed");
     assert.equal(response.status, 404);
+  });
+
+  /* ------------------------------------------------------- singletons */
+
+  it("opens an empty singleton before anything has been saved", async () => {
+    const response = await harness.request("/api/admin/singletons/settings", { session });
+    assert.equal(response.status, 200);
+
+    const body = (await response.json()) as { data: Record<string, unknown>; revision: null };
+    assert.equal(body.revision, null);
+  });
+
+  it("saves a singleton to its own file", async () => {
+    const read = await harness.request("/api/admin/singletons/settings", { session });
+    const current = (await read.json()) as { data: Record<string, unknown>; revision: string | null };
+
+    const response = await harness.request("/api/admin/singletons/settings", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        data: { ...current.data, siteName: "Mica" },
+        revision: current.revision,
+      }),
+      session,
+    });
+
+    assert.equal(response.status, 200);
+    assert.match(file("settings.json"), /"siteName": "Mica"/);
+  });
+
+  it("refuses a singleton save based on a stale revision", async () => {
+    const read = await harness.request("/api/admin/singletons/settings", { session });
+    const stale = (await read.json()) as { data: Record<string, unknown>; revision: string | null };
+
+    const save = (name: string) =>
+      harness.request("/api/admin/singletons/settings", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ data: { ...stale.data, siteName: name }, revision: stale.revision }),
+        session,
+      });
+
+    assert.equal((await save("First")).status, 200);
+    assert.equal((await save("Second")).status, 409);
   });
 });
 
@@ -529,20 +405,23 @@ describe("media", () => {
   const upload = (form: FormData) =>
     harness.request("/api/admin/media", { method: "POST", body: form, session });
 
-  it("accepts a PNG and reads its dimensions", async () => {
+  it("commits an upload into the repository", async () => {
     const response = await upload(
-      multipart([{ name: "pixel.png", bytes: pngBytes(), type: "image/png" }]),
+      multipart([{ name: "Pixel Image.png", bytes: pngBytes(), type: "image/png" }]),
     );
 
     assert.equal(response.status, 201);
     const body = (await response.json()) as {
-      items: Array<{ id: string; mimeType: string; width: number; height: number; url: string }>;
+      items: Array<{ path: string; mimeType: string; width: number; height: number }>;
     };
 
-    assert.equal(body.items[0]!.mimeType, "image/png");
-    assert.equal(body.items[0]!.width, 1);
-    assert.equal(body.items[0]!.height, 1);
-    assert.match(body.items[0]!.url, /^http:\/\/localhost:4000\/media\/[0-9A-Z]{26}\.png$/);
+    const item = body.items[0]!;
+    assert.equal(item.mimeType, "image/png");
+    assert.equal(item.width, 1);
+    // A path into the repository, with a name a person would recognise —
+    // not a ULID and not a URL on this server.
+    assert.equal(item.path, "media/pixel-image.png");
+    assert.ok(existsSync(join(harness.contentRoot, item.path)));
   });
 
   it("trusts the bytes rather than the declared content type", async () => {
@@ -554,78 +433,55 @@ describe("media", () => {
     assert.equal(response.status, 415);
   });
 
-  it("stores identical bytes only once", async () => {
-    const first = await upload(multipart([{ name: "a.png", bytes: pngBytes(), type: "image/png" }]));
-    const second = await upload(multipart([{ name: "b.png", bytes: pngBytes(), type: "image/png" }]));
+  it("does not let one upload overwrite another with the same name", async () => {
+    const first = await upload(multipart([{ name: "same.png", bytes: pngBytes(), type: "image/png" }]));
+    const second = await upload(multipart([{ name: "same.png", bytes: pngBytes(), type: "image/png" }]));
 
-    const one = (await first.json()) as { items: Array<{ id: string }> };
-    const two = (await second.json()) as { items: Array<{ id: string }> };
-    assert.equal(one.items[0]!.id, two.items[0]!.id);
+    const a = (await first.json()) as { items: Array<{ path: string }> };
+    const b = (await second.json()) as { items: Array<{ path: string }> };
+
+    assert.equal(a.items[0]!.path, "media/same.png");
+    assert.equal(b.items[0]!.path, "media/same-2.png");
   });
 
-  it("serves the file publicly with an immutable cache header", async () => {
-    const uploaded = await upload(
-      multipart([{ name: "served.png", bytes: pngBytes(), type: "image/png" }]),
-    );
-    const { items } = (await uploaded.json()) as { items: Array<{ url: string }> };
-    const path = new URL(items[0]!.url).pathname;
+  it("places an upload beside the entry that will reference it", async () => {
+    const form = multipart([{ name: "cover.png", bytes: pngBytes(), type: "image/png" }]);
+    form.set("directory", "projects/haus-a/media");
 
-    const response = await harness.request(path);
+    const response = await upload(form);
+    const body = (await response.json()) as { items: Array<{ path: string }> };
+
+    assert.equal(body.items[0]!.path, "projects/haus-a/media/cover.png");
+  });
+
+  it("refuses a directory that leaves the content root", async () => {
+    const form = multipart([{ name: "escape.png", bytes: pngBytes(), type: "image/png" }]);
+    form.set("directory", "../../escaped");
+
+    assert.equal((await upload(form)).status, 500);
+    assert.equal(existsSync(join(harness.contentRoot, "../../escaped")), false);
+  });
+
+  it("lists what the repository holds", async () => {
+    await upload(multipart([{ name: "listed.png", bytes: pngBytes(), type: "image/png" }]));
+
+    const response = await harness.request("/api/admin/media", { session });
+    const body = (await response.json()) as { items: Array<{ path: string }> };
+
+    assert.ok(body.items.some((item) => item.path === "media/listed.png"));
+  });
+
+  it("serves a file to a signed-in editor", async () => {
+    await upload(multipart([{ name: "served.png", bytes: pngBytes(), type: "image/png" }]));
+
+    const response = await harness.request("/api/admin/media/file/media/served.png", { session });
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("content-type"), "image/png");
-    assert.match(response.headers.get("cache-control")!, /immutable/);
   });
 
-  it("expands media ids into full references in the public API", async () => {
-    const uploaded = await upload(
-      multipart([{ name: "cover.png", bytes: pngBytes(), type: "image/png" }]),
-    );
-    const { items } = (await uploaded.json()) as { items: Array<{ id: string }> };
-
-    const created = await harness.request("/api/admin/collections/projects/entries", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        data: { title: "With cover", cover: items[0]!.id },
-        status: "published",
-      }),
-      session,
-    });
-    const { slug } = (await created.json()) as { slug: string };
-
-    const response = await harness.request(`/api/content/projects/${slug}`, {
-      headers: { authorization: `Bearer ${READ_TOKEN}` },
-    });
-    const entry = (await response.json()) as { data: { cover: { url: string; width: number } } };
-
-    assert.equal(entry.data.cover.width, 1);
-    assert.match(entry.data.cover.url, /\/media\//);
-  });
-
-  it("refuses to delete a file that published content still uses", async () => {
-    const uploaded = await upload(
-      multipart([{ name: "used.png", bytes: pngBytes(), type: "image/png" }]),
-    );
-    const { items } = (await uploaded.json()) as { items: Array<{ id: string }> };
-
-    await harness.request("/api/admin/collections/projects/entries", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ data: { title: "Uses file", cover: items[0]!.id } }),
-      session,
-    });
-
-    const blocked = await harness.request(`/api/admin/media/${items[0]!.id}`, {
-      method: "DELETE",
-      session,
-    });
-    assert.equal(blocked.status, 409);
-
-    const forced = await harness.request(`/api/admin/media/${items[0]!.id}?force=true`, {
-      method: "DELETE",
-      session,
-    });
-    assert.equal(forced.status, 200);
+  it("requires a session, unlike the public media route it replaces", async () => {
+    const response = await harness.request("/api/admin/media/file/media/served.png");
+    assert.equal(response.status, 401);
   });
 });
 
@@ -711,83 +567,59 @@ describe("system information", () => {
   before(async () => {
     harness = await createHarness();
     session = await harness.signIn();
-    await harness.createUser({
-      email: "editor@example.com",
-      password: "editor-password-1",
-      role: "editor",
-    });
-
-    await harness.request("/api/admin/collections/projects/entries", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ data: { title: "Ein Haus" } }),
-      session,
-    });
   });
   after(() => harness.close());
 
-  const system = async (as: Session) =>
-    (await (await harness.request("/api/admin/system", { session: as })).json()) as {
-      cms: { version: string; environment: string };
-      schema: {
-        fingerprint: string;
-        totals: { collections: number; globals: number; total: number; required: number };
-        kinds: Array<{ kind: string; count: number }>;
-        relations: Array<{ from: string; path: string; to: string; multiple: boolean }>;
-        collections: Array<{ name: string; entries: { total: number; drafts: number } }>;
-      };
-      storage: { entries: { total: number }; users: number };
-      deployment: { schemaPath: string; generatedSecrets: string[] } | null;
+  it("separates the content repository from Mica's own database", async () => {
+    const response = await harness.request("/api/admin/system", { session });
+    assert.equal(response.status, 200);
+
+    const body = (await response.json()) as {
+      repository: { origin: string; entries: number; media: { files: number } };
+      database: { users: number; version: number };
     };
 
-  it("reports the running version and the model it was handed", async () => {
-    const body = await system(session);
+    // The shape is the point: content is in the repository, and the database
+    // holds users. Losing the second must not look like losing the first.
+    assert.equal(body.repository.origin, harness.contentRoot);
+    assert.equal(body.repository.entries, 0);
+    assert.equal(body.database.users, 1);
+    assert.ok(body.database.version >= 2, "the content tables must have been dropped");
+  });
 
-    assert.match(body.cms.version, /^\d+\.\d+\.\d+/);
-    assert.equal(body.cms.environment, "test");
-    assert.match(body.schema.fingerprint, /^[0-9a-f]{12}$/);
-
-    // The test model: projects (8 fields) + team (2) + the site global (2).
-    assert.deepEqual(body.schema.totals, {
-      collections: 2,
-      globals: 1,
-      top: 12,
-      total: 12,
-      required: 3,
+  it("counts entries by reading the repository", async () => {
+    await harness.request("/api/admin/collections/projects/entries", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ data: { title: "Counted" } }),
+      session,
     });
+
+    const response = await harness.request("/api/admin/overview", { session });
+    const body = (await response.json()) as {
+      collections: Array<{ name: string; total: number }>;
+    };
+
+    assert.equal(body.collections.find((item) => item.name === "projects")!.total, 1);
   });
 
   it("counts field kinds and finds the relations between collections", async () => {
-    const body = await system(session);
+    const response = await harness.request("/api/admin/system", { session });
+    const body = (await response.json()) as {
+      schema: { relations: Array<{ from: string; to: string }>; totals: { collections: number } };
+    };
 
-    assert.equal(body.schema.kinds.find((item) => item.kind === "media")?.count, 3);
-    assert.deepEqual(body.schema.relations, [
-      { from: "projects", fromType: "collection", path: "lead", to: "team", multiple: false },
-    ]);
+    assert.equal(body.schema.totals.collections, 2);
+    assert.ok(body.schema.relations.some((item) => item.from === "projects" && item.to === "team"));
   });
 
-  it("pairs each collection with what is actually stored in it", async () => {
-    const body = await system(session);
+  it("keeps deployment details to administrators", async () => {
+    await harness.createUser({ email: "editor@example.com", password: ADMIN_PASSWORD, role: "editor" });
+    const editor = await harness.signIn("editor@example.com", ADMIN_PASSWORD);
 
-    const projects = body.schema.collections.find((item) => item.name === "projects")!;
-    assert.deepEqual(projects.entries, { total: 1, drafts: 1, published: 0 });
-    assert.equal(body.storage.entries.total, 1);
-    assert.equal(body.storage.users, 2);
-  });
+    const response = await harness.request("/api/admin/system", { session: editor });
+    const body = (await response.json()) as { deployment: unknown };
 
-  it("keeps deployment detail to administrators and never returns a secret", async () => {
-    const asEditor = await harness.signIn("editor@example.com", "editor-password-1");
-
-    const editorView = await system(asEditor);
-    assert.equal(editorView.deployment, null);
-    // The parts an editor is there for are still present.
-    assert.equal(editorView.schema.totals.collections, 2);
-
-    const adminView = await system(session);
-    assert.ok(adminView.deployment?.schemaPath);
-
-    const payload = JSON.stringify(adminView);
-    assert.ok(!payload.includes(harness.config.sessionSecret));
-    assert.ok(!payload.includes(harness.config.readToken));
+    assert.equal(body.deployment, null);
   });
 });

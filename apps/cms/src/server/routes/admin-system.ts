@@ -1,8 +1,12 @@
 /**
- * Schema, dashboard, system information and manual publish routes.
+ * Schema, dashboard and system information.
  *
  * The schema endpoint is what makes the admin generic: the SPA ships no
  * knowledge of any particular collection, it renders whatever this returns.
+ *
+ * There is no publish route any more. Publishing is a commit, and the commit
+ * happened when the editor pressed Save; what follows is the repository's CI,
+ * which Mica neither owns nor should pretend to.
  */
 
 import fs from "node:fs";
@@ -13,7 +17,6 @@ import { listedFields, resolveSlugField, resolveTitleField } from "@micacms/mode
 
 import { databaseVersion } from "../db/migrations.js";
 import type { Env } from "../http.js";
-import { actorOf } from "../http.js";
 import { schemaStats } from "../lib/schema-stats.js";
 import { VERSION } from "../lib/version.js";
 import { formatBytes } from "../services/media.js";
@@ -51,7 +54,7 @@ export function adminSystemRoutes(): Hono<Env> {
         listedFields: listedFields(def),
         fields: def.fields,
       })),
-      globals: Object.values(site.singletons).map((def) => ({
+      singletons: Object.values(site.singletons).map((def) => ({
         name: def.name,
         label: def.label,
         description: def.description ?? null,
@@ -62,40 +65,29 @@ export function adminSystemRoutes(): Hono<Env> {
 
   app.get("/overview", async (c) => {
     const ctx = c.get("ctx");
-    const counts = ctx.repositories.entries.counts();
-    const usage = await ctx.storage.usage();
+    const { content, media } = ctx.services;
 
-    const recent = ctx.repositories.entries.recent(8).map((record) => {
-      const def = ctx.site.collections[record.collection];
-      return {
-        id: record.id,
-        collection: record.collection,
-        collectionLabel: def?.label ?? record.collection,
-        slug: record.slug,
-        status: record.status,
-        updatedAt: record.updatedAt,
-        title:
-          (def && typeof record.data[resolveTitleField(def) ?? ""] === "string"
-            ? (record.data[resolveTitleField(def)!] as string)
-            : record.slug) || record.slug,
-      };
-    });
-
-    return c.json({
-      collections: Object.values(ctx.site.collections).map((def) => ({
+    // Read from the repository rather than counted in SQL. A count that can
+    // disagree with the files is worse than no count.
+    const collections = await Promise.all(
+      Object.values(ctx.site.collections).map(async (def) => ({
         name: def.name,
         label: def.label,
-        ...(counts[def.name] ?? { total: 0, drafts: 0, published: 0 }),
+        total: (await content.list(def.name)).length,
       })),
+    );
+
+    const files = await media.list();
+
+    return c.json({
+      collections,
       media: {
-        files: usage.files,
-        bytes: usage.bytes,
-        readable: formatBytes(usage.bytes),
+        files: files.length,
+        bytes: files.reduce((sum, file) => sum + file.size, 0),
+        readable: formatBytes(files.reduce((sum, file) => sum + file.size, 0)),
       },
       users: ctx.repositories.users.count(),
-      recent,
-      publisher: ctx.publisher.status(),
-      contentVersion: ctx.services.content.contentVersion(),
+      repository: ctx.connector.origin,
     });
   });
 
@@ -115,17 +107,17 @@ export function adminSystemRoutes(): Hono<Env> {
     const { config } = ctx;
 
     const stats = schemaStats(ctx.site);
-    const counts = ctx.repositories.entries.counts();
-    const usage = await ctx.storage.usage();
 
-    const entries = Object.values(counts).reduce(
-      (sum, item) => ({
-        total: sum.total + item.total,
-        drafts: sum.drafts + item.drafts,
-        published: sum.published + item.published,
-      }),
-      { total: 0, drafts: 0, published: 0 },
+    const counts = Object.fromEntries(
+      await Promise.all(
+        Object.values(ctx.site.collections).map(
+          async (def) => [def.name, (await ctx.services.content.list(def.name)).length] as const,
+        ),
+      ),
     );
+
+    const files = await ctx.services.media.list();
+    const mediaBytes = files.reduce((sum, file) => sum + file.size, 0);
 
     // The WAL holds committed transactions that have not been checkpointed
     // into the main file yet, so leaving it out understates the database.
@@ -144,8 +136,6 @@ export function adminSystemRoutes(): Hono<Env> {
         uptimeSeconds,
       },
       schema: {
-        fingerprint: ctx.services.content.schemaFingerprint(),
-        contentVersion: ctx.services.content.contentVersion(),
         totals: stats.totals,
         kinds: stats.kinds,
         relations: stats.relations,
@@ -153,44 +143,44 @@ export function adminSystemRoutes(): Hono<Env> {
         // the pair that tells an editor a collection was never filled in.
         collections: stats.collections.map((item) => ({
           ...item,
-          entries: counts[item.name] ?? { total: 0, drafts: 0, published: 0 },
+          entries: counts[item.name] ?? 0,
         })),
-        globals: stats.globals,
+        singletons: stats.globals,
       },
-      storage: {
-        entries,
-        revisions: ctx.repositories.revisions.count(),
+      /**
+       * Deliberately two separate things.
+       *
+       * `repository` is where the website's content lives and what must be
+       * backed up — by Git, which is doing it already. `database` is Mica's own
+       * operational state: users and sessions. Losing it logs everyone out and
+       * costs nothing else, and the shape of this response should say so.
+       */
+      repository: {
+        origin: ctx.connector.origin,
+        entries: Object.values(counts).reduce((sum, count) => sum + count, 0),
+        media: { files: files.length, bytes: mediaBytes, readable: formatBytes(mediaBytes) },
+      },
+      database: {
         users: ctx.repositories.users.count(),
-        database: {
-          version: databaseVersion(ctx.db),
-          bytes: databaseBytes === null ? null : databaseBytes + (walBytes ?? 0),
-        },
-        media: {
-          files: usage.files,
-          bytes: usage.bytes,
-          readable: formatBytes(usage.bytes),
-        },
+        version: databaseVersion(ctx.db),
+        bytes: databaseBytes === null ? null : databaseBytes + (walBytes ?? 0),
       },
-      publisher: ctx.publisher.status(),
       deployment:
         c.get("user").role === "admin"
           ? {
               baseUrl: config.CMS_BASE_URL,
               schemaPath: config.schemaPath,
+              contentRoot: config.contentRoot,
               dataDir: config.dataDir,
               databasePath: config.databasePath,
-              mediaDir: config.mediaDir,
               logLevel: config.LOG_LEVEL,
               maxUploadBytes: config.MAX_UPLOAD_BYTES,
               maxUploadReadable: formatBytes(config.MAX_UPLOAD_BYTES),
               sessionTtlHours: config.SESSION_TTL_HOURS,
               sessionIdleHours: config.SESSION_IDLE_HOURS,
-              publishDebounceMs: config.PUBLISH_DEBOUNCE_MS,
               trustProxy: config.TRUST_PROXY,
               cookieSecure: config.cookieSecure,
               adminOrigins: config.adminOrigins,
-              buildWebhookConfigured: Boolean(config.BUILD_WEBHOOK_URL),
-              buildWebhookSigned: Boolean(config.BUILD_WEBHOOK_SECRET),
               /** Names of the secrets this process generated for itself. */
               generatedSecrets: (config as { devSecrets?: string[] }).devSecrets ?? [],
               memoryBytes: process.memoryUsage().rss,
@@ -198,18 +188,6 @@ export function adminSystemRoutes(): Hono<Env> {
           : null,
     });
   });
-
-  /** "Rebuild the website now" — publishes without any content change. */
-  app.post("/publish", async (c) => {
-    const ctx = c.get("ctx");
-    await ctx.publisher.publish({ type: "manual", actor: actorOf(c) });
-    await ctx.publisher.flush();
-
-    c.get("logger").info("Manual publish triggered", { by: c.get("user").id });
-    return c.json({ ok: true, publisher: ctx.publisher.status() });
-  });
-
-  app.get("/publish/status", (c) => c.json(c.get("ctx").publisher.status()));
 
   return app;
 }

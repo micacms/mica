@@ -1,109 +1,96 @@
 /**
- * Media library routes.
+ * Admin media routes.
+ *
+ * Media is files in the content repository now, so these routes are much
+ * smaller than they were. There is no upload table to keep in step, no storage
+ * key to generate, and no delete endpoint — removing a file that an entry still
+ * references is a content decision made in a diff, not an API call.
+ *
+ * Uploads are committed on their own rather than folded into the entry save.
+ * The editor needs a path to put in the field before it can save the entry that
+ * references it, and a two-step flow is the honest way to say so. The cost is
+ * an occasional unreferenced file, which is visible in the repository and
+ * cheap to remove; the alternative would be holding uploads in server memory
+ * between requests.
  */
 
 import { Hono } from "hono";
-import { z } from "zod";
 
 import { badRequest, notFound } from "../lib/errors.js";
-import { intParam, type Env } from "../http.js";
-import { toMediaRef } from "../services/content.js";
-
-const patchSchema = z.object({
-  filename: z.string().trim().min(1).max(150).optional(),
-  altText: z.string().max(500).optional(),
-});
+import { actorOf, type Env } from "../http.js";
 
 export function adminMediaRoutes(): Hono<Env> {
   const app = new Hono<Env>();
 
-  app.get("/", (c) => {
-    const ctx = c.get("ctx");
-    const { items, total } = ctx.repositories.media.list({
-      search: c.req.query("search"),
-      image: c.req.query("image") === "true",
-      limit: intParam(c.req.query("limit"), 60, 200),
-      offset: intParam(c.req.query("offset"), 0, 100_000),
-    });
-
-    // One pass over the payloads answers "is this still in use?" for the page.
-    const referenced = ctx.services.media.usageFlags();
-
-    return c.json({
-      items: items.map((record) => ({
-        ...toMediaRef(record, ctx.config.CMS_BASE_URL),
-        createdAt: record.createdAt,
-        inUse: referenced.has(record.id),
-      })),
-      total,
-    });
+  app.get("/", async (c) => {
+    const { media } = c.get("ctx").services;
+    return c.json({ items: await media.list() });
   });
 
   app.post("/", async (c) => {
     const ctx = c.get("ctx");
-
-    const form = await c.req.parseBody({ all: true }).catch(() => {
+    const form = await c.req.formData().catch(() => {
       throw badRequest("Expected a multipart upload.");
     });
 
-    const raw = form["file"];
-    const files = (Array.isArray(raw) ? raw : [raw]).filter(
-      (item): item is File => item instanceof File,
-    );
+    // Two `File` types are in scope here — Node's and undici's — and they are
+    // structurally different. The runtime check is the same either way; the
+    // cast is only to pick one of them for the compiler.
+    const files = form
+      .getAll("file")
+      .filter((value) => typeof value !== "string") as unknown as File[];
 
     if (files.length === 0) throw badRequest("No file was uploaded.");
-    if (files.length > 20) throw badRequest("Upload at most 20 files at a time.");
 
-    const acceptValue = form["accept"];
-    const accept =
-      acceptValue === "image" || acceptValue === "document" || acceptValue === "any"
-        ? acceptValue
-        : "any";
+    const accept = form.get("accept");
+    // Where the editor wants the file: an entry's own `media/` directory, or
+    // the shared one. Validated by the connector, which refuses any path that
+    // leaves the content root.
+    const directory = typeof form.get("directory") === "string" ? String(form.get("directory")) : undefined;
 
-    const uploaded = [];
-    for (const file of files) {
-      const { record } = await ctx.services.media.upload({
-        file,
-        accept,
-        userId: c.get("user").id,
-      });
-      uploaded.push(toMediaRef(record, ctx.config.CMS_BASE_URL));
-    }
+    const prepared = await Promise.all(
+      files.map((file) =>
+        ctx.services.media.prepare({
+          file,
+          directory,
+          accept: accept === "image" || accept === "document" ? accept : "any",
+        }),
+      ),
+    );
 
-    return c.json({ items: uploaded }, 201);
+    const actor = actorOf(c);
+    await ctx.connector.commit({
+      message: `Media: upload ${prepared.map((item) => item.file.filename).join(", ")}`,
+      changes: prepared.map((item) => ({
+        type: "write" as const,
+        path: item.file.path,
+        contents: item.contents,
+      })),
+      author: actor ? { name: actor.email, email: actor.email } : undefined,
+    });
+
+    return c.json({ items: prepared.map((item) => item.file) }, 201);
   });
 
-  app.patch("/:id", async (c) => {
-    const ctx = c.get("ctx");
-    const parsed = patchSchema.safeParse(await c.req.json().catch(() => null));
-    if (!parsed.success) throw badRequest("Provide a filename or alt text.");
+  /**
+   * Serves a file to the editor.
+   *
+   * Behind the admin session, unlike the old `/media/*`, which had to be public
+   * so that the Astro build could fetch it. The build reads the repository
+   * directly now, so nothing outside this session needs these bytes and the
+   * whole "media is effectively public" trade-off disappears with the route.
+   */
+  app.get("/file/*", async (c) => {
+    const { media } = c.get("ctx").services;
+    const mediaPath = c.req.path.replace(/^.*\/file\//, "");
 
-    const record = ctx.repositories.media.update(c.req.param("id"), parsed.data);
-    if (!record) throw notFound("This file no longer exists.");
+    const found = await media.read(decodeURIComponent(mediaPath));
+    if (!found) throw notFound("No such file.");
 
-    return c.json(toMediaRef(record, ctx.config.CMS_BASE_URL));
-  });
-
-  app.delete("/:id", async (c) => {
-    const ctx = c.get("ctx");
-    const id = c.req.param("id");
-
-    // Deleting a referenced asset leaves a gap on the live site, so it takes a
-    // deliberate `?force=true` from a UI that has shown the warning.
-    if (c.req.query("force") !== "true" && ctx.services.media.usageFlags().has(id)) {
-      return c.json(
-        {
-          error: {
-            code: "conflict" as const,
-            message: "This file is still used by published content.",
-          },
-        },
-        409,
-      );
-    }
-
-    await ctx.services.media.delete(id);
-    return c.json({ ok: true });
+    return c.body(found.bytes as unknown as ArrayBuffer, 200, {
+      "content-type": found.mimeType,
+      "cache-control": "private, max-age=60",
+    });
   });
 
   return app;

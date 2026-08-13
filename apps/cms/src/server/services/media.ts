@@ -2,44 +2,223 @@
  * Media uploads.
  *
  * Every uploaded byte passes through here, so this is where the file is judged:
- * size, real content type (from the bytes, not the browser's claim), and the
- * generated storage key. The filename the user chose is kept as a display
- * label only — it never reaches the filesystem.
+ * size, and the real content type read from the bytes rather than from the
+ * browser's claim.
+ *
+ * What changed with Git: an upload is now a *file in the content repository*,
+ * committed alongside the entry that uses it. There is no media table, no
+ * generated ULID key and no separate object store — a media value is the path
+ * to a file a reviewer can see in the diff.
+ *
+ * The filename therefore matters. It is derived from what the editor uploaded,
+ * slugified so it is safe as a path segment, and made unique inside its own
+ * directory rather than globally.
  */
 
-import { createHash } from "node:crypto";
 import path from "node:path";
 
+import { slugify } from "@micacms/model";
+import type { RepositoryConnector } from "@micacms/connectors";
 import { imageSize } from "image-size";
 
-import { ApiError, badRequest, notFound } from "../lib/errors.js";
+import { ApiError, badRequest } from "../lib/errors.js";
 import { detectFileType, isAccepted, isImageType } from "../lib/file-type.js";
-import { ulid } from "../lib/id.js";
-import type { Logger } from "../lib/logger.js";
-import type { MediaRecord, MediaRepository } from "../repositories/media.js";
-import type { MediaStorage } from "./storage.js";
+
+/** Where uploads go when they are not attached to a particular entry. */
+export const SHARED_MEDIA_DIR = "media";
 
 export interface MediaServiceDeps {
-  media: MediaRepository;
-  storage: MediaStorage;
+  connector: RepositoryConnector;
   maxBytes: number;
-  logger?: Logger;
 }
 
-/** Keeps the original name recognisable without letting it drive the path. */
-function displayName(original: string, extension: string): string {
-  const base = path
-    .basename(original)
-    .replace(/\.[^.]*$/, "")
-    .replace(/[^\p{L}\p{N} ._-]/gu, "")
-    .trim()
-    .slice(0, 100);
-
-  return `${base || "upload"}.${extension}`;
+export interface MediaFile {
+  /** Path relative to the content root — the value a `media()` field holds. */
+  path: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  width: number | null;
+  height: number | null;
 }
 
-function dimensions(bytes: Uint8Array, mimeType: string): { width: number | null; height: number | null } {
-  if (!isImageType(mimeType) || mimeType === "image/svg+xml") {
+export function createMediaService(deps: MediaServiceDeps) {
+  const { connector, maxBytes } = deps;
+
+  /**
+   * A name that is unique in `directory`.
+   *
+   * Scoped to the directory rather than to the whole repository, because that
+   * is where a collision would actually overwrite something — and because
+   * `haus-a/media/exterior.jpg` and `haus-b/media/exterior.jpg` are two
+   * perfectly reasonable files with the same name.
+   */
+  const uniqueName = async (directory: string, filename: string): Promise<string> => {
+    const taken = new Set(
+      (await connector.list(directory)).filter((item) => item.type === "file").map((item) => item.name),
+    );
+
+    const extension = path.extname(filename);
+    const stem = filename.slice(0, filename.length - extension.length);
+
+    let candidate = filename;
+    for (let n = 2; taken.has(candidate); n += 1) candidate = `${stem}-${n}${extension}`;
+    return candidate;
+  };
+
+  return {
+    /**
+     * Reads and checks an upload, without writing it.
+     *
+     * Separate from the commit so that an entry and the media it references go
+     * into the repository in *one* change set. Uploading first and saving
+     * second would leave an orphaned file behind whenever the editor changed
+     * their mind.
+     */
+    async prepare(input: {
+      file: File;
+      /** Directory to place the file in, relative to the content root. */
+      directory?: string;
+      accept?: "image" | "document" | "any";
+    }): Promise<{ file: MediaFile; contents: Uint8Array }> {
+      const { file } = input;
+      const directory = input.directory ?? SHARED_MEDIA_DIR;
+
+      if (file.size === 0) throw badRequest("The file is empty.");
+      if (file.size > maxBytes) {
+        throw new ApiError(
+          "payload_too_large",
+          `The file is ${formatBytes(file.size)}. The limit is ${formatBytes(maxBytes)}.`,
+        );
+      }
+
+      const contents = new Uint8Array(await file.arrayBuffer());
+      // From the bytes, never from the browser's claim about them.
+      const detected = detectFileType(contents);
+
+      if (!detected) {
+        throw new ApiError("unsupported_media_type", "This file type is not supported.");
+      }
+      if (!isAccepted(detected.mimeType, input.accept ?? "any")) {
+        throw new ApiError(
+          "unsupported_media_type",
+          `A ${input.accept} was expected, but this is a ${detected.mimeType}.`,
+        );
+      }
+
+      const filename = await uniqueName(directory, safeName(file.name, detected.extension));
+
+      return {
+        contents,
+        file: {
+          path: `${directory}/${filename}`,
+          filename,
+          mimeType: detected.mimeType,
+          size: contents.byteLength,
+          ...dimensions(contents, detected.mimeType),
+        },
+      };
+    },
+
+    /**
+     * Every media file in the repository, for the editor's picker.
+     *
+     * A walk of the content tree rather than a table scan. Content trees are
+     * small, and the alternative — an index Mica maintains — would be a second
+     * source of truth that could disagree with the repository.
+     */
+    async list(): Promise<MediaFile[]> {
+      const found: MediaFile[] = [];
+
+      const walk = async (directory: string): Promise<void> => {
+        for (const item of await connector.list(directory)) {
+          const child = directory === "" ? item.name : `${directory}/${item.name}`;
+
+          if (item.type === "directory") {
+            await walk(child);
+            continue;
+          }
+
+          if (!isMediaName(item.name)) continue;
+
+          const bytes = await connector.readBinary(child);
+          if (!bytes) continue;
+
+          // The bytes are authoritative; the extension is the fallback for the
+          // formats the sniffer does not cover, such as SVG.
+          const mimeType = detectFileType(bytes)?.mimeType ?? mimeFromName(item.name);
+
+          found.push({
+            path: child,
+            filename: item.name,
+            mimeType,
+            size: bytes.byteLength,
+            ...dimensions(bytes, mimeType),
+          });
+        }
+      };
+
+      await walk("");
+      return found.sort((a, b) => a.path.localeCompare(b.path));
+    },
+
+    async read(mediaPath: string): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
+      const bytes = await connector.readBinary(mediaPath);
+      if (!bytes) return null;
+
+      return { bytes, mimeType: detectFileType(bytes)?.mimeType ?? mimeFromName(mediaPath) };
+    },
+  };
+}
+
+export type MediaService = ReturnType<typeof createMediaService>;
+
+/* ------------------------------------------------------------------ */
+
+/**
+ * A filename that is safe as a path segment and still recognisable.
+ *
+ * Slugified rather than sanitised: the result is part of a URL in the built
+ * site and part of a path in a Git repository, and both are better off without
+ * spaces, accents or case.
+ */
+function safeName(original: string, extension: string): string {
+  const stem = slugify(path.basename(original).replace(/\.[^.]*$/, "")).slice(0, 80);
+  return `${stem || "upload"}.${extension}`;
+}
+
+/**
+ * Extension to media type, for the formats byte-sniffing does not identify.
+ *
+ * A fallback, never the first answer: a file's own bytes are the only thing
+ * that cannot be renamed to lie.
+ */
+const BY_EXTENSION: Record<string, string> = {
+  svg: "image/svg+xml",
+  pdf: "application/pdf",
+  txt: "text/plain",
+  csv: "text/csv",
+  doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  xls: "application/vnd.ms-excel",
+  xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+};
+
+function mimeFromName(name: string): string {
+  const extension = path.extname(name).slice(1).toLowerCase();
+  return BY_EXTENSION[extension] ?? "application/octet-stream";
+}
+
+/** Files a `media()` field could plausibly point at. */
+function isMediaName(name: string): boolean {
+  return /\.(jpe?g|png|webp|avif|gif|tiff?|svg|pdf|docx?|xlsx?|txt|csv)$/i.test(name);
+}
+
+function dimensions(
+  bytes: Uint8Array,
+  mimeType: string,
+): { width: number | null; height: number | null } {
+  if (bytes.byteLength === 0 || !isImageType(mimeType) || mimeType === "image/svg+xml") {
     return { width: null, height: null };
   }
   try {
@@ -51,118 +230,8 @@ function dimensions(bytes: Uint8Array, mimeType: string): { width: number | null
   }
 }
 
-export function createMediaService(deps: MediaServiceDeps) {
-  const { media, storage, maxBytes, logger } = deps;
-
-  return {
-    async upload(input: {
-      file: File;
-      accept?: "image" | "document" | "any";
-      altText?: string;
-      userId: string | null;
-    }): Promise<{ record: MediaRecord; deduplicated: boolean }> {
-      const { file } = input;
-      const accept = input.accept ?? "any";
-
-      if (file.size === 0) {
-        throw badRequest("The file is empty.");
-      }
-      if (file.size > maxBytes) {
-        throw new ApiError(
-          "payload_too_large",
-          `"${file.name}" is ${formatBytes(file.size)}. The limit is ${formatBytes(maxBytes)}.`,
-        );
-      }
-
-      const bytes = new Uint8Array(await file.arrayBuffer());
-
-      // Re-check after reading: `File.size` is a claim until the bytes arrive.
-      if (bytes.byteLength > maxBytes) {
-        throw new ApiError("payload_too_large", "The file exceeds the upload limit.");
-      }
-
-      const detected = detectFileType(bytes);
-      if (!detected) {
-        throw new ApiError(
-          "unsupported_media_type",
-          `"${file.name}" is not a supported file type. Upload a JPEG, PNG, WebP, AVIF, GIF, SVG, PDF or MP4.`,
-        );
-      }
-      if (!isAccepted(detected.mimeType, accept)) {
-        throw new ApiError(
-          "unsupported_media_type",
-          accept === "image"
-            ? `This field only accepts images; "${file.name}" is ${detected.mimeType}.`
-            : `"${file.name}" is not accepted here (${detected.mimeType}).`,
-        );
-      }
-
-      const checksum = createHash("sha256").update(bytes).digest("hex");
-
-      // Identical bytes are stored once — a logo re-uploaded on five pages is
-      // one file, and the reference stays stable.
-      const existing = media.findByChecksum(checksum);
-      if (existing && (await storage.exists(existing.storageKey))) {
-        logger?.debug("Reusing identical upload", { id: existing.id, checksum });
-        return { record: existing, deduplicated: true };
-      }
-
-      const id = ulid();
-      const storageKey = `${id}.${detected.extension}`;
-      const { width, height } = dimensions(bytes, detected.mimeType);
-
-      await storage.put(storageKey, bytes);
-
-      try {
-        const record = media.create({
-          id,
-          filename: displayName(file.name, detected.extension),
-          storageKey,
-          mimeType: detected.mimeType,
-          width,
-          height,
-          size: bytes.byteLength,
-          altText: input.altText ?? "",
-          checksum,
-          userId: input.userId,
-        });
-
-        logger?.info("Media uploaded", { id, mimeType: detected.mimeType, size: bytes.byteLength });
-        return { record, deduplicated: false };
-      } catch (error) {
-        // Never leave bytes on disk without a row pointing at them.
-        await storage.delete(storageKey).catch(() => {});
-        throw error;
-      }
-    },
-
-    async delete(id: string): Promise<void> {
-      const record = media.find(id);
-      if (!record) throw notFound("This file no longer exists.");
-
-      // Row first: an orphaned file wastes disk, an orphaned row breaks pages.
-      media.delete(id);
-      await storage.delete(record.storageKey);
-      logger?.info("Media deleted", { id });
-    },
-
-    /** Files still referenced by an entry or global, keyed by id. */
-    usageFlags(): Set<string> {
-      return media.referencedIds();
-    },
-  };
-}
-
-export type MediaService = ReturnType<typeof createMediaService>;
-
 export function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
-  const units = ["KB", "MB", "GB"];
-  let value = bytes / 1024;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit++;
-  }
-  return `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit]}`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} kB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }

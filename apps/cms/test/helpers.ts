@@ -1,10 +1,19 @@
 /**
- * Test harness: a complete application against an in-memory database, in-memory
- * media storage and a recording publisher. No filesystem, no network, no
- * shared state between tests.
+ * Test harness: a complete application against an in-memory database and a
+ * temporary content directory.
+ *
+ * The content directory is real, and deliberately so. The store's whole job is
+ * what it does to a repository, and a fake connector would let a test pass
+ * while the files came out wrong. Each harness gets its own directory and
+ * removes it on `close`, so there is no shared state between tests.
  */
 
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { deflateSync } from "node:zlib";
+
+import { localConnector } from "@micacms/connectors";
 
 import { collection, defineSite, media, number, relation, richText, select, singleton, slug, text, type Site } from "@micacms/model";
 
@@ -14,8 +23,6 @@ import { createContext, type AppContext } from "../src/server/context.js";
 import { openTestDatabase } from "../src/server/db/index.js";
 import { createLogger } from "../src/server/lib/logger.js";
 import { hashPassword } from "../src/server/services/password.js";
-import type { PublishEvent, Publisher } from "../src/server/services/publisher.js";
-import { memoryStorage } from "../src/server/services/storage.js";
 
 export const TEST_ORIGIN = "http://localhost:4000";
 
@@ -50,44 +57,22 @@ export const testSite = defineSite({
     }),
   },
   singletons: {
-    site: singleton({
+    // File layout: no rich text and no media, so this is one JSON document.
+    settings: singleton({
       label: "Website",
       fields: {
-        companyName: text({ label: "Company name", required: true }),
-        logo: media({ accept: "image" }),
+        siteName: text({ label: "Site name" }),
+        tagline: text({ label: "Tagline" }),
       },
     }),
   },
 });
 
-export interface RecordingPublisher extends Publisher {
-  events: PublishEvent[];
-}
-
-function recordingPublisher(): RecordingPublisher {
-  const events: PublishEvent[] = [];
-  return {
-    events,
-    async publish(event) {
-      events.push(event);
-    },
-    async flush() {},
-    status() {
-      return {
-        pending: 0,
-        lastAttemptAt: null,
-        lastSuccessAt: null,
-        lastError: null,
-        configured: true,
-      };
-    },
-  };
-}
-
 export interface TestHarness {
   ctx: AppContext;
-  publisher: RecordingPublisher;
   config: Config;
+  /** The temporary content directory, so a test can assert on the files. */
+  contentRoot: string;
   /** Issues a request; `session` carries cookies and the CSRF token. */
   request(path: string, init?: RequestInit & { session?: Session }): Promise<Response>;
   signIn(email?: string, password?: string): Promise<Session>;
@@ -113,24 +98,23 @@ export async function createHarness(
   // server does when two deployments disagree about the content model.
   options: { site?: Site } = {},
 ): Promise<TestHarness> {
+  const contentRoot = mkdtempSync(join(tmpdir(), "mica-test-content-"));
+
   const config = loadConfig({
     NODE_ENV: "test",
     LOG_LEVEL: "silent",
     CMS_BASE_URL: TEST_ORIGIN,
     SESSION_SECRET: "0".repeat(32),
-    CMS_READ_TOKEN: "test-read-token-0123456789",
     DATA_DIR: "/tmp/mica-test-unused",
+    CONTENT_ROOT: contentRoot,
     ...overrides,
   } as NodeJS.ProcessEnv);
-
-  const publisher = recordingPublisher();
 
   const ctx = createContext({
     config,
     site: options.site ?? testSite,
     db: openTestDatabase(),
-    storage: memoryStorage(),
-    publisher,
+    connector: localConnector({ root: contentRoot }),
     logger: createLogger({ level: "silent", pretty: false }),
   });
 
@@ -139,8 +123,8 @@ export async function createHarness(
 
   const harness: TestHarness = {
     ctx,
-    publisher,
     config,
+    contentRoot,
 
     async request(path, init = {}) {
       const { session, ...rest } = init;
@@ -186,6 +170,7 @@ export async function createHarness(
 
     async close() {
       await ctx.shutdown();
+      rmSync(contentRoot, { recursive: true, force: true });
     },
   };
 

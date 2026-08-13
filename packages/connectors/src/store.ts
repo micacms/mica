@@ -154,6 +154,12 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
       return connector.revision(dataPath(def, collectionName, slug));
     },
 
+    /** The revision an editor must send back with a save of this singleton. */
+    async revisionOfSingleton(name: string): Promise<string | null> {
+      const def = requireSingleton(name);
+      return connector.revision(singletonDataPath(def, name));
+    },
+
     async getSingleton(name: string): Promise<Record<string, unknown>> {
       const def = requireSingleton(name);
       const data = await readSingleton(connector, def, name);

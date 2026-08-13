@@ -21,6 +21,9 @@ importers:
       '@hono/node-server':
         specifier: ^1.13.8
         version: 1.19.17(hono@4.13.1)
+      '@micacms/connectors':
+        specifier: workspace:*
+        version: link:../../packages/connectors
       '@micacms/model':
         specifier: workspace:*
         version: link:../../packages/model

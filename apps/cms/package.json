@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Mica CMS — Hono API plus the Vue administration SPA it serves.",
+  "description": "Mica CMS \u2014 Hono API plus the Vue administration SPA it serves.",
   "scripts": {
     "dev": "concurrently -n api,admin -c blue,magenta \"pnpm dev:api\" \"pnpm dev:admin\"",
     "dev:api": "tsx watch --clear-screen=false src/server/index.ts",
@@ -15,8 +15,6 @@
     "typecheck": "tsc -p tsconfig.server.json --noEmit && vue-tsc -p tsconfig.json --noEmit",
     "test": "tsc -p tsconfig.server.json --noEmit && node --test --import tsx test/**/*.test.ts",
     "create-user": "tsx src/server/scripts/create-user.ts",
-    "seed": "tsx src/server/scripts/seed.ts",
-    "backup": "tsx src/server/scripts/backup.ts",
     "build-schema": "tsx src/server/scripts/build-schema.ts",
     "export-content": "tsx src/server/scripts/export-content.ts"
   },
@@ -25,7 +23,8 @@
     "@micacms/model": "workspace:*",
     "hono": "^4.6.20",
     "image-size": "^1.2.0",
-    "zod": "^3.25.76"
+    "zod": "^3.25.76",
+    "@micacms/connectors": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",

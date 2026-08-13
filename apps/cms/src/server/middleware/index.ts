@@ -210,19 +210,3 @@ export function csrfProtection(): MiddlewareHandler<Env> {
     await next();
   };
 }
-
-/** Bearer-token guard for the read-only content API used by the build. */
-export function requireReadToken(): MiddlewareHandler<Env> {
-  return async (c, next) => {
-    const { config } = c.get("ctx");
-    const header = c.req.header("authorization") ?? "";
-    const match = /^Bearer\s+(.+)$/i.exec(header.trim());
-    const presented = match?.[1] ?? c.req.query("token");
-
-    if (!presented || !safeEqual(presented, config.readToken)) {
-      throw new ApiError("unauthenticated", "A valid read token is required.");
-    }
-
-    await next();
-  };
-}

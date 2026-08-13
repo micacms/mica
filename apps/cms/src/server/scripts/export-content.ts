@@ -54,6 +54,9 @@ async function main(): Promise<void> {
     options: {
       out: { type: "string", default: "./content" },
       drafts: { type: "boolean", default: false },
+      // The old media store. It has no config entry any more: nothing but this
+      // script reads it, and it goes away with the script.
+      media: { type: "string", default: "./data/media" },
     },
   });
 
@@ -138,10 +141,10 @@ async function main(): Promise<void> {
 
   for (const { from, to } of copies) {
     await mkdir(dirname(join(out, to)), { recursive: true });
-    await copyFile(join(config.mediaDir, from), join(out, to));
+    await copyFile(join(values.media!, from), join(out, to));
   }
 
-  const orphans = await countOrphans(config.mediaDir, copies.length);
+  const orphans = await countOrphans(values.media!, copies.length);
 
   console.log(`\n${entryCount} entries and ${copies.length} files written to ${out}`);
   if (orphans > 0) {

@@ -1,24 +1,44 @@
 /**
- * Admin content routes — entries, revisions and singletons.
+ * Admin content routes — entries and singletons.
  *
- * These are thin: parse, delegate to the content service, serialise. All the
- * rules about validation, revisions and publishing live in the service.
+ * Thin: parse, delegate to the content store, serialise. Every rule about
+ * validation, slugs and layout lives in the store, which is shared with the
+ * Astro build rather than reimplemented here.
+ *
+ * Three things that used to be here are gone, and each is a deletion rather
+ * than a move:
+ *
+ *   - An entry is addressed by `collection/slug`, not by a ULID. The path in
+ *     the API is the path in the repository.
+ *   - No revision endpoints. Git is the history.
+ *   - No status endpoint. Committed is published; a draft is unsaved work in
+ *     the editor and never reaches the server.
+ *
+ * What replaced them is `revision` — an opaque token identifying the version of
+ * an entry the editor opened. Sending it back with a save is what makes
+ * concurrent editing safe.
  */
 
+import { ConflictError, ValidationError } from "@micacms/connectors";
+import { entryTitle } from "@micacms/model";
 import { Hono } from "hono";
 import { z } from "zod";
 
-import { badRequest } from "../lib/errors.js";
-import { actorOf, intParam, type Env } from "../http.js";
+import { ApiError, badRequest, notFound } from "../lib/errors.js";
+import { actorOf, type Env } from "../http.js";
 
 const saveSchema = z.object({
   data: z.record(z.unknown()),
-  status: z.enum(["draft", "published"]).optional(),
   slug: z.string().max(120).optional(),
+  /**
+   * The revision the editor opened. `null` asserts the entry did not exist,
+   * which is what makes two simultaneous creates fail instead of one silently
+   * overwriting the other.
+   */
+  revision: z.string().nullable().optional(),
 });
 
-const statusSchema = z.object({ status: z.enum(["draft", "published"]) });
-const reorderSchema = z.object({ ids: z.array(z.string().min(1)).max(2000) });
+const reorderSchema = z.object({ slugs: z.array(z.string().min(1)).max(2000) });
 
 async function jsonBody(c: { req: { json(): Promise<unknown> } }): Promise<unknown> {
   return c.req.json().catch(() => {
@@ -26,23 +46,51 @@ async function jsonBody(c: { req: { json(): Promise<unknown> } }): Promise<unkno
   });
 }
 
+/**
+ * Turns a store failure into the HTTP answer it deserves.
+ *
+ * A conflict is 409 and is recoverable in the editor — reload and reapply. A
+ * validation failure is 422 with the offending fields. Everything else is a
+ * genuine fault and reaches the error handler unchanged.
+ */
+async function handled<T>(run: () => Promise<T>): Promise<T> {
+  try {
+    return await run();
+  } catch (error) {
+    if (error instanceof ConflictError) throw new ApiError("conflict", error.message);
+    if (error instanceof ValidationError) {
+      throw new ApiError("validation_failed", error.message, { issues: error.issues });
+    }
+    throw error;
+  }
+}
+
 export function adminContentRoutes(): Hono<Env> {
   const app = new Hono<Env>();
 
   /* ------------------------------------------------------------ entries */
 
-  app.get("/collections/:collection/entries", (c) => {
+  app.get("/collections/:collection/entries", async (c) => {
     const { content } = c.get("ctx").services;
-    const statusParam = c.req.query("status");
+    const collection = c.req.param("collection");
+    const def = content.requireCollection(collection);
 
-    const result = content.listEntries(c.req.param("collection"), {
-      status: statusParam === "draft" || statusParam === "published" ? statusParam : undefined,
-      search: c.req.query("search"),
-      limit: intParam(c.req.query("limit"), 50, 200),
-      offset: intParam(c.req.query("offset"), 0, 100_000),
-    });
+    const entries = await handled(() => content.list(collection));
+    const search = c.req.query("search")?.trim().toLowerCase();
 
-    return c.json(result);
+    const items = entries
+      .map((entry) => ({
+        slug: entry.slug,
+        position: entry.position,
+        title: entryTitle(def, entry.data),
+        data: entry.data,
+      }))
+      // A substring match over the payload, which is what the SQL `LIKE` did.
+      // Content trees are small enough that filtering in memory is simpler than
+      // an index, and it can no longer disagree with what is on disk.
+      .filter((item) => !search || JSON.stringify(item.data).toLowerCase().includes(search));
+
+    return c.json({ items, total: items.length });
   });
 
   app.post("/collections/:collection/entries", async (c) => {
@@ -50,116 +98,131 @@ export function adminContentRoutes(): Hono<Env> {
     const parsed = saveSchema.safeParse(await jsonBody(c));
     if (!parsed.success) throw badRequest("The entry payload is malformed.");
 
-    const entry = await content.createEntry(c.req.param("collection"), parsed.data, actorOf(c));
-    return c.json(entry, 201);
+    const saved = await handled(() =>
+      content.save(c.req.param("collection"), {
+        data: parsed.data.data,
+        // A create asserts absence unless the client says otherwise.
+        expectedRevision: parsed.data.revision ?? null,
+        author: actorOf(c) ? { name: actorOf(c)!.email, email: actorOf(c)!.email } : undefined,
+      }),
+    );
+
+    return c.json(saved, 201);
   });
 
   app.post("/collections/:collection/reorder", async (c) => {
     const { content } = c.get("ctx").services;
     const parsed = reorderSchema.safeParse(await jsonBody(c));
-    if (!parsed.success) throw badRequest("Expected a list of entry ids.");
+    if (!parsed.success) throw badRequest("Expected a list of entry slugs.");
 
-    await content.reorderEntries(c.req.param("collection"), parsed.data.ids, actorOf(c));
+    await handled(() => content.reorder(c.req.param("collection"), parsed.data.slugs));
     return c.json({ ok: true });
   });
 
   /** Server-side slug generation, so the URL preview matches what is saved. */
-  app.get("/collections/:collection/slug", (c) => {
+  app.get("/collections/:collection/slug", async (c) => {
     const { content } = c.get("ctx").services;
     const source = c.req.query("source") ?? "";
     if (!source.trim()) return c.json({ slug: "" });
 
     return c.json({
-      slug: content.suggestSlug(c.req.param("collection"), source, c.req.query("except")),
+      slug: await handled(() =>
+        content.suggestSlug(c.req.param("collection"), source, c.req.query("except")),
+      ),
     });
   });
 
-  app.get("/entries/:id", (c) => {
+  app.get("/collections/:collection/entries/:slug", async (c) => {
     const { content } = c.get("ctx").services;
-    return c.json(content.getEntry(c.req.param("id")));
+    const collection = c.req.param("collection");
+    const slug = c.req.param("slug");
+
+    const entry = await handled(() => content.get(collection, slug));
+    if (!entry) throw notFound("This entry no longer exists.");
+
+    const def = content.requireCollection(collection);
+
+    return c.json({
+      collection,
+      slug: entry.slug,
+      position: entry.position,
+      title: entryTitle(def, entry.data),
+      data: entry.data,
+      // Sent back with the save. Without it the editor cannot tell the server
+      // which version of the entry it was looking at.
+      revision: await content.revisionOf(collection, slug),
+    });
   });
 
-  app.put("/entries/:id", async (c) => {
+  app.put("/collections/:collection/entries/:slug", async (c) => {
     const { content } = c.get("ctx").services;
     const parsed = saveSchema.safeParse(await jsonBody(c));
     if (!parsed.success) throw badRequest("The entry payload is malformed.");
 
-    return c.json(await content.updateEntry(c.req.param("id"), parsed.data, actorOf(c)));
+    const actor = actorOf(c);
+    const saved = await handled(() =>
+      content.save(c.req.param("collection"), {
+        data: parsed.data.data,
+        slug: c.req.param("slug"),
+        expectedRevision: parsed.data.revision,
+        author: actor ? { name: actor.email, email: actor.email } : undefined,
+      }),
+    );
+
+    return c.json(saved);
   });
 
-  app.post("/entries/:id/status", async (c) => {
+  app.delete("/collections/:collection/entries/:slug", async (c) => {
     const { content } = c.get("ctx").services;
-    const parsed = statusSchema.safeParse(await jsonBody(c));
-    if (!parsed.success) throw badRequest('Status must be "draft" or "published".');
+    const actor = actorOf(c);
 
-    return c.json(await content.setEntryStatus(c.req.param("id"), parsed.data.status, actorOf(c)));
-  });
+    await handled(() =>
+      content.remove(c.req.param("collection"), c.req.param("slug"), {
+        author: actor ? { name: actor.email, email: actor.email } : undefined,
+      }),
+    );
 
-  app.delete("/entries/:id", async (c) => {
-    const { content } = c.get("ctx").services;
-    await content.deleteEntry(c.req.param("id"), actorOf(c));
     return c.json({ ok: true });
   });
 
   /** Entries elsewhere that point at this one — shown before a delete. */
-  app.get("/entries/:id/references", (c) => {
+  app.get("/collections/:collection/entries/:slug/references", async (c) => {
     const { content } = c.get("ctx").services;
-    const entry = content.getEntry(c.req.param("id"));
-    return c.json({ references: content.findReferences(entry.collection, entry.slug) });
-  });
-
-  /* ---------------------------------------------------------- revisions */
-
-  app.get("/entries/:id/revisions", (c) => {
-    const { content } = c.get("ctx").services;
-    // Payloads are large and the list only needs the metadata.
-    const revisions = content.listRevisions(c.req.param("id")).map(({ data: _data, ...rest }) => rest);
-    return c.json({ revisions });
-  });
-
-  app.get("/entries/:id/revisions/:revisionId", (c) => {
-    const { content } = c.get("ctx").services;
-    const revision = content
-      .listRevisions(c.req.param("id"))
-      .find((item) => item.id === c.req.param("revisionId"));
-
-    if (!revision) return c.json({ error: { code: "not_found", message: "No such revision." } }, 404);
-    return c.json({ revision });
-  });
-
-  app.post("/entries/:id/revisions/:revisionId/restore", async (c) => {
-    const { content } = c.get("ctx").services;
-    return c.json(
-      await content.restoreRevision(c.req.param("id"), c.req.param("revisionId"), actorOf(c)),
+    const references = await handled(() =>
+      content.findReferences(c.req.param("collection"), c.req.param("slug")),
     );
+
+    return c.json({ references });
   });
 
-  /* ------------------------------------------------------------ globals */
+  /* --------------------------------------------------------- singletons */
 
-  app.get("/globals/:name", (c) => {
+  app.get("/singletons/:name", async (c) => {
     const { content } = c.get("ctx").services;
-    return c.json(content.getGlobal(c.req.param("name")));
+    const name = c.req.param("name");
+    const def = content.requireSingleton(name);
+
+    return c.json({
+      name,
+      label: def.label,
+      data: await handled(() => content.getSingleton(name)),
+      revision: await content.revisionOfSingleton(name),
+    });
   });
 
-  app.put("/globals/:name", async (c) => {
+  app.put("/singletons/:name", async (c) => {
     const { content } = c.get("ctx").services;
-    const body = (await jsonBody(c)) as { data?: unknown };
-    return c.json(await content.saveGlobal(c.req.param("name"), body?.data ?? {}, actorOf(c)));
-  });
+    const body = (await jsonBody(c)) as { data?: unknown; revision?: string | null };
+    const actor = actorOf(c);
 
-  app.get("/globals/:name/revisions", (c) => {
-    const { content } = c.get("ctx").services;
-    const revisions = content
-      .listGlobalRevisions(c.req.param("name"))
-      .map(({ data: _data, ...rest }) => rest);
-    return c.json({ revisions });
-  });
-
-  app.post("/globals/:name/revisions/:revisionId/restore", async (c) => {
-    const { content } = c.get("ctx").services;
-    return c.json(
-      await content.restoreGlobalRevision(c.req.param("name"), c.req.param("revisionId"), actorOf(c)),
+    const saved = await handled(() =>
+      content.saveSingleton(c.req.param("name"), body?.data ?? {}, {
+        expectedRevision: body?.revision,
+        author: actor ? { name: actor.email, email: actor.email } : undefined,
+      }),
     );
+
+    return c.json(saved);
   });
 
   return app;

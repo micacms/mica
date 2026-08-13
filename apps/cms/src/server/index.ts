@@ -64,7 +64,7 @@ async function main(): Promise<void> {
       listening: `${config.HOST}:${info.port}`,
       environment: config.NODE_ENV,
       database: config.databasePath,
-      media: config.mediaDir,
+      content: config.contentRoot,
       // Enough to tell two deployments apart when a website was built against
       // one model and the CMS is serving another.
       schema: config.schemaPath,
