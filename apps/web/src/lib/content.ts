@@ -105,15 +105,27 @@ export function formatDate(iso: string | null, locale = "de-CH"): string {
   return new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(date);
 }
 
-/** Plain-text excerpt from a rich-text field, for meta descriptions. */
-export function toPlainText(html: string | null, maxLength = 160): string {
-  if (!html) return "";
-  const text = html
-    .replace(/<[^>]*>/g, " ")
-    .replace(/&nbsp;/g, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
+/**
+ * Plain-text excerpt from a rich-text field, for meta descriptions.
+ *
+ * The field is Markdoc, so the markup to remove is punctuation rather than
+ * tags. Deliberately not a full parse: a meta description is 160 characters of
+ * the opening prose, and rendering the whole document to throw all but the
+ * first sentence away would be work for nothing.
+ */
+export function toPlainText(markdoc: string | null, maxLength = 160): string {
+  if (!markdoc) return "";
+
+  const text = markdoc
+    // Fenced code and Markdoc tags contribute nothing to a description.
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/\{%[\s\S]*?%\}/g, " ")
+    // Link and image syntax: keep the label, drop the target.
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    // Leading block markers, then inline emphasis.
+    .replace(/^\s{0,3}(#{1,6}|>|[-*+]|\d+\.)\s+/gm, "")
+    .replace(/[*_~`]/g, "")
+    .replace(/\\([\\`*_{}[\]<>#>\-.])/g, "$1")
     .replace(/\s+/g, " ")
     .trim();
 

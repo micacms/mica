@@ -243,6 +243,12 @@ export type SingletonDocument<
 
 export { mica, type MicaIntegrationOptions } from "./integration.js";
 export { manifestFor } from "./manifest.js";
+export {
+  renderRichText,
+  transformRichText,
+  validateRichText,
+  type RichTextOptions,
+} from "./richtext.js";
 
 /**
  * Re-exported for convenience, so a project that only depends on this package

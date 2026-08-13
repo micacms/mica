@@ -60,7 +60,7 @@ const writer = author ? await getEntry("team", author) : undefined;
     }
 
     <div class="container-prose pb-8">
-      <RichText html={body} />
+      <RichText text={body} />
     </div>
   </article>
 </BaseLayout>

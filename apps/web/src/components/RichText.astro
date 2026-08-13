@@ -2,18 +2,22 @@
 /**
  * Renders a rich-text field.
  *
- * The HTML comes from the CMS, where the editor schema restricts it to the
- * nodes and marks the field declares — so this is authored content from a
- * trusted, authenticated editor, not arbitrary user input. `.prose-cms` in
- * `global.css` carries a style for every node that schema can produce.
+ * The field is Markdoc, and this turns it into HTML during the build. Markdoc
+ * can only produce what its configuration allows — no raw HTML, and no tag that
+ * has not been declared — so the output is markup this site's `.prose-cms`
+ * styles cover, rather than whatever an editor's clipboard happened to contain.
  */
 
+import { renderRichText } from "@micacms/astro";
+
 interface Props {
-  html: string | null;
+  /** Markdoc source, as stored in the entry's `.mdoc` sidecar. */
+  text: string | null;
   class?: string;
 }
 
-const { html, class: className } = Astro.props;
+const { text, class: className } = Astro.props;
+const html = renderRichText(text);
 ---
 
 {html && <div class:list={["prose-cms", className]} set:html={html} />}

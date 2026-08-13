@@ -39,6 +39,7 @@ import {
 } from "@micacms/model";
 
 import { loadConfig } from "../config.js";
+import { htmlToMarkdoc } from "./html-to-markdoc.js";
 import { openDatabase } from "../db/index.js";
 import { loadSchema } from "../schema.js";
 
@@ -92,7 +93,8 @@ async function main(): Promise<void> {
     for (const row of rows) {
       const base = collectionEntryPath(def.fields, name, row.slug);
       const data = withDefaults(def.fields, JSON.parse(row.data) as Record<string, unknown>);
-      const rewritten = rewriteMedia(def.fields, data, media, copies, base);
+      const converted = convertRichText(def.fields, data);
+      const rewritten = rewriteMedia(def.fields, converted, media, copies, base);
 
       await writeAll(out, entryFiles(def.fields, base, serializeEntry(def.fields, rewritten)));
       entryCount += 1;
@@ -123,7 +125,8 @@ async function main(): Promise<void> {
 
     const base = singletonPath(def.fields, name);
     const data = withDefaults(def.fields, JSON.parse(row.data) as Record<string, unknown>);
-    const rewritten = rewriteMedia(def.fields, data, media, copies, base);
+    const converted = convertRichText(def.fields, data);
+    const rewritten = rewriteMedia(def.fields, converted, media, copies, base);
 
     await writeAll(out, entryFiles(def.fields, base, serializeEntry(def.fields, rewritten)));
     console.log(`${name}: exported`);
@@ -149,6 +152,40 @@ async function main(): Promise<void> {
   }
 
   db.close();
+}
+
+/* ------------------------------------------------------------------ *
+ * Rich text
+ * ------------------------------------------------------------------ */
+
+/**
+ * Turns every rich-text field from the stored HTML into Markdoc.
+ *
+ * The one conversion in this migration that is not simply a move. HTML was a
+ * reasonable choice when a database held it and a browser was the only reader;
+ * it is the wrong thing to commit to Git, where the file should be legible and
+ * its diffs should be about words rather than tags.
+ */
+function convertRichText(fields: FieldMap, data: Record<string, unknown>): Record<string, unknown> {
+  const visit = (map: FieldMap, record: Record<string, unknown>): Record<string, unknown> => {
+    const result: Record<string, unknown> = { ...record };
+
+    for (const [key, field] of Object.entries(map) as [string, AnyField][]) {
+      const value = record[key];
+
+      if (field.kind === "richText") {
+        result[key] = typeof value === "string" && value.trim() ? htmlToMarkdoc(value) : null;
+      } else if (field.kind === "object" && isRecord(value)) {
+        result[key] = visit(field.fields, value);
+      } else if (field.kind === "repeater" && Array.isArray(value)) {
+        result[key] = value.map((row) => (isRecord(row) ? visit(field.fields, row) : row));
+      }
+    }
+
+    return result;
+  };
+
+  return visit(fields, data);
 }
 
 /* ------------------------------------------------------------------ *
