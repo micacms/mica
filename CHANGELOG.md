@@ -5,7 +5,7 @@ Notable changes to Mica. The format follows
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Everything in this repository is released together and carries one version: the
-three published packages, the CMS image, and the starter website.
+three published packages and the CMS image.
 
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
@@ -31,12 +31,18 @@ The first release. Everything below is new, so this entry describes what Mica
 
 ### The content model
 
-- One `mica.config.ts` defines the collections and singletons. TypeScript types,
+- A plain module defines the collections and singletons. TypeScript types,
   runtime validation, the admin's forms, the on-disk layout and the Astro
-  collection schemas are all derived from it. There is no code generation step
-  and no SQL migration when a field is added.
-- `pnpm build:schema` compiles that file to JSON. The container is given the
-  result at `MICA_SCHEMA`, which is why one published image serves any project.
+  collection schemas are all derived from it. There is no Mica config file, no
+  code generation step and no SQL migration when a field is added.
+- `micaCollections(site)` in `src/content.config.ts` is the whole setup, and
+  `astro.config` gets nothing. The loaders publish the model and reload the dev
+  server themselves, so Mica collections and ordinary Astro collections mix in
+  one `collections` export.
+- The loaders write the model to `content/.mica/schema.json` and the developer
+  commits it; Mica reads it back through the repository connector it already
+  has. That is why one published image serves any project, and why changing the
+  model is a commit plus a restart rather than a rebuild.
 
 ### Repository connectors
 
@@ -83,7 +89,7 @@ The first release. Everything below is new, so this entry describes what Mica
 
 ### Known limitations
 
-Recorded with the reasoning in [TODO.md](./TODO.md). The ones most likely to
+Recorded with the reasoning in [docs/decisions.md](./docs/decisions.md). The ones most likely to
 matter:
 
 - A save commits straight onto the configured branch. There is no review step

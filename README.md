@@ -1,165 +1,105 @@
 # Mica
 
-A Git-native content editor for static business websites built with Astro.
+A Git-native content editor for Astro websites.
 
-Not a general-purpose CMS. It is the specific case of a content-driven SME
-website: a handful of editors, a few hundred entries, a static frontend, and an
-operator who would rather not run four services to keep a brochure site up to
-date.
+Editors get forms. What comes out is a commit: JSON, Markdoc and images in your
+repository, which your normal build turns into a static site.
 
-**Content lives in your Git repository, not in Mica's database.** An entry is a
-JSON file with its rich text beside it as Markdoc and its images in the same
-directory. Editors never see this — they see a form — but the result is a
-commit, and everything that follows from a commit follows for free: history,
-review, rollback, branching, and a website that can be rebuilt from the
-repository alone.
+Not a general-purpose CMS. It is the specific case of a content-driven business
+website — a handful of editors, a few hundred entries, a static frontend, and
+somebody who would rather not run four services to keep a brochure site
+current.
 
 ```
-┌─────────────────────────────────────────────┐
-│                mica.config.ts               │
-│        the content model — one file         │
-│                                             │
-│   ├── TypeScript types                      │
-│   ├── runtime validation                    │
-│   ├── CMS form definitions                  │
-│   └── Astro collection schemas              │
-└───────────────────┬─────────────────────────┘
-                    │
-     as data        │        imported directly
-   (build:schema)   │        (types, no codegen)
-          ┌─────────┴─────────┐
-          ▼                   ▼
-┌───────────────────┐  ┌───────────────────┐
-│     apps/cms      │  │     apps/web      │
-│                   │  │                   │
-│  Vue 3 SPA        │  │  Astro SSG        │
-│  Hono API         │  │  Content Layer    │
-│  SQLite: accounts │  │  Tailwind         │
-└─────────┬─────────┘  └─────────▲─────────┘
-          │                      │
-       commits                 reads
-          ▼                      │
-    ┌───────────────────────────────────┐
-    │      the content repository       │
-    │  content/projects/haus-a/…        │
-    └───────────────────┬───────────────┘
-                        │  astro build
-                        ▼
-                  static files → any static host
+   editor
+     │  fills in a form
+     ▼
+┌──────────┐   commits    ┌────────────────────┐   push    ┌────┐  astro build
+│   Mica   │ ───────────▶ │  your repository   │ ────────▶ │ CI │ ─────────────▶ static host
+└──────────┘              │  content/…         │           └────┘
+                          │  .mica/schema.json │
+                          └────────────────────┘
 ```
 
-The website never contacts the CMS. The CMS never learns where the website is
-hosted. They meet in the repository.
+The website never contacts Mica. Mica never learns where the website is hosted.
+They meet in the repository.
 
-Mica's own SQLite database holds accounts and sessions. **Losing it must never
-mean losing website content** — that constraint is why the architecture looks
-like this.
+**Content lives in your Git repository, not in Mica's database.** Everything
+that follows from a commit follows for free: history, review, rollback,
+branching, and a website that can be rebuilt from the repository alone. Mica's
+own SQLite file holds accounts and sessions — losing it signs everyone out and
+costs nothing else.
 
 ---
 
-## Quick start
+## Add it to an Astro site
 
 ```bash
-pnpm install
-pnpm build:packages
-
-cd apps/cms
-cp .env.example .env
-pnpm dev                     # API on :4000, admin on :5173
+npm install @micacms/astro @micacms/model
 ```
 
-The default `REPOSITORY=local` writes into `content/` in this repository, so
-there is nothing to configure and nothing to seed — the repository already has
-content in it.
-
-Then open <http://localhost:5173/admin/>. There is no account to create and no
-password to set: `MICA_MODE=local` disables authentication, so you are already
-signed in as a developer account. Mica refuses to start that way in production
-or on any host but this one.
-
-In a second terminal, the website:
-
-```bash
-cd apps/web
-pnpm dev                     # http://localhost:4321
-```
-
-No token and no CMS URL: the website reads the same files.
-
-Installing for the first time, or deploying it properly? Start at
-[docs/getting-started.md](./docs/getting-started.md). Want to see the deployed
-shape — real identity provider, real container — before committing to it?
-`docker compose -f e2e/compose.yml up --build`, then
-[e2e/README.md](./e2e/README.md).
-
----
-
-## Layout
-
-```
-content/        the content repository — this is the website's content
-apps/
-├── cms/        Hono API + Vue 3 admin SPA        → apps/cms/README.md
-└── web/        Astro static site
-packages/
-├── model/      the content model, its DSL, and the authoring format
-├── connectors/ repository access: local working tree, GitHub, GitLab
-└── astro/      Content Layer loader and dev integration for Astro
-docs/
-├── architecture.md      what Mica is, and why it is shaped this way
-├── getting-started.md
-├── deployment.md
-└── backup-and-restore.md
-e2e/            a runnable Mica + Keycloak, for trying the deployed shape
-```
-
----
-
-## The one idea
-
-Content structures are defined once, in `mica.config.ts`:
+Describe your content as a plain module:
 
 ```ts
+// src/mica.ts
+import { collection, defineSite, media, richText, slug, text } from "@micacms/model";
+
 export const site = defineSite({
+  root: "./content",
   collections: {
     projects: collection({
       label: "Projects",
       fields: {
         title: text({ label: "Title", required: true, maxLength: 120 }),
         slug: slug({ from: "title" }),
-        year: number({ integer: true, min: 1900 }),
+        summary: richText(),
         gallery: media({ multiple: true, accept: "image" }),
-        location: object({
-          fields: { city: text(), position: coordinates() },
-        }),
       },
-    }),
-  },
-  singletons: {
-    theme: singleton({
-      label: "Theme",
-      fields: { primaryColor: color(), accentColor: color() },
     }),
   },
 });
 ```
 
-Everything else is derived from it:
+Turn it into collections. This is the only wiring there is — **nothing goes in
+`astro.config`**:
 
-- the API validates writes against it before they reach the repository;
-- the admin fetches it over HTTP and **generates its own navigation, tables and
-  forms** — the Vue app contains no knowledge of any particular collection;
-- the same model decides the layout on disk: an entry with rich text or media is
-  a directory, one without is a single `.json` file;
-- Astro collections are generated from it, so `getCollection("projects")` is
-  fully typed and renaming a field breaks the website build.
+```ts
+// src/content.config.ts
+import { micaCollections } from "@micacms/astro";
 
-Adding a field is a change to that one file. No SQL migration: entries are JSON
-files validated against whatever the model currently says.
+import { site } from "./mica";
 
-That is why the DSL is not just Zod. `text({ label: "Title", maxLength: 120 })`
-carries editorial meaning that `z.string().max(120)` cannot — a label, a width,
-a group. Zod is generated from the DSL, not the other way round.
+export const collections = micaCollections(site);
+```
+
+Pages then use ordinary Astro — `getCollection("projects")`, fully typed, no
+code generation. Renaming a field breaks the build rather than the page.
+
+`micaCollections` returns a plain object, so Mica's collections and your own sit
+side by side:
+
+```ts
+export const collections = {
+  ...micaCollections(site),
+  docs: defineCollection({ loader: glob({ pattern: "**/*.md", base: "./src/docs" }) }),
+};
+```
+
+Mica edits the ones in the model and does not know the others exist.
+
+Full walkthrough: **[docs/getting-started.md](./docs/getting-started.md)**.
+
+---
+
+## How Mica learns your model
+
+The Mica loaders write the model to `content/.mica/schema.json` on every build
+and dev-server start. You commit it. Mica reads it out of the repository it is
+already connected to, and generates its navigation, tables and forms from it.
+
+That is the entire coupling. The Mica image contains no content model — only
+the field types that interpret one — so one image serves every project, and
+changing the model is a commit plus a restart rather than a rebuild.
 
 ---
 
@@ -173,104 +113,93 @@ content/projects/haus-am-zuerichsee/
     └── exterior.jpg    referenced as media/exterior.jpg
 ```
 
-Rich text is [Markdoc](https://markdoc.dev), not HTML. A `.mdoc` file is
-readable and reviewable in a diff, and it cannot inject a script into the built
-website: Markdoc escapes raw HTML and renders an undeclared `{% tag %}` as
-nothing.
+The layout is derived from the model: a collection with rich text or media
+stores each entry as a directory, one without stores each entry as a single
+`.json` file. Keys are written in model order, so a diff shows only what
+changed. Collection order is a `_order.json` listing slugs, so dragging one
+entry is a one-line diff rather than a rewrite of every entry.
 
-Collection order is a `_order.json` listing slugs, so dragging one entry is a
-one-line diff rather than a rewrite of every entry.
+Rich text is [Markdoc](https://markdoc.dev), not HTML: readable in a diff, and
+it cannot inject a script into the built site.
+
+---
+
+## Running it
+
+| | |
+| --- | --- |
+| **Locally** | `pnpm dev`. No identity provider, no accounts, no passwords — see [getting-started](./docs/getting-started.md) |
+| **On a server** | One container, an OIDC provider, a token for the repository — see [self-hosting](./docs/self-hosting.md) |
+
+Deployed, Mica authenticates with **OpenID Connect** and nothing else. No
+passwords, no reset flow, no MFA enrolment, no passkeys, and no breach
+notification to write. An identity provider does all of it better. What Mica
+keeps is the part that is genuinely its own: a *membership* saying who may edit
+which site.
+
+---
+
+## Layout
+
+```
+packages/
+├── model/       the field DSL, the content model, and the authoring format
+├── connectors/  repository access: local working tree, GitHub, GitLab
+└── astro/       Content Layer loader and the dev integration
+apps/
+└── cms/         Hono API + Vue 3 admin SPA
+examples/
+└── muster-consulting/   a complete site to read: model, content, templates
+docs/
+├── getting-started.md   add Mica to an Astro project, and run it locally
+├── content-model.md     every field type, and the layout it produces on disk
+├── self-hosting.md      deploy it: Docker, OIDC, repository, CI, backups
+├── architecture.md      what Mica is, and why it is shaped this way
+└── decisions.md         accepted trade-offs and known gaps
+e2e/                     a runnable Mica + Keycloak, for the deployed shape
+```
+
+`packages/*` are the published surface. `examples/muster-consulting` is a site
+to copy and redesign, not a dependency — the design is the part that should
+differ between projects.
 
 ---
 
 ## What is deliberately absent
 
-No GraphQL. No plugin architecture. No page builder. No approval workflows. No
+**No content API.** The website reads files. Nothing to secure, rate limit,
+cache or keep available at build time.
+
+**No build webhook.** A push is the trigger, which every CI system already
+understands.
+
+**No media server.** Images are files in the repository, processed by Astro at
+build time.
+
+**No draft/published states.** An entry is saved or it is not, and saved means
+committed. Point a second Mica at a `staging` branch and editors have a staging
+site, reviewed and merged like any other change — strictly more capable than a
+status column, and free.
+
+No GraphQL, no plugin architecture, no page builder, no approval workflows, no
 mandatory cloud services.
-
-**No passwords.** Mica authenticates with OpenID Connect and nothing else — no
-hashing, no reset emails, no MFA enrolment, no passkeys, and no breach
-notification to write. An identity provider does all of it better. What Mica
-keeps is the part that is genuinely its own: a *membership* saying who may edit
-which site.
-
-No draft/published states either: an entry is saved or it is not, and saved
-means committed. Branches do this better than a status column ever did.
 
 ---
 
-## Commands
+## Development
 
 | | |
 | --- | --- |
-| `pnpm dev` | build packages, then run the CMS |
-| `pnpm build` | build everything |
-| `pnpm build:schema` | compile `mica.config.ts` into the JSON the container is given |
-| `pnpm test` | 266 tests across the model, connectors, Astro loader and CMS API |
+| `pnpm dev` | build the packages, then run the CMS against the example project |
+| `pnpm dev:site` | the example website, in a second terminal |
+| `pnpm test` | 268 tests across the model, connectors, Astro loader and CMS API |
 | `pnpm typecheck` | every package, including `.vue` and `.astro` |
 | `pnpm cms:grant-access` | let an email address edit a site |
 
-## Deploying
-
-```bash
-cp apps/cms/.env.example .env   # secrets, identity provider, repository
-pnpm build:schema               # mica.config.ts -> mica.config.json
-docker compose up -d
-docker compose exec cms node dist/server/scripts/grant-access.js --email you@example.com
-```
-
-Deployed, Mica authenticates with **OpenID Connect** and nothing else — set
-`MICA_MODE=self-hosted`, `OIDC_ISSUER` and `OIDC_CLIENT_ID`, and point any
-provider you like at `/api/auth/callback`. Mica implements no passwords, no
-reset flow and no second factor, so none of it is Mica's to get wrong.
-
-Set `REPOSITORY=github` or `REPOSITORY=gitlab` with a project and a token, and
-the container commits through the provider's API — no clone, no deploy key on
-disk. `REPOSITORY=local` writes into a mounted checkout instead.
-
-Changing the content model afterwards is `pnpm build:schema` and
-`docker compose restart cms`. The image does not need rebuilding — it holds no
-model, only the field types that interpret one.
-
-The website is built by CI from the repository and uploaded wherever you like —
-Vercel, Netlify, Cloudflare Pages, S3, nginx, a USB stick. There is no adapter
-and no serverless runtime, and the build does not need Mica to be running.
-
-See [docs/deployment.md](./docs/deployment.md).
-
-## Backups
-
-Your content repository is the backup, and Git is already keeping it.
-
-Mica's own database holds accounts and sessions. Copy it if you like; losing it
-signs everyone out and costs nothing else. See
-[docs/backup-and-restore.md](./docs/backup-and-restore.md).
-
-## Open decisions
-
-Accepted trade-offs and known gaps are tracked with priorities in
-[TODO.md](./TODO.md), each with what was decided, why, and what would change it.
-
-What each release contains is in [CHANGELOG.md](./CHANGELOG.md). Everything here
-is released together under one version, and while that version starts with `0`,
-a minor bump may break something.
-
----
-
-## Reusing this
-
-A project is a `mica.config.ts`, a content repository and an Astro site. The CMS
-is given the model; it does not contain one, so it does not have to be forked to
-be used:
-
-```bash
-pnpm build:schema     # mica.config.ts -> mica.config.json
-docker compose up -d  # the image mounts that file at /app/schema.json
-```
-
-The three packages under `packages/` (`@micacms/model`, `@micacms/connectors`,
-`@micacms/astro`) are the published surface. `apps/web` is a starter to copy and
-redesign rather than a dependency — the design is the part that should differ
-between projects.
+Accepted trade-offs and known gaps are in [docs/decisions.md](./docs/decisions.md),
+each with what was decided, why, and what would change it. What each release
+contains is in [CHANGELOG.md](./CHANGELOG.md); everything here is released
+together under one version, and while that version starts with `0`, a minor
+bump may break something.
 
 Licence: [MIT](./LICENSE).

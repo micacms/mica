@@ -1,289 +1,254 @@
 # Getting started
 
-A first install, from nothing to a live website. Budget twenty minutes for the
-local part and an hour for the deployed one.
+Add Mica to an Astro project and edit its content locally. Twenty minutes.
 
-> **Mica is not on npm or Docker Hub yet.** Installing means cloning the
-> repository and building it yourself. Everything below reflects that. When the
-> packages are published, steps 1 and 2 collapse into `npm create mica` and the
-> rest is unchanged.
+> **Nothing is published to npm or Docker Hub yet.** The packages and the CMS
+> both come from a clone of this repository. Where a step below says
+> `npm install @micacms/astro`, today it means `pnpm add link:…` or a workspace
+> entry — see [Installing before publication](#installing-before-publication)
+> at the end. Everything else is unchanged.
 
 ---
 
-## What you are installing
-
-Three things, and keeping them apart is the whole design:
+## The three pieces
 
 | | What it is | Where it lives |
 | --- | --- | --- |
-| **Content repository** | Your entries, as JSON and Markdoc files | Git — GitHub, GitLab, or a checkout |
-| **CMS** | One Node process; a SQLite file of accounts and sessions | A small server you control |
-| **Website** | Static HTML, CSS, JS and images | Any static host |
+| **Your repository** | Entries as JSON and Markdoc, images beside them | GitHub, GitLab, or a checkout |
+| **Mica** | One Node process; a SQLite file of accounts and sessions | Your machine now, a server later |
+| **Your website** | Static files from `astro build` | Any static host |
 
-Visitors never touch the CMS. The CMS never learns where the website is hosted.
-They meet in the repository: Mica commits to it, and the website is built from
-it.
-
-The consequence worth understanding before you install anything: **the CMS is
-not where your content lives.** You can turn it off, lose its disk, or throw it
-away, and your website is unaffected — it is in Git, in a format a text editor
+Mica is not where your content lives. Turn it off, lose its disk, throw it
+away: the website is unaffected, because it is in Git in a format a text editor
 can read.
-
-Binding it all together is a single file — `mica.config.ts` — that describes
-your content. The Astro site imports it directly; the CMS is handed a compiled
-copy. The CMS image itself contains no content model, which is why one image can
-serve any project.
-
-```
-                     mica.config.ts
-                            │
-        compiled to JSON    │    imported directly
-              ┌─────────────┴─────────────┐
-              ▼                           ▼
-        ┌───────────┐               ┌───────────┐
-        │    CMS    │               │   Astro   │──▶ static files
-        └─────┬─────┘               └─────▲─────┘
-              │      content repository   │
-              └──────────▶ (Git) ─────────┘
-```
 
 ## Before you start
 
-- **Node 22.5 or newer.** `node --version`
-- **pnpm 11.** `corepack enable` is enough; the repository pins the version.
-- **Docker**, for the deployed CMS. Not needed to run locally.
-
-For production you will also want a small server (1 GB RAM is plenty), a domain
-for the CMS, and somewhere to host static files.
+- **Node 22.5 or newer** — `node --version`
+- **An Astro 5 project.** A new one (`npm create astro@latest`) or one you
+  already have. Mica edits content; it does not touch your templates.
 
 ---
 
-# Part 1 — Run it locally
-
-## 1. Install and build
+## 1. Install the packages
 
 ```bash
-git clone <the-repository> mica
-cd mica
+npm install @micacms/astro @micacms/model
+```
+
+`@micacms/model` is the field DSL. `@micacms/astro` turns a model into Astro
+collections and publishes it for Mica to read.
+
+## 2. Define the content model
+
+A plain module. It imports nothing from Astro, so anything can read it — and it
+keeps the collections file short:
+
+```ts
+// src/mica.ts
+import { collection, date, defineSite, media, richText, singleton, slug, text } from "@micacms/model";
+
+export const site = defineSite({
+  // Relative to the Astro project root, like Astro's own `glob({ base })`.
+  root: "./content",
+
+  collections: {
+    news: collection({
+      label: "News",
+      labelSingular: "Article",
+      fields: {
+        title: text({ label: "Title", required: true, maxLength: 120, listed: true }),
+        slug: slug({ from: "title" }),
+        publishedOn: date({ label: "Published on", listed: true }),
+        cover: media({ accept: "image" }),
+        body: richText(),
+      },
+    }),
+  },
+  singletons: {
+    settings: singleton({
+      label: "Website",
+      fields: {
+        siteName: text({ label: "Site name", required: true }),
+        tagline: text({ label: "Tagline" }),
+      },
+    }),
+  },
+});
+```
+
+Every field type is in [content-model.md](./content-model.md).
+
+## 3. Turn it into collections
+
+```ts
+// src/content.config.ts
+import { micaCollections } from "@micacms/astro";
+
+import { site } from "./mica";
+
+export const collections = micaCollections(site);
+```
+
+That is the whole wiring. **`astro.config` gets nothing** — the loaders do the
+rest, because Astro hands them the project root and, in dev, its file watcher:
+they read the content, publish the model for Mica, and reload when an entry is
+saved.
+
+Your own collections go in the same export, and Mica leaves them alone:
+
+```ts
+import { defineCollection, z } from "astro:content";
+import { glob } from "astro/loaders";
+
+const docs = defineCollection({
+  loader: glob({ pattern: "**/*.md", base: "./src/docs" }),
+  schema: z.object({ title: z.string() }),
+});
+
+export const collections = { ...micaCollections(site), docs };
+```
+
+## 4. Publish the model
+
+```bash
+npx astro build          # or start the dev server once
+git add content/.mica/schema.json
+git commit -m "Publish the content model"
+```
+
+That file is how Mica learns what your project defines. It is generated, and it
+is committed anyway: Mica reads it out of the repository it is already
+connected to, so there is nothing to mount and no second channel to keep in
+step. Any build or dev-server start rewrites it, so the habit is only to commit
+it after a model change.
+
+## 5. Run Mica against it
+
+From your clone of this repository:
+
+```bash
 pnpm install
-pnpm build:packages
+cp apps/cms/.env.example apps/cms/.env
+CONTENT_ROOT=/path/to/your-project/content pnpm dev
 ```
 
-## 2. Start the CMS
+The `.env` matters for one thing in development: it allows the admin's Vite
+dev server as a request origin. An explicit variable beats the file, so the
+line above still points Mica at your project.
 
-```bash
-cd apps/cms
-cp .env.example .env
-pnpm dev
-```
-
-The defaults are enough. `REPOSITORY=local` and `CONTENT_ROOT=../../content`
-mean the CMS edits the `content/` directory in this repository, which already
-has content in it — there is nothing to seed.
-
-`pnpm dev` runs two processes: the API on `:4000` and the admin's Vite server on
-`:5173`.
-
-> The `.env` you copied leaves `SESSION_SECRET` blank. Locally the server
-> generates an ephemeral one and warns about it, which means everyone is signed
-> out whenever it restarts. That is the right trade-off for development and the
-> wrong one for production, where it is mandatory.
-
-## 3. Open the admin
-
-<http://localhost:5173/admin/>
+Two processes start: the API on `:4000` and the admin on `:5173`. Open
+<http://localhost:5173/admin/>.
 
 There is no account to create and no password to type. `MICA_MODE=local`
 disables authentication entirely and signs you in as a developer account —
 which is why Mica refuses to start that way in production, or on any host but
 this one. The terminal says so on every start.
 
-## 4. Edit something, and look at the result
+> The `.env` shipped for development leaves `SESSION_SECRET` blank, so an
+> ephemeral one is generated and everyone is signed out on restart. That is the
+> right trade-off locally and the wrong one in production, where it is
+> mandatory.
 
-Change an entry and press Save. Then:
+## 6. Edit something, and look at the result
+
+Create an entry, fill in the form, press Save. Then:
 
 ```bash
 git status
 git diff
 ```
 
-That is the whole idea. Your edit is a change to files:
-
 ```
-content/projects/haus-am-zuerichsee/
+content/news/we-are-hiring/
 ├── index.json          the fields
-├── summary.mdoc        rich text, one file per field
+├── body.mdoc           rich text, one file per field
 └── media/
-    └── exterior.jpg
+    └── office.jpg
 ```
 
-Commit it with your normal tools. In a deployed setup Mica does the committing
-itself, but the files are identical either way.
+That is the whole idea. Commit it with your normal tools; in a deployed setup
+Mica does the committing itself, and the files are identical either way.
 
-## 5. Start the website
+## 7. Render it
 
-```bash
-cd apps/web
-pnpm dev                 # http://localhost:4321
+Ordinary Astro. Nothing here knows a CMS exists:
+
+```astro
+---
+import { getCollection } from "astro:content";
+const news = await getCollection("news");
+---
+
+{news.map((article) => <h2>{article.data.title}</h2>)}
 ```
 
-No token, no CMS URL, no configuration. The site reads the same files, and the
-dev server reloads when Mica writes to them.
+`article.data` is typed from the model, so a renamed field is a build error
+rather than an empty page. Rich text arrives rendered:
 
-Stop the CMS and the website still builds. That is worth doing once, because it
-is the property everything else is designed around.
+```astro
+---
+import { renderRichText } from "@micacms/astro";
+const html = renderRichText(article.data.body);
+---
+<article set:html={html} />
+```
+
+Run `astro dev` beside Mica and a save in one reloads the other.
 
 ---
 
-# Part 2 — Make it yours
+## What changes when you deploy
 
-## Change the content model
-
-`mica.config.ts` in the repository root is the whole model. Add a field:
-
-```ts
-projects: collection({
-  label: "Projects",
-  fields: {
-    title: text({ label: "Title", required: true, maxLength: 120 }),
-    architect: text({ label: "Architect" }),   // ← new
-  },
-}),
-```
-
-Both processes pick it up. The admin grows a field; `getCollection("projects")`
-grows a property; a typo in a template becomes a build error.
-
-Adding a **required** field to a collection that already has entries makes those
-entries invalid until they are edited. The website build is where you find out,
-which is the right place — better a red build than a quietly empty page.
-
-## Redesign the website
-
-`apps/web` is a starter to copy and change, not a dependency. The design is the
-part that should differ between projects; the loader, the model and the CMS are
-the parts that should not.
-
----
-
-# Part 3 — Deploy it
-
-## 1. Put the content repository somewhere
-
-If the content lives in the same repository as the website — the normal case —
-push it to GitHub or GitLab and you are done. Mica will commit into the
-`content/` directory of that repository.
-
-## 2. Create a token for Mica
-
-**GitHub:** a fine-grained personal access token scoped to that one repository,
-with **Contents: read and write**. Nothing else.
-
-**GitLab:** a project access token with the `write_repository` scope.
-
-## 3. Configure the CMS
-
-```env
-NODE_ENV=production
-CMS_BASE_URL=https://cms.example.com
-TRUST_PROXY=true
-
-SESSION_SECRET=<32+ random bytes, generated below>
-
-REPOSITORY=github
-REPOSITORY_PROJECT=acme/website
-REPOSITORY_TOKEN=github_pat_…
-REPOSITORY_ROOT=content
-REPOSITORY_BRANCH=main
-```
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-## 4. Start it
-
-```bash
-pnpm build:schema         # mica.config.ts -> mica.config.json
-docker compose up -d
-docker compose exec cms node dist/server/scripts/grant-access.js --email you@example.com
-```
-
-Check it came up:
-
-```bash
-curl -s https://cms.example.com/health
-# {"status":"ok","database":"ok","repository":"github:acme/website/content@main"}
-```
-
-Put a reverse proxy in front for TLS — the container binds to loopback.
-
-## 5. Build the website from the repository
-
-Any CI that reacts to a push will do:
-
-```yaml
-name: Build website
-on:
-  push:
-    branches: [main]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: pnpm }
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm build:packages
-      - run: pnpm --filter @micacms/web build
-      # …then upload apps/web/dist.
-```
-
-An editor pressing Save produces a commit, which triggers this. There is nothing
-to configure on Mica's side — no webhook, no secret, no queue.
-
-If your host builds from the repository directly — Vercel, Netlify, Cloudflare
-Pages — you do not need the workflow at all.
-
-Full detail, including branch-per-environment and keeping editorial commits out
-of your other CI jobs, is in [deployment.md](./deployment.md).
+Nothing about the model or the content. Mica moves to a server, authenticates
+with an OIDC provider instead of nobody, and commits through GitHub's or
+GitLab's API instead of writing to a checkout. Your build stays a `git push`
+away from a static host. See [self-hosting.md](./self-hosting.md).
 
 ---
 
 ## When something is wrong
 
-**The container exits immediately with a `ConfigError`.**
-Read it — it names the variable. The usual causes are an unset `SESSION_SECRET`
-in production, or `REPOSITORY=github` without a project and a token.
+**"No content model at …/.mica/schema.json".**
+Step 4 was skipped, or the file was never committed to the branch Mica reads.
 
-**`/health` returns 503 with `repository: unavailable`.**
-The token is expired, revoked, or lacks write access to contents. Reissue it.
-
-**The admin loads but has no collections.**
-`mica.config.json` is not mounted, or `pnpm build:schema` was never run.
+**The admin shows collections you removed, or is missing one you added.**
+The model in the repository is stale: re-run the build, commit, restart Mica.
 
 **Saving returns 409.**
 Someone else changed that entry, or a push landed while the editor was working.
-Nothing is lost: the editor's changes are still in the form, and the message
-offers to load the current version.
+Nothing is lost — the changes are still in the form, and the message offers to
+load the current version.
 
 **Saving returns 422.**
 The entry does not satisfy the model. The response names the offending fields
 and the admin puts the messages next to them.
 
-**Everyone was signed out after a restart.**
-`SESSION_SECRET` is unset, so the server generated an ephemeral one.
+**Adding a required field made existing entries invalid.**
+Correct, and the website build is where you find out — better a red build than
+a quietly empty page. Edit the entries, or make the field optional.
 
 ---
 
-## Backups
+## Installing before publication
 
-Your content repository is the backup, and Git is keeping it. Mica's SQLite file
-holds accounts and sessions; losing it signs everyone out and costs nothing
-else.
+Until the packages are on npm, point your project at a clone:
 
-See [backup-and-restore.md](./backup-and-restore.md), which is mostly an
-explanation of why there is so little to do.
+```bash
+git clone <this-repository> mica
+cd mica && pnpm install && pnpm build:packages
+```
+
+```json
+// your project's package.json
+{
+  "dependencies": {
+    "@micacms/astro": "link:../mica/packages/astro",
+    "@micacms/model": "link:../mica/packages/model"
+  }
+}
+```
+
+The CMS runs from that clone too, as in step 5. To try everything without
+touching a project of your own, `examples/muster-consulting` is a complete
+site — model, content and templates — and `pnpm dev` edits it by default.

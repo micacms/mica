@@ -1,10 +1,8 @@
 # Architecture
 
-What Mica is, and why it is shaped this way.
-
-This describes the system as it stands. It is not a specification to build
-against — the code is that — but the reasoning behind the shape, which the code
-cannot state for itself.
+What Mica is, and why it is shaped this way. Not a specification — the code is
+that — but the reasoning behind the shape, which the code cannot state for
+itself.
 
 ---
 
@@ -23,32 +21,30 @@ replication and review, and the database is not.
 ## The pieces
 
 ```
-┌─────────────────────────────────────────────┐
-│                mica.config.ts               │
-│        the content model — one file         │
-└───────────────────┬─────────────────────────┘
-                    │
-     as JSON        │        imported directly
-   (build:schema)   │        (types, no codegen)
-          ┌─────────┴─────────┐
-          ▼                   ▼
-┌───────────────────┐  ┌───────────────────┐
-│     apps/cms      │  │     apps/web      │
-│  Hono + Vue 3     │  │  Astro SSG        │
-└─────────┬─────────┘  └─────────▲─────────┘
-          │  commits             │  reads
-          ▼                      │
-    ┌───────────────────────────────────┐
-    │      the content repository       │
-    └───────────────────┬───────────────┘
-                        │ push → CI → astro build
-                        ▼
-                  static files → any static host
+        ┌──────────────────────────────────┐
+        │            src/mica.ts           │
+        │  the content model — one file    │
+        └───────┬──────────────────┬───────┘
+   imported     │                  │  written as data
+   directly     │                  │  (.mica/schema.json)
+   (types, no   ▼                  │
+    codegen) ┌──────────┐          │       ┌───────────┐
+             │  Astro   │          └──────▶│   Mica    │
+             │  build   │                  │ Hono + Vue│
+             └────▲─────┘                  └─────┬─────┘
+                  │  reads                       │  commits
+                  │                              ▼
+            ┌─────┴──────────────────────────────────┐
+            │         the content repository         │
+            └────────────────────┬───────────────────┘
+                                 │ push → CI → astro build
+                                 ▼
+                          static files → any static host
 ```
 
-The CMS never learns where the website is hosted. The website never contacts
-the CMS. They meet in the repository, and neither has to be running for the
-other to work.
+Mica never learns where the website is hosted. The website never contacts Mica.
+They meet in the repository, and neither has to be running for the other to
+work.
 
 | Package | What it is |
 | --- | --- |
@@ -56,80 +52,77 @@ other to work.
 | `@micacms/connectors` | Repository access, and the content store built on it |
 | `@micacms/astro` | Content Layer loader, dev integration, Markdoc rendering |
 | `apps/cms` | Hono API and the Vue admin it serves |
-| `apps/web` | An example Astro site: a starter to copy, not a dependency |
+| `examples/muster-consulting` | A complete Astro site: a starter to copy, not a dependency |
 
-### Why the model package is not inside the Astro package
-
-The editor, the server and the build all need the model, and a Hono server
-depending on an Astro integration is the wrong direction. `@micacms/model` has
-no framework in it at all. Its `./node` subpath holds the one thing that cannot
-run in a browser — a filesystem `ContentSource` — so the admin bundle stays free
-of `node:` imports.
+**Why the model package is not inside the Astro package.** The editor, the
+server and the build all need the model, and a Hono server depending on an
+Astro integration is the wrong direction. `@micacms/model` has no framework in
+it at all. Its `./node` subpath holds the one thing that cannot run in a
+browser — a filesystem `ContentSource` — so the admin bundle stays free of
+`node:` imports.
 
 ---
 
 ## The content model
 
-One file, `mica.config.ts`, defines collections and singletons over a shared
-field system.
+One module defines collections and singletons over a shared field system. Five
+things are derived from it, and none of them can drift: TypeScript types for the
+website, Zod validators the server checks writes against, the admin's navigation
+and forms, the Astro collections, and the layout on disk. Details in
+[content-model.md](./content-model.md).
 
-```ts
-export const site = defineSite({
-  collections: {
-    projects: collection({
-      label: "Projects",
-      fields: {
-        title: text({ label: "Title", required: true, maxLength: 120 }),
-        slug: slug({ from: "title" }),
-        summary: richText(),
-        gallery: media({ multiple: true, accept: "image" }),
-      },
-    }),
-  },
-  singletons: {
-    theme: singleton({ label: "Theme", fields: { primaryColor: color() } }),
-  },
-});
-```
-
-Five things are derived from it, and none of them can drift:
-
-- TypeScript types for the Astro site;
-- Zod validators the server checks writes against;
-- the admin's navigation, list columns and forms;
-- Astro collection schemas;
-- **the layout on disk** (below).
-
-The DSL is not Zod with extra steps. `text({ label: "Title", maxLength: 120 })`
-carries editorial meaning that `z.string().max(120)` cannot — a label, a width,
-a group. Zod is generated from the DSL, never the reverse.
+It imports nothing from Astro, and `src/content.config.ts` is the only file that
+imports *it* — six lines turning it into collections. That separation is not
+bookkeeping: `content.config.ts` may import `astro:content`, a virtual module
+that resolves only inside the app's module graph, so anything that also has to
+be read from outside that graph cannot live there.
 
 ### The model is plain data
 
-A `Site` is JSON-serialisable and survives a round trip. That is what lets the
-CMS image ship without a content model and be handed one at startup: one
-published image serves any project, and changing the model is a rebuild of a
-JSON file plus a restart.
+A `Site` is JSON-serialisable and survives a round trip. Field descriptors hold
+no functions, so `JSON.stringify(site)` is lossless. That is what lets the Mica
+image ship without a content model and be handed one at startup.
+
+### How it reaches Mica
+
+The loaders write `<content root>/.mica/schema.json` — the model wrapped in a
+small protocol envelope — on every build and dev-server start, and the developer
+commits it. Mica reads it back through the same connector it reads entries with.
+
+Written from a loader rather than from an Astro integration, because that is the
+moment both facts are in hand: the model, and the project root that turns
+`./content` into a directory. Watching the content root in dev moved there for
+the same reason — Astro gives a loader its file watcher. What that buys is a
+project where **nothing of Mica appears in `astro.config`**, which is what makes
+Mica collections and ordinary Astro collections mix in one `content.config.ts`.
+
+The alternatives were mounting a compiled artifact into the container, and
+fetching one over HTTP from the deployed website. Both add a second channel
+between the project and Mica, with its own failure mode when the two fall out
+of step. Sending the model the way content already travels means there is one
+channel, one place to look, and a model change that is reviewable in a diff.
+
+The envelope carries a `protocolVersion`, bumped only when an older reader
+would *misinterpret* a newer manifest. A Mica deployment and the
+`@micacms/astro` in a project are upgraded by different people at different
+times, so they are not required to move together. Whatever arrives is
+re-validated as if hand-written: an unknown field kind is reported by name at
+startup rather than surfacing later on an editor's screen.
 
 ---
 
 ## The authoring format
 
-An entry's layout follows from its fields. Rich text and media need files
-beside the entry; without them, an entry is one file.
-
 ```
 content/
+├── .mica/schema.json                   the model
 ├── projects/
-│   ├── _order.json                    ["haus-a", "haus-b"]
-│   ├── haus-a/                        ← a directory: it has rich text and media
-│   │   ├── index.json
-│   │   ├── summary.mdoc
-│   │   └── media/exterior.jpg
-│   └── haus-b/
-├── theme.json                         ← a file: plain fields only
-└── site/
-    └── index.json
+│   ├── _order.json                     ["haus-a", "haus-b"]
+│   └── haus-a/
+│       ├── index.json
+│       ├── summary.mdoc
+│       └── media/exterior.jpg
+└── theme.json
 ```
 
 **JSON for structure, Markdoc for prose.** A field's value is JSON unless it is
@@ -141,11 +134,9 @@ input and a diff shows only what changed.
 decisions that belong to the website, and cannot inject script into a build:
 Markdoc escapes raw HTML and renders an undeclared `{% tag %}` as nothing.
 
-**Media is colocated.** `media/exterior.jpg` beside the entry that uses it, so
-an entry is self-contained and renaming it is a directory move.
-
-**Order is a file.** `_order.json` lists slugs, so dragging one entry is a
-one-line diff rather than a rewrite of every entry in the collection.
+**Media is colocated**, so an entry is self-contained and renaming it is a
+directory move. **Order is a file**, so dragging one entry is a one-line diff
+rather than a rewrite of every entry in the collection.
 
 ### There are no drafts
 
@@ -153,9 +144,8 @@ An entry is saved or it is not, and saved means committed. Unfinished work
 stays in the editor's form and never reaches the server.
 
 A status column was always a weak imitation of a branch. Point a second Mica at
-`REPOSITORY_BRANCH=staging` and editors have a staging site that is reviewed and
-merged like any other change — strictly more capable than draft/published ever
-was, and free.
+`REPOSITORY_BRANCH=staging` and editors have a staging site that is reviewed
+and merged like any other change — strictly more capable, and free.
 
 ---
 
@@ -169,7 +159,7 @@ interface RepositoryConnector extends ContentSource {
 }
 ```
 
-Four operations. Mica does not implement Git, and a Git client inside a server
+Four operations. Mica does not implement Git: a Git client inside a server
 would be a working tree to keep in sync, a credential on disk and a merge to
 resolve.
 
@@ -183,38 +173,28 @@ and parsing code. They cannot disagree about what a content directory means.
 | `github` | Git Data API — blob, tree, commit, ref |
 | `gitlab` | The commits API, which takes a whole change set |
 
-### One commit, or none
-
-An entry is an `index.json`, its sidecars and its media. A half-written entry is
-content corruption, so `commit()` applies everything or nothing. GitHub's
-Contents API writes one file per commit, which is why the GitHub connector goes
-the longer way round through the Git Data API.
-
+**One commit, or none.** An entry is an `index.json`, its sidecars and its
+media, and a half-written entry is content corruption — so `commit()` applies
+everything or nothing. GitHub's Contents API writes one file per commit, which
+is why the GitHub connector goes the longer way round through the Git Data API.
 The local connector earns the same guarantee the hard way: staged writes beside
 their target, renamed into place, with a full rollback on any failure.
 
-### Concurrency
-
-Every read carries an opaque `revision`; every write sends back the one it was
-based on. A mismatch is a 409, and the editor's work stays in the form.
-
-Per path, not per repository head — two editors on different entries must never
-block each other. A `null` revision asserts absence, which is how two people
-creating the same slug produce a conflict rather than a silent overwrite.
-
-GitHub adds a second layer for free: the ref update is never forced, so a push
-that lands mid-save is rejected rather than overwritten.
+**Concurrency.** Every read carries an opaque `revision`; every write sends
+back the one it was based on. A mismatch is a 409, and the editor's work stays
+in the form. Per path, not per repository head — two editors on different
+entries must never block each other. A `null` revision asserts absence, which is
+how two people creating the same slug produce a conflict rather than a silent
+overwrite. GitHub adds a second layer for free: the ref update is never forced,
+so a push that lands mid-save is rejected rather than overwritten.
 
 ---
 
 ## Authentication and authorization
 
 Mica authenticates nobody. It asks an OpenID Connect provider who you are and
-records the answer.
-
-There are no passwords in the codebase — no hashing, no reset flow, no MFA, no
-passkeys, no breach notification to write. Every one of those is a thing to get
-wrong, and an identity provider does all of them better.
+records the answer. There are no passwords in the codebase — no hashing, no
+reset flow, no MFA, no passkeys, no breach notification to write.
 
 ```
 Tenant
@@ -225,9 +205,8 @@ Tenant
 ```
 
 **Authentication and authorization are separate questions.** A provider may
-vouch for an entire company; a *membership* says this person may edit this site.
-Someone who authenticates perfectly and has no membership is turned away with a
-message telling them to ask an administrator.
+vouch for an entire company; a *membership* says this person may edit this
+site. Someone who authenticates perfectly and has no membership is turned away.
 
 Two details that matter:
 
@@ -237,15 +216,11 @@ Two details that matter:
 - Authorization is re-read on every request, never copied into the session.
   Removing someone takes effect now, not when their cookie expires.
 
-### Multi-tenancy
-
-The schema is `tenants → sites → memberships`, with a repository connection per
-site. A single-site deployment gets an implicit default and never meets the
-concept.
-
-The structure exists before it is needed because retrofitting a site id onto
-every membership and connection query is expensive, and doing it now costs one
-column. What does not exist is a UI for it.
+**Multi-tenancy.** The schema is `tenants → sites → memberships`, with a
+repository connection per site. A single-site deployment gets an implicit
+default and never meets the concept. The structure exists before it is needed
+because retrofitting a site id onto every membership and connection query is
+expensive, and doing it now costs one column. What does not exist is a UI.
 
 ---
 
@@ -264,17 +239,14 @@ One implementation, three shapes, selected by `MICA_MODE`.
 `MICA_MODE=local` signs every request in as one developer account. There is no
 provider and no credential.
 
-This is the honest resolution of two requirements that genuinely conflict:
-Mica ships no passwords, and a developer cannot be asked to stand up Keycloak
-before running `pnpm dev`. The third option — a built-in dev identity provider —
-is auth code, which is the thing being avoided.
+This is the honest resolution of two requirements that genuinely conflict: Mica
+ships no passwords, and a developer cannot be asked to stand up Keycloak before
+running `pnpm dev`. The third option — a built-in dev identity provider — is
+auth code, which is the thing being avoided.
 
 It is the most dangerous state the software has, so it is contained four ways:
-
-1. refused when `NODE_ENV=production`;
-2. refused when `CMS_BASE_URL` is any host but localhost;
-3. a warning on every start;
-4. a banner on the sign-in page.
+refused when `NODE_ENV=production`; refused when `CMS_BASE_URL` is any host but
+localhost; a warning on every start; a banner on the sign-in page.
 
 ---
 
@@ -283,10 +255,10 @@ It is the most dangerous state the software has, so it is contained four ways:
 SQLite, holding:
 
 ```
-users                 who someone is (no credential)
-oidc_identities       (issuer, subject) → user
-tenants / sites       the deployment's shape
-memberships           who may edit what
+users                   who someone is (no credential)
+oidc_identities         (issuer, subject) → user
+tenants / sites         the deployment's shape
+memberships             who may edit what
 repository_connections  how a site reaches its repository
 sessions
 ```
@@ -294,6 +266,11 @@ sessions
 No content, no media, no revisions. Two rules keep it navigable: only
 `repositories/` writes SQL, and only `db/driver.ts` knows which SQLite library
 is in use.
+
+Note the startup order this implies. The content model is *in* the repository,
+so the database opens first, the connector is built from it, the model is read
+through the connector, and only then is the application composed. The entry
+point does that explicitly rather than hiding it in the composition root.
 
 ---
 
@@ -312,25 +289,3 @@ The test for any future feature:
 
 > Does this help Mica make Git-backed Astro sites easier to author, or does it
 > move Mica back toward being a general-purpose CMS?
-
----
-
-## What success looks like
-
-Setting up a project:
-
-1. Install `@micacms/astro`.
-2. Define collections and singletons.
-3. Put content in Git.
-4. Connect the repository to Mica.
-5. Invite the client.
-6. Deploy Astro as a normal static site.
-
-Using it:
-
-1. Sign in.
-2. Edit.
-3. Save.
-
-Git, OIDC, credentials, repository APIs and CI are all implementation details,
-and an editor should never meet any of them.

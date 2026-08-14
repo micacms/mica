@@ -1,4 +1,4 @@
-# TODO
+# Decisions
 
 Open decisions, accepted trade-offs and deferred work.
 
@@ -58,6 +58,31 @@ page. Four independent statements, because one is not enough for this.
 **What would change it:** a small built-in OIDC provider for development, so the
 local path exercises the production code. Considered and not taken — it is auth
 code, which is what this was avoiding.
+
+---
+
+### P2 — The content model is read once, at startup
+
+**Decided:** Mica reads `.mica/schema.json` out of the content repository when
+the process starts, and holds it for the life of the process. Changing the
+model means restarting.
+
+**Why:** the alternative is re-reading it per request, which is a provider API
+call on every page of the admin, or a cache with an invalidation rule — and the
+model changes a handful of times in a project's life, always by a developer who
+is already deploying something.
+
+**Consequence:** a developer who pushes a model change and forgets to restart
+sees the old forms, with no indication why. The startup log prints the model's
+fingerprint, which is how two deployments serving different models are told
+apart.
+
+**What would change it:** re-reading when the manifest's `revision` changes,
+checked at most once per interval. The connector already answers `revision(path)`
+cheaply, so this is small — it just has no reason to exist yet.
+
+**Trigger:** a project where a non-developer changes the model, or a deployment
+that cannot be restarted casually.
 
 ---
 
@@ -135,6 +160,27 @@ inside the container.
 point of the interface.
 
 **Trigger:** a driver bug, or a deployment target stuck on older Node.
+
+---
+
+### P3 — A generated file is committed to the content repository
+
+**Decided:** `content/.mica/schema.json` is build output, and it is committed.
+
+**Why:** it is the only channel between the project and Mica. Mounting a
+compiled artifact into the container or fetching one over HTTP from the
+deployed website both add a second path with its own way of falling out of step;
+sending the model the way content already travels means there is one path, and
+a model change is reviewable in the same diff as the content it affects.
+
+**Consequence:** a stale commit of that file is possible — someone changes a
+collection, does not rebuild, and pushes. CI guards it with
+`git diff --exit-code` on the published model, which is the check every project
+using Mica should copy.
+
+**What would change it:** nothing foreseen. If Mica ever grew a hosted control
+plane, a `mica push` sending the same bytes over HTTP would be the alternative,
+and the file format is already that payload.
 
 ---
 
