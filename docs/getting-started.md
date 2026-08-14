@@ -2,11 +2,10 @@
 
 Add Mica to an Astro project and edit its content locally. Twenty minutes.
 
-> **Nothing is published to npm or Docker Hub yet.** The packages and the CMS
-> both come from a clone of this repository. Where a step below says
-> `npm install @micacms/astro`, today it means `pnpm add link:…` or a workspace
-> entry — see [Installing before publication](#installing-before-publication)
-> at the end. Everything else is unchanged.
+> **Nothing is published to npm or Docker Hub yet**, so `npm install` and `npx`
+> cannot reach these packages today. Both work from a clone instead — see
+> [Before it is published](#before-it-is-published) at the end. Every command
+> below is the real one; only where the bits come from differs.
 
 ---
 
@@ -125,30 +124,23 @@ it after a model change.
 
 ## 5. Run Mica against it
 
-From your clone of this repository:
-
 ```bash
-pnpm install
-cp apps/cms/.env.example apps/cms/.env
-CONTENT_ROOT=/path/to/your-project/content pnpm dev
+npx @micacms/cms
 ```
 
-The `.env` matters for one thing in development: it allows the admin's Vite
-dev server as a request origin. An explicit variable beats the file, so the
-line above still points Mica at your project.
+That is the whole local setup. It reads `./content`, serves the editor on
+<http://localhost:4000/admin/>, and binds to loopback only. Point it somewhere
+else with `npx @micacms/cms --content ./site/content`, and see `--help` for the
+rest.
 
-Two processes start: the API on `:4000` and the admin on `:5173`. Open
-<http://localhost:5173/admin/>.
+There is no account to create and no password to type: local mode disables
+authentication entirely and signs you in as a developer account — which is why
+Mica refuses to start that way in production, or on any host but this one. The
+terminal says so on every start.
 
-There is no account to create and no password to type. `MICA_MODE=local`
-disables authentication entirely and signs you in as a developer account —
-which is why Mica refuses to start that way in production, or on any host but
-this one. The terminal says so on every start.
-
-> The `.env` shipped for development leaves `SESSION_SECRET` blank, so an
-> ephemeral one is generated and everyone is signed out on restart. That is the
-> right trade-off locally and the wrong one in production, where it is
-> mandatory.
+Nothing is written into your repository. Accounts and sessions go to a cache
+directory outside the project, because in local mode there is one implicit
+developer and nothing worth keeping; the command prints the path.
 
 ## 6. Edit something, and look at the result
 
@@ -230,13 +222,13 @@ a quietly empty page. Edit the entries, or make the field optional.
 
 ---
 
-## Installing before publication
+## Before it is published
 
 Until the packages are on npm, point your project at a clone:
 
 ```bash
 git clone <this-repository> mica
-cd mica && pnpm install && pnpm build:packages
+cd mica && pnpm install && pnpm build
 ```
 
 ```json
@@ -249,6 +241,12 @@ cd mica && pnpm install && pnpm build:packages
 }
 ```
 
-The CMS runs from that clone too, as in step 5. To try everything without
-touching a project of your own, `examples/muster-consulting` is a complete
-site — model, content and templates — and `pnpm dev` edits it by default.
+`npx @micacms/cms` is then the same command from that clone:
+
+```bash
+node ../mica/apps/cms/dist/server/cli.js --content ./content
+```
+
+To try everything without touching a project of your own,
+`examples/muster-consulting` is a complete site — model, content and
+templates — and `pnpm dev` from the clone edits it by default.

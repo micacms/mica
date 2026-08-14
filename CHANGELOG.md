@@ -81,6 +81,12 @@ The first release. Everything below is new, so this entry describes what Mica
   API. The build needs no CMS running, no token and no URL: `getCollection()` is
   fully typed, and renaming a field breaks the build.
 
+### Running it
+
+- `npx @micacms/cms` runs Mica against a project on your machine: it reads the
+  content directory, serves the admin, binds to loopback and writes nothing
+  into the repository. Adopting Mica does not mean adopting its repository.
+
 ### Deployment
 
 - One container. No database server, no cache, no queue and no object storage.

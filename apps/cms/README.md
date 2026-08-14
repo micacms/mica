@@ -20,7 +20,23 @@ connector ──▶ content repository
 SQLite: accounts, sessions
 ```
 
-## Running it locally
+## Running it against a project
+
+```bash
+npx @micacms/cms --content ./content
+```
+
+The published package carries the API and the built admin, so this is one
+command and no clone. It sets `MICA_MODE=local` (no identity provider, no
+authentication), binds to **loopback** rather than `0.0.0.0`, and keeps
+accounts and sessions in a cache directory outside the project — three defaults
+that differ from the container's, because a laptop is not a deployment.
+
+Everything else it does is set environment variables and hand over to
+`src/server/index.ts`, so there is one server with one configuration path.
+Explicit environment beats the flags.
+
+## Working on the CMS itself
 
 ```bash
 pnpm install

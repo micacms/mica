@@ -1,9 +1,31 @@
 {
   "name": "@micacms/cms",
   "version": "0.0.1",
-  "private": true,
   "type": "module",
   "description": "Mica CMS — Hono API plus the Vue administration SPA it serves.",
+  "license": "MIT",
+  "author": "Alexander Müdespacher",
+  "keywords": [
+    "mica",
+    "cms",
+    "astro",
+    "git",
+    "markdoc",
+    "headless-cms"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "bin": {
+    "mica": "./dist/server/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "scripts": {
     "dev": "concurrently -n api,admin -c blue,magenta \"pnpm dev:api\" \"pnpm dev:admin\"",
     "//dev:api": "--include watches the model the example project publishes, so editing a collection restarts the API the way editing the server does.",
