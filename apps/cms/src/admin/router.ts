@@ -29,15 +29,17 @@ const routes: RouteRecordRaw[] = [
     props: true,
   },
   {
-    path: "/collections/:collection/:id",
+    // The slug, not an id: the address in the admin is the path in the
+    // repository, so a URL here can be read straight off a diff.
+    path: "/collections/:collection/:slug",
     name: "entry",
     component: () => import("@/views/EntryView.vue"),
     props: true,
   },
   {
-    path: "/globals/:name",
-    name: "global",
-    component: () => import("@/views/GlobalView.vue"),
+    path: "/singletons/:name",
+    name: "singleton",
+    component: () => import("@/views/SingletonView.vue"),
     props: true,
   },
   {

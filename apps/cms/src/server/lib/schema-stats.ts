@@ -29,7 +29,7 @@ export interface KindUsage {
 export interface RelationEdge {
   /** Collection or singleton the field is declared in. */
   from: string;
-  fromType: "collection" | "global";
+  fromType: "collection" | "singleton";
   /** Dotted path to the field, with `[]` marking a repeater. */
   path: string;
   /** Collection the relation points at. */
@@ -57,7 +57,7 @@ export interface CollectionStats {
   depth: number;
 }
 
-export interface GlobalStats {
+export interface SingletonStats {
   name: string;
   label: string;
   fields: FieldCounts;
@@ -66,8 +66,8 @@ export interface GlobalStats {
 
 export interface SchemaStats {
   collections: CollectionStats[];
-  globals: GlobalStats[];
-  totals: FieldCounts & { collections: number; globals: number };
+  singletons: SingletonStats[];
+  totals: FieldCounts & { collections: number; singletons: number };
   /** Field kinds in use, most used first. */
   kinds: KindUsage[];
   relations: RelationEdge[];
@@ -118,9 +118,9 @@ export function schemaStats(site: Site): SchemaStats {
   const kinds = new Map<FieldKind, number>();
   const relations: RelationEdge[] = [];
 
-  const totals: FieldCounts & { collections: number; globals: number } = {
+  const totals: FieldCounts & { collections: number; singletons: number } = {
     collections: 0,
-    globals: 0,
+    singletons: 0,
     top: 0,
     total: 0,
     required: 0,
@@ -159,11 +159,11 @@ export function schemaStats(site: Site): SchemaStats {
     };
   });
 
-  const globals = Object.values(site.singletons).map((def): GlobalStats => {
+  const singletons = Object.values(site.singletons).map((def): SingletonStats => {
     const { counts, depth } = countFields(def.fields);
-    tally(def.fields, def.name, "global");
+    tally(def.fields, def.name, "singleton");
 
-    totals.globals++;
+    totals.singletons++;
     totals.top += counts.top;
     totals.total += counts.total;
     totals.required += counts.required;
@@ -173,7 +173,7 @@ export function schemaStats(site: Site): SchemaStats {
 
   return {
     collections,
-    globals,
+    singletons,
     totals,
     kinds: [...kinds]
       .map(([kind, count]) => ({ kind, count }))

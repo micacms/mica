@@ -20,7 +20,7 @@
  */
 
 import { ConflictError, ValidationError } from "@micacms/connectors";
-import { entryTitle } from "@micacms/model";
+import { collectionEntryPath, entryTitle, singletonPath } from "@micacms/model";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -148,6 +148,10 @@ export function adminContentRoutes(): Hono<Env> {
       position: entry.position,
       title: entryTitle(def, entry.data),
       data: entry.data,
+      // Where this entry is on disk. Derived from the model, because whether an
+      // entry is one file or a directory depends on whether it has rich text or
+      // media — a rule the editor should not have to reimplement to show it.
+      path: collectionEntryPath(def.fields, collection, entry.slug),
       // Sent back with the save. Without it the editor cannot tell the server
       // which version of the entry it was looking at.
       revision: await content.revisionOf(collection, slug),
@@ -205,6 +209,7 @@ export function adminContentRoutes(): Hono<Env> {
     return c.json({
       name,
       label: def.label,
+      path: singletonPath(def.fields, name),
       data: await handled(() => content.getSingleton(name)),
       revision: await content.revisionOfSingleton(name),
     });

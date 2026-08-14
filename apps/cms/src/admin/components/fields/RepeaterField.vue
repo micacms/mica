@@ -15,7 +15,7 @@ import FieldList from "./FieldList.vue";
 import { humanise, useField, type FieldProps } from "@/composables/useField";
 
 const props = defineProps<
-  FieldProps & { modelValue: unknown; collection?: string; entryId?: string }
+  FieldProps & { modelValue: unknown; collection?: string; entrySlug?: string }
 >();
 const emit = defineEmits<{ "update:modelValue": [Record<string, unknown>[]] }>();
 
@@ -188,7 +188,7 @@ function toggle(index: number): void {
             :issues="issues"
             :disabled="disabled || field.readonly"
             :collection="collection"
-            :entry-id="entryId"
+            :entry-slug="entrySlug"
             @update:model-value="updateRow(index, $event)"
           />
         </div>

@@ -1,34 +1,39 @@
 <script setup lang="ts">
 /**
- * Entry editor (§10).
+ * Entry editor.
  *
- * Save draft and Publish are separate actions: a draft save is lenient so
- * unfinished work is never lost, publishing validates strictly. Unsaved changes
- * are guarded on navigation and on tab close.
+ * One Save button, where there used to be two. Draft and Publish made sense
+ * when the database held both a working copy and a live one; the repository
+ * holds one file, and saving writes it. Unfinished work stays in this form and
+ * never reaches the server, which is what the unsaved-changes guard is for.
+ *
+ * The other change is `revision`. The editor remembers which version of the
+ * entry it opened and sends that token back with the save. If someone else
+ * saved in the meantime the server refuses with a 409, and this view says so
+ * plainly rather than overwriting their work.
+ *
+ * An entry is addressed by its slug, so changing the slug field moves the entry
+ * — files and all — and the route follows it.
  */
 
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 
-import { defaultValues, type EntryStatus, type FieldIssue } from "@micacms/model";
+import { defaultValues, type FieldIssue } from "@micacms/model";
 
 import { api, ApiError, type EntryDetail } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FieldList from "@/components/fields/FieldList.vue";
 import PageHeader from "@/components/PageHeader.vue";
-import RevisionPanel from "@/components/RevisionPanel.vue";
-import { provideMediaRegistry } from "@/composables/mediaRegistry";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
-import { absoluteTime } from "@/lib/format";
 import { useSchema } from "@/stores/schema";
 import { useToast } from "@/stores/toast";
 
-const props = defineProps<{ collection: string; id?: string }>();
+const props = defineProps<{ collection: string; slug?: string }>();
 
 const router = useRouter();
 const schema = useSchema();
 const toast = useToast();
-const registry = provideMediaRegistry();
 
 const definition = computed(() => schema.collection(props.collection));
 
@@ -37,14 +42,21 @@ const values = ref<Record<string, unknown>>({});
 const issues = ref<FieldIssue[]>([]);
 const loading = ref(true);
 const saving = ref(false);
-const showRevisions = ref(false);
+const conflict = ref(false);
 const confirmDelete = ref(false);
 const references = ref<Array<{ collection: string; title: string }>>([]);
 
+/**
+ * The version this form was opened against.
+ *
+ * `null` on a new entry, which asserts to the server that nothing is there —
+ * so two people creating the same slug is a conflict, not a silent overwrite.
+ */
+const revision = ref<string | null>(null);
+
 const unsaved = useUnsavedChanges(values);
 
-const isNew = computed(() => !props.id);
-const status = computed<EntryStatus>(() => entry.value?.status ?? "draft");
+const isNew = computed(() => !props.slug);
 
 const title = computed(() => {
   const def = definition.value;
@@ -54,12 +66,25 @@ const title = computed(() => {
   return isNew.value ? `New ${def.labelSingular.toLowerCase()}` : "Untitled";
 });
 
+/**
+ * Where this entry lives in the repository — the path a reviewer will see.
+ *
+ * From the server, not assembled here: an entry with rich text or media is a
+ * directory, and one without is a single `.json` file.
+ */
+const location = computed(() => entry.value?.path ?? "Not saved yet");
+
 function setBaseline(detail: EntryDetail): void {
   entry.value = detail;
-  values.value = structuredClone(detail.raw);
-  registry.add(detail.media);
+  values.value = structuredClone(detail.data);
+  revision.value = detail.revision;
   issues.value = [];
+  conflict.value = false;
   unsaved.markClean();
+}
+
+async function open(slug: string): Promise<void> {
+  setBaseline(await api.entries.get(props.collection, slug));
 }
 
 onMounted(async () => {
@@ -70,12 +95,13 @@ onMounted(async () => {
   }
 
   try {
-    if (props.id) {
-      setBaseline(await api.entries.get(props.id));
+    if (props.slug) {
+      await open(props.slug);
     } else {
       // A fresh entry starts as a full skeleton so every input is bound. The
       // skeleton itself is not an edit, so it becomes the baseline.
       values.value = defaultValues(def.fields);
+      revision.value = null;
       unsaved.markClean();
     }
   } catch (error) {
@@ -86,35 +112,38 @@ onMounted(async () => {
   }
 });
 
-async function save(nextStatus?: EntryStatus): Promise<void> {
+async function save(): Promise<void> {
   saving.value = true;
   issues.value = [];
 
-  const payload = { data: values.value, status: nextStatus ?? status.value };
+  const payload = { data: values.value, revision: revision.value };
 
   try {
-    const saved = props.id
-      ? await api.entries.update(props.id, payload)
+    const saved = props.slug
+      ? await api.entries.update(props.collection, props.slug, payload)
       : await api.entries.create(props.collection, payload);
 
-    setBaseline(saved);
+    // The server owns the slug — it derives it, de-duplicates it, and may have
+    // moved the entry. Re-open at whatever it decided rather than assuming.
+    unsaved.markClean();
+    toast.success(saved.renamed ? `Saved as “${saved.slug}”.` : "Saved.");
 
-    toast.success(
-      nextStatus === "published"
-        ? "Published."
-        : nextStatus === "draft" && status.value === "published"
-          ? "Moved back to draft."
-          : "Saved.",
-    );
-
-    if (!props.id) {
+    if (saved.slug !== props.slug) {
       await router.replace({
         name: "entry",
-        params: { collection: props.collection, id: saved.id },
+        params: { collection: props.collection, slug: saved.slug },
       });
+      return;
     }
+
+    await open(saved.slug);
   } catch (error) {
-    if (error instanceof ApiError && error.issues.length > 0) {
+    if (error instanceof ApiError && error.status === 409) {
+      // Nothing is lost: the form still holds the editor's work, and reloading
+      // is a deliberate act rather than something that happens under them.
+      conflict.value = true;
+      toast.error("Someone else saved this entry while you were editing it.");
+    } else if (error instanceof ApiError && error.issues.length > 0) {
       issues.value = error.issues;
       toast.error(error.message, `${error.issues.length} field(s) need attention.`);
       // Take the editor to the first problem rather than leaving them hunting.
@@ -131,11 +160,22 @@ async function save(nextStatus?: EntryStatus): Promise<void> {
   }
 }
 
+/** Takes the version now in the repository, discarding this form's edits. */
+async function reload(): Promise<void> {
+  if (!props.slug) return;
+  try {
+    await open(props.slug);
+    toast.success("Reloaded from the repository.");
+  } catch (error) {
+    toast.error(error instanceof ApiError ? error.message : "Could not reload this entry.");
+  }
+}
+
 async function askDelete(): Promise<void> {
   references.value = [];
-  if (props.id) {
+  if (props.slug) {
     try {
-      const { references: found } = await api.entries.references(props.id);
+      const { references: found } = await api.entries.references(props.collection, props.slug);
       references.value = found.map((item) => ({
         collection: schema.collection(item.collection)?.label ?? item.collection,
         title: item.title,
@@ -148,9 +188,9 @@ async function askDelete(): Promise<void> {
 }
 
 async function remove(): Promise<void> {
-  if (!props.id) return;
+  if (!props.slug) return;
   try {
-    await api.entries.remove(props.id);
+    await api.entries.remove(props.collection, props.slug);
     unsaved.release();
     toast.success("Deleted.");
     await router.replace({ name: "collection", params: { collection: props.collection } });
@@ -160,49 +200,18 @@ async function remove(): Promise<void> {
     confirmDelete.value = false;
   }
 }
-
-async function onRestored(restored: EntryDetail): Promise<void> {
-  setBaseline(restored);
-  showRevisions.value = false;
-  toast.success("Revision restored.");
-}
 </script>
 
 <template>
   <template v-if="definition">
     <PageHeader
       :title="title"
-      :subtitle="entry ? `Last saved ${absoluteTime(entry.updatedAt)}` : 'Not saved yet'"
+      :subtitle="location"
       :back="{ name: 'collection', params: { collection } }"
       :back-label="definition.label"
     >
-      <span
-        v-if="!isNew"
-        :class="[
-          'badge mr-1',
-          status === 'published'
-            ? 'bg-success/10 text-success'
-            : 'bg-warning/10 text-warning',
-        ]"
-      >
-        {{ status === "published" ? "Published" : "Draft" }}
-      </span>
-
-      <button
-        v-if="!isNew"
-        type="button"
-        class="btn-ghost"
-        @click="showRevisions = true"
-      >
-        History
-      </button>
-
-      <button type="button" class="btn-secondary" :disabled="saving" @click="save('draft')">
-        {{ status === "published" ? "Unpublish" : "Save draft" }}
-      </button>
-
-      <button type="button" class="btn-primary" :disabled="saving" @click="save('published')">
-        {{ saving ? "Saving…" : status === "published" ? "Save & publish" : "Publish" }}
+      <button type="button" class="btn-primary" :disabled="saving" @click="save">
+        {{ saving ? "Saving…" : "Save" }}
       </button>
     </PageHeader>
 
@@ -210,6 +219,21 @@ async function onRestored(restored: EntryDetail): Promise<void> {
       <p v-if="loading" class="text-sm text-muted">Loading…</p>
 
       <template v-else>
+        <div
+          v-if="conflict"
+          role="alert"
+          class="mb-5 rounded-lg border border-warning/30 bg-warning/5 p-3.5"
+        >
+          <p class="text-sm font-medium text-warning">This entry changed while you were editing</p>
+          <p class="mt-1 text-xs text-muted">
+            Your changes are still here and have not been saved. Copy anything you need, then load
+            the current version — or open the repository to see what changed.
+          </p>
+          <button type="button" class="btn-secondary mt-2.5" @click="reload">
+            Discard mine and reload
+          </button>
+        </div>
+
         <div
           v-if="issues.length"
           role="alert"
@@ -223,14 +247,14 @@ async function onRestored(restored: EntryDetail): Promise<void> {
           </ul>
         </div>
 
-        <form novalidate @submit.prevent="save()">
+        <form novalidate @submit.prevent="save">
           <FieldList
             v-model="values"
             :fields="definition.fields"
             :issues="issues"
             :disabled="saving"
             :collection="collection"
-            :entry-id="id"
+            :entry-slug="slug"
           />
 
           <!-- Enter in a text input should save, not do nothing. -->
@@ -245,15 +269,6 @@ async function onRestored(restored: EntryDetail): Promise<void> {
       </template>
     </div>
 
-    <RevisionPanel
-      v-if="id"
-      :open="showRevisions"
-      target="entry"
-      :entry-id="id"
-      @close="showRevisions = false"
-      @restored="onRestored"
-    />
-
     <ConfirmDialog
       :open="confirmDelete"
       :title="`Delete “${title}”?`"
@@ -262,7 +277,12 @@ async function onRestored(restored: EntryDetail): Promise<void> {
       @cancel="confirmDelete = false"
       @confirm="remove"
     >
-      <p>This cannot be undone. The entry and its history will be removed.</p>
+      <!-- Honest about what a delete is now: a commit, which the repository's
+           history keeps whether or not this server ever runs again. -->
+      <p>
+        This removes <code>{{ location }}</code> from the repository. The deletion is a commit, so
+        the history still has it.
+      </p>
 
       <div v-if="references.length" class="mt-3 rounded-lg bg-warning/10 p-3">
         <p class="text-sm font-medium text-warning">

@@ -15,7 +15,7 @@ import { computed, onMounted, ref } from "vue";
 
 import { api, ApiError, type SystemInfo } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
-import { absoluteTime, formatBytes, formatDuration, relativeTime } from "@/lib/format";
+import { absoluteTime, formatBytes, formatDuration } from "@/lib/format";
 import { useToast } from "@/stores/toast";
 
 const toast = useToast();
@@ -56,7 +56,9 @@ const busiestKind = computed(() =>
 const labels = computed(() => {
   const map = new Map<string, string>();
   for (const item of info.value?.schema.collections ?? []) map.set(`collection:${item.name}`, item.label);
-  for (const item of info.value?.schema.globals ?? []) map.set(`global:${item.name}`, item.label);
+  for (const item of info.value?.schema.singletons ?? []) {
+    map.set(`singleton:${item.name}`, item.label);
+  }
   return map;
 });
 
@@ -72,23 +74,20 @@ function report(): string {
   const lines = [
     `Mica CMS ${data.cms.version} (${data.cms.environment})`,
     `Node ${data.cms.node} on ${data.cms.platform}, up ${formatDuration(data.cms.uptimeSeconds)}`,
-    `Schema ${data.schema.fingerprint} — ${data.schema.totals.collections} collections, ` +
-      `${data.schema.totals.globals} globals, ${data.schema.totals.total} fields`,
-    `Content version ${data.schema.contentVersion}`,
-    `Entries ${data.storage.entries.total} (${data.storage.entries.published} published), ` +
-      `${data.storage.revisions} revisions, ${data.storage.media.files} media files, ` +
-      `${data.storage.users} users`,
-    `Database migration ${data.storage.database.version}, ` +
-      `${data.storage.database.bytes === null ? "size unknown" : formatBytes(data.storage.database.bytes)}`,
-    `Build webhook ${data.publisher.configured ? "configured" : "not configured"}` +
-      (data.publisher.lastSuccessAt ? `, last success ${data.publisher.lastSuccessAt}` : "") +
-      (data.publisher.lastError ? `, last error: ${data.publisher.lastError}` : ""),
+    `Schema — ${data.schema.totals.collections} collections, ` +
+      `${data.schema.totals.singletons} singletons, ${data.schema.totals.total} fields`,
+    `Repository ${data.repository.origin}`,
+    `Repository holds ${data.repository.entries} entries and ` +
+      `${data.repository.media.files} media files (${data.repository.media.readable})`,
+    `Database: ${data.database.users} users, migration ${data.database.version}, ` +
+      `${data.database.bytes === null ? "size unknown" : formatBytes(data.database.bytes)}`,
   ];
 
   if (data.deployment) {
     lines.push(
       `Base URL ${data.deployment.baseUrl}`,
       `Schema file ${data.deployment.schemaPath}`,
+      `Content root ${data.deployment.contentRoot}`,
       `Data directory ${data.deployment.dataDir}`,
     );
   }
@@ -153,17 +152,17 @@ async function copyReport(): Promise<void> {
             </dd>
             <dd class="mt-1 text-xs text-muted">
               fields in {{ info.schema.totals.collections }} collections,
-              {{ info.schema.totals.globals }} globals
+              {{ info.schema.totals.singletons }} singletons
             </dd>
           </div>
 
           <div class="card p-4">
-            <dt class="text-sm text-muted">Stored</dt>
+            <dt class="text-sm text-muted">In the repository</dt>
             <dd class="mt-1 text-2xl font-semibold tabular-nums">
-              {{ info.storage.entries.total }}
+              {{ info.repository.entries }}
             </dd>
             <dd class="mt-1 text-xs text-muted">
-              entries · {{ info.storage.media.files }} media files
+              entries · {{ info.repository.media.files }} media files
             </dd>
           </div>
         </dl>
@@ -174,19 +173,11 @@ async function copyReport(): Promise<void> {
       <section class="card p-4" aria-labelledby="model-heading">
         <h2 id="model-heading" class="text-sm font-semibold">Content model</h2>
         <p class="mt-1 text-xs text-muted">
-          The schema this server was handed at startup. A website built against a different one
-          shows a different fingerprint.
+          The schema this server was handed at startup. The same file describes the model to the
+          Astro build, so the editor and the website cannot disagree about it.
         </p>
 
         <dl class="spec mt-3">
-          <div>
-            <dt>Fingerprint</dt>
-            <dd class="mono">{{ info.schema.fingerprint }}</dd>
-          </div>
-          <div>
-            <dt>Content version</dt>
-            <dd class="mono">{{ info.schema.contentVersion }}</dd>
-          </div>
           <div>
             <dt>Required fields</dt>
             <dd class="tabular-nums">
@@ -244,12 +235,7 @@ async function copyReport(): Promise<void> {
                   <span class="mono block text-muted">{{ item.name }}</span>
                 </td>
 
-                <td class="px-4 py-2.5 text-right tabular-nums">
-                  {{ item.entries.total }}
-                  <span v-if="item.entries.drafts" class="block text-xs text-warning">
-                    {{ item.entries.drafts }} draft
-                  </span>
-                </td>
+                <td class="px-4 py-2.5 text-right tabular-nums">{{ item.entries }}</td>
 
                 <td class="px-4 py-2.5 text-right tabular-nums">
                   {{ item.fields.top }}
@@ -271,15 +257,22 @@ async function copyReport(): Promise<void> {
         </div>
       </section>
 
-      <!-- -------------------------------------------------------- globals -->
+      <!-- ----------------------------------------------------- singletons -->
 
-      <section v-if="info.schema.globals.length" class="card p-4" aria-labelledby="globals-heading">
-        <h2 id="globals-heading" class="text-sm font-semibold">Globals</h2>
+      <section
+        v-if="info.schema.singletons.length"
+        class="card p-4"
+        aria-labelledby="singletons-heading"
+      >
+        <h2 id="singletons-heading" class="text-sm font-semibold">Singletons</h2>
 
         <dl class="spec mt-3">
-          <div v-for="item in info.schema.globals" :key="item.name">
+          <div v-for="item in info.schema.singletons" :key="item.name">
             <dt>
-              <RouterLink :to="{ name: 'global', params: { name: item.name } }" class="hover:text-brand">
+              <RouterLink
+                :to="{ name: 'singleton', params: { name: item.name } }"
+                class="hover:text-brand"
+              >
                 {{ item.label }}
               </RouterLink>
             </dt>
@@ -315,90 +308,59 @@ async function copyReport(): Promise<void> {
         </ul>
       </section>
 
-      <!-- -------------------------------------------------------- storage -->
+      <!-- ----------------------------------------------------- repository -->
 
-      <section class="card p-4" aria-labelledby="storage-heading">
-        <h2 id="storage-heading" class="text-sm font-semibold">Storage</h2>
+      <!--
+        Two sections rather than one "Storage", because they are not the same
+        kind of thing and should not be backed up the same way. The repository
+        is the website. The database is only this server's memory of who is
+        signed in.
+      -->
+
+      <section class="card p-4" aria-labelledby="repository-heading">
+        <h2 id="repository-heading" class="text-sm font-semibold">Content repository</h2>
+        <p class="mt-1 text-xs text-muted">
+          The source of truth for the website. Everything here is a file under version control, so
+          the site can be rebuilt from it without this server.
+        </p>
 
         <dl class="spec mt-3">
           <div>
-            <dt>Entries</dt>
-            <dd class="tabular-nums">
-              {{ info.storage.entries.total }} — {{ info.storage.entries.published }} published,
-              {{ info.storage.entries.drafts }} draft
-            </dd>
+            <dt>Origin</dt>
+            <dd class="mono">{{ info.repository.origin }}</dd>
           </div>
           <div>
-            <dt>Revisions</dt>
-            <dd class="tabular-nums">{{ info.storage.revisions }}</dd>
+            <dt>Entries</dt>
+            <dd class="tabular-nums">{{ info.repository.entries }}</dd>
           </div>
           <div>
             <dt>Media</dt>
             <dd class="tabular-nums">
-              {{ info.storage.media.files }} files · {{ info.storage.media.readable }}
-            </dd>
-          </div>
-          <div>
-            <dt>Accounts</dt>
-            <dd class="tabular-nums">{{ info.storage.users }}</dd>
-          </div>
-          <div>
-            <dt>Database</dt>
-            <dd class="tabular-nums">
-              {{
-                info.storage.database.bytes === null
-                  ? "in memory"
-                  : formatBytes(info.storage.database.bytes)
-              }}
-              · migration {{ info.storage.database.version }}
+              {{ info.repository.media.files }} files · {{ info.repository.media.readable }}
             </dd>
           </div>
         </dl>
       </section>
 
-      <!-- ----------------------------------------------------- publishing -->
+      <!-- ------------------------------------------------------- database -->
 
-      <section class="card p-4" aria-labelledby="publish-heading">
-        <h2 id="publish-heading" class="text-sm font-semibold">Publishing</h2>
+      <section class="card p-4" aria-labelledby="database-heading">
+        <h2 id="database-heading" class="text-sm font-semibold">Operational database</h2>
+        <p class="mt-1 text-xs text-muted">
+          Accounts and sessions only. Losing it signs everyone out; no content is in it.
+        </p>
 
         <dl class="spec mt-3">
           <div>
-            <dt>Build webhook</dt>
-            <dd>{{ info.publisher.configured ? "Configured" : "Not configured" }}</dd>
+            <dt>Accounts</dt>
+            <dd class="tabular-nums">{{ info.database.users }}</dd>
           </div>
           <div>
-            <dt>Queued builds</dt>
-            <dd class="tabular-nums">{{ info.publisher.pending }}</dd>
-          </div>
-          <div>
-            <dt>Last attempt</dt>
-            <dd>
-              <time
-                v-if="info.publisher.lastAttemptAt"
-                :datetime="info.publisher.lastAttemptAt"
-                :title="absoluteTime(info.publisher.lastAttemptAt)"
-              >
-                {{ relativeTime(info.publisher.lastAttemptAt) }}
-              </time>
-              <span v-else>—</span>
+            <dt>Size</dt>
+            <dd class="tabular-nums">
+              {{ info.database.bytes === null ? "in memory" : formatBytes(info.database.bytes) }}
+              · migration {{ info.database.version }}
             </dd>
-          </div>
-          <div>
-            <dt>Last success</dt>
-            <dd>
-              <time
-                v-if="info.publisher.lastSuccessAt"
-                :datetime="info.publisher.lastSuccessAt"
-                :title="absoluteTime(info.publisher.lastSuccessAt)"
-              >
-                {{ relativeTime(info.publisher.lastSuccessAt) }}
-              </time>
-              <span v-else>—</span>
-            </dd>
-          </div>
-          <div v-if="info.publisher.lastError">
-            <dt>Last error</dt>
-            <dd class="text-danger">{{ info.publisher.lastError }}</dd>
           </div>
         </dl>
       </section>
@@ -434,8 +396,8 @@ async function copyReport(): Promise<void> {
             <dd class="mono">{{ info.deployment.databasePath }}</dd>
           </div>
           <div>
-            <dt>Media directory</dt>
-            <dd class="mono">{{ info.deployment.mediaDir }}</dd>
+            <dt>Content root</dt>
+            <dd class="mono">{{ info.deployment.contentRoot }}</dd>
           </div>
           <div>
             <dt>Runtime</dt>
@@ -454,22 +416,6 @@ async function copyReport(): Promise<void> {
             <dd class="tabular-nums">
               {{ info.deployment.sessionTtlHours }} h, idle out after
               {{ info.deployment.sessionIdleHours }} h
-            </dd>
-          </div>
-          <div>
-            <dt>Publish debounce</dt>
-            <dd class="tabular-nums">{{ info.deployment.publishDebounceMs }} ms</dd>
-          </div>
-          <div>
-            <dt>Webhook signature</dt>
-            <dd>
-              {{
-                !info.deployment.buildWebhookConfigured
-                  ? "—"
-                  : info.deployment.buildWebhookSigned
-                    ? "Signed"
-                    : "Unsigned"
-              }}
             </dd>
           </div>
           <div>

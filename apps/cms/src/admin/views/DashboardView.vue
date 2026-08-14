@@ -1,18 +1,30 @@
 <script setup lang="ts">
+/**
+ * Dashboard.
+ *
+ * Two panels that used to be here are gone. There is no draft count, because
+ * there are no drafts: an entry is saved or it is not, and saved means
+ * committed. There is no "Rebuild website" button either — the commit is the
+ * trigger, and what happens next belongs to the repository's own pipeline,
+ * which Mica does not own and should not pretend to.
+ *
+ * "Recently edited" is gone for a different reason: the honest source for it is
+ * the repository's history, and the connector in front of a plain working tree
+ * has none to read. It comes back with the Git connectors, or not at all.
+ */
+
 import { computed, onMounted, ref } from "vue";
 
 import { api, ApiError, type Overview } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
 import { useAuth } from "@/stores/auth";
 import { useToast } from "@/stores/toast";
-import { relativeTime } from "@/lib/format";
 
 const auth = useAuth();
 const toast = useToast();
 
 const overview = ref<Overview | null>(null);
 const loading = ref(true);
-const publishing = ref(false);
 
 const greeting = computed(() => {
   const name = auth.user.value?.name?.split(" ")[0] || "there";
@@ -21,8 +33,8 @@ const greeting = computed(() => {
   return `${part}, ${name}`;
 });
 
-const drafts = computed(() =>
-  (overview.value?.collections ?? []).reduce((total, item) => total + item.drafts, 0),
+const entries = computed(() =>
+  (overview.value?.collections ?? []).reduce((total, item) => total + item.total, 0),
 );
 
 onMounted(async () => {
@@ -34,33 +46,13 @@ onMounted(async () => {
     loading.value = false;
   }
 });
-
-async function rebuild(): Promise<void> {
-  publishing.value = true;
-  try {
-    await api.publish();
-    toast.success("Website rebuild requested.");
-    overview.value = await api.overview();
-  } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not trigger a rebuild.");
-  } finally {
-    publishing.value = false;
-  }
-}
 </script>
 
 <template>
-  <PageHeader :title="greeting" :subtitle="`${drafts} unpublished draft${drafts === 1 ? '' : 's'}`">
-    <button
-      v-if="overview?.publisher.configured"
-      type="button"
-      class="btn-secondary"
-      :disabled="publishing"
-      @click="rebuild"
-    >
-      {{ publishing ? "Requesting…" : "Rebuild website" }}
-    </button>
-  </PageHeader>
+  <PageHeader
+    :title="greeting"
+    :subtitle="`${entries} entr${entries === 1 ? 'y' : 'ies'} in the content repository`"
+  />
 
   <div class="mx-auto max-w-5xl space-y-6 px-4 pb-12 sm:px-6">
     <p v-if="loading" class="text-sm text-muted">Loading…</p>
@@ -78,9 +70,7 @@ async function rebuild(): Promise<void> {
               <p class="text-sm text-muted">{{ collection.label }}</p>
               <p class="mt-1 text-2xl font-semibold tabular-nums">{{ collection.total }}</p>
               <p class="mt-1 text-xs text-muted">
-                {{ collection.published }} published<span v-if="collection.drafts">
-                  · {{ collection.drafts }} draft</span
-                >
+                {{ collection.total === 1 ? "entry" : "entries" }}
               </p>
             </RouterLink>
           </li>
@@ -95,70 +85,14 @@ async function rebuild(): Promise<void> {
         </ul>
       </section>
 
-      <section class="card" aria-labelledby="recent-heading">
-        <h2 id="recent-heading" class="border-b border-line px-4 py-3 text-sm font-semibold">
-          Recently edited
-        </h2>
+      <section class="card p-4" aria-labelledby="repository-heading">
+        <h2 id="repository-heading" class="text-sm font-semibold">Content repository</h2>
 
-        <p v-if="overview.recent.length === 0" class="px-4 py-6 text-sm text-muted">
-          Nothing has been edited yet.
-        </p>
+        <p class="mt-2 break-all font-mono text-xs text-muted">{{ overview.repository }}</p>
 
-        <ul v-else class="divide-y divide-line">
-          <li v-for="item in overview.recent" :key="item.id">
-            <RouterLink
-              :to="{ name: 'entry', params: { collection: item.collection, id: item.id } }"
-              class="flex items-center gap-3 px-4 py-2.5 transition hover:bg-canvas"
-            >
-              <span class="min-w-0 flex-1">
-                <span class="block truncate text-sm font-medium">{{ item.title }}</span>
-                <span class="block text-xs text-muted">{{ item.collectionLabel }}</span>
-              </span>
-
-              <span
-                :class="[
-                  'badge shrink-0',
-                  item.status === 'published'
-                    ? 'bg-success/10 text-success'
-                    : 'bg-warning/10 text-warning',
-                ]"
-              >
-                {{ item.status === "published" ? "Published" : "Draft" }}
-              </span>
-
-              <time
-                :datetime="item.updatedAt"
-                class="hidden w-28 shrink-0 text-right text-xs text-muted sm:block"
-              >
-                {{ relativeTime(item.updatedAt) }}
-              </time>
-            </RouterLink>
-          </li>
-        </ul>
-      </section>
-
-      <section class="card p-4" aria-labelledby="publishing-heading">
-        <h2 id="publishing-heading" class="text-sm font-semibold">Publishing</h2>
-
-        <dl class="mt-3 grid gap-x-6 gap-y-2 text-sm sm:grid-cols-2">
-          <div class="flex justify-between gap-4 sm:block">
-            <dt class="text-muted">Build webhook</dt>
-            <dd>{{ overview.publisher.configured ? "Configured" : "Not configured" }}</dd>
-          </div>
-          <div class="flex justify-between gap-4 sm:block">
-            <dt class="text-muted">Last successful build</dt>
-            <dd>
-              {{ overview.publisher.lastSuccessAt ? relativeTime(overview.publisher.lastSuccessAt) : "—" }}
-            </dd>
-          </div>
-          <div v-if="overview.publisher.lastError" class="sm:col-span-2">
-            <dt class="text-muted">Last error</dt>
-            <dd class="text-danger">{{ overview.publisher.lastError }}</dd>
-          </div>
-        </dl>
-
-        <p v-if="!overview.publisher.configured" class="mt-3 text-xs text-muted">
-          Set BUILD_WEBHOOK_URL to have the website rebuilt automatically when content is published.
+        <p class="mt-3 text-sm text-muted">
+          Every entry and every uploaded file is a file in this repository. Saving writes it there,
+          so the website can be rebuilt from the repository alone — with or without this server.
         </p>
       </section>
     </template>

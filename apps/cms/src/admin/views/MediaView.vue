@@ -1,36 +1,75 @@
 <script setup lang="ts">
-/** Media library: upload, rename, set alt text, delete. */
+/**
+ * Media library — a view of the files in the content repository.
+ *
+ * Much smaller than it was, because most of what this screen used to own has
+ * moved somewhere better:
+ *
+ *   - Alt text is not a property of a file. The same photograph means different
+ *     things in different places, so the alt text belongs to the field that
+ *     uses it, next to the content it describes.
+ *   - Renaming and deleting are not offered. A media file is referenced by its
+ *     path; moving or removing one is a change to every entry that points at
+ *     it, which is a job for a commit and a review, not for a single button
+ *     that quietly leaves gaps on the website.
+ *
+ * What is left is the useful part: see what is there, and add to it. Files are
+ * grouped by directory, because that is now meaningful — an entry's images sit
+ * beside the entry.
+ */
 
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, ref } from "vue";
 
 import { api, ApiError, type MediaItem } from "@/api";
-import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import PageHeader from "@/components/PageHeader.vue";
-import { absoluteTime, formatBytes } from "@/lib/format";
+import { formatBytes } from "@/lib/format";
 import { useToast } from "@/stores/toast";
 
 const toast = useToast();
 
 const items = ref<MediaItem[]>([]);
-const total = ref(0);
 const loading = ref(true);
 const uploading = ref(false);
 const search = ref("");
 const dragging = ref(false);
 const selected = ref<MediaItem | null>(null);
-const pendingDelete = ref<MediaItem | null>(null);
-const deleting = ref(false);
 const fileInput = ref<HTMLInputElement | null>(null);
 
-const draft = ref({ filename: "", altText: "" });
-let searchTimer: ReturnType<typeof setTimeout> | undefined;
+const isImage = (item: MediaItem): boolean => item.mimeType.startsWith("image/");
+
+/** The directory a file sits in; `media` is the shared one. */
+const folderOf = (path: string): string => {
+  const parts = path.split("/");
+  parts.pop();
+  return parts.join("/") || "/";
+};
+
+const matching = computed(() => {
+  const term = search.value.trim().toLowerCase();
+  return term ? items.value.filter((item) => item.path.toLowerCase().includes(term)) : items.value;
+});
+
+/** Grouped by directory, in path order — the order the repository has them. */
+const folders = computed(() => {
+  const groups = new Map<string, MediaItem[]>();
+  for (const item of matching.value) {
+    const folder = folderOf(item.path);
+    const group = groups.get(folder);
+    if (group) group.push(item);
+    else groups.set(folder, [item]);
+  }
+  return [...groups].sort(([a], [b]) => a.localeCompare(b));
+});
+
+const totalBytes = computed(() => items.value.reduce((sum, item) => sum + item.size, 0));
 
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    const result = await api.media.list({ search: search.value, limit: 200 });
-    items.value = result.items;
-    total.value = result.total;
+    items.value = (await api.media.list()).items;
+    // The chosen file may have gone from the repository between loads.
+    const stillThere = items.value.find((item) => item.path === selected.value?.path);
+    selected.value = stillThere ?? null;
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not load the media library.");
   } finally {
@@ -39,14 +78,6 @@ async function load(): Promise<void> {
 }
 
 onMounted(load);
-watch(search, () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(load, 250);
-});
-
-watch(selected, (item) => {
-  draft.value = { filename: item?.filename ?? "", altText: item?.alt ?? "" };
-});
 
 async function upload(files: FileList | File[] | null): Promise<void> {
   const list = Array.from(files ?? []);
@@ -57,6 +88,7 @@ async function upload(files: FileList | File[] | null): Promise<void> {
     const { items: uploaded } = await api.media.upload(list);
     toast.success(`Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}.`);
     await load();
+    selected.value = items.value.find((item) => item.path === uploaded[0]?.path) ?? null;
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "The upload failed.");
   } finally {
@@ -65,45 +97,22 @@ async function upload(files: FileList | File[] | null): Promise<void> {
   }
 }
 
-async function saveDetails(): Promise<void> {
-  if (!selected.value) return;
+async function copyPath(path: string): Promise<void> {
   try {
-    await api.media.update(selected.value.id, draft.value);
-    toast.success("Saved.");
-    await load();
-    selected.value = items.value.find((item) => item.id === selected.value?.id) ?? null;
-  } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not save the details.");
+    await navigator.clipboard.writeText(path);
+    toast.success("Path copied.");
+  } catch {
+    // Clipboard access is denied in some browsers unless the page is focused.
+    toast.error("Could not copy. Select the path and copy it by hand.");
   }
 }
-
-async function remove(): Promise<void> {
-  const target = pendingDelete.value;
-  if (!target) return;
-
-  deleting.value = true;
-  try {
-    // The server refuses a referenced file unless forced; the dialog has
-    // already told the editor what would break.
-    await api.media.remove(target.id, target.inUse);
-    toast.success("File deleted.");
-    if (selected.value?.id === target.id) selected.value = null;
-    await load();
-  } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not delete the file.");
-  } finally {
-    deleting.value = false;
-    pendingDelete.value = null;
-  }
-}
-
-const isImage = (item: MediaItem): boolean => item.mimeType.startsWith("image/");
-
-const missingAlt = computed(() => items.value.filter((item) => isImage(item) && !item.alt).length);
 </script>
 
 <template>
-  <PageHeader title="Media" :subtitle="`${total} file${total === 1 ? '' : 's'}`">
+  <PageHeader
+    title="Media"
+    :subtitle="`${items.length} file${items.length === 1 ? '' : 's'} · ${formatBytes(totalBytes)}`"
+  >
     <label class="btn-primary cursor-pointer">
       <input
         ref="fileInput"
@@ -131,19 +140,15 @@ const missingAlt = computed(() => items.value.filter((item) => isImage(item) && 
       <input
         v-model="search"
         type="search"
-        placeholder="Search files…"
+        placeholder="Search by name or folder…"
         class="input max-w-64"
         aria-label="Search media"
       />
-
-      <p v-if="missingAlt" class="text-xs text-muted">
-        {{ missingAlt }} image{{ missingAlt === 1 ? "" : "s" }} without alt text
-      </p>
     </div>
 
     <p v-if="loading" class="py-12 text-center text-sm text-muted">Loading…</p>
 
-    <div v-else-if="items.length === 0" class="card px-4 py-12 text-center">
+    <div v-else-if="matching.length === 0" class="card px-4 py-12 text-center">
       <p class="text-sm font-medium">
         {{ search ? `Nothing matches "${search}".` : "No files yet." }}
       </p>
@@ -153,47 +158,48 @@ const missingAlt = computed(() => items.value.filter((item) => isImage(item) && 
     </div>
 
     <div v-else class="grid gap-5 lg:grid-cols-[1fr_20rem]">
-      <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-        <li v-for="item in items" :key="item.id">
-          <button
-            type="button"
-            :aria-pressed="selected?.id === item.id"
-            :class="[
-              'block w-full overflow-hidden rounded-lg border text-left transition',
-              selected?.id === item.id
-                ? 'border-brand ring-2 ring-brand/25'
-                : 'border-line hover:border-brand/40',
-            ]"
-            @click="selected = selected?.id === item.id ? null : item"
-          >
-            <span class="block aspect-4/3 bg-canvas">
-              <img
-                v-if="isImage(item)"
-                :src="item.url"
-                :alt="item.alt ?? ''"
-                loading="lazy"
-                class="h-full w-full object-cover"
-              />
-              <span
-                v-else
-                class="flex h-full w-full items-center justify-center text-xs font-semibold uppercase text-muted"
-              >
-                {{ item.mimeType.split("/")[1] }}
-              </span>
-            </span>
+      <div class="space-y-6">
+        <section v-for="[folder, files] in folders" :key="folder">
+          <h2 class="mb-2 font-mono text-xs text-muted">{{ folder }}</h2>
 
-            <span class="block px-2 py-1.5">
-              <span class="block truncate text-xs font-medium">{{ item.filename }}</span>
-              <span class="flex items-center gap-1 text-[11px] text-muted">
-                {{ formatBytes(item.size) }}
-                <span v-if="isImage(item) && !item.alt" class="text-warning">
-                  · no alt text
+          <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+            <li v-for="item in files" :key="item.path">
+              <button
+                type="button"
+                :aria-pressed="selected?.path === item.path"
+                :class="[
+                  'block w-full overflow-hidden rounded-lg border text-left transition',
+                  selected?.path === item.path
+                    ? 'border-brand ring-2 ring-brand/25'
+                    : 'border-line hover:border-brand/40',
+                ]"
+                @click="selected = selected?.path === item.path ? null : item"
+              >
+                <span class="block aspect-4/3 bg-canvas">
+                  <img
+                    v-if="isImage(item)"
+                    :src="api.media.url(item.path)"
+                    alt=""
+                    loading="lazy"
+                    class="h-full w-full object-cover"
+                  />
+                  <span
+                    v-else
+                    class="flex h-full w-full items-center justify-center text-xs font-semibold uppercase text-muted"
+                  >
+                    {{ item.mimeType.split("/")[1] }}
+                  </span>
                 </span>
-              </span>
-            </span>
-          </button>
-        </li>
-      </ul>
+
+                <span class="block px-2 py-1.5">
+                  <span class="block truncate text-xs font-medium">{{ item.filename }}</span>
+                  <span class="block text-[11px] text-muted">{{ formatBytes(item.size) }}</span>
+                </span>
+              </button>
+            </li>
+          </ul>
+        </section>
+      </div>
 
       <aside v-if="selected" class="card h-fit p-4 lg:sticky lg:top-5">
         <h2 class="text-sm font-semibold">File details</h2>
@@ -201,8 +207,8 @@ const missingAlt = computed(() => items.value.filter((item) => isImage(item) && 
         <div class="mt-3 overflow-hidden rounded-lg border border-line bg-canvas">
           <img
             v-if="isImage(selected)"
-            :src="selected.url"
-            :alt="selected.alt ?? ''"
+            :src="api.media.url(selected.path)"
+            alt=""
             class="max-h-48 w-full object-contain"
           />
           <p v-else class="p-6 text-center text-xs text-muted">
@@ -210,28 +216,7 @@ const missingAlt = computed(() => items.value.filter((item) => isImage(item) && 
           </p>
         </div>
 
-        <form class="mt-4 space-y-3" @submit.prevent="saveDetails">
-          <div>
-            <label for="media-filename" class="field-label">Name</label>
-            <input id="media-filename" v-model="draft.filename" type="text" class="input mt-1.5" />
-          </div>
-
-          <div>
-            <label for="media-alt" class="field-label">Alt text</label>
-            <textarea
-              id="media-alt"
-              v-model="draft.altText"
-              rows="2"
-              class="input mt-1.5"
-              placeholder="Describe the image for screen readers"
-            />
-            <p class="field-hint">Leave empty only if the image is purely decorative.</p>
-          </div>
-
-          <button type="submit" class="btn-primary w-full">Save details</button>
-        </form>
-
-        <dl class="mt-4 space-y-1 border-t border-line pt-3 text-xs text-muted">
+        <dl class="mt-4 space-y-1 text-xs text-muted">
           <div class="flex justify-between gap-3">
             <dt>Type</dt>
             <dd>{{ selected.mimeType }}</dd>
@@ -244,45 +229,29 @@ const missingAlt = computed(() => items.value.filter((item) => isImage(item) && 
             <dt>Size</dt>
             <dd>{{ formatBytes(selected.size) }}</dd>
           </div>
-          <div class="flex justify-between gap-3">
-            <dt>Uploaded</dt>
-            <dd>{{ absoluteTime(selected.createdAt) }}</dd>
-          </div>
-          <div class="flex justify-between gap-3">
-            <dt>In use</dt>
-            <dd>{{ selected.inUse ? "Yes" : "No" }}</dd>
-          </div>
         </dl>
 
+        <!-- The path is the file's identity: it is what a field stores and what
+             appears in the diff, so it is worth being able to copy. -->
+        <div class="mt-3 border-t border-line pt-3">
+          <p class="field-label">Path in the repository</p>
+          <p class="mt-1 break-all font-mono text-[11px]">{{ selected.path }}</p>
+        </div>
+
         <div class="mt-3 flex gap-2">
+          <button type="button" class="btn-secondary flex-1" @click="copyPath(selected.path)">
+            Copy path
+          </button>
           <a
-            :href="selected.url"
+            :href="api.media.url(selected.path)"
             target="_blank"
             rel="noopener noreferrer"
             class="btn-secondary flex-1"
           >
             Open
           </a>
-          <button type="button" class="btn-danger flex-1" @click="pendingDelete = selected">
-            Delete
-          </button>
         </div>
       </aside>
     </div>
   </div>
-
-  <ConfirmDialog
-    :open="pendingDelete !== null"
-    :title="`Delete “${pendingDelete?.filename}”?`"
-    confirm-label="Delete"
-    destructive
-    :busy="deleting"
-    @cancel="pendingDelete = null"
-    @confirm="remove"
-  >
-    <p v-if="pendingDelete?.inUse" class="font-medium text-warning">
-      This file is still used by published content. Deleting it will leave a gap on the website.
-    </p>
-    <p v-else>This cannot be undone.</p>
-  </ConfirmDialog>
 </template>

@@ -1,22 +1,21 @@
 <script setup lang="ts">
 /**
- * Singleton editor — site configuration, navigation, theme (§17, §18).
+ * Singleton editor — site configuration, navigation, theme.
  *
- * A singleton has no draft state: saving it is publishing it, so there is one
- * button and validation is always strict.
+ * A singleton is one file in the repository, so this view is the entry editor
+ * without the parts that need a slug: no rename, no delete, no list to go back
+ * to. What it shares is `revision` — the version the form was opened against,
+ * sent back with the save so a second editor cannot be overwritten in silence.
  */
 
 import { computed, onMounted, ref, watch } from "vue";
 
 import { withDefaults as fillDefaults, type FieldIssue } from "@micacms/model";
 
-import { api, ApiError, type GlobalDetail } from "@/api";
+import { api, ApiError } from "@/api";
 import FieldList from "@/components/fields/FieldList.vue";
 import PageHeader from "@/components/PageHeader.vue";
-import RevisionPanel from "@/components/RevisionPanel.vue";
-import { provideMediaRegistry } from "@/composables/mediaRegistry";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
-import { absoluteTime } from "@/lib/format";
 import { useSchema } from "@/stores/schema";
 import { useToast } from "@/stores/toast";
 
@@ -24,33 +23,32 @@ const props = defineProps<{ name: string }>();
 
 const schema = useSchema();
 const toast = useToast();
-const registry = provideMediaRegistry();
 
-const definition = computed(() => schema.global(props.name));
+const definition = computed(() => schema.singleton(props.name));
 
 const values = ref<Record<string, unknown>>({});
 const issues = ref<FieldIssue[]>([]);
-const detail = ref<GlobalDetail | null>(null);
+const revision = ref<string | null>(null);
 const loading = ref(true);
 const saving = ref(false);
-const showRevisions = ref(false);
+const conflict = ref(false);
+
+/** Where these settings live, as the server reports it. */
+const location = ref("");
 
 const { dirty, markClean } = useUnsavedChanges(values);
-
-function setBaseline(next: GlobalDetail): void {
-  detail.value = next;
-  values.value = structuredClone(
-    fillDefaults(definition.value?.fields ?? {}, next.raw),
-  );
-  registry.add(next.media);
-  issues.value = [];
-  markClean();
-}
 
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    setBaseline(await api.globals.get(props.name));
+    const detail = await api.singletons.get(props.name);
+    // Defaults fill in fields added to the model since the file was written.
+    values.value = structuredClone(fillDefaults(definition.value?.fields ?? {}, detail.data));
+    revision.value = detail.revision;
+    location.value = detail.path;
+    issues.value = [];
+    conflict.value = false;
+    markClean();
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not load these settings.");
   } finally {
@@ -66,10 +64,16 @@ async function save(): Promise<void> {
   issues.value = [];
 
   try {
-    setBaseline(await api.globals.save(props.name, values.value));
+    const saved = await api.singletons.save(props.name, values.value, revision.value);
+    revision.value = saved.revision;
+    conflict.value = false;
+    markClean();
     toast.success("Settings saved.");
   } catch (error) {
-    if (error instanceof ApiError && error.issues.length > 0) {
+    if (error instanceof ApiError && error.status === 409) {
+      conflict.value = true;
+      toast.error("Someone else saved these settings while you were editing them.");
+    } else if (error instanceof ApiError && error.issues.length > 0) {
       issues.value = error.issues;
       toast.error(error.message, `${error.issues.length} field(s) need attention.`);
     } else {
@@ -83,13 +87,7 @@ async function save(): Promise<void> {
 
 <template>
   <template v-if="definition">
-    <PageHeader
-      :title="definition.label"
-      :subtitle="
-        detail?.updatedAt ? `Last saved ${absoluteTime(detail.updatedAt)}` : definition.description
-      "
-    >
-      <button type="button" class="btn-ghost" @click="showRevisions = true">History</button>
+    <PageHeader :title="definition.label" :subtitle="location">
       <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save">
         {{ saving ? "Saving…" : dirty ? "Save changes" : "Saved" }}
       </button>
@@ -102,6 +100,20 @@ async function save(): Promise<void> {
         <p v-if="definition.description" class="mb-5 text-sm text-muted">
           {{ definition.description }}
         </p>
+
+        <div
+          v-if="conflict"
+          role="alert"
+          class="mb-5 rounded-lg border border-warning/30 bg-warning/5 p-3.5"
+        >
+          <p class="text-sm font-medium text-warning">These settings changed while you were editing</p>
+          <p class="mt-1 text-xs text-muted">
+            Nothing has been saved. Copy anything you need, then load the current version.
+          </p>
+          <button type="button" class="btn-secondary mt-2.5" @click="load">
+            Discard mine and reload
+          </button>
+        </div>
 
         <div
           v-if="issues.length"
@@ -127,20 +139,6 @@ async function save(): Promise<void> {
         </form>
       </template>
     </div>
-
-    <RevisionPanel
-      :open="showRevisions"
-      target="global"
-      :entry-id="name"
-      @close="showRevisions = false"
-      @restored="
-        (restored) => {
-          setBaseline(restored);
-          showRevisions = false;
-          toast.success('Settings restored.');
-        }
-      "
-    />
   </template>
 
   <div v-else class="p-8 text-center text-sm text-muted">

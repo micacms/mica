@@ -347,14 +347,33 @@ describe("content", () => {
     assert.equal(response.status, 404);
   });
 
+  /**
+   * Whether an entry is a directory or a single file follows from the model,
+   * so the editor is told rather than left to work it out. Getting this wrong
+   * would show an editor a path that is not there.
+   */
+  it("reports where an entry is in the repository", async () => {
+    await create({ title: "Where Am I", year: 2024, summary: "# Here" });
+    const { body } = await get("where-am-i");
+
+    // A directory: `projects` has rich text and media beside the entry.
+    assert.equal(body.path, "projects/where-am-i");
+  });
+
   /* ------------------------------------------------------- singletons */
 
   it("opens an empty singleton before anything has been saved", async () => {
     const response = await harness.request("/api/admin/singletons/settings", { session });
     assert.equal(response.status, 200);
 
-    const body = (await response.json()) as { data: Record<string, unknown>; revision: null };
+    const body = (await response.json()) as {
+      data: Record<string, unknown>;
+      revision: null;
+      path: string;
+    };
     assert.equal(body.revision, null);
+    // A plain file, because `settings` declares no rich text and no media.
+    assert.equal(body.path, "settings.json");
   });
 
   it("saves a singleton to its own file", async () => {

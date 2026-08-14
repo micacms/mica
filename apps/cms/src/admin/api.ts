@@ -6,7 +6,7 @@
  * can place them next to the right input.
  */
 
-import type { AnyField, EntryStatus, FieldIssue, MediaRef } from "@micacms/model";
+import type { AnyField, FieldIssue } from "@micacms/model";
 
 const BASE = "/api";
 
@@ -110,7 +110,7 @@ export interface SchemaCollection {
   fields: Record<string, AnyField>;
 }
 
-export interface SchemaGlobal {
+export interface SchemaSingleton {
   name: string;
   label: string;
   description: string | null;
@@ -119,7 +119,7 @@ export interface SchemaGlobal {
 
 export interface Schema {
   collections: SchemaCollection[];
-  globals: SchemaGlobal[];
+  singletons: SchemaSingleton[];
 }
 
 export interface AdminUser {
@@ -143,6 +143,14 @@ export interface EntrySummary {
 
 export interface EntryDetail extends EntrySummary {
   /**
+   * Where the entry is in the repository, relative to the content root.
+   *
+   * A directory when the entry has rich text or media beside it, a single
+   * `.json` file otherwise — which is why the server says so rather than the
+   * editor guessing.
+   */
+  path: string;
+  /**
    * The version of this entry the form was opened against.
    *
    * Sent back with the save. `null` means the entry did not exist, which is
@@ -163,6 +171,8 @@ export interface SavedEntry {
 export interface SingletonDetail {
   name: string;
   label: string;
+  /** Path in the repository, relative to the content root. */
+  path: string;
   data: Record<string, unknown>;
   revision: string | null;
 }
@@ -193,10 +203,10 @@ export interface FieldCounts {
   required: number;
 }
 
-export interface EntryCounts {
-  total: number;
-  drafts: number;
-  published: number;
+export interface MediaUsage {
+  files: number;
+  bytes: number;
+  readable: string;
 }
 
 /** Everything the System view shows. `deployment` is null for editors. */
@@ -210,13 +220,11 @@ export interface SystemInfo {
     uptimeSeconds: number;
   };
   schema: {
-    fingerprint: string;
-    contentVersion: string;
-    totals: FieldCounts & { collections: number; globals: number };
+    totals: FieldCounts & { collections: number; singletons: number };
     kinds: Array<{ kind: string; count: number }>;
     relations: Array<{
       from: string;
-      fromType: "collection" | "global";
+      fromType: "collection" | "singleton";
       path: string;
       to: string;
       multiple: boolean;
@@ -230,34 +238,43 @@ export interface SystemInfo {
       listed: number;
       sortable: boolean;
       depth: number;
-      entries: EntryCounts;
+      /** Entries in the repository. A plain count: there are no drafts. */
+      entries: number;
     }>;
-    globals: Array<{ name: string; label: string; fields: FieldCounts; depth: number }>;
+    singletons: Array<{ name: string; label: string; fields: FieldCounts; depth: number }>;
   };
-  storage: {
-    entries: EntryCounts;
-    revisions: number;
+  /**
+   * The website's content, and what must be backed up — by Git, which is
+   * already doing it.
+   */
+  repository: {
+    origin: string;
+    entries: number;
+    media: MediaUsage;
+  };
+  /**
+   * Mica's own operational state. Losing it signs everyone out and costs
+   * nothing else.
+   */
+  database: {
     users: number;
-    database: { version: number; bytes: number | null };
-    media: { files: number; bytes: number; readable: string };
+    version: number;
+    bytes: number | null;
   };
   deployment: {
     baseUrl: string;
     schemaPath: string;
+    contentRoot: string;
     dataDir: string;
     databasePath: string;
-    mediaDir: string;
     logLevel: string;
     maxUploadBytes: number;
     maxUploadReadable: string;
     sessionTtlHours: number;
     sessionIdleHours: number;
-    publishDebounceMs: number;
     trustProxy: boolean;
     cookieSecure: boolean;
     adminOrigins: string[];
-    buildWebhookConfigured: boolean;
-    buildWebhookSigned: boolean;
     generatedSecrets: string[];
     memoryBytes: number;
   } | null;
@@ -286,7 +303,6 @@ export const api = {
   schema: () => request<Schema>("/admin/schema"),
   overview: () => request<Overview>("/admin/overview"),
   system: () => request<SystemInfo>("/admin/system"),
-  publish: () => request<{ ok: true }>("/admin/publish", { method: "POST" }),
 
   entries: {
     list: (collection: string, query: RequestOptions["query"] = {}) =>
@@ -297,7 +313,7 @@ export const api = {
     get: (collection: string, slug: string) =>
       request<EntryDetail>(`/admin/collections/${collection}/entries/${slug}`),
     create: (collection: string, body: { data: unknown; revision?: string | null }) =>
-      request<EntryDetail>(`/admin/collections/${collection}/entries`, { method: "POST", body }),
+      request<SavedEntry>(`/admin/collections/${collection}/entries`, { method: "POST", body }),
     update: (collection: string, slug: string, body: { data: unknown; revision?: string | null }) =>
       request<SavedEntry>(`/admin/collections/${collection}/entries/${slug}`, {
         method: "PUT",

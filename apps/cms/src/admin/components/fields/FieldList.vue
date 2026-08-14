@@ -22,7 +22,7 @@ const props = defineProps<{
   issues?: FieldIssue[];
   disabled?: boolean;
   collection?: string;
-  entryId?: string;
+  entrySlug?: string;
 }>();
 
 const emit = defineEmits<{ "update:modelValue": [Record<string, unknown>] }>();
@@ -86,7 +86,7 @@ function sourceFor(field: AnyField): string | null {
               :issues="issues"
               :disabled="disabled"
               :collection="collection"
-              :entry-id="entryId"
+              :entry-slug="entrySlug"
               :source="sourceFor(entry.field)"
               @update:model-value="update(entry.key, $event)"
             />
@@ -103,7 +103,7 @@ function sourceFor(field: AnyField): string | null {
             :issues="issues"
             :disabled="disabled"
             :collection="collection"
-            :entry-id="entryId"
+            :entry-slug="entrySlug"
             :source="sourceFor(entry.field)"
             @update:model-value="update(entry.key, $event)"
           />

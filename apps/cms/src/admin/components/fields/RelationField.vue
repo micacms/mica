@@ -1,7 +1,8 @@
 <script setup lang="ts">
 /**
  * Relation field. Stores entry slugs, so a reference stays readable in the
- * JSON payload and survives an export.
+ * JSON payload — and, now that the payload is a file in the repository, in the
+ * diff a reviewer reads.
  */
 
 import { computed, onMounted, ref } from "vue";
@@ -30,8 +31,7 @@ const targetLabel = computed(
 onMounted(async () => {
   try {
     // Collections here are in the hundreds, so one fetch beats a search box.
-    const { items } = await api.entries.list(field.value.collection, { limit: 200 });
-    options.value = items;
+    options.value = (await api.entries.list(field.value.collection)).items;
   } finally {
     loading.value = false;
   }
@@ -82,7 +82,7 @@ function toggle(slug: string): void {
         <legend class="sr-only">{{ label }}</legend>
         <label
           v-for="option in options"
-          :key="option.id"
+          :key="option.slug"
           class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-line bg-white px-3 py-2 text-sm hover:bg-canvas"
         >
           <input
@@ -93,12 +93,7 @@ function toggle(slug: string): void {
             @change="toggle(option.slug)"
           />
           <span class="min-w-0 flex-1 truncate">{{ option.title }}</span>
-          <span
-            v-if="option.status === 'draft'"
-            class="badge bg-warning/10 text-warning"
-          >
-            Draft
-          </span>
+          <span class="shrink-0 font-mono text-[11px] text-muted">{{ option.slug }}</span>
         </label>
       </fieldset>
 
@@ -113,8 +108,8 @@ function toggle(slug: string): void {
         @change="emit('update:modelValue', ($event.target as HTMLSelectElement).value || null)"
       >
         <option value="">Not set</option>
-        <option v-for="option in options" :key="option.id" :value="option.slug">
-          {{ option.title }}{{ option.status === "draft" ? " (draft)" : "" }}
+        <option v-for="option in options" :key="option.slug" :value="option.slug">
+          {{ option.title }}
         </option>
       </select>
     </template>

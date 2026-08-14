@@ -145,7 +145,7 @@ export function adminSystemRoutes(): Hono<Env> {
           ...item,
           entries: counts[item.name] ?? 0,
         })),
-        singletons: stats.globals,
+        singletons: stats.singletons,
       },
       /**
        * Deliberately two separate things.

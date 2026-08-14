@@ -8,7 +8,7 @@
 
 import { computed, ref } from "vue";
 
-import { api, type Schema, type SchemaCollection, type SchemaGlobal } from "@/api";
+import { api, type Schema, type SchemaCollection, type SchemaSingleton } from "@/api";
 
 const schema = ref<Schema | null>(null);
 let inFlight: Promise<Schema> | null = null;
@@ -17,7 +17,7 @@ export function useSchema() {
   return {
     schema: computed(() => schema.value),
     collections: computed<SchemaCollection[]>(() => schema.value?.collections ?? []),
-    globals: computed<SchemaGlobal[]>(() => schema.value?.globals ?? []),
+    singletons: computed<SchemaSingleton[]>(() => schema.value?.singletons ?? []),
     loaded: computed(() => schema.value !== null),
 
     /** Concurrent callers share one request. */
@@ -35,8 +35,8 @@ export function useSchema() {
       return schema.value?.collections.find((item) => item.name === name);
     },
 
-    global(name: string): SchemaGlobal | undefined {
-      return schema.value?.globals.find((item) => item.name === name);
+    singleton(name: string): SchemaSingleton | undefined {
+      return schema.value?.singletons.find((item) => item.name === name);
     },
 
     reset(): void {

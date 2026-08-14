@@ -1,16 +1,19 @@
 <script setup lang="ts">
 /**
- * Collection overview: a filterable list of entries with their status.
+ * Collection overview: a filterable list of entries.
  * Columns come from fields marked `listed` in the model.
+ *
+ * The status column and its filter are gone: an entry in the repository is
+ * saved, and saved is published. The "Updated" column went with them — the
+ * honest answer is the last commit that touched the file, which is the
+ * repository's to give, not a timestamp Mica writes into the entry.
  */
 
 import { computed, onMounted, ref, watch } from "vue";
 
-import type { EntryStatus } from "@micacms/model";
-
 import { api, ApiError, type EntrySummary } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
-import { previewValue, relativeTime } from "@/lib/format";
+import { previewValue } from "@/lib/format";
 import { useSchema } from "@/stores/schema";
 import { useToast } from "@/stores/toast";
 
@@ -20,10 +23,8 @@ const schema = useSchema();
 const toast = useToast();
 
 const entries = ref<EntrySummary[]>([]);
-const total = ref(0);
 const loading = ref(true);
 const search = ref("");
-const status = ref<EntryStatus | "">("");
 const reordering = ref(false);
 
 const definition = computed(() => schema.collection(props.collection));
@@ -34,18 +35,24 @@ const columns = computed(() => {
   return def.listedFields.filter((key) => key !== def.titleField);
 });
 
-let searchTimer: ReturnType<typeof setTimeout> | undefined;
+const matching = computed(() => {
+  const term = search.value.trim().toLowerCase();
+  if (!term) return entries.value;
+
+  // In the browser: the whole collection is already here, and a round trip per
+  // keystroke would only add latency.
+  return entries.value.filter(
+    (entry) =>
+      entry.title.toLowerCase().includes(term) ||
+      entry.slug.includes(term) ||
+      JSON.stringify(entry.data).toLowerCase().includes(term),
+  );
+});
 
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    const result = await api.entries.list(props.collection, {
-      search: search.value,
-      status: status.value,
-      limit: 200,
-    });
-    entries.value = result.items;
-    total.value = result.total;
+    entries.value = (await api.entries.list(props.collection)).items;
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not load the entries.");
   } finally {
@@ -55,12 +62,13 @@ async function load(): Promise<void> {
 
 onMounted(load);
 watch(() => props.collection, load);
-watch(status, load);
-watch(search, () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(load, 250);
-});
 
+/**
+ * Manual ordering.
+ *
+ * The order is a `_order.json` file listing slugs, so moving one entry is a
+ * one-line diff rather than a rewrite of every entry in the collection.
+ */
 async function move(index: number, direction: -1 | 1): Promise<void> {
   const target = index + direction;
   if (target < 0 || target >= entries.value.length) return;
@@ -73,7 +81,7 @@ async function move(index: number, direction: -1 | 1): Promise<void> {
   try {
     await api.entries.reorder(
       props.collection,
-      next.map((entry) => entry.id),
+      next.map((entry) => entry.slug),
     );
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not save the new order.");
@@ -83,22 +91,20 @@ async function move(index: number, direction: -1 | 1): Promise<void> {
   }
 }
 
-// Manual ordering is only meaningful in the unfiltered, unsorted list.
-const canReorder = computed(
-  () => (definition.value?.sortable ?? false) && !search.value && !status.value,
-);
+// Reordering a filtered list would move the wrong neighbours.
+const canReorder = computed(() => (definition.value?.sortable ?? false) && !search.value);
 </script>
 
 <template>
   <template v-if="definition">
     <PageHeader
       :title="definition.label"
-      :subtitle="definition.description ?? `${total} ${total === 1 ? 'entry' : 'entries'}`"
+      :subtitle="
+        definition.description ??
+        `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`
+      "
     >
-      <RouterLink
-        :to="{ name: 'entry-new', params: { collection } }"
-        class="btn-primary"
-      >
+      <RouterLink :to="{ name: 'entry-new', params: { collection } }" class="btn-primary">
         <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M10 4v12M4 10h12" stroke-linecap="round" />
         </svg>
@@ -115,23 +121,17 @@ const canReorder = computed(
           class="input max-w-64"
           :aria-label="`Search ${definition.label}`"
         />
-
-        <select v-model="status" class="input max-w-40" aria-label="Filter by status">
-          <option value="">All statuses</option>
-          <option value="published">Published</option>
-          <option value="draft">Draft</option>
-        </select>
       </div>
 
       <div class="card overflow-hidden">
         <p v-if="loading" class="px-4 py-8 text-center text-sm text-muted">Loading…</p>
 
-        <div v-else-if="entries.length === 0" class="px-4 py-12 text-center">
+        <div v-else-if="matching.length === 0" class="px-4 py-12 text-center">
           <p class="text-sm font-medium">
-            {{ search || status ? "Nothing matches those filters." : `No ${definition.label.toLowerCase()} yet.` }}
+            {{ search ? `Nothing matches "${search}".` : `No ${definition.label.toLowerCase()} yet.` }}
           </p>
           <RouterLink
-            v-if="!search && !status"
+            v-if="!search"
             :to="{ name: 'entry-new', params: { collection } }"
             class="btn-primary mt-4"
           >
@@ -152,10 +152,6 @@ const canReorder = computed(
               >
                 {{ definition.fields[column]?.label ?? column }}
               </th>
-              <th scope="col" class="px-4 py-2 font-medium">Status</th>
-              <th scope="col" class="hidden px-4 py-2 text-right font-medium sm:table-cell">
-                Updated
-              </th>
               <th v-if="canReorder" scope="col" class="px-2 py-2">
                 <span class="sr-only">Reorder</span>
               </th>
@@ -163,14 +159,10 @@ const canReorder = computed(
           </thead>
 
           <tbody class="divide-y divide-line">
-            <tr
-              v-for="(entry, index) in entries"
-              :key="entry.id"
-              class="transition hover:bg-canvas"
-            >
+            <tr v-for="(entry, index) in matching" :key="entry.slug" class="transition hover:bg-canvas">
               <td class="px-4 py-2.5">
                 <RouterLink
-                  :to="{ name: 'entry', params: { collection, id: entry.id } }"
+                  :to="{ name: 'entry', params: { collection, slug: entry.slug } }"
                   class="font-medium hover:underline"
                 >
                   {{ entry.title }}
@@ -184,23 +176,6 @@ const canReorder = computed(
                 class="hidden px-4 py-2.5 text-muted md:table-cell"
               >
                 {{ previewValue(entry.data[column]) }}
-              </td>
-
-              <td class="px-4 py-2.5">
-                <span
-                  :class="[
-                    'badge',
-                    entry.status === 'published'
-                      ? 'bg-success/10 text-success'
-                      : 'bg-warning/10 text-warning',
-                  ]"
-                >
-                  {{ entry.status === "published" ? "Published" : "Draft" }}
-                </span>
-              </td>
-
-              <td class="hidden px-4 py-2.5 text-right text-xs text-muted sm:table-cell">
-                <time :datetime="entry.updatedAt">{{ relativeTime(entry.updatedAt) }}</time>
               </td>
 
               <td v-if="canReorder" class="px-2 py-2.5">
@@ -219,7 +194,7 @@ const canReorder = computed(
                   <button
                     type="button"
                     class="btn-ghost px-1 py-0.5"
-                    :disabled="index === entries.length - 1 || reordering"
+                    :disabled="index === matching.length - 1 || reordering"
                     @click="move(index, 1)"
                   >
                     <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75">

@@ -15,9 +15,9 @@ const props = defineProps<{
   modelValue: unknown;
   issues?: FieldIssue[];
   disabled?: boolean;
-  /** Collection name and entry id, needed by slug generation. */
+  /** Collection name and current slug, needed by slug generation. */
   collection?: string;
-  entryId?: string;
+  entrySlug?: string;
   /** Value of the sibling a slug field derives from. */
   source?: string | null;
 }>();
@@ -30,7 +30,7 @@ const component = computed(() => fieldComponents[props.field.kind]);
 // in the DOM as stray attributes.
 const extra = computed(() =>
   props.field.kind === "slug"
-    ? { source: props.source, collection: props.collection, exceptId: props.entryId }
+    ? { source: props.source, collection: props.collection, exceptSlug: props.entrySlug }
     : {},
 );
 </script>

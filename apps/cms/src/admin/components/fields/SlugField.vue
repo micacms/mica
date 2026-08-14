@@ -22,8 +22,8 @@ const props = defineProps<
     /** Current value of the field named in `from`. */
     source?: string | null;
     collection?: string;
-    /** Entry being edited, excluded from the uniqueness check. */
-    exceptId?: string;
+    /** Slug of the entry being edited, excluded from the uniqueness check. */
+    exceptSlug?: string;
   }
 >();
 
@@ -50,7 +50,7 @@ watch(
     clearTimeout(pending);
     pending = setTimeout(async () => {
       try {
-        const { slug } = await api.entries.suggestSlug(props.collection!, source, props.exceptId);
+        const { slug } = await api.entries.suggestSlug(props.collection!, source, props.exceptSlug);
         if (!locked.value) emit("update:modelValue", slug || null);
       } catch {
         // A failed suggestion is not worth interrupting typing over; the
@@ -72,7 +72,7 @@ function unlock(): void {
   // Re-derive immediately from the current title.
   if (props.source?.trim() && props.collection) {
     void api.entries
-      .suggestSlug(props.collection, props.source, props.exceptId)
+      .suggestSlug(props.collection, props.source, props.exceptSlug)
       .then(({ slug }) => emit("update:modelValue", slug || null));
   }
 }

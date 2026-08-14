@@ -16,7 +16,7 @@ import { useSchema } from "@/stores/schema";
 const route = useRoute();
 const router = useRouter();
 const auth = useAuth();
-const { collections, globals } = useSchema();
+const { collections, singletons } = useSchema();
 
 const menuOpen = ref(false);
 
@@ -93,15 +93,15 @@ async function signOut(): Promise<void> {
           <RouterLink :to="{ name: 'media' }" class="nav-link">Media</RouterLink>
         </div>
 
-        <div v-if="globals.length">
+        <div v-if="singletons.length">
           <p class="nav-heading">Settings</p>
           <RouterLink
-            v-for="global in globals"
-            :key="global.name"
-            :to="{ name: 'global', params: { name: global.name } }"
+            v-for="singleton in singletons"
+            :key="singleton.name"
+            :to="{ name: 'singleton', params: { name: singleton.name } }"
             class="nav-link"
           >
-            {{ global.label }}
+            {{ singleton.label }}
           </RouterLink>
         </div>
 

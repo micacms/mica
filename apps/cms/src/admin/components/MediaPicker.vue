@@ -2,13 +2,19 @@
 /**
  * Modal media browser: pick from the library, or upload on the spot.
  *
+ * A file is identified by its path in the content repository. There is no id
+ * and no registry: what the picker hands back is what the field stores and what
+ * a reviewer sees in the diff.
+ *
+ * The search filters in the browser rather than on the server. The list is a
+ * walk of the content tree — small, and already fetched whole — so a round trip
+ * per keystroke would buy nothing.
+ *
  * Focus is trapped while open and returned to the trigger on close, so the
  * dialog is usable from the keyboard alone.
  */
 
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
-
-import type { MediaRef } from "@micacms/model";
 
 import { api, ApiError, type MediaItem } from "@/api";
 import { useToast } from "@/stores/toast";
@@ -18,17 +24,17 @@ const props = withDefaults(
     open: boolean;
     accept?: "image" | "document" | "any";
     multiple?: boolean;
-    /** Ids already chosen by the field, shown as ticked. */
+    /** Paths already chosen by the field, shown as ticked. */
     selected?: string[];
   }>(),
   { accept: "any", multiple: false, selected: () => [] },
 );
 
-const emit = defineEmits<{ close: []; choose: [MediaRef[]] }>();
+const emit = defineEmits<{ close: []; choose: [MediaItem[]] }>();
 
 const toast = useToast();
 
-const items = ref<MediaItem[]>([]);
+const all = ref<MediaItem[]>([]);
 const loading = ref(false);
 const uploading = ref(false);
 const search = ref("");
@@ -38,23 +44,31 @@ const fileInput = ref<HTMLInputElement | null>(null);
 const dragging = ref(false);
 
 let previouslyFocused: HTMLElement | null = null;
-let searchTimer: ReturnType<typeof setTimeout> | undefined;
 
 const acceptAttribute = computed(() =>
   props.accept === "image" ? "image/*" : props.accept === "document" ? "application/pdf" : undefined,
 );
 
+const items = computed(() => {
+  const term = search.value.trim().toLowerCase();
+
+  return all.value.filter((item) => {
+    if (props.accept === "image" && !isImage(item)) return false;
+    if (props.accept === "document" && isImage(item)) return false;
+    // Over the whole path, so `projects/bleicherweg` finds a file by the entry
+    // it belongs to and not only by its own name.
+    return !term || item.path.toLowerCase().includes(term);
+  });
+});
+
 const canConfirm = computed(() => picked.value.length > 0);
+
+const isImage = (item: MediaItem): boolean => item.mimeType.startsWith("image/");
 
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    const result = await api.media.list({
-      search: search.value,
-      image: props.accept === "image",
-      limit: 100,
-    });
-    items.value = result.items;
+    all.value = (await api.media.list()).items;
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not load the media library.");
   } finally {
@@ -82,13 +96,7 @@ watch(
   },
 );
 
-watch(search, () => {
-  clearTimeout(searchTimer);
-  searchTimer = setTimeout(load, 250);
-});
-
 onBeforeUnmount(() => {
-  clearTimeout(searchTimer);
   document.body.style.overflow = "";
 });
 
@@ -98,13 +106,18 @@ function toggle(item: MediaItem): void {
     emit("close");
     return;
   }
-  picked.value = picked.value.includes(item.id)
-    ? picked.value.filter((id) => id !== item.id)
-    : [...picked.value, item.id];
+  picked.value = picked.value.includes(item.path)
+    ? picked.value.filter((path) => path !== item.path)
+    : [...picked.value, item.path];
 }
 
 function confirm(): void {
-  const chosen = items.value.filter((item) => picked.value.includes(item.id));
+  // In the order the editor ticked them, not the order the library lists them.
+  const byPath = new Map(all.value.map((item) => [item.path, item]));
+  const chosen = picked.value
+    .map((path) => byPath.get(path))
+    .filter((item): item is MediaItem => item !== undefined);
+
   emit("choose", chosen);
   emit("close");
 }
@@ -115,16 +128,16 @@ async function upload(files: FileList | File[] | null): Promise<void> {
 
   uploading.value = true;
   try {
-    const { items: uploaded } = await api.media.upload(list, props.accept);
+    const { items: uploaded } = await api.media.upload(list, { accept: props.accept });
 
     if (!props.multiple) {
-      emit("choose", uploaded.slice(0, 1));
+      if (uploaded[0]) emit("choose", [uploaded[0]]);
       emit("close");
       return;
     }
 
     await load();
-    picked.value = [...picked.value, ...uploaded.map((item) => item.id)];
+    picked.value = [...picked.value, ...uploaded.map((item) => item.path)];
     toast.success(`Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}.`);
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "The upload failed.");
@@ -165,6 +178,13 @@ function onKeydown(event: KeyboardEvent): void {
 
 const formatSize = (bytes: number): string =>
   bytes < 1024 * 1024 ? `${Math.round(bytes / 1024)} KB` : `${(bytes / 1024 / 1024).toFixed(1)} MB`;
+
+/** The directory a file sits in, which is how an editor recognises it. */
+const folderOf = (path: string): string => {
+  const parts = path.split("/");
+  parts.pop();
+  return parts.join("/") || "/";
+};
 </script>
 
 <template>
@@ -224,7 +244,7 @@ const formatSize = (bytes: number): string =>
               {{ uploading ? "Uploading…" : "Drop files here, or choose from your device" }}
             </span>
             <span class="text-xs text-muted">
-              {{ accept === "image" ? "Images" : accept === "document" ? "PDF documents" : "Images, PDFs and video" }}
+              {{ accept === "image" ? "Images" : accept === "document" ? "PDF documents" : "Images and documents" }}
             </span>
           </label>
 
@@ -235,23 +255,25 @@ const formatSize = (bytes: number): string =>
           </p>
 
           <ul v-else class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
-            <li v-for="item in items" :key="item.id">
+            <li v-for="item in items" :key="item.path">
               <button
                 type="button"
-                :aria-pressed="picked.includes(item.id) || selected.includes(item.id)"
+                :aria-pressed="picked.includes(item.path) || selected.includes(item.path)"
                 :class="[
                   'group block w-full overflow-hidden rounded-lg border text-left transition',
-                  picked.includes(item.id)
+                  picked.includes(item.path)
                     ? 'border-brand ring-2 ring-brand/25'
-                    : 'border-line hover:border-brand/40',
+                    : selected.includes(item.path)
+                      ? 'border-brand/50'
+                      : 'border-line hover:border-brand/40',
                 ]"
                 @click="toggle(item)"
               >
                 <span class="block aspect-4/3 bg-canvas">
                   <img
-                    v-if="item.mimeType.startsWith('image/')"
-                    :src="item.url"
-                    :alt="item.alt ?? ''"
+                    v-if="isImage(item)"
+                    :src="api.media.url(item.path)"
+                    alt=""
                     loading="lazy"
                     class="h-full w-full object-cover"
                   />
@@ -265,6 +287,9 @@ const formatSize = (bytes: number): string =>
 
                 <span class="block px-2 py-1.5">
                   <span class="block truncate text-xs font-medium">{{ item.filename }}</span>
+                  <span class="block truncate text-[11px] text-muted" :title="item.path">
+                    {{ folderOf(item.path) }}
+                  </span>
                   <span class="block text-[11px] text-muted">
                     {{ item.width ? `${item.width}×${item.height} · ` : "" }}{{ formatSize(item.size) }}
                   </span>

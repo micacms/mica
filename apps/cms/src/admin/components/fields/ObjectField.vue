@@ -11,7 +11,7 @@ import FieldList from "./FieldList.vue";
 import { useField, type FieldProps } from "@/composables/useField";
 
 const props = defineProps<
-  FieldProps & { modelValue: unknown; collection?: string; entryId?: string }
+  FieldProps & { modelValue: unknown; collection?: string; entrySlug?: string }
 >();
 const emit = defineEmits<{ "update:modelValue": [Record<string, unknown>] }>();
 
@@ -82,7 +82,7 @@ const expanded = computed(() => open.value || hasIssueInside.value);
         :issues="issues"
         :disabled="disabled || field.readonly"
         :collection="collection"
-        :entry-id="entryId"
+        :entry-slug="entrySlug"
         @update:model-value="emit('update:modelValue', $event)"
       />
     </div>
