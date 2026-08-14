@@ -67,7 +67,7 @@ export interface TextareaField extends BaseField {
   default?: string;
 }
 
-/** Rich text is stored as a sanitised HTML fragment. */
+/** Rich text is stored as Markdoc, in a file beside the entry. */
 export interface RichTextField extends BaseField {
   kind: "richText";
   /** Marks/nodes the editor toolbar offers. */
@@ -253,6 +253,17 @@ export interface Singleton extends SingletonOptions {
 }
 
 export interface SiteOptions {
+  /**
+   * Where this site's content lives, relative to the Astro project root.
+   *
+   * Part of the site rather than of each consumer, because the collections,
+   * the dev integration and the image resolution all have to agree on it, and
+   * a disagreement between them produces an empty build rather than an error.
+   *
+   * Local to the project and therefore *not* part of the protocol manifest —
+   * a Mica deployment is told where content lives by its own configuration.
+   */
+  root?: string;
   collections: Record<string, Collection>;
   singletons?: Record<string, Singleton>;
 }
@@ -261,51 +272,19 @@ export interface Site<
   C extends Record<string, Collection> = Record<string, Collection>,
   S extends Record<string, Singleton> = Record<string, Singleton>,
 > {
+  /** See `SiteOptions.root`. Absent in a model read back from a manifest. */
+  root?: string;
   collections: C;
   singletons: S;
 }
 
 /* ------------------------------------------------------------------ *
- * Entry envelope
+ * Values that are not scalars
  * ------------------------------------------------------------------ */
-
-export type EntryStatus = "draft" | "published";
-
-/**
- * A file in the CMS media library.
- *
- * No longer what a `media()` field holds — that is a repository path now. This
- * describes the library the editor picks from, which still needs dimensions to
- * lay out a thumbnail grid.
- */
-export interface MediaRef {
-  id: string;
-  url: string;
-  filename: string;
-  mimeType: string;
-  width: number | null;
-  height: number | null;
-  size: number;
-  alt: string | null;
-}
 
 export interface Coordinates {
   lat: number;
   lng: number;
-}
-
-/** Envelope returned by both the admin and the public content API. */
-export interface Entry<T = Record<string, unknown>> {
-  id: string;
-  collection: string;
-  slug: string;
-  status: EntryStatus;
-  position: number;
-  data: T;
-  createdAt: string;
-  updatedAt: string;
-  publishedAt: string | null;
-  version: number;
 }
 
 /* ------------------------------------------------------------------ *

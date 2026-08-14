@@ -23,6 +23,20 @@ import type { Collection, Singleton, Site } from "./types.js";
  */
 export const PROTOCOL_VERSION = 1;
 
+/**
+ * Where the manifest lives, relative to the content root.
+ *
+ * The Astro build writes it; the developer commits it; Mica reads it back
+ * through the same connector it reads entries with. That is the whole delivery
+ * mechanism — the model reaches the server the way content does, so there is
+ * nothing to mount, no second artifact to keep in step, and a model change is
+ * reviewable in a diff like every other change.
+ *
+ * Below the content root because a connector cannot read above it. Hidden
+ * because it is build output, not something an editor has any business in.
+ */
+export const MANIFEST_PATH = ".mica/schema.json";
+
 export interface ProtocolManifest {
   protocolVersion: number;
   /** Package and version that produced this manifest, for diagnostics. */

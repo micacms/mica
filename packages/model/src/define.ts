@@ -32,7 +32,7 @@ export function singleton<O extends SingletonOptions>(options: O): Singleton & O
 export function defineSite<
   C extends Record<string, Collection>,
   S extends Record<string, Singleton>,
->(options: { collections: C; singletons?: S }): Site<C, S> {
+>(options: { root?: string; collections: C; singletons?: S }): Site<C, S> {
   const collections = {} as C;
   for (const [name, def] of Object.entries(options.collections)) {
     (collections as Record<string, Collection>)[name] = { ...def, name };
@@ -43,7 +43,12 @@ export function defineSite<
     (singletons as Record<string, Singleton>)[name] = { ...def, name };
   }
 
-  const site: Site<C, S> = { collections, singletons };
+  // Only when given: a model that came back from a manifest has no root, and
+  // writing a default into it would claim to know something it does not.
+  const site: Site<C, S> = options.root === undefined
+    ? { collections, singletons }
+    : { root: options.root, collections, singletons };
+
   assertValidSite(site);
   return site;
 }
