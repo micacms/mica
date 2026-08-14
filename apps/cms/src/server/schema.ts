@@ -1,124 +1,88 @@
 /**
  * Acquiring the content model at runtime.
  *
- * The server ships with no model of its own. It is handed one at boot, which is
- * what lets a single published image serve any project: the schema is plain
+ * The server ships with no model of its own. It reads one out of the content
+ * repository, at `.mica/schema.json`, through the same connector it reads
+ * entries with. The Astro project writes that file and the developer commits
+ * it, so the model reaches the server the way content does — no artifact to
+ * mount, no second channel to keep in step, and a model change that is
+ * reviewable in a diff.
+ *
+ * That is what lets one published image serve any project: the model is plain
  * data (field descriptors hold no functions, so `JSON.stringify(site)`
  * round-trips), and every consumer downstream — form generation, payload
- * validation, the public API — already reads it out of the request context.
+ * validation, the admin — already reads it out of the request context.
  *
- * Two shapes are accepted, because self-hosting and a hosted service want
- * different things:
- *
- *   - a compiled ES module, whose default export is the model. This is what
- *     `pnpm build:schema` produces from `mica.config.ts`, and what an operator
- *     mounts into the container.
- *   - a `.json` file, which is the same object after a round-trip. This is the
- *     shape a `mica push` would send, so accepting it now keeps that door open.
- *
- * Whatever arrives is re-validated as if it had just been written by hand.
- * A schema from disk is untrusted input: it may have been produced by a
+ * Whatever arrives is re-validated as if it had just been written by hand. A
+ * manifest from a repository is untrusted input: it may have been produced by a
  * different version of `@micacms/model`, hand-edited, or truncated.
  */
 
-import { readFile, stat } from "node:fs/promises";
-import path from "node:path";
-import { pathToFileURL } from "node:url";
-
-import { defineSite, isFieldKind, type Collection, type FieldMap, type Singleton, type Site } from "@micacms/model";
+import {
+  checkCompatibility,
+  defineSite,
+  isFieldKind,
+  isProtocolManifest,
+  MANIFEST_PATH,
+  PROTOCOL_VERSION,
+  type Collection,
+  type ContentSource,
+  type FieldMap,
+  type Singleton,
+  type Site,
+} from "@micacms/model";
 
 export class SchemaError extends Error {
   override name = "SchemaError";
 }
 
-const MODULE_EXTENSIONS = new Set([".js", ".mjs", ".cjs", ".ts", ".mts"]);
+/** Where a model came from, for logs and the system screen. */
+export function schemaOrigin(source: ContentSource): string {
+  return `${source.origin}/${MANIFEST_PATH}`;
+}
 
 /**
- * Reads the model named by `source` and returns it ready to serve.
+ * Reads the model the content repository publishes.
  *
- * `source` is a filesystem path. Relative paths resolve against the working
- * directory, which is `/app/apps/cms` in the image and the package root under
- * `pnpm dev` — so callers should prefer absolute paths.
+ * A missing file is the interesting failure and gets the long message: it is
+ * what a first deployment hits, and the fix — build the Astro project, commit
+ * the result — is not guessable from "not found".
  */
-export async function loadSchema(source: string): Promise<Site> {
-  const resolved = path.resolve(source);
-  const extension = path.extname(resolved).toLowerCase();
+export async function loadSchema(source: ContentSource): Promise<Site> {
+  const origin = schemaOrigin(source);
 
-  const raw =
-    extension === ".json" ? await readJsonSchema(resolved) : await importSchema(resolved, extension);
-
-  return checkSchema(raw, resolved);
-}
-
-async function readJsonSchema(resolved: string): Promise<unknown> {
-  let text: string;
+  let text: string | null;
   try {
-    text = await readFile(resolved, "utf8");
+    text = await source.read(MANIFEST_PATH);
   } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-      throw new SchemaError(describeMissing(resolved));
-    }
-    throw new SchemaError(`Could not read the schema at ${resolved}: ${(error as Error).message}`);
-  }
-
-  try {
-    return JSON.parse(text);
-  } catch (error) {
-    throw new SchemaError(`Schema at ${resolved} is not valid JSON: ${(error as Error).message}`);
-  }
-}
-
-async function importSchema(resolved: string, extension: string): Promise<unknown> {
-  if (!MODULE_EXTENSIONS.has(extension)) {
+    // A repository that cannot be reached is not a bad model. Say which it is,
+    // because the two have completely different fixes.
     throw new SchemaError(
-      `Schema at ${resolved} has an unsupported extension "${extension || "(none)"}". ` +
-        `Expected a compiled module (.js) or .json.`,
+      `Could not read the content model from ${source.origin}.\n` +
+        `  ${(error as Error).message}\n` +
+        `  The repository has to be reachable before Mica can start: the model\n` +
+        `  lives in it, at ${MANIFEST_PATH}.`,
     );
   }
 
-  // Whether the model file itself is missing is settled before importing,
-  // because `ERR_MODULE_NOT_FOUND` is also what an unresolvable import *inside*
-  // the file raises. Reporting "no content model here" for a config that exists
-  // but cannot find `@micacms/model` sends the reader to the wrong problem.
-  const present = await stat(resolved).then(
-    (entry) => entry.isFile(),
-    () => false,
-  );
-  if (!present) throw new SchemaError(describeMissing(resolved));
+  if (text === null) throw new SchemaError(describeMissing(origin));
 
-  let module: Record<string, unknown>;
+  let raw: unknown;
   try {
-    // A cache-busting query would defeat the module cache on reload; there is
-    // no reload today, so the plain URL keeps stack traces readable.
-    module = (await import(pathToFileURL(resolved).href)) as Record<string, unknown>;
+    raw = JSON.parse(text);
   } catch (error) {
-    const reason = (error as Error).message;
-    if ((error as NodeJS.ErrnoException).code === "ERR_MODULE_NOT_FOUND") {
-      throw new SchemaError(
-        `The content model at ${resolved} could not be loaded — one of its own imports is missing.\n` +
-          `  ${reason}\n` +
-          `  A compiled model must sit where its imports resolve. Prefer the JSON that\n` +
-          `  \`pnpm build:schema\` produces, which has no imports at all.`,
-      );
-    }
-    throw new SchemaError(`The content model at ${resolved} threw while loading:\n  ${reason}`);
+    throw new SchemaError(`${origin} is not valid JSON: ${(error as Error).message}`);
   }
 
-  const model = module["default"] ?? module["site"];
-  if (model === undefined) {
-    throw new SchemaError(
-      `Schema at ${resolved} exports neither a default nor a \`site\` binding.\n` +
-        `  Expected:  export default defineSite({ ... })`,
-    );
-  }
-  return model;
+  return checkSchema(raw, origin);
 }
 
-function describeMissing(resolved: string): string {
+function describeMissing(origin: string): string {
   return (
-    `No content model at ${resolved}.\n` +
-    `  MICA_SCHEMA must point at a compiled model — build one with \`pnpm build:schema\`,\n` +
-    `  and mount it into the container if you are running the published image.`
+    `No content model at ${origin}.\n` +
+    `  Mica ships without one — the Astro project defines it and writes it here.\n` +
+    `  In the project:  npx astro build   (or start the dev server once)\n` +
+    `  then commit ${MANIFEST_PATH} and push it to the branch Mica is reading.`
   );
 }
 
@@ -138,15 +102,29 @@ export function checkSchema(raw: unknown, origin = "the schema"): Site {
     throw new SchemaError(`${origin} is ${raw === null ? "null" : typeof raw}, expected an object.`);
   }
 
+  // Only when the envelope says so. A bare `{ collections }` is still accepted:
+  // the protocol version is a backstop for changes that cannot be detected by
+  // looking, not an admission ticket.
+  if (isProtocolManifest(raw)) {
+    const compatibility = checkCompatibility(raw);
+    if (!compatibility.ok && compatibility.reason === "newer") {
+      throw new SchemaError(
+        `${origin} follows protocol version ${compatibility.version}; this build of Mica ` +
+          `understands version ${PROTOCOL_VERSION}.\n` +
+          `  The project was built against a newer @micacms/astro. Upgrade Mica.`,
+      );
+    }
+  }
+
   const candidate = raw as { collections?: unknown; singletons?: unknown; globals?: unknown };
 
   if (candidate.collections === null || typeof candidate.collections !== "object") {
     throw new SchemaError(`${origin} has no \`collections\`. Expected defineSite({ collections: { ... } }).`);
   }
 
-  // `globals` was the term before the model settled on `singletons`. A compiled
-  // schema outlives the release that produced it, so both spellings are read
-  // here; only the new one is written anywhere.
+  // `globals` was the term before the model settled on `singletons`. A manifest
+  // outlives the release that produced it, so both spellings are read here;
+  // only the new one is written anywhere.
   const rawSingletons = candidate.singletons ?? candidate.globals;
   if (rawSingletons !== undefined && (rawSingletons === null || typeof rawSingletons !== "object")) {
     throw new SchemaError(`${origin} has a \`singletons\` that is not an object.`);
@@ -187,7 +165,7 @@ function assertFieldMap(fields: unknown, at: string, origin: string): void {
       throw new SchemaError(
         `${origin}: field "${here}" has unknown kind "${String(field.kind)}".\n` +
           `  This build of Mica does not support it — the project may have been built\n` +
-          `  against a newer @micacms/model than the server is running.`,
+          `  against a newer @micacms/astro than the server is running.`,
       );
     }
     if (field.kind === "object" || field.kind === "repeater") {

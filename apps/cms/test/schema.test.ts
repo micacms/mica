@@ -1,10 +1,16 @@
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import path from "node:path";
-import { after, before, describe, it } from "node:test";
+import { describe, it } from "node:test";
 
-import { collection, defineSite, slug, text } from "@micacms/model";
+import {
+  collection,
+  createManifest,
+  defineSite,
+  MANIFEST_PATH,
+  memorySource,
+  slug,
+  text,
+  type ContentSource,
+} from "@micacms/model";
 
 import { checkSchema, loadSchema, schemaFingerprint, SchemaError } from "../src/server/schema.js";
 
@@ -78,7 +84,7 @@ describe("checkSchema", () => {
       assert.match(error.message, /collections\.pages\.mystery/);
       assert.match(error.message, /unknown kind "quantum"/);
       // The likeliest cause is a version skew, and saying so saves a hunt.
-      assert.match(error.message, /newer @micacms\/model/);
+      assert.match(error.message, /newer @micacms\/astro/);
       return true;
     });
   });
@@ -106,71 +112,66 @@ describe("checkSchema", () => {
 });
 
 describe("loadSchema", () => {
-  let dir: string;
-  before(async () => {
-    dir = await mkdtemp(path.join(tmpdir(), "mica-schema-"));
-  });
-  after(() => {
-    /* mkdtemp lives under the OS temp dir; the runner is not responsible for it. */
-  });
+  /** A source with just the manifest in it, the way a content repository has. */
+  const repository = (files: Record<string, string>) => memorySource(files, "acme/website/content");
 
-  it("reads a compiled model from JSON", async () => {
-    const file = path.join(dir, "schema.json");
-    await writeFile(file, JSON.stringify(validSite()));
+  it("reads the model the Astro project published", async () => {
+    const site = await loadSchema(
+      repository({ [MANIFEST_PATH]: JSON.stringify(createManifest(checkSchema(validSite()), "test")) }),
+    );
 
-    const site = await loadSchema(file);
     assert.deepEqual(Object.keys(site.collections), ["pages"]);
   });
 
-  it("reads a model from an ES module's default export", async () => {
-    const file = path.join(dir, "schema.mjs");
-    await writeFile(file, `export default ${JSON.stringify(validSite())};`);
-
-    const site = await loadSchema(file);
+  it("accepts a bare model, without the protocol envelope", async () => {
+    const site = await loadSchema(repository({ [MANIFEST_PATH]: JSON.stringify(validSite()) }));
     assert.deepEqual(Object.keys(site.collections), ["pages"]);
   });
 
-  it("says the model is missing rather than failing obscurely", async () => {
-    await assert.rejects(loadSchema(path.join(dir, "absent.json")), (error: Error) => {
+  it("says how to publish a model rather than that a file is missing", async () => {
+    await assert.rejects(loadSchema(repository({})), (error: Error) => {
       assert.ok(error instanceof SchemaError);
       assert.match(error.message, /No content model at/);
-      assert.match(error.message, /build:schema/);
+      assert.match(error.message, /astro build/);
+      assert.match(error.message, /commit/);
       return true;
     });
   });
 
-  it("distinguishes a broken import inside the model from a missing model", async () => {
-    const file = path.join(dir, "broken.mjs");
-    await writeFile(file, `import "@micacms/definitely-not-installed";\nexport default {};`);
+  it("blames the repository, not the model, when the read itself fails", async () => {
+    const unreachable: ContentSource = {
+      origin: "github:acme/website",
+      read: () => Promise.reject(new Error("502 Bad Gateway")),
+      list: () => Promise.resolve([]),
+    };
 
-    await assert.rejects(loadSchema(file), (error: Error) => {
+    await assert.rejects(loadSchema(unreachable), (error: Error) => {
       assert.ok(error instanceof SchemaError);
-      // The file is present; saying "no content model here" would misdirect.
+      assert.match(error.message, /502 Bad Gateway/);
+      // The fix is "make the repository reachable", not "publish a model".
       assert.doesNotMatch(error.message, /No content model at/);
-      assert.match(error.message, /one of its own imports is missing/);
       return true;
     });
   });
 
   it("reports malformed JSON as such", async () => {
-    const file = path.join(dir, "truncated.json");
-    await writeFile(file, '{"collections":');
-
-    await assert.rejects(loadSchema(file), /is not valid JSON/);
+    await assert.rejects(
+      loadSchema(repository({ [MANIFEST_PATH]: '{"collections":' })),
+      /is not valid JSON/,
+    );
   });
 
-  it("refuses a file it has no way to interpret", async () => {
-    const file = path.join(dir, "schema.yaml");
-    await writeFile(file, "collections: {}");
+  it("refuses a manifest from a newer protocol than this build understands", async () => {
+    const manifest = { ...createManifest(checkSchema(validSite()), "test"), protocolVersion: 99 };
 
-    await assert.rejects(loadSchema(file), /unsupported extension/);
+    await assert.rejects(
+      loadSchema(repository({ [MANIFEST_PATH]: JSON.stringify(manifest) })),
+      /protocol version 99/,
+    );
   });
 
-  it("requires a default or `site` export", async () => {
-    const file = path.join(dir, "nameless.mjs");
-    await writeFile(file, `export const somethingElse = ${JSON.stringify(validSite())};`);
-
-    await assert.rejects(loadSchema(file), /exports neither a default nor a `site` binding/);
+  it("names the repository and the file in every message", async () => {
+    await assert.rejects(loadSchema(repository({})), /acme\/website\/content\/\.mica\/schema\.json/);
   });
 });
 

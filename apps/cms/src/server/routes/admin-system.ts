@@ -18,6 +18,7 @@ import { listedFields, resolveSlugField, resolveTitleField } from "@micacms/mode
 import { databaseVersion } from "../db/migrations.js";
 import type { Env } from "../http.js";
 import { schemaStats } from "../lib/schema-stats.js";
+import { schemaOrigin } from "../schema.js";
 import { VERSION } from "../lib/version.js";
 import { formatBytes } from "../services/media.js";
 
@@ -169,7 +170,7 @@ export function adminSystemRoutes(): Hono<Env> {
         c.get("membership").role === "admin"
           ? {
               baseUrl: config.CMS_BASE_URL,
-              schemaPath: config.schemaPath,
+              schemaOrigin: schemaOrigin(ctx.connector),
               repositoryMode: config.REPOSITORY,
               // Only meaningful for the local connector; a remote one names
               // itself in `repository.origin` above.

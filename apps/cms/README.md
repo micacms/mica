@@ -32,19 +32,19 @@ cp .env.example .env
 pnpm dev                               # API on :4000, admin on :5173
 ```
 
-`REPOSITORY=local` and `CONTENT_ROOT=../../content` are the defaults, so the
-server edits the `content/` directory in this repository. There is nothing to
-seed: the content is already there, in Git.
+`REPOSITORY=local` and `CONTENT_ROOT=../../examples/muster-consulting/content`
+are the defaults, so the server edits the example project's content. There is
+nothing to seed: the content is already there, in Git.
 
 `MICA_MODE=local` is also the default, which **disables authentication** — you
 are signed in as a developer account with no password and no identity provider.
 Mica refuses to start that way in production or on any host but this one, and
 says so at every start.
 
-The server has no content model of its own; it loads one at startup. In
-development that is `mica.config.ts` in the repository root, read directly by
-`tsx`. In production `MICA_SCHEMA` names a compiled model — see
-[deployment](../../docs/deployment.md).
+The server has no content model of its own. It reads one from the content
+repository at `.mica/schema.json`, which the Astro project publishes and the
+developer commits — identically in development and in production. If it is not
+there, the server says so and exits.
 
 Then open <http://localhost:5173/admin/> and sign in.
 
@@ -91,7 +91,7 @@ src/
 │   ├── services/           oidc, sessions, media validation
 │   ├── middleware/         auth, CSRF, rate limiting, errors, logging
 │   ├── routes/             thin: parse, delegate, serialise
-│   └── scripts/            grant-access, build-schema
+│   └── scripts/            grant-access
 └── admin/
     ├── api.ts              typed client for the admin API
     ├── router.ts           routes and the auth guard
@@ -110,7 +110,7 @@ that the Astro build runs the same discovery and parsing code the server does.
 
 ## How the schema drives everything
 
-The project's `mica.config.ts` is the single source of truth. From the same
+The project's content model is the single source of truth. From the same
 definition:
 
 - the server derives Zod validators for storage and for API output;
@@ -126,10 +126,13 @@ new *field kind* means a builder in the model package, an entry in `FIELD_KINDS`
 (the compiler enforces this), and one line in
 `src/admin/components/fields/registry.ts`.
 
-The model reaches the server as plain data — `src/server/schema.ts` loads and
-re-validates it, so a model built against a newer `@micacms/model` than the
-server is running fails at startup naming the field, rather than at an editor's
-screen.
+The model reaches the server as plain data, read out of the repository by
+`src/server/schema.ts` and re-validated there — so a model built against a
+newer `@micacms/model` than the server is running fails at startup naming the
+field, rather than at an editor's screen. Because the model is in the
+repository, `src/server/index.ts` opens the database and builds the connector
+*before* composing the application: there is no context to hold until the model
+has been read.
 
 ## Authentication
 
@@ -140,7 +143,7 @@ that user may do here. Nothing hashes, resets or challenges anything.
 
 `MICA_MODE=local` skips the provider entirely and signs every request in as one
 developer account. The config layer refuses that mode in production and on any
-host but localhost — see the P1 entry in [TODO.md](../../TODO.md).
+host but localhost — see the P1 entry in [docs/decisions.md](../../docs/decisions.md).
 
 ## Saving
 
@@ -241,12 +244,12 @@ Your content repository is the backup, and Git is keeping it. This server's
 SQLite file holds accounts and sessions; losing it signs everyone out and costs
 nothing else.
 
-See [backup-and-restore.md](../../docs/backup-and-restore.md).
+See [self-hosting.md](../../docs/self-hosting.md#backups).
 
 ## Tests
 
 ```bash
-pnpm test          # 91 tests: API, config, and the Markdoc bridge
+pnpm test          # 103 tests: API, config, schema and the Markdoc bridge
 pnpm typecheck     # server (tsc) and admin (vue-tsc)
 ```
 

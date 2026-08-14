@@ -278,7 +278,8 @@ export interface SystemInfo {
   };
   deployment: {
     baseUrl: string;
-    schemaPath: string;
+    /** Where the content model was read from, e.g. `<repo>/.mica/schema.json`. */
+    schemaOrigin: string;
     repositoryMode: "local" | "github" | "gitlab";
     /** Null unless the repository is a working tree on this machine. */
     contentRoot: string | null;

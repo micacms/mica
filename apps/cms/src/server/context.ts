@@ -83,6 +83,28 @@ export interface CreateContextOptions {
   logger?: Logger;
 }
 
+/**
+ * The repository connector for a site, before there is a context to hold it.
+ *
+ * Separate from `createContext` because of an ordering the design implies: the
+ * content model is *in* the repository, so it has to be read through a
+ * connector, and the context cannot be built until the model is known. The
+ * process entry point therefore opens the database, builds the connector,
+ * reads the model, and only then composes everything.
+ *
+ * The site's stored connection wins over the environment. The environment is
+ * how a single-site deployment is configured and will stay that way; the
+ * stored connection is how a second site ever gets one. Reading the row first
+ * means both work without a second code path.
+ */
+export function createConnector(
+  config: Config,
+  db: SqlDatabase,
+  siteId: string = DEFAULT_SITE_ID,
+): RepositoryConnector {
+  return connectorFor(config, createSiteRepository(db).connection(siteId));
+}
+
 export function createContext(options: CreateContextOptions): AppContext {
   const { config, site } = options;
 
@@ -105,13 +127,6 @@ export function createContext(options: CreateContextOptions): AppContext {
     identities: createIdentityRepository(db),
   };
 
-  /**
-   * The site's stored connection wins over the environment.
-   *
-   * The environment is how a single-site deployment is configured and will
-   * stay that way; the stored connection is how a second site ever gets one.
-   * Reading the row first means both work without a second code path.
-   */
   const connector =
     options.connector ?? connectorFor(config, repositories.sites.connection(siteId));
 

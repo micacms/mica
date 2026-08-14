@@ -86,7 +86,7 @@ function report(): string {
   if (data.deployment) {
     lines.push(
       `Base URL ${data.deployment.baseUrl}`,
-      `Schema file ${data.deployment.schemaPath}`,
+      `Content model ${data.deployment.schemaOrigin}`,
       `Content root ${data.deployment.contentRoot}`,
       `Data directory ${data.deployment.dataDir}`,
     );
@@ -389,7 +389,7 @@ async function copyReport(): Promise<void> {
           </div>
           <div>
             <dt>Content model</dt>
-            <dd class="mono">{{ info.deployment.schemaPath }}</dd>
+            <dd class="mono">{{ info.deployment.schemaOrigin }}</dd>
           </div>
           <div>
             <dt>Database</dt>

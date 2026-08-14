@@ -43,13 +43,18 @@ const schema = z
     CMS_BASE_URL: z.string().url().default("http://localhost:4000"),
 
     /**
-     * The content repository this Mica serves.
+     * The content repository this Mica serves, when it reaches it as a working
+     * tree on disk. Ignored for a provider connector, which is given
+     * REPOSITORY_ROOT inside the remote repository instead.
      *
      * Content and media live here, and Git is what makes them durable. Mica's
      * own database holds users and sessions only — losing it must never mean
      * losing website content.
+     *
+     * The default is the example project in this repository, which is what
+     * `pnpm dev` edits.
      */
-    CONTENT_ROOT: z.string().default("../../content"),
+    CONTENT_ROOT: z.string().default("../../examples/muster-consulting/content"),
 
     /**
      * How Mica reaches that repository.
@@ -76,16 +81,6 @@ const schema = z
     /** Operational state only: users and sessions. */
     DATA_DIR: z.string().default("./data"),
     DATABASE_PATH: z.string().optional(),
-
-    /**
-     * The project's compiled content model — the file the server is a CMS *for*.
-     *
-     * The image ships without one, so this is required in production. In
-     * development it falls back to the `mica.config.ts` in the repository root,
-     * which `tsx` can load directly and which is also what the example website
-     * imports.
-     */
-    MICA_SCHEMA: z.string().optional(),
 
     /**
      * OpenID Connect. Required outside local mode.
@@ -128,9 +123,6 @@ const schema = z
     return {
       ...env,
       isProduction: env.NODE_ENV === "production",
-      // `../..` is the repository root from `apps/cms`, the working directory
-      // for every documented way of starting the server in development.
-      schemaPath: path.resolve(env.MICA_SCHEMA ?? "../../mica.config.ts"),
       dataDir,
       databasePath: path.resolve(env.DATABASE_PATH ?? path.join(dataDir, "cms.sqlite")),
       contentRoot: path.resolve(env.CONTENT_ROOT),
@@ -266,21 +258,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
           `  The redirect URI to register is ${config.CMS_BASE_URL}/api/auth/callback`,
       );
     }
-  }
-
-  // The development fallback is a TypeScript file in the repository root, which
-  // only resolves under `tsx`. A production image has neither, so requiring the
-  // variable there turns "no collections appear in the admin" into a startup
-  // error that says what is missing.
-  if (config.isProduction && !config.MICA_SCHEMA) {
-    throw new ConfigError(
-      "MICA_SCHEMA is not set.\n" +
-        "  The CMS image ships without a content model — it has to be given one.\n" +
-        "  Compile the project's mica.config.ts with `pnpm build:schema`, mount the\n" +
-        "  result into the container, and point MICA_SCHEMA at it:\n" +
-        "    volumes:     [ ./mica.config.js:/app/schema.js:ro ]\n" +
-        "    environment: { MICA_SCHEMA: /app/schema.js }",
-    );
   }
 
   /**

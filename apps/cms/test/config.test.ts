@@ -155,7 +155,6 @@ describe("deployment modes", () => {
       NODE_ENV: "production",
       MICA_MODE: "self-hosted",
       CMS_BASE_URL: "https://cms.example.com",
-      MICA_SCHEMA: "/app/schema.json",
       OIDC_ISSUER: "http://localhost:8080/realms/mica",
       OIDC_CLIENT_ID: "mica",
     });

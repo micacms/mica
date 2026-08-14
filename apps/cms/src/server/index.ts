@@ -6,9 +6,10 @@ import { serve } from "@hono/node-server";
 
 import { createApp } from "./app.js";
 import { ConfigError, loadConfig } from "./config.js";
-import { createContext } from "./context.js";
+import { createConnector, createContext } from "./context.js";
+import { openDatabase } from "./db/index.js";
 import { createLogger } from "./lib/logger.js";
-import { loadSchema, schemaFingerprint, SchemaError } from "./schema.js";
+import { loadSchema, schemaFingerprint, schemaOrigin, SchemaError } from "./schema.js";
 
 async function main(): Promise<void> {
   let config;
@@ -24,12 +25,18 @@ async function main(): Promise<void> {
 
   const logger = createLogger({ level: config.LOG_LEVEL, pretty: !config.isProduction });
 
-  // The model is the project's, not the server's. A bad one is a deployment
-  // mistake rather than a crash: exit the way a bad environment does, with the
-  // message on stderr instead of a stack trace.
+  // The repository comes first, because the content model is in it. Mica holds
+  // no model of its own: the Astro project writes one into the content root and
+  // the developer commits it, so reading it is a repository read like any other.
+  const db = openDatabase(config.databasePath, { logger });
+  const connector = createConnector(config, db);
+
+  // A bad or absent model is a deployment mistake rather than a crash: exit the
+  // way a bad environment does, with the message on stderr instead of a stack
+  // trace.
   let site;
   try {
-    site = await loadSchema(config.schemaPath);
+    site = await loadSchema(connector);
   } catch (error) {
     if (error instanceof SchemaError) {
       process.stderr.write(`\n${error.message}\n\n`);
@@ -38,7 +45,7 @@ async function main(): Promise<void> {
     throw error;
   }
 
-  const ctx = createContext({ config, site, logger });
+  const ctx = createContext({ config, site, db, connector, logger });
 
   const devSecrets = (config as { devSecrets?: string[] }).devSecrets ?? [];
   if (devSecrets.length > 0) {
@@ -89,10 +96,10 @@ async function main(): Promise<void> {
       environment: config.NODE_ENV,
       auth: config.authDisabled ? "disabled" : `oidc:${new URL(config.OIDC_ISSUER!).hostname}`,
       database: config.databasePath,
-      content: config.contentRoot,
+      content: connector.origin,
       // Enough to tell two deployments apart when a website was built against
       // one model and the CMS is serving another.
-      schema: config.schemaPath,
+      schema: schemaOrigin(connector),
       schemaFingerprint: fingerprint,
       collections: Object.keys(site.collections).length,
     });

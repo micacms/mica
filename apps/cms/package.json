@@ -6,7 +6,8 @@
   "description": "Mica CMS — Hono API plus the Vue administration SPA it serves.",
   "scripts": {
     "dev": "concurrently -n api,admin -c blue,magenta \"pnpm dev:api\" \"pnpm dev:admin\"",
-    "dev:api": "tsx watch --clear-screen=false src/server/index.ts",
+    "//dev:api": "--include watches the model the example project publishes, so editing a collection restarts the API the way editing the server does.",
+    "dev:api": "tsx watch --clear-screen=false --include ../../examples/muster-consulting/content/.mica/schema.json src/server/index.ts",
     "dev:admin": "vite",
     "build": "pnpm build:admin && pnpm build:server",
     "build:server": "tsc -p tsconfig.server.json",
@@ -14,8 +15,7 @@
     "start": "node dist/server/index.js",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && vue-tsc -p tsconfig.json --noEmit",
     "test": "tsc -p tsconfig.server.json --noEmit && node --test --import tsx test/**/*.test.ts",
-    "grant-access": "tsx src/server/scripts/grant-access.ts",
-    "build-schema": "tsx src/server/scripts/build-schema.ts"
+    "grant-access": "tsx src/server/scripts/grant-access.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
