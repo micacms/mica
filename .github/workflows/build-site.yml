@@ -11,12 +11,10 @@ on:
   push:
     branches: [main]
     paths:
-      # `content/**` is what editors change. The rest is what developers change.
-      # Both need a rebuild; nothing else does.
-      - "content/**"
-      - "apps/web/**"
+      # The content directory is what editors change. The rest is what
+      # developers change. Both need a rebuild; nothing else does.
+      - "examples/muster-consulting/**"
       - "packages/**"
-      - "mica.config.ts"
       - ".github/workflows/build-site.yml"
 
   workflow_dispatch:
@@ -53,18 +51,18 @@ jobs:
       - name: Build the website
         env:
           SITE_URL: ${{ vars.SITE_URL }}
-        run: pnpm --filter @micacms/web build
+        run: pnpm --filter @micacms/example-muster-consulting build
 
       - uses: actions/upload-artifact@v4
         with:
           name: website
-          path: apps/web/dist
+          path: examples/muster-consulting/dist
           retention-days: 7
 
       # Replace with whatever hosts the site. The build above is
       # provider-agnostic; only this step is not.
       #
       # - name: Deploy
-      #   run: npx wrangler pages deploy apps/web/dist --project-name=example
+      #   run: npx wrangler pages deploy examples/muster-consulting/dist --project-name=example
       #   env:
       #     CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

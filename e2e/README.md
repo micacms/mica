@@ -1,13 +1,12 @@
 # End-to-end test rig
 
 A complete Mica on your machine: the CMS from its image, a real Keycloak, and
-your actual `content/` directory mounted read-write.
+the example project's `content/` directory mounted read-write.
 
 This exercises the parts unit tests cannot — a real OpenID Connect round trip,
 and the container as it would actually be deployed.
 
 ```bash
-pnpm build:schema                              # once, from the repo root
 docker compose -f e2e/compose.yml up --build
 ```
 
@@ -47,7 +46,7 @@ questions, and this is where you can watch that be true.
 4. **Edit an entry and save.** Then, on your host:
 
    ```bash
-   git diff content/
+   git diff examples/muster-consulting/content/
    ```
 
    One file, one line. That is the whole architecture in one command: the
@@ -111,5 +110,5 @@ check.
 
 ```bash
 docker compose -f e2e/compose.yml down -v      # -v also drops the CMS database
-git checkout content/                          # discard anything you edited
+git checkout examples/                        # discard anything you edited
 ```

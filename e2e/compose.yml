@@ -1,6 +1,5 @@
 # A complete Mica, end to end, on your machine.
 #
-#   pnpm build:schema                              # once, from the repo root
 #   docker compose -f e2e/compose.yml up --build
 #
 # Then open http://localhost:4000/admin/ and sign in as alice / alice.
@@ -105,8 +104,10 @@ services:
       SESSION_SECRET: e2e-session-secret-0000000000000000
 
     volumes:
-      - ../mica.config.json:/app/schema.json:ro
-      - ../content:/content
+      # The example project's content, mounted read-write, so `git diff` on the
+      # host shows exactly what an editor changed. The content model comes from
+      # `.mica/schema.json` inside it — there is nothing else to mount.
+      - ../examples/muster-consulting/content:/content
       - cms-data:/data
 
 volumes:

@@ -6,11 +6,9 @@
 #
 # Nor is any content model baked in. The image knows the *field types* — it
 # carries `@micacms/model` for validation — but it knows no collections until it
-# is handed a compiled model at `MICA_SCHEMA`. That is what makes one published
-# image serve any project instead of one image per customer:
-#
-#   pnpm build:schema                                  # -> mica.config.json
-#   docker run -v ./mica.config.json:/app/schema.json:ro micacms/cms
+# reads the model out of the content repository, at `.mica/schema.json`. That is
+# what makes one published image serve any project instead of one image per
+# customer, and why a content change never needs a rebuild.
 
 # ---------------------------------------------------------------- deps
 FROM node:24-alpine AS deps
@@ -62,8 +60,7 @@ RUN apk add --no-cache tini
 ENV NODE_ENV=production \
     DATA_DIR=/data \
     HOST=0.0.0.0 \
-    PORT=4000 \
-    MICA_SCHEMA=/app/schema.json
+    PORT=4000
 
 WORKDIR /app
 

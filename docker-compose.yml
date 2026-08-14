@@ -1,15 +1,15 @@
 # Reference deployment.
 #
 #   cp apps/cms/.env.example .env   # fill in the secrets and the repository
-#   pnpm build:schema               # mica.config.ts -> mica.config.json
 #   docker compose up -d
 #
 # One container. No database server, no cache, no queue, no object storage —
 # and, since content moved into Git, no content volume either.
 #
-# The image carries no content model. `mica.config.json` is mounted in, which is
-# why the same published image serves any project — and why changing the model
-# is a `pnpm build:schema` plus a restart, not a rebuild.
+# The image carries no content model: it reads one from the content repository,
+# at `.mica/schema.json`, which the Astro project writes and the developer
+# commits. That is why the same published image serves any project, and why
+# changing the model is a commit plus a restart rather than a rebuild.
 #
 # There is no backup service any more. The content is in a Git repository, which
 # is already replicated, versioned and off-site; the volume below holds accounts,
@@ -52,12 +52,9 @@ services:
       - "127.0.0.1:4000:4000"
 
     volumes:
-      # Accounts and sessions. Not the website — that is in the repository.
+      # Accounts and sessions. Not the website — that is in the repository, and
+      # so is the content model.
       - cms-data:/data
-      # The project's content model. Read-only: the CMS is given a schema, it
-      # never writes one. Rebuild with `pnpm build:schema` after editing
-      # mica.config.ts, then `docker compose restart cms`.
-      - ./mica.config.json:/app/schema.json:ro
       # For REPOSITORY=local only — a checkout of the content repository:
       # - ./content:/content
 

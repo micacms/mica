@@ -27,28 +27,34 @@ jobs:
       - name: Build packages
         run: pnpm --filter "./packages/**" build
 
-      # The website is included: its collection types come from files in the
-      # repository, so nothing has to be running for `astro check` to work.
+      # The example website is included: its collection types come from files
+      # in the repository, so nothing has to be running for `astro check`.
       - name: Typecheck
         run: pnpm typecheck
 
       - name: Test
         run: pnpm -r test
 
-      # No CMS is started. The build reads `content/` directly, which is the
-      # property worth protecting — if this step ever needs a server again,
-      # something has regressed.
-      - name: Build the website
+      # No CMS is started. The build reads its content directory directly,
+      # which is the property worth protecting — if this step ever needs a
+      # server again, something has regressed.
+      - name: Build the example website
         env:
           SITE_URL: https://example.com
-        run: pnpm --filter @micacms/web build
+        run: pnpm --filter @micacms/example-muster-consulting build
 
       - name: Assert the output is self-contained
         run: |
-          if grep -rl "localhost:4000" apps/web/dist; then
+          if grep -rl "localhost:4000" examples/muster-consulting/dist; then
             echo "::error::The static output references the CMS."
             exit 1
           fi
+
+      # The build publishes the content model for Mica to read. A diff here
+      # means someone changed a collection and did not commit the result, which
+      # would leave a deployed Mica serving the previous model.
+      - name: Assert the published content model is committed
+        run: git diff --exit-code examples/muster-consulting/content/.mica/schema.json
 
   docker:
     runs-on: ubuntu-latest
@@ -58,20 +64,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-buildx-action@v3
 
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 24
-          cache: pnpm
-
-      - run: pnpm install --frozen-lockfile
-
-      # The image ships without a content model and refuses to start until it
-      # is given one. `mica.config.json` is build output, not a checked-in
-      # file, so it has to be compiled before the container can be mounted it.
-      - name: Compile the content model
-        run: pnpm build:schema
-
+      # No install and no build step: the image builds itself, and the content
+      # model it needs is committed in the example project.
       - name: Build the CMS image
         uses: docker/build-push-action@v6
         with:
@@ -93,7 +87,9 @@ jobs:
           # the first sign-in rather than at startup. Nothing here signs in.
           #
           # REPOSITORY defaults to `local`, so the container needs a content
-          # directory to point at rather than a provider token.
+          # directory to point at rather than a provider token. The content
+          # model comes from `.mica/schema.json` inside it — the image ships
+          # without one and refuses to start until it finds one.
           docker run -d --name cms \
             -e SESSION_SECRET=ci-session-secret-0000000000000000 \
             -e CMS_BASE_URL=http://localhost:4000 \
@@ -101,8 +97,7 @@ jobs:
             -e OIDC_ISSUER=https://id.example.com \
             -e OIDC_CLIENT_ID=mica-ci \
             -e CONTENT_ROOT=/content \
-            -v "$PWD/content:/content:ro" \
-            -v "$PWD/mica.config.json:/app/schema.json:ro" \
+            -v "$PWD/examples/muster-consulting/content:/content:ro" \
             -p 4000:4000 micacms/cms:ci
 
           for i in $(seq 1 30); do
