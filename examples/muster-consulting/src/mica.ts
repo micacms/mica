@@ -1,19 +1,24 @@
 /**
  * The content model for this project.
  *
- * This file belongs to the *project*, not to the CMS. Everything downstream —
- * the database payload validation, the admin navigation and forms, the public
- * API, the Astro collections and their TypeScript types — follows from it.
- * Changing a field here requires no SQL migration: entry payloads are JSON,
- * validated against whatever this file currently says.
+ * A plain module: `defineSite` builds a data structure, and nothing here
+ * imports Astro. That is what lets it be read from anywhere — the collections
+ * in `content.config.ts` today, a script or a test tomorrow — and it is why the
+ * model is not written inline there.
  *
- * Two consumers read it, and they read it differently:
+ * Everything downstream follows from it: the TypeScript types the templates
+ * render against, the validation Mica applies before a save reaches the
+ * repository, the forms an editor sees, and the layout of the files on disk.
+ * There is no code generation step and no schema to keep in step; renaming a
+ * field here breaks the website build, which is the point.
  *
- *   - The Astro build imports it directly, which is what makes
- *     `getCollection("projects")` statically typed with no code generation.
- *   - The CMS server receives it as data. `pnpm build:schema` compiles this
- *     file to `mica.config.js`, which is mounted into the container and named
- *     by `MICA_SCHEMA`. The server ships with no model of its own.
+ * How it reaches Mica: `@micacms/astro` writes it to `content/.mica/schema.json`
+ * on every build and dev-server start. Commit that file — Mica reads it out of
+ * the repository it is already connected to.
+ *
+ * The DSL is not Zod with extra steps. `text({ label: "Title", maxLength: 120 })`
+ * carries editorial meaning that `z.string().max(120)` cannot — a label, a
+ * width, a group. Zod is generated from this, never the reverse.
  */
 
 import {
@@ -39,6 +44,14 @@ import {
 } from "@micacms/model";
 
 export const site = defineSite({
+  /**
+   * Where the content lives, relative to the **Astro project root** — not to
+   * this file, and not to whatever directory the build was started from. Said
+   * once here, because the loaders, the published model and Mica's own view of
+   * the repository all have to mean the same directory.
+   */
+  root: "./content",
+
   collections: {
     pages: collection({
       label: "Pages",
@@ -404,7 +417,4 @@ export const site = defineSite({
   },
 });
 
-export type Site = typeof site;
-
-// The default export is what the CMS loads and what the Astro config imports.
-export default site;
+export type SiteModel = typeof site;

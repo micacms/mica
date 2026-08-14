@@ -7,10 +7,6 @@ settings:
 importers:
 
   .:
-    dependencies:
-      '@micacms/model':
-        specifier: workspace:*
-        version: link:packages/model
     devDependencies:
       typescript:
         specifier: ^5.7.3
@@ -89,7 +85,7 @@ importers:
         specifier: ^2.2.0
         version: 2.2.12(typescript@5.9.3)
 
-  apps/web:
+  examples/muster-consulting:
     dependencies:
       '@micacms/astro':
         specifier: workspace:*

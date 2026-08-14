@@ -3,7 +3,7 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "description": "Mica CMS — a small, schema-driven content backend for static Astro business websites.",
+  "description": "Mica — a Git-native content editor for Astro websites.",
   "packageManager": "pnpm@11.3.0",
   "engines": {
     "node": ">=22.5.0"
@@ -11,20 +11,14 @@
   "scripts": {
     "build": "pnpm -r build",
     "build:packages": "pnpm --filter \"./packages/**\" build",
+    "//dev": "The CMS alone. It edits the example project's content, so run the example's own `pnpm dev` beside it to see the website.",
     "dev": "pnpm build:packages && pnpm --filter @micacms/cms dev",
-    "dev:cms": "pnpm build:packages && pnpm --filter @micacms/cms dev",
-    "//typecheck": "The website is included: its collection types now come from files in the repository, so nothing has to be running.",
+    "dev:site": "pnpm --filter @micacms/example-muster-consulting dev",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
-    "//build:schema": "Compiles mica.config.ts into the JSON artifact the CMS container is given.",
-    "build:schema": "pnpm --filter @micacms/cms build-schema",
     "cms:grant-access": "pnpm --filter @micacms/cms grant-access",
     "//cms:backup": "There is no backup script: the content is in Git, and the database holds only accounts and sessions.",
-    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules packages/*/dist apps/*/dist"
-  },
-  "//dependencies": "mica.config.ts is this project's content model and imports the DSL, the same way a customer project would.",
-  "dependencies": {
-    "@micacms/model": "workspace:*"
+    "clean": "rm -rf node_modules apps/*/node_modules examples/*/node_modules packages/*/node_modules packages/*/dist apps/*/dist examples/*/dist"
   },
   "devDependencies": {
     "typescript": "^5.7.3"

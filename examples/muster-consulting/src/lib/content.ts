@@ -10,9 +10,9 @@ import { getCollection, getEntry } from "astro:content";
 
 import type { InferSingleton } from "@micacms/model";
 
-import type siteModel from "../../../../mica.config";
+import type { site } from "../mica";
 
-type Model = typeof siteModel;
+type Model = typeof site;
 
 export type SiteSettings = InferSingleton<Model["singletons"]["site"]>;
 export type Navigation = InferSingleton<Model["singletons"]["navigation"]>;

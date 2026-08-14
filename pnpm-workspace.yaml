@@ -1,6 +1,7 @@
 packages:
   - "apps/*"
   - "packages/*"
+  - "examples/*"
 
 # Build scripts are opt-in.
 #   esbuild — Vite and Astro

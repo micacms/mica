@@ -1,0 +1,679 @@
+{
+  "protocolVersion": 1,
+  "generatedBy": "@micacms/astro@0.0.1",
+  "collections": {
+    "pages": {
+      "type": "collection",
+      "name": "pages",
+      "label": "Pages",
+      "labelSingular": "Page",
+      "description": "Standalone pages such as About, Services or Contact.",
+      "defaultSort": {
+        "field": "position",
+        "direction": "asc"
+      },
+      "sortable": true,
+      "fields": {
+        "title": {
+          "kind": "text",
+          "label": "Title",
+          "required": true,
+          "maxLength": 120,
+          "listed": true
+        },
+        "slug": {
+          "kind": "slug",
+          "label": "URL",
+          "from": "title",
+          "description": "The address of the page, e.g. /about."
+        },
+        "intro": {
+          "kind": "textarea",
+          "label": "Introduction",
+          "rows": 3,
+          "maxLength": 400,
+          "description": "Short lead paragraph shown below the page title."
+        },
+        "heroImage": {
+          "kind": "media",
+          "label": "Hero image",
+          "accept": "image"
+        },
+        "body": {
+          "kind": "richText",
+          "label": "Content",
+          "toolbar": [
+            "bold",
+            "italic",
+            "heading",
+            "bulletList",
+            "orderedList",
+            "blockquote",
+            "link",
+            "horizontalRule"
+          ]
+        },
+        "sections": {
+          "kind": "repeater",
+          "label": "Extra sections",
+          "itemLabel": "heading",
+          "addLabel": "Add section",
+          "fields": {
+            "heading": {
+              "kind": "text",
+              "label": "Heading",
+              "required": true
+            },
+            "text": {
+              "kind": "richText",
+              "label": "Text"
+            },
+            "image": {
+              "kind": "media",
+              "label": "Image",
+              "accept": "image"
+            },
+            "layout": {
+              "kind": "select",
+              "label": "Layout",
+              "options": [
+                {
+                  "label": "Image right",
+                  "value": "image-right"
+                },
+                {
+                  "label": "Image left",
+                  "value": "image-left"
+                },
+                {
+                  "label": "Full width",
+                  "value": "full"
+                }
+              ],
+              "default": "image-right"
+            }
+          }
+        },
+        "seo": {
+          "kind": "object",
+          "label": "SEO",
+          "group": "Metadata",
+          "collapsible": true,
+          "collapsed": true,
+          "fields": {
+            "metaTitle": {
+              "kind": "text",
+              "label": "Meta title",
+              "maxLength": 60
+            },
+            "metaDescription": {
+              "kind": "textarea",
+              "label": "Meta description",
+              "rows": 2,
+              "maxLength": 160
+            },
+            "ogImage": {
+              "kind": "media",
+              "label": "Social sharing image",
+              "accept": "image"
+            },
+            "noindex": {
+              "kind": "boolean",
+              "label": "Hide from search engines"
+            }
+          }
+        }
+      }
+    },
+    "projects": {
+      "type": "collection",
+      "name": "projects",
+      "label": "Projects",
+      "labelSingular": "Project",
+      "description": "Reference projects shown in the portfolio.",
+      "defaultSort": {
+        "field": "publishedAt",
+        "direction": "desc"
+      },
+      "fields": {
+        "title": {
+          "kind": "text",
+          "label": "Title",
+          "required": true,
+          "maxLength": 120,
+          "listed": true
+        },
+        "slug": {
+          "kind": "slug",
+          "label": "URL",
+          "from": "title"
+        },
+        "year": {
+          "kind": "number",
+          "label": "Year",
+          "integer": true,
+          "min": 1900,
+          "max": 2100,
+          "listed": true,
+          "width": "half"
+        },
+        "category": {
+          "kind": "select",
+          "label": "Category",
+          "width": "half",
+          "listed": true,
+          "options": [
+            {
+              "label": "Residential",
+              "value": "residential"
+            },
+            {
+              "label": "Commercial",
+              "value": "commercial"
+            },
+            {
+              "label": "Public",
+              "value": "public"
+            },
+            {
+              "label": "Renovation",
+              "value": "renovation"
+            }
+          ]
+        },
+        "description": {
+          "kind": "richText",
+          "label": "Description"
+        },
+        "location": {
+          "kind": "object",
+          "label": "Location",
+          "fields": {
+            "address": {
+              "kind": "text",
+              "label": "Address"
+            },
+            "city": {
+              "kind": "text",
+              "label": "City",
+              "width": "half"
+            },
+            "postalCode": {
+              "kind": "text",
+              "label": "Postal code",
+              "width": "half",
+              "maxLength": 12
+            },
+            "position": {
+              "kind": "coordinates",
+              "label": "Map position",
+              "defaultCenter": {
+                "lat": 47.3769,
+                "lng": 8.5417
+              },
+              "defaultZoom": 12
+            }
+          }
+        },
+        "facts": {
+          "kind": "repeater",
+          "label": "Key facts",
+          "itemLabel": "label",
+          "addLabel": "Add fact",
+          "max": 8,
+          "fields": {
+            "label": {
+              "kind": "text",
+              "label": "Label",
+              "required": true,
+              "width": "half"
+            },
+            "value": {
+              "kind": "text",
+              "label": "Value",
+              "required": true,
+              "width": "half"
+            }
+          }
+        },
+        "gallery": {
+          "kind": "media",
+          "label": "Images",
+          "accept": "image",
+          "multiple": true,
+          "description": "The first image is used as the preview."
+        },
+        "team": {
+          "kind": "relation",
+          "label": "Team involved",
+          "collection": "team",
+          "multiple": true
+        },
+        "featured": {
+          "kind": "boolean",
+          "label": "Show on the homepage"
+        }
+      }
+    },
+    "news": {
+      "type": "collection",
+      "name": "news",
+      "label": "News",
+      "labelSingular": "Article",
+      "defaultSort": {
+        "field": "publishedAt",
+        "direction": "desc"
+      },
+      "fields": {
+        "title": {
+          "kind": "text",
+          "label": "Title",
+          "required": true,
+          "maxLength": 140,
+          "listed": true
+        },
+        "slug": {
+          "kind": "slug",
+          "label": "URL",
+          "from": "title"
+        },
+        "publishDate": {
+          "kind": "date",
+          "label": "Date",
+          "listed": true,
+          "width": "half"
+        },
+        "author": {
+          "kind": "relation",
+          "label": "Author",
+          "collection": "team",
+          "width": "half"
+        },
+        "excerpt": {
+          "kind": "textarea",
+          "label": "Teaser",
+          "rows": 3,
+          "maxLength": 300
+        },
+        "coverImage": {
+          "kind": "media",
+          "label": "Cover image",
+          "accept": "image"
+        },
+        "body": {
+          "kind": "richText",
+          "label": "Article"
+        }
+      }
+    },
+    "team": {
+      "type": "collection",
+      "name": "team",
+      "label": "Team",
+      "labelSingular": "Team member",
+      "defaultSort": {
+        "field": "position",
+        "direction": "asc"
+      },
+      "sortable": true,
+      "fields": {
+        "name": {
+          "kind": "text",
+          "label": "Name",
+          "required": true,
+          "listed": true
+        },
+        "slug": {
+          "kind": "slug",
+          "label": "URL",
+          "from": "name"
+        },
+        "role": {
+          "kind": "text",
+          "label": "Role",
+          "listed": true,
+          "width": "half"
+        },
+        "email": {
+          "kind": "email",
+          "label": "Email",
+          "width": "half"
+        },
+        "phone": {
+          "kind": "text",
+          "label": "Phone",
+          "width": "half"
+        },
+        "portrait": {
+          "kind": "media",
+          "label": "Portrait",
+          "accept": "image"
+        },
+        "bio": {
+          "kind": "textarea",
+          "label": "Short biography",
+          "rows": 4,
+          "maxLength": 600
+        },
+        "featured": {
+          "kind": "boolean",
+          "label": "Show on the team page",
+          "default": false
+        }
+      }
+    }
+  },
+  "singletons": {
+    "site": {
+      "type": "singleton",
+      "name": "site",
+      "label": "Website",
+      "description": "Company details, contact information and default SEO.",
+      "fields": {
+        "companyName": {
+          "kind": "text",
+          "label": "Company name",
+          "required": true
+        },
+        "logo": {
+          "kind": "media",
+          "label": "Logo",
+          "accept": "image"
+        },
+        "tagline": {
+          "kind": "text",
+          "label": "Tagline",
+          "maxLength": 160
+        },
+        "address": {
+          "kind": "textarea",
+          "label": "Address",
+          "rows": 3,
+          "group": "Contact"
+        },
+        "email": {
+          "kind": "email",
+          "label": "Email",
+          "group": "Contact",
+          "width": "half"
+        },
+        "phone": {
+          "kind": "text",
+          "label": "Phone",
+          "group": "Contact",
+          "width": "half"
+        },
+        "openingHours": {
+          "kind": "textarea",
+          "label": "Opening hours",
+          "rows": 3,
+          "group": "Contact"
+        },
+        "position": {
+          "kind": "coordinates",
+          "label": "Map position",
+          "group": "Contact",
+          "defaultCenter": {
+            "lat": 47.3769,
+            "lng": 8.5417
+          },
+          "defaultZoom": 14
+        },
+        "social": {
+          "kind": "repeater",
+          "label": "Social links",
+          "group": "Contact",
+          "itemLabel": "platform",
+          "addLabel": "Add link",
+          "fields": {
+            "platform": {
+              "kind": "select",
+              "label": "Platform",
+              "width": "half",
+              "options": [
+                {
+                  "label": "LinkedIn",
+                  "value": "linkedin"
+                },
+                {
+                  "label": "Instagram",
+                  "value": "instagram"
+                },
+                {
+                  "label": "Facebook",
+                  "value": "facebook"
+                },
+                {
+                  "label": "YouTube",
+                  "value": "youtube"
+                },
+                {
+                  "label": "X",
+                  "value": "x"
+                }
+              ]
+            },
+            "url": {
+              "kind": "url",
+              "label": "URL",
+              "required": true,
+              "width": "half"
+            }
+          }
+        },
+        "seo": {
+          "kind": "object",
+          "label": "Default SEO",
+          "group": "Metadata",
+          "collapsible": true,
+          "fields": {
+            "titleSuffix": {
+              "kind": "text",
+              "label": "Title suffix",
+              "description": "Appended to every page title, e.g. \" — Muster AG\"."
+            },
+            "defaultDescription": {
+              "kind": "textarea",
+              "label": "Default description",
+              "rows": 2,
+              "maxLength": 160
+            },
+            "defaultImage": {
+              "kind": "media",
+              "label": "Default sharing image",
+              "accept": "image"
+            }
+          }
+        },
+        "analytics": {
+          "kind": "object",
+          "label": "Analytics",
+          "group": "Metadata",
+          "collapsible": true,
+          "collapsed": true,
+          "fields": {
+            "provider": {
+              "kind": "select",
+              "label": "Provider",
+              "options": [
+                {
+                  "label": "None",
+                  "value": "none"
+                },
+                {
+                  "label": "Plausible",
+                  "value": "plausible"
+                },
+                {
+                  "label": "Matomo",
+                  "value": "matomo"
+                }
+              ],
+              "default": "none"
+            },
+            "siteId": {
+              "kind": "text",
+              "label": "Site ID"
+            },
+            "scriptUrl": {
+              "kind": "url",
+              "label": "Script URL"
+            }
+          }
+        }
+      }
+    },
+    "navigation": {
+      "type": "singleton",
+      "name": "navigation",
+      "label": "Navigation",
+      "description": "Main menu and footer links.",
+      "fields": {
+        "main": {
+          "kind": "repeater",
+          "label": "Main menu",
+          "itemLabel": "label",
+          "addLabel": "Add menu item",
+          "fields": {
+            "label": {
+              "kind": "text",
+              "label": "Label",
+              "required": true,
+              "width": "half"
+            },
+            "href": {
+              "kind": "text",
+              "label": "Link",
+              "required": true,
+              "width": "half",
+              "placeholder": "/projects"
+            },
+            "children": {
+              "kind": "repeater",
+              "label": "Submenu",
+              "itemLabel": "label",
+              "addLabel": "Add submenu item",
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Label",
+                  "required": true,
+                  "width": "half"
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "width": "half"
+                }
+              }
+            }
+          }
+        },
+        "footer": {
+          "kind": "repeater",
+          "label": "Footer links",
+          "itemLabel": "label",
+          "addLabel": "Add footer link",
+          "fields": {
+            "label": {
+              "kind": "text",
+              "label": "Label",
+              "required": true,
+              "width": "half"
+            },
+            "href": {
+              "kind": "text",
+              "label": "Link",
+              "required": true,
+              "width": "half"
+            }
+          }
+        },
+        "footerNote": {
+          "kind": "textarea",
+          "label": "Footer note",
+          "rows": 2
+        }
+      }
+    },
+    "theme": {
+      "type": "singleton",
+      "name": "theme",
+      "label": "Theme",
+      "description": "Colours and typography for the public website.",
+      "fields": {
+        "primaryColor": {
+          "kind": "color",
+          "label": "Primary colour",
+          "default": "#1f2937",
+          "width": "half",
+          "presets": [
+            "#1f2937",
+            "#0f766e",
+            "#1d4ed8",
+            "#b91c1c",
+            "#a16207"
+          ]
+        },
+        "accentColor": {
+          "kind": "color",
+          "label": "Accent colour",
+          "default": "#0ea5e9",
+          "width": "half",
+          "presets": [
+            "#0ea5e9",
+            "#f97316",
+            "#22c55e",
+            "#e11d48",
+            "#8b5cf6"
+          ]
+        },
+        "fontFamily": {
+          "kind": "select",
+          "label": "Typeface",
+          "width": "half",
+          "default": "sans",
+          "options": [
+            {
+              "label": "Sans serif",
+              "value": "sans"
+            },
+            {
+              "label": "Serif",
+              "value": "serif"
+            },
+            {
+              "label": "Grotesque",
+              "value": "grotesque"
+            }
+          ]
+        },
+        "borderRadius": {
+          "kind": "select",
+          "label": "Corner rounding",
+          "width": "half",
+          "default": "md",
+          "options": [
+            {
+              "label": "Square",
+              "value": "none"
+            },
+            {
+              "label": "Subtle",
+              "value": "sm"
+            },
+            {
+              "label": "Rounded",
+              "value": "md"
+            },
+            {
+              "label": "Very rounded",
+              "value": "lg"
+            }
+          ]
+        }
+      }
+    }
+  }
+}

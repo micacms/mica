@@ -19,7 +19,7 @@ import { getImage } from "astro:assets";
 const MAX_SOCIAL_WIDTH = 1200;
 
 const modules = import.meta.glob<{ default: ImageMetadata }>(
-  "../../../../content/**/*.{jpeg,jpg,png,webp,avif,gif,tiff,svg}",
+  "../../content/**/*.{jpeg,jpg,png,webp,avif,gif,tiff,svg}",
   { eager: true },
 );
 
