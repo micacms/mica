@@ -170,7 +170,10 @@ export function adminSystemRoutes(): Hono<Env> {
           ? {
               baseUrl: config.CMS_BASE_URL,
               schemaPath: config.schemaPath,
-              contentRoot: config.contentRoot,
+              repositoryMode: config.REPOSITORY,
+              // Only meaningful for the local connector; a remote one names
+              // itself in `repository.origin` above.
+              contentRoot: config.REPOSITORY === "local" ? config.contentRoot : null,
               dataDir: config.dataDir,
               databasePath: config.databasePath,
               logLevel: config.LOG_LEVEL,

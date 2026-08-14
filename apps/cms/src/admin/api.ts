@@ -264,7 +264,9 @@ export interface SystemInfo {
   deployment: {
     baseUrl: string;
     schemaPath: string;
-    contentRoot: string;
+    repositoryMode: "local" | "github" | "gitlab";
+    /** Null unless the repository is a working tree on this machine. */
+    contentRoot: string | null;
     dataDir: string;
     databasePath: string;
     logLevel: string;

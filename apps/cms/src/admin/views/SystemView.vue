@@ -396,6 +396,10 @@ async function copyReport(): Promise<void> {
             <dd class="mono">{{ info.deployment.databasePath }}</dd>
           </div>
           <div>
+            <dt>Repository access</dt>
+            <dd>{{ info.deployment.repositoryMode }}</dd>
+          </div>
+          <div v-if="info.deployment.contentRoot">
             <dt>Content root</dt>
             <dd class="mono">{{ info.deployment.contentRoot }}</dd>
           </div>

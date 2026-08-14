@@ -10,7 +10,14 @@
  * this database costs everyone their login, and nothing else.
  */
 
-import { createContentStore, localConnector, type ContentStore, type RepositoryConnector } from "@micacms/connectors";
+import {
+  createContentStore,
+  githubConnector,
+  gitlabConnector,
+  localConnector,
+  type ContentStore,
+  type RepositoryConnector,
+} from "@micacms/connectors";
 import type { Site } from "@micacms/model";
 
 import type { Config } from "./config.js";
@@ -66,15 +73,7 @@ export function createContext(options: CreateContextOptions): AppContext {
 
   const db = options.db ?? openDatabase(config.databasePath, { logger });
 
-  /**
-   * The local connector for now.
-   *
-   * It writes into a working tree, which is exactly right for `mica dev` and
-   * for a self-hosted deployment whose content repository is checked out beside
-   * it. A GitHub or GitLab connector drops in here without anything above this
-   * line changing — that is what the interface is for.
-   */
-  const connector = options.connector ?? localConnector({ root: config.contentRoot });
+  const connector = options.connector ?? connectorFor(config);
 
   const repositories = {
     sessions: createSessionRepository(db),
@@ -123,4 +122,43 @@ export function createContext(options: CreateContextOptions): AppContext {
       db.close();
     },
   };
+}
+
+/**
+ * The one place that decides how Mica reaches the content repository.
+ *
+ * Every mode produces the same interface, so nothing downstream — not the
+ * content store, not a route, not the media service — can tell which one it
+ * got. That is the property that makes a hosted Mica and a developer's
+ * `pnpm dev` the same program.
+ */
+function connectorFor(config: Config): RepositoryConnector {
+  const author = { name: "Mica CMS", email: "mica@localhost" };
+
+  switch (config.REPOSITORY) {
+    case "github":
+      return githubConnector({
+        // Validated at startup, so these are present by the time we are here.
+        owner: config.REPOSITORY_PROJECT!.split("/")[0]!,
+        repo: config.REPOSITORY_PROJECT!.split("/").slice(1).join("/"),
+        branch: config.REPOSITORY_BRANCH,
+        root: config.REPOSITORY_ROOT,
+        token: config.REPOSITORY_TOKEN!,
+        apiBase: config.REPOSITORY_API_BASE,
+        author,
+      });
+
+    case "gitlab":
+      return gitlabConnector({
+        project: config.REPOSITORY_PROJECT!,
+        branch: config.REPOSITORY_BRANCH,
+        root: config.REPOSITORY_ROOT,
+        token: config.REPOSITORY_TOKEN!,
+        apiBase: config.REPOSITORY_API_BASE,
+        author,
+      });
+
+    case "local":
+      return localConnector({ root: config.contentRoot });
+  }
 }

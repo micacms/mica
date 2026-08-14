@@ -17,6 +17,10 @@ export {
 } from "./connector.js";
 
 export { localConnector, type LocalConnectorOptions } from "./local.js";
+export { githubConnector, type GitHubConnectorOptions } from "./github.js";
+export { gitlabConnector, type GitLabConnectorOptions } from "./gitlab.js";
+
+export { HttpError, type FetchLike } from "./http.js";
 
 export {
   createContentStore,

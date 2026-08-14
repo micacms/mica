@@ -36,6 +36,28 @@ const schema = z
      */
     CONTENT_ROOT: z.string().default("../../content"),
 
+    /**
+     * How Mica reaches that repository.
+     *
+     * `local` writes into a working tree beside the server: right for
+     * development and for a self-hosted deployment that already has a checkout
+     * and its own way of committing. `github` and `gitlab` commit through the
+     * provider's API, which is what a hosted Mica needs — no clone, no
+     * credentials on disk, and every save is a commit an editor's colleague can
+     * review.
+     */
+    REPOSITORY: z.enum(["local", "github", "gitlab"]).default("local"),
+
+    /** Where the content root sits *inside* the remote repository. */
+    REPOSITORY_ROOT: z.string().default("content"),
+    REPOSITORY_BRANCH: z.string().default("main"),
+    /** Token with write access to the content repository. */
+    REPOSITORY_TOKEN: z.string().optional(),
+    /** `owner/repo` for GitHub, `group/project` or a numeric id for GitLab. */
+    REPOSITORY_PROJECT: z.string().optional(),
+    /** For GitHub Enterprise or self-managed GitLab. */
+    REPOSITORY_API_BASE: z.string().url().optional(),
+
     /** Operational state only: users and sessions. */
     DATA_DIR: z.string().default("./data"),
     DATABASE_PATH: z.string().optional(),
@@ -172,6 +194,29 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
         "    volumes:     [ ./mica.config.js:/app/schema.js:ro ]\n" +
         "    environment: { MICA_SCHEMA: /app/schema.js }",
     );
+  }
+
+  /**
+   * A remote repository needs to be told which one, and with what.
+   *
+   * Checked here rather than at the first save: a Mica that starts, shows the
+   * editor their content, and only fails when they press Save has already
+   * wasted their work.
+   */
+  if (config.REPOSITORY !== "local") {
+    const needed = (["REPOSITORY_PROJECT", "REPOSITORY_TOKEN"] as const).filter(
+      (key) => !config[key],
+    );
+
+    if (needed.length > 0) {
+      throw new ConfigError(
+        `REPOSITORY is "${config.REPOSITORY}", so ${needed.join(" and ")} must be set.\n` +
+          (config.REPOSITORY === "github"
+            ? "  REPOSITORY_PROJECT is owner/repo, and the token needs contents: write."
+            : "  REPOSITORY_PROJECT is group/project or a numeric id, and the token needs\n" +
+              "  the write_repository scope."),
+      );
+    }
   }
 
   const sessionSecret = config.SESSION_SECRET ?? randomBytes(32).toString("hex");
