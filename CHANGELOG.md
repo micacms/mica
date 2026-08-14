@@ -12,7 +12,7 @@ release note before upgrading.
 
 ## [Unreleased]
 
-## [0.0.1] — unreleased
+## [0.0.2] — 2026-08-14
 
 The first release. Everything below is new, so this entry describes what Mica
 *is* rather than what changed.

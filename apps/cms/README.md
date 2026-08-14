@@ -1,5 +1,8 @@
 # Mica CMS
 
+> **Experimental.** Pre-1.0: the CLI, the API and the content format can still
+> change without notice. Use it at your own risk.
+
 The CMS application: a Hono API and the Vue administration SPA it serves. It
 holds no content — content is committed to a Git repository through a connector,
 and the SQLite file next to this process holds accounts and sessions only.

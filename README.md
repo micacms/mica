@@ -1,5 +1,8 @@
 # Mica
 
+> **Experimental.** Pre-1.0: APIs, the CLI and the content format can still
+> change without notice. Use it at your own risk.
+
 A Git-native content editor for Astro websites.
 
 Editors get forms. What comes out is a commit: JSON, Markdoc and images in your

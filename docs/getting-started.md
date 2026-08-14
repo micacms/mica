@@ -1,11 +1,10 @@
 # Getting started
 
-Add Mica to an Astro project and edit its content locally. Twenty minutes.
+> **Experimental.** Mica is pre-1.0 and its APIs, CLI and content format can
+> still change without notice. Try it, but do not depend on it for anything
+> you cannot afford to redo. Use it at your own risk.
 
-> **Nothing is published to npm or Docker Hub yet**, so `npm install` and `npx`
-> cannot reach these packages today. Both work from a clone instead — see
-> [Before it is published](#before-it-is-published) at the end. Every command
-> below is the real one; only where the bits come from differs.
+Add Mica to an Astro project and edit its content locally. Twenty minutes.
 
 ---
 
@@ -222,31 +221,6 @@ a quietly empty page. Edit the entries, or make the field optional.
 
 ---
 
-## Before it is published
-
-Until the packages are on npm, point your project at a clone:
-
-```bash
-git clone <this-repository> mica
-cd mica && pnpm install && pnpm build
-```
-
-```json
-// your project's package.json
-{
-  "dependencies": {
-    "@micacms/astro": "link:../mica/packages/astro",
-    "@micacms/model": "link:../mica/packages/model"
-  }
-}
-```
-
-`npx @micacms/cms` is then the same command from that clone:
-
-```bash
-node ../mica/apps/cms/dist/server/cli.js --content ./content
-```
-
 To try everything without touching a project of your own,
 `examples/muster-consulting` is a complete site — model, content and
-templates — and `pnpm dev` from the clone edits it by default.
+templates — and `pnpm dev` from a clone edits it by default.

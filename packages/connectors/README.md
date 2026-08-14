@@ -1,5 +1,8 @@
 # @micacms/connectors
 
+> **Experimental.** Pre-1.0: the API can still change without notice. Use it
+> at your own risk.
+
 Repository access for Mica: one narrow interface, with a working-tree
 implementation and two that commit through a provider's API.
 

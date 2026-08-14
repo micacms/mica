@@ -1,5 +1,8 @@
 # @micacms/model
 
+> **Experimental.** Pre-1.0: the API and the content format can still change
+> without notice. Use it at your own risk.
+
 The content model for Mica — a Git-native content editor for static Astro
 websites — and the format its entries take on disk.
 

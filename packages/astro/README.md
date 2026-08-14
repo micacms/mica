@@ -1,5 +1,8 @@
 # @micacms/astro
 
+> **Experimental.** Pre-1.0: the API and the content format can still change
+> without notice. Use it at your own risk.
+
 Reads a Mica content repository as Astro Content Collections, through the
 Content Layer API — and publishes the content model for Mica to read back.
 
