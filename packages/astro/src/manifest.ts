@@ -10,7 +10,7 @@
 import { createManifest, type ProtocolManifest, type Site } from "@micacms/model";
 
 /** Replaced at publish time; the fallback keeps a workspace build honest. */
-const PACKAGE_VERSION = "2.0.0";
+const PACKAGE_VERSION = "0.0.1";
 
 /**
  * Mica holds no model of its own. The Astro project is the only place a

@@ -3,8 +3,9 @@
  *
  *   // src/content.config.ts
  *   import { micaCollections } from "@micacms/astro";
- *   import site from "../../mica.config";
+ *   import { defineSite } from "@micacms/model";
  *
+ *   export const site = defineSite({ collections: { … } });
  *   export const collections = micaCollections(site, { root: "./content" });
  *
  * From there the website uses ordinary Astro APIs — `getCollection("projects")`
@@ -16,8 +17,12 @@
  * Publishing is a commit, and CI builds the commit.
  */
 
+import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { dirname, join, sep } from "node:path";
+
 import {
   fieldsSchema,
+  MANIFEST_PATH,
   readCollection,
   readSingleton,
   type Collection,
@@ -30,17 +35,36 @@ import {
 import { fileSystemSource } from "@micacms/model/node";
 import { z } from "zod";
 
+import { manifestFor } from "./manifest.js";
+import { DEFAULT_CONTENT_ROOT, resolveContentRoot } from "./root.js";
+
 export interface MicaCollectionsOptions {
   /**
-   * The content root, relative to the working directory of the build.
+   * Overrides `defineSite({ root })`, which is where the content root belongs.
    *
-   * In a single-repository project this is a directory inside the Astro
-   * project. When the content lives in its own repository, it is wherever CI
-   * put the checkout — `@micacms/astro` only needs a resolved local path.
+   * Relative paths resolve against the Astro project root, like Astro's own
+   * `glob({ base })`. An absolute path is used as given — which is what a
+   * project whose content is a separate repository, checked out by CI
+   * somewhere else, wants.
    */
   root?: string;
-  /** Overrides `root`. Used by tests and, later, by repository connectors. */
+  /** Overrides `root` entirely. Used by tests, and by a non-filesystem source. */
   source?: ContentSource;
+  /**
+   * Turns off publishing the model to `<root>/.mica/schema.json`.
+   *
+   * Only for a project that is not edited through Mica at all: without that
+   * file in the repository, Mica has no model and refuses to start.
+   */
+  publishModel?: false;
+  /**
+   * How long to wait after a content change before reloading, in dev.
+   *
+   * Saving one entry touches several files — `index.json` and every `.mdoc`
+   * beside it — and a Git checkout touches all of them at once. One reload
+   * after the burst is both faster and less confusing than one per file.
+   */
+  debounceMs?: number;
 }
 
 /**
@@ -114,6 +138,22 @@ export interface LoaderContext {
     debug(message: string): void;
   };
   meta: { get(key: string): string | undefined; set(key: string, value: string): void };
+  /**
+   * Astro's resolved config. Optional because this interface is a hand-written
+   * subset and the tests build a context by hand; `config.root` is what turns a
+   * relative content root into a path.
+   */
+  config?: { root: URL };
+  /**
+   * Present only while `astro dev` runs. Astro's watcher follows the module
+   * graph, and content files are not in it — no page imports
+   * `projects/haus-a/index.json` — so each loader watches its own directory
+   * here, exactly as Astro's own `glob` loader does.
+   */
+  watcher?: {
+    add(path: string): void;
+    on(event: "add" | "change" | "unlink", handler: (path: string) => void): void;
+  };
   parseData(input: {
     id: string;
     data: Record<string, unknown>;
@@ -133,7 +173,73 @@ export function micaCollections<S extends Site>(
   site: S,
   options: MicaCollectionsOptions = {},
 ): MicaCollections<S> {
-  const source = options.source ?? fileSystemSource(options.root ?? "./content");
+  /**
+   * Everything below is resolved on first load rather than here, because the
+   * Astro project root is something only a loader is told — and it is what
+   * turns `./content` into a directory. Memoised: one root and one source,
+   * however many collections and however many reloads.
+   */
+  let root: string | undefined;
+  let source: ContentSource | undefined;
+
+  const rootFor = (context: LoaderContext): string =>
+    (root ??= resolveContentRoot(options.root ?? site.root, context.config?.root));
+
+  const sourceFor = (context: LoaderContext): ContentSource =>
+    (source ??= options.source ?? fileSystemSource(rootFor(context)));
+
+  /** Published once per process; a model change restarts the dev server. */
+  let publishing: Promise<void> | undefined;
+
+  const publish = (context: LoaderContext): Promise<void> =>
+    (publishing ??=
+      options.publishModel === false || options.source
+        ? Promise.resolve()
+        : publishModel(site, rootFor(context), context.logger));
+
+  /** Collections whose watcher is already registered, so a reload adds none. */
+  const watching = new Set<string>();
+
+  const watch = (context: LoaderContext, name: string, reload: () => Promise<void>): void => {
+    const watcher = context.watcher;
+    if (!watcher || options.source || watching.has(name)) return;
+    watching.add(name);
+
+    const base = rootFor(context);
+    watcher.add(base);
+
+    // A collection lives in `<root>/<name>/`; a singleton is either
+    // `<root>/<name>.json` or `<root>/<name>/…`. Both are covered by this
+    // prefix, and nothing outside it can concern this loader — which is what
+    // keeps one collection's save from re-reading every other one.
+    const prefix = join(base, name);
+    const mine = (path: string): boolean =>
+      path === `${prefix}.json` || path.startsWith(prefix + sep);
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+
+    const onChange = (path: string): void => {
+      // The manifest is this package's own output; reloading content because
+      // the model was written is a loop waiting to happen.
+      if (path.endsWith(MANIFEST_PATH) || !mine(path)) return;
+
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        // Content that fails its own schema lands here. The dev server has to
+        // survive it: the next save is very likely the fix.
+        void reload().catch((error: unknown) => {
+          context.logger.error(`Could not reload content: ${describe(error)}`);
+        });
+      }, options.debounceMs ?? 100);
+      // A pending reload is never a reason to keep the process alive.
+      timer.unref?.();
+    };
+
+    watcher.on("change", onChange);
+    watcher.on("add", onChange);
+    watcher.on("unlink", onChange);
+  };
+
   const collections = {} as Record<string, AstroCollectionConfig<unknown>>;
 
   for (const [name, def] of Object.entries(site.collections) as [string, Collection][]) {
@@ -146,28 +252,35 @@ export function micaCollections<S extends Site>(
       loader: {
         name: `mica:${name}`,
         load: async (context) => {
-          const entries = await guard(context, source, () => readCollection(source, def, name));
+          const read = async (): Promise<void> => {
+            const source = sourceFor(context);
+            const entries = await guard(context, source, () => readCollection(source, def, name));
 
-          // A full replace, not a merge: an entry deleted from the repository
-          // has to disappear from the build.
-          context.store.clear();
+            // A full replace, not a merge: an entry deleted from the repository
+            // has to disappear from the build.
+            context.store.clear();
 
-          for (const entry of entries) {
-            const meta: MicaMeta = {
-              id: entry.slug,
-              slug: entry.slug,
-              collection: name,
-              position: entry.position,
-            };
+            for (const entry of entries) {
+              const meta: MicaMeta = {
+                id: entry.slug,
+                slug: entry.slug,
+                collection: name,
+                position: entry.position,
+              };
 
-            const data = await context.parseData({
-              id: entry.slug,
-              data: { ...entry.data, _mica: meta },
-            });
-            context.store.set({ id: entry.slug, data, digest: context.generateDigest(data) });
-          }
+              const data = await context.parseData({
+                id: entry.slug,
+                data: { ...entry.data, _mica: meta },
+              });
+              context.store.set({ id: entry.slug, data, digest: context.generateDigest(data) });
+            }
 
-          context.logger.info(`Loaded ${entries.length} ${def.label.toLowerCase()}`);
+            context.logger.info(`Loaded ${entries.length} ${def.label.toLowerCase()}`);
+          };
+
+          await publish(context);
+          await read();
+          watch(context, name, read);
         },
       },
     };
@@ -182,25 +295,75 @@ export function micaCollections<S extends Site>(
       loader: {
         name: `mica:${name}`,
         load: async (context) => {
-          const data = await guard(context, source, () => readSingleton(source, def, name));
+          const read = async (): Promise<void> => {
+            const source = sourceFor(context);
+            const data = await guard(context, source, () => readSingleton(source, def, name));
 
-          context.store.clear();
-          if (data === null) {
-            // Not fatal. A site is normally deployed before every settings form
-            // has been filled in, and the page that reads this singleton
-            // reports the absence far better than the loader can.
-            context.logger.warn(`No content for the "${def.label}" settings yet.`);
-            return;
-          }
+            context.store.clear();
+            if (data === null) {
+              // Not fatal. A site is normally deployed before every settings
+              // form has been filled in, and the page that reads this singleton
+              // reports the absence far better than the loader can.
+              context.logger.warn(`No content for the "${def.label}" settings yet.`);
+              return;
+            }
 
-          const parsed = await context.parseData({ id: name, data });
-          context.store.set({ id: name, data: parsed, digest: context.generateDigest(parsed) });
+            const parsed = await context.parseData({ id: name, data });
+            context.store.set({ id: name, data: parsed, digest: context.generateDigest(parsed) });
+          };
+
+          await publish(context);
+          await read();
+          watch(context, name, read);
         },
       },
     };
   }
 
   return collections as MicaCollections<S>;
+}
+
+/**
+ * Writes the model into the content root, for Mica to read back.
+ *
+ * Mica holds no content model: the Astro project is the only place a collection
+ * is defined, and this is how it says so. The file goes *inside the content
+ * root* so that it travels to Mica the way content does — through Git and the
+ * repository connector — with nothing to mount and no second channel to keep in
+ * step. Commit it.
+ *
+ * Done from a loader rather than an integration because this is the moment both
+ * facts are in hand: the model, and the project root that turns `./content`
+ * into a directory. It also means `astro.config` needs no Mica in it, which is
+ * what lets a project define Mica collections and ordinary Astro ones in the
+ * same `content.config.ts`.
+ */
+async function publishModel(
+  site: Site,
+  root: string,
+  logger: LoaderContext["logger"],
+): Promise<void> {
+  const target = join(root, MANIFEST_PATH);
+  const contents = `${JSON.stringify(manifestFor(site), null, 2)}\n`;
+
+  try {
+    // Only when it differs. The content root is watched in dev, and rewriting
+    // an identical file on every start would ask for a reload for no reason.
+    if ((await readFile(target, "utf8").catch(() => null)) === contents) return;
+
+    await mkdir(dirname(target), { recursive: true });
+    await writeFile(target, contents, "utf8");
+    logger.info(`Wrote the content model to ${MANIFEST_PATH} — commit it for Mica to read.`);
+  } catch (error) {
+    // A site that builds correctly should not fail over this, and a read-only
+    // checkout is a normal way to build one in CI. Mica reports a missing model
+    // itself, and far more usefully.
+    logger.warn(`Could not write the content model: ${describe(error)}`);
+  }
+}
+
+function describe(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 /**
@@ -241,8 +404,8 @@ export type SingletonDocument<
   K extends keyof S["singletons"],
 > = InferSingleton<S["singletons"][K]>;
 
-export { mica, type MicaIntegrationOptions } from "./integration.js";
 export { manifestFor } from "./manifest.js";
+export { DEFAULT_CONTENT_ROOT, resolveContentRoot };
 export {
   renderRichText,
   transformRichText,

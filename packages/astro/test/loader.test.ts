@@ -129,6 +129,55 @@ describe("micaCollections", () => {
   });
 });
 
+describe("mixing with ordinary Astro collections", () => {
+  /**
+   * Mica owns the collections in the model and nothing else. A project is free
+   * to define its own beside them — a glob of Markdown docs, a fetch from an
+   * API — and the two have to coexist in one `collections` export.
+   */
+  it("returns a plain object, so it can be spread beside other collections", () => {
+    const mine = build();
+
+    assert.equal(Object.getPrototypeOf(mine), Object.prototype);
+    assert.deepEqual(Object.keys(mine).sort(), ["projects", "team", "theme"]);
+    // Own and enumerable: nothing here relies on a getter or a symbol.
+    assert.deepEqual(Object.keys(mine), Object.getOwnPropertyNames(mine));
+  });
+
+  it("leaves a foreign collection untouched", async () => {
+    let foreignLoads = 0;
+
+    const collections = {
+      ...build(),
+      docs: {
+        type: "content_layer" as const,
+        loader: {
+          name: "glob",
+          load: async () => {
+            foreignLoads += 1;
+          },
+        },
+        schema: { parseAsync: async (data: unknown) => data },
+      },
+    };
+
+    assert.deepEqual(Object.keys(collections).sort(), ["docs", "projects", "team", "theme"]);
+
+    const context = createContext(collections.projects.schema);
+    await collections.projects.loader.load(context);
+
+    assert.equal(context.entries.size, 2);
+    assert.equal(foreignLoads, 0, "a Mica loader must not reach into another collection");
+  });
+
+  it("names its loaders so they can be told apart", () => {
+    const mine = build();
+
+    assert.equal(mine.projects.loader.name, "mica:projects");
+    assert.equal(mine.theme.loader.name, "mica:theme");
+  });
+});
+
 describe("collections", () => {
   it("loads directory-shaped entries with their rich-text documents", async () => {
     const collections = build();

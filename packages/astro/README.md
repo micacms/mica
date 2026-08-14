@@ -1,29 +1,39 @@
 # @micacms/astro
 
 Reads a Mica content repository as Astro Content Collections, through the
-Content Layer API.
+Content Layer API — and publishes the content model for Mica to read back.
 
 The build needs no CMS running, no URL and no token. Content is files in the
 checkout the build is already in, so the website cannot be broken by the CMS
 being down, slow, or mid-deploy.
 
 ```ts
-// src/content.config.ts
-import { micaCollections } from "@micacms/astro";
-import site from "../../mica.config";
+// src/mica.ts
+import { collection, defineSite, slug, text } from "@micacms/model";
 
-export const collections = micaCollections(site, { root: "../../content" });
+export const site = defineSite({
+  root: "./content",
+  collections: {
+    news: collection({
+      label: "News",
+      fields: { title: text({ required: true }), slug: slug({ from: "title" }) },
+    }),
+  },
+});
 ```
 
 ```ts
-// astro.config.mjs
-import { mica } from "@micacms/astro";
-import site from "./mica.config.ts";
+// src/content.config.ts
+import { micaCollections } from "@micacms/astro";
 
-export default defineConfig({
-  integrations: [mica({ site, root: "./content" })],
-});
+import { site } from "./mica";
+
+export const collections = micaCollections(site);
 ```
+
+That is the whole setup. **Nothing goes in `astro.config`** — which is also what
+lets `content.config.ts` import `astro:content`, a virtual module that only
+exists inside the app's own module graph.
 
 Pages then use ordinary Astro:
 
@@ -37,15 +47,43 @@ const news = await getCollection("news");
 `getCollection("news")` is fully typed from the model, with no code generation
 step — so renaming a field breaks the build rather than the page.
 
-## The two exports
+## What `micaCollections` does
 
-- **`micaCollections(site, options)`** builds one loader and one Zod schema per
-  collection and singleton. Rich text arrives rendered from Markdoc; each
-  document carries a `_mica` field with what the model knows about it.
-- **`mica({ site, root })`** is the dev-server integration. It makes `astro dev`
-  notice content edits — Astro's own watcher does not reach them, because no
-  page imports a content file — and writes the protocol manifest into the build
-  output.
+One loader and one Zod schema per collection and singleton. Each document
+carries a `_mica` field with what the model knows about it; a singleton becomes
+a one-entry collection, reachable with the same `getEntry` as everything else.
+
+The loaders also do the two things that used to need an integration, because
+Astro hands a loader exactly what they require:
+
+- **Publish the model** to `<root>/.mica/schema.json`, once per build or
+  dev-server start. Commit that file: it is how a Mica deployment learns what
+  this project defines. `publishModel: false` turns it off, for a project that
+  is not edited through Mica.
+- **Reload in dev.** Astro's watcher follows the module graph and content files
+  are not in it, because no page imports `projects/haus-a/index.json`. Each
+  loader watches its own directory and coalesces the burst of writes that saving
+  one entry produces (`debounceMs`, 100 ms by default).
+
+## Mixing with your own collections
+
+The return value is a plain object:
+
+```ts
+export const collections = {
+  ...micaCollections(site),
+  docs: defineCollection({ loader: glob({ pattern: "**/*.md", base: "./src/docs" }) }),
+};
+```
+
+Mica edits what is in the model and does not know the rest exists. A save in one
+of its collections reloads that collection only — never a foreign loader.
+
+## Rich text
+
+`renderRichText(source)` turns a Markdoc field into an HTML string;
+`transformRichText(source)` returns the renderable tree instead, for a project
+that wants to render with its own components.
 
 ## Install
 
