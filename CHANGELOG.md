@@ -12,6 +12,15 @@ release note before upgrading.
 
 ## [Unreleased]
 
+## [0.0.3] — 2026-08-14
+
+### Fixed
+
+- `npx @micacms/cms` did nothing. npm and npx run a package's binary through a
+  symlink in `node_modules/.bin`, and Node resolves `import.meta.url` to the
+  symlink's real target — so the check for "is this file the command" never
+  matched, and the CLI silently exited without starting the server.
+
 ## [0.0.2] — 2026-08-14
 
 The first release. Everything below is new, so this entry describes what Mica

@@ -22,7 +22,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -177,7 +177,12 @@ export async function main(): Promise<void> {
 
 // Only when this file *is* the command. Importing it — which the tests do, and
 // which a future `mica init` would — must not start a server.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+//
+// `realpathSync` matters: npm and npx run this file through a symlink in
+// `node_modules/.bin`, and Node resolves `import.meta.url` to the symlink's
+// real target. Comparing against the raw `argv[1]` never matched there, so
+// `npx @micacms/cms` silently did nothing.
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((error: unknown) => {
     process.stderr.write(`\n${error instanceof Error ? error.stack : String(error)}\n`);
     process.exit(1);

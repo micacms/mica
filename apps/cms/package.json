@@ -1,6 +1,6 @@
 {
   "name": "@micacms/cms",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "type": "module",
   "description": "Mica CMS — Hono API plus the Vue administration SPA it serves.",
   "license": "MIT",
