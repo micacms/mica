@@ -12,7 +12,7 @@ release note before upgrading.
 
 ## [Unreleased]
 
-## [0.0.3] — 2026-08-14
+## [0.0.4] — 2026-08-14
 
 ### Fixed
 
