@@ -206,7 +206,7 @@ means committed. Branches do this better than a status column ever did.
 | `pnpm dev` | build packages, then run the CMS |
 | `pnpm build` | build everything |
 | `pnpm build:schema` | compile `mica.config.ts` into the JSON the container is given |
-| `pnpm test` | 261 tests across the model, connectors, Astro loader and CMS API |
+| `pnpm test` | 266 tests across the model, connectors, Astro loader and CMS API |
 | `pnpm typecheck` | every package, including `.vue` and `.astro` |
 | `pnpm cms:grant-access` | let an email address edit a site |
 

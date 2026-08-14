@@ -208,6 +208,67 @@ describe("concurrency", () => {
       ConflictError,
     );
   });
+
+  /**
+   * The revision a save hands back has to be the one the next save may send.
+   *
+   * An editor who saves twice without reloading is the ordinary case, not an
+   * edge case, and it is the case that breaks if a save returns anything but
+   * the new revision of the file it just wrote.
+   */
+  it("returns a revision the next save is allowed to use", async () => {
+    const first = await store.save("projects", { data: { title: "Haus A" } });
+
+    assert.equal(
+      first.revision,
+      await store.revisionOf("projects", "haus-a"),
+      "a save must report the entry's new revision, not the commit's identity",
+    );
+
+    const second = await store.save("projects", {
+      slug: "haus-a",
+      data: { title: "Haus A", slug: "haus-a", year: 2024 },
+      expectedRevision: first.revision,
+    });
+
+    assert.equal(second.revision, await store.revisionOf("projects", "haus-a"));
+  });
+
+  it("returns a revision the next save is allowed to use, after a rename", async () => {
+    const first = await store.save("projects", { data: { title: "Haus A" } });
+
+    // The rename writes a different path, so the revision must name the new one.
+    const renamed = await store.save("projects", {
+      slug: "haus-a",
+      data: { title: "Haus B", slug: "haus-b" },
+      expectedRevision: first.revision,
+    });
+
+    assert.equal(renamed.slug, "haus-b");
+    assert.equal(renamed.revision, await store.revisionOf("projects", "haus-b"));
+
+    await store.save("projects", {
+      slug: "haus-b",
+      data: { title: "Haus B", slug: "haus-b", year: 2024 },
+      expectedRevision: renamed.revision,
+    });
+  });
+
+  it("returns a revision the next save of a singleton is allowed to use", async () => {
+    const first = await store.saveSingleton("theme", { primaryColor: "#001122" });
+
+    assert.equal(first.revision, await store.revisionOfSingleton("theme"));
+
+    // This is what an editor does when they change one more thing before
+    // reloading. It used to be refused as somebody else's edit.
+    const second = await store.saveSingleton(
+      "theme",
+      { primaryColor: "#334455" },
+      { expectedRevision: first.revision },
+    );
+
+    assert.equal(second.revision, await store.revisionOfSingleton("theme"));
+  });
 });
 
 describe("deleting an entry", () => {

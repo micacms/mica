@@ -77,6 +77,14 @@ export interface SaveEntryInput {
 export interface SavedEntry {
   slug: string;
   title: string;
+  /**
+   * The entry's revision *after* this save, ready to be sent back with the
+   * next one.
+   *
+   * Not the commit's identity. The two are different things — a commit
+   * addresses a change set, a revision addresses one file — and returning the
+   * commit here means every second save is refused as somebody else's edit.
+   */
   revision: string;
   /** True when the save moved the entry's files. */
   renamed: boolean;
@@ -130,6 +138,26 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
     }
 
     return changes;
+  };
+
+  /**
+   * The revision of a file that was just written.
+   *
+   * A save hands this to the editor, who sends it back with their next save.
+   * It must be the file's revision and never the commit's: a commit names a
+   * change set, and comparing one against a file's revision can only ever say
+   * "somebody else edited this".
+   *
+   * Absent means the write did not produce the file the caller named. Returning
+   * an empty token instead would be quietly handing back a revision that can
+   * never match, which is the failure this exists to prevent.
+   */
+  const revisionAfterWrite = async (path: string): Promise<string> => {
+    const revision = await connector.revision(path);
+    if (revision === null) {
+      throw new ContentError(`Saved, but "${path}" is not in the repository afterwards.`);
+    }
+    return revision;
   };
 
   /** Slugs already taken in a collection, so a new one can be made unique. */
@@ -214,7 +242,7 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
       }
 
       const title = entryTitle(def, data);
-      const result = await connector.commit({
+      await connector.commit({
         message: previousBase
           ? `${def.labelSingular ?? def.label}: rename ${input.slug} to ${slug}`
           : `${def.labelSingular ?? def.label}: ${title}`,
@@ -226,7 +254,14 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
         author: input.author,
       });
 
-      return { slug, title, revision: result.revision, renamed: previousBase !== null };
+      // Deliberately not the commit's own identity, which addresses the change
+      // set rather than the file. The caller sends this straight back with
+      // their next save, and it is compared against the entry's data file — so
+      // it has to be that file's revision, read after the write, and at the new
+      // path when the save was a rename.
+      const revision = await revisionAfterWrite(dataPath(def, collectionName, slug));
+
+      return { slug, title, revision, renamed: previousBase !== null };
     },
 
     async remove(
@@ -271,7 +306,7 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
         changes.push(...(await staleDocuments(base, new Set(Object.keys(serialized.documents)))));
       }
 
-      return connector.commit({
+      await connector.commit({
         message: `${def.label}: update`,
         changes,
         expect:
@@ -280,6 +315,10 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
             : { [singletonDataPath(def, name)]: options.expectedRevision },
         author: options.author,
       });
+
+      // The file's new revision, not the commit's. See `save` above: the editor
+      // sends this back when they change one more thing without reloading.
+      return { revision: await revisionAfterWrite(singletonDataPath(def, name)) };
     },
 
     /**

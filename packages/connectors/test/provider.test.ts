@@ -139,6 +139,25 @@ function contract(harness: Harness): void {
       assert.equal(harness.writes(calls).length, 1);
     });
 
+    /**
+     * A commit's identity and a file's revision are different tokens.
+     *
+     * They are easy to confuse, because both are opaque strings called a
+     * revision, and confusing them is silent: the editor gets a token back that
+     * can never match, and every second save is refused as somebody else's
+     * edit. Only `revision(path)` may be sent as `expect`.
+     */
+    it("does not name a commit the way it names a file", async () => {
+      const { connector } = harness.make();
+
+      const result = await connector.commit({
+        message: "Save an entry",
+        changes: [{ type: "write", path: "theme.json", contents: "{}" }],
+      });
+
+      assert.notEqual(result.revision, await connector.revision("theme.json"));
+    });
+
     it("refuses when a file changed after the editor opened it", async () => {
       const { connector, calls } = harness.make();
 
