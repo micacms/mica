@@ -2,13 +2,13 @@
  * OpenID Connect.
  *
  * Mica does not authenticate anybody. It asks a provider who you are, and
- * records the answer. Everything that used to live here — hashing, reset
- * flows, MFA, passkeys, breach response — belongs to the identity provider
- * now, and none of it is Mica's to get wrong.
+ * records the answer. Hashing, reset flows, MFA, passkeys and breach response
+ * all belong to the identity provider, and none of them are Mica's to get
+ * wrong.
  *
- * What is left is the small part that *is* Mica's: run the authorization code
- * flow correctly, map the resulting subject to a user, and let the membership
- * table decide what that user may do.
+ * What is Mica's is the small part here: run the authorization code flow
+ * correctly, map the resulting subject to a user, and let the membership table
+ * decide what that user may do.
  *
  * Three checks carry the security of the flow, and all three are enforced
  * rather than assumed:

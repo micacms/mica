@@ -1,8 +1,7 @@
 <script setup lang="ts">
 /**
- * Relation field. Stores entry slugs, so a reference stays readable in the
- * JSON payload — and, now that the payload is a file in the repository, in the
- * diff a reviewer reads.
+ * Relation field. Stores entry slugs, so a reference is readable both in the
+ * JSON payload and in the diff a reviewer reads.
  */
 
 import { computed, onMounted, ref } from "vue";

@@ -105,9 +105,8 @@ Three rules keep this navigable: only `repositories/` writes SQL, only
 `db/driver.ts` knows which SQLite library is in use, and nothing outside
 `@micacms/connectors` knows how the repository is reached.
 
-Note what is *not* here any more: no `services/content.ts`, no `publisher.ts`,
-no entry, revision or media repositories. The content store moved to
-`@micacms/connectors`, where the Astro build can use the same code.
+The content store is not here at all — it lives in `@micacms/connectors`, so
+that the Astro build runs the same discovery and parsing code the server does.
 
 ## How the schema drives everything
 
@@ -143,7 +142,7 @@ that user may do here. Nothing hashes, resets or challenges anything.
 developer account. The config layer refuses that mode in production and on any
 host but localhost — see the P1 entry in [TODO.md](../../TODO.md).
 
-## Saving, and what replaced publishing
+## Saving
 
 A save is a commit. There is no draft state and no publish button: unfinished
 work stays in the editor's form and never reaches the server, and what does
@@ -161,9 +160,8 @@ be readable in a diff and safe to render into a static build.
 
 ## History
 
-There is none here. Git is the history: every save is a commit, with the
-editor's name as the author. Nothing prunes it, and no version of Mica has to be
-running to read it.
+Git is the history. Every save is a commit with the editor's name as the author;
+nothing prunes it, and no version of Mica has to be running to read it.
 
 ## API surface
 

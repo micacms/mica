@@ -2,20 +2,18 @@
 /**
  * Media library — a view of the files in the content repository.
  *
- * Much smaller than it was, because most of what this screen used to own has
- * moved somewhere better:
+ * See what is there, and add to it. Two things it deliberately does not offer:
  *
- *   - Alt text is not a property of a file. The same photograph means different
- *     things in different places, so the alt text belongs to the field that
- *     uses it, next to the content it describes.
- *   - Renaming and deleting are not offered. A media file is referenced by its
- *     path; moving or removing one is a change to every entry that points at
- *     it, which is a job for a commit and a review, not for a single button
- *     that quietly leaves gaps on the website.
+ *   - **Alt text.** Not a property of a file: the same photograph means
+ *     different things in different places, so it belongs to the field that
+ *     uses the image, next to the content it describes.
+ *   - **Rename and delete.** A media file is referenced by its path, so moving
+ *     or removing one is a change to every entry that points at it — a job for
+ *     a commit and a review, not for a button that quietly leaves gaps on the
+ *     website.
  *
- * What is left is the useful part: see what is there, and add to it. Files are
- * grouped by directory, because that is now meaningful — an entry's images sit
- * beside the entry.
+ * Files are grouped by directory, which is meaningful here: an entry's images
+ * sit beside the entry.
  */
 
 import { computed, onMounted, ref } from "vue";

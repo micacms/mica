@@ -1,5 +1,5 @@
 /**
- * Field registry (§11).
+ * Field registry.
  *
  * The one place that maps a schema `kind` to a control. Adding a field type
  * means adding a builder in `packages/model` and one line here — no plugin

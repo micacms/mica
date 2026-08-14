@@ -1,0 +1,58 @@
+{
+  "realm": "mica",
+  "enabled": true,
+  "displayName": "Mica (end-to-end test)",
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "clients": [
+    {
+      "clientId": "mica",
+      "name": "Mica CMS",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "secret": "e2e-client-secret-not-for-production",
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:4000/api/auth/callback"],
+      "webOrigins": ["http://localhost:4000"],
+      "attributes": {
+        "post.logout.redirect.uris": "http://localhost:4000/admin/*",
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  "users": [
+    {
+      "username": "alice",
+      "email": "alice@example.com",
+      "emailVerified": true,
+      "firstName": "Alice",
+      "lastName": "Admin",
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "alice", "temporary": false }]
+    },
+    {
+      "username": "bob",
+      "email": "bob@example.com",
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Editor",
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "bob", "temporary": false }]
+    },
+    {
+      "username": "mallory",
+      "email": "mallory@example.com",
+      "emailVerified": true,
+      "firstName": "Mallory",
+      "lastName": "Nobody",
+      "enabled": true,
+      "credentials": [{ "type": "password", "value": "mallory", "temporary": false }]
+    }
+  ]
+}

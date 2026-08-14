@@ -2,7 +2,7 @@
 /**
  * Navigation frame.
  *
- * The sidebar is generated from the content model (§10): collections first,
+ * The sidebar is generated from the content model: collections first,
  * then media, then singletons, then administration. Nothing here is hard-coded
  * per customer.
  */

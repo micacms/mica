@@ -5,10 +5,9 @@
  * size, and the real content type read from the bytes rather than from the
  * browser's claim.
  *
- * What changed with Git: an upload is now a *file in the content repository*,
- * committed alongside the entry that uses it. There is no media table, no
- * generated ULID key and no separate object store — a media value is the path
- * to a file a reviewer can see in the diff.
+ * An upload is a *file in the content repository*. There is no media table, no
+ * generated key and no object store — a media value is the path to a file a
+ * reviewer can see in the diff.
  *
  * The filename therefore matters. It is derived from what the editor uploaded,
  * slugified so it is safe as a path segment, and made unique inside its own

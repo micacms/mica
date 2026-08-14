@@ -15,8 +15,7 @@
     "typecheck": "tsc -p tsconfig.server.json --noEmit && vue-tsc -p tsconfig.json --noEmit",
     "test": "tsc -p tsconfig.server.json --noEmit && node --test --import tsx test/**/*.test.ts",
     "grant-access": "tsx src/server/scripts/grant-access.ts",
-    "build-schema": "tsx src/server/scripts/build-schema.ts",
-    "export-content": "tsx src/server/scripts/export-content.ts"
+    "build-schema": "tsx src/server/scripts/build-schema.ts"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",

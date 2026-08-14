@@ -1,7 +1,7 @@
 /**
  * Fixed-window rate limiting, in memory.
  *
- * The CMS is a single process by design (§2.1), so an in-memory counter is
+ * The CMS is a single process by design, so an in-memory counter is
  * sufficient and avoids a Redis dependency. The trade-off is deliberate:
  * counters reset on restart. Login is additionally protected by scrypt's cost,
  * so a restart-and-retry loop gains an attacker very little.

@@ -87,7 +87,10 @@ pnpm dev                     # http://localhost:4321
 No token and no CMS URL: the website reads the same files.
 
 Installing for the first time, or deploying it properly? Start at
-[docs/getting-started.md](./docs/getting-started.md).
+[docs/getting-started.md](./docs/getting-started.md). Want to see the deployed
+shape — real identity provider, real container — before committing to it?
+`docker compose -f e2e/compose.yml up --build`, then
+[e2e/README.md](./e2e/README.md).
 
 ---
 
@@ -103,9 +106,11 @@ packages/
 ├── connectors/ repository access: local working tree, GitHub, GitLab
 └── astro/      Content Layer loader and dev integration for Astro
 docs/
+├── architecture.md      what Mica is, and why it is shaped this way
 ├── getting-started.md
 ├── deployment.md
 └── backup-and-restore.md
+e2e/            a runnable Mica + Keycloak, for trying the deployed shape
 ```
 
 ---

@@ -8,11 +8,10 @@
  * One shell command breaks that circle. (`OIDC_BOOTSTRAP_ADMIN` does the same
  * thing declaratively, for deployments that would rather not run a command.)
  *
- * It replaces `create-user`, which set a password. There are no passwords now:
- * this records that the holder of an email address may edit here, and the
- * identity provider decides whether they are that person. Running it for
- * someone who has never signed in is exactly right — the account becomes real
- * when they do.
+ * It sets no password, because Mica has none. It records that the holder of an
+ * email address may edit here; the identity provider decides whether somebody
+ * is that person. Running it for someone who has never signed in is exactly
+ * right — the account becomes real when they do.
  */
 
 import { loadConfig } from "../config.js";

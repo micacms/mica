@@ -2,7 +2,7 @@
  * Sitemap, generated at build time from the same collections the pages use.
  *
  * Hand-rolled rather than pulling in `@astrojs/sitemap`: it is twenty lines,
- * and it keeps the dependency list honest (§3 — add packages only when repeated
+ * and it keeps the dependency list honest — add packages only when repeated
  * use demonstrates the need).
  */
 

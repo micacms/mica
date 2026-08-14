@@ -1,19 +1,21 @@
 /**
  * The content store: collections and singletons over a repository connector.
  *
- * This is what replaces the CMS's SQL content service. Everything it used to do
- * is either kept, moved or gone, and each of those was a decision:
+ * Everything above a connector that is *about content* rather than about
+ * repositories — validating against the model, deriving slugs, deciding which
+ * files an entry is made of, and keeping `_order.json` in step.
  *
- *   kept   validation against the model, and slug derivation.
- *   moved  identity. An entry is its slug and its path, not a ULID. Renaming an
- *          entry moves its directory, which is what an editor means by it and
- *          what a reviewer sees in the diff.
- *   gone   revisions. Git has history, and keeping a second copy in Mica would
- *          make Mica the thing that must not be lost — the opposite of the
- *          point.
- *   gone   draft/published status. Published is what is committed. A draft is
- *          unsaved work in the editor, which never reaches the repository.
- *   gone   media expansion. A media value is a path; there is nothing to expand.
+ * It lives in this package rather than in the CMS so the Astro build and the
+ * server run the same code. Four things it deliberately does not do:
+ *
+ *   - **Identity.** An entry *is* its slug and its path, not a generated id.
+ *     Renaming moves the directory, which is what an editor means by it and
+ *     what a reviewer sees in the diff.
+ *   - **Revisions.** Git has history. A second copy inside Mica would make
+ *     Mica the thing that must not be lost.
+ *   - **Draft/published status.** Committed is published; a draft is unsaved
+ *     work in the editor that never reaches the repository.
+ *   - **Media expansion.** A media value is a path. There is nothing to expand.
  */
 
 import {

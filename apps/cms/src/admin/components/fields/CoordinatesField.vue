@@ -2,7 +2,7 @@
 /**
  * Geographic position.
  *
- * Stores neutral coordinates, never provider-specific map data (§19), so the
+ * Stores neutral coordinates, never provider-specific map data, so the
  * frontend is free to render them with MapLibre, a static image, or nothing.
  *
  * No map is embedded here: a slippy map needs a tile provider, and making the

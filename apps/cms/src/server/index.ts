@@ -48,9 +48,16 @@ async function main(): Promise<void> {
     });
   }
 
-  if (ctx.repositories.users.count() === 0) {
-    logger.warn("No user accounts exist yet", {
-      next: "Create the first administrator with: pnpm --filter @micacms/cms create-user",
+  /**
+   * Nobody can get in yet, and nobody can be invited either — inviting needs an
+   * administrator. Say how to break the circle rather than leaving the first
+   * sign-in to fail with "no access to this site".
+   */
+  if (!config.authDisabled && ctx.repositories.memberships.count(ctx.siteId) === 0) {
+    logger.warn("Nobody has access to this site yet", {
+      next:
+        "Set OIDC_BOOTSTRAP_ADMIN, or run: " +
+        "node dist/server/scripts/grant-access.js --email you@example.com",
     });
   }
 

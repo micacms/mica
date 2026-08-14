@@ -2,15 +2,13 @@
 /**
  * Dashboard.
  *
- * Two panels that used to be here are gone. There is no draft count, because
- * there are no drafts: an entry is saved or it is not, and saved means
- * committed. There is no "Rebuild website" button either — the commit is the
- * trigger, and what happens next belongs to the repository's own pipeline,
- * which Mica does not own and should not pretend to.
+ * Counts and where the content lives, and deliberately little else.
  *
- * "Recently edited" is gone for a different reason: the honest source for it is
- * the repository's history, and the connector in front of a plain working tree
- * has none to read. It comes back with the Git connectors, or not at all.
+ * No draft count: an entry is saved or it is not. No "Rebuild website" button:
+ * the commit is the trigger, and what follows belongs to the repository's own
+ * pipeline. No "recently edited" list either — the honest source for that is
+ * the repository's history, which a connector in front of a plain working tree
+ * cannot read, and a half-true version would be worse than none.
  */
 
 import { computed, onMounted, ref } from "vue";

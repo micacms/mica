@@ -2,10 +2,9 @@
 /**
  * Media field.
  *
- * The value is a path into the content repository. There is no registry and no
- * id to resolve any more: the path *is* the reference, the preview URL follows
- * from it, and the filename is its last segment. A whole layer of indirection
- * went away with the media table.
+ * The value is a path into the content repository. The path *is* the reference:
+ * the preview URL follows from it and the filename is its last segment, so
+ * there is nothing to resolve and no registry to keep in step.
  */
 
 import { computed, ref } from "vue";

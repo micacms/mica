@@ -5,18 +5,16 @@
  * validation, slugs and layout lives in the store, which is shared with the
  * Astro build rather than reimplemented here.
  *
- * Three things that used to be here are gone, and each is a deletion rather
- * than a move:
+ * Three things shape this surface:
  *
- *   - An entry is addressed by `collection/slug`, not by a ULID. The path in
- *     the API is the path in the repository.
- *   - No revision endpoints. Git is the history.
- *   - No status endpoint. Committed is published; a draft is unsaved work in
- *     the editor and never reaches the server.
+ *   - An entry is addressed by `collection/slug`. The path in the API is the
+ *     path in the repository, so a URL here can be read off a diff.
+ *   - There are no revision endpoints. Git is the history.
+ *   - There is no status endpoint. Committed is published, and a draft is
+ *     unsaved work in the editor that never reaches the server.
  *
- * What replaced them is `revision` — an opaque token identifying the version of
- * an entry the editor opened. Sending it back with a save is what makes
- * concurrent editing safe.
+ * `revision` is what makes concurrent editing safe: an opaque token naming the
+ * version an editor opened, sent back with the save.
  */
 
 import { ConflictError, ValidationError } from "@micacms/connectors";

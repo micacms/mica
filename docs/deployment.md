@@ -93,6 +93,10 @@ account is governed by whatever your organisation already uses.
 Any OIDC provider works: Keycloak, Authentik, ZITADEL, Entra ID, Okta, Auth0,
 Google Workspace.
 
+To see the whole thing working before wiring up your own,
+`docker compose -f e2e/compose.yml up --build` runs Mica against a
+pre-configured Keycloak — see [e2e/README.md](../e2e/README.md).
+
 ```env
 MICA_MODE=self-hosted
 OIDC_ISSUER=https://auth.example.com/realms/mica
@@ -234,8 +238,8 @@ on:
 
 `REPOSITORY_BRANCH` can be any branch. Point a second Mica at
 `REPOSITORY_BRANCH=staging` and editors have a staging site, reviewed and merged
-like any other change. This is what replaced draft and published states, and it
-is strictly more capable than they were.
+like any other change — which is how Mica does staging, and why it has no
+draft/published states.
 
 ---
 
@@ -303,5 +307,6 @@ build time and served by your static host with the rest of the site.
 MFA enrolment, no passkey registration, and no breach notification to write.
 An identity provider does all of it better.
 
-Each of those used to exist. Each was removed because moving content into Git
-made it unnecessary, rather than because it was replaced by something else.
+None of these is a gap waiting to be filled. Content in Git makes each of them
+unnecessary rather than merely absent, which is the difference between a
+simplification and a missing feature.

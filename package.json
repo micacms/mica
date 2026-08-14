@@ -18,8 +18,6 @@
     "test": "pnpm -r test",
     "//build:schema": "Compiles mica.config.ts into the JSON artifact the CMS container is given.",
     "build:schema": "pnpm --filter @micacms/cms build-schema",
-    "//cms:export-content": "One-off migration: writes the SQLite content out as a content repository.",
-    "cms:export-content": "pnpm --filter @micacms/cms export-content -- --out ../../content",
     "cms:grant-access": "pnpm --filter @micacms/cms grant-access",
     "//cms:backup": "There is no backup script: the content is in Git, and the database holds only accounts and sessions.",
     "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules packages/*/dist apps/*/dist"

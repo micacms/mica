@@ -4,8 +4,8 @@
  * The schema endpoint is what makes the admin generic: the SPA ships no
  * knowledge of any particular collection, it renders whatever this returns.
  *
- * There is no publish route any more. Publishing is a commit, and the commit
- * happened when the editor pressed Save; what follows is the repository's CI,
+ * There is no publish route. Publishing is a commit, and the commit happened
+ * when the editor pressed Save; what follows belongs to the repository's CI,
  * which Mica neither owns nor should pretend to.
  */
 

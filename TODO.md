@@ -188,10 +188,10 @@ Explicitly not built; the seams they attach to exist and are tested.
 - **P2** — No end-to-end browser test of the admin. The API has good coverage
   and the Vue app typechecks, but no test drives a real browser through "sign
   in, edit, save". The one place a regression could reach production unseen.
-- **P2** — The OIDC flow is not tested end to end. The construction is verified
-  against a real issuer's discovery document, and every failure path is tested,
-  but no test completes a round trip with a live provider. A `docker compose`
-  Keycloak in CI would close it.
+- **P2** — The OIDC round trip is verified by hand, not by CI. `e2e/compose.yml`
+  runs Mica against a real Keycloak and the whole flow has been walked through
+  there; nothing re-runs it automatically, so a regression would not be caught
+  until somebody tried.
 - **P2** — The provider connectors are tested against a stub, not against a real
   repository. The request shapes are asserted; the providers' agreement with
   their own documentation is not. Worth one manual run against a scratch
@@ -202,33 +202,21 @@ Explicitly not built; the seams they attach to exist and are tested.
 
 ---
 
-## Done
+## Settled
 
-Kept for the record — these were open questions that are now settled.
+Questions that were once open, kept because the *answers* still constrain the
+design. Anything that was simply built is in the code; these are the ones where
+knowing the reasoning stops someone reintroducing the problem.
 
-- ~~`/media/*` is publicly readable~~ — **removed, not fixed.** There is no
-  public media route: images are files in the repository, and the build reads
-  them directly. The whole trade-off went away with the endpoint.
-- ~~Build webhook queue is in memory~~ — **removed.** A push is the trigger.
-- ~~Revisions capped at 30 per entry~~ — **removed.** Git is the history, and it
-  does not need pruning.
-- ~~Drafts validate leniently, publishing validates strictly~~ — **removed.**
-  There are no drafts. Unfinished work stays in the editor's form; a save is a
-  commit, and branches do what statuses were approximating.
-- ~~SVG media stays hosted on the CMS~~ — **removed.** No media is hosted on the
-  CMS, so the independence claim no longer has an asterisk.
-- ~~The `backup` compose profile~~ — **removed.** The content is in Git.
-- ~~Rich text was stored as HTML~~ — it is Markdoc. The editor converts at the
-  boundary and never calls `getHTML()`; Markdoc escapes raw HTML and renders an
-  undeclared tag as nothing, so content cannot inject script into a build.
-- ~~Docker image and `docker-compose.yml`~~ — built and verified.
-- ~~Astro collection data typed as `any`~~ — the loader's schema carries the
-  model-derived type, so renaming a field breaks the website build.
-- ~~scrypt rather than Argon2id~~ — **removed.** Mica stores no passwords, so
-  it runs no KDF and the choice no longer exists.
-- ~~No self-service password reset~~ — **removed** with the passwords. The
-  identity provider owns reset, MFA and passkeys.
-- ~~OIDC sign-in~~ — done. `panva/openid-client`, with PKCE, `state` and
-  `nonce` all verified. Identities are keyed by `(issuer, subject)` and never
-  by email, so a provider that lets someone change their address cannot be used
-  to take over an account.
+- **Media is not served by Mica.** Images are repository files and the build
+  reads them directly. Do not add a public media route: the "unguessable, not
+  access-controlled" trade-off it used to carry disappears only as long as the
+  route does.
+- **Publishing is not a webhook.** A push is the trigger. An in-process queue
+  cannot survive a crash, and the repository's CI already solves this.
+- **Rich text is Markdoc, never HTML.** The editor converts at the boundary and
+  must never call Tiptap's `getHTML()` — see `apps/cms/src/admin/lib/markdoc.ts`.
+- **Git is the history.** No revision table, no retention policy, nothing to
+  prune.
+- **Nothing hashes a password.** Reintroducing one would mean owning reset, MFA,
+  passkeys and breach response, which is the whole reason it is not here.

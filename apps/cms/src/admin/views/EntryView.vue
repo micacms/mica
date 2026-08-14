@@ -2,15 +2,14 @@
 /**
  * Entry editor.
  *
- * One Save button, where there used to be two. Draft and Publish made sense
- * when the database held both a working copy and a live one; the repository
- * holds one file, and saving writes it. Unfinished work stays in this form and
- * never reaches the server, which is what the unsaved-changes guard is for.
+ * One Save button. The repository holds one file per entry and saving writes
+ * it; unfinished work stays in this form and never reaches the server, which is
+ * what the unsaved-changes guard is for.
  *
- * The other change is `revision`. The editor remembers which version of the
- * entry it opened and sends that token back with the save. If someone else
- * saved in the meantime the server refuses with a 409, and this view says so
- * plainly rather than overwriting their work.
+ * `revision` is how two editors stay out of each other's way. The form
+ * remembers which version of the entry it opened and sends that token back with
+ * the save. If someone else saved in the meantime the server answers 409, and
+ * this view says so plainly rather than overwriting their work.
  *
  * An entry is addressed by its slug, so changing the slug field moves the entry
  * — files and all — and the route follows it.

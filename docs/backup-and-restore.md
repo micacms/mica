@@ -1,11 +1,7 @@
 # Backup and restore
 
-Most of this document used to describe how to back up a website. It no longer
-needs to, and that is the point of the Git-native architecture: the thing worth
-protecting is already protected by something better than a cron job.
-
 A Mica deployment holds two separate things, and they deserve very different
-treatment.
+treatment. Most of the answer is "Git is already doing it".
 
 | | What it is | What losing it costs |
 | --- | --- | --- |
@@ -74,14 +70,9 @@ mode means recent commits live in `cms.sqlite-wal`, and a plain copy misses them
 
 Restoring is stopping the container, putting the file back, and starting it.
 
----
-
-## What is no longer here
-
-Earlier versions of Mica shipped a `backup` script and a scheduled backup
-service in `docker-compose.yml`, because the database *was* the website. Both
-are gone. Keeping them would imply that a Mica backup protects your content,
-and it would not be the thing you reached for if you ever needed it.
+There is no `mica backup` command and no backup service in `docker-compose.yml`.
+Shipping one would imply that a Mica backup protects your content, and it is not
+what you would reach for if you ever needed it.
 
 ---
 

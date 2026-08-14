@@ -8,7 +8,7 @@
  * the provider — that is somebody else's screen, in somebody else's product.
  *
  * There is no password column, no reset button and no temporary password to
- * pass along, which is most of what this screen used to be.
+ * pass along: none of that is Mica's to hold.
  */
 
 import { computed, onMounted, ref } from "vue";
