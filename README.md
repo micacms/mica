@@ -251,6 +251,10 @@ signs everyone out and costs nothing else. See
 Accepted trade-offs and known gaps are tracked with priorities in
 [TODO.md](./TODO.md), each with what was decided, why, and what would change it.
 
+What each release contains is in [CHANGELOG.md](./CHANGELOG.md). Everything here
+is released together under one version, and while that version starts with `0`,
+a minor bump may break something.
+
 ---
 
 ## Reusing this
@@ -269,4 +273,4 @@ The three packages under `packages/` (`@micacms/model`, `@micacms/connectors`,
 redesign rather than a dependency — the design is the part that should differ
 between projects.
 
-Licence: MIT.
+Licence: [MIT](./LICENSE).

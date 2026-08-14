@@ -1,9 +1,22 @@
 {
   "name": "@micacms/connectors",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "type": "module",
   "description": "Repository access for Mica: a narrow connector interface, with local and provider-backed implementations.",
   "license": "MIT",
+  "author": "Alexander Müdespacher",
+  "keywords": [
+    "mica",
+    "cms",
+    "git",
+    "github",
+    "gitlab",
+    "content"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

@@ -4,8 +4,8 @@ packages:
 
 # Build scripts are opt-in.
 #   esbuild — Vite and Astro
-#   sharp   — Astro's image service; downloads and optimises the remote CMS
-#             images at build time, which is what keeps the output static
+#   sharp   — Astro's image service; optimises the images the build finds in the
+#             content repository, which is what keeps the output static
 allowBuilds:
   esbuild: true
   sharp: true

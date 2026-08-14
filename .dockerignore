@@ -11,10 +11,12 @@
 .github
 apps/web
 docs
+e2e
 *.md
-!Technical Requirements Document.md
 
-# The content model belongs to the project, not the image. Keeping it out of the
-# build context makes that structural: no future COPY can bake a schema in.
+# Neither the content model nor the content itself belongs to the image. Keeping
+# both out of the build context makes that structural: no future COPY can bake a
+# project into a published image.
 mica.config.ts
 mica.config.json
+content

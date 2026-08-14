@@ -1,9 +1,22 @@
 {
   "name": "@micacms/astro",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "type": "module",
   "description": "Reads a Mica content repository as Astro Content Collections via the Content Layer API.",
   "license": "MIT",
+  "author": "Alexander Müdespacher",
+  "keywords": [
+    "mica",
+    "cms",
+    "astro",
+    "astro-integration",
+    "content-layer",
+    "markdoc"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

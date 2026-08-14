@@ -1,9 +1,22 @@
 {
   "name": "@micacms/model",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "type": "module",
   "description": "Content model DSL and authoring format for Mica. Single source of truth for types, validation, editor forms, the on-disk format and Astro collection schemas.",
   "license": "MIT",
+  "author": "Alexander Müdespacher",
+  "keywords": [
+    "mica",
+    "cms",
+    "content-model",
+    "schema",
+    "markdoc",
+    "zod"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

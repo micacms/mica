@@ -5,6 +5,12 @@
  * next one. Each runs inside a transaction and is recorded in `_migrations`,
  * so the sequence is deterministic across every deployment.
  *
+ * All three below are older than the first release. They are kept as a sequence
+ * rather than folded into one because folding them would renumber the chain,
+ * and `migrate()` refuses to open a database that has reached a version this
+ * build does not know about — which is the right refusal, and the reason the
+ * rule above exists.
+ *
  * Note how little is here. Content, media and their history live in the content
  * repository; this database holds users and sessions. That is the whole point
  * of the Git-native design — losing this file logs everyone out and costs
@@ -66,8 +72,9 @@ export const migrations: Migration[] = [
       -- were standing in for.
       --
       -- Dropped rather than left in place, because a table nobody writes is a
-      -- table someone will eventually read. Anything still in them is exported
-      -- by \`pnpm cms:export-content\`, which must be run *before* this applies.
+      -- table someone will eventually read. No released version of Mica ever
+      -- wrote them, so there is nothing here to export first — on a fresh
+      -- database all four DROPs are no-ops.
       DROP TABLE IF EXISTS revisions;
       DROP TABLE IF EXISTS media;
       DROP TABLE IF EXISTS globals;

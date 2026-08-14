@@ -1,6 +1,6 @@
 {
   "name": "@micacms/web",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "description": "The public website: Astro static site generation over content from Mica CMS.",

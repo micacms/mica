@@ -1,6 +1,6 @@
 {
   "name": "mica",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "private": true,
   "type": "module",
   "description": "Mica CMS — a small, schema-driven content backend for static Astro business websites.",

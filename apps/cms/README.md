@@ -91,7 +91,7 @@ src/
 │   ├── services/           oidc, sessions, media validation
 │   ├── middleware/         auth, CSRF, rate limiting, errors, logging
 │   ├── routes/             thin: parse, delegate, serialise
-│   └── scripts/            grant-access, build-schema, export-content
+│   └── scripts/            grant-access, build-schema
 └── admin/
     ├── api.ts              typed client for the admin API
     ├── router.ts           routes and the auth guard
