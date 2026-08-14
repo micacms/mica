@@ -1,0 +1,12 @@
+{
+  "title": "Media that ships with the site",
+  "slug": "local-media",
+  "icon": "image",
+  "eyebrow": "No media server",
+  "summary": "Images are repository files. Astro optimizes them at build time, so the public site does not fetch assets from Mica.",
+  "outcomes": [
+    { "text": "Colocated with entries" },
+    { "text": "Astro image processing" },
+    { "text": "No remote asset origin" }
+  ]
+}

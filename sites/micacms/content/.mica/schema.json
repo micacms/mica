@@ -1,0 +1,607 @@
+{
+  "protocolVersion": 1,
+  "generatedBy": "@micacms/astro@0.0.1",
+  "collections": {
+    "features": {
+      "type": "collection",
+      "name": "features",
+      "label": "Features",
+      "labelSingular": "Feature",
+      "description": "Product capabilities used on the home and feature pages.",
+      "sortable": true,
+      "defaultSort": {
+        "field": "position",
+        "direction": "asc"
+      },
+      "fields": {
+        "title": {
+          "kind": "text",
+          "label": "Title",
+          "required": true,
+          "listed": true,
+          "maxLength": 80
+        },
+        "slug": {
+          "kind": "slug",
+          "label": "URL",
+          "from": "title"
+        },
+        "icon": {
+          "kind": "select",
+          "label": "Icon",
+          "required": true,
+          "listed": true,
+          "options": [
+            {
+              "label": "Repository",
+              "value": "repository"
+            },
+            {
+              "label": "Model",
+              "value": "model"
+            },
+            {
+              "label": "Edit",
+              "value": "edit"
+            },
+            {
+              "label": "History",
+              "value": "history"
+            },
+            {
+              "label": "Image",
+              "value": "image"
+            },
+            {
+              "label": "Shield",
+              "value": "shield"
+            }
+          ]
+        },
+        "eyebrow": {
+          "kind": "text",
+          "label": "Eyebrow",
+          "maxLength": 40
+        },
+        "summary": {
+          "kind": "textarea",
+          "label": "Summary",
+          "required": true,
+          "rows": 3,
+          "maxLength": 220
+        },
+        "detail": {
+          "kind": "richText",
+          "label": "Detail"
+        },
+        "outcomes": {
+          "kind": "repeater",
+          "label": "Outcomes",
+          "itemLabel": "text",
+          "addLabel": "Add outcome",
+          "max": 5,
+          "fields": {
+            "text": {
+              "kind": "text",
+              "label": "Outcome",
+              "required": true
+            }
+          }
+        }
+      }
+    },
+    "docs": {
+      "type": "collection",
+      "name": "docs",
+      "label": "Documentation",
+      "labelSingular": "Document",
+      "description": "Public guides for setup, modelling, and deployment.",
+      "defaultSort": {
+        "field": "position",
+        "direction": "asc"
+      },
+      "sortable": true,
+      "fields": {
+        "title": {
+          "kind": "text",
+          "label": "Title",
+          "required": true,
+          "listed": true
+        },
+        "slug": {
+          "kind": "slug",
+          "label": "URL",
+          "from": "title"
+        },
+        "section": {
+          "kind": "select",
+          "label": "Section",
+          "required": true,
+          "listed": true,
+          "options": [
+            {
+              "label": "Start",
+              "value": "start"
+            },
+            {
+              "label": "Build",
+              "value": "build"
+            },
+            {
+              "label": "Operate",
+              "value": "operate"
+            }
+          ]
+        },
+        "summary": {
+          "kind": "textarea",
+          "label": "Summary",
+          "required": true,
+          "rows": 2,
+          "maxLength": 200
+        },
+        "readTime": {
+          "kind": "number",
+          "label": "Read time",
+          "unit": "min",
+          "integer": true,
+          "min": 1,
+          "max": 60
+        },
+        "body": {
+          "kind": "richText",
+          "label": "Guide",
+          "toolbar": [
+            "bold",
+            "italic",
+            "heading",
+            "bulletList",
+            "orderedList",
+            "blockquote",
+            "link",
+            "horizontalRule"
+          ]
+        }
+      }
+    },
+    "releases": {
+      "type": "collection",
+      "name": "releases",
+      "label": "Releases",
+      "labelSingular": "Release",
+      "description": "Product changes shown on the public changelog.",
+      "defaultSort": {
+        "field": "publishedAt",
+        "direction": "desc"
+      },
+      "fields": {
+        "title": {
+          "kind": "text",
+          "label": "Title",
+          "required": true,
+          "listed": true
+        },
+        "slug": {
+          "kind": "slug",
+          "label": "URL",
+          "from": "title"
+        },
+        "version": {
+          "kind": "text",
+          "label": "Version",
+          "required": true,
+          "listed": true,
+          "width": "half"
+        },
+        "publishDate": {
+          "kind": "date",
+          "label": "Date",
+          "required": true,
+          "listed": true,
+          "width": "half"
+        },
+        "summary": {
+          "kind": "textarea",
+          "label": "Summary",
+          "required": true,
+          "rows": 2,
+          "maxLength": 240
+        },
+        "body": {
+          "kind": "richText",
+          "label": "Release notes"
+        },
+        "latest": {
+          "kind": "boolean",
+          "label": "Latest release",
+          "default": false
+        }
+      }
+    }
+  },
+  "singletons": {
+    "site": {
+      "type": "singleton",
+      "name": "site",
+      "label": "Website",
+      "description": "Product identity, links, and default metadata.",
+      "fields": {
+        "productName": {
+          "kind": "text",
+          "label": "Product name",
+          "required": true
+        },
+        "tagline": {
+          "kind": "text",
+          "label": "Tagline",
+          "required": true,
+          "maxLength": 160
+        },
+        "description": {
+          "kind": "textarea",
+          "label": "Default description",
+          "required": true,
+          "rows": 2,
+          "maxLength": 160
+        },
+        "currentVersion": {
+          "kind": "text",
+          "label": "Current version",
+          "required": true,
+          "width": "third"
+        },
+        "githubUrl": {
+          "kind": "url",
+          "label": "GitHub URL",
+          "required": true,
+          "width": "third"
+        },
+        "npmUrl": {
+          "kind": "url",
+          "label": "npm URL",
+          "required": true,
+          "width": "third"
+        },
+        "announcement": {
+          "kind": "object",
+          "label": "Announcement",
+          "required": true,
+          "fields": {
+            "text": {
+              "kind": "text",
+              "label": "Text",
+              "required": true,
+              "width": "half"
+            },
+            "href": {
+              "kind": "text",
+              "label": "Link",
+              "required": true,
+              "width": "half"
+            }
+          }
+        }
+      }
+    },
+    "navigation": {
+      "type": "singleton",
+      "name": "navigation",
+      "label": "Navigation",
+      "description": "Header and footer navigation.",
+      "fields": {
+        "main": {
+          "kind": "repeater",
+          "label": "Main navigation",
+          "itemLabel": "label",
+          "fields": {
+            "label": {
+              "kind": "text",
+              "label": "Label",
+              "required": true,
+              "width": "half"
+            },
+            "href": {
+              "kind": "text",
+              "label": "Link",
+              "required": true,
+              "width": "half"
+            }
+          }
+        },
+        "footerGroups": {
+          "kind": "repeater",
+          "label": "Footer groups",
+          "itemLabel": "title",
+          "fields": {
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "links": {
+              "kind": "repeater",
+              "label": "Links",
+              "itemLabel": "label",
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Label",
+                  "required": true,
+                  "width": "half"
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "width": "half"
+                }
+              }
+            }
+          }
+        },
+        "footerNote": {
+          "kind": "text",
+          "label": "Footer note",
+          "required": true
+        }
+      }
+    },
+    "home": {
+      "type": "singleton",
+      "name": "home",
+      "label": "Home page",
+      "description": "All editorial content for the main marketing page.",
+      "fields": {
+        "heroEyebrow": {
+          "kind": "text",
+          "label": "Hero eyebrow",
+          "required": true
+        },
+        "heroTitle": {
+          "kind": "textarea",
+          "label": "Hero title",
+          "required": true,
+          "rows": 2,
+          "maxLength": 120
+        },
+        "heroSummary": {
+          "kind": "textarea",
+          "label": "Hero summary",
+          "required": true,
+          "rows": 3,
+          "maxLength": 320
+        },
+        "primaryCta": {
+          "kind": "object",
+          "label": "Primary action",
+          "required": true,
+          "fields": {
+            "label": {
+              "kind": "text",
+              "label": "Label",
+              "required": true,
+              "width": "half"
+            },
+            "href": {
+              "kind": "text",
+              "label": "Link",
+              "required": true,
+              "width": "half"
+            }
+          }
+        },
+        "secondaryCta": {
+          "kind": "object",
+          "label": "Secondary action",
+          "required": true,
+          "fields": {
+            "label": {
+              "kind": "text",
+              "label": "Label",
+              "required": true,
+              "width": "half"
+            },
+            "href": {
+              "kind": "text",
+              "label": "Link",
+              "required": true,
+              "width": "half"
+            }
+          }
+        },
+        "stats": {
+          "kind": "repeater",
+          "label": "Product facts",
+          "itemLabel": "value",
+          "max": 4,
+          "fields": {
+            "value": {
+              "kind": "text",
+              "label": "Value",
+              "required": true,
+              "width": "third"
+            },
+            "label": {
+              "kind": "text",
+              "label": "Label",
+              "required": true,
+              "width": "third"
+            },
+            "note": {
+              "kind": "text",
+              "label": "Note",
+              "width": "third"
+            }
+          }
+        },
+        "problemEyebrow": {
+          "kind": "text",
+          "label": "Positioning eyebrow",
+          "required": true
+        },
+        "problemTitle": {
+          "kind": "textarea",
+          "label": "Positioning title",
+          "required": true,
+          "rows": 2
+        },
+        "problemSummary": {
+          "kind": "textarea",
+          "label": "Positioning summary",
+          "required": true,
+          "rows": 3
+        },
+        "workflowTitle": {
+          "kind": "text",
+          "label": "Workflow title",
+          "required": true
+        },
+        "workflowSummary": {
+          "kind": "textarea",
+          "label": "Workflow summary",
+          "required": true,
+          "rows": 2
+        },
+        "workflowSteps": {
+          "kind": "repeater",
+          "label": "Workflow steps",
+          "itemLabel": "title",
+          "min": 3,
+          "max": 3,
+          "fields": {
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "text": {
+              "kind": "textarea",
+              "label": "Text",
+              "required": true,
+              "rows": 2
+            },
+            "detail": {
+              "kind": "text",
+              "label": "Technical detail"
+            }
+          }
+        },
+        "featuresEyebrow": {
+          "kind": "text",
+          "label": "Features eyebrow",
+          "required": true
+        },
+        "featuresTitle": {
+          "kind": "text",
+          "label": "Features title",
+          "required": true
+        },
+        "featuresSummary": {
+          "kind": "textarea",
+          "label": "Features summary",
+          "required": true,
+          "rows": 2
+        },
+        "principles": {
+          "kind": "repeater",
+          "label": "Product principles",
+          "itemLabel": "title",
+          "fields": {
+            "number": {
+              "kind": "text",
+              "label": "Number",
+              "required": true,
+              "width": "third"
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true,
+              "width": "third"
+            },
+            "text": {
+              "kind": "textarea",
+              "label": "Text",
+              "required": true,
+              "rows": 3,
+              "width": "third"
+            }
+          }
+        },
+        "ctaTitle": {
+          "kind": "text",
+          "label": "CTA title",
+          "required": true
+        },
+        "ctaText": {
+          "kind": "textarea",
+          "label": "CTA text",
+          "required": true,
+          "rows": 2
+        }
+      }
+    },
+    "product": {
+      "type": "singleton",
+      "name": "product",
+      "label": "Product page",
+      "description": "Editorial content for the detailed product page.",
+      "fields": {
+        "eyebrow": {
+          "kind": "text",
+          "label": "Eyebrow",
+          "required": true
+        },
+        "title": {
+          "kind": "textarea",
+          "label": "Title",
+          "required": true,
+          "rows": 2
+        },
+        "summary": {
+          "kind": "textarea",
+          "label": "Summary",
+          "required": true,
+          "rows": 3
+        },
+        "audiences": {
+          "kind": "repeater",
+          "label": "Audiences",
+          "itemLabel": "title",
+          "fields": {
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "text": {
+              "kind": "textarea",
+              "label": "Text",
+              "required": true,
+              "rows": 3
+            }
+          }
+        },
+        "stack": {
+          "kind": "repeater",
+          "label": "Technical stack",
+          "itemLabel": "name",
+          "fields": {
+            "name": {
+              "kind": "text",
+              "label": "Name",
+              "required": true,
+              "width": "half"
+            },
+            "role": {
+              "kind": "text",
+              "label": "Role",
+              "required": true,
+              "width": "half"
+            }
+          }
+        }
+      }
+    }
+  }
+}

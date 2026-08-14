@@ -1,0 +1,3 @@
+Production sign-in uses your OpenID Connect provider. Mica implements no passwords, reset flow, MFA enrollment, or passkeys. It stores the site membership that decides who can edit.
+
+Authorization is read on every request. Remove a membership and access ends at once. The operational database contains accounts and sessions only. If it is lost, editors sign in again and the site content is unchanged.

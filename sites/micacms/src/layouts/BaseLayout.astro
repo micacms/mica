@@ -1,0 +1,57 @@
+---
+import SiteFooter from "@/components/SiteFooter.astro";
+import SiteHeader from "@/components/SiteHeader.astro";
+import { getSite } from "@/lib/content";
+import "@/styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+  noindex?: boolean;
+}
+
+const { title, description, noindex = false } = Astro.props;
+const site = await getSite();
+const pageTitle = title ? `${title} — ${site.productName}` : `${site.productName} — ${site.tagline}`;
+const metaDescription = description ?? site.description;
+const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+    <meta name="theme-color" content="#0d1210" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={metaDescription} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={metaDescription} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content="MicaCMS" />
+    <meta name="twitter:card" content="summary" />
+    <script is:inline type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "SoftwareApplication",
+      name: "MicaCMS",
+      applicationCategory: "DeveloperApplication",
+      operatingSystem: "Node.js",
+      softwareVersion: site.currentVersion,
+      description: metaDescription,
+      url: canonical,
+      codeRepository: site.githubUrl,
+      license: "https://opensource.org/license/mit",
+    })} />
+  </head>
+  <body>
+    <a class="fixed left-4 top-4 z-[100] -translate-y-20 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink transition focus:translate-y-0" href="#main">Skip to content</a>
+    <SiteHeader />
+    <main id="main"><slot /></main>
+    <SiteFooter />
+  </body>
+</html>

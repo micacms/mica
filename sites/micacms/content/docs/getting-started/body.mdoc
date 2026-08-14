@@ -1,0 +1,73 @@
+Mica adds an editing interface to an Astro project. The website still reads local files and builds to static output.
+
+> Mica is experimental and pre-1.0. Its API and content format can change. Use it for work that you can update as the project changes.
+
+## What you need
+
+- Node 22.5 or newer
+- An Astro 5 project
+- A Git repository for the project
+
+## 1. Install the packages
+
+```bash
+npm install @micacms/astro @micacms/model
+```
+
+## 2. Define a content model
+
+Create `src/mica.ts`. The model is a plain TypeScript module and does not import Astro.
+
+```ts
+import { collection, defineSite, richText, slug, text } from "@micacms/model";
+
+export const site = defineSite({
+  root: "./content",
+  collections: {
+    news: collection({
+      label: "News",
+      fields: {
+        title: text({ required: true, listed: true }),
+        slug: slug({ from: "title" }),
+        body: richText(),
+      },
+    }),
+  },
+});
+```
+
+## 3. Add the Astro collections
+
+Create `src/content.config.ts`.
+
+```ts
+import { micaCollections } from "@micacms/astro";
+import { site } from "./mica";
+
+export const collections = micaCollections(site);
+```
+
+Nothing goes in `astro.config`. Start the Astro dev server once. The loader creates `content/.mica/schema.json`. Commit this file because it tells Mica what your project can edit.
+
+## 4. Start Mica
+
+```bash
+npx @micacms/cms
+```
+
+Open `http://localhost:4000/admin/`. Local mode uses no account or password and listens only on the local computer.
+
+## 5. Render the content
+
+Use normal Astro Content Layer calls.
+
+```astro
+---
+import { getCollection } from "astro:content";
+const news = await getCollection("news");
+---
+
+{news.map((article) => <h2>{article.data.title}</h2>)}
+```
+
+Run `git diff` after an editor saves. You will see the complete content change as JSON, Markdoc, and media files.

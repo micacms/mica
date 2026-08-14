@@ -1,0 +1,24 @@
+Mica follows one constraint: losing its database must never mean losing website content.
+
+## The path
+
+The model is a plain TypeScript module. Astro imports it to create typed collections. An Astro build also writes the model as data to `.mica/schema.json`.
+
+Mica reads that model from the repository and generates its navigation, tables, and forms. When an editor saves, Mica commits the changed content files. A push starts the existing site build.
+
+The website never calls Mica. Mica never needs to know where the website is hosted. They meet in the repository.
+
+## The packages
+
+- `@micacms/model` defines fields, validation, serialization, and file layout.
+- `@micacms/connectors` reads and writes local folders, GitHub, and GitLab.
+- `@micacms/astro` connects the model and content to the Astro Content Layer.
+- `@micacms/cms` provides the Hono server and Vue editing interface.
+
+## Atomic changes
+
+An entry can include JSON, rich text, and many media files. Mica writes all of these in one commit or writes nothing. A stale revision gives a conflict response and leaves the editor's changes in the form.
+
+## Deliberate limits
+
+Mica has no content API, GraphQL layer, media server, build webhook, page builder, or password system. These limits keep the public website independent and the editing system small.

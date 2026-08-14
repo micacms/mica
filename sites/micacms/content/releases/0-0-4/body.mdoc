@@ -1,0 +1,5 @@
+## Fixed
+
+`npx @micacms/cms` now starts the server correctly. npm runs a package command through a link in `node_modules/.bin`. Node resolves the module URL to the real target, so the previous direct-run check did not match and the command ended without output.
+
+This release fixes the command entry point. The local setup in the getting-started guide now works as written.

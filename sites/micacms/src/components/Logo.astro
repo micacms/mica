@@ -1,0 +1,13 @@
+---
+interface Props { compact?: boolean; }
+const { compact = false } = Astro.props;
+---
+
+<a class="inline-flex items-center gap-2.5 text-lg font-bold tracking-[-.03em] text-accent" href="/" aria-label="Mica home">
+  <svg class="h-7 w-7" viewBox="0 0 34 34" aria-hidden="true">
+    <path d="M17 1.5 31.2 9.7v14.6L17 32.5 2.8 24.3V9.7z" fill="currentColor" />
+    <path d="m17 6.6 9.8 5.6v9.6L17 27.4 7.2 21.8v-9.6z" fill="var(--ink)" />
+    <path d="m17 10.5 6.4 3.7v5.6L17 23.5l-6.4-3.7v-5.6z" fill="currentColor" />
+  </svg>
+  {!compact && <span>Mica</span>}
+</a>

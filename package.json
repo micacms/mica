@@ -14,11 +14,12 @@
     "//dev": "The CMS alone. It edits the example project's content, so run the example's own `pnpm dev` beside it to see the website.",
     "dev": "pnpm build:packages && pnpm --filter @micacms/cms dev",
     "dev:site": "pnpm --filter @micacms/example-muster-consulting dev",
+    "dev:micacms-site": "pnpm --filter @micacms/site dev",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
     "cms:grant-access": "pnpm --filter @micacms/cms grant-access",
     "//cms:backup": "There is no backup script: the content is in Git, and the database holds only accounts and sessions.",
-    "clean": "rm -rf node_modules apps/*/node_modules examples/*/node_modules packages/*/node_modules packages/*/dist apps/*/dist examples/*/dist"
+    "clean": "rm -rf node_modules apps/*/node_modules examples/*/node_modules sites/*/node_modules packages/*/node_modules packages/*/dist apps/*/dist examples/*/dist sites/*/dist"
   },
   "devDependencies": {
     "typescript": "^5.7.3"

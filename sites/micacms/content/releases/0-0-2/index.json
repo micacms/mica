@@ -1,0 +1,8 @@
+{
+  "title": "First public release",
+  "slug": "0-0-2",
+  "version": "0.0.2",
+  "publishDate": "2026-08-14",
+  "summary": "The first release includes the model, connectors, Astro integration, editing interface, and self-hosted runtime.",
+  "latest": false
+}

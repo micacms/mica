@@ -1,0 +1,23 @@
+<div class="rotate-[1deg] overflow-hidden rounded-xl border border-white/15 bg-[#111714] shadow-[0_40px_100px_rgba(0,0,0,.42)]" aria-label="Mica content model example">
+  <div class="flex h-12 items-center border-b border-white/10 px-4 font-mono text-[11px] text-white/40">
+    <div class="mr-5 flex gap-1.5" aria-hidden="true"><i class="h-2 w-2 rounded-full bg-white/20"></i><i class="h-2 w-2 rounded-full bg-white/20"></i><i class="h-2 w-2 rounded-full bg-white/20"></i></div>
+    <span>src/mica.ts</span><span class="ml-auto flex items-center gap-2"><i class="h-1.5 w-1.5 rounded-full bg-accent"></i> typed</span>
+  </div>
+  <pre class="overflow-x-auto p-5 text-[11px] leading-[1.9] sm:p-7 sm:text-[13px]"><code class="font-mono text-white/80"><span class="text-white/30">// One model. Five guarantees.</span>
+<span class="text-[#ff8cb3]">export const</span> site = <span class="text-[#f4d874]">defineSite</span>(&#123;
+  collections: &#123;
+    projects: <span class="text-[#f4d874]">collection</span>(&#123;
+      label: <span class="text-[#b9e982]">"Projects"</span>,
+      fields: &#123;
+        title: <span class="text-[#f4d874]">text</span>(&#123; required: <span class="text-[#ff8cb3]">true</span> &#125;),
+        slug: <span class="text-[#f4d874]">slug</span>(&#123; from: <span class="text-[#b9e982]">"title"</span> &#125;),
+        story: <span class="text-[#f4d874]">richText</span>(),
+        gallery: <span class="text-[#f4d874]">media</span>(&#123; multiple: <span class="text-[#ff8cb3]">true</span> &#125;),
+      &#125;,
+    &#125;),
+  &#125;,
+&#125;);</code></pre>
+  <div class="flex flex-wrap gap-x-4 gap-y-2 border-t border-white/10 bg-black/20 px-5 py-4 font-mono text-[10px] text-white/45 sm:px-7 [&_span]:flex [&_span]:items-center [&_span]:gap-1.5 [&_i]:h-1.5 [&_i]:w-1.5 [&_i]:rounded-full [&_i]:bg-accent-deep">
+    <span><i></i> Forms</span><span><i></i> Validation</span><span><i></i> Types</span><span><i></i> Files</span><span><i></i> Collections</span>
+  </div>
+</div>

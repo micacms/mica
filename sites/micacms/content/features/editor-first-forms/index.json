@@ -1,0 +1,12 @@
+{
+  "title": "Editor-first forms",
+  "slug": "editor-first-forms",
+  "icon": "edit",
+  "eyebrow": "Calm authoring",
+  "summary": "Give editors purpose-built fields, focused rich text, media selection, relations, and useful validation messages.",
+  "outcomes": [
+    { "text": "16 field types" },
+    { "text": "Model-generated screens" },
+    { "text": "No template access required" }
+  ]
+}

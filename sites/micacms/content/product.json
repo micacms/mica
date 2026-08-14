@@ -1,0 +1,27 @@
+{
+  "eyebrow": "Product overview",
+  "title": "A content editor that ends where your repository begins.",
+  "summary": "Mica is for content-driven business sites with a small editing team and a few hundred entries. It gives editors the right controls and gives developers a file system they can trust.",
+  "audiences": [
+    {
+      "title": "For editors",
+      "text": "Use clear forms, useful field labels, rich text, media, relations, and reorderable lists. Save once. Mica validates the full entry before it writes anything."
+    },
+    {
+      "title": "For developers",
+      "text": "Define the model in TypeScript and use getCollection in Astro. Content is local, typed, diffable, and available without a live CMS or a read token."
+    },
+    {
+      "title": "For operators",
+      "text": "Run one container with SQLite and OpenID Connect. There is no database server, cache, queue, object store, content API, or build webhook."
+    }
+  ],
+  "stack": [
+    { "name": "@micacms/model", "role": "Fields, validation, and file layout" },
+    { "name": "@micacms/astro", "role": "Typed Astro Content Layer loaders" },
+    { "name": "@micacms/connectors", "role": "Local, GitHub, and GitLab writes" },
+    { "name": "@micacms/cms", "role": "Hono API and Vue editor" },
+    { "name": "SQLite", "role": "Accounts and sessions only" },
+    { "name": "OpenID Connect", "role": "Authentication in production" }
+  ]
+}

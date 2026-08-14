@@ -1,0 +1,50 @@
+One model defines the editor screens, validation rules, Astro collections, TypeScript types, and file layout.
+
+## Collections and singletons
+
+A collection contains many entries. Each collection has one slug field that identifies an entry in the repository and on the website. A singleton is one settings document, such as navigation or site metadata.
+
+```ts
+export const site = defineSite({
+  root: "./content",
+  collections: {
+    projects: collection({
+      label: "Projects",
+      sortable: true,
+      fields: {
+        title: text({ required: true, listed: true }),
+        slug: slug({ from: "title" }),
+        summary: richText(),
+        gallery: media({ multiple: true, accept: "image" }),
+      },
+    }),
+  },
+});
+```
+
+## Field types
+
+Mica includes text, textarea, rich text, number, boolean, date, email, URL, slug, select, object, repeater, relation, media, color, and coordinates fields.
+
+Each field can include an editor label, help text, group, width, visibility, and required state. Specific fields add rules such as length, number range, accepted media, or select options.
+
+## The file layout
+
+Entries with only structured fields use one JSON file. Rich text and media need a directory with an `index.json` file.
+
+```text
+content/
+├── projects/
+│   ├── _order.json
+│   └── house-a/
+│       ├── index.json
+│       ├── summary.mdoc
+│       └── media/exterior.jpg
+└── navigation.json
+```
+
+Keys stay in model order. A repeat save of the same values gives the same bytes. This keeps the Git diff focused.
+
+## Change the model
+
+Run an Astro build after each model change and commit the new `.mica/schema.json`. A new required field makes old entries invalid until an editor adds the value. The build reports this problem before deployment.

@@ -1,0 +1,7 @@
+{
+  "title": "Self-hosting",
+  "slug": "self-hosting",
+  "section": "operate",
+  "summary": "Run one Mica container with OpenID Connect and a repository connection.",
+  "readTime": 12
+}

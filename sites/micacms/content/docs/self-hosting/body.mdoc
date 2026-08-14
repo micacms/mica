@@ -1,0 +1,38 @@
+Deploy Mica as one container. It needs a repository connection, an OpenID Connect provider, and a persistent volume for its small SQLite file.
+
+> Mica is pre-1.0. Test upgrades and keep the version fixed in production.
+
+## Repository access
+
+Use the GitHub connector for a fine-grained token with read and write access to repository contents. Use the GitLab connector for a project access token with the `write_repository` scope.
+
+Set `REPOSITORY_ROOT` to the content directory. Mica rejects paths outside this root even when the provider token can write to more of the repository.
+
+## Identity
+
+Mica delegates sign-in to an OpenID Connect provider. It stores no password. A site membership gives an authenticated person permission to edit.
+
+Set the first administrator with `OIDC_BOOTSTRAP_ADMIN`, or run the access command in the container.
+
+```bash
+docker compose exec cms node dist/server/scripts/grant-access.js \
+  --email you@example.com --role admin
+```
+
+## Start the service
+
+```bash
+cp apps/cms/.env.example .env
+docker compose up -d --build
+curl -s https://cms.example.com/health
+```
+
+Terminate TLS in a reverse proxy and set `CMS_BASE_URL` to the public HTTPS address. Enable `TRUST_PROXY` only behind a proxy that you control.
+
+## Build the website
+
+The website build needs no CMS URL and no read token. It reads the checked-out files. A normal push trigger is the complete connection between save and deploy.
+
+## Backups
+
+The content repository is the content backup, with history from every save. The SQLite file contains accounts, memberships, and sessions only. If you lose it, grant access again and ask editors to sign in.

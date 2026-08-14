@@ -1,0 +1,12 @@
+{
+  "title": "One typed model",
+  "slug": "one-typed-model",
+  "icon": "model",
+  "eyebrow": "No schema drift",
+  "summary": "One TypeScript module defines the editor, validation, file layout, Astro collections, and page data types.",
+  "outcomes": [
+    { "text": "No code generation" },
+    { "text": "Build-time type safety" },
+    { "text": "Editorial labels and guidance" }
+  ]
+}

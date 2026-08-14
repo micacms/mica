@@ -1,0 +1,12 @@
+{
+  "productName": "Mica",
+  "tagline": "The Git-native content editor for Astro",
+  "description": "Give editors a clear CMS. Keep content as reviewable files in Git. Build a fast, static Astro website with no runtime CMS dependency.",
+  "currentVersion": "0.0.4",
+  "githubUrl": "https://github.com/amuedespacher/micacms",
+  "npmUrl": "https://www.npmjs.com/package/@micacms/cms",
+  "announcement": {
+    "text": "Mica 0.0.4 is available",
+    "href": "/changelog/"
+  }
+}

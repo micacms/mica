@@ -1,0 +1,12 @@
+{
+  "title": "Git-native content",
+  "slug": "git-native-content",
+  "icon": "repository",
+  "eyebrow": "Source of truth",
+  "summary": "Content is readable files in your repository. Every save is one commit, ready for review, rollback, and your normal CI.",
+  "outcomes": [
+    { "text": "No export or database dump" },
+    { "text": "Human-readable changes" },
+    { "text": "Provider-backed history" }
+  ]
+}
