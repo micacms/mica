@@ -1,261 +1,236 @@
 # Deployment
 
-Two independent things get deployed, and that separation is the point:
-
-| | What it is | Where it runs |
-| --- | --- | --- |
-| **CMS** | Node process, SQLite file, media directory | one small server you control |
-| **Website** | static HTML, CSS, JS, images | any static host |
-
-The website never talks to the CMS. The CMS never knows where the website is
-hosted. They meet once, during a build.
+Mica is one container. It commits to a Git repository; your CI builds the
+website from that repository and uploads it somewhere static. Nothing in that
+chain requires Mica to be reachable from the internet, and nothing requires the
+website to be reachable from Mica.
 
 ```
-Editor ──▶ CMS ──── webhook ────▶ CI ──── astro build ────▶ static host
-            │                              │
-         SQLite                     reads /api/manifest
-          media                     over CMS_READ_TOKEN
+   editor
+     │
+     ▼
+┌──────────┐   commits    ┌────────────────────┐
+│   Mica   │ ───────────▶ │ content repository │
+│ (Hono +  │              │  github / gitlab   │
+│  Vue)    │              └─────────┬──────────┘
+└────┬─────┘                        │ push
+     │                              ▼
+  cms.sqlite                   ┌─────────┐
+  accounts &                   │   CI    │  astro build
+  sessions                     └────┬────┘
+                                    ▼
+                              static files
+                                    ▼
+                            any static host
 ```
+
+The two arrows out of Mica are the whole integration surface. There is no
+content API, no read token and no build webhook — a push is the trigger, which
+every CI system already understands.
 
 ---
 
-## 1. The CMS
+## 1. Choose how Mica reaches the repository
 
-### Requirements
+| `REPOSITORY` | What it does | Use it when |
+| --- | --- | --- |
+| `github` | Commits through the GitHub API | The repository is on GitHub |
+| `gitlab` | Commits through the GitLab API | The repository is on GitLab |
+| `local` | Writes into a checkout on disk | Development, or you already have a checkout and your own sync |
 
-A machine with Docker and about 1 GB of RAM. There is no database server, no
-cache and no object storage to provision.
+For a hosted deployment, prefer a provider connector. There is no clone to keep
+in sync, no deploy key on disk, and no risk of the container's working tree
+drifting from the remote.
 
-### Install
+### GitHub
 
-```bash
-git clone <your-repo> && cd mica
-cp .env.example .env
+Create a fine-grained personal access token, or a GitHub App installation
+token, scoped to **that one repository** with:
+
+- **Contents: read and write**
+
+Nothing else. Mica does not open pull requests, read issues or run workflows.
+
+```env
+REPOSITORY=github
+REPOSITORY_PROJECT=acme/website
+REPOSITORY_TOKEN=github_pat_…
+REPOSITORY_ROOT=content
+REPOSITORY_BRANCH=main
 ```
 
-Fill in `.env`. Two values are mandatory:
+### GitLab
 
-```bash
-# Generate each separately — do not reuse one for both.
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+Create a project access token with the `write_repository` scope.
+
+```env
+REPOSITORY=gitlab
+REPOSITORY_PROJECT=acme/website        # or the numeric project id
+REPOSITORY_TOKEN=glpat-…
+REPOSITORY_ROOT=content
+REPOSITORY_BRANCH=main
 ```
 
-- `CMS_BASE_URL` — the exact public origin, including `https://`. Cookies, the
-  CSRF Origin check and the media URLs in the content API all derive from it.
-- `SESSION_SECRET` — signs session cookies. Changing it signs everyone out.
-- `CMS_READ_TOKEN` — the build's password to the content API.
+For GitHub Enterprise Server or self-managed GitLab, add
+`REPOSITORY_API_BASE=https://git.example.com`.
 
-### Give it a content model
+### Why `REPOSITORY_ROOT` matters
 
-The image contains no content model. It knows the field types and is handed a
-schema at startup, which is what lets one published image serve any project:
+Mica reads and writes only below that directory. A token with write access to
+the whole repository still cannot be used *through Mica* to touch the website's
+source code, its CI configuration or its dependencies. Keep content in its own
+directory and this holds by construction.
 
-```bash
-pnpm build:schema     # mica.config.ts -> mica.config.json
-```
+---
 
-`docker-compose.yml` mounts that file read-only at `/app/schema.json`, where
-`MICA_SCHEMA` already points. Without it the container refuses to start and says
-so. Editing the model later is `pnpm build:schema` followed by
-`docker compose restart cms` — no image rebuild, because nothing about the model
-is baked in.
-
-Then:
+## 2. Configure and start
 
 ```bash
+cp apps/cms/.env.example .env
+# fill in: SESSION_SECRET, CMS_BASE_URL, and the REPOSITORY_* block above
+pnpm build:schema                 # mica.config.ts -> mica.config.json
 docker compose up -d
 docker compose exec cms node dist/server/scripts/create-user.js
 ```
 
-The first account created is always an administrator. Sign in at
-`https://cms.example.com/admin/`.
-
-### Put TLS in front of it
-
-The container binds to `127.0.0.1:4000` and speaks plain HTTP. Terminate TLS in
-a reverse proxy — the CMS sets `Secure` cookies as soon as `CMS_BASE_URL` starts
-with `https://`, so without TLS in front nobody can sign in.
-
-```nginx
-server {
-    listen 443 ssl http2;
-    server_name cms.example.com;
-
-    ssl_certificate     /etc/letsencrypt/live/cms.example.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/cms.example.com/privkey.pem;
-
-    # Uploads are capped at MAX_UPLOAD_BYTES (25 MB by default); nginx must not
-    # reject them first with its own 1 MB default.
-    client_max_body_size 32m;
-
-    location / {
-        proxy_pass http://127.0.0.1:4000;
-        proxy_set_header Host              $host;
-        proxy_set_header X-Real-IP         $remote_addr;
-        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-```
-
-Set `TRUST_PROXY=true` **only** once a proxy like this is in place. Without one,
-a client can forge `X-Forwarded-For` and walk around the login rate limit.
-
-### Caddy
-
-```
-cms.example.com {
-    reverse_proxy 127.0.0.1:4000
-    request_body {
-        max_size 32MB
-    }
-}
-```
-
-### Verify
+`SESSION_SECRET` is mandatory in production and signs the session cookie.
+Generate it with:
 
 ```bash
-curl -fsS https://cms.example.com/health
-# {"status":"ok","uptimeSeconds":12,"database":"ok","publisher":"configured"}
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-`/health` reads from SQLite, so a green response means the database is genuinely
-readable — not merely that the process is up.
+Mica refuses to start if `REPOSITORY` names a provider without a project and a
+token. That is deliberate: a CMS that starts, shows an editor their content and
+only fails when they press Save has already cost them their work.
+
+### The reverse proxy
+
+The container binds to loopback. Terminate TLS in front of it and set:
+
+```env
+CMS_BASE_URL=https://cms.example.com
+TRUST_PROXY=true
+```
+
+`TRUST_PROXY` makes Mica read the client address from `X-Forwarded-For`. Enable
+it **only** behind a proxy you control — otherwise clients can spoof their
+address and walk past the login rate limit.
+
+`CMS_BASE_URL` starting with `https://` is what turns on `Secure` cookies.
 
 ---
 
-## 2. The website
+## 3. Build the website
 
-### Configure the build
+The build reads the repository. It needs no token, no CMS URL and no network
+access to Mica.
 
-CI needs two values:
+```yaml
+# .github/workflows/build.yml
+name: Build website
+on:
+  push:
+    branches: [main]
 
-```
-CMS_URL=https://cms.example.com
-CMS_READ_TOKEN=<the same token the CMS was started with>
-SITE_URL=https://www.example.com
-```
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: pnpm }
 
-`CMS_READ_TOKEN` is read-only: it cannot create, edit or delete anything. It is
-still a secret — it exposes unpublished drafts.
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build:packages
+      - run: pnpm --filter @micacms/web build
 
-### Build
-
-```bash
-pnpm install --frozen-lockfile
-pnpm --filter "./packages/**" build
-pnpm --filter @micacms/web build
-# → apps/web/dist  — upload this directory
-```
-
-During the build Astro fetches `/api/manifest` once, then downloads every
-referenced image and re-encodes it into `dist/_astro/`. Nothing in the output
-points back at the CMS, which you can check yourself:
-
-```bash
-grep -r "cms.example.com" apps/web/dist && echo "LEAK" || echo "self-contained"
+      # …then upload apps/web/dist wherever you like.
 ```
 
-### Host it
+An editor pressing Save produces a commit on `main`, which triggers this. There
+is nothing to wire up on Mica's side.
 
-`apps/web/dist` is plain files. No adapter, no serverless runtime, no Node on
-the web host. It works on Vercel, Netlify, Cloudflare Pages, GitHub Pages,
-GitLab Pages, S3 + CloudFront, nginx, Apache, or a USB stick.
+If your host builds from the repository itself — Vercel, Netlify, Cloudflare
+Pages — you do not need the workflow at all. Point the host at the repository
+and it will rebuild on every editorial commit, because an editorial commit is
+just a commit.
 
-Two settings worth getting right wherever you host:
+### Keeping editorial commits out of your other CI
 
-- **404 page** — serve `404.html` for unmatched paths.
-- **Caching** — `/_astro/*` is content-hashed and immutable; cache it for a
-  year. HTML should revalidate.
+Editors commit far more often than developers. If you have expensive jobs on
+`main`, filter them by path:
 
-nginx:
-
-```nginx
-location /_astro/ {
-    add_header Cache-Control "public, max-age=31536000, immutable";
-}
-location / {
-    try_files $uri $uri/index.html /404.html;
-    add_header Cache-Control "public, max-age=0, must-revalidate";
-}
+```yaml
+on:
+  push:
+    branches: [main]
+    paths-ignore: ["content/**"]
 ```
+
+…and give the site build the opposite filter, or no filter at all.
+
+### Editing on a branch
+
+`REPOSITORY_BRANCH` can be any branch. Point a second Mica at
+`REPOSITORY_BRANCH=staging` and editors have a staging site, reviewed and merged
+like any other change. This is what replaced draft and published states, and it
+is strictly more capable than they were.
 
 ---
 
-## 3. Connecting publish to build
-
-Point `BUILD_WEBHOOK_URL` at whatever triggers your build, and set
-`BUILD_WEBHOOK_SECRET`. Publishing then rebuilds the site automatically; a burst
-of edits is coalesced into one build (`PUBLISH_DEBOUNCE_MS`).
-
-The request is:
-
-```
-POST <BUILD_WEBHOOK_URL>
-Content-Type:      application/json
-X-Mica-Timestamp:  1754899200
-X-Mica-Signature:  v1=<hex hmac-sha256 of "<timestamp>.<body>">
-
-{"source":"mica-cms","deliveredAt":"…","events":[{"type":"entry.published",…}]}
-```
-
-### GitHub Actions
-
-`BUILD_WEBHOOK_URL` = `https://api.github.com/repos/<owner>/<repo>/dispatches`
-does not work directly — GitHub needs its own auth header. Use a tiny relay, or
-the simpler route: point the webhook at a workflow-dispatch proxy you control.
-
-For most customers the least-moving-parts option is a provider deploy hook:
-
-- **Netlify** — Site settings → Build & deploy → Build hooks → copy the URL
-- **Vercel** — Settings → Git → Deploy Hooks
-- **Cloudflare Pages** — Settings → Builds → Deploy hooks
-
-Paste that URL into `BUILD_WEBHOOK_URL`. Those providers ignore the signature
-headers, which is why `BUILD_WEBHOOK_SECRET` matters most when you run your own
-receiver — see `docs/webhook-receiver.md`.
-
-A scheduled rebuild in `.github/workflows/build-site.yml` is included as a
-worked example.
-
----
-
-## 4. Upgrading
+## 4. Changing the content model
 
 ```bash
-git pull
-docker compose build cms
-docker compose up -d cms
+pnpm build:schema
+docker compose restart cms
 ```
 
-Migrations run automatically at startup and are recorded in `_migrations`.
-They are append-only and numbered, so the sequence is identical on every
-deployment.
-
-**Take a backup first.** Rolling *back* to an older image after a migration has
-run is refused — the CMS would rather stop than operate against a schema it does
-not recognise. Restoring a backup is the supported way back.
+The image holds no model — only the field types that interpret one — so it never
+needs rebuilding for a content change. Deploy the matching website build at the
+same time: adding a required field to a collection makes existing entries
+invalid until they are edited, and the website build is where you find out.
 
 ---
 
-## 5. If something goes wrong
+## Health
 
-| Symptom | Cause | Fix |
+`GET /health` checks both halves:
+
+```json
+{ "status": "ok", "database": "ok", "repository": "github:acme/website/content@main" }
+```
+
+It returns 503 if the database is unreadable or the repository is unreachable. A
+container that is listening but cannot reach its repository cannot save
+anything, so it should not be sent traffic.
+
+---
+
+## Troubleshooting
+
+| Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Sign-in says "Invalid or missing CSRF token" | `CMS_BASE_URL` does not match the address in the browser | correct it, restart |
-| Sign-in appears to work but bounces back | `Secure` cookie over plain HTTP | put TLS in front, or use `http://` in `CMS_BASE_URL` for local testing |
-| Site build fails with 401 | `CMS_READ_TOKEN` differs between CMS and CI | make them identical |
-| Site build fails "Could not load content" | CMS unreachable from the runner | check firewall and `CMS_URL` |
-| Uploads fail around 1 MB | reverse proxy body limit | raise `client_max_body_size` |
-| Published content does not appear on the site | no build webhook configured | set `BUILD_WEBHOOK_URL`, or press "Rebuild website" |
-| Rate-limited out of your own CMS | login attempts exhausted | wait for `LOGIN_WINDOW_MS`, or `docker compose restart cms` |
+| Container exits at startup with `ConfigError` | `REPOSITORY` names a provider without `REPOSITORY_PROJECT` / `REPOSITORY_TOKEN` | Set both |
+| Health check 503, `repository: unavailable` | Token expired, revoked, or wrong scope | Reissue with contents write / `write_repository` |
+| Saving returns 409 | Someone else changed that entry, or a push landed mid-save | Reload; the editor's work is still in the form |
+| Saving returns 422 | The entry does not satisfy the model | The response names the fields |
+| Admin loads but has no collections | `MICA_SCHEMA` not mounted, or `pnpm build:schema` not run | Mount `mica.config.json` and restart |
+| Editors signed out after a restart | `SESSION_SECRET` unset, so an ephemeral one was generated | Set it |
+| Site build succeeds but content is stale | The host built an older commit | Check the CI ran on the editorial commit |
 
-Logs are JSON lines in production:
+---
 
-```bash
-docker compose logs -f cms
-docker compose logs cms | grep '"level":"error"'
-```
+## What is not here
 
-Every request carries an `x-request-id`, and a 500 response returns the same id —
-so a user-reported error can be found exactly.
+**No content API.** The website reads files. There is nothing to secure, rate
+limit, cache or keep available at build time.
+
+**No build webhook.** A push is the trigger.
+
+**No media server.** Images are files in the repository, processed by Astro at
+build time and served by your static host with the rest of the site.
+
+Each of those used to exist. Each was removed because moving content into Git
+made it unnecessary, rather than because it was replaced by something else.

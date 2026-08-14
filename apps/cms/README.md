@@ -1,7 +1,8 @@
 # Mica CMS
 
-The CMS application: a Hono API and the Vue administration SPA it serves, backed
-by one SQLite file and one media directory.
+The CMS application: a Hono API and the Vue administration SPA it serves. It
+holds no content — content is committed to a Git repository through a connector,
+and the SQLite file next to this process holds accounts and sessions only.
 
 ```
 cms.example.com
@@ -10,35 +11,42 @@ cms.example.com
       Hono
   ┌────┼──────────┬─────────┐
   │    │          │         │
-/api/* /media/*  /admin/*  /health
-  │    │          │
-SQLite files    Vue SPA
+/api/* /admin/*  /health    │
+  │      │                  │
+  │    Vue SPA              │
+  │                         │
+connector ──▶ content repository
+  │
+SQLite: accounts, sessions
 ```
 
 ## Running it locally
 
 ```bash
 pnpm install
-pnpm --filter @micacms/model build     # the field types the server validates with
+pnpm build:packages
 
 cd apps/cms
 cp .env.example .env
 
-pnpm seed                              # demo content + a demo account
 pnpm dev                               # API on :4000, admin on :5173
+pnpm create-user                       # in a second terminal
 ```
+
+`REPOSITORY=local` and `CONTENT_ROOT=../../content` are the defaults, so the
+server edits the `content/` directory in this repository. There is nothing to
+seed: the content is already there, in Git.
 
 The server has no content model of its own; it loads one at startup. In
 development that is `mica.config.ts` in the repository root, read directly by
 `tsx`. In production `MICA_SCHEMA` names a compiled model — see
 [deployment](../../docs/deployment.md).
 
-Then open <http://localhost:5173/admin/> and sign in as
-`demo@example.com` / `mica-demo-password`.
+Then open <http://localhost:5173/admin/> and sign in.
 
-`pnpm dev` runs the API and the Vite dev server together. Vite proxies `/api`
-and `/media` to the API so the session cookie stays same-origin; the API still
-needs `ADMIN_ORIGINS=http://localhost:5173` for its Origin check, which
+`pnpm dev` runs the API and the Vite dev server together. Vite proxies `/api` to
+the API so the session cookie stays same-origin; the API still needs
+`ADMIN_ORIGINS=http://localhost:5173` for its Origin check, which
 `.env.example` already sets.
 
 To run the production shape instead — one process serving both:
@@ -71,21 +79,27 @@ src/
 │   ├── db/
 │   │   ├── driver.ts       the only file that imports node:sqlite
 │   │   └── migrations.ts   append-only, numbered, deterministic
-│   ├── repositories/       the only files that write SQL
-│   ├── services/           business rules: content, media, sessions, publishing
+│   ├── repositories/       the only files that write SQL (users, sessions)
+│   ├── services/           media validation and sessions
 │   ├── middleware/         auth, CSRF, rate limiting, errors, logging
 │   ├── routes/             thin: parse, delegate, serialise
-│   └── scripts/            create-user, seed, backup
+│   └── scripts/            create-user, build-schema, export-content
 └── admin/
     ├── api.ts              typed client for the admin API
     ├── router.ts           routes and the auth guard
     ├── stores/             auth, schema, toasts (plain composables)
+    ├── lib/markdoc.ts      ProseMirror JSON <-> Markdoc, at the boundary
     ├── components/fields/  one component per field kind + the registry
-    └── views/              dashboard, collection, entry, global, media, users
+    └── views/              dashboard, collection, entry, singleton, media, users
 ```
 
-Two rules keep this navigable: only `repositories/` writes SQL, and only
-`db/driver.ts` knows which SQLite library is in use.
+Three rules keep this navigable: only `repositories/` writes SQL, only
+`db/driver.ts` knows which SQLite library is in use, and nothing outside
+`@micacms/connectors` knows how the repository is reached.
+
+Note what is *not* here any more: no `services/content.ts`, no `publisher.ts`,
+no entry, revision or media repositories. The content store moved to
+`@micacms/connectors`, where the Astro build can use the same code.
 
 ## How the schema drives everything
 
@@ -96,7 +110,8 @@ definition:
 - `GET /api/admin/schema` serves the model to the SPA, which generates its
   navigation, list columns and forms from it — the admin contains no knowledge
   of any particular collection;
-- the public API validates content on the way out.
+- the same model decides the layout on disk: an entry with rich text or media
+  is a directory, one without is a single `.json` file.
 
 Adding a field therefore needs no change here and no SQL migration: entry
 payloads are JSON validated against whatever the model currently says. Adding a
@@ -109,50 +124,54 @@ re-validates it, so a model built against a newer `@micacms/model` than the
 server is running fails at startup naming the field, rather than at an editor's
 screen.
 
-## Drafts and publishing
+## Saving, and what replaced publishing
 
-Draft saves are validated leniently — types and ranges apply, `required` does
-not — so an editor can save unfinished work and come back to it. Publishing
-re-validates strictly. Only published entries are visible through the public
-content API.
+A save is a commit. There is no draft state and no publish button: unfinished
+work stays in the editor's form and never reaches the server, and what does
+reach the server is validated in full before it becomes a file.
 
-Publishing emits a signed webhook and stops there; the CMS never learns where
-the website is hosted. Deliveries are coalesced over `PUBLISH_DEBOUNCE_MS` so a
-burst of edits triggers one build.
+Concurrency is handled with an opaque **revision** token. The editor is given
+one when it opens an entry and sends it back with the save; if the file changed
+in the meantime the server answers 409 and the editor is offered the current
+version rather than being overwritten. A `null` revision asserts the entry does
+not exist, which is what stops two people creating the same slug.
 
-## Revisions
+Rich text is Markdoc. The admin's Tiptap editor converts at the boundary — see
+`src/admin/lib/markdoc.ts` — and never emits HTML, because a `.mdoc` file has to
+be readable in a diff and safe to render into a static build.
 
-Every modification snapshots the *previous* payload first, so the newest
-revision is the version before the current one. Restoring writes an older
-snapshot — and snapshots the current state first, so a restore is itself
-reversible. The 30 most recent revisions per entry are kept.
+## History
+
+There is none here. Git is the history: every save is a commit, with the
+editor's name as the author. Nothing prunes it, and no version of Mica has to be
+running to read it.
 
 ## API surface
 
 | Method | Path | Auth |
 | --- | --- | --- |
 | `GET` | `/health` | none |
-| `GET` | `/media/:key` | none — see below |
 | `POST` | `/api/auth/login` · `/logout` · `/password` | session |
 | `GET` | `/api/auth/me` | session |
-| `GET` | `/api/admin/schema` · `/overview` | session |
-| `POST` | `/api/admin/publish` | session |
+| `GET` | `/api/admin/schema` · `/overview` · `/system` | session |
 | `GET/POST` | `/api/admin/collections/:collection/entries` | session |
-| `GET/PUT/DELETE` | `/api/admin/entries/:id` | session |
-| `POST` | `/api/admin/entries/:id/status` | session |
-| `GET/POST` | `/api/admin/entries/:id/revisions[/:id/restore]` | session |
-| `GET/PUT` | `/api/admin/globals/:name` | session |
-| `GET/POST/PATCH/DELETE` | `/api/admin/media[/:id]` | session |
+| `GET/PUT/DELETE` | `/api/admin/collections/:collection/entries/:slug` | session |
+| `GET` | `/api/admin/collections/:collection/entries/:slug/references` | session |
+| `POST` | `/api/admin/collections/:collection/reorder` | session |
+| `GET` | `/api/admin/collections/:collection/slug` | session |
+| `GET/PUT` | `/api/admin/singletons/:name` | session |
+| `GET/POST` | `/api/admin/media` | session |
+| `GET` | `/api/admin/media/file/*` | session |
 | `GET/POST/PATCH/DELETE` | `/api/admin/users[/:id]` | session + admin |
-| `GET` | `/api/content/:collection[/:slug]` | read token |
-| `GET` | `/api/globals/:name` | read token |
-| `GET` | `/api/manifest` · `/api/version` | read token |
+
+Every route is behind a session. There is no public content API and no public
+media route: the website is built from the repository, so nothing outside this
+session needs to read anything here.
 
 Admin writes need a session cookie **and** a matching `X-CSRF-Token` header.
-The public read endpoints take `Authorization: Bearer $CMS_READ_TOKEN`.
 
-`/api/manifest` returns every collection and global in one response — a build
-would otherwise make one request per collection.
+An entry is addressed by `collection/slug` — the path in the API is the path in
+the repository.
 
 ## Security notes
 
@@ -166,39 +185,40 @@ would otherwise make one request per collection.
   double-submit token bound to the session. The session cookie is
   `SameSite=Lax`.
 - **Uploads** — the content type is derived from the bytes, never the browser's
-  claim; the stored filename is regenerated from the detected type, so a
-  traversal or a double extension cannot reach the filesystem. SVG is served
-  under a sandbox CSP.
+  claim; the filename is slugified from what the editor uploaded, so a traversal
+  or a double extension cannot reach the repository. The connector refuses any
+  path that leaves the content root.
+- **Rich text** — stored as Markdoc, never HTML. Markdoc escapes raw markup and
+  renders an undeclared `{% tag %}` as nothing, so content committed to the
+  repository cannot inject script into a build.
+- **Repository tokens** — a provider connector reads and writes only below
+  `REPOSITORY_ROOT`. A token with repository-wide write access still cannot be
+  used through Mica to touch the website's source or its CI configuration.
 - **Rate limiting** — per-IP and per-account buckets on sign-in, plus a coarse
   per-IP limit across the API. In-memory, so counters reset on restart; scrypt's
   cost is the backstop.
-- **`/media/*` is public.** These URLs end up in the static build and the image
-  pipeline that fetches them during `astro build` cannot present a token. Keys
-  are 26-character ULIDs, so an unpublished asset is unguessable rather than
-  access-controlled. Do not put confidential documents in the media library.
+- **No public routes.** There is no content API and no public media route; the
+  build reads the repository. Media is served to the editor at
+  `/api/admin/media/file/*`, behind the session, and nothing else needs it.
 - **`TRUST_PROXY`** must stay `false` unless a reverse proxy sets
   `X-Forwarded-For`, or clients can spoof their address and evade rate limiting.
 
 ## Backups
 
-A complete backup is the SQLite file plus the media directory — nothing else.
+Your content repository is the backup, and Git is keeping it. This server's
+SQLite file holds accounts and sessions; losing it signs everyone out and costs
+nothing else.
 
-```bash
-pnpm backup -- --out /backups
-```
-
-Uses `VACUUM INTO`, which takes a read lock only, so it is safe to run from cron
-against a live server and does not produce the torn file a plain `cp` of a
-WAL-mode database can. To restore, stop the CMS, put `cms.sqlite` and `media/`
-back in `DATA_DIR`, and start it again.
+See [backup-and-restore.md](../../docs/backup-and-restore.md).
 
 ## Tests
 
 ```bash
-pnpm test          # 41 API tests against an in-memory database
+pnpm test          # 91 tests: API, config, and the Markdoc bridge
 pnpm typecheck     # server (tsc) and admin (vue-tsc)
 ```
 
-The suite builds a complete application over an in-memory SQLite database,
-in-memory media storage and a recording publisher, then drives it through
-`app.request()` — no network, no filesystem, no shared state between tests.
+The suite builds a complete application over an in-memory SQLite database and a
+temporary content directory, then drives it through `app.request()` — no
+network and no shared state between tests. Assertions are made on the files
+that end up on disk, because the files are the product.

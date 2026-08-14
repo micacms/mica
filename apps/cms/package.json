@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Mica CMS \u2014 Hono API plus the Vue administration SPA it serves.",
+  "description": "Mica CMS — Hono API plus the Vue administration SPA it serves.",
   "scripts": {
     "dev": "concurrently -n api,admin -c blue,magenta \"pnpm dev:api\" \"pnpm dev:admin\"",
     "dev:api": "tsx watch --clear-screen=false src/server/index.ts",
@@ -20,11 +20,12 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
+    "@markdoc/markdoc": "^0.5.9",
+    "@micacms/connectors": "workspace:*",
     "@micacms/model": "workspace:*",
     "hono": "^4.6.20",
     "image-size": "^1.2.0",
-    "zod": "^3.25.76",
-    "@micacms/connectors": "workspace:*"
+    "zod": "^3.25.76"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",

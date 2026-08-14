@@ -17,46 +17,24 @@ Priorities:
 
 ## Accepted trade-offs
 
-### P1 — `/media/*` is publicly readable
+### P1 — Editors commit straight to a branch, with no review step
 
-**Decided:** media files are served without authentication. Keys are
-26-character ULIDs, so an unpublished asset is *unguessable* rather than
-*access-controlled*.
+**Decided:** a save is a commit onto `REPOSITORY_BRANCH`. Mica does not open a
+pull request and has no concept of one.
 
-**Why:** these URLs end up in the static build, and the image pipeline that
-fetches them during `astro build` cannot present a bearer token.
+**Why:** the editors this is built for are the site's owners. Making them wait
+for their own approval would be theatre, and a review queue nobody empties is
+worse than no review.
 
-**Consequence:** anything in the media library is effectively public once its
-URL is known. Do not store confidential documents there.
+**Consequence:** a typo is live as soon as CI finishes. There is no gate.
 
-**What would change it:** if a customer needs private assets, either
-(a) sign media URLs with a short-lived HMAC the build can mint, or
-(b) have the loader download bytes at build time and emit them into the static
-output, so the CMS origin is never referenced.
+**What would change it:** point Mica at a `staging` branch and merge on a human's
+schedule — this already works and needs no code. A per-save pull request would
+be a connector change: both providers can create a branch and a PR, and the
+`RepositoryConnector` interface is where it would go.
 
-**Trigger:** first customer wanting gated PDFs or pre-release content.
-
-> Documented in `apps/cms/README.md` under Security notes.
-
----
-
-### P1 — Build webhook queue is in memory
-
-**Decided:** publish events are coalesced in memory and delivered with three
-retries; `ctx.shutdown()` flushes them.
-
-**Why:** avoids a job table and a worker for what is normally one HTTP POST.
-
-**Consequence:** a hard crash (SIGKILL, OOM, host loss) between an editor
-clicking Publish and the webhook landing loses the rebuild trigger. Content is
-safe — it is committed to SQLite first — but the live site stays stale until the
-next publish or a manual "Rebuild website".
-
-**What would change it:** a `publish_queue` table drained by a loop on startup.
-Perhaps 60 lines.
-
-**Trigger:** first report of "I published but the site didn't update", or any
-customer without a person who would notice.
+**Trigger:** a customer with more than one editor who does not trust all of them,
+or a compliance regime that requires four eyes.
 
 ---
 
@@ -64,8 +42,8 @@ customer without a person who would notice.
 
 **Decided:** fixed-window counters in a `Map` (`lib/rate-limit.ts`).
 
-**Why:** §2.1 asks for one process and no mandatory external services; Redis for
-a handful of editors is not proportionate.
+**Why:** one process and no mandatory external services; Redis for a handful of
+editors is not proportionate.
 
 **Consequence:** counters reset on deploy, and the limit is per-process rather
 than per-cluster. scrypt's ~100 ms cost per attempt is the real backstop.
@@ -78,14 +56,33 @@ attempt in the logs.
 
 ---
 
+### P2 — A provider connector reads the content tree on every commit
+
+**Decided:** `commit()` fetches the whole content tree before writing, to check
+`expect` and to expand `deleteTree`.
+
+**Why:** it is one request, and it is the only way to know what a delete should
+name without trusting a cached view of the repository.
+
+**Consequence:** one extra round trip per save, and a hard ceiling: GitHub
+truncates a tree listing at ~100k entries, which the connector detects and
+refuses rather than silently under-deleting.
+
+**What would change it:** a content repository large enough to notice. Caching
+the tree keyed by the branch head would remove most of the cost.
+
+**Trigger:** a save taking visibly long, or the truncation error appearing.
+
+---
+
 ### P2 — No map widget in the admin
 
 **Decided:** `coordinates` is two numeric inputs plus paste-parsing for
 `47.3769, 8.5417` and an "open in OpenStreetMap" link.
 
 **Why:** a slippy map needs a tile provider. Embedding one would make the admin
-depend on a third-party endpoint at runtime, against §2.1. TRD §19 puts MapLibre
-on the *frontend*, which is where it now lives.
+depend on a third-party endpoint at runtime. MapLibre belongs on the *frontend*,
+which is where it lives.
 
 **Consequence:** editors pick coordinates elsewhere and paste them.
 
@@ -102,14 +99,13 @@ chafe. MapLibre + their own tile key, behind an optional `MAP_STYLE_URL`.
 `db/driver.ts`.
 
 **Why:** zero dependencies, no native build step, no prebuilt-binary mismatch
-inside the container. Node 24 ships SQLite 3.53 with JSON1 and WAL.
+inside the container.
 
 **Consequence:** tied to a reasonably current Node. The API is younger than
 `better-sqlite3`'s.
 
 **What would change it:** swapping the driver means one file — that is the whole
-point of the interface. `better-sqlite3` is the drop-in if the built-in one
-disappoints.
+point of the interface.
 
 **Trigger:** a driver bug, or a deployment target stuck on older Node.
 
@@ -132,43 +128,33 @@ prefix, so both can coexist during migration.
 
 ---
 
-### P3 — Drafts validate leniently, publishing validates strictly
+### P3 — The editor cannot represent a Markdoc tag
 
-**Decided:** `required` is not enforced on a draft save; types, ranges and
-formats always are. Publishing re-validates in full.
+**Decided:** `{% callout %}` and friends survive a round trip as their inner
+text, not as a tag. The editor drops the wrapper.
 
-**Why:** an editor must be able to save half-finished work and come back
-tomorrow. Losing a paragraph to a validation error is worse than a temporarily
-incomplete draft.
+**Why:** Tiptap has no node for an arbitrary tag, and inventing a generic one
+would give editors a box they cannot meaningfully fill in.
 
-**Consequence:** a draft can exist that cannot be published as-is. The publish
-error names every field, and the editor is scrolled to the first one.
+**Consequence:** a developer who hand-writes a Markdoc tag in a `.mdoc` file
+loses it the next time an editor opens that field. The words inside are kept —
+losing those would be losing content.
 
-**What would change it:** nothing expected — but if a customer wants drafts to
-be publishable at all times, flip `enforceRequired` in
-`services/content.ts::validate`.
+**What would change it:** a Tiptap node per declared tag, generated from the
+model the way fields already are. That is the right design; nothing needs it
+yet.
 
----
-
-### P3 — Revisions capped at 30 per entry
-
-**Decided:** `REVISIONS_KEPT = 30` in `services/content.ts`, oldest pruned.
-
-**Why:** bounds database growth for an entry edited daily for years. §8 asks for
-recoverable previous versions, not an audit log.
-
-**What would change it:** a customer with a retention obligation. The constant is
-the only change; make it configurable rather than unbounded.
+**Trigger:** the first project that wants callouts or embeds inside rich text.
 
 ---
 
 ### P3 — Rich-text bundle is ~130 kB gzip
 
-**Decided:** Tiptap/ProseMirror, loaded in the chunk shared by the entry and
-settings editors.
+**Decided:** Tiptap/ProseMirror, plus Markdoc's parser for the conversion,
+loaded in the chunk shared by the entry and settings editors.
 
-**Why:** §10 requires editing without knowledge of HTML or Markdown. A
-hand-rolled `contenteditable` is a well-known trap.
+**Why:** editing must not require knowledge of a markup language. A hand-rolled
+`contenteditable` is a well-known trap.
 
 **Consequence:** the editor route is the heaviest part of the admin. Sign-in and
 the dashboard do not load it.
@@ -178,46 +164,28 @@ work on a slow mobile connection.
 
 ---
 
-### P2 — SVG media stays hosted on the CMS
-
-**Decided:** `toStaticUrl` runs raster images through Astro's image service so
-the built site embeds a local copy. SVG and dimensionless files cannot go
-through it and keep their CMS URL.
-
-**Why:** the image service re-encodes rasters; there is nothing for it to do to
-a vector, and no built-in way to copy one into the output.
-
-**Consequence:** a customer who uses an SVG logo gets a `<link rel="icon">` (and
-possibly an `og:image`) pointing at the CMS. The page still renders if the CMS
-is down — only the favicon is missing — but the independence claim has an
-asterisk.
-
-**What would change it:** a small Astro integration that copies non-raster media
-into `dist/_assets/` and rewrites the URL. Perhaps 40 lines.
-
-**Trigger:** the first customer whose logo is an SVG. Until then, uploading a
-PNG logo sidesteps it entirely.
-
----
-
 ## Deferred scope
 
 Explicitly not built; the seams they attach to exist and are tested.
 
-- **P3** — PostgreSQL support (TRD §6.1 explicitly defers it)
-- **P3** — Scheduled publishing (TRD §7 puts it out of V1 scope)
+- **P2** — OIDC sign-in. Password auth is what exists; `services/session.ts` is
+  the seam.
+- **P3** — Multiple sites or tenants in one deployment. One Mica serves one
+  repository.
+- **P3** — Scheduled publishing.
 
 ## Known gaps to close
 
-- **P2** — No end-to-end browser test of the admin. The API has 41 tests and the
-  Vue app typechecks, but no test drives a real browser through "sign in, edit,
-  publish". The one place a regression could reach production unseen.
-- **P3** — `entries.list` search is a `LIKE` over the JSON payload. Fine at the
-  stated scale (hundreds to low thousands); revisit with SQLite FTS5 if a
-  customer's collection grows past that.
-- **P3** — The `backup` compose profile sleeps 24 h in a loop rather than using
-  a real scheduler, so its timing drifts across restarts. Host cron is the
-  better answer for anyone who cares when the backup runs.
+- **P2** — No end-to-end browser test of the admin. The API has good coverage
+  and the Vue app typechecks, but no test drives a real browser through "sign
+  in, edit, save". The one place a regression could reach production unseen.
+- **P2** — The provider connectors are tested against a stub, not against a real
+  repository. The request shapes are asserted; the providers' agreement with
+  their own documentation is not. Worth one manual run against a scratch
+  repository before a customer depends on it.
+- **P3** — Entry search filters in the browser over the whole collection. Fine at
+  the stated scale (hundreds to low thousands); a repository large enough to
+  need an index is a repository large enough to need a different design.
 
 ---
 
@@ -225,13 +193,21 @@ Explicitly not built; the seams they attach to exist and are tested.
 
 Kept for the record — these were open questions that are now settled.
 
-- ~~Docker image and `docker-compose.yml`~~ — built and verified: image boots,
-  healthcheck passes, `create-user` and `backup` run inside the container,
-  SIGTERM shuts down gracefully in under a second.
-- ~~Deployment, backup and restore documentation~~ — `docs/deployment.md`,
-  `docs/backup-and-restore.md`, `docs/webhook-receiver.md`.
-- ~~Root README~~ — written.
-- ~~`og:image` and favicon pointed at the CMS~~ — caught by the full-chain test;
-  raster media now goes through the image pipeline (see the SVG caveat above).
-- ~~Astro collection data typed as `any`~~ — the loader's schema now carries the
+- ~~`/media/*` is publicly readable~~ — **removed, not fixed.** There is no
+  public media route: images are files in the repository, and the build reads
+  them directly. The whole trade-off went away with the endpoint.
+- ~~Build webhook queue is in memory~~ — **removed.** A push is the trigger.
+- ~~Revisions capped at 30 per entry~~ — **removed.** Git is the history, and it
+  does not need pruning.
+- ~~Drafts validate leniently, publishing validates strictly~~ — **removed.**
+  There are no drafts. Unfinished work stays in the editor's form; a save is a
+  commit, and branches do what statuses were approximating.
+- ~~SVG media stays hosted on the CMS~~ — **removed.** No media is hosted on the
+  CMS, so the independence claim no longer has an asterisk.
+- ~~The `backup` compose profile~~ — **removed.** The content is in Git.
+- ~~Rich text was stored as HTML~~ — it is Markdoc. The editor converts at the
+  boundary and never calls `getHTML()`; Markdoc escapes raw HTML and renders an
+  undeclared tag as nothing, so content cannot inject script into a build.
+- ~~Docker image and `docker-compose.yml`~~ — built and verified.
+- ~~Astro collection data typed as `any`~~ — the loader's schema carries the
   model-derived type, so renaming a field breaks the website build.

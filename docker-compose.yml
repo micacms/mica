@@ -1,15 +1,19 @@
-# Reference deployment (TRD §21.1).
+# Reference deployment.
 #
-#   cp .env.example .env      # fill in the secrets
-#   pnpm build:schema         # mica.config.ts -> mica.config.json
+#   cp apps/cms/.env.example .env   # fill in the secrets and the repository
+#   pnpm build:schema               # mica.config.ts -> mica.config.json
 #   docker compose up -d
 #
-# One container, one SQLite file, one media directory. No database server, no
-# cache, no queue, no object storage.
+# One container. No database server, no cache, no queue, no object storage —
+# and, since content moved into Git, no content volume either.
 #
 # The image carries no content model. `mica.config.json` is mounted in, which is
 # why the same published image serves any project — and why changing the model
 # is a `pnpm build:schema` plus a restart, not a rebuild.
+#
+# There is no backup service any more. The content is in a Git repository, which
+# is already replicated, versioned and off-site; the volume below holds accounts
+# and sessions, and losing it signs everyone out and costs nothing else.
 
 services:
   cms:
@@ -24,20 +28,36 @@ services:
       NODE_ENV: production
       DATA_DIR: /data
 
+      # How this deployment reaches its content repository.
+      #
+      # `github` or `gitlab` is the normal choice for a container: it commits
+      # through the provider's API, so there is no clone to keep in sync and no
+      # deploy key on disk. Set REPOSITORY_PROJECT and REPOSITORY_TOKEN in .env.
+      REPOSITORY: ${REPOSITORY:-github}
+
+      # For REPOSITORY=local instead, mount a checkout at /content and set:
+      #   REPOSITORY: local
+      #   CONTENT_ROOT: /content
+
     ports:
       # Bound to loopback: put a reverse proxy in front for TLS. Change to
       # "4000:4000" only if the host itself is not reachable from the internet.
       - "127.0.0.1:4000:4000"
 
     volumes:
-      # The entire backup surface is this one volume.
+      # Accounts and sessions. Not the website — that is in the repository.
       - cms-data:/data
       # The project's content model. Read-only: the CMS is given a schema, it
       # never writes one. Rebuild with `pnpm build:schema` after editing
       # mica.config.ts, then `docker compose restart cms`.
       - ./mica.config.json:/app/schema.json:ro
+      # For REPOSITORY=local only — a checkout of the content repository:
+      # - ./content:/content
 
     healthcheck:
+      # Checks both halves: the database that holds sessions, and the content
+      # repository. A container that is listening but cannot reach its
+      # repository cannot save anything, and should not be sent traffic.
       test:
         - CMD
         - node
@@ -48,8 +68,6 @@ services:
       retries: 3
       start_period: 10s
 
-    # SQLite writes are the only state; a container that cannot write should
-    # fail loudly rather than silently serve stale content.
     stop_grace_period: 20s
 
     security_opt:
@@ -60,34 +78,6 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
-
-  # Scheduled backups. Runs `VACUUM INTO` plus a media copy into ./backups on
-  # the host, which is then whatever your off-site sync picks up.
-  #
-  # Enable with:  docker compose --profile backup up -d
-  backup:
-    profiles: ["backup"]
-    image: micacms/cms:1.0.0
-    restart: unless-stopped
-    depends_on:
-      - cms
-    env_file: .env
-    environment:
-      DATA_DIR: /data
-    volumes:
-      # Read-write, not `:ro` — a WAL-mode database needs to touch its -shm and
-      # -wal files even to be read. `VACUUM INTO` still only takes a read lock,
-      # so editors are never blocked.
-      - cms-data:/data
-      - ./backups:/backups
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        while true; do
-          node dist/server/scripts/backup.js --out /backups || echo "backup failed"
-          # Daily, offset from midnight so it does not collide with other jobs.
-          sleep 86400
-        done
 
 volumes:
   cms-data:

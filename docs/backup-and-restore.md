@@ -1,155 +1,98 @@
 # Backup and restore
 
-A complete backup of a Mica deployment is two things:
+Most of this document used to describe how to back up a website. It no longer
+needs to, and that is the point of the Git-native architecture: the thing worth
+protecting is already protected by something better than a cron job.
 
-```
-cms.sqlite        the database — content, revisions, users, media metadata
-media/            the uploaded files themselves
-```
+A Mica deployment holds two separate things, and they deserve very different
+treatment.
 
-That is the whole surface. There is no second database, no cache to warm, no
-external service holding state.
-
----
-
-## Taking a backup
-
-```bash
-docker compose exec cms node dist/server/scripts/backup.js --out /data/backups
-```
-
-Or, running from source:
-
-```bash
-pnpm --filter @micacms/cms backup -- --out ./backups
-```
-
-This produces a timestamped directory:
-
-```
-backups/mica-2026-08-11T13-04-11/
-├── cms.sqlite
-├── media/
-└── manifest.json     # sizes and source paths, for verification
-```
-
-### Why not just copy the file
-
-The database runs in WAL mode, so at any instant the committed state is split
-between `cms.sqlite` and `cms.sqlite-wal`. A plain `cp` of the first file alone
-can capture a torn, unrecoverable snapshot.
-
-The script uses SQLite's `VACUUM INTO`, which:
-
-- takes a **read lock only** — editors keep working while it runs;
-- writes a **single consistent, defragmented file** with the WAL already
-  folded in;
-- needs no downtime, no maintenance window, and no `docker compose stop`.
-
-Run it from cron against a live server without a second thought.
+| | What it is | What losing it costs |
+| --- | --- | --- |
+| The content repository | Every entry, every uploaded file, every revision | The website |
+| `cms.sqlite` | Accounts and sessions | Everyone signs in again |
 
 ---
 
-## Automating it
+## The content repository
 
-The compose file ships a `backup` profile that runs the script daily into
-`./backups` on the host:
+**Git is the backup.** Every save is a commit, so the history is complete by
+construction rather than by schedule, and any clone is a full copy.
 
-```bash
-docker compose --profile backup up -d
-```
-
-Host cron, if you prefer:
-
-```cron
-30 3 * * * cd /srv/mica && docker compose exec -T cms \
-  node dist/server/scripts/backup.js --out /data/backups
-```
-
-### Get it off the machine
-
-A backup on the same disk as the original protects against a bad edit, not
-against losing the server. Sync it somewhere else — the tool does not matter and
-is deliberately not prescribed:
+If it is hosted on GitHub or GitLab, that is already off-site and replicated. If
+you want a copy under your own control as well, mirror it:
 
 ```bash
-# restic, to any S3-compatible bucket, encrypted
-restic -r s3:s3.example.com/mica-backups backup /srv/mica/backups
-
-# rclone, to whatever the customer already pays for
-rclone sync /srv/mica/backups remote:mica-backups
-
-# rsync, to a second machine
-rsync -az --delete /srv/mica/backups/ backup-host:/backups/mica/
+git clone --mirror git@github.com:acme/website.git
+# and, on a schedule:
+git --git-dir=website.git remote update --prune
 ```
 
-### Retention
+Restoring is a clone. There is nothing to import, no schema to match, and no
+version of Mica that has to be running for the files to be readable — an entry
+is a JSON file with Markdoc beside it, and a text editor will do.
 
-A reasonable default for an SME: 7 daily, 4 weekly, 6 monthly. Prune old
-directories however your sync tool prefers; nothing in the CMS depends on them.
+This is worth stating plainly because it is the property everything else was
+designed around: **you can delete Mica entirely and still have your website.**
+
+### What a recovery actually looks like
+
+```bash
+git clone git@github.com:acme/website.git
+cd website && pnpm install && pnpm build
+```
+
+The Astro build reads the repository directly. It does not need the CMS to be
+running, reachable, or even installed.
 
 ---
 
-## Restoring
+## Mica's database
 
-Restoring is a file copy. There is no import step and nothing to replay.
+`cms.sqlite` holds user accounts, password hashes and active sessions. It holds
+no content.
+
+Backing it up is optional. Decide by asking what you would rather do after
+losing the volume: restore a file, or run `create-user` once and tell three
+editors to sign in again. For most deployments the second is less work than
+maintaining the first.
+
+If you do want a copy, SQLite makes a consistent one under load:
 
 ```bash
-# 1. Stop the CMS so nothing writes during the swap.
-docker compose stop cms
+docker compose exec cms \
+  node -e "require('node:sqlite') && 0" # (Node 22+; the CLI below is simpler)
 
-# 2. Put the files back.
-docker run --rm \
-  -v mica_cms-data:/data \
-  -v /srv/mica/backups/mica-2026-08-11T13-04-11:/restore:ro \
-  alpine sh -c '
-    rm -f /data/cms.sqlite /data/cms.sqlite-wal /data/cms.sqlite-shm
-    cp /restore/cms.sqlite /data/cms.sqlite
-    rm -rf /data/media && cp -r /restore/media /data/media
-    chown -R 1000:1000 /data
-  '
-
-# 3. Start it again. Migrations run automatically if the backup is older
-#    than the current build.
-docker compose start cms
-
-# 4. Confirm.
-curl -fsS https://cms.example.com/health
+sqlite3 /var/lib/docker/volumes/mica_cms-data/_data/cms.sqlite \
+  ".backup '/backups/cms-$(date +%F).sqlite'"
 ```
 
-Deleting the stale `-wal` and `-shm` files in step 2 matters: leaving them beside
-a restored database would let SQLite replay transactions that belong to the
-snapshot you just discarded.
+`.backup` and `VACUUM INTO` both take a read lock only, so editors are never
+blocked. Copying the file with `cp` while the server runs is **not** safe: WAL
+mode means recent commits live in `cms.sqlite-wal`, and a plain copy misses them.
 
-### Then rebuild the website
-
-The static site still reflects the content as of its last build. Trigger a
-rebuild from the CMS dashboard ("Rebuild website"), or from CI.
+Restoring is stopping the container, putting the file back, and starting it.
 
 ---
 
-## Practise it
+## What is no longer here
 
-An untested backup is a hope, not a plan. Once, before going live, and once a
-year after:
-
-```bash
-# Restore into a throwaway stack and check the content is really there.
-docker compose -p mica-drill up -d
-# …restore into mica-drill_cms-data, sign in, open a few entries…
-docker compose -p mica-drill down -v
-```
-
-The whole exercise takes ten minutes. Knowing it works is the reason the rest of
-this architecture is worth its simplicity.
+Earlier versions of Mica shipped a `backup` script and a scheduled backup
+service in `docker-compose.yml`, because the database *was* the website. Both
+are gone. Keeping them would imply that a Mica backup protects your content,
+and it would not be the thing you reached for if you ever needed it.
 
 ---
 
-## What is *not* backed up
+## Verifying a backup
 
-- **Sessions.** Restoring signs everyone out. Intended.
-- **Rate-limit counters.** In memory, reset on restart. Intended.
-- **The static website.** It is a build artefact; rebuild it from the CMS.
-- **`.env`.** Store `SESSION_SECRET` and `CMS_READ_TOKEN` in your password
-  manager. A database restored without its `SESSION_SECRET` still works — every
-  editor simply signs in again.
+A backup nobody has restored is a hypothesis. For the repository:
+
+```bash
+git clone /path/to/mirror.git restore-test
+cd restore-test && pnpm install && pnpm build
+```
+
+If the site builds, the content is intact — the build reads every entry and
+validates it against the model, so a corrupted or truncated file fails loudly
+rather than producing a quietly empty page.

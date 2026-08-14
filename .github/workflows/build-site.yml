@@ -1,33 +1,30 @@
 # Builds the public website and uploads the static output.
 #
-# A worked example, not a requirement: the CMS emits a generic signed webhook
-# and works the same with GitLab CI, a Jenkins job or a shell script on a box
-# under someone's desk (TRD §2.4).
+# A worked example, not a requirement. The trigger is a push, because an editor
+# pressing Save in Mica *is* a push — there is no webhook to receive, no secret
+# to share and no relay to run. GitLab CI, a Jenkins job or a shell script on a
+# box under someone's desk would work identically.
 
 name: Build website
 
 on:
-  # Content published in the CMS. Point BUILD_WEBHOOK_URL at a relay that
-  # forwards to the GitHub dispatches API, or trigger this manually.
-  repository_dispatch:
-    types: [mica-publish]
-
-  workflow_dispatch:
-
   push:
     branches: [main]
     paths:
+      # `content/**` is what editors change. The rest is what developers change.
+      # Both need a rebuild; nothing else does.
+      - "content/**"
       - "apps/web/**"
       - "packages/**"
+      - "mica.config.ts"
       - ".github/workflows/build-site.yml"
 
-  # A daily rebuild is cheap insurance: if a webhook were ever lost, the site is
-  # never more than a day stale.
-  schedule:
-    - cron: "17 4 * * *"
+  workflow_dispatch:
 
 concurrency:
-  # A burst of publishes should produce one build, not a queue of them.
+  # A burst of edits should produce one build, not a queue of them. This is what
+  # the CMS's publish debounce used to do, in the place that can actually see
+  # the queue.
   group: build-site
   cancel-in-progress: true
 
@@ -51,23 +48,12 @@ jobs:
       - name: Build shared packages
         run: pnpm --filter "./packages/**" build
 
+      # No CMS_URL and no token: the content is in this checkout. The build
+      # cannot be broken by the CMS being down, slow, or mid-deploy.
       - name: Build the website
         env:
-          CMS_URL: ${{ secrets.CMS_URL }}
-          CMS_READ_TOKEN: ${{ secrets.CMS_READ_TOKEN }}
           SITE_URL: ${{ vars.SITE_URL }}
         run: pnpm --filter @micacms/web build
-
-      - name: Check the output does not depend on the CMS
-        env:
-          CMS_URL: ${{ secrets.CMS_URL }}
-        run: |
-          host=$(printf '%s' "$CMS_URL" | sed -E 's#^https?://##; s#/.*##')
-          if grep -rl "$host" apps/web/dist; then
-            echo "::error::The build still references the CMS at $host — the site would not be self-contained."
-            exit 1
-          fi
-          echo "Output is self-contained."
 
       - uses: actions/upload-artifact@v4
         with:

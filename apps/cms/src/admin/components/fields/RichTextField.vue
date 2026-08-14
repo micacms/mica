@@ -3,9 +3,14 @@
  * Rich text.
  *
  * Tiptap over ProseMirror, constrained to the marks and nodes the field
- * declares. The point of §10 is that an editor never has to know HTML — and the
- * point of restricting the schema is that they cannot accidentally produce
- * markup the frontend has no styles for.
+ * declares. An editor never has to know a markup language, and restricting the
+ * schema means they cannot accidentally produce markup the frontend has no
+ * styles for.
+ *
+ * What leaves this component is **Markdoc**, not HTML. Tiptap's own `getHTML()`
+ * is never called: the value is converted from ProseMirror JSON on the way out
+ * and back on the way in, because the stored form is a `.mdoc` file that has to
+ * be readable in a diff and safe to render into a static site.
  */
 
 import { computed, onBeforeUnmount, watch } from "vue";
@@ -18,6 +23,7 @@ import type { RichTextFeature, RichTextField } from "@micacms/model";
 
 import FieldShell from "./FieldShell.vue";
 import { useField, type FieldProps } from "@/composables/useField";
+import { fromMarkdoc, toMarkdoc, type ProseMirrorNode } from "@/lib/markdoc";
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
@@ -38,7 +44,7 @@ const toolbar = computed(() => field.value.toolbar ?? DEFAULT_TOOLBAR);
 const enabled = (feature: RichTextFeature) => toolbar.value.includes(feature);
 
 const editor = useEditor({
-  content: typeof props.modelValue === "string" ? props.modelValue : "",
+  content: fromMarkdoc(typeof props.modelValue === "string" ? props.modelValue : ""),
   editable: !(props.disabled || field.value.readonly),
 
   extensions: [
@@ -76,22 +82,36 @@ const editor = useEditor({
   },
 
   onUpdate({ editor: instance }) {
-    // ProseMirror represents "empty" as <p></p>; the model wants null.
-    emit("update:modelValue", instance.isEmpty ? null : instance.getHTML());
+    // ProseMirror represents "empty" as one empty paragraph; the model wants
+    // null, so that an untouched field does not write a file.
+    emit(
+      "update:modelValue",
+      instance.isEmpty ? null : toMarkdoc(instance.getJSON() as ProseMirrorNode),
+    );
   },
 });
 
-// Keep the editor in sync when the payload is replaced wholesale, e.g. after a
-// revision restore. Guarded so it does not fight the user's own typing.
+/**
+ * Keep the editor in sync when the value is replaced wholesale — reloading
+ * after a conflict, for instance. Guarded so it does not fight the typing.
+ *
+ * The comparison goes through `toMarkdoc` rather than comparing the incoming
+ * string to itself: the editor normalises as it parses, so the value it would
+ * emit is the only fair thing to compare against, and anything else makes this
+ * fire on every keystroke.
+ */
 watch(
   () => props.modelValue,
   (next) => {
     const instance = editor.value;
-    if (!instance) return;
+    if (!instance || instance.isFocused) return;
+
     const incoming = typeof next === "string" ? next : "";
-    if (incoming !== instance.getHTML() && !instance.isFocused) {
+    const current = instance.isEmpty ? "" : toMarkdoc(instance.getJSON() as ProseMirrorNode);
+
+    if (incoming.trim() !== current.trim()) {
       // `false` suppresses the update event, so this does not loop back.
-      instance.commands.setContent(incoming, false);
+      instance.commands.setContent(fromMarkdoc(incoming), false);
     }
   },
 );
