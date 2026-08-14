@@ -74,6 +74,129 @@ export const migrations: Migration[] = [
       DROP TABLE IF EXISTS entries;
     `,
   },
+  {
+    version: 3,
+    name: "tenants_sites_and_federated_identity",
+    up: `
+      -- Two changes that only look like one.
+      --
+      -- Identity leaves Mica. There is no password column any more, because
+      -- there is no password: an identity provider vouches for a person and
+      -- Mica records who that person is. Everything a password brings with it —
+      -- reset flows, MFA, passkeys, breach notification — is now somebody
+      -- else's job, and that is the point.
+      --
+      -- Authorization becomes a membership. A role is not a property of a
+      -- person; it is a property of a person *on a site*. Storing it on the
+      -- user was only correct while there could never be more than one site.
+
+      CREATE TABLE tenants (
+        id         TEXT PRIMARY KEY,
+        name       TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+
+      CREATE TABLE sites (
+        id         TEXT PRIMARY KEY,
+        tenant_id  TEXT NOT NULL REFERENCES tenants (id) ON DELETE CASCADE,
+        -- Stable, URL-safe, and unique within the deployment: it is what a
+        -- future /sites/:slug route would address.
+        slug       TEXT NOT NULL,
+        name       TEXT NOT NULL,
+        created_at TEXT NOT NULL
+      );
+
+      CREATE UNIQUE INDEX sites_slug_unique ON sites (slug);
+      CREATE INDEX sites_tenant ON sites (tenant_id);
+
+      -- How one site reaches its content repository. One row per site: a site
+      -- is a repository, and a second connection would mean a second site.
+      --
+      -- The token is stored as given. Mica does not implement a secret store —
+      -- encrypting it with a key sitting in the same environment would be
+      -- theatre. Protect this file the way you protect any credential store,
+      -- or keep the token in the environment and leave this column null.
+      CREATE TABLE repository_connections (
+        site_id    TEXT PRIMARY KEY REFERENCES sites (id) ON DELETE CASCADE,
+        kind       TEXT NOT NULL CHECK (kind IN ('local', 'github', 'gitlab')),
+        project    TEXT,
+        branch     TEXT NOT NULL DEFAULT 'main',
+        root       TEXT NOT NULL DEFAULT 'content',
+        api_base   TEXT,
+        token      TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+
+      CREATE TABLE memberships (
+        id         TEXT PRIMARY KEY,
+        site_id    TEXT NOT NULL REFERENCES sites (id) ON DELETE CASCADE,
+        user_id    TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        role       TEXT NOT NULL CHECK (role IN ('admin', 'editor')),
+        created_at TEXT NOT NULL
+      );
+
+      CREATE UNIQUE INDEX memberships_unique ON memberships (site_id, user_id);
+      CREATE INDEX memberships_user ON memberships (user_id);
+
+      -- The mapping from an identity provider's subject to a Mica user.
+      --
+      -- Keyed by (issuer, subject) rather than by email, because an email
+      -- address is a display attribute an IdP may let a person change, and
+      -- rebinding an account to whoever holds an address today is how account
+      -- takeover happens.
+      CREATE TABLE oidc_identities (
+        issuer     TEXT NOT NULL,
+        subject    TEXT NOT NULL,
+        user_id    TEXT NOT NULL REFERENCES users (id) ON DELETE CASCADE,
+        created_at TEXT NOT NULL,
+        PRIMARY KEY (issuer, subject)
+      );
+
+      CREATE INDEX oidc_identities_user ON oidc_identities (user_id);
+
+      /* ---------------------------------------------------------------- */
+
+      -- Rebuild users without the password columns. SQLite can drop a column
+      -- in place, but recreating states the intended shape in one place rather
+      -- than leaving the reader to replay four ALTERs.
+      CREATE TABLE users_new (
+        id            TEXT PRIMARY KEY,
+        email         TEXT NOT NULL,
+        name          TEXT NOT NULL DEFAULT '',
+        created_at    TEXT NOT NULL,
+        updated_at    TEXT NOT NULL,
+        last_login_at TEXT
+      );
+
+      INSERT INTO users_new (id, email, name, created_at, updated_at, last_login_at)
+        SELECT id, email, name, created_at, updated_at, last_login_at FROM users;
+
+      -- A default tenant and site, so an existing deployment keeps working and
+      -- a single-site operator never meets the concept. Fixed ids: they are the
+      -- ones the server looks for when no site is named.
+      INSERT INTO tenants (id, name, created_at)
+        VALUES ('default', 'Default', datetime('now'));
+
+      INSERT INTO sites (id, tenant_id, slug, name, created_at)
+        VALUES ('default', 'default', 'default', 'Default site', datetime('now'));
+
+      -- Existing accounts keep the role they had, now against that site.
+      INSERT INTO memberships (id, site_id, user_id, role, created_at)
+        SELECT lower(hex(randomblob(16))), 'default', id, role, datetime('now')
+        FROM users;
+
+      DROP TABLE users;
+      ALTER TABLE users_new RENAME TO users;
+
+      CREATE UNIQUE INDEX users_email_unique ON users (email);
+
+      -- Every existing session is now unauthenticated: the credential that
+      -- established it no longer exists, so honouring it would be honouring a
+      -- password check that can never be repeated.
+      DELETE FROM sessions;
+    `,
+  },
 ];
 
 const MIGRATIONS_TABLE = `

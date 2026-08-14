@@ -52,7 +52,7 @@ const routes: RouteRecordRaw[] = [
     path: "/users",
     name: "users",
     component: () => import("@/views/UsersView.vue"),
-    meta: { title: "Users", adminOnly: true },
+    meta: { title: "People", adminOnly: true },
   },
   {
     path: "/system",

@@ -1,112 +1,247 @@
 /**
  * Authentication routes.
  *
- * Email + password against a server-side session. No public registration, no
- * password-reset email flow: for a handful of editors, an administrator
- * assigning a new password (see `routes/users.ts`) is fewer moving parts and
- * one less attack surface than an email-token system.
+ * The authorization code flow, and nothing else. There is no login form here,
+ * no password check and no reset: the browser is sent to an identity provider,
+ * comes back with a code, and Mica exchanges it for a statement about who the
+ * person is.
+ *
+ * What Mica still decides is whether that person may edit *this site*. A valid
+ * token from a correctly configured provider gets you a `users` row and
+ * nothing more; the `memberships` table is the gate, and an unknown person
+ * hits it.
+ *
+ * In local mode there is no provider and no authentication at all — see
+ * `signInLocalDeveloper`. The config layer refuses that mode anywhere it could
+ * be reached by someone else.
  */
 
-import { Hono } from "hono";
+import { Hono, type Context } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
-import { z } from "zod";
 
-import { ApiError, badRequest } from "../lib/errors.js";
+import { ApiError } from "../lib/errors.js";
 import { clientIp, type Env } from "../http.js";
 import { requireAuth } from "../middleware/index.js";
-import { toPublicUser } from "../repositories/users.js";
-import {
-  checkPasswordStrength,
-  hashPassword,
-  needsRehash,
-  verifyPassword,
-} from "../services/password.js";
+import { DEFAULT_SITE_ID } from "../repositories/sites.js";
+import type { AppContext } from "../context.js";
 import { CSRF_COOKIE, SESSION_COOKIE } from "../services/session.js";
+import {
+  openTransaction,
+  sealTransaction,
+  TRANSACTION_COOKIE,
+  type OidcClaims,
+} from "../services/oidc.js";
 
-const loginSchema = z.object({
-  email: z.string().trim().email("Enter a valid email address.").max(320),
-  password: z.string().min(1, "Enter your password.").max(200),
-});
+/** The implicit identity local mode signs everything in as. */
+export const LOCAL_DEVELOPER = {
+  email: "developer@localhost",
+  name: "Local developer",
+} as const;
 
-const changePasswordSchema = z.object({
-  currentPassword: z.string().min(1).max(200),
-  newPassword: z.string().min(1).max(200),
-});
+/**
+ * Turns a set of claims into a signed-in user.
+ *
+ * The subject is the account key, never the email — a provider that lets a
+ * person change their address must not thereby let them take over somebody
+ * else's Mica account. An email that has moved is simply updated on the row
+ * the subject already points at.
+ */
+function resolveUser(ctx: AppContext, claims: OidcClaims): string {
+  const { users, identities, memberships } = ctx.repositories;
+
+  const existing = identities.find(claims.issuer, claims.subject);
+  if (existing) {
+    const user = users.findById(existing.userId);
+    // The provider is authoritative for both, so keep them current.
+    if (user && (user.email !== claims.email.toLowerCase() || user.name !== claims.name)) {
+      users.update(user.id, { email: claims.email, name: claims.name });
+    }
+    return existing.userId;
+  }
+
+  /**
+   * A first sign-in for this subject.
+   *
+   * If a user already holds the address, this is almost always the same person
+   * arriving through a newly configured provider, so the identity is linked to
+   * the existing row rather than creating a duplicate account. That does mean
+   * trusting the provider's `email` claim once, at link time — which is why a
+   * deployment should point Mica at one provider it controls, and why the
+   * subject takes over as the key immediately afterwards.
+   */
+  const byEmail = users.findByEmail(claims.email);
+  const userId = byEmail?.id ?? users.create({ email: claims.email, name: claims.name }).id;
+
+  identities.link({ issuer: claims.issuer, subject: claims.subject, userId });
+
+  /**
+   * Bootstrap. An empty deployment has no members, so nobody could ever be
+   * granted one — the first configured administrator breaks that circle.
+   */
+  const bootstrap = ctx.config.OIDC_BOOTSTRAP_ADMIN?.trim().toLowerCase();
+  if (bootstrap && bootstrap === claims.email.toLowerCase()) {
+    memberships.grant({ siteId: DEFAULT_SITE_ID, userId, role: "admin" });
+  }
+
+  return userId;
+}
+
+/** Issues the session cookies for a user who has just been identified. */
+function establishSession(c: Context<Env>, userId: string): void {
+  const ctx = c.get("ctx");
+
+  // Session fixation: discard whatever identifier the client already holds.
+  ctx.services.sessions.destroy(getCookie(c, SESSION_COOKIE));
+
+  const { cookie, csrfToken } = ctx.services.sessions.create({
+    userId,
+    ip: clientIp(c),
+    userAgent: c.req.header("user-agent") ?? null,
+  });
+
+  ctx.repositories.users.recordLogin(userId);
+
+  setCookie(c, SESSION_COOKIE, cookie, ctx.services.sessions.sessionCookieOptions());
+  setCookie(c, CSRF_COOKIE, csrfToken, ctx.services.sessions.csrfCookieOptions());
+}
+
+/**
+ * Local mode: the developer account, created on demand.
+ *
+ * There is no credential because there is nothing to check. This is only ever
+ * reached when `MICA_MODE=local`, which the config layer refuses in production
+ * and refuses on any host but this one.
+ */
+function signInLocalDeveloper(ctx: AppContext): string {
+  const { users, memberships } = ctx.repositories;
+
+  const user =
+    users.findByEmail(LOCAL_DEVELOPER.email) ??
+    users.create({ email: LOCAL_DEVELOPER.email, name: LOCAL_DEVELOPER.name });
+
+  if (!memberships.find(DEFAULT_SITE_ID, user.id)) {
+    memberships.grant({ siteId: DEFAULT_SITE_ID, userId: user.id, role: "admin" });
+  }
+
+  return user.id;
+}
+
+/** Only ever a path on this server, so the callback cannot be an open redirect. */
+function safeReturnTo(raw: string | undefined): string {
+  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/admin/";
+  return raw;
+}
 
 export function authRoutes(): Hono<Env> {
   const app = new Hono<Env>();
 
-  app.post("/login", async (c) => {
+  /**
+   * What the sign-in screen needs to know before it draws anything.
+   *
+   * Public: it reveals only which provider this deployment uses, which the
+   * redirect would reveal a moment later anyway.
+   */
+  app.get("/config", (c) => {
+    const { config } = c.get("ctx");
+    return c.json({
+      mode: config.MICA_MODE,
+      authDisabled: config.authDisabled,
+      provider: config.OIDC_ISSUER ? new URL(config.OIDC_ISSUER).hostname : null,
+    });
+  });
+
+  /** Starts the flow. A redirect, not a form post. */
+  app.get("/login", async (c) => {
+    const ctx = c.get("ctx");
+    const returnTo = safeReturnTo(c.req.query("returnTo"));
+
+    if (ctx.config.authDisabled) {
+      establishSession(c, signInLocalDeveloper(ctx));
+      c.get("logger").warn("Signed in without authentication (MICA_MODE=local)");
+      return c.redirect(returnTo);
+    }
+
+    // Rate limited on the way out as well as the way back: starting a flow is
+    // cheap for a client and costs Mica a discovery request.
+    const limit = ctx.limiters.login.check(`oidc:${clientIp(c)}`);
+    if (!limit.allowed) {
+      throw new ApiError(
+        "rate_limited",
+        `Too many sign-in attempts. Try again in ${Math.ceil(limit.retryAfter / 60)} minutes.`,
+        { headers: { "retry-after": String(limit.retryAfter) } },
+      );
+    }
+
+    const { url, transaction } = await ctx.services.oidc.begin(returnTo);
+
+    setCookie(c, TRANSACTION_COOKIE, sealTransaction(transaction, ctx.config.sessionSecret), {
+      path: "/api/auth",
+      httpOnly: true,
+      secure: ctx.config.cookieSecure,
+      // Lax, not Strict: the provider redirects the browser back here from
+      // another origin, and Strict would withhold the cookie exactly then.
+      sameSite: "Lax",
+      maxAge: 15 * 60,
+    });
+
+    return c.redirect(url);
+  });
+
+  /**
+   * Where the provider sends the browser back.
+   *
+   * A browser is following a redirect here, not making an XHR, so a failure
+   * must not be a JSON error envelope — that would put a wall of braces on the
+   * screen. Everything that can go wrong goes back to the sign-in page with a
+   * message the person can act on.
+   */
+  app.get("/callback", async (c) => {
     const ctx = c.get("ctx");
     const logger = c.get("logger");
-    const body = await c.req.json().catch(() => null);
 
-    const parsed = loginSchema.safeParse(body);
-    if (!parsed.success) {
-      throw new ApiError("bad_request", parsed.error.issues[0]?.message ?? "Invalid request.");
+    const refuse = (message: string) =>
+      c.redirect(`/admin/login?error=${encodeURIComponent(message)}`);
+
+    const sealed = getCookie(c, TRANSACTION_COOKIE);
+    deleteCookie(c, TRANSACTION_COOKIE, { path: "/api/auth" });
+
+    const transaction = sealed ? openTransaction(sealed, ctx.config.sessionSecret) : null;
+    if (!transaction) {
+      // Expired, tampered with, or a callback nobody asked for.
+      return refuse("That sign-in attempt expired or was not started here. Please try again.");
     }
 
-    const { email, password } = parsed.data;
-    const ip = clientIp(c);
-
-    // Two buckets: one stops a single address hammering many accounts, the
-    // other stops a distributed attempt against one account.
-    const ipKey = `ip:${ip}`;
-    const accountKey = `account:${email.toLowerCase()}`;
-
-    for (const key of [ipKey, accountKey]) {
-      const result = ctx.limiters.login.check(key);
-      if (!result.allowed) {
-        logger.warn("Login rate limited", { key, ip });
-        throw new ApiError(
-          "rate_limited",
-          `Too many sign-in attempts. Try again in ${Math.ceil(result.retryAfter / 60)} minutes.`,
-          { headers: { "retry-after": String(result.retryAfter) } },
-        );
-      }
+    let claims: OidcClaims;
+    try {
+      claims = await ctx.services.oidc.complete(new URL(c.req.url), transaction);
+    } catch (error) {
+      return refuse(
+        error instanceof ApiError ? error.message : "Sign-in could not be completed.",
+      );
     }
 
-    const user = ctx.repositories.users.findByEmail(email);
+    const userId = resolveUser(ctx, claims);
 
-    // Verify unconditionally. With no user we hash against a malformed record,
-    // which costs the same as a real check — so response time does not reveal
-    // whether the address exists.
-    const valid = await verifyPassword(password, user?.passwordHash ?? "");
-
-    if (!user || !valid) {
-      logger.warn("Failed sign-in", { email, ip });
-      throw new ApiError("invalid_credentials", "That email address or password is not correct.");
+    /**
+     * Authentication succeeded; authorization is a separate question.
+     *
+     * A provider may vouch for an entire company. Membership is what says this
+     * particular person may edit this particular site, and its absence is the
+     * expected answer for everybody who has not been invited — so it is a
+     * plain message, not an error.
+     */
+    if (!ctx.repositories.memberships.find(ctx.siteId, userId)) {
+      logger.warn("Authenticated user has no membership", { email: claims.email });
+      return refuse(
+        `You are signed in as ${claims.email}, but that address has no access to ` +
+          "this site. Ask an administrator to add you.",
+      );
     }
 
-    // Session fixation: any identifier the client already holds is discarded
-    // and a fresh one is minted.
-    ctx.services.sessions.destroy(getCookie(c, SESSION_COOKIE));
+    establishSession(c, userId);
+    logger.info("Signed in", { userId, issuer: claims.issuer });
 
-    const { cookie, csrfToken } = ctx.services.sessions.create({
-      userId: user.id,
-      ip,
-      userAgent: c.req.header("user-agent") ?? null,
-    });
-
-    ctx.repositories.users.recordLogin(user.id);
-    ctx.limiters.login.reset(ipKey);
-    ctx.limiters.login.reset(accountKey);
-
-    // Transparently upgrade a hash created under weaker parameters.
-    if (needsRehash(user.passwordHash)) {
-      ctx.repositories.users.update(user.id, { passwordHash: await hashPassword(password) });
-      logger.info("Upgraded password hash parameters", { userId: user.id });
-    }
-
-    setCookie(c, SESSION_COOKIE, cookie, ctx.services.sessions.sessionCookieOptions());
-    setCookie(c, CSRF_COOKIE, csrfToken, ctx.services.sessions.csrfCookieOptions());
-
-    logger.info("Signed in", { userId: user.id, ip });
-
-    return c.json({
-      user: toPublicUser(ctx.repositories.users.findById(user.id)!),
-      csrfToken,
-    });
+    return c.redirect(transaction.returnTo);
   });
 
   app.post("/logout", async (c) => {
@@ -116,48 +251,31 @@ export function authRoutes(): Hono<Env> {
     deleteCookie(c, SESSION_COOKIE, ctx.services.sessions.clearedCookieOptions());
     deleteCookie(c, CSRF_COOKIE, ctx.services.sessions.clearedCookieOptions());
 
-    return c.json({ ok: true });
+    // Offered, not followed: ending the provider's session is the provider's
+    // decision to make, and the SPA sends the browser there if it is there.
+    const endSession = ctx.config.authDisabled ? null : await ctx.services.oidc.endSessionUrl();
+
+    return c.json({ ok: true, endSession });
   });
 
   app.get("/me", requireAuth(), (c) => {
     const session = c.get("session");
+    const user = c.get("user");
+
     return c.json({
-      user: toPublicUser(c.get("user")),
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        // The role is the membership's, not the user's: the same person can be
+        // an administrator on one site and an editor on another.
+        role: c.get("membership").role,
+        createdAt: user.createdAt,
+        lastLoginAt: user.lastLoginAt,
+      },
       csrfToken: session.csrfToken,
       expiresAt: session.expiresAt,
     });
-  });
-
-  app.post("/password", requireAuth(), async (c) => {
-    const ctx = c.get("ctx");
-    const user = c.get("user");
-    const parsed = changePasswordSchema.safeParse(await c.req.json().catch(() => null));
-
-    if (!parsed.success) throw badRequest("Enter your current and new password.");
-
-    const { currentPassword, newPassword } = parsed.data;
-
-    if (!(await verifyPassword(currentPassword, user.passwordHash))) {
-      throw new ApiError("invalid_credentials", "Your current password is not correct.");
-    }
-
-    const problem = checkPasswordStrength(newPassword);
-    if (problem) throw badRequest(problem);
-
-    if (await verifyPassword(newPassword, user.passwordHash)) {
-      throw badRequest("The new password must be different from the current one.");
-    }
-
-    ctx.repositories.users.update(user.id, {
-      passwordHash: await hashPassword(newPassword),
-      mustChangePassword: false,
-    });
-
-    // A password change should sign out every other device.
-    ctx.services.sessions.destroyAllForUser(user.id, getCookie(c, SESSION_COOKIE));
-    c.get("logger").info("Password changed", { userId: user.id });
-
-    return c.json({ ok: true });
   });
 
   return app;

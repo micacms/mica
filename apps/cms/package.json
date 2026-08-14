@@ -14,7 +14,7 @@
     "start": "node dist/server/index.js",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && vue-tsc -p tsconfig.json --noEmit",
     "test": "tsc -p tsconfig.server.json --noEmit && node --test --import tsx test/**/*.test.ts",
-    "create-user": "tsx src/server/scripts/create-user.ts",
+    "grant-access": "tsx src/server/scripts/grant-access.ts",
     "build-schema": "tsx src/server/scripts/build-schema.ts",
     "export-content": "tsx src/server/scripts/export-content.ts"
   },
@@ -25,6 +25,7 @@
     "@micacms/model": "workspace:*",
     "hono": "^4.6.20",
     "image-size": "^1.2.0",
+    "openid-client": "^6.8.5",
     "zod": "^3.25.76"
   },
   "devDependencies": {

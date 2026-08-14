@@ -49,11 +49,12 @@ running, reachable, or even installed.
 
 ## Mica's database
 
-`cms.sqlite` holds user accounts, password hashes and active sessions. It holds
-no content.
+`cms.sqlite` holds accounts, site memberships, the mapping from identity
+provider subjects to those accounts, and active sessions. It holds no content
+and no credentials — there are no passwords in Mica.
 
 Backing it up is optional. Decide by asking what you would rather do after
-losing the volume: restore a file, or run `create-user` once and tell three
+losing the volume: restore a file, or run `grant-access` once and tell three
 editors to sign in again. For most deployments the second is less work than
 maintaining the first.
 

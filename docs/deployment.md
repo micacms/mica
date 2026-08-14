@@ -83,14 +83,73 @@ directory and this holds by construction.
 
 ---
 
-## 2. Configure and start
+## 2. Choose an identity provider
+
+Mica implements no passwords, no reset flow, no MFA and no passkeys. It asks an
+OpenID Connect provider who you are and records the answer. That is a smaller
+attack surface than any of those features would be, and it means an editor's
+account is governed by whatever your organisation already uses.
+
+Any OIDC provider works: Keycloak, Authentik, ZITADEL, Entra ID, Okta, Auth0,
+Google Workspace.
+
+```env
+MICA_MODE=self-hosted
+OIDC_ISSUER=https://auth.example.com/realms/mica
+OIDC_CLIENT_ID=mica
+OIDC_CLIENT_SECRET=…            # omit for a public client using PKCE alone
+```
+
+Register this redirect URI with the provider:
+
+```
+https://cms.example.com/api/auth/callback
+```
+
+The flow uses PKCE, `state` and `nonce`, all verified. Mica requests
+`openid profile email`; the email address is how editors are identified to each
+other and is required.
+
+### Authentication is not authorization
+
+A provider vouching for someone does **not** let them in. Access is a
+*membership* on a site, and an authenticated person with no membership is
+turned away with a message telling them to ask an administrator.
+
+That leaves a chicken-and-egg problem on a fresh deployment: no members means
+nobody can invite anyone. Break it either way:
+
+```env
+OIDC_BOOTSTRAP_ADMIN=you@example.com   # becomes an admin on first sign-in
+```
+
+```bash
+docker compose exec cms node dist/server/scripts/grant-access.js \
+  --email you@example.com --role admin
+```
+
+After that, administrators add people from the **People** screen. There is
+nothing to send them: they sign in with that address and they are in.
+
+### Removing access
+
+Removing a membership ends every session for that person immediately, on every
+device. Authorization is re-read on each request rather than copied into the
+session, so a removal does not wait for a cookie to expire.
+
+It does not touch their account at the provider — that is the provider's to
+disable, and doing both is the point of keeping them separate.
+
+---
+
+## 3. Configure and start
 
 ```bash
 cp apps/cms/.env.example .env
 # fill in: SESSION_SECRET, CMS_BASE_URL, and the REPOSITORY_* block above
 pnpm build:schema                 # mica.config.ts -> mica.config.json
 docker compose up -d
-docker compose exec cms node dist/server/scripts/create-user.js
+docker compose exec cms node dist/server/scripts/grant-access.js --email you@example.com
 ```
 
 `SESSION_SECRET` is mandatory in production and signs the session cookie.
@@ -121,7 +180,7 @@ address and walk past the login rate limit.
 
 ---
 
-## 3. Build the website
+## 4. Build the website
 
 The build reads the repository. It needs no token, no CMS URL and no network
 access to Mica.
@@ -180,7 +239,7 @@ is strictly more capable than they were.
 
 ---
 
-## 4. Changing the content model
+## 5. Changing the content model
 
 ```bash
 pnpm build:schema
@@ -202,6 +261,10 @@ invalid until they are edited, and the website build is where you find out.
 { "status": "ok", "database": "ok", "repository": "github:acme/website/content@main" }
 ```
 
+It does not check the identity provider. A provider that is briefly unreachable
+should stop new sign-ins, not take a container out of rotation and sign out
+everybody already working.
+
 It returns 503 if the database is unreadable or the repository is unreachable. A
 container that is listening but cannot reach its repository cannot save
 anything, so it should not be sent traffic.
@@ -218,6 +281,10 @@ anything, so it should not be sent traffic.
 | Saving returns 422 | The entry does not satisfy the model | The response names the fields |
 | Admin loads but has no collections | `MICA_SCHEMA` not mounted, or `pnpm build:schema` not run | Mount `mica.config.json` and restart |
 | Editors signed out after a restart | `SESSION_SECRET` unset, so an ephemeral one was generated | Set it |
+| "no access to this site" after signing in | Authenticated, but no membership | Add them on the People screen, or run `grant-access` |
+| Sign-in returns to the login page with "expired" | The transaction cookie was lost — usually a `CMS_BASE_URL` that does not match the browser's address | Make them identical |
+| 503 with "identity provider could not be reached" | `OIDC_ISSUER` wrong, or discovery blocked | Check `<issuer>/.well-known/openid-configuration` from the container |
+| Container refuses to start: "disables authentication" | `MICA_MODE=local` in production, or on a non-local host | Set `MICA_MODE=self-hosted` and configure OIDC |
 | Site build succeeds but content is stale | The host built an older commit | Check the CI ran on the editorial commit |
 
 ---
@@ -231,6 +298,10 @@ limit, cache or keep available at build time.
 
 **No media server.** Images are files in the repository, processed by Astro at
 build time and served by your static host with the rest of the site.
+
+**No passwords.** No hashing, no reset emails, no "forgot password" flow, no
+MFA enrolment, no passkey registration, and no breach notification to write.
+An identity provider does all of it better.
 
 Each of those used to exist. Each was removed because moving content into Git
 made it unnecessary, rather than because it was replaced by something else.

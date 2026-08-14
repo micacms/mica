@@ -30,12 +30,16 @@ cd apps/cms
 cp .env.example .env
 
 pnpm dev                               # API on :4000, admin on :5173
-pnpm create-user                       # in a second terminal
 ```
 
 `REPOSITORY=local` and `CONTENT_ROOT=../../content` are the defaults, so the
 server edits the `content/` directory in this repository. There is nothing to
 seed: the content is already there, in Git.
+
+`MICA_MODE=local` is also the default, which **disables authentication** — you
+are signed in as a developer account with no password and no identity provider.
+Mica refuses to start that way in production or on any host but this one, and
+says so at every start.
 
 The server has no content model of its own; it loads one at startup. In
 development that is `mica.config.ts` in the repository root, read directly by
@@ -55,18 +59,21 @@ To run the production shape instead — one process serving both:
 pnpm build && pnpm start               # everything on :4000
 ```
 
-## Creating accounts
+## Giving somebody access
 
-There is no public registration and no password-reset email. The first account
-is created from the command line; after that, administrators manage accounts in
-the UI.
+Mica does not create people; an identity provider does. Access is a *membership*
+saying that whoever holds an email address may edit a site.
+
+An empty deployment has no members, so nobody can invite anyone — one shell
+command breaks the circle:
 
 ```bash
-pnpm create-user                                   # prompts
-pnpm create-user -- --email a@b.ch --role admin    # non-interactive
+pnpm grant-access -- --email a@b.ch --role admin
 ```
 
-The first account created is always an administrator.
+(`OIDC_BOOTSTRAP_ADMIN` does the same declaratively.) After that, administrators
+add people on the **People** screen. There is nothing to send them: they sign in
+with that address and they are in.
 
 ## Layout
 
@@ -79,11 +86,12 @@ src/
 │   ├── db/
 │   │   ├── driver.ts       the only file that imports node:sqlite
 │   │   └── migrations.ts   append-only, numbered, deterministic
-│   ├── repositories/       the only files that write SQL (users, sessions)
-│   ├── services/           media validation and sessions
+│   ├── repositories/       the only files that write SQL — users, sessions,
+│   │                       sites, memberships, oidc identities
+│   ├── services/           oidc, sessions, media validation
 │   ├── middleware/         auth, CSRF, rate limiting, errors, logging
 │   ├── routes/             thin: parse, delegate, serialise
-│   └── scripts/            create-user, build-schema, export-content
+│   └── scripts/            grant-access, build-schema, export-content
 └── admin/
     ├── api.ts              typed client for the admin API
     ├── router.ts           routes and the auth guard
@@ -124,6 +132,17 @@ re-validates it, so a model built against a newer `@micacms/model` than the
 server is running fails at startup naming the field, rather than at an editor's
 screen.
 
+## Authentication
+
+There is none in this codebase, and that is the design. `services/oidc.ts` runs
+the authorization code flow against a provider; `repositories/identities.ts`
+maps the resulting subject to a user; `repositories/memberships.ts` decides what
+that user may do here. Nothing hashes, resets or challenges anything.
+
+`MICA_MODE=local` skips the provider entirely and signs every request in as one
+developer account. The config layer refuses that mode in production and on any
+host but localhost — see the P1 entry in [TODO.md](../../TODO.md).
+
 ## Saving, and what replaced publishing
 
 A save is a commit. There is no draft state and no publish button: unfinished
@@ -151,7 +170,9 @@ running to read it.
 | Method | Path | Auth |
 | --- | --- | --- |
 | `GET` | `/health` | none |
-| `POST` | `/api/auth/login` · `/logout` · `/password` | session |
+| `GET` | `/api/auth/config` | none |
+| `GET` | `/api/auth/login` · `/callback` | none — starts and ends the OIDC flow |
+| `POST` | `/api/auth/logout` | session |
 | `GET` | `/api/auth/me` | session |
 | `GET` | `/api/admin/schema` · `/overview` · `/system` | session |
 | `GET/POST` | `/api/admin/collections/:collection/entries` | session |
@@ -164,6 +185,11 @@ running to read it.
 | `GET` | `/api/admin/media/file/*` | session |
 | `GET/POST/PATCH/DELETE` | `/api/admin/users[/:id]` | session + admin |
 
+`/api/auth/login` and `/callback` are redirects, not JSON: the browser has to
+*visit* the identity provider, which an XHR cannot do. A failed callback
+redirects to the sign-in page with a readable reason rather than returning an
+error envelope a browser would render as raw braces.
+
 Every route is behind a session. There is no public content API and no public
 media route: the website is built from the repository, so nothing outside this
 session needs to read anything here.
@@ -175,12 +201,20 @@ the repository.
 
 ## Security notes
 
-- **Passwords** — scrypt (N=32768, r=8, p=1) via Node's OpenSSL binding, random
-  per-password salt, constant-time comparison. Parameters are stored with the
-  hash and upgraded transparently on next sign-in.
+- **No passwords.** Mica authenticates with OpenID Connect and stores no
+  credential of any kind. There is no hash to leak, no reset flow to abuse and
+  no MFA to bypass — the identity provider owns all of it.
+- **Identities** are keyed by `(issuer, subject)`, never by email. A provider
+  that lets someone change their address therefore cannot be used to take over
+  an existing account.
+- **Authorization** is a membership on a site, re-read on every request. Removing
+  someone takes effect immediately rather than when their cookie expires.
 - **Sessions** — 256-bit random token, HMAC-signed in the cookie, stored only as
-  its SHA-256. Rotated at sign-in (session fixation), revoked on password
-  change. Idle and absolute expiry both apply.
+  its SHA-256. Rotated at sign-in (session fixation), revoked when a membership
+  is withdrawn. Idle and absolute expiry both apply.
+- **The OIDC flow** uses PKCE, `state` and `nonce`, all verified. The
+  transaction is carried in a short-lived signed cookie scoped to `/api/auth`,
+  so a callback that Mica did not start is refused.
 - **CSRF** — two independent layers: an Origin check on every write, plus a
   double-submit token bound to the session. The session cookie is
   `SameSite=Lax`.
@@ -194,9 +228,9 @@ the repository.
 - **Repository tokens** — a provider connector reads and writes only below
   `REPOSITORY_ROOT`. A token with repository-wide write access still cannot be
   used through Mica to touch the website's source or its CI configuration.
-- **Rate limiting** — per-IP and per-account buckets on sign-in, plus a coarse
-  per-IP limit across the API. In-memory, so counters reset on restart; scrypt's
-  cost is the backstop.
+- **Rate limiting** — a per-IP bucket on starting a sign-in, plus a coarse
+  per-IP limit across the API. In-memory, so counters reset on restart.
+  Credential guessing happens at the identity provider now, not here.
 - **No public routes.** There is no content API and no public media route; the
   build reads the repository. Media is served to the editor at
   `/api/admin/media/file/*`, behind the session, and nothing else needs it.

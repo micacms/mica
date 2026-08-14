@@ -7,7 +7,6 @@ import { collection, defineSite, slug, text } from "@micacms/model";
 
 import {
   ADMIN_EMAIL,
-  ADMIN_PASSWORD,
   createHarness,
   multipart,
   pngBytes,
@@ -46,31 +45,12 @@ describe("authentication", () => {
   });
   after(() => harness.close());
 
-  it("rejects a wrong password without revealing whether the account exists", async () => {
-    const wrongPassword = await harness.request("/api/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: ADMIN_EMAIL, password: "not-the-password" }),
-    });
-    const unknownAccount = await harness.request("/api/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "nobody@example.com", password: "not-the-password" }),
-    });
-
-    assert.equal(wrongPassword.status, 401);
-    assert.equal(unknownAccount.status, 401);
-    assert.deepEqual(await wrongPassword.json(), await unknownAccount.json());
-  });
-
   it("issues an HttpOnly session cookie and a readable CSRF cookie", async () => {
-    const response = await harness.request("/api/auth/login", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
-    });
+    // Local mode: /login signs the developer in and redirects, with no
+    // identity provider in the way.
+    const response = await harness.request("/api/auth/login");
 
-    assert.equal(response.status, 200);
+    assert.equal(response.status, 302);
     const cookies = response.headers.getSetCookie();
 
     const session = cookies.find((value) => value.startsWith("mica_session="))!;
@@ -78,7 +58,19 @@ describe("authentication", () => {
 
     assert.match(session, /HttpOnly/i);
     assert.match(session, /SameSite=Lax/i);
+    // Readable by design: the SPA echoes it back as a header.
     assert.doesNotMatch(csrf, /HttpOnly/i);
+  });
+
+  it("says how this deployment authenticates, without requiring a session", async () => {
+    const response = await harness.request("/api/auth/config");
+    assert.equal(response.status, 200);
+
+    assert.deepEqual(await response.json(), {
+      mode: "local",
+      authDisabled: true,
+      provider: null,
+    });
   });
 
   it("rejects a request with no session", async () => {
@@ -89,41 +81,18 @@ describe("authentication", () => {
   it("returns the signed-in user from /me", async () => {
     const session = await harness.signIn();
     const response = await harness.request("/api/auth/me", { session });
-    const body = (await response.json()) as { user: { email: string; role: string } };
+    const body = (await response.json()) as { user: Record<string, unknown> };
 
-    assert.equal(body.user.email, ADMIN_EMAIL);
-    assert.equal(body.user.role, "admin");
-    assert.ok(!("passwordHash" in body.user), "the hash must never leave the server");
+    assert.equal(body.user["email"], ADMIN_EMAIL);
+    assert.equal(body.user["role"], "admin");
+    // There is no such field any more, and there must never be one again.
+    assert.ok(!("passwordHash" in body.user));
   });
 
   it("issues a different session token on each sign-in", async () => {
     const first = await harness.signIn();
     const second = await harness.signIn();
     assert.notEqual(first.cookie, second.cookie);
-  });
-
-  it("rate limits repeated failures and then recovers after a success", async () => {
-    const local = await createHarness({ LOGIN_MAX_ATTEMPTS: "3" });
-    try {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        await local.request("/api/auth/login", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email: ADMIN_EMAIL, password: "wrong" }),
-        });
-      }
-
-      const blocked = await local.request("/api/auth/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
-      });
-
-      assert.equal(blocked.status, 429);
-      assert.ok(blocked.headers.get("retry-after"));
-    } finally {
-      await local.close();
-    }
   });
 
   it("signs out and invalidates the session", async () => {
@@ -133,6 +102,35 @@ describe("authentication", () => {
 
     const after = await harness.request("/api/auth/me", { session });
     assert.equal(after.status, 401);
+  });
+
+  /**
+   * The property that matters most in the new model: authentication and
+   * authorization are separate, and the second is re-read on every request.
+   */
+  it("refuses a valid session whose membership has been revoked", async () => {
+    const userId = harness.addMember({ email: "temporary@example.com", role: "editor" });
+    const session = await harness.signIn("temporary@example.com");
+
+    assert.equal((await harness.request("/api/auth/me", { session })).status, 200);
+
+    harness.ctx.repositories.memberships.revoke(harness.ctx.siteId, userId);
+
+    // Immediately, not when the cookie happens to expire.
+    const after = await harness.request("/api/auth/me", { session });
+    assert.equal(after.status, 403);
+  });
+
+  it("keeps administrator actions away from editors", async () => {
+    harness.addMember({ email: "editor@example.com", role: "editor" });
+    const session = await harness.signIn("editor@example.com");
+
+    // Content is open to editors...
+    assert.equal((await harness.request("/api/admin/schema", { session })).status, 200);
+
+    // ...managing people is not.
+    const forbidden = await harness.request("/api/admin/users", { session });
+    assert.equal(forbidden.status, 403);
   });
 });
 
@@ -504,32 +502,89 @@ describe("media", () => {
   });
 });
 
-describe("user administration", () => {
+describe("site membership", () => {
   let harness: TestHarness;
 
   before(async () => {
     harness = await createHarness();
-    await harness.createUser({
-      email: "editor@example.com",
-      password: "editor-password-1",
-      role: "editor",
-    });
+    harness.addMember({ email: "editor@example.com", role: "editor" });
   });
   after(() => harness.close());
 
-  it("denies user management to editors", async () => {
-    const session = await harness.signIn("editor@example.com", "editor-password-1");
+  it("lists the people who can edit this site", async () => {
+    const session = await harness.signIn();
     const response = await harness.request("/api/admin/users", { session });
-    assert.equal(response.status, 403);
-  });
+    const body = (await response.json()) as { users: Array<Record<string, unknown>> };
 
-  it("still lets an editor manage content", async () => {
-    const session = await harness.signIn("editor@example.com", "editor-password-1");
-    const response = await harness.request("/api/admin/collections/projects/entries", { session });
     assert.equal(response.status, 200);
+    assert.deepEqual(
+      body.users.map((user) => user["email"]).sort(),
+      [ADMIN_EMAIL, "editor@example.com"],
+    );
+    // Nothing resembling a credential, now or ever.
+    for (const user of body.users) {
+      assert.ok(!("passwordHash" in user));
+      assert.ok(!("mustChangePassword" in user));
+    }
   });
 
-  it("refuses to demote or delete the last administrator", async () => {
+  /**
+   * Inviting somebody who has never signed in is the normal case, not an edge
+   * case: Mica does not create people, so an invitation is a membership
+   * waiting for its identity.
+   */
+  it("invites an address that has no account yet, and marks it pending", async () => {
+    // In a deployment that actually has a provider: "pending" means nobody has
+    // vouched for this address yet, and local mode has no provider to do so.
+    const hosted = await createHarness({
+      MICA_MODE: "self-hosted",
+      OIDC_ISSUER: "https://auth.example.com",
+      OIDC_CLIENT_ID: "mica",
+    });
+
+    try {
+      hosted.addMember({ email: ADMIN_EMAIL, role: "admin" });
+      const session = await hosted.signIn();
+
+      const response = await hosted.request("/api/admin/users", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: "new@example.com", name: "New", role: "editor" }),
+        session,
+      });
+
+      assert.equal(response.status, 201);
+      const body = (await response.json()) as { user: { pending: boolean; role: string } };
+
+      assert.equal(body.user.pending, true);
+      assert.equal(body.user.role, "editor");
+    } finally {
+      await hosted.close();
+    }
+  });
+
+  it("does not call anybody pending when there is no provider to wait for", async () => {
+    const session = await harness.signIn();
+    const response = await harness.request("/api/admin/users", { session });
+    const body = (await response.json()) as { users: Array<{ pending: boolean }> };
+
+    // Local mode: the distinction is meaningless, so it is not made.
+    assert.ok(body.users.every((user) => user.pending === false));
+  });
+
+  it("refuses to invite somebody who is already a member", async () => {
+    const session = await harness.signIn();
+    const response = await harness.request("/api/admin/users", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: "editor@example.com", role: "editor" }),
+      session,
+    });
+
+    assert.equal(response.status, 409);
+  });
+
+  it("refuses to demote or remove the last administrator", async () => {
     const session = await harness.signIn();
     const admin = harness.ctx.repositories.users.findByEmail(ADMIN_EMAIL)!;
 
@@ -548,34 +603,35 @@ describe("user administration", () => {
     assert.equal(remove.status, 409);
   });
 
-  it("rejects a weak password when creating an account", async () => {
-    const session = await harness.signIn();
-    const response = await harness.request("/api/admin/users", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "weak@example.com", password: "short" }),
-      session,
+  /**
+   * Removing access ends every session immediately. Waiting for a cookie to
+   * expire is not "removed".
+   */
+  it("signs somebody out everywhere the moment their access is removed", async () => {
+    const userId = harness.addMember({ email: "leaving@example.com", role: "editor" });
+    const theirs = await harness.signIn("leaving@example.com");
+    const admin = await harness.signIn();
+
+    assert.equal((await harness.request("/api/auth/me", { session: theirs })).status, 200);
+
+    const removed = await harness.request(`/api/admin/users/${userId}`, {
+      method: "DELETE",
+      session: admin,
     });
-    assert.equal(response.status, 400);
+    assert.equal(removed.status, 200);
+
+    assert.equal((await harness.request("/api/auth/me", { session: theirs })).status, 401);
   });
 
-  it("signs other devices out when the password changes", async () => {
-    const first = await harness.signIn("editor@example.com", "editor-password-1");
-    const second = await harness.signIn("editor@example.com", "editor-password-1");
+  /** The account survives a removal; only the membership goes. */
+  it("keeps the account, because it may belong to another site", async () => {
+    const userId = harness.addMember({ email: "elsewhere@example.com", role: "editor" });
+    const session = await harness.signIn();
 
-    const changed = await harness.request("/api/auth/password", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        currentPassword: "editor-password-1",
-        newPassword: "a-completely-new-one",
-      }),
-      session: second,
-    });
-    assert.equal(changed.status, 200);
+    await harness.request(`/api/admin/users/${userId}`, { method: "DELETE", session });
 
-    assert.equal((await harness.request("/api/auth/me", { session: first })).status, 401);
-    assert.equal((await harness.request("/api/auth/me", { session: second })).status, 200);
+    assert.ok(harness.ctx.repositories.users.findById(userId));
+    assert.equal(harness.ctx.repositories.memberships.find(harness.ctx.siteId, userId), undefined);
   });
 });
 
@@ -633,8 +689,8 @@ describe("system information", () => {
   });
 
   it("keeps deployment details to administrators", async () => {
-    await harness.createUser({ email: "editor@example.com", password: ADMIN_PASSWORD, role: "editor" });
-    const editor = await harness.signIn("editor@example.com", ADMIN_PASSWORD);
+    harness.addMember({ email: "editor@example.com", role: "editor" });
+    const editor = await harness.signIn("editor@example.com");
 
     const response = await harness.request("/api/admin/system", { session: editor });
     const body = (await response.json()) as { deployment: unknown };

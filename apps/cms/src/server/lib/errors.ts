@@ -19,7 +19,9 @@ export type ErrorCode =
   | "payload_too_large"
   | "unsupported_media_type"
   | "rate_limited"
-  | "internal_error";
+  | "internal_error"
+  /** An identity provider Mica depends on could not be reached. */
+  | "service_unavailable";
 
 const STATUS: Record<ErrorCode, number> = {
   bad_request: 400,
@@ -33,6 +35,7 @@ const STATUS: Record<ErrorCode, number> = {
   unsupported_media_type: 415,
   rate_limited: 429,
   internal_error: 500,
+  service_unavailable: 503,
 };
 
 export interface ApiErrorBody {

@@ -6,6 +6,7 @@ import type { Context } from "hono";
 
 import type { AppContext } from "./context.js";
 import type { Logger } from "./lib/logger.js";
+import type { MembershipRecord } from "./repositories/memberships.js";
 import type { SessionRecord } from "./repositories/sessions.js";
 import type { UserRecord } from "./repositories/users.js";
 
@@ -16,6 +17,11 @@ export interface Env {
     requestId: string;
     user: UserRecord;
     session: SessionRecord;
+    /**
+     * What this user may do *here*. Set by `requireAuth` alongside the user,
+     * because a role belongs to a person on a site rather than to a person.
+     */
+    membership: MembershipRecord;
   };
 }
 

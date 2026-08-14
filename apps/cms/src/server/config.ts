@@ -21,6 +21,21 @@ const schema = z
     NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
     LOG_LEVEL: z.enum(["debug", "info", "warn", "error", "silent"]).default("info"),
 
+    /**
+     * How this deployment is being run.
+     *
+     * One implementation, three shapes:
+     *
+     *   local        a developer's machine. No identity provider, and
+     *                therefore no authentication — see below.
+     *   self-hosted  somebody's server. OIDC, one tenant, one site.
+     *   cloud        Mica Cloud. OIDC, many tenants.
+     *
+     * The mode is not cosmetic: it decides which configurations are allowed to
+     * exist at all, which is why it is checked before anything starts.
+     */
+    MICA_MODE: z.enum(["local", "self-hosted", "cloud"]).default("local"),
+
     HOST: z.string().default("0.0.0.0"),
     PORT: z.coerce.number().int().min(1).max(65535).default(4000),
 
@@ -72,6 +87,25 @@ const schema = z
      */
     MICA_SCHEMA: z.string().optional(),
 
+    /**
+     * OpenID Connect. Required outside local mode.
+     *
+     * Mica implements no passwords, no reset flow and no second factor. It
+     * asks a provider who you are and records the answer; a membership decides
+     * what that person may then do.
+     */
+    OIDC_ISSUER: z.string().url().optional(),
+    OIDC_CLIENT_ID: z.string().optional(),
+    /** Omit for a public client using PKCE alone. */
+    OIDC_CLIENT_SECRET: z.string().optional(),
+    OIDC_SCOPE: z.string().default("openid profile email"),
+    /**
+     * Grant this person administrator on the default site the first time they
+     * sign in. Without it, the first sign-in on an empty deployment has no
+     * membership and is refused — correct, but unhelpful for a first install.
+     */
+    OIDC_BOOTSTRAP_ADMIN: z.string().optional(),
+
     /** Signs session cookies. Rotating it invalidates every session. */
     SESSION_SECRET: z.string().min(32).optional(),
     SESSION_TTL_HOURS: z.coerce.number().int().positive().default(24 * 14),
@@ -100,6 +134,20 @@ const schema = z
       dataDir,
       databasePath: path.resolve(env.DATABASE_PATH ?? path.join(dataDir, "cms.sqlite")),
       contentRoot: path.resolve(env.CONTENT_ROOT),
+      /**
+       * Local mode has no identity provider, and therefore no authentication:
+       * every request is one implicit developer. Kept as a derived flag so
+       * that the places which must refuse it read as a question about
+       * authentication rather than a string comparison on the mode.
+       */
+      authDisabled: env.MICA_MODE === "local",
+      /**
+       * Discovery over plain HTTP, for an identity provider running on
+       * localhost. Never in production, and never for a remote host.
+       */
+      oidcAllowInsecure:
+        env.NODE_ENV !== "production" &&
+        /^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(env.OIDC_ISSUER ?? ""),
       adminOrigins: (env.ADMIN_ORIGINS ?? "")
         .split(",")
         .map((origin) => origin.trim())
@@ -179,6 +227,45 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       `Missing required production secrets: ${missing.join(", ")}.\n` +
         `Generate them with:  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`,
     );
+  }
+
+  /**
+   * Local mode disables authentication. It must never be reachable.
+   *
+   * This is the single most dangerous configuration Mica can be in, so it is
+   * refused at the two points where it stops being a developer's convenience:
+   * a production build, and a base URL that is not the local machine.
+   */
+  if (config.MICA_MODE === "local") {
+    if (config.isProduction) {
+      throw new ConfigError(
+        "MICA_MODE=local disables authentication, and NODE_ENV=production.\n" +
+          "  Local mode signs every request in as a developer account with no\n" +
+          "  password and no identity provider. Set MICA_MODE=self-hosted and\n" +
+          "  configure OIDC_ISSUER / OIDC_CLIENT_ID.",
+      );
+    }
+
+    const host = new URL(config.CMS_BASE_URL).hostname;
+    if (host !== "localhost" && host !== "127.0.0.1" && host !== "[::1]") {
+      throw new ConfigError(
+        `MICA_MODE=local disables authentication, but CMS_BASE_URL points at "${host}".\n` +
+          "  Local mode is for a developer's own machine only. Anything reachable\n" +
+          "  by anyone else needs MICA_MODE=self-hosted and an identity provider.",
+      );
+    }
+  } else {
+    const needed = (["OIDC_ISSUER", "OIDC_CLIENT_ID"] as const).filter((key) => !config[key]);
+
+    if (needed.length > 0) {
+      throw new ConfigError(
+        `MICA_MODE=${config.MICA_MODE} authenticates with OpenID Connect, so ` +
+          `${needed.join(" and ")} must be set.\n` +
+          "  Mica implements no passwords. Point it at Keycloak, Authentik,\n" +
+          "  ZITADEL, Entra, Okta, Google — anything that speaks OIDC.\n" +
+          `  The redirect URI to register is ${config.CMS_BASE_URL}/api/auth/callback`,
+      );
+    }
   }
 
   // The development fallback is a TypeScript file in the repository root, which

@@ -38,6 +38,29 @@ or a compliance regime that requires four eyes.
 
 ---
 
+### P1 — Local mode has no authentication at all
+
+**Decided:** `MICA_MODE=local` signs every request in as one developer account,
+with no identity provider and no credential.
+
+**Why:** the alternative is asking a developer to stand up Keycloak before they
+can run `pnpm dev`. Mica ships no passwords, so there is no third option that
+does not mean writing the auth code the project exists to avoid.
+
+**Consequence:** a Mica in local mode is an open administrator console. This is
+the single most dangerous state the software has.
+
+**What contains it:** the config layer refuses local mode when `NODE_ENV` is
+production, and refuses it when `CMS_BASE_URL` is any host but localhost. The
+server logs a warning at every start, and the sign-in screen says so on the
+page. Four independent statements, because one is not enough for this.
+
+**What would change it:** a small built-in OIDC provider for development, so the
+local path exercises the production code. Considered and not taken — it is auth
+code, which is what this was avoiding.
+
+---
+
 ### P2 — Rate limiting is in-process and resets on restart
 
 **Decided:** fixed-window counters in a `Map` (`lib/rate-limit.ts`).
@@ -46,13 +69,17 @@ or a compliance regime that requires four eyes.
 editors is not proportionate.
 
 **Consequence:** counters reset on deploy, and the limit is per-process rather
-than per-cluster. scrypt's ~100 ms cost per attempt is the real backstop.
+than per-cluster.
+
+It matters less than it did. There are no passwords to guess here: the limiter
+now protects the *start* of a sign-in — one discovery request per attempt —
+and credential stuffing has moved to the identity provider, which has its own
+defences and is far better placed to run them.
 
 **What would change it:** running more than one CMS replica — the current design
 assumes exactly one.
 
-**Trigger:** horizontal scaling, or evidence of a distributed credential-stuffing
-attempt in the logs.
+**Trigger:** horizontal scaling.
 
 ---
 
@@ -111,23 +138,6 @@ point of the interface.
 
 ---
 
-### P3 — scrypt rather than Argon2id
-
-**Decided:** scrypt (N=32768, r=8, p=1) via Node's OpenSSL binding.
-
-**Why:** the only memory-hard KDF available without a native dependency. Cost
-parameters are stored with each hash and upgraded transparently at next sign-in,
-so this is not a one-way door.
-
-**Consequence:** Argon2id is the stronger modern choice; scrypt is proven and
-entirely adequate at this scale.
-
-**What would change it:** a customer with a compliance regime that names
-Argon2id. `services/password.ts` already parses a `$`-delimited algorithm
-prefix, so both can coexist during migration.
-
----
-
 ### P3 — The editor cannot represent a Markdoc tag
 
 **Decided:** `{% callout %}` and friends survive a round trip as their inner
@@ -168,10 +178,9 @@ work on a slow mobile connection.
 
 Explicitly not built; the seams they attach to exist and are tested.
 
-- **P2** — OIDC sign-in. Password auth is what exists; `services/session.ts` is
-  the seam.
-- **P3** — Multiple sites or tenants in one deployment. One Mica serves one
-  repository.
+- **P2** — Site management in the UI. The data model is there — tenants, sites,
+  memberships and per-site repository connections — and every query is already
+  keyed by site. What is missing is a screen, and a reason to build one.
 - **P3** — Scheduled publishing.
 
 ## Known gaps to close
@@ -179,6 +188,10 @@ Explicitly not built; the seams they attach to exist and are tested.
 - **P2** — No end-to-end browser test of the admin. The API has good coverage
   and the Vue app typechecks, but no test drives a real browser through "sign
   in, edit, save". The one place a regression could reach production unseen.
+- **P2** — The OIDC flow is not tested end to end. The construction is verified
+  against a real issuer's discovery document, and every failure path is tested,
+  but no test completes a round trip with a live provider. A `docker compose`
+  Keycloak in CI would close it.
 - **P2** — The provider connectors are tested against a stub, not against a real
   repository. The request shapes are asserted; the providers' agreement with
   their own documentation is not. Worth one manual run against a scratch
@@ -211,3 +224,11 @@ Kept for the record — these were open questions that are now settled.
 - ~~Docker image and `docker-compose.yml`~~ — built and verified.
 - ~~Astro collection data typed as `any`~~ — the loader's schema carries the
   model-derived type, so renaming a field breaks the website build.
+- ~~scrypt rather than Argon2id~~ — **removed.** Mica stores no passwords, so
+  it runs no KDF and the choice no longer exists.
+- ~~No self-service password reset~~ — **removed** with the passwords. The
+  identity provider owns reset, MFA and passkeys.
+- ~~OIDC sign-in~~ — done. `panva/openid-client`, with PKCE, `state` and
+  `nonce` all verified. Identities are keyed by `(issuer, subject)` and never
+  by email, so a provider that lets someone change their address cannot be used
+  to take over an account.

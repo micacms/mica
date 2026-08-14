@@ -59,10 +59,28 @@ async function main(): Promise<void> {
   const fingerprint = await schemaFingerprint(site);
 
   const server = serve({ fetch: app.fetch, hostname: config.HOST, port: config.PORT }, (info) => {
+    /**
+     * Said every time, at warn level, and never suppressed.
+     *
+     * A developer who has forgotten which mode they are in should find out from
+     * their own terminal, not from somebody else's traffic. The config layer
+     * makes this state impossible to reach in production or on a non-local
+     * host, so the warning is a reminder rather than a last line of defence —
+     * but it is the one a person actually reads.
+     */
+    if (config.authDisabled) {
+      logger.warn("Authentication is DISABLED (MICA_MODE=local)", {
+        signedInAs: "developer@localhost",
+        note: "Every request is an administrator. Never expose this to a network.",
+      });
+    }
+
     logger.info("Mica CMS started", {
       url: config.CMS_BASE_URL,
       listening: `${config.HOST}:${info.port}`,
+      mode: config.MICA_MODE,
       environment: config.NODE_ENV,
+      auth: config.authDisabled ? "disabled" : `oidc:${new URL(config.OIDC_ISSUER!).hostname}`,
       database: config.databasePath,
       content: config.contentRoot,
       // Enough to tell two deployments apart when a website was built against

@@ -12,8 +12,9 @@
 # is a `pnpm build:schema` plus a restart, not a rebuild.
 #
 # There is no backup service any more. The content is in a Git repository, which
-# is already replicated, versioned and off-site; the volume below holds accounts
-# and sessions, and losing it signs everyone out and costs nothing else.
+# is already replicated, versioned and off-site; the volume below holds accounts,
+# memberships and sessions, and losing it signs everyone out and costs nothing
+# else. It holds no passwords — Mica has none.
 
 services:
   cms:
@@ -27,6 +28,12 @@ services:
     environment:
       NODE_ENV: production
       DATA_DIR: /data
+
+      # OIDC or nothing. `local` disables authentication, and Mica refuses to
+      # start that way with NODE_ENV=production — set OIDC_ISSUER and
+      # OIDC_CLIENT_ID in .env, and register
+      # ${CMS_BASE_URL}/api/auth/callback with the provider.
+      MICA_MODE: ${MICA_MODE:-self-hosted}
 
       # How this deployment reaches its content repository.
       #

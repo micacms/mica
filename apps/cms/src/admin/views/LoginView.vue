@@ -1,36 +1,49 @@
 <script setup lang="ts">
-import { ref } from "vue";
-import { useRoute, useRouter } from "vue-router";
+/**
+ * Sign in.
+ *
+ * There is no form. Mica does not hold passwords, so there is nothing for an
+ * editor to type here — the button hands the browser to the identity provider,
+ * which does the actual authenticating and sends it back.
+ *
+ * The error banner exists because the round trip can fail after the provider
+ * is satisfied: someone can authenticate perfectly well and still have no
+ * membership on this site, and that has to read as "ask for access", not as
+ * "your password was wrong".
+ */
 
-import { ApiError } from "@/api";
+import { computed, onMounted, ref } from "vue";
+import { useRoute } from "vue-router";
+
 import { useAuth } from "@/stores/auth";
 
 const auth = useAuth();
 const route = useRoute();
-const router = useRouter();
 
-const email = ref("");
-const password = ref("");
-const showPassword = ref(false);
-const error = ref<string | null>(null);
 const busy = ref(false);
 
-async function submit(): Promise<void> {
-  error.value = null;
-  busy.value = true;
+/** Set by the callback when it bounces the browser back here with a reason. */
+const error = ref<string | null>(null);
 
-  try {
-    await auth.signIn(email.value, password.value);
-    const redirect = route.query.redirect;
-    await router.replace(typeof redirect === "string" ? redirect : { name: "dashboard" });
-  } catch (caught) {
-    error.value =
-      caught instanceof ApiError ? caught.message : "Could not sign in. Please try again.";
-    password.value = "";
-    showPassword.value = false;
-  } finally {
-    busy.value = false;
-  }
+const provider = computed(() => auth.config.value?.provider);
+const authDisabled = computed(() => auth.config.value?.authDisabled ?? false);
+
+/** Where to land afterwards. Always a path on this server. */
+const returnTo = computed(() => {
+  const redirect = route.query["redirect"];
+  return typeof redirect === "string" && redirect.startsWith("/admin")
+    ? redirect
+    : "/admin/";
+});
+
+onMounted(() => {
+  const reason = route.query["error"];
+  if (typeof reason === "string") error.value = reason;
+});
+
+function signIn(): void {
+  busy.value = true;
+  auth.signIn(returnTo.value);
 }
 </script>
 
@@ -55,74 +68,41 @@ async function submit(): Promise<void> {
         </div>
       </div>
 
-      <form class="card space-y-4 p-5" novalidate @submit.prevent="submit">
-        <!-- role=alert so the failure is announced, not just displayed -->
-        <p
-          v-if="error"
-          role="alert"
-          class="rounded-lg bg-danger/8 px-3 py-2 text-sm text-danger"
-        >
+      <div class="card space-y-4 p-5">
+        <p v-if="error" role="alert" class="rounded-lg bg-danger/8 px-3 py-2 text-sm text-danger">
           {{ error }}
         </p>
 
-        <div>
-          <label for="email" class="field-label">Email</label>
-          <input
-            id="email"
-            v-model="email"
-            type="email"
-            name="email"
-            autocomplete="username"
-            required
-            autofocus
-            :disabled="busy"
-            class="input mt-1.5"
-          />
-        </div>
+        <!-- Local mode is worth saying out loud. A developer who forgets which
+             mode they are in should not discover it from an audit. -->
+        <p
+          v-if="authDisabled"
+          class="rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning"
+        >
+          <strong>Authentication is disabled.</strong>
+          This deployment runs in local mode, so anyone reaching this page is
+          signed in as the developer account.
+        </p>
 
-        <div>
-          <label for="password" class="field-label">Password</label>
-          <div class="relative mt-1.5">
-            <input
-              id="password"
-              v-model="password"
-              :type="showPassword ? 'text' : 'password'"
-              name="password"
-              autocomplete="current-password"
-              required
-              :disabled="busy"
-              class="input pr-10"
-            />
-            <!-- aria-pressed so the toggle state is announced, not just the icon swap -->
-            <button
-              type="button"
-              class="absolute inset-y-0 right-0 grid w-10 place-items-center rounded-r-lg text-muted transition hover:text-ink disabled:cursor-not-allowed disabled:opacity-55"
-              :aria-pressed="showPassword"
-              aria-controls="password"
-              :disabled="busy"
-              @click="showPassword = !showPassword"
-            >
-              <svg viewBox="0 0 20 20" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75">
-                <path
-                  d="M1.75 10S4.75 4.75 10 4.75 18.25 10 18.25 10 15.25 15.25 10 15.25 1.75 10 1.75 10z"
-                  stroke-linecap="round"
-                  stroke-linejoin="round"
-                />
-                <circle cx="10" cy="10" r="2.25" />
-                <path v-if="showPassword" d="M4 16L16 4" stroke-linecap="round" />
-              </svg>
-              <span class="sr-only">{{ showPassword ? "Hide password" : "Show password" }}</span>
-            </button>
-          </div>
-        </div>
-
-        <button type="submit" class="btn-primary w-full" :disabled="busy">
-          {{ busy ? "Signing in…" : "Sign in" }}
+        <button type="button" class="btn-primary w-full" :disabled="busy" @click="signIn">
+          {{
+            busy
+              ? "Redirecting…"
+              : authDisabled
+                ? "Continue as developer"
+                : "Sign in"
+          }}
         </button>
-      </form>
 
-      <p class="mt-4 text-center text-xs text-muted">
-        Forgotten your password? Ask an administrator to set a new one.
+        <p v-if="provider && !authDisabled" class="text-center text-xs text-muted">
+          You will be taken to <span class="font-medium">{{ provider }}</span> to sign in.
+        </p>
+      </div>
+
+      <p v-if="!authDisabled" class="mt-4 text-center text-xs text-muted">
+        Mica does not hold your password. Trouble signing in is a question for
+        whoever runs your identity provider; no access once you are in is a
+        question for a site administrator.
       </p>
     </div>
   </div>

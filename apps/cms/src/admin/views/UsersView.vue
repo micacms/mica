@@ -1,9 +1,14 @@
 <script setup lang="ts">
 /**
- * User administration (§9.1).
+ * Who may edit this site.
  *
- * Administrators create accounts and assign replacement passwords; there is no
- * email-based reset flow, so a deployment needs no mail server.
+ * Not account management: Mica does not create people, an identity provider
+ * does. Inviting someone records that whoever holds an email address may edit
+ * here; removing them withdraws it. Neither affects whether they can sign in to
+ * the provider — that is somebody else's screen, in somebody else's product.
+ *
+ * There is no password column, no reset button and no temporary password to
+ * pass along, which is most of what this screen used to be.
  */
 
 import { computed, onMounted, ref } from "vue";
@@ -22,22 +27,21 @@ const users = ref<AdminUser[]>([]);
 const loading = ref(true);
 const busy = ref(false);
 
-const showCreate = ref(false);
-const form = ref({ email: "", name: "", role: "editor", password: "" });
+const showInvite = ref(false);
+const form = ref({ email: "", name: "", role: "editor" });
 const formError = ref<string | null>(null);
 
-const pendingDelete = ref<AdminUser | null>(null);
-const pendingPassword = ref<AdminUser | null>(null);
-const newPassword = ref("");
+const pendingRemove = ref<AdminUser | null>(null);
 
 const adminCount = computed(() => users.value.filter((user) => user.role === "admin").length);
+const pendingCount = computed(() => users.value.filter((user) => user.pending).length);
 
 async function load(): Promise<void> {
   loading.value = true;
   try {
     users.value = (await api.users.list()).users;
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not load the accounts.");
+    toast.error(error instanceof ApiError ? error.message : "Could not load the members.");
   } finally {
     loading.value = false;
   }
@@ -45,34 +49,26 @@ async function load(): Promise<void> {
 
 onMounted(load);
 
-/** Suggests a strong temporary password so nobody invents a weak one. */
-function generatePassword(): string {
-  const alphabet = "abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  const bytes = crypto.getRandomValues(new Uint8Array(18));
-  return Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("");
-}
-
-function openCreate(): void {
-  form.value = { email: "", name: "", role: "editor", password: generatePassword() };
+function openInvite(): void {
+  form.value = { email: "", name: "", role: "editor" };
   formError.value = null;
-  showCreate.value = true;
+  showInvite.value = true;
 }
 
-async function create(): Promise<void> {
+async function invite(): Promise<void> {
   busy.value = true;
   formError.value = null;
 
   try {
-    await api.users.create(form.value);
+    await api.users.invite(form.value);
     toast.success(
-      `Account created for ${form.value.email}.`,
-      "Share the password securely; they will be asked to change it.",
+      `${form.value.email} can now edit this site.`,
+      "They get in by signing in with that address — there is nothing to send them.",
     );
-    showCreate.value = false;
+    showInvite.value = false;
     await load();
   } catch (error) {
-    formError.value =
-      error instanceof ApiError ? error.message : "Could not create the account.";
+    formError.value = error instanceof ApiError ? error.message : "Could not add that person.";
   } finally {
     busy.value = false;
   }
@@ -82,64 +78,50 @@ async function changeRole(user: AdminUser, role: string): Promise<void> {
   try {
     await api.users.update(user.id, { role });
     toast.success(`${user.email} is now ${role === "admin" ? "an administrator" : "an editor"}.`);
-    await load();
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not change the role.");
-    await load();
-  }
-}
-
-async function assignPassword(): Promise<void> {
-  if (!pendingPassword.value) return;
-  busy.value = true;
-
-  try {
-    await api.users.setPassword(pendingPassword.value.id, newPassword.value);
-    toast.success(
-      `New password set for ${pendingPassword.value.email}.`,
-      "They have been signed out everywhere and must change it at next sign-in.",
-    );
-    pendingPassword.value = null;
-  } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not set the password.");
   } finally {
-    busy.value = false;
+    // Either way: a failed change must not leave the select showing the value
+    // the server rejected.
+    await load();
   }
 }
 
 async function remove(): Promise<void> {
-  if (!pendingDelete.value) return;
+  if (!pendingRemove.value) return;
   busy.value = true;
 
   try {
-    await api.users.remove(pendingDelete.value.id);
-    toast.success("Account deleted.");
-    pendingDelete.value = null;
+    await api.users.remove(pendingRemove.value.id);
+    toast.success("Access removed.");
+    pendingRemove.value = null;
     await load();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not delete the account.");
+    toast.error(error instanceof ApiError ? error.message : "Could not remove their access.");
   } finally {
     busy.value = false;
   }
 }
-
-function openPasswordDialog(user: AdminUser): void {
-  newPassword.value = generatePassword();
-  pendingPassword.value = user;
-}
 </script>
 
 <template>
-  <PageHeader title="Users" :subtitle="`${users.length} account${users.length === 1 ? '' : 's'}`">
-    <button type="button" class="btn-primary" @click="openCreate">Add user</button>
+  <PageHeader
+    title="People"
+    :subtitle="`${users.length} ${users.length === 1 ? 'person' : 'people'} can edit this site`"
+  >
+    <button type="button" class="btn-primary" @click="openInvite">Add someone</button>
   </PageHeader>
 
   <div class="mx-auto max-w-5xl px-4 py-5 sm:px-6">
+    <p v-if="pendingCount" class="mb-3 text-xs text-muted">
+      {{ pendingCount }} {{ pendingCount === 1 ? "person has" : "people have" }} not signed in yet.
+    </p>
+
     <p v-if="loading" class="text-sm text-muted">Loading…</p>
 
     <div v-else class="card overflow-hidden">
       <table class="w-full text-sm">
-        <caption class="sr-only">CMS accounts</caption>
+        <caption class="sr-only">People with access to this site</caption>
         <thead>
           <tr class="border-b border-line text-left text-xs text-muted">
             <th scope="col" class="px-4 py-2 font-medium">Person</th>
@@ -159,11 +141,10 @@ function openPasswordDialog(user: AdminUser): void {
                 </span>
               </span>
               <span class="block text-xs text-muted">{{ user.email }}</span>
-              <span
-                v-if="user.mustChangePassword"
-                class="badge mt-1 bg-warning/10 text-warning"
-              >
-                Must change password
+              <!-- An invitation still outstanding after a few days is usually a
+                   mistyped address, so it is worth showing rather than hiding. -->
+              <span v-if="user.pending" class="badge mt-1 bg-warning/10 text-warning">
+                Invited — not signed in yet
               </span>
             </td>
 
@@ -181,24 +162,25 @@ function openPasswordDialog(user: AdminUser): void {
             </td>
 
             <td class="hidden px-4 py-2.5 text-xs text-muted sm:table-cell">
-              <time v-if="user.lastLoginAt" :datetime="user.lastLoginAt" :title="absoluteTime(user.lastLoginAt)">
+              <time
+                v-if="user.lastLoginAt"
+                :datetime="user.lastLoginAt"
+                :title="absoluteTime(user.lastLoginAt)"
+              >
                 {{ relativeTime(user.lastLoginAt) }}
               </time>
               <span v-else>Never</span>
             </td>
 
             <td class="px-4 py-2.5">
-              <div class="flex justify-end gap-1">
-                <button type="button" class="btn-ghost text-xs" @click="openPasswordDialog(user)">
-                  Set password
-                </button>
+              <div class="flex justify-end">
                 <button
                   type="button"
                   class="btn-ghost text-xs hover:text-danger"
                   :disabled="user.id === auth.user.value?.id"
-                  @click="pendingDelete = user"
+                  @click="pendingRemove = user"
                 >
-                  Delete
+                  Remove
                 </button>
               </div>
             </td>
@@ -208,14 +190,14 @@ function openPasswordDialog(user: AdminUser): void {
     </div>
   </div>
 
-  <!-- Create -->
+  <!-- Invite -->
   <ConfirmDialog
-    :open="showCreate"
-    title="Add a user"
-    confirm-label="Create account"
+    :open="showInvite"
+    title="Give someone access"
+    confirm-label="Add"
     :busy="busy"
-    @cancel="showCreate = false"
-    @confirm="create"
+    @cancel="showInvite = false"
+    @confirm="invite"
   >
     <div class="space-y-3 text-left">
       <p v-if="formError" role="alert" class="rounded bg-danger/8 px-2.5 py-1.5 text-xs text-danger">
@@ -225,80 +207,49 @@ function openPasswordDialog(user: AdminUser): void {
       <div>
         <label for="new-email" class="field-label">Email</label>
         <input id="new-email" v-model="form.email" type="email" class="input mt-1" required />
+        <p class="field-hint">
+          The address they use with your identity provider. It has to match exactly.
+        </p>
       </div>
 
       <div>
         <label for="new-name" class="field-label">Name</label>
         <input id="new-name" v-model="form.name" type="text" class="input mt-1" />
+        <p class="field-hint">
+          Only until they first sign in — after that the provider's name is used.
+        </p>
       </div>
 
       <div>
         <label for="new-role" class="field-label">Role</label>
         <select id="new-role" v-model="form.role" class="input mt-1">
           <option value="editor">Editor — can manage content</option>
-          <option value="admin">Administrator — can also manage users</option>
+          <option value="admin">Administrator — can also manage people</option>
         </select>
       </div>
 
-      <div>
-        <label for="new-password" class="field-label">Temporary password</label>
-        <div class="mt-1 flex gap-2">
-          <input
-            id="new-password"
-            v-model="form.password"
-            type="text"
-            class="input font-mono text-[13px]"
-          />
-          <button type="button" class="btn-secondary shrink-0" @click="form.password = generatePassword()">
-            New
-          </button>
-        </div>
-        <p class="field-hint">Share this securely. They will be asked to change it.</p>
-      </div>
-    </div>
-  </ConfirmDialog>
-
-  <!-- Assign password -->
-  <ConfirmDialog
-    :open="pendingPassword !== null"
-    :title="`Set a new password for ${pendingPassword?.email}`"
-    confirm-label="Set password"
-    :busy="busy"
-    @cancel="pendingPassword = null"
-    @confirm="assignPassword"
-  >
-    <div class="text-left">
-      <label for="assigned-password" class="field-label">New password</label>
-      <div class="mt-1 flex gap-2">
-        <input
-          id="assigned-password"
-          v-model="newPassword"
-          type="text"
-          class="input font-mono text-[13px]"
-        />
-        <button type="button" class="btn-secondary shrink-0" @click="newPassword = generatePassword()">
-          New
-        </button>
-      </div>
-      <p class="field-hint">
-        This signs them out on every device. They will be asked to choose their own password.
+      <p class="text-xs text-muted">
+        There is nothing to send. They sign in with that address and they are in.
       </p>
     </div>
   </ConfirmDialog>
 
-  <!-- Delete -->
+  <!-- Remove -->
   <ConfirmDialog
-    :open="pendingDelete !== null"
-    :title="`Delete ${pendingDelete?.email}?`"
-    confirm-label="Delete account"
+    :open="pendingRemove !== null"
+    :title="`Remove ${pendingRemove?.email}?`"
+    confirm-label="Remove access"
     destructive
     :busy="busy"
-    @cancel="pendingDelete = null"
+    @cancel="pendingRemove = null"
     @confirm="remove"
   >
     <p>
-      They will lose access immediately. Content they created stays, but is no longer attributed to
-      an account.
+      They lose access immediately, on every device. Their commits stay in the
+      repository's history, as commits do.
+    </p>
+    <p class="mt-2 text-xs text-muted">
+      This does not touch their account at your identity provider.
     </p>
   </ConfirmDialog>
 </template>

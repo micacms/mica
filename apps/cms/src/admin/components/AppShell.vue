@@ -108,7 +108,7 @@ async function signOut(): Promise<void> {
         <div>
           <p class="nav-heading">Administration</p>
           <RouterLink v-if="auth.isAdmin.value" :to="{ name: 'users' }" class="nav-link">
-            Users
+            People
           </RouterLink>
           <!-- Editors see it too: version and content model answer their
                questions as often as an administrator's. -->

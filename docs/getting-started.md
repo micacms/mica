@@ -89,15 +89,14 @@ has content in it — there is nothing to seed.
 > out whenever it restarts. That is the right trade-off for development and the
 > wrong one for production, where it is mandatory.
 
-## 3. Create an account
+## 3. Open the admin
 
-In a second terminal:
+<http://localhost:5173/admin/>
 
-```bash
-pnpm --filter @micacms/cms create-user
-```
-
-Then open <http://localhost:5173/admin/> and sign in.
+There is no account to create and no password to type. `MICA_MODE=local`
+disables authentication entirely and signs you in as a developer account —
+which is why Mica refuses to start that way in production, or on any host but
+this one. The terminal says so on every start.
 
 ## 4. Edit something, and look at the result
 
@@ -207,7 +206,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```bash
 pnpm build:schema         # mica.config.ts -> mica.config.json
 docker compose up -d
-docker compose exec cms node dist/server/scripts/create-user.js
+docker compose exec cms node dist/server/scripts/grant-access.js --email you@example.com
 ```
 
 Check it came up:

@@ -64,3 +64,101 @@ describe("repository configuration", () => {
     assert.throws(() => loadConfig({ ...base, REPOSITORY: "subversion" }), ConfigError);
   });
 });
+
+/**
+ * Local mode turns authentication off entirely, which makes these the most
+ * consequential checks in the codebase. Each one is the difference between a
+ * developer's convenience and an unauthenticated CMS on the internet.
+ */
+describe("deployment modes", () => {
+  const oidc = {
+    OIDC_ISSUER: "https://auth.example.com",
+    OIDC_CLIENT_ID: "mica",
+  };
+
+  it("defaults to local, with authentication disabled", () => {
+    const config = loadConfig({ ...base });
+    assert.equal(config.MICA_MODE, "local");
+    assert.equal(config.authDisabled, true);
+  });
+
+  it("refuses local mode in production", () => {
+    assert.throws(
+      () =>
+        loadConfig({
+          ...base,
+          NODE_ENV: "production",
+          MICA_MODE: "local",
+          SESSION_SECRET: "0".repeat(32),
+        }),
+      /disables authentication/,
+    );
+  });
+
+  it("refuses local mode on any host but this machine", () => {
+    assert.throws(
+      () => loadConfig({ ...base, MICA_MODE: "local", CMS_BASE_URL: "https://cms.example.com" }),
+      /local mode is for a developer's own machine only/i,
+    );
+
+    // ...and allows the hosts that are this machine.
+    for (const url of ["http://localhost:4000", "http://127.0.0.1:4000"]) {
+      assert.doesNotThrow(() => loadConfig({ ...base, MICA_MODE: "local", CMS_BASE_URL: url }));
+    }
+  });
+
+  for (const mode of ["self-hosted", "cloud"] as const) {
+    it(`requires an identity provider in ${mode} mode`, () => {
+      assert.throws(() => loadConfig({ ...base, MICA_MODE: mode }), (error: unknown) => {
+        assert.ok(error instanceof ConfigError);
+        assert.match(error.message, /OIDC_ISSUER and OIDC_CLIENT_ID/);
+        // The message should say where to point the provider.
+        assert.match(error.message, /\/api\/auth\/callback/);
+        return true;
+      });
+    });
+
+    it(`enables authentication in ${mode} mode`, () => {
+      const config = loadConfig({ ...base, MICA_MODE: mode, ...oidc });
+      assert.equal(config.authDisabled, false);
+    });
+  }
+
+  it("does not require a client secret, so a public PKCE client works", () => {
+    assert.doesNotThrow(() => loadConfig({ ...base, MICA_MODE: "self-hosted", ...oidc }));
+  });
+
+  /**
+   * Plain-HTTP discovery is allowed only for a provider on this machine, and
+   * only outside production — a remote issuer over HTTP would mean handing an
+   * ID token to anybody on the path.
+   */
+  it("permits insecure discovery only for a local provider outside production", () => {
+    const local = loadConfig({
+      ...base,
+      MICA_MODE: "self-hosted",
+      OIDC_ISSUER: "http://localhost:8080/realms/mica",
+      OIDC_CLIENT_ID: "mica",
+    });
+    assert.equal(local.oidcAllowInsecure, true);
+
+    const remote = loadConfig({
+      ...base,
+      MICA_MODE: "self-hosted",
+      OIDC_ISSUER: "http://auth.example.com",
+      OIDC_CLIENT_ID: "mica",
+    });
+    assert.equal(remote.oidcAllowInsecure, false);
+
+    const production = loadConfig({
+      ...base,
+      NODE_ENV: "production",
+      MICA_MODE: "self-hosted",
+      CMS_BASE_URL: "https://cms.example.com",
+      MICA_SCHEMA: "/app/schema.json",
+      OIDC_ISSUER: "http://localhost:8080/realms/mica",
+      OIDC_CLIENT_ID: "mica",
+    });
+    assert.equal(production.oidcAllowInsecure, false);
+  });
+});

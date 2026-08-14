@@ -19,10 +19,10 @@ import { collection, defineSite, media, number, relation, richText, select, sing
 
 import { createApp } from "../src/server/app.js";
 import { loadConfig, type Config } from "../src/server/config.js";
+import { DEFAULT_SITE_ID } from "../src/server/repositories/sites.js";
 import { createContext, type AppContext } from "../src/server/context.js";
 import { openTestDatabase } from "../src/server/db/index.js";
 import { createLogger } from "../src/server/lib/logger.js";
-import { hashPassword } from "../src/server/services/password.js";
 
 export const TEST_ORIGIN = "http://localhost:4000";
 
@@ -75,12 +75,17 @@ export interface TestHarness {
   contentRoot: string;
   /** Issues a request; `session` carries cookies and the CSRF token. */
   request(path: string, init?: RequestInit & { session?: Session }): Promise<Response>;
-  signIn(email?: string, password?: string): Promise<Session>;
-  createUser(input: {
-    email: string;
-    password: string;
-    role?: "admin" | "editor";
-  }): Promise<void>;
+  /**
+   * Signs in without an identity provider.
+   *
+   * The tests exercise `MICA_MODE=local`, where there is no OIDC round trip to
+   * make — which is the point: nothing below the session cookie cares how the
+   * cookie was obtained, so the authorization tests do not need a fake IdP to
+   * be meaningful.
+   */
+  signIn(email?: string): Promise<Session>;
+  /** Records that this person may edit the test site. */
+  addMember(input: { email: string; role?: "admin" | "editor" }): string;
   close(): Promise<void>;
 }
 
@@ -90,7 +95,6 @@ export interface Session {
 }
 
 export const ADMIN_EMAIL = "admin@example.com";
-export const ADMIN_PASSWORD = "correct-horse-battery";
 
 export async function createHarness(
   overrides: Partial<NodeJS.ProcessEnv> = {},
@@ -142,30 +146,29 @@ export async function createHarness(
       return app.request(`${TEST_ORIGIN}${path}`, { ...rest, headers });
     },
 
-    async signIn(email = ADMIN_EMAIL, password = ADMIN_PASSWORD) {
-      const response = await harness.request("/api/auth/login", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email, password }),
+    async signIn(email = ADMIN_EMAIL) {
+      const user = ctx.repositories.users.findByEmail(email);
+      if (!user) throw new Error(`No such user: ${email}. Call addMember first.`);
+
+      const { cookie, csrfToken } = ctx.services.sessions.create({
+        userId: user.id,
+        ip: "127.0.0.1",
+        userAgent: "test",
       });
 
-      if (!response.ok) {
-        throw new Error(`Sign-in failed: ${response.status} ${await response.text()}`);
-      }
-
-      const body = (await response.json()) as { csrfToken: string };
-      const cookies = response.headers.getSetCookie().map((value) => value.split(";")[0]!);
-
-      return { cookie: cookies.join("; "), csrfToken: body.csrfToken };
+      return {
+        cookie: `mica_session=${cookie}; mica_csrf=${csrfToken}`,
+        csrfToken,
+      };
     },
 
-    async createUser({ email, password, role = "admin" }) {
-      ctx.repositories.users.create({
-        email,
-        name: email.split("@")[0]!,
-        role,
-        passwordHash: await hashPassword(password),
-      });
+    addMember({ email, role = "admin" }) {
+      const user =
+        ctx.repositories.users.findByEmail(email) ??
+        ctx.repositories.users.create({ email, name: email.split("@")[0]! });
+
+      ctx.repositories.memberships.grant({ siteId: DEFAULT_SITE_ID, userId: user.id, role });
+      return user.id;
     },
 
     async close() {
@@ -174,7 +177,7 @@ export async function createHarness(
     },
   };
 
-  await harness.createUser({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD, role: "admin" });
+  harness.addMember({ email: ADMIN_EMAIL, role: "admin" });
   return harness;
 }
 

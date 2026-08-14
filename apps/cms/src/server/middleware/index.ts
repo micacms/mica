@@ -124,15 +124,28 @@ export function requireAuth(): MiddlewareHandler<Env> {
       throw new ApiError("unauthenticated", "This account no longer exists.");
     }
 
+    /**
+     * Authorization is re-read on every request, not carried in the session.
+     *
+     * Revoking someone's access has to take effect now. If the role were
+     * copied into the session at sign-in, a removed editor would keep editing
+     * until their cookie happened to expire.
+     */
+    const membership = ctx.repositories.memberships.find(ctx.siteId, user.id);
+    if (!membership) {
+      throw new ApiError("forbidden", "You no longer have access to this site.");
+    }
+
     c.set("session", session);
     c.set("user", user);
+    c.set("membership", membership);
     await next();
   };
 }
 
 export function requireAdmin(): MiddlewareHandler<Env> {
   return async (c, next) => {
-    if (c.get("user").role !== "admin") {
+    if (c.get("membership").role !== "admin") {
       throw new ApiError("forbidden", "This action requires an administrator account.");
     }
     await next();

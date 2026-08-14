@@ -166,7 +166,7 @@ export function adminSystemRoutes(): Hono<Env> {
         bytes: databaseBytes === null ? null : databaseBytes + (walBytes ?? 0),
       },
       deployment:
-        c.get("user").role === "admin"
+        c.get("membership").role === "admin"
           ? {
               baseUrl: config.CMS_BASE_URL,
               schemaPath: config.schemaPath,

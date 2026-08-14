@@ -72,11 +72,10 @@ The default `REPOSITORY=local` writes into `content/` in this repository, so
 there is nothing to configure and nothing to seed — the repository already has
 content in it.
 
-Create an account, then open <http://localhost:5173/admin/>:
-
-```bash
-pnpm --filter @micacms/cms create-user
-```
+Then open <http://localhost:5173/admin/>. There is no account to create and no
+password to set: `MICA_MODE=local` disables authentication, so you are already
+signed in as a developer account. Mica refuses to start that way in production
+or on any host but this one.
 
 In a second terminal, the website:
 
@@ -182,7 +181,13 @@ one-line diff rather than a rewrite of every entry.
 ## What is deliberately absent
 
 No GraphQL. No plugin architecture. No page builder. No approval workflows. No
-multi-tenancy. No mandatory cloud services.
+mandatory cloud services.
+
+**No passwords.** Mica authenticates with OpenID Connect and nothing else — no
+hashing, no reset emails, no MFA enrolment, no passkeys, and no breach
+notification to write. An identity provider does all of it better. What Mica
+keeps is the part that is genuinely its own: a *membership* saying who may edit
+which site.
 
 No draft/published states either: an entry is saved or it is not, and saved
 means committed. Branches do this better than a status column ever did.
@@ -196,18 +201,23 @@ means committed. Branches do this better than a status column ever did.
 | `pnpm dev` | build packages, then run the CMS |
 | `pnpm build` | build everything |
 | `pnpm build:schema` | compile `mica.config.ts` into the JSON the container is given |
-| `pnpm test` | 229 tests across the model, connectors, Astro loader and CMS API |
+| `pnpm test` | 261 tests across the model, connectors, Astro loader and CMS API |
 | `pnpm typecheck` | every package, including `.vue` and `.astro` |
-| `pnpm cms:create-user` | create or update an account |
+| `pnpm cms:grant-access` | let an email address edit a site |
 
 ## Deploying
 
 ```bash
-cp apps/cms/.env.example .env   # secrets, and which repository to commit to
+cp apps/cms/.env.example .env   # secrets, identity provider, repository
 pnpm build:schema               # mica.config.ts -> mica.config.json
 docker compose up -d
-docker compose exec cms node dist/server/scripts/create-user.js
+docker compose exec cms node dist/server/scripts/grant-access.js --email you@example.com
 ```
+
+Deployed, Mica authenticates with **OpenID Connect** and nothing else — set
+`MICA_MODE=self-hosted`, `OIDC_ISSUER` and `OIDC_CLIENT_ID`, and point any
+provider you like at `/api/auth/callback`. Mica implements no passwords, no
+reset flow and no second factor, so none of it is Mica's to get wrong.
 
 Set `REPOSITORY=github` or `REPOSITORY=gitlab` with a project and a token, and
 the container commits through the provider's API — no clone, no deploy key on

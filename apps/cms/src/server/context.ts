@@ -24,9 +24,17 @@ import type { Config } from "./config.js";
 import { openDatabase, type SqlDatabase } from "./db/index.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
+import { createIdentityRepository } from "./repositories/identities.js";
+import { createMembershipRepository } from "./repositories/memberships.js";
 import { createSessionRepository } from "./repositories/sessions.js";
+import {
+  createSiteRepository,
+  DEFAULT_SITE_ID,
+  type RepositoryConnectionRecord,
+} from "./repositories/sites.js";
 import { createUserRepository } from "./repositories/users.js";
 import { createMediaService, type MediaService } from "./services/media.js";
+import { createOidcService, type OidcService } from "./services/oidc.js";
 import { createSessionService, type SessionService } from "./services/session.js";
 
 export interface AppContext {
@@ -35,14 +43,26 @@ export interface AppContext {
   logger: Logger;
   db: SqlDatabase;
   connector: RepositoryConnector;
+  /**
+   * The site this process is serving.
+   *
+   * One, for now. Every query that reads a membership or a repository
+   * connection is already keyed by it, so serving several means resolving this
+   * per request instead of once — and nothing above that line changes.
+   */
+  siteId: string;
   repositories: {
     sessions: ReturnType<typeof createSessionRepository>;
     users: ReturnType<typeof createUserRepository>;
+    sites: ReturnType<typeof createSiteRepository>;
+    memberships: ReturnType<typeof createMembershipRepository>;
+    identities: ReturnType<typeof createIdentityRepository>;
   };
   services: {
     content: ContentStore;
     media: MediaService;
     sessions: SessionService;
+    oidc: OidcService;
   };
   limiters: {
     login: RateLimiter;
@@ -58,6 +78,8 @@ export interface CreateContextOptions {
   /** Overrides for tests: in-memory database, temporary content directory. */
   db?: SqlDatabase;
   connector?: RepositoryConnector;
+  /** Defaults to the site migration 3 creates. */
+  siteId?: string;
   logger?: Logger;
 }
 
@@ -73,17 +95,31 @@ export function createContext(options: CreateContextOptions): AppContext {
 
   const db = options.db ?? openDatabase(config.databasePath, { logger });
 
-  const connector = options.connector ?? connectorFor(config);
+  const siteId = options.siteId ?? DEFAULT_SITE_ID;
 
   const repositories = {
     sessions: createSessionRepository(db),
     users: createUserRepository(db),
+    sites: createSiteRepository(db),
+    memberships: createMembershipRepository(db),
+    identities: createIdentityRepository(db),
   };
+
+  /**
+   * The site's stored connection wins over the environment.
+   *
+   * The environment is how a single-site deployment is configured and will
+   * stay that way; the stored connection is how a second site ever gets one.
+   * Reading the row first means both work without a second code path.
+   */
+  const connector =
+    options.connector ?? connectorFor(config, repositories.sites.connection(siteId));
 
   const services = {
     content: createContentStore(site, connector),
     media: createMediaService({ connector, maxBytes: config.MAX_UPLOAD_BYTES }),
     sessions: createSessionService(repositories.sessions, config),
+    oidc: createOidcService({ config, logger }),
   };
 
   const limiters = {
@@ -111,6 +147,7 @@ export function createContext(options: CreateContextOptions): AppContext {
     logger,
     db,
     connector,
+    siteId,
     repositories,
     services,
     limiters,
@@ -132,29 +169,53 @@ export function createContext(options: CreateContextOptions): AppContext {
  * got. That is the property that makes a hosted Mica and a developer's
  * `pnpm dev` the same program.
  */
-function connectorFor(config: Config): RepositoryConnector {
+function connectorFor(
+  config: Config,
+  stored: RepositoryConnectionRecord | undefined,
+): RepositoryConnector {
   const author = { name: "Mica CMS", email: "mica@localhost" };
 
-  switch (config.REPOSITORY) {
-    case "github":
+  // The stored connection if the site has one, otherwise the environment.
+  // Written as one shape so the switch below does not have to know which.
+  const settings = stored ?? {
+    kind: config.REPOSITORY,
+    project: config.REPOSITORY_PROJECT ?? null,
+    branch: config.REPOSITORY_BRANCH,
+    root: config.REPOSITORY_ROOT,
+    apiBase: config.REPOSITORY_API_BASE ?? null,
+    token: config.REPOSITORY_TOKEN ?? null,
+  };
+
+  const require = (value: string | null, what: string): string => {
+    if (!value) {
+      throw new Error(
+        `The repository connection for this site is a ${settings.kind} connection but has no ${what}.`,
+      );
+    }
+    return value;
+  };
+
+  switch (settings.kind) {
+    case "github": {
+      const project = require(settings.project, "project");
       return githubConnector({
-        // Validated at startup, so these are present by the time we are here.
-        owner: config.REPOSITORY_PROJECT!.split("/")[0]!,
-        repo: config.REPOSITORY_PROJECT!.split("/").slice(1).join("/"),
-        branch: config.REPOSITORY_BRANCH,
-        root: config.REPOSITORY_ROOT,
-        token: config.REPOSITORY_TOKEN!,
-        apiBase: config.REPOSITORY_API_BASE,
+        owner: project.split("/")[0]!,
+        repo: project.split("/").slice(1).join("/"),
+        branch: settings.branch,
+        root: settings.root,
+        token: require(settings.token, "token"),
+        apiBase: settings.apiBase ?? undefined,
         author,
       });
+    }
 
     case "gitlab":
       return gitlabConnector({
-        project: config.REPOSITORY_PROJECT!,
-        branch: config.REPOSITORY_BRANCH,
-        root: config.REPOSITORY_ROOT,
-        token: config.REPOSITORY_TOKEN!,
-        apiBase: config.REPOSITORY_API_BASE,
+        project: require(settings.project, "project"),
+        branch: settings.branch,
+        root: settings.root,
+        token: require(settings.token, "token"),
+        apiBase: settings.apiBase ?? undefined,
         author,
       });
 

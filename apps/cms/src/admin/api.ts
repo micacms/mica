@@ -126,10 +126,25 @@ export interface AdminUser {
   id: string;
   email: string;
   name: string;
+  /** The role on *this* site. It comes from the membership, not the account. */
   role: "admin" | "editor";
-  mustChangePassword: boolean;
   createdAt: string;
   lastLoginAt: string | null;
+  /**
+   * Invited, but has never signed in through the identity provider.
+   *
+   * Absent on the signed-in user, who by definition has.
+   */
+  pending?: boolean;
+}
+
+/** What the sign-in screen needs before it can draw anything. */
+export interface AuthConfig {
+  mode: "local" | "self-hosted" | "cloud";
+  /** True when MICA_MODE=local: no provider, and no authentication at all. */
+  authDisabled: boolean;
+  /** Hostname of the identity provider, for the button label. */
+  provider: string | null;
 }
 
 export interface EntrySummary {
@@ -289,17 +304,20 @@ export interface SystemInfo {
 export const api = {
   auth: {
     me: () => request<{ user: AdminUser; csrfToken: string }>("/auth/me"),
-    login: (email: string, password: string) =>
-      request<{ user: AdminUser; csrfToken: string }>("/auth/login", {
-        method: "POST",
-        body: { email, password },
-      }),
-    logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
-    changePassword: (currentPassword: string, newPassword: string) =>
-      request<{ ok: true }>("/auth/password", {
-        method: "POST",
-        body: { currentPassword, newPassword },
-      }),
+    config: () => request<AuthConfig>("/auth/config"),
+
+    /**
+     * Sign-in is a full-page navigation, not a fetch.
+     *
+     * The browser has to *visit* the identity provider — it is another origin
+     * that will set its own cookies and may need to show a consent screen or a
+     * second factor. An XHR cannot do any of that.
+     */
+    signInUrl: (returnTo: string) =>
+      `${BASE}/auth/login?returnTo=${encodeURIComponent(returnTo)}`,
+
+    logout: () =>
+      request<{ ok: true; endSession: string | null }>("/auth/logout", { method: "POST" }),
   },
 
   schema: () => request<Schema>("/admin/schema"),
@@ -367,12 +385,12 @@ export const api = {
 
   users: {
     list: () => request<{ users: AdminUser[] }>("/admin/users"),
-    create: (body: { email: string; name: string; role: string; password: string }) =>
+    /** Records that the holder of this address may edit this site. */
+    invite: (body: { email: string; name: string; role: string }) =>
       request<{ user: AdminUser }>("/admin/users", { method: "POST", body }),
-    update: (id: string, body: { email?: string; name?: string; role?: string }) =>
+    update: (id: string, body: { name?: string; role?: string }) =>
       request<{ user: AdminUser }>(`/admin/users/${id}`, { method: "PATCH", body }),
-    setPassword: (id: string, password: string) =>
-      request<{ ok: true }>(`/admin/users/${id}/password`, { method: "POST", body: { password } }),
+    /** Withdraws access to this site. The account itself survives. */
     remove: (id: string) => request<{ ok: true }>(`/admin/users/${id}`, { method: "DELETE" }),
   },
 };
