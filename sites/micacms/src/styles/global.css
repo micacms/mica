@@ -1,34 +1,154 @@
 @import "tailwindcss";
 
+/**
+ * Design tokens.
+ *
+ * The palette is deliberately close to the CMS admin (`apps/cms/src/admin/style.css`):
+ * same navy `brand`, same light-surface approach, so the website and the product
+ * that it advertises look like one piece of software.
+ *
+ * Where the site departs is temperature. Mica — Glimmererde — is a sheet mineral
+ * dug out of the ground, so the neutrals are warm (loess, clay, biotite) rather
+ * than the admin's cool greys, and the second accent is a phlogopite bronze.
+ * Nothing here glows: mica has a sheen, not a light source.
+ */
 @theme {
-  --color-ink: #0d1210;
-  --color-ink-soft: #18201c;
-  --color-paper: #fafbf7;
-  --color-cream: #f0f1e9;
-  --color-line: #d8dcd2;
-  --color-accent: #d9ff63;
-  --color-accent-deep: #a9db22;
-  --color-muted: #667068;
-  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-}
+  --color-paper: #fcfbf9;
+  --color-canvas: #f5f2ec;
+  --color-stone: #ece8e0;
+  --color-surface: #ffffff;
 
-:root {
-  --ink: #0d1210;
-  --accent: #d9ff63;
+  --color-line: #e6e1d8;
+  --color-line-strong: #d5cec1;
+
+  --color-ink: #211f1c;
+  --color-ink-soft: #43403a;
+  --color-muted: #6d675e;
+  --color-faint: #948d82;
+
+  --color-brand: #1e3a5f;
+  --color-brand-soft: #eaeff5;
+  --color-ember: #96603a;
+  --color-ember-soft: #f3ebe2;
+  --color-moss: #4a6b4f;
+
+  --font-sans:
+    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+    sans-serif;
+  /* A book serif for display type. No web font: it is on every target machine. */
+  --font-display:
+    "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, ui-serif,
+    serif;
+  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
 }
 
 @layer base {
-  html { scroll-behavior: smooth; background: var(--ink); }
-  body { margin: 0; overflow-x: hidden; background: #fafbf7; color: var(--ink); font-family: var(--font-sans); line-height: 1.55; -webkit-font-smoothing: antialiased; }
-  a { color: inherit; text-decoration: none; }
-  button, input, textarea { font: inherit; }
-  button { color: inherit; }
-  ::selection { background: var(--accent); color: var(--ink); }
-  :focus-visible { outline: 2px solid #a9db22; outline-offset: 3px; }
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button,
+  input,
+  textarea {
+    font: inherit;
+  }
+
+  button {
+    color: inherit;
+  }
+
+  ::selection {
+    background: var(--color-brand-soft);
+    color: var(--color-ink);
+  }
+
+  /* Same focus ring as the admin, so keyboard use feels identical in both. */
+  :focus-visible {
+    outline: 2px solid var(--color-brand);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+}
+
+/* Registered utilities compose with `@apply`, which keeps the markup readable. */
+@utility wrap {
+  @apply mx-auto w-full max-w-[1120px] px-5 sm:px-8;
+}
+
+@utility section {
+  @apply py-20 md:py-28;
+}
+
+@utility eyebrow {
+  @apply mb-4 block text-xs font-semibold uppercase tracking-[.12em] text-ember;
+}
+
+@utility display {
+  @apply font-display font-normal tracking-[-.012em] text-ink;
+}
+
+@utility lead {
+  @apply text-[17px] leading-relaxed text-muted;
+}
+
+@utility btn {
+  @apply inline-flex min-h-11 select-none items-center justify-center gap-2 rounded-lg px-4
+    text-sm font-medium transition;
+}
+
+@utility btn-primary {
+  @apply btn bg-brand text-white hover:bg-brand/90;
+}
+
+@utility btn-secondary {
+  @apply btn border border-line-strong bg-surface text-ink hover:bg-canvas;
+}
+
+@utility card {
+  @apply rounded-xl border border-line bg-surface;
+}
+
+@utility label-mono {
+  @apply font-mono text-[10px] uppercase tracking-[.12em] text-faint;
+}
+
+/*
+ * Cleavage: mica splits into stacked sheets. Evenly spaced hairlines, fading as
+ * they go down, read as that stack — and replace the generic tech dot-grid.
+ */
+@utility sheets {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    var(--color-line-strong) 0 1px,
+    transparent 1px 8px
+  );
+  mask-image: linear-gradient(to bottom, #000, transparent);
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
-  *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

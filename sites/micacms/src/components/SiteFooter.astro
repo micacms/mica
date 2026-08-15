@@ -5,14 +5,37 @@ import { getNavigation, getSite } from "@/lib/content";
 const [navigation, site] = await Promise.all([getNavigation(), getSite()]);
 ---
 
-<footer class="border-t border-white/10 bg-ink py-16 text-white">
-  <div class="mx-auto w-full max-w-[1180px] px-5 sm:px-8">
-    <div class="grid gap-14 md:grid-cols-[1fr_1.5fr]">
-      <div><Logo /><p class="mt-5 max-w-xs text-sm leading-relaxed text-white/45">{site.tagline}. Content in Git. Static output. No runtime dependency.</p><a class="mt-6 inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-1.5 font-mono text-[10px] text-white/50" href="/changelog/"><span class="inline-block h-2 w-2 rounded-full bg-accent-deep shadow-[0_0_0_4px_rgba(169,219,34,.12)]"></span> v{site.currentVersion} · Experimental</a></div>
+<footer class="border-t border-line bg-canvas">
+  {/* Bedrock: the page ends in stacked sheets, the way the mineral does. */}
+  <div class="sheets h-10 w-full" aria-hidden="true"></div>
+  <div class="wrap pb-14">
+    <div class="grid gap-12 md:grid-cols-[1fr_1.5fr]">
+      <div>
+        <Logo />
+        <p class="mt-4 max-w-xs text-sm leading-relaxed text-muted">
+          {site.tagline}. Content in Git. Static output. No runtime dependency.
+        </p>
+        <a class="mt-5 inline-flex items-center gap-2 rounded-full border border-line-strong px-3 py-1.5 font-mono text-[10px] text-muted transition hover:border-faint hover:text-ink" href="/changelog/">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-ember"></span> v{site.currentVersion} · Experimental
+        </a>
+      </div>
       <div class="grid grid-cols-2 gap-8 sm:grid-cols-3">
-        {navigation.footerGroups.map((group) => <div><h2 class="mb-4 font-mono text-[10px] uppercase tracking-[.14em] text-white/35">{group.title}</h2>{group.links.map((link) => <a class="mb-2.5 flex items-center gap-1.5 text-sm text-white/65 transition hover:text-white" href={link.href}>{link.label}{link.href.startsWith("http") && <Icon name="external" size={12} />}</a>)}</div>)}
+        {navigation.footerGroups.map((group) => (
+          <div>
+            <h2 class="label-mono mb-3">{group.title}</h2>
+            {group.links.map((link) => (
+              <a class="mb-2 flex items-center gap-1.5 text-sm text-muted transition hover:text-ink" href={link.href}>
+                {link.label}{link.href.startsWith("http") && <Icon name="external" size={12} />}
+              </a>
+            ))}
+          </div>
+        ))}
       </div>
     </div>
-    <div class="mt-14 flex flex-col gap-2 border-t border-white/10 pt-6 font-mono text-[9px] uppercase tracking-wider text-white/30 sm:flex-row sm:justify-between"><span>© {new Date().getFullYear()} MicaCMS</span><span>{navigation.footerNote}</span><span>Built with Mica + Astro</span></div>
+    <div class="mt-12 flex flex-col gap-2 border-t border-line pt-6 text-xs text-faint sm:flex-row sm:justify-between">
+      <span>© {new Date().getFullYear()} MicaCMS</span>
+      <span>{navigation.footerNote}</span>
+      <span>Built with Mica + Astro</span>
+    </div>
   </div>
 </footer>

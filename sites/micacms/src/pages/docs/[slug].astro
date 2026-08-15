@@ -14,8 +14,51 @@ const sectionLabels = { start: "Start here", build: "Build", operate: "Operate" 
 ---
 
 <BaseLayout title={entry.data.title} description={entry.data.summary}>
-  <div class="mx-auto grid min-h-screen w-full max-w-[1180px] px-5 sm:px-8 lg:grid-cols-[240px_1fr] lg:gap-16">
-    <aside class="hidden border-r border-line py-12 pr-7 lg:block"><a class="mb-8 block font-semibold text-ink" href="/docs/">Documentation</a>{(["start", "build", "operate"] as const).map((section) => <div class="mb-8"><span class="mb-2 block font-mono text-[9px] uppercase tracking-[.14em] text-muted">{sectionLabels[section]}</span>{docs.filter((doc) => doc.data.section === section).map((doc) => <a class:list={["mb-1 block rounded-md px-3 py-2 text-sm text-muted hover:bg-cream hover:text-ink", doc.id === entry.id && "bg-cream font-semibold text-ink"]} href={`/docs/${doc.id}/`}>{doc.data.title}</a>)}</div>)}</aside>
-    <article class="min-w-0 max-w-3xl py-12 md:py-20"><div class="mb-12 flex gap-2 font-mono text-[10px] text-muted"><a class="hover:text-ink" href="/docs/">Docs</a><span>/</span><span>{entry.data.title}</span></div><header class="mb-12 border-b border-line pb-10"><p class="mb-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[.14em] text-[#51710c] before:h-px before:w-6 before:bg-current">{entry.data.section}</p><h1 class="text-4xl font-semibold leading-tight tracking-[-.045em] md:text-6xl">{entry.data.title}</h1><p class="mt-5 max-w-2xl text-lg leading-relaxed text-muted">{entry.data.summary}</p><span class="mt-5 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-wider text-muted"><Icon name="clock" size={14} /> {entry.data.readTime} min read</span></header><RichText text={entry.data.body} /><nav class="mt-16 grid grid-cols-2 gap-4 border-t border-line pt-8" aria-label="Documentation pages">{previous ? <a class="rounded-lg border border-line p-4 transition hover:bg-cream" href={`/docs/${previous.id}/`}><span class="block font-mono text-[9px] uppercase tracking-wider text-muted">Previous</span><strong class="mt-1 block text-sm">← {previous.data.title}</strong></a> : <i></i>}{next && <a class="rounded-lg border border-line p-4 text-right transition hover:bg-cream" href={`/docs/${next.id}/`}><span class="block font-mono text-[9px] uppercase tracking-wider text-muted">Next</span><strong class="mt-1 block text-sm">{next.data.title} →</strong></a>}</nav></article>
+  <div class="wrap grid min-h-screen lg:grid-cols-[230px_1fr] lg:gap-14">
+    <aside class="hidden border-r border-line py-12 pr-7 lg:block">
+      <a class="mb-7 block text-sm font-medium text-ink" href="/docs/">Documentation</a>
+      {(["start", "build", "operate"] as const).map((section) => (
+        <div class="mb-7">
+          <span class="label-mono mb-2 block px-3">{sectionLabels[section]}</span>
+          {docs.filter((doc) => doc.data.section === section).map((doc) => (
+            <a
+              class:list={[
+                "mb-0.5 block rounded-md px-3 py-1.5 text-sm text-muted transition hover:bg-canvas hover:text-ink",
+                doc.id === entry.id && "bg-brand-soft font-medium !text-brand",
+              ]}
+              href={`/docs/${doc.id}/`}
+            >{doc.data.title}</a>
+          ))}
+        </div>
+      ))}
+    </aside>
+    <article class="min-w-0 max-w-3xl py-12 md:py-16">
+      <div class="mb-8 flex gap-2 text-xs text-faint">
+        <a class="transition hover:text-ink" href="/docs/">Docs</a><span>/</span><span>{entry.data.title}</span>
+      </div>
+      <header class="mb-10 border-b border-line pb-9">
+        <p class="eyebrow">{sectionLabels[entry.data.section as keyof typeof sectionLabels] ?? entry.data.section}</p>
+        <h1 class="display text-[2.2rem] leading-[1.12] md:text-[2.7rem]">{entry.data.title}</h1>
+        <p class="lead mt-4 max-w-2xl">{entry.data.summary}</p>
+        <span class="mt-5 flex items-center gap-1.5 text-xs text-faint">
+          <Icon name="clock" size={13} /> {entry.data.readTime} min read
+        </span>
+      </header>
+      <RichText text={entry.data.body} />
+      <nav class="mt-14 grid grid-cols-2 gap-4 border-t border-line pt-7" aria-label="Documentation pages">
+        {previous ? (
+          <a class="card p-4 transition hover:bg-canvas" href={`/docs/${previous.id}/`}>
+            <span class="label-mono block">Previous</span>
+            <strong class="mt-1 block text-sm font-medium text-ink">← {previous.data.title}</strong>
+          </a>
+        ) : <i></i>}
+        {next && (
+          <a class="card p-4 text-right transition hover:bg-canvas" href={`/docs/${next.id}/`}>
+            <span class="label-mono block">Next</span>
+            <strong class="mt-1 block text-sm font-medium text-ink">{next.data.title} →</strong>
+          </a>
+        )}
+      </nav>
+    </article>
   </div>
 </BaseLayout>

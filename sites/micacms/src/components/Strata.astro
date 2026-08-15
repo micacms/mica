@@ -1,0 +1,46 @@
+---
+import Icon from "./Icon.astro";
+
+/**
+ * The path from an edit to a deployed page, drawn as strata: each layer sits on
+ * the one below it and the ground gets darker with depth. The repository layer is
+ * the bedrock — everything above it is replaceable, everything below reads from it.
+ */
+const layers = [
+  { key: "EDITOR", icon: "edit", title: "Someone writes in Mica", detail: "generated forms", tone: "bg-surface" },
+  { key: "SOURCE", icon: "repository", title: "Your repository", detail: "content/", tone: "bg-canvas", bedrock: true },
+  { key: "BUILD", icon: "model", title: "Astro reads local files", detail: "getCollection()", tone: "bg-stone" },
+  { key: "OUTPUT", icon: "panels", title: "Static files on any host", detail: "HTML + CSS + assets", tone: "bg-stone" },
+];
+---
+
+<div class="overflow-hidden rounded-xl border border-line">
+  {layers.map((layer, index) => (
+    <>
+      <div class:list={["relative flex items-center gap-4 px-5 py-5 sm:px-6", layer.tone]}>
+        {layer.bedrock && <span class="absolute inset-y-0 left-0 w-[3px] bg-ember" aria-hidden="true"></span>}
+        <span class:list={[
+          "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-line",
+          layer.bedrock ? "bg-ember-soft text-ember" : "bg-paper text-muted",
+        ]}>
+          <Icon name={layer.icon} size={18} />
+        </span>
+        <div class="min-w-0">
+          <small class="label-mono block">{layer.key}</small>
+          <strong class="block text-[15px] font-medium text-ink">{layer.title}</strong>
+        </div>
+        <code class="ml-auto shrink-0 font-mono text-[11px] text-faint max-sm:hidden">{layer.detail}</code>
+      </div>
+      {index < layers.length - 1 && (
+        <div class="relative border-t border-line">
+          {index === 0 && (
+            <span class="label-mono absolute left-1/2 top-0 -translate-x-1/2 -translate-y-1/2 rounded-full border border-line bg-paper px-2.5 py-0.5">one commit</span>
+          )}
+        </div>
+      )}
+    </>
+  ))}
+  <p class="flex items-center justify-center gap-2 border-t border-line bg-paper px-5 py-3.5 text-xs text-muted">
+    <span class="text-moss"><Icon name="check" size={14} /></span> The published website never contacts Mica.
+  </p>
+</div>

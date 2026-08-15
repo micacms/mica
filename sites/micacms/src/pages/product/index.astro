@@ -2,20 +2,101 @@
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import EditorPreview from "@/components/EditorPreview.astro";
 import Icon from "@/components/Icon.astro";
+import PageHeader from "@/components/PageHeader.astro";
 import { getFeatures, getProduct } from "@/lib/content";
 const [product, features] = await Promise.all([getProduct(), getFeatures()]);
 ---
 
 <BaseLayout title="Product" description={product.summary}>
-  <section class="bg-ink bg-[linear-gradient(rgba(255,255,255,.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.025)_1px,transparent_1px)] bg-[size:48px_48px] py-24 text-white md:py-32"><div class="mx-auto w-full max-w-[1180px] px-5 sm:px-8"><p class="mb-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[.14em] text-accent before:h-px before:w-6 before:bg-current">{product.eyebrow}</p><h1 class="max-w-4xl text-5xl font-semibold leading-[.98] tracking-[-.055em] text-balance md:text-7xl">{product.title}</h1><p class="mt-7 max-w-2xl text-lg leading-relaxed text-white/60">{product.summary}</p><div class="mt-8 flex flex-wrap gap-3"><a class="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-accent px-5 text-sm font-semibold text-ink transition hover:-translate-y-px hover:bg-[#e5ff91]" href="/docs/getting-started/">Start with Mica <Icon name="arrow" size={17} /></a><a class="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg border border-white/20 bg-white/5 px-5 text-sm font-semibold text-white transition hover:border-white/35 hover:bg-white/10" href="#capabilities">See all capabilities</a></div></div></section>
+  <PageHeader eyebrow={product.eyebrow} title={product.title} lead={product.summary}>
+    <div class="mt-8 flex flex-wrap gap-3">
+      <a class="btn-primary" href="/docs/getting-started/">Start with Mica <Icon name="arrow" size={16} /></a>
+      <a class="btn-secondary" href="#capabilities">See all capabilities</a>
+    </div>
+  </PageHeader>
 
-  <section class="bg-cream py-24 md:py-32"><div class="mx-auto w-full max-w-[1180px] px-5 sm:px-8"><div class="mx-auto max-w-[700px] text-center"><p class="mb-5 flex items-center justify-center gap-3 text-xs font-semibold uppercase tracking-[.14em] text-[#51710c] before:h-px before:w-6 before:bg-current">One system, three clear views</p><h2 class="text-4xl font-semibold leading-[1.05] tracking-[-.045em] md:text-5xl">Good for the whole site team.</h2></div><div class="mt-14 grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-3">{product.audiences.map((audience, index) => <article class="bg-paper p-7 md:p-9"><span class="font-mono text-[10px] text-muted">0{index + 1}</span><h3 class="mt-14 text-xl font-semibold tracking-tight">{audience.title}</h3><p class="mt-3 text-sm leading-relaxed text-muted">{audience.text}</p></article>)}</div></div></section>
+  <section class="section border-b border-line bg-canvas">
+    <div class="wrap">
+      <div class="max-w-xl">
+        <p class="eyebrow">One system, three clear views</p>
+        <h2 class="display text-[2rem] leading-[1.15] md:text-[2.4rem]">Good for the whole site team.</h2>
+      </div>
+      <div class="mt-12 grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-3">
+        {product.audiences.map((audience) => (
+          <article class="bg-paper p-6 md:p-7">
+            <h3 class="text-lg font-semibold text-ink">{audience.title}</h3>
+            <p class="mt-2 text-sm leading-relaxed text-muted">{audience.text}</p>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
 
-  <section class="bg-[#f8f9f5] py-24 md:py-32"><div class="mx-auto w-full max-w-[1180px] px-5 sm:px-8"><div class="mb-14 grid items-end gap-8 md:grid-cols-2"><div><p class="mb-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[.14em] text-[#51710c] before:h-px before:w-6 before:bg-current">A clean work surface</p><h2 class="text-4xl font-semibold leading-[1.05] tracking-[-.045em] md:text-5xl">The model does the busy work.</h2></div><p class="max-w-lg justify-self-end text-lg leading-relaxed text-muted">Add a collection or field in code. Mica reads the new model and updates the editing interface. There is no admin screen to build and no form schema to copy.</p></div><EditorPreview /></div></section>
+  <section class="section border-b border-line bg-paper">
+    <div class="wrap">
+      <div class="grid items-end gap-8 md:grid-cols-[1fr_auto]">
+        <div class="max-w-xl">
+          <p class="eyebrow">A clean work surface</p>
+          <h2 class="display text-[2rem] leading-[1.15] md:text-[2.4rem]">The model does the busy work.</h2>
+        </div>
+        <p class="lead max-w-sm md:text-right">
+          Add a collection or field in code. Mica reads the new model and updates the editing interface — no admin screen to build, no form schema to copy.
+        </p>
+      </div>
+      <div class="mt-12"><EditorPreview /></div>
+    </div>
+  </section>
 
-  <section id="capabilities" class="bg-ink py-24 text-white md:py-32"><div class="mx-auto w-full max-w-[1180px] px-5 sm:px-8"><div class="max-w-[700px]"><p class="mb-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[.14em] text-accent before:h-px before:w-6 before:bg-current">Complete workflow</p><h2 class="text-4xl font-semibold leading-[1.05] tracking-[-.045em] md:text-5xl">Every layer has one job.</h2></div><div class="mt-14 border-t border-white/10">{features.map((feature, index) => <a class="group grid items-center gap-4 border-b border-white/10 py-6 transition hover:bg-white/[.03] sm:grid-cols-[34px_50px_1fr_1.5fr_24px]" href={`/features/${feature.id}/`}><span class="font-mono text-[10px] text-white/30">0{index + 1}</span><div class="flex h-11 w-11 items-center justify-center rounded-lg bg-white/5 text-white"><Icon name={feature.data.icon} /></div><h3 class="font-semibold">{feature.data.title}</h3><p class="text-sm text-white/45 max-sm:col-span-3 max-sm:col-start-2">{feature.data.summary}</p><span class="text-white/30 transition group-hover:translate-x-1 group-hover:text-accent"><Icon name="arrow" /></span></a>)}</div></div></section>
+  <section id="capabilities" class="section border-b border-line bg-canvas">
+    <div class="wrap">
+      <div class="max-w-xl">
+        <p class="eyebrow">Complete workflow</p>
+        <h2 class="display text-[2rem] leading-[1.15] md:text-[2.4rem]">Every layer has one job.</h2>
+      </div>
+      <div class="mt-10 border-t border-line">
+        {features.map((feature) => (
+          <a class="group grid items-center gap-3 border-b border-line py-5 transition hover:bg-paper sm:grid-cols-[46px_1fr_1.5fr_20px]" href={`/features/${feature.id}/`}>
+            <span class="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-paper text-muted transition group-hover:text-ember">
+              <Icon name={feature.data.icon} size={18} />
+            </span>
+            <h3 class="font-medium text-ink">{feature.data.title}</h3>
+            <p class="text-sm text-muted max-sm:col-span-2">{feature.data.summary}</p>
+            <span class="text-faint transition group-hover:translate-x-0.5 group-hover:text-brand max-sm:hidden"><Icon name="arrow" size={17} /></span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
 
-  <section class="bg-paper py-24 md:py-32"><div class="mx-auto grid w-full max-w-[1180px] gap-16 px-5 sm:px-8 lg:grid-cols-[.8fr_1.2fr] lg:gap-24"><div class="max-w-[700px]"><p class="mb-5 flex items-center gap-3 text-xs font-semibold uppercase tracking-[.14em] text-[#51710c] before:h-px before:w-6 before:bg-current">What runs where</p><h2 class="text-4xl font-semibold leading-[1.05] tracking-[-.045em] md:text-5xl">Small pieces with clean boundaries.</h2><p class="mt-6 text-lg leading-relaxed text-muted">The public site gets no client library. It receives the static output that Astro already makes.</p></div><div class="border-t border-line">{product.stack.map((item) => <div class="grid gap-2 border-b border-line py-5 sm:grid-cols-[1fr_1.2fr]"><code class="font-mono text-xs font-semibold">{item.name}</code><span class="text-sm text-muted">{item.role}</span></div>)}</div></div></section>
+  <section class="section border-b border-line bg-paper">
+    <div class="wrap grid gap-12 lg:grid-cols-[.85fr_1.15fr] lg:gap-20">
+      <div>
+        <p class="eyebrow">What runs where</p>
+        <h2 class="display max-w-sm text-[2rem] leading-[1.15] md:text-[2.4rem]">Small pieces with clean boundaries.</h2>
+        <p class="lead mt-5 max-w-md">
+          The public site gets no client library. It receives the static output that Astro already makes.
+        </p>
+      </div>
+      <div class="border-t border-line">
+        {product.stack.map((item) => (
+          <div class="grid gap-1 border-b border-line py-4 sm:grid-cols-[1fr_1.2fr] sm:gap-4">
+            <code class="font-mono text-xs text-ink">{item.name}</code>
+            <span class="text-sm text-muted">{item.role}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
 
-  <section class="bg-cream py-20"><div class="mx-auto grid w-full max-w-[1180px] items-center gap-7 px-5 sm:px-8 md:grid-cols-[1fr_2fr_auto]"><div class="flex items-center gap-3 text-xs text-muted"><span class="inline-block h-2 w-2 rounded-full bg-accent-deep shadow-[0_0_0_4px_rgba(169,219,34,.12)]"></span> Open source and experimental</div><h2 class="text-2xl font-semibold tracking-tight">Inspect every decision before you adopt it.</h2><a class="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-ink px-5 text-sm font-semibold text-white transition hover:-translate-y-px hover:bg-ink-soft" href="https://github.com/amuedespacher/micacms">Read the source <Icon name="arrow" size={17} /></a></div></section>
+  <section class="bg-canvas py-14">
+    <div class="wrap grid items-center gap-6 md:grid-cols-[1fr_auto]">
+      <div>
+        <p class="flex items-center gap-2 text-xs text-muted">
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-ember"></span> Open source and experimental
+        </p>
+        <h2 class="display mt-2 text-[1.5rem] leading-snug">Inspect every decision before you adopt it.</h2>
+      </div>
+      <a class="btn-secondary" href="https://github.com/amuedespacher/micacms">Read the source <Icon name="arrow" size={16} /></a>
+    </div>
+  </section>
 </BaseLayout>

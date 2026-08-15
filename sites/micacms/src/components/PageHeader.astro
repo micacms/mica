@@ -1,0 +1,14 @@
+---
+interface Props { eyebrow?: string | null; title: string; lead?: string | null; back?: { label: string; href: string }; }
+const { eyebrow, title, lead, back } = Astro.props;
+---
+
+<section class="border-b border-line bg-paper">
+  <div class="wrap py-14 md:py-20">
+    {back && <a class="mb-8 inline-flex text-sm text-muted transition hover:text-ink" href={back.href}>← {back.label}</a>}
+    {eyebrow && <p class="eyebrow">{eyebrow}</p>}
+    <h1 class="display max-w-3xl text-[2.4rem] leading-[1.1] md:text-[3rem]">{title}</h1>
+    {lead && <p class="lead mt-5 max-w-2xl">{lead}</p>}
+    <slot />
+  </div>
+</section>

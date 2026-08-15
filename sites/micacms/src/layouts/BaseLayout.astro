@@ -23,7 +23,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
-    <meta name="theme-color" content="#0d1210" />
+    <meta name="theme-color" content="#f5f2ec" />
     <title>{pageTitle}</title>
     <meta name="description" content={metaDescription} />
     <link rel="canonical" href={canonical} />
@@ -49,7 +49,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
     })} />
   </head>
   <body>
-    <a class="fixed left-4 top-4 z-[100] -translate-y-20 rounded-md bg-accent px-4 py-2 text-sm font-semibold text-ink transition focus:translate-y-0" href="#main">Skip to content</a>
+    <a class="fixed left-4 top-4 z-[100] -translate-y-20 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition focus:translate-y-0" href="#main">Skip to content</a>
     <SiteHeader />
     <main id="main"><slot /></main>
     <SiteFooter />

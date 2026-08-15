@@ -3,11 +3,12 @@ interface Props { compact?: boolean; }
 const { compact = false } = Astro.props;
 ---
 
-<a class="inline-flex items-center gap-2.5 text-lg font-bold tracking-[-.03em] text-accent" href="/" aria-label="Mica home">
-  <svg class="h-7 w-7" viewBox="0 0 34 34" aria-hidden="true">
-    <path d="M17 1.5 31.2 9.7v14.6L17 32.5 2.8 24.3V9.7z" fill="currentColor" />
-    <path d="m17 6.6 9.8 5.6v9.6L17 27.4 7.2 21.8v-9.6z" fill="var(--ink)" />
-    <path d="m17 10.5 6.4 3.7v5.6L17 23.5l-6.4-3.7v-5.6z" fill="currentColor" />
+{/* Mica cleaves into stacked sheets; the mark is three plates seen edge-on. */}
+<a class="inline-flex items-center gap-2.5 text-[17px] font-semibold tracking-[-.01em] text-ink" href="/" aria-label="Mica home">
+  <svg class="h-7 w-7" viewBox="0 0 32 32" aria-hidden="true">
+    <path d="M16 14.5 28 20 16 25.5 4 20z" fill="#211f1c" />
+    <path d="M16 9 28 14.5 16 20 4 14.5z" fill="#5d574e" />
+    <path d="M16 3.5 28 9 16 14.5 4 9z" fill="#96603a" />
   </svg>
   {!compact && <span>Mica</span>}
 </a>
