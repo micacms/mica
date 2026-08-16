@@ -65,10 +65,24 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm -r test
 
+      # Provenance is an attestation that these bytes were built by this
+      # workflow from this commit, and npm will only verify one when it can
+      # read the source repository — a private repo is rejected with a 422,
+      # after the tests have passed and while the release looks like it is
+      # working. So it is asked for exactly when it can be given, and this
+      # starts signing releases by itself on the day the repository goes
+      # public.
       - name: Publish to npm
-        run: pnpm publish --recursive --access public --no-git-checks --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [ "$PRIVATE" = "false" ]; then
+            pnpm publish --recursive --access public --no-git-checks --provenance
+          else
+            echo "::notice::Private repository — publishing without provenance."
+            pnpm publish --recursive --access public --no-git-checks
+          fi
 
       - name: Release notes from the changelog
         id: notes
