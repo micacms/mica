@@ -199,9 +199,31 @@ mandatory cloud services.
 | --- | --- |
 | `pnpm dev` | build the packages, then run the CMS against the example project |
 | `pnpm dev:site` | the example website, in a second terminal |
-| `pnpm test` | 268 tests across the model, connectors, Astro loader and CMS API |
+| `pnpm test` | 296 tests across the model, connectors, Astro loader and CMS API |
 | `pnpm typecheck` | every package, including `.vue` and `.astro` |
 | `pnpm cms:grant-access` | let an email address edit a site |
+
+### Releasing
+
+Everything here ships together under one version.
+
+```bash
+pnpm release:version 0.2.0        # writes it into all five manifests
+git commit -am "Release 0.2.0"
+git tag v0.2.0
+git push origin main --follow-tags
+```
+
+The tag is the trigger and the only one — a merge to `main` publishes nothing.
+[`.github/workflows/release.yml`](./.github/workflows/release.yml) checks the
+tag against the manifests, runs the build, the typecheck and the tests again,
+publishes the four packages to npm with provenance, and opens a GitHub release
+whose notes are the `CHANGELOG.md` section for that version. Write that section
+first: the release fails without it.
+
+The container image is built and pushed by the same workflow once the
+repository variable `PUBLISH_IMAGE` is `true` and `DOCKERHUB_USERNAME` /
+`DOCKERHUB_TOKEN` exist.
 
 Accepted trade-offs and known gaps are in [docs/decisions.md](./docs/decisions.md),
 each with what was decided, why, and what would change it. What each release
