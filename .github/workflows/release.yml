@@ -1,0 +1,112 @@
+# Publishing, from a tag.
+#
+#   pnpm release:version 0.2.0
+#   git commit -am "Release 0.2.0" && git tag v0.2.0
+#   git push origin main --follow-tags
+#
+# The tag is the trigger and the only one: nothing publishes on a merge to
+# main, so a release is a decision rather than a side effect of landing a pull
+# request.
+#
+# Everything here carries one version — three packages and the CMS — so this
+# publishes all four together or none of them.
+
+name: Release
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # the GitHub release
+  id-token: write # npm provenance
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # For an approval step before anything is published, add `environment:
+    # release` here and give that environment a required reviewer. Left off so
+    # that a first release cannot fail on a setting rather than on the code.
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      # The tag says one thing and the manifests say another exactly when
+      # somebody tags without running `release:version`. Caught here, that is a
+      # deleted tag; caught after the publish, it is a version on npm that
+      # cannot be replaced.
+      - name: Check the tag against the manifests
+        run: |
+          tag="${GITHUB_REF_NAME#v}"
+          node -e '
+            const { readVersions } = await import("./scripts/version.mjs");
+            const tag = process.argv[1];
+            const wrong = readVersions().filter((entry) => entry.version !== tag);
+            if (wrong.length === 0) process.exit(0);
+            for (const entry of wrong) {
+              console.error(`::error file=${entry.file}::${entry.file} says ${entry.version}, the tag says ${tag}`);
+            }
+            process.exit(1);
+          ' --input-type=module "$tag"
+
+      - run: pnpm install --frozen-lockfile
+
+      # The same gate a pull request passes. A tag can be pushed to a commit CI
+      # never saw — a hotfix branch, a manual tag — so the release re-runs it
+      # rather than trusting that it happened.
+      - run: pnpm build
+      - run: pnpm typecheck
+      - run: pnpm -r test
+
+      - name: Publish to npm
+        run: pnpm publish --recursive --access public --no-git-checks --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Release notes from the changelog
+        id: notes
+        run: |
+          node -e '
+            const { changelogSection } = await import("./scripts/version.mjs");
+            const notes = changelogSection(process.argv[1]);
+            if (!notes) { console.error("::error::No CHANGELOG section for this version."); process.exit(1); }
+            // Drop the heading: the release page already shows the version.
+            console.log(notes.split("\n").slice(1).join("\n").trim());
+          ' --input-type=module "${GITHUB_REF_NAME#v}" > release-notes.md
+          cat release-notes.md
+
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+
+  # The image carries the same version. Separate job so a Docker Hub outage
+  # cannot un-publish npm, and skipped entirely until the credentials exist.
+  image:
+    runs-on: ubuntu-latest
+    needs: release
+    if: vars.PUBLISH_IMAGE == 'true'
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            micacms/cms:${{ github.ref_name }}
+            micacms/cms:latest

@@ -123,7 +123,7 @@ npx @micacms/cms
 ```
 
 ```
-  ◆ Mica 0.0.4
+  ◆ Mica 0.1.0
 
   Editor     http://localhost:6422/admin/
   Content    ./content — 1 collection and 1 singleton

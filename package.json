@@ -1,6 +1,6 @@
 {
   "name": "mica",
-  "version": "0.0.4",
+  "version": "0.1.0",
   "private": true,
   "type": "module",
   "description": "Mica — a Git-native content editor for Astro websites.",
@@ -17,6 +17,8 @@
     "dev:micacms-site": "pnpm --filter @micacms/site dev",
     "typecheck": "pnpm -r typecheck",
     "test": "pnpm -r test",
+    "//release:version": "Sets the one version every manifest carries, and checks the changelog has a section for it. Pushing the tag is what publishes.",
+    "release:version": "node scripts/version.mjs",
     "cms:grant-access": "pnpm --filter @micacms/cms grant-access",
     "//cms:backup": "There is no backup script: the content is in Git, and the database holds only accounts and sessions.",
     "clean": "rm -rf node_modules apps/*/node_modules examples/*/node_modules sites/*/node_modules packages/*/node_modules packages/*/dist apps/*/dist examples/*/dist sites/*/dist"

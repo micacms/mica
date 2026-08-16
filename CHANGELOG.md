@@ -12,8 +12,35 @@ release note before upgrading.
 
 ## [Unreleased]
 
+## [0.1.0] — 2026-08-16
+
+The local experience, which is how almost everybody meets Mica first: one
+command, one address, and the editor. Three things in it break — read the
+second half before upgrading.
+
 ### Changed
 
+- **`npx @micacms/cms` talks to a person.** One banner with the address, the
+  content directory and what a save does, in place of the startup log lines and
+  the warnings that were aimed at whoever reads a container's output. It opens
+  a browser on the editor when it is run from a terminal (`--no-open` to stop
+  it), says what to do about a port that is already in use, and explains a
+  missing content directory or content model instead of only naming it.
+- **Local mode has no sign-in screen.** There was never anything to sign in
+  to — no identity provider, no password, one implicit developer — so opening
+  the editor now *is* the sign-in: the admin page issues the session as it is
+  served. No screen announcing that authentication is disabled, and no 401 on
+  the SPA's first request. The API is unchanged: a request without a session is
+  still refused, and every other mode still goes through the provider.
+- Getting started is five minutes rather than twenty, and says each thing once.
+
+### Breaking
+
+- **The default port is 6422, not 4000.** `MICA` on a telephone keypad, and
+  unassigned by IANA — 4000 is one of the numbers every other development
+  server also reaches for. A deployment that sets `PORT` is unaffected; one
+  that relied on the default must republish the port and update
+  `CMS_BASE_URL`, the OIDC redirect URI, and any reverse proxy.
 - **Astro 6 or 7 is required; Astro 5 is no longer supported.** Astro 6 moved
   content-collection schemas from Zod 3 to Zod 4 (`BaseSchema` became
   `$ZodType`), and Mica hands Astro the schemas it derives from your model. The
@@ -24,23 +51,12 @@ release note before upgrading.
   Astro now bundles.
 - **Node 22.12 or newer**, which is Astro 6's floor.
 
-- **The default port is 6422, not 4000.** `MICA` on a telephone keypad, and
-  unassigned by IANA — 4000 is one of the numbers every other development
-  server also reaches for. A deployment that sets `PORT` is unaffected; one
-  that relied on the default must republish the port and update
-  `CMS_BASE_URL`, the OIDC redirect URI, and any reverse proxy.
-- **Local mode has no sign-in screen.** There was never anything to sign in
-  to — no identity provider, no password, one implicit developer — so opening
-  the editor now *is* the sign-in: the admin page issues the session as it is
-  served. No screen announcing that authentication is disabled, and no 401 on
-  the SPA's first request. The API is unchanged: a request without a session is
-  still refused, and every other mode still goes through the provider.
-- **`npx @micacms/cms` talks to a person.** One banner with the address, the
-  content directory and what a save does, in place of the startup log lines and
-  the warnings that were aimed at whoever reads a container's output. It opens
-  a browser on the editor when it is run from a terminal (`--no-open` to stop
-  it), says what to do about a port that is already in use, and explains a
-  missing content directory or content model instead of only naming it.
+### Fixed
+
+- The Astro package's tests hung on Linux. `mkdir` with `recursive: true` never
+  settles under `/proc`, and a test used a path there to stand for a content
+  root it could not write to — so `pnpm -r test` ran until CI's timeout, on
+  every branch, while passing on macOS.
 
 ## [0.0.4] — 2026-08-14
 
