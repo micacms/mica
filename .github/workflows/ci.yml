@@ -56,6 +56,15 @@ jobs:
       - name: Assert the published content model is committed
         run: git diff --exit-code examples/muster-consulting/content/.mica/schema.json
 
+      # The public website is built here rather than only on Vercel, so that a
+      # pull request fails on a broken site before it can reach main — Vercel
+      # deploys whatever main contains, without consulting this workflow.
+      - name: Build the website
+        run: pnpm --filter @micacms/site build
+
+      - name: Assert the website's published content model is committed
+        run: git diff --exit-code sites/micacms/content/.mica/schema.json
+
   docker:
     runs-on: ubuntu-latest
     timeout-minutes: 15
