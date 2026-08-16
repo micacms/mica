@@ -82,6 +82,18 @@ vercel build --prod && vercel deploy --prebuilt --prod
 Prefer `--prebuilt` over a plain `vercel --prod`: it uploads a build you can
 inspect locally, and it does not depend on Vercel's builders being healthy.
 
+The CLI attaches the local git metadata to a deployment, and Vercel rejects one
+whose commit author it cannot match to a GitHub account — the failure surfaces as
+a deployment stuck at status `UNKNOWN` with a zero-millisecond build. Commit from
+this repository with the address your GitHub account carries:
+
+```bash
+git config --local user.email alexander@muedespacher.ch
+```
+
+Repository-local, because a global address that belongs to another forge is
+usually the right default everywhere else.
+
 ### Notes
 
 - **Node and pnpm.** The root `package.json` pins `node >=22.5.0` and
