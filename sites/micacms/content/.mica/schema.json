@@ -602,6 +602,87 @@
           }
         }
       }
+    },
+    "imprint": {
+      "type": "singleton",
+      "name": "imprint",
+      "label": "Imprint",
+      "description": "The legal notice: who is responsible for the website, and how to reach them.",
+      "fields": {
+        "eyebrow": {
+          "kind": "text",
+          "label": "Eyebrow",
+          "required": true
+        },
+        "title": {
+          "kind": "text",
+          "label": "Title",
+          "required": true
+        },
+        "lead": {
+          "kind": "textarea",
+          "label": "Lead",
+          "required": true,
+          "rows": 2
+        },
+        "entityName": {
+          "kind": "text",
+          "label": "Name",
+          "required": true,
+          "help": "The person or company answering for this website."
+        },
+        "street": {
+          "kind": "text",
+          "label": "Street and number",
+          "required": true
+        },
+        "postalCode": {
+          "kind": "text",
+          "label": "Postal code",
+          "required": true,
+          "width": "third"
+        },
+        "city": {
+          "kind": "text",
+          "label": "City",
+          "required": true,
+          "width": "third"
+        },
+        "country": {
+          "kind": "text",
+          "label": "Country",
+          "required": true,
+          "width": "third"
+        },
+        "email": {
+          "kind": "email",
+          "label": "Email",
+          "required": true
+        },
+        "sections": {
+          "kind": "repeater",
+          "label": "Further sections",
+          "itemLabel": "title",
+          "addLabel": "Add section",
+          "fields": {
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "body": {
+              "kind": "richText",
+              "label": "Text",
+              "toolbar": [
+                "bold",
+                "italic",
+                "bulletList",
+                "link"
+              ]
+            }
+          }
+        }
+      }
     }
   }
 }

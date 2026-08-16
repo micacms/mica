@@ -1,54 +1,37 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import PageHeader from "@/components/PageHeader.astro";
-import { getSite } from "@/lib/content";
-const site = await getSite();
+import RichText from "@/components/RichText.astro";
+import { getImprint } from "@/lib/content";
+const imprint = await getImprint();
 ---
 
 <BaseLayout
-  title="Imprint"
+  title={imprint.title}
   description="Who is responsible for micacms.com, and how to get in touch."
 >
-  <PageHeader
-    eyebrow="Legal notice"
-    title="Imprint"
-    lead="Who runs this website, and how to reach them."
-  />
+  <PageHeader eyebrow={imprint.eyebrow} title={imprint.title} lead={imprint.lead} />
 
   <section class="section bg-paper">
     <div class="wrap grid gap-10 md:grid-cols-[190px_1fr] md:gap-14">
       <h2 class="text-lg font-semibold text-ink">Responsible</h2>
       <div class="max-w-2xl">
         <address class="text-[15px] not-italic leading-relaxed text-ink-soft">
-          Alexander Müdespacher<br />
-          Buchholzstrasse 17<br />
-          8053 Zürich<br />
-          Switzerland
+          {imprint.entityName}<br />
+          {imprint.street}<br />
+          {imprint.postalCode} {imprint.city}<br />
+          {imprint.country}
         </address>
-        <p class="mt-5 text-[15px] text-ink-soft">
-          <a class="font-medium text-brand underline decoration-brand/30 underline-offset-4 transition hover:decoration-brand" href="mailto:alexander@muedespacher.ch">alexander@muedespacher.ch</a>
+        <p class="mt-5 text-[15px]">
+          <a class="font-medium text-brand underline decoration-brand/30 underline-offset-4 transition hover:decoration-brand" href={`mailto:${imprint.email}`}>{imprint.email}</a>
         </p>
 
-        <div class="mt-12 border-t border-line pt-10">
-          <h2 class="text-lg font-semibold text-ink">About this project</h2>
-          <p class="lead mt-3">
-            Mica is an open source project released under the MIT licence. It is
-            experimental software at v{site.currentVersion}: it is offered without
-            warranty of any kind, and it is not ready for production use. The
-            source, including the licence in full, is on
-            <a class="font-medium text-brand underline decoration-brand/30 underline-offset-4 transition hover:decoration-brand" href={site.githubUrl}>GitHub</a>.
-          </p>
-        </div>
-
-        <div class="mt-12 border-t border-line pt-10">
-          <h2 class="text-lg font-semibold text-ink">This website</h2>
-          <p class="lead mt-3">
-            micacms.com is a static website. It sets no cookies, embeds no third
-            party scripts, and collects no personal data from visitors. It is
-            hosted by Vercel Inc., which processes server request logs to deliver
-            the site.
-          </p>
-        </div>
+        {imprint.sections.map((section) => (
+          <div class="mt-12 border-t border-line pt-10">
+            <h2 class="mb-3 text-lg font-semibold text-ink">{section.title}</h2>
+            <RichText text={section.body} />
+          </div>
+        ))}
       </div>
     </div>
   </section>

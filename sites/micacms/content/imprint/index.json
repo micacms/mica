@@ -1,0 +1,15 @@
+{
+  "eyebrow": "Legal notice",
+  "title": "Imprint",
+  "lead": "Who runs this website, and how to reach them.",
+  "entityName": "Alexander Müdespacher",
+  "street": "Buchholzstrasse 17",
+  "postalCode": "8053",
+  "city": "Zürich",
+  "country": "Switzerland",
+  "email": "alexander@muedespacher.ch",
+  "sections": [
+    { "title": "About this project" },
+    { "title": "This website" }
+  ]
+}

@@ -3,6 +3,7 @@ import {
   collection,
   date,
   defineSite,
+  email,
   number,
   object,
   repeater,
@@ -209,6 +210,33 @@ export const site = defineSite({
           fields: {
             name: text({ label: "Name", required: true, width: "half" }),
             role: text({ label: "Role", required: true, width: "half" }),
+          },
+        }),
+      },
+    }),
+    imprint: singleton({
+      label: "Imprint",
+      description: "The legal notice: who is responsible for the website, and how to reach them.",
+      fields: {
+        eyebrow: text({ label: "Eyebrow", required: true }),
+        title: text({ label: "Title", required: true }),
+        lead: textarea({ label: "Lead", required: true, rows: 2 }),
+        entityName: text({ label: "Name", required: true, help: "The person or company answering for this website." }),
+        street: text({ label: "Street and number", required: true }),
+        postalCode: text({ label: "Postal code", required: true, width: "third" }),
+        city: text({ label: "City", required: true, width: "third" }),
+        country: text({ label: "Country", required: true, width: "third" }),
+        email: email({ label: "Email", required: true }),
+        sections: repeater({
+          label: "Further sections",
+          itemLabel: "title",
+          addLabel: "Add section",
+          fields: {
+            title: text({ label: "Title", required: true }),
+            body: richText({
+              label: "Text",
+              toolbar: ["bold", "italic", "bulletList", "link"],
+            }),
           },
         }),
       },
