@@ -52,40 +52,31 @@ The trailing `...` in the build command is pnpm's "and its dependencies" filter:
 it builds `@micacms/model`, then `@micacms/astro`, then this site, in that order.
 The CMS and the examples are not built.
 
-### The build runs in GitHub Actions, not on Vercel
+### Vercel's Git integration owns the deployment
 
-[`deploy-site.yml`](../../.github/workflows/deploy-site.yml) owns the deployment.
-Vercel's own Git integration is switched off (`git.deploymentEnabled: false`), so
-a push produces exactly one deployment, from CI:
+A push to `main` builds and deploys; a pull request gets a preview URL. There is
+no workflow and no token: the GitHub repository is connected to the Vercel
+project, and `vercel.json` is the whole configuration.
 
-```bash
-vercel pull --yes --environment=production   # fetch project settings
-vercel build --prod                          # compile into .vercel/output
-vercel deploy --prebuilt --prod              # upload that output as-is
-```
+The `ignoreCommand` skips the build for commits that touch neither this site, the
+packages, the lockfile, nor the Vercel config, so unrelated work on the CMS does
+not redeploy the website.
 
-`vercel build` reads the same `vercel.json`, so routes, headers and redirects are
-still defined in one place — CI only moves *where* the build happens. Pull
-requests run the same three commands without `--prod` and get a preview URL.
+Nothing here gates the deployment on CI. Protect `main` and require the `CI`
+check to pass before merge, and every commit that reaches `main` — and so every
+deployment — is one that already passed.
 
-This needs one secret, `VERCEL_TOKEN`, under **Settings → Secrets and variables →
-Actions**. The org and project ids are in the workflow in plain text; they are
-identifiers, not credentials.
-
-To deploy by hand — a first deployment, or when Actions is unavailable:
+To deploy by hand:
 
 ```bash
 vercel link --yes --scope muedespacher --project micacms
-vercel build --prod && vercel deploy --prebuilt --prod
+vercel --prod
 ```
 
-Prefer `--prebuilt` over a plain `vercel --prod`: it uploads the same output CI
-would, and it can be inspected under `.vercel/output` before it ships.
-
-The CLI attaches the local git metadata to a deployment, and Vercel rejects one
-whose commit author it cannot match to a GitHub account — the failure surfaces as
-a deployment stuck at status `UNKNOWN` with a zero-millisecond build. Commit from
-this repository with the address your GitHub account carries:
+Vercel rejects a deployment whose commit author it cannot match to a GitHub
+account, and reports it as a deployment stuck at status `UNKNOWN` with a
+zero-millisecond build rather than as an authorship error. Commit from this
+repository with the address your GitHub account carries:
 
 ```bash
 git config --local user.email alexander@muedespacher.ch
