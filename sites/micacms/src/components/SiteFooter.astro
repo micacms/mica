@@ -33,7 +33,10 @@ const [navigation, site] = await Promise.all([getNavigation(), getSite()]);
       </div>
     </div>
     <div class="mt-12 flex flex-col gap-2 border-t border-line pt-6 text-xs text-faint sm:flex-row sm:justify-between">
-      <span>© {new Date().getFullYear()} MicaCMS</span>
+      <span>
+        © {new Date().getFullYear()} MicaCMS ·
+        <a class="transition hover:text-ink" href="/imprint/">Imprint</a>
+      </span>
       <span>{navigation.footerNote}</span>
       <span>Built with Mica + Astro</span>
     </div>

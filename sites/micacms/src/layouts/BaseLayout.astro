@@ -1,4 +1,5 @@
 ---
+import DevelopmentBanner from "@/components/DevelopmentBanner.astro";
 import SiteFooter from "@/components/SiteFooter.astro";
 import SiteHeader from "@/components/SiteHeader.astro";
 import { getSite } from "@/lib/content";
@@ -50,6 +51,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
   </head>
   <body>
     <a class="fixed left-4 top-4 z-[100] -translate-y-20 rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white transition focus:translate-y-0" href="#main">Skip to content</a>
+    <DevelopmentBanner />
     <SiteHeader />
     <main id="main"><slot /></main>
     <SiteFooter />
