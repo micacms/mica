@@ -21,7 +21,7 @@ pnpm --filter @micacms/cms build
 node apps/cms/dist/server/cli.js --content sites/micacms/content
 ```
 
-Open `http://localhost:4000/admin/`. Local mode has no authentication and listens only on the local computer.
+Open `http://localhost:6422/admin/`. Local mode has no authentication and listens only on the local computer.
 
 The content model is in `src/mica.ts`. Mica-managed content is in `content/`. An Astro build writes `content/.mica/schema.json`; commit that file after each model change.
 

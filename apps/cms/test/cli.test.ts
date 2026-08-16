@@ -16,7 +16,8 @@ import { describe, it } from "node:test";
 
 import { MANIFEST_PATH } from "@micacms/model";
 
-import { cacheDir, parse } from "../src/server/cli.js";
+import { cacheDir, parse, shouldOpenBrowser } from "../src/server/cli.js";
+import { DEFAULT_PORT } from "../src/server/lib/ports.js";
 
 const CLI = path.resolve(import.meta.dirname, "../src/server/cli.ts");
 
@@ -54,6 +55,28 @@ describe("arguments", () => {
     assert.equal(options.host, "0.0.0.0");
     assert.equal(options.data, "./tmp");
   });
+
+  it("takes an explicit answer about the browser, and otherwise has none", () => {
+    assert.equal(parse([]).open, undefined);
+    assert.equal(parse(["--open"]).open, true);
+    assert.equal(parse(["--no-open"]).open, false);
+  });
+});
+
+describe("opening a browser", () => {
+  const options = (open?: boolean) => ({ content: "./content", ...(open === undefined ? {} : { open }) });
+
+  it("is for a person at a terminal, not for a script or a CI job", () => {
+    // `shouldOpenBrowser` reads the real stdout for interactivity, which is not
+    // a terminal under the test runner — the same answer a pipe would get.
+    assert.equal(shouldOpenBrowser(options(), {}), false);
+    assert.equal(shouldOpenBrowser(options(), { CI: "true" }), false);
+  });
+
+  it("does what it was told, whatever the terminal looks like", () => {
+    assert.equal(shouldOpenBrowser(options(true), { CI: "true" }), true);
+    assert.equal(shouldOpenBrowser(options(false), {}), false);
+  });
 });
 
 describe("where the database goes", () => {
@@ -76,7 +99,10 @@ describe("running it", () => {
 
     assert.equal(result.status, 0);
     assert.match(result.stdout, /--content/);
-    assert.match(result.stdout, /Authentication is DISABLED/);
+    // The port is one number in one place, and the help is one of its readers.
+    assert.match(result.stdout, new RegExp(String(DEFAULT_PORT)));
+    // Nobody should have to deduce that this mode has no authentication.
+    assert.match(result.stdout, /no sign-in here/i);
   });
 
   it("prints its version", () => {
@@ -98,6 +124,8 @@ describe("running it", () => {
 
     assert.equal(result.status, 64);
     assert.match(result.stderr, /definitely-not-here/);
+    // And says what that directory is, rather than only that it is missing.
+    assert.match(result.stderr, /npx @micacms\/cms \.\/path\/to\/content/);
   });
 
   it("says how to publish a model when the project has not", () => {
@@ -107,7 +135,7 @@ describe("running it", () => {
     const result = run([], project);
 
     assert.equal(result.status, 78, "EX_CONFIG");
-    assert.match(result.stderr, /No content model/);
+    assert.match(result.stderr, /no content model/i);
     // The fix is in the Astro project, not in Mica's configuration.
     assert.match(result.stderr, /astro build/);
   });

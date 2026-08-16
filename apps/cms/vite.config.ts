@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import vue from "@vitejs/plugin-vue";
 import { defineConfig } from "vite";
 
-const API_TARGET = process.env.CMS_DEV_API ?? "http://localhost:4000";
+const API_TARGET = process.env.CMS_DEV_API ?? "http://localhost:6422";
 
 export default defineConfig({
   // Served under /admin/ by the Hono app, so assets must be requested from there.

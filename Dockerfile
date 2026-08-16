@@ -60,7 +60,7 @@ RUN apk add --no-cache tini
 ENV NODE_ENV=production \
     DATA_DIR=/data \
     HOST=0.0.0.0 \
-    PORT=4000
+    PORT=6422
 
 WORKDIR /app
 
@@ -87,12 +87,12 @@ USER node
 WORKDIR /app/apps/cms
 
 VOLUME ["/data"]
-EXPOSE 4000
+EXPOSE 6422
 
 # Reads from SQLite *and* reaches the content repository, so this detects a
 # broken database or an unreachable repository — not merely a live event loop.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||4000)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||6422)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "dist/server/index.js"]

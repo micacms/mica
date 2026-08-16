@@ -7,7 +7,7 @@
  * the same entry point a container runs, so there is one server with one
  * configuration path and this is a front door rather than a second one.
  *
- * Two defaults differ from the container's, and both are deliberate:
+ * Three defaults differ from the container's, and all three are deliberate:
  *
  *   - it binds to loopback. The server binds 0.0.0.0 because a container has
  *     to; a laptop does not, and this mode disables authentication. Anything
@@ -16,6 +16,10 @@
  *   - accounts and sessions go to a cache directory outside the project. In
  *     local mode there is one implicit developer and nothing worth keeping, so
  *     writing a database into somebody's repository would be litter.
+ *   - it talks to a person instead of to a log collector: one short banner
+ *     saying where the editor is and what happens when you save, and the
+ *     browser opened on it. `MICA_CLI` is how the server is told which of the
+ *     two audiences it has.
  *
  * Explicit environment wins over every flag default here, and a flag wins over
  * a `.env` file, because `loadConfig` leaves already-set variables alone.
@@ -29,6 +33,7 @@ import { pathToFileURL } from "node:url";
 
 import { MANIFEST_PATH } from "@micacms/model";
 
+import { DEFAULT_PORT } from "./lib/ports.js";
 import { VERSION } from "./lib/version.js";
 
 export interface Options {
@@ -36,25 +41,29 @@ export interface Options {
   port?: string;
   host?: string;
   data?: string;
+  /** Undefined means "decide from the terminal" — see `shouldOpenBrowser`. */
+  open?: boolean;
 }
 
 const USAGE = `
-  mica — edit a project's content locally
+  mica — edit your Astro project's content, on this machine
 
   Usage
-    $ npx @micacms/cms [options]
+    $ npx @micacms/cms [content directory]
 
   Options
     -c, --content <dir>   The content root (default: ./content)
-    -p, --port <number>   Port to listen on (default: 4000)
+    -p, --port <number>   Port to listen on (default: ${DEFAULT_PORT})
         --host <address>  Address to bind (default: 127.0.0.1)
         --data <dir>      Where accounts and sessions are kept
+        --no-open         Do not open the browser
     -h, --help            Show this
     -v, --version         Print the version
 
-  Authentication is DISABLED here: every request is one developer account.
-  That is right for your own machine and wrong everywhere else — to deploy
-  Mica, run the container with an identity provider instead.
+  There is no sign-in here, because there is nothing to sign in to: this mode
+  has no identity provider and makes every request one developer account. That
+  is right for your own machine and wrong everywhere else — a Mica other people
+  reach runs as a container with an identity provider. See docs/self-hosting.md.
 `;
 
 export function parse(argv: string[]): Options {
@@ -83,6 +92,12 @@ export function parse(argv: string[]): Options {
       case "--data":
         options.data = value();
         break;
+      case "--open":
+        options.open = true;
+        break;
+      case "--no-open":
+        options.open = false;
+        break;
       case "-h":
       case "--help":
         process.stdout.write(`${USAGE}\n`);
@@ -104,9 +119,30 @@ export function parse(argv: string[]): Options {
   return options;
 }
 
+/**
+ * A problem the person can fix, said the way a person reads.
+ *
+ * The title is the fact, the lines under it are what to do about it. Anything
+ * printed here has already decided the command is over: the caller exits.
+ */
+function report(title: string, lines: string[]): void {
+  const body = lines.map((line) => (line ? `  ${line}` : "")).join("\n");
+  process.stderr.write(`\n  ${title}\n\n${body}\n\n`);
+}
+
 function fail(message: string): never {
-  process.stderr.write(`\n${message}\n${USAGE}\n`);
+  report(message, ["Run `npx @micacms/cms --help` to see every option."]);
   process.exit(64); // EX_USAGE
+}
+
+/**
+ * Opening a browser is a courtesy, so it is offered only where it can be
+ * welcome: an interactive terminal that somebody is sitting at. A script, a
+ * container and a CI job all get a server and no surprises.
+ */
+export function shouldOpenBrowser(options: Options, env: NodeJS.ProcessEnv): boolean {
+  if (options.open !== undefined) return options.open;
+  return Boolean(process.stdout.isTTY) && !env["CI"];
 }
 
 /**
@@ -136,21 +172,29 @@ export async function main(): Promise<void> {
   const content = path.resolve(options.content);
 
   if (!existsSync(content)) {
-    fail(
-      `No content directory at ${content}.\n` +
-        `  Point --content at the directory your Astro project publishes,\n` +
-        `  or create it and let Mica write the first entry.`,
-    );
+    report(`There is no content directory at ${content}.`, [
+      "Mica edits the directory your Astro project publishes content into —",
+      "the `root` in your `defineSite({ root: \"./content\" })`.",
+      "",
+      "  npx @micacms/cms ./path/to/content",
+      "",
+      "If this is a new project, create the directory and Mica writes the first",
+      "entry into it.",
+    ]);
+    process.exit(64); // EX_USAGE
   }
 
   // A far more useful message than the server's, because here we know the
   // project is on this machine and can name the command that fixes it.
   if (!existsSync(path.join(content, MANIFEST_PATH))) {
-    process.stderr.write(
-      `\nNo content model at ${path.join(content, MANIFEST_PATH)}.\n` +
-        `  Mica ships without one: your Astro project defines it and writes it there.\n` +
-        `  Run \`npx astro build\` (or start the dev server once) in that project first.\n\n`,
-    );
+    report(`There is no content model at ${path.join(content, MANIFEST_PATH)}.`, [
+      "Mica ships without one: your Astro project defines the model, and building",
+      "the project writes it there. Run this in the project, then start Mica again:",
+      "",
+      "  npx astro build        # or start the dev server once",
+      "",
+      "If you have not defined a model yet, docs/getting-started.md is five minutes.",
+    ]);
     process.exit(78); // EX_CONFIG
   }
 
@@ -159,8 +203,12 @@ export async function main(): Promise<void> {
     REPOSITORY: "local",
     MICA_MODE: "local",
     HOST: options.host ?? "127.0.0.1",
-    PORT: options.port ?? "4000",
+    PORT: options.port ?? String(DEFAULT_PORT),
     DATA_DIR: options.data ? path.resolve(options.data) : cacheDir(content),
+    // Tells the server it is talking to a person: one banner instead of the
+    // startup log lines a collector wants.
+    MICA_CLI: "true",
+    MICA_OPEN: String(shouldOpenBrowser(options, process.env)),
   };
 
   for (const [key, value] of Object.entries(defaults)) {

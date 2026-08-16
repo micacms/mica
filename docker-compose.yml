@@ -48,8 +48,8 @@ services:
 
     ports:
       # Bound to loopback: put a reverse proxy in front for TLS. Change to
-      # "4000:4000" only if the host itself is not reachable from the internet.
-      - "127.0.0.1:4000:4000"
+      # "6422:6422" only if the host itself is not reachable from the internet.
+      - "127.0.0.1:6422:6422"
 
     volumes:
       # Accounts and sessions. Not the website — that is in the repository, and
@@ -66,7 +66,7 @@ services:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:4000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        - "fetch('http://127.0.0.1:6422/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       interval: 30s
       timeout: 5s
       retries: 3

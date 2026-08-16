@@ -102,7 +102,7 @@ describe("deployment modes", () => {
     );
 
     // ...and allows the hosts that are this machine.
-    for (const url of ["http://localhost:4000", "http://127.0.0.1:4000"]) {
+    for (const url of ["http://localhost:6422", "http://127.0.0.1:6422"]) {
       assert.doesNotThrow(() => loadConfig({ ...base, MICA_MODE: "local", CMS_BASE_URL: url }));
     }
   });

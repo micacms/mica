@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
@@ -131,6 +132,82 @@ describe("authentication", () => {
     // ...managing people is not.
     const forbidden = await harness.request("/api/admin/users", { session });
     assert.equal(forbidden.status, 403);
+  });
+});
+
+/**
+ * The local experience, which is the one almost everybody meets first: `npx
+ * @micacms/cms`, a link, and the editor. No sign-in screen, because there is
+ * no identity provider to send anybody to and therefore no question to ask.
+ */
+describe("opening the editor in local mode", () => {
+  /** A stand-in for the built SPA: `adminSpaRoutes` mounts on `index.html`. */
+  function fakeAdminBuild(): string {
+    const directory = mkdtempSync(join(tmpdir(), "mica-test-admin-"));
+    writeFileSync(join(directory, "index.html"), "<!doctype html><title>Mica</title>");
+    return directory;
+  }
+
+  it("signs the developer in while serving the page", async () => {
+    const harness = await createHarness({}, { adminDir: fakeAdminBuild() });
+
+    const page = await harness.request("/admin/");
+    assert.equal(page.status, 200);
+
+    const cookies = page.headers.getSetCookie();
+    const session = cookies.find((value) => value.startsWith("mica_session="));
+    assert.ok(session, "the page load is the sign-in");
+
+    // And the session it issued is a real one: the SPA's first request
+    // succeeds, so it never renders a sign-in screen.
+    const me = await harness.request("/api/auth/me", {
+      headers: { cookie: session.split(";")[0]! },
+    });
+
+    assert.equal(me.status, 200);
+    const body = (await me.json()) as { user: { email: string; role: string } };
+    assert.equal(body.user.email, "developer@localhost");
+    assert.equal(body.user.role, "admin");
+
+    await harness.close();
+  });
+
+  it("issues one session, not one per page load", async () => {
+    const harness = await createHarness({}, { adminDir: fakeAdminBuild() });
+
+    const first = await harness.request("/admin/");
+    const cookie = first.headers.getSetCookie()[0]!.split(";")[0]!;
+
+    const second = await harness.request("/admin/", { headers: { cookie } });
+    assert.deepEqual(second.headers.getSetCookie(), []);
+
+    await harness.close();
+  });
+
+  it("changes nothing about the API: no session is still no access", async () => {
+    const harness = await createHarness({}, { adminDir: fakeAdminBuild() });
+
+    const response = await harness.request("/api/admin/schema");
+    assert.equal(response.status, 401);
+
+    await harness.close();
+  });
+
+  it("does not happen where there is an identity provider to ask", async () => {
+    const harness = await createHarness(
+      {
+        MICA_MODE: "self-hosted",
+        OIDC_ISSUER: "https://id.example.com",
+        OIDC_CLIENT_ID: "mica",
+      },
+      { adminDir: fakeAdminBuild() },
+    );
+
+    const page = await harness.request("/admin/");
+    assert.equal(page.status, 200);
+    assert.deepEqual(page.headers.getSetCookie(), []);
+
+    await harness.close();
   });
 });
 

@@ -4,7 +4,24 @@
 > still change without notice. Try it, but do not depend on it for anything
 > you cannot afford to redo. Use it at your own risk.
 
-Add Mica to an Astro project and edit its content locally. Twenty minutes.
+Add Mica to an Astro project and edit its content locally. Five minutes.
+
+---
+
+## The short version
+
+Four commands and one file. Sections 1–5 are the same thing, slowly.
+
+```bash
+npm install @micacms/astro @micacms/model
+# write src/mica.ts and src/content.config.ts — see step 2 and step 3
+npx astro build          # publishes the model to content/.mica/schema.json
+npx @micacms/cms         # opens the editor
+```
+
+The last command prints one address and opens your browser on it. There is no
+account to create, no password to type and no sign-in screen: on your own
+machine Mica opens straight into the editor.
 
 ---
 
@@ -127,15 +144,29 @@ it after a model change.
 npx @micacms/cms
 ```
 
-That is the whole local setup. It reads `./content`, serves the editor on
-<http://localhost:4000/admin/>, and binds to loopback only. Point it somewhere
-else with `npx @micacms/cms --content ./site/content`, and see `--help` for the
-rest.
+That is the whole local setup:
 
-There is no account to create and no password to type: local mode disables
-authentication entirely and signs you in as a developer account — which is why
-Mica refuses to start that way in production, or on any host but this one. The
-terminal says so on every start.
+```
+  ◆ Mica 0.0.4
+
+  Editor     http://localhost:6422/admin/
+  Content    ./content — 1 collection and 1 singleton
+  Saving     writes files into that directory. Commit them like any other change.
+```
+
+It reads `./content`, serves the editor on
+<http://localhost:6422/admin/>, opens your browser on it, and binds to loopback
+only. Point it somewhere else with `npx @micacms/cms ./site/content`, keep the
+browser shut with `--no-open`, and see `--help` for the rest. The port is
+Mica's own — nothing else you are likely to be running wants 6422, so it does
+not collide with `astro dev` beside it.
+
+**There is no sign-in.** Not a skipped one: local mode has no identity provider,
+so there is nothing to ask and nobody to ask it of, and opening the editor is
+the whole of it. Every request is one developer account with administrator
+rights — which is why Mica refuses to start this way in production, or on any
+host but this one, and why a Mica other people reach is a container with an
+identity provider in front of it.
 
 Nothing is written into your repository. Accounts and sessions go to a cache
 directory outside the project, because in local mode there is one implicit
@@ -200,8 +231,12 @@ away from a static host. See [self-hosting.md](./self-hosting.md).
 
 ## When something is wrong
 
-**"No content model at …/.mica/schema.json".**
+**"There is no content model at …/.mica/schema.json".**
 Step 4 was skipped, or the file was never committed to the branch Mica reads.
+
+**"Port 6422 is already in use".**
+Another Mica, almost certainly. Stop it, or run this one on
+`npx @micacms/cms --port 6423`.
 
 **The admin shows collections you removed, or is missing one you added.**
 The model in the repository is stale: re-run the build, commit, restart Mica.

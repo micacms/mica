@@ -130,12 +130,12 @@ it cannot inject a script into the built site.
 ## Running it
 
 ```bash
-npx @micacms/cms          # reads ./content, editor on localhost:4000/admin/
+npx @micacms/cms          # reads ./content, opens the editor on localhost:6422/admin/
 ```
 
 | | |
 | --- | --- |
-| **Locally** | The command above. Loopback only, no identity provider, no accounts, no passwords, nothing written into your repository — see [getting-started](./docs/getting-started.md) |
+| **Locally** | The command above. Loopback only, no identity provider, no accounts, no passwords, no sign-in screen, nothing written into your repository — see [getting-started](./docs/getting-started.md) |
 | **On a server** | One container, an OIDC provider, a token for the repository — see [self-hosting](./docs/self-hosting.md) |
 
 Deployed, Mica authenticates with **OpenID Connect** and nothing else. No

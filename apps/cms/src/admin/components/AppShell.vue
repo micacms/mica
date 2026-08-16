@@ -35,6 +35,12 @@ const initials = computed(() => {
   );
 });
 
+/**
+ * Hidden in local mode. There is no session to end: the next page load signs
+ * the developer straight back in, so the button could only ever look broken.
+ */
+const canSignOut = computed(() => !(auth.config.value?.authDisabled ?? false));
+
 async function signOut(): Promise<void> {
   await auth.signOut();
   await router.push({ name: "login" });
@@ -137,7 +143,12 @@ async function signOut(): Promise<void> {
           </span>
         </RouterLink>
 
-        <button type="button" class="btn-ghost mt-1 w-full justify-start" @click="signOut">
+        <button
+          v-if="canSignOut"
+          type="button"
+          class="btn-ghost mt-1 w-full justify-start"
+          @click="signOut"
+        >
           Sign out
         </button>
       </div>
