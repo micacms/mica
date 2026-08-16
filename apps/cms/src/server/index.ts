@@ -31,7 +31,9 @@ async function main(): Promise<void> {
   // The repository comes first, because the content model is in it. Mica holds
   // no model of its own: the Astro project writes one into the content root and
   // the developer commits it, so reading it is a repository read like any other.
-  const db = openDatabase(config.databasePath, { logger });
+  // `quiet` under the CLI: the banner is that audience's whole startup story,
+  // and it cannot be printed until the schema has been read.
+  const db = openDatabase(config.databasePath, { logger, quiet: config.MICA_CLI });
   const connector = createConnector(config, db);
 
   // A bad or absent model is a deployment mistake rather than a crash: exit the

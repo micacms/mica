@@ -12,6 +12,16 @@ release note before upgrading.
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-08-16
+
+### Fixed
+
+- The first start in a new project put a database line above the banner:
+  `info  Applied database migrations`. Migrations run before there is anything
+  to put in a banner, so it won the race — on the one start where the first
+  line a person reads matters most. The CLI now asks for that announcement at
+  debug; a container's output still gets it at info.
+
 ## [0.1.0] — 2026-08-16
 
 The local experience, which is how almost everybody meets Mica first: one
