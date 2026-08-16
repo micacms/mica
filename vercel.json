@@ -6,6 +6,14 @@
   "outputDirectory": "sites/micacms/dist",
   "trailingSlash": true,
   "ignoreCommand": "git diff --quiet HEAD^ HEAD -- sites/micacms packages pnpm-lock.yaml vercel.json",
+  "redirects": [
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.micacms.com" }],
+      "destination": "https://micacms.com/$1",
+      "permanent": true
+    }
+  ],
   "headers": [
     {
       "source": "/_astro/(.*)",
