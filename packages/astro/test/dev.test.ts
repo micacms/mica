@@ -186,14 +186,33 @@ describe("publishing the model", () => {
   });
 
   it("does not fail a build over a content root it cannot write to", async () => {
-    const context = createContext("/proc/nonexistent");
-    const collections = micaCollections(site);
+    /**
+     * A *file* standing where the project root should be. Every `mkdir` below
+     * it fails with ENOTDIR — on every platform, and for every user including
+     * root in a container, which is what a permission bit cannot promise.
+     *
+     * It used to be `/proc/nonexistent`, which is unwritable on Linux and
+     * absent on macOS. On Linux it is worse than unwritable: `mkdir` with
+     * `recursive: true` never settles there, so this test hung the suite on
+     * CI and passed at home.
+     */
+    const dir = await mkdtemp(join(tmpdir(), "mica-dev-"));
 
-    // The read fails too, and that one is fatal — but the model must have
-    // warned rather than thrown before it got there.
-    await collections.projects.loader.load(context).catch(() => {});
+    try {
+      const file = join(dir, "not-a-directory");
+      await writeFile(file, "", "utf8");
 
-    assert.ok(context.logs.some((line) => line.startsWith("warn:")));
+      const context = createContext(file);
+      const collections = micaCollections(site);
+
+      // The read fails too, and that one is fatal — but the model must have
+      // warned rather than thrown before it got there.
+      await collections.projects.loader.load(context).catch(() => {});
+
+      assert.ok(context.logs.some((line) => line.startsWith("warn:")));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });
 
