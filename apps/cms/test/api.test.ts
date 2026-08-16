@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, defineSite, slug, text } from "@micacms/model";
+import { collection, defineSite, number, slug, text } from "@micacms/model";
 
 import {
   ADMIN_EMAIL,
@@ -420,6 +420,55 @@ describe("content", () => {
   it("404s for an entry that is not in the repository", async () => {
     const { response } = await get("never-existed");
     assert.equal(response.status, 404);
+  });
+
+  /**
+   * `defaultSort` described an order for a long time without producing one:
+   * nothing read the option, so a collection came back in whatever order its
+   * directory was read in.
+   */
+  it("lists entries in the order the model asks for", async () => {
+    const sorted = await createHarness(
+      {},
+      {
+        site: defineSite({
+          collections: {
+            news: collection({
+              label: "News",
+              defaultSort: { field: "year", direction: "desc" },
+              fields: {
+                title: text({ required: true }),
+                slug: slug({ from: "title" }),
+                year: number({ integer: true }),
+              },
+            }),
+          },
+        }),
+      },
+    );
+    sorted.addMember({ email: ADMIN_EMAIL, role: "admin" });
+    const sortedSession = await sorted.signIn();
+
+    for (const [title, year] of [["Oldest", 2019], ["Newest", 2026], ["Middle", 2022]] as const) {
+      await sorted.request("/api/admin/collections/news/entries", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ data: { title, year } }),
+        session: sortedSession,
+      });
+    }
+
+    const response = await sorted.request("/api/admin/collections/news/entries", {
+      session: sortedSession,
+    });
+    const body = (await response.json()) as { items: Array<{ title: string }> };
+
+    assert.deepEqual(
+      body.items.map((item) => item.title),
+      ["Newest", "Middle", "Oldest"],
+    );
+
+    await sorted.close();
   });
 
   /**

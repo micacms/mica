@@ -11,6 +11,7 @@ import {
   defaultValues,
   defineSite,
   email,
+  compareEntries,
   entryTitle,
   media,
   ModelError,
@@ -261,6 +262,124 @@ describe("defineSite", () => {
           },
         }),
       ModelError,
+    );
+  });
+
+  /**
+   * The mistake this catches was made three times in this repository, in two
+   * projects, because the old fixed list of sort fields outlived the database
+   * columns it named.
+   */
+  it("rejects a default sort by a field the collection does not have", () => {
+    assert.throws(
+      () =>
+        defineSite({
+          collections: {
+            news: collection({
+              label: "News",
+              defaultSort: { field: "publishedAt", direction: "desc" },
+              fields: { title: text(), slug: slug(), publishDate: date() },
+            }),
+          },
+        }),
+      // The message names the fields there *are*, because the cause is almost
+      // always a near-miss on one of them.
+      (error: unknown) =>
+        error instanceof ModelError && /publishedAt.*publishDate/s.test(error.message),
+    );
+  });
+
+  it("accepts a default sort by a declared field, or by hand-arranged position", () => {
+    const fields = { title: text(), slug: slug(), publishDate: date() };
+
+    for (const field of ["publishDate", "title", "position"]) {
+      assert.doesNotThrow(() =>
+        defineSite({
+          collections: {
+            news: collection({ label: "News", defaultSort: { field, direction: "desc" }, fields }),
+          },
+        }),
+      );
+    }
+  });
+});
+
+describe("listing order", () => {
+  const news = collection({
+    label: "News",
+    defaultSort: { field: "publishDate", direction: "desc" },
+    fields: { title: text(), slug: slug(), publishDate: date() },
+  });
+
+  const entry = (position: number, publishDate: string | null) => ({
+    position,
+    data: { title: `#${position}`, publishDate },
+  });
+
+  it("sorts by the field the collection names", () => {
+    const entries = [
+      entry(0, "2026-01-01"),
+      entry(1, "2026-08-16"),
+      entry(2, "2026-03-01"),
+    ];
+
+    assert.deepEqual(
+      [...entries].sort(compareEntries(news)).map((e) => e.data.publishDate),
+      ["2026-08-16", "2026-03-01", "2026-01-01"],
+    );
+  });
+
+  it("puts entries with no value last, whichever way it is sorting", () => {
+    const entries = [entry(0, null), entry(1, "2026-01-01"), entry(2, "2026-08-16")];
+
+    const descending = [...entries].sort(compareEntries(news)).map((e) => e.data.publishDate);
+    assert.deepEqual(descending, ["2026-08-16", "2026-01-01", null]);
+
+    const ascending = [...entries]
+      .sort(compareEntries({ ...news, defaultSort: { field: "publishDate", direction: "asc" } }))
+      .map((e) => e.data.publishDate);
+
+    // Not first, which is what a plain comparison would have done — an unfilled
+    // date is not the oldest date.
+    assert.deepEqual(ascending, ["2026-01-01", "2026-08-16", null]);
+  });
+
+  it("breaks ties on the hand-arranged order, so a list does not shuffle", () => {
+    const sameDay = [entry(2, "2026-08-16"), entry(0, "2026-08-16"), entry(1, "2026-08-16")];
+
+    assert.deepEqual(
+      [...sameDay].sort(compareEntries(news)).map((e) => e.position),
+      [0, 1, 2],
+    );
+  });
+
+  it("falls back to that order when the collection asks for nothing", () => {
+    const plain = collection({ label: "Pages", fields: { title: text(), slug: slug() } });
+    const entries = [entry(2, null), entry(0, null), entry(1, null)];
+
+    assert.deepEqual(
+      [...entries].sort(compareEntries(plain)).map((e) => e.position),
+      [0, 1, 2],
+    );
+  });
+
+  it("compares numbers as numbers", () => {
+    const projects = collection({
+      label: "Projects",
+      defaultSort: { field: "year", direction: "desc" },
+      fields: { title: text(), slug: slug(), year: number() },
+    });
+
+    const entries = [
+      { position: 0, data: { year: 9 } },
+      { position: 1, data: { year: 100 } },
+      { position: 2, data: { year: 20 } },
+    ];
+
+    // As strings, "9" would have sorted above "100".
+    assert.deepEqual(
+      [...entries].sort(compareEntries(projects)).map((e) => e.data.year),
+      [100, 20, 9],
     );
   });
 });

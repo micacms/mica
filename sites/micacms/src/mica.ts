@@ -89,7 +89,7 @@ export const site = defineSite({
       label: "Releases",
       labelSingular: "Release",
       description: "Product changes shown on the public changelog.",
-      defaultSort: { field: "publishedAt", direction: "desc" },
+      defaultSort: { field: "publishDate", direction: "desc" },
       fields: {
         title: text({ label: "Title", required: true, listed: true }),
         slug: slug({ label: "URL", from: "title" }),

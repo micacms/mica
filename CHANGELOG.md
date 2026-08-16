@@ -12,6 +12,26 @@ release note before upgrading.
 
 ## [Unreleased]
 
+### Changed
+
+- **`defaultSort` now orders the entry list, and its field is checked.** It
+  described an order for a long time without producing one: nothing read the
+  option, so a collection opened in whatever order its directory happened to be
+  read in. Now the admin lists entries the way the model asks — by a field, or
+  by the position editors arranged by hand — with the manual order as the
+  tiebreak, so a list is stable between requests.
+- **`SortField` is `"position"` or a field the collection declares**, in place
+  of the fixed set `createdAt | updatedAt | publishedAt | title | position`.
+  Three of those were columns in a database Mica no longer has: they
+  type-checked and meant nothing, which is how both projects in this repository
+  came to sort by a `publishedAt` that no collection declared. `defineSite` now
+  refuses a sort field the collection does not have, and names the ones it has.
+
+  A model already committed with such a value keeps working: Mica drops the
+  option when it reads the manifest and falls back to the manual order, rather
+  than refusing to serve a site over the order of a list. The project's next
+  build reports it properly.
+
 ## [0.1.1] — 2026-08-16
 
 ### Fixed

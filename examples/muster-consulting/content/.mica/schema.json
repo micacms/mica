@@ -132,7 +132,7 @@
       "labelSingular": "Project",
       "description": "Reference projects shown in the portfolio.",
       "defaultSort": {
-        "field": "publishedAt",
+        "field": "year",
         "direction": "desc"
       },
       "fields": {
@@ -261,7 +261,7 @@
       "label": "News",
       "labelSingular": "Article",
       "defaultSort": {
-        "field": "publishedAt",
+        "field": "publishDate",
         "direction": "desc"
       },
       "fields": {
