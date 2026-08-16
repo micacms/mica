@@ -14,6 +14,16 @@ release note before upgrading.
 
 ### Changed
 
+- **Astro 6 or 7 is required; Astro 5 is no longer supported.** Astro 6 moved
+  content-collection schemas from Zod 3 to Zod 4 (`BaseSchema` became
+  `$ZodType`), and Mica hands Astro the schemas it derives from your model. The
+  loader contract itself did not change, so 6 and 7 are one code path — the
+  break is at 5. Stay on `@micacms/astro@0.0.4` if you are on Astro 5; your
+  content is files either way.
+- **Zod 4** in `@micacms/model`, `@micacms/astro` and the CMS, to match what
+  Astro now bundles.
+- **Node 22.12 or newer**, which is Astro 6's floor.
+
 - **The default port is 6422, not 4000.** `MICA` on a telephone keypad, and
   unassigned by IANA — 4000 is one of the numbers every other development
   server also reaches for. A deployment that sets `PORT` is unaffected; one

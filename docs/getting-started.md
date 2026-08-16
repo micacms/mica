@@ -7,8 +7,8 @@ Add Mica to an Astro project and edit its content on your machine. Five minutes.
 
 ## Before you start
 
-- Node 22.5 or newer — `node --version`
-- An Astro 5 project — a new one (`npm create astro@latest`) or one you have
+- Node 22.12 or newer — `node --version`
+- An Astro 6 or 7 project — a new one (`npm create astro@latest`) or one you have
 - A Git repository for that project
 
 ## The short version

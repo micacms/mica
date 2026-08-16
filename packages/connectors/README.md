@@ -45,4 +45,4 @@ numeric id — in place of `owner` and `repo`.
 npm install @micacms/connectors
 ```
 
-Requires Node 22.5 or newer. Licence: MIT.
+Requires Node 22.12 or newer. Licence: MIT.

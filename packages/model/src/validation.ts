@@ -83,7 +83,7 @@ function innerSchema(
   mode: SchemaMode,
   key: string,
   options: SchemaOptions,
-): z.ZodTypeAny {
+): z.ZodType {
   const name = label(field, key);
 
   switch (field.kind) {
@@ -112,7 +112,7 @@ function innerSchema(
     }
 
     case "number": {
-      let schema = z.number({ invalid_type_error: `${name} must be a number.` }).finite();
+      let schema = z.number({ error: `${name} must be a number.` }).finite();
       if (field.integer) schema = schema.int();
       if (field.min !== undefined) schema = schema.min(field.min);
       if (field.max !== undefined) schema = schema.max(field.max);
@@ -124,18 +124,18 @@ function innerSchema(
 
     case "date": {
       const schema = field.includeTime
-        ? z.string().datetime({ offset: true, message: `${name} must be an ISO 8601 timestamp.` })
+        ? z.iso.datetime({ offset: true, error: `${name} must be an ISO 8601 timestamp.` })
         : z.string().regex(CALENDAR_DATE, `${name} must be a date (YYYY-MM-DD).`);
       return schema.superRefine((value, ctx) => {
         if (Number.isNaN(Date.parse(value))) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${name} is not a valid date.` });
+          ctx.addIssue({ code: "custom", message: `${name} is not a valid date.` });
           return;
         }
         if (field.min && value < field.min) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${name} must be on or after ${field.min}.` });
+          ctx.addIssue({ code: "custom", message: `${name} must be on or after ${field.min}.` });
         }
         if (field.max && value > field.max) {
-          ctx.addIssue({ code: z.ZodIssueCode.custom, message: `${name} must be on or before ${field.max}.` });
+          ctx.addIssue({ code: "custom", message: `${name} must be on or before ${field.max}.` });
         }
       });
     }
@@ -209,7 +209,7 @@ function fieldSchema(
   mode: SchemaMode,
   key: string,
   options: SchemaOptions,
-): z.ZodTypeAny {
+): z.ZodType {
   const name = label(field, key);
   const inner = innerSchema(field, mode, key, options);
 
@@ -243,7 +243,7 @@ function fieldSchema(
  * removing a field from the model quietly retires it from existing payloads
  * instead of failing every entry written before the change.
  *
- * Returns a `ZodObject` rather than a bare `ZodTypeAny` so callers can `.extend`
+ * Returns a `ZodObject` rather than a bare `ZodType` so callers can `.extend`
  * it; the Astro integration adds entry metadata that way.
  */
 export function fieldsSchema(
@@ -251,7 +251,9 @@ export function fieldsSchema(
   mode: SchemaMode = "storage",
   options: SchemaOptions = {},
 ): z.ZodObject<z.ZodRawShape> {
-  const shape: z.ZodRawShape = {};
+  // Built as a mutable record: Zod 4's `ZodRawShape` is readonly, and it is the
+  // shape `z.object` accepts rather than the one a caller assembles.
+  const shape: Record<string, z.ZodType> = {};
   for (const [key, field] of Object.entries(fields)) {
     shape[key] = fieldSchema(field, mode, key, options);
   }

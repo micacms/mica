@@ -17,7 +17,7 @@
     "access": "public"
   },
   "engines": {
-    "node": ">=22.5.0"
+    "node": ">=22.12.0"
   },
   "bin": {
     "mica": "./dist/server/cli.js"
@@ -47,7 +47,7 @@
     "hono": "^4.6.20",
     "image-size": "^1.2.0",
     "openid-client": "^6.8.5",
-    "zod": "^3.25.76"
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
