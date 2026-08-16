@@ -7,7 +7,7 @@
 #
 # That keeps one source of truth (vercel.json) while making the deployment a
 # step in CI: it runs on the same checkout CI verified, its logs sit beside the
-# other jobs, and a stalled Vercel builder cannot hold up a release.
+# other jobs, and the build is reproducible on any machine with the repository.
 #
 # Vercel's own Git integration is switched off in vercel.json, so a push
 # produces this deployment and no other. The `paths` filters below are what

@@ -79,8 +79,8 @@ vercel link --yes --scope muedespacher --project micacms
 vercel build --prod && vercel deploy --prebuilt --prod
 ```
 
-Prefer `--prebuilt` over a plain `vercel --prod`: it uploads a build you can
-inspect locally, and it does not depend on Vercel's builders being healthy.
+Prefer `--prebuilt` over a plain `vercel --prod`: it uploads the same output CI
+would, and it can be inspected under `.vercel/output` before it ships.
 
 The CLI attaches the local git metadata to a deployment, and Vercel rejects one
 whose commit author it cannot match to a GitHub account — the failure surfaces as
