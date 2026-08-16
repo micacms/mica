@@ -1,6 +1,6 @@
 {
   "name": "@micacms/model",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "type": "module",
   "description": "Content model DSL and authoring format for Mica. Single source of truth for types, validation, editor forms, the on-disk format and Astro collection schemas.",
   "license": "MIT",

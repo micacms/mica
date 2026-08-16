@@ -13,6 +13,17 @@ export type { SqlDatabase } from "./driver.js";
 
 export interface OpenDatabaseOptions extends SqliteOptions {
   logger?: Logger;
+  /**
+   * Say it at debug rather than info.
+   *
+   * The `npx` front door prints one banner and nothing else, but migrations
+   * run before there is anything to put in a banner — so on the first start in
+   * a new project, and only then, a database line beat it to the terminal.
+   * That is the one start where the first line a person reads matters most.
+   *
+   * Whoever is reading a container's output still gets it at info.
+   */
+  quiet?: boolean;
 }
 
 export function openDatabase(filename: string, options: OpenDatabaseOptions = {}): SqlDatabase {
@@ -23,11 +34,14 @@ export function openDatabase(filename: string, options: OpenDatabaseOptions = {}
   const db = openSqlite(filename, options);
   const { applied, currentVersion } = migrate(db);
 
-  if (applied.length > 0) {
-    options.logger?.info("Applied database migrations", {
+  if (applied.length > 0 && options.logger) {
+    const line = {
       count: applied.length,
       versions: applied.map((migration) => migration.version),
-    });
+    };
+
+    if (options.quiet) options.logger.debug("Applied database migrations", line);
+    else options.logger.info("Applied database migrations", line);
   }
   options.logger?.debug("Database ready", { filename, schemaVersion: currentVersion });
 
