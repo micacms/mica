@@ -26,7 +26,7 @@ import { ApiError, badRequest, notFound } from "../lib/errors.js";
 import { actorOf, type Env } from "../http.js";
 
 const saveSchema = z.object({
-  data: z.record(z.unknown()),
+  data: z.record(z.string(), z.unknown()),
   slug: z.string().max(120).optional(),
   /**
    * The revision the editor opened. `null` asserts the entry did not exist,

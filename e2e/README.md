@@ -10,7 +10,7 @@ and the container as it would actually be deployed.
 docker compose -f e2e/compose.yml up --build
 ```
 
-Then open <http://localhost:4000/admin/>.
+Then open <http://localhost:6422/admin/>.
 
 > Deliberately insecure and deliberately local: plain HTTP, a committed client
 > secret, one-word passwords. It is a test rig, not an example deployment.
@@ -70,7 +70,7 @@ the transcript below is the shape:
 ```bash
 # 1. Mica starts the flow.
 AUTH=$(curl -s -o /dev/null -c jar -w '%{redirect_url}' \
-  http://localhost:4000/api/auth/login)
+  http://localhost:6422/api/auth/login)
 
 # 2. Keycloak's login page — scrape the form action.
 FORM=$(curl -s -b jar -c jar "$AUTH" \
@@ -84,7 +84,7 @@ CB=$(curl -s -o /dev/null -b jar -c jar -w '%{redirect_url}' \
 curl -s -o /dev/null -b jar -c jar -w '%{redirect_url}\n' "$CB"
 
 # 5. Who are we?
-curl -s -b jar http://localhost:4000/api/auth/me
+curl -s -b jar http://localhost:6422/api/auth/me
 ```
 
 ---

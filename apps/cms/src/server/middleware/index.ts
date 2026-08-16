@@ -37,8 +37,18 @@ export function requestContext(ctx: Env["Variables"]["ctx"]): MiddlewareHandler<
       duration,
     };
 
+    /**
+     * "Am I signed in?" — "No."
+     *
+     * `/auth/me` is the SPA's first request on every page load, and a 401 is
+     * one of its two correct answers, not a rejection worth a warning. Logging
+     * it as one puts a scary line in the terminal of everybody who has simply
+     * opened the editor while signed out.
+     */
+    const expected401 = c.res.status === 401 && line.path === "/api/auth/me";
+
     if (c.res.status >= 500) logger.error("Request failed", line);
-    else if (c.res.status >= 400) logger.warn("Request rejected", line);
+    else if (c.res.status >= 400 && !expected401) logger.warn("Request rejected", line);
     else logger.debug("Request", line);
   };
 }

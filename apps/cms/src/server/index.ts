@@ -8,7 +8,10 @@ import { createApp } from "./app.js";
 import { ConfigError, loadConfig } from "./config.js";
 import { createConnector, createContext } from "./context.js";
 import { openDatabase } from "./db/index.js";
+import { portInUse, startupBanner, supportsColor } from "./lib/banner.js";
 import { createLogger } from "./lib/logger.js";
+import { openInBrowser } from "./lib/open.js";
+import { VERSION } from "./lib/version.js";
 import { loadSchema, schemaFingerprint, schemaOrigin, SchemaError } from "./schema.js";
 
 async function main(): Promise<void> {
@@ -48,7 +51,11 @@ async function main(): Promise<void> {
   const ctx = createContext({ config, site, db, connector, logger });
 
   const devSecrets = (config as { devSecrets?: string[] }).devSecrets ?? [];
-  if (devSecrets.length > 0) {
+  // Not said under the CLI: there, the database is a cache directory that gets
+  // thrown away anyway, and "your ephemeral secret is ephemeral" is a warning
+  // about nothing. A deployment being one restart from signing everyone out is
+  // a different matter, and still warned about.
+  if (devSecrets.length > 0 && !config.MICA_CLI) {
     logger.warn("Using generated development secrets", {
       missing: devSecrets,
       note: "Sessions reset on restart. Set these before deploying.",
@@ -73,6 +80,35 @@ async function main(): Promise<void> {
   const fingerprint = await schemaFingerprint(site);
 
   const server = serve({ fetch: app.fetch, hostname: config.HOST, port: config.PORT }, (info) => {
+    /**
+     * Two audiences, one event.
+     *
+     * The person who just typed a command gets an address and three facts; a
+     * log collector gets every field. Saying both would mean saying the same
+     * thing twice in two registers, so the front door picks one.
+     */
+    if (config.MICA_CLI) {
+      const useColor = supportsColor(process.stdout, process.env);
+
+      process.stdout.write(
+        startupBanner(
+          {
+            version: VERSION,
+            url: config.CMS_BASE_URL,
+            contentRoot: connector.origin,
+            collections: Object.keys(site.collections).length,
+            singletons: Object.keys(site.singletons).length,
+            dataDir: config.dataDir,
+            writesToWorkingTree: config.REPOSITORY === "local",
+          },
+          useColor,
+        ),
+      );
+
+      if (config.MICA_OPEN) openInBrowser(`${config.CMS_BASE_URL}/admin/`);
+      return;
+    }
+
     /**
      * Said every time, at warn level, and never suppressed.
      *
@@ -103,6 +139,19 @@ async function main(): Promise<void> {
       schemaFingerprint: fingerprint,
       collections: Object.keys(site.collections).length,
     });
+  });
+
+  /**
+   * A busy port is the most likely way a first run fails, and `EADDRINUSE` on
+   * its own says neither which port nor what to do instead.
+   */
+  server.on("error", (error: NodeJS.ErrnoException) => {
+    if (error.code !== "EADDRINUSE") throw error;
+
+    process.stderr.write(
+      portInUse(config.PORT, config.HOST, supportsColor(process.stderr, process.env)),
+    );
+    process.exit(1);
   });
 
   let shuttingDown = false;

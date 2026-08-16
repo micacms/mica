@@ -11,12 +11,14 @@
  * nothing more; the `memberships` table is the gate, and an unknown person
  * hits it.
  *
- * In local mode there is no provider and no authentication at all — see
- * `signInLocalDeveloper`. The config layer refuses that mode anywhere it could
- * be reached by someone else.
+ * In local mode there is no provider and no authentication at all, and no
+ * route here to reach either: serving the admin page signs the developer in
+ * (see `services/sign-in.ts`), so nobody meets a sign-in screen on their own
+ * machine. `/login` still works, for a bookmark that predates the session. The
+ * config layer refuses that mode anywhere it could be reached by someone else.
  */
 
-import { Hono, type Context } from "hono";
+import { Hono } from "hono";
 import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
 import { ApiError } from "../lib/errors.js";
@@ -25,18 +27,13 @@ import { requireAuth } from "../middleware/index.js";
 import { DEFAULT_SITE_ID } from "../repositories/sites.js";
 import type { AppContext } from "../context.js";
 import { CSRF_COOKIE, SESSION_COOKIE } from "../services/session.js";
+import { establishSession, signInLocalDeveloper } from "../services/sign-in.js";
 import {
   openTransaction,
   sealTransaction,
   TRANSACTION_COOKIE,
   type OidcClaims,
 } from "../services/oidc.js";
-
-/** The implicit identity local mode signs everything in as. */
-export const LOCAL_DEVELOPER = {
-  email: "developer@localhost",
-  name: "Local developer",
-} as const;
 
 /**
  * Turns a set of claims into a signed-in user.
@@ -84,46 +81,6 @@ function resolveUser(ctx: AppContext, claims: OidcClaims): string {
   }
 
   return userId;
-}
-
-/** Issues the session cookies for a user who has just been identified. */
-function establishSession(c: Context<Env>, userId: string): void {
-  const ctx = c.get("ctx");
-
-  // Session fixation: discard whatever identifier the client already holds.
-  ctx.services.sessions.destroy(getCookie(c, SESSION_COOKIE));
-
-  const { cookie, csrfToken } = ctx.services.sessions.create({
-    userId,
-    ip: clientIp(c),
-    userAgent: c.req.header("user-agent") ?? null,
-  });
-
-  ctx.repositories.users.recordLogin(userId);
-
-  setCookie(c, SESSION_COOKIE, cookie, ctx.services.sessions.sessionCookieOptions());
-  setCookie(c, CSRF_COOKIE, csrfToken, ctx.services.sessions.csrfCookieOptions());
-}
-
-/**
- * Local mode: the developer account, created on demand.
- *
- * There is no credential because there is nothing to check. This is only ever
- * reached when `MICA_MODE=local`, which the config layer refuses in production
- * and refuses on any host but this one.
- */
-function signInLocalDeveloper(ctx: AppContext): string {
-  const { users, memberships } = ctx.repositories;
-
-  const user =
-    users.findByEmail(LOCAL_DEVELOPER.email) ??
-    users.create({ email: LOCAL_DEVELOPER.email, name: LOCAL_DEVELOPER.name });
-
-  if (!memberships.find(DEFAULT_SITE_ID, user.id)) {
-    memberships.grant({ siteId: DEFAULT_SITE_ID, userId: user.id, role: "admin" });
-  }
-
-  return user.id;
 }
 
 /** Only ever a path on this server, so the callback cannot be an open redirect. */

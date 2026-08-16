@@ -31,9 +31,14 @@ npx @micacms/cms --content ./content
 
 The published package carries the API and the built admin, so this is one
 command and no clone. It sets `MICA_MODE=local` (no identity provider, no
-authentication), binds to **loopback** rather than `0.0.0.0`, and keeps
-accounts and sessions in a cache directory outside the project — three defaults
-that differ from the container's, because a laptop is not a deployment.
+authentication), binds to **loopback** rather than `0.0.0.0`, keeps accounts and
+sessions in a cache directory outside the project, and prints a banner instead
+of startup log lines before opening a browser on the editor — four defaults that
+differ from the container's, because a laptop is not a deployment.
+
+Serving the admin page is also where local mode signs somebody in: there is no
+provider to ask, so the page load is the sign-in and the SPA never sees a 401.
+The API is untouched by this — a request without a session is still refused.
 
 Everything else it does is set environment variables and hand over to
 `src/server/index.ts`, so there is one server with one configuration path.
@@ -48,7 +53,7 @@ pnpm build:packages
 cd apps/cms
 cp .env.example .env
 
-pnpm dev                               # API on :4000, admin on :5173
+pnpm dev                               # API on :6422, admin on :5173
 ```
 
 `REPOSITORY=local` and `CONTENT_ROOT=../../examples/muster-consulting/content`
@@ -65,7 +70,8 @@ repository at `.mica/schema.json`, which the Astro project publishes and the
 developer commits — identically in development and in production. If it is not
 there, the server says so and exits.
 
-Then open <http://localhost:5173/admin/> and sign in.
+Then open <http://localhost:5173/admin/>. There is no sign-in to do: local mode
+has no identity provider, so the editor opens directly.
 
 `pnpm dev` runs the API and the Vite dev server together. Vite proxies `/api` to
 the API so the session cookie stays same-origin; the API still needs
@@ -75,7 +81,7 @@ the API so the session cookie stays same-origin; the API still needs
 To run the production shape instead — one process serving both:
 
 ```bash
-pnpm build && pnpm start               # everything on :4000
+pnpm build && pnpm start               # everything on :6422
 ```
 
 ## Giving somebody access

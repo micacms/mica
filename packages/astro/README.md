@@ -94,4 +94,4 @@ that wants to render with its own components.
 npm install @micacms/astro
 ```
 
-Astro 5 is a peer dependency. Requires Node 22.5 or newer. Licence: MIT.
+Astro 6 or 7 is a peer dependency. Requires Node 22.12 or newer. Licence: MIT.

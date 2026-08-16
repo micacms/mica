@@ -15,6 +15,7 @@ import { Readable } from "node:stream";
 import { Hono, type Context } from "hono";
 
 import type { Env } from "../http.js";
+import { signInLocalDeveloperOnPageLoad } from "../services/sign-in.js";
 
 const CONTENT_TYPES: Record<string, string> = {
   ".html": "text/html; charset=utf-8",
@@ -82,7 +83,15 @@ export function adminSpaRoutes(directory: string): Hono<Env> {
       }
     }
 
-    // Any other path belongs to the client-side router.
+    /**
+     * Any other path belongs to the client-side router — and, in local mode,
+     * this is where sign-in happens. Opening the editor on your own machine is
+     * the whole of it: there is no provider to ask, so the alternative is a
+     * screen with one button on it. Cheap: it is a session lookup, and a write
+     * only on the first page load after a restart.
+     */
+    signInLocalDeveloperOnPageLoad(c);
+
     try {
       return await send(c, path.join(root, "index.html"), false);
     } catch {

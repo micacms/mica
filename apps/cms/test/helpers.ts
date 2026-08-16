@@ -24,7 +24,7 @@ import { createContext, type AppContext } from "../src/server/context.js";
 import { openTestDatabase } from "../src/server/db/index.js";
 import { createLogger } from "../src/server/lib/logger.js";
 
-export const TEST_ORIGIN = "http://localhost:4000";
+export const TEST_ORIGIN = "http://localhost:6422";
 
 /** A deliberately small model, so assertions stay readable. */
 export const testSite = defineSite({
@@ -100,7 +100,10 @@ export async function createHarness(
   overrides: Partial<NodeJS.ProcessEnv> = {},
   // The model is normally `testSite`; a test overrides it to check what the
   // server does when two deployments disagree about the content model.
-  options: { site?: Site } = {},
+  //
+  // `adminDir` is for the few tests that care about the admin page itself
+  // rather than the API — serving it is where local mode signs somebody in.
+  options: { site?: Site; adminDir?: string } = {},
 ): Promise<TestHarness> {
   const contentRoot = mkdtempSync(join(tmpdir(), "mica-test-content-"));
 
@@ -123,7 +126,7 @@ export async function createHarness(
   });
 
   // No admin build in the test tree; point at a directory that cannot exist.
-  const app = createApp(ctx, { adminDir: "/nonexistent" });
+  const app = createApp(ctx, { adminDir: options.adminDir ?? "/nonexistent" });
 
   const harness: TestHarness = {
     ctx,

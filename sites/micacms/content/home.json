@@ -2,7 +2,7 @@
   "heroEyebrow": "A focused CMS for Astro teams",
   "heroTitle": "Give editors forms. Keep everything in Git.",
   "heroSummary": "Mica turns your content model into a clean editing interface. Every save becomes readable JSON, Markdoc, and media in your repository. Your Astro build stays static and independent.",
-  "primaryCta": { "label": "Start in 20 minutes", "href": "/docs/getting-started/" },
+  "primaryCta": { "label": "Start in five minutes", "href": "/docs/getting-started/" },
   "secondaryCta": { "label": "View on GitHub", "href": "https://github.com/amuedespacher/micacms" },
   "stats": [
     { "value": "0", "label": "content records in Mica", "note": "Files stay in Git" },

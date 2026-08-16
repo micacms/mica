@@ -1,11 +1,11 @@
-Mica adds an editing interface to an Astro project. The website still reads local files and builds to static output.
+Mica adds an editing interface to an Astro project. The website keeps reading local files and builds to static output.
 
 > Mica is experimental and pre-1.0. Its API and content format can change. Use it for work that you can update as the project changes.
 
 ## What you need
 
-- Node 22.5 or newer
-- An Astro 5 project
+- Node 22.12 or newer
+- An Astro 6 or 7 project
 - A Git repository for the project
 
 ## 1. Install the packages
@@ -16,7 +16,7 @@ npm install @micacms/astro @micacms/model
 
 ## 2. Define a content model
 
-Create `src/mica.ts`. The model is a plain TypeScript module and does not import Astro.
+Create `src/mica.ts`. The model is plain TypeScript and imports nothing from Astro.
 
 ```ts
 import { collection, defineSite, richText, slug, text } from "@micacms/model";
@@ -47,7 +47,7 @@ import { site } from "./mica";
 export const collections = micaCollections(site);
 ```
 
-Nothing goes in `astro.config`. Start the Astro dev server once. The loader creates `content/.mica/schema.json`. Commit this file because it tells Mica what your project can edit.
+`astro.config` stays as it is. Start the Astro dev server once. The loader writes `content/.mica/schema.json`. Commit that file: it tells Mica what your project can edit.
 
 ## 4. Start Mica
 
@@ -55,7 +55,9 @@ Nothing goes in `astro.config`. Start the Astro dev server once. The loader crea
 npx @micacms/cms
 ```
 
-Open `http://localhost:4000/admin/`. Local mode uses no account or password and listens only on the local computer.
+The command prints the address and opens your browser on `http://localhost:6422/admin/`.
+
+The editor opens directly. On your machine Mica runs without an identity provider, so there is no account and no password to create. It listens on the local computer only, and refuses to run this way on a server.
 
 ## 5. Render the content
 
@@ -70,4 +72,4 @@ const news = await getCollection("news");
 {news.map((article) => <h2>{article.data.title}</h2>)}
 ```
 
-Run `git diff` after an editor saves. You will see the complete content change as JSON, Markdoc, and media files.
+Run `git diff` after a save. The whole content change is there as JSON, Markdoc and media files.

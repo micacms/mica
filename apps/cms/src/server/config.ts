@@ -10,11 +10,19 @@ import { randomBytes } from "node:crypto";
 import path from "node:path";
 import { z } from "zod";
 
+import { DEFAULT_BASE_URL, DEFAULT_PORT } from "./lib/ports.js";
+
+/**
+ * `.default` takes the *output* value in Zod 4, and short-circuits: an absent
+ * variable returns the boolean without going through the transform. That is the
+ * behaviour wanted here, and stating the fallback as a boolean is also what
+ * makes the type check — `.default("true")` was a string on a boolean schema.
+ */
 const bool = (fallback: boolean) =>
   z
     .enum(["true", "false", "1", "0"])
     .transform((value) => value === "true" || value === "1")
-    .default(fallback ? "true" : "false");
+    .default(fallback);
 
 const schema = z
   .object({
@@ -37,10 +45,21 @@ const schema = z
     MICA_MODE: z.enum(["local", "self-hosted", "cloud"]).default("local"),
 
     HOST: z.string().default("0.0.0.0"),
-    PORT: z.coerce.number().int().min(1).max(65535).default(4000),
+    PORT: z.coerce.number().int().min(1).max(65535).default(DEFAULT_PORT),
 
     /** Public origin of the CMS itself. Used for cookies, CORS and media URLs. */
-    CMS_BASE_URL: z.string().url().default("http://localhost:4000"),
+    CMS_BASE_URL: z.string().url().default(DEFAULT_BASE_URL),
+
+    /**
+     * Set by `npx @micacms/cms`, and by nothing else.
+     *
+     * The audience for the startup output: a person at a terminal gets one
+     * banner, a log collector gets the structured lines. Neither is a mode —
+     * everything else about the server is identical.
+     */
+    MICA_CLI: bool(false),
+    /** Whether that front door should open a browser once it is listening. */
+    MICA_OPEN: bool(false),
 
     /**
      * The content repository this Mica serves, when it reaches it as a working
