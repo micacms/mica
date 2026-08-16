@@ -1,6 +1,6 @@
 # micacms.com
 
-The public MicaCMS website. It is an Astro 5 static site and uses Mica for its own content.
+The public MicaCMS website. It is an Astro 7 static site and uses Mica for its own content.
 
 ## Run the website
 
@@ -87,7 +87,7 @@ usually the right default everywhere else.
 
 ### Notes
 
-- **Node and pnpm.** The root `package.json` pins `node >=22.5.0` and
+- **Node and pnpm.** The root `package.json` pins `node >=22.12.0` and
   `pnpm@11.3.0`. Since the build runs in Actions, the runner's `setup-node` and
   `pnpm/action-setup` decide the versions, not Vercel's builder.
 - **`SITE_URL`.** Unset, the canonical URL is `https://micacms.com`, which is

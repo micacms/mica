@@ -2,6 +2,6 @@
   "title": "Getting started",
   "slug": "getting-started",
   "section": "start",
-  "summary": "Add Mica to an Astro 5 project and open the local editor.",
+  "summary": "Add Mica to an Astro 6 or 7 project and open the local editor.",
   "readTime": 5
 }

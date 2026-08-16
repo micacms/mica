@@ -12,11 +12,17 @@ import { z } from "zod";
 
 import { DEFAULT_BASE_URL, DEFAULT_PORT } from "./lib/ports.js";
 
+/**
+ * `.default` takes the *output* value in Zod 4, and short-circuits: an absent
+ * variable returns the boolean without going through the transform. That is the
+ * behaviour wanted here, and stating the fallback as a boolean is also what
+ * makes the type check — `.default("true")` was a string on a boolean schema.
+ */
 const bool = (fallback: boolean) =>
   z
     .enum(["true", "false", "1", "0"])
     .transform((value) => value === "true" || value === "1")
-    .default(fallback ? "true" : "false");
+    .default(fallback);
 
 const schema = z
   .object({

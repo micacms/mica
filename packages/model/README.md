@@ -56,4 +56,4 @@ group. Zod is generated from the DSL, not the other way round.
 npm install @micacms/model
 ```
 
-Requires Node 22.5 or newer. Licence: MIT.
+Requires Node 22.12 or newer. Licence: MIT.
