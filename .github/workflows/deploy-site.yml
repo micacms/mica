@@ -1,0 +1,134 @@
+# Builds and deploys micacms.com.
+#
+# The build runs here, not on Vercel. `vercel build` compiles the project into
+# `.vercel/output` exactly as the platform would — reading vercel.json for the
+# build command, routes, headers and redirects — and `--prebuilt` uploads that
+# output instead of asking Vercel to build it again.
+#
+# That keeps one source of truth (vercel.json) while making the deployment a
+# step in CI: it runs on the same checkout CI verified, its logs sit beside the
+# other jobs, and a stalled Vercel builder cannot hold up a release.
+#
+# Vercel's own Git integration is switched off in vercel.json, so a push
+# produces this deployment and no other. The `paths` filters below are what
+# decide when to deploy; they replace the ignoreCommand that vercel.json used
+# to carry, which only ever ran on Vercel-side builds.
+
+name: Deploy website
+
+on:
+  push:
+    branches: [main]
+    # Repeated under pull_request: GitHub Actions does not support YAML anchors.
+    paths:
+      - "sites/micacms/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "vercel.json"
+      - ".github/workflows/deploy-site.yml"
+
+  pull_request:
+    paths:
+      - "sites/micacms/**"
+      - "packages/**"
+      - "pnpm-lock.yaml"
+      - "vercel.json"
+      - ".github/workflows/deploy-site.yml"
+
+  workflow_dispatch:
+
+concurrency:
+  # A burst of edits should produce one deployment, not a queue of them.
+  group: deploy-site-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    env:
+      # The CLI reads all three from the environment, so no token is ever
+      # interpolated into a shell command. The two ids are identifiers rather
+      # than secrets: they name the project the token is allowed to act on.
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: team_QAPiIB9E72BsEvlrubN6Rso5
+      VERCEL_PROJECT_ID: prj_iIk6d6YKIVts6Tuy3tHYTet6Frgj
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - name: Fail early when the token is missing
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "::error::VERCEL_TOKEN is not set. Add it under Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+      # Pinned: the CLI decides how vercel.json compiles into routes, so an
+      # unattended major bump would change deployed behaviour, not just tooling.
+      - name: Install the Vercel CLI
+        run: pnpm add --global vercel@50
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Choose the target environment
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            echo "environment=preview" >> "$GITHUB_OUTPUT"
+            echo "flag=" >> "$GITHUB_OUTPUT"
+          else
+            echo "environment=production" >> "$GITHUB_OUTPUT"
+            echo "flag=--prod" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Pull the project settings
+        run: vercel pull --yes --environment=${{ steps.target.outputs.environment }}
+
+      # Runs the build command from vercel.json: model, then astro, then site.
+      - name: Build
+        run: vercel build ${{ steps.target.outputs.flag }}
+
+      # The Astro build republishes the content model. A diff here means someone
+      # changed a collection and did not commit the result, which would leave
+      # the deployed Mica serving the previous model.
+      - name: Assert the published content model is committed
+        run: git diff --exit-code sites/micacms/content/.mica/schema.json
+
+      - name: Deploy
+        id: deploy
+        run: |
+          url=$(vercel deploy --prebuilt ${{ steps.target.outputs.flag }})
+          echo "url=$url" >> "$GITHUB_OUTPUT"
+          echo "Deployed ${{ steps.target.outputs.environment }} to $url" >> "$GITHUB_STEP_SUMMARY"
+
+      # A deployment that does not answer is not a deployment. Production is
+      # checked through the domain, because the alias is the part that can be
+      # wrong while the build is right.
+      - name: Check that it answers
+        run: |
+          target='${{ steps.deploy.outputs.url }}'
+          if [ "${{ steps.target.outputs.environment }}" = "production" ]; then
+            target="https://micacms.com"
+          fi
+
+          for i in $(seq 1 10); do
+            status=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 "$target/" || echo 000)
+            if [ "$status" = "200" ]; then
+              echo "$target/ answered 200."
+              exit 0
+            fi
+            echo "Attempt $i: $status"
+            sleep 6
+          done
+
+          echo "::error::$target/ never answered 200."
+          exit 1
