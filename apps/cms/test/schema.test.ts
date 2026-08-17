@@ -109,6 +109,37 @@ describe("checkSchema", () => {
     // "people" does not exist; defineSite catches it and checkSchema reports it.
     assert.throws(() => checkSchema(raw), /unknown collection "people"/);
   });
+
+  /**
+   * Every model committed before the sort field was checked can contain one of
+   * these — the old fixed list offered `publishedAt`, and no collection ever
+   * had a field by that name. Refusing to serve a site over the order of a
+   * list would be out of proportion to the mistake.
+   */
+  it("drops a default sort by an absent field rather than refusing the model", () => {
+    const raw = validSite();
+    (raw.collections.pages as Record<string, unknown>)["defaultSort"] = {
+      field: "publishedAt",
+      direction: "desc",
+    };
+
+    const site = checkSchema(raw);
+
+    assert.equal(site.collections["pages"]?.defaultSort, undefined);
+  });
+
+  it("keeps a default sort that names a real field", () => {
+    const raw = validSite();
+    (raw.collections.pages as Record<string, unknown>)["defaultSort"] = {
+      field: "title",
+      direction: "asc",
+    };
+
+    assert.deepEqual(checkSchema(raw).collections["pages"]?.defaultSort, {
+      field: "title",
+      direction: "asc",
+    });
+  });
 });
 
 describe("loadSchema", () => {

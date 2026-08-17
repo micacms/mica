@@ -136,7 +136,7 @@ export const site = defineSite({
       label: "Projects",
       labelSingular: "Project",
       description: "Reference projects shown in the portfolio.",
-      defaultSort: { field: "publishedAt", direction: "desc" },
+      defaultSort: { field: "year", direction: "desc" },
       fields: {
         title: text({
           label: "Title",
@@ -212,7 +212,7 @@ export const site = defineSite({
     news: collection({
       label: "News",
       labelSingular: "Article",
-      defaultSort: { field: "publishedAt", direction: "desc" },
+      defaultSort: { field: "publishDate", direction: "desc" },
       fields: {
         title: text({
           label: "Title",

@@ -171,7 +171,7 @@
       "labelSingular": "Release",
       "description": "Product changes shown on the public changelog.",
       "defaultSort": {
-        "field": "publishedAt",
+        "field": "publishDate",
         "direction": "desc"
       },
       "fields": {

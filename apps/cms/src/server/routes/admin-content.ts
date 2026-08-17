@@ -18,7 +18,7 @@
  */
 
 import { ConflictError, ValidationError } from "@micacms/connectors";
-import { collectionEntryPath, entryTitle, singletonPath } from "@micacms/model";
+import { collectionEntryPath, compareEntries, entryTitle, singletonPath } from "@micacms/model";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -86,7 +86,11 @@ export function adminContentRoutes(): Hono<Env> {
       // A substring match over the payload, which is what the SQL `LIKE` did.
       // Content trees are small enough that filtering in memory is simpler than
       // an index, and it can no longer disagree with what is on disk.
-      .filter((item) => !search || JSON.stringify(item.data).toLowerCase().includes(search));
+      .filter((item) => !search || JSON.stringify(item.data).toLowerCase().includes(search))
+      // The order the model asks for — newest first for news, by hand for a
+      // menu. Ties fall back to the manual position, so the list is stable
+      // between requests whatever the sort field says.
+      .sort(compareEntries(def));
 
     return c.json({ items, total: items.length });
   });

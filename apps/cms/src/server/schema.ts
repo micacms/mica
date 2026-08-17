@@ -140,6 +140,26 @@ export function checkSchema(raw: unknown, origin = "the schema"): Site {
     assertFieldMap(def?.fields, `singletons.${name}`, origin);
   }
 
+  /**
+   * A default sort naming a field the collection does not declare is dropped
+   * here rather than refused.
+   *
+   * `defineSite` rejects it, which is right when somebody is writing the model
+   * and can fix the line they are looking at. By the time it reaches Mica the
+   * model is committed and a site is starting against it: the entries are
+   * intact, the fields are intact, and the only casualty is the order of a
+   * list. Refusing to serve the site over that would be out of proportion —
+   * and models written before the check existed contain exactly this, because
+   * the old fixed list of sort fields offered names no collection had.
+   *
+   * So the option is dropped, the list falls back to the order editors
+   * arranged by hand, and the project's next build reports it properly.
+   */
+  for (const def of Object.values(collections)) {
+    const field = def?.defaultSort?.field;
+    if (field && field !== "position" && !def.fields?.[field]) delete def.defaultSort;
+  }
+
   // Name injection and every cross-reference check — unknown relation targets,
   // slugs derived from absent siblings, reserved collection names — come from
   // the same function a hand-written model goes through.

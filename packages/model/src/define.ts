@@ -104,6 +104,15 @@ function assertValidSite(site: Site): void {
         `Collection "${name}" declares titleField "${def.titleField}" which is not a field.`,
       );
     }
+
+    const sortField = def.defaultSort?.field;
+    if (sortField && sortField !== "position" && !def.fields[sortField]) {
+      throw new ModelError(
+        `Collection "${name}" sorts by "${sortField}" which is not a field. ` +
+          `Use "position" for the order editors arrange by hand, or one of: ` +
+          `${Object.keys(def.fields).join(", ")}.`,
+      );
+    }
   }
 
   for (const [name, def] of Object.entries(site.singletons)) {
@@ -197,6 +206,56 @@ export function entryTitle(def: Collection, data: Record<string, unknown>): stri
   if (typeof slugValue === "string" && slugValue.trim()) return slugValue.trim();
 
   return "Untitled";
+}
+
+/** An entry as a list view holds it: its manual order, and its values. */
+export interface SortableEntry {
+  position: number;
+  data: Record<string, unknown>;
+}
+
+/**
+ * Orders entries the way the collection asks to be listed.
+ *
+ * `defaultSort` described this for a long time without doing it — nothing read
+ * the option, so a collection of news articles opened in whatever order its
+ * directory happened to be read in, and the wrong field name in it went
+ * unnoticed because the right one would not have changed anything either.
+ *
+ * Absent, the answer is `position`: the order an editor arranged by hand, and
+ * the only order that is theirs rather than derived.
+ */
+export function compareEntries(def: Collection): (a: SortableEntry, b: SortableEntry) => number {
+  const sort = def.defaultSort;
+  const byPosition = (a: SortableEntry, b: SortableEntry) => a.position - b.position;
+
+  if (!sort || sort.field === "position") {
+    return sort?.direction === "desc" ? (a, b) => byPosition(b, a) : byPosition;
+  }
+
+  const sign = sort.direction === "desc" ? -1 : 1;
+
+  return (a, b) => {
+    const left = a.data[sort.field];
+    const right = b.data[sort.field];
+
+    // An entry that has not been given the value yet goes last in both
+    // directions. Sinking it in one and floating it in the other would put the
+    // emptiest entries first exactly when a list is sorted newest-first.
+    const leftEmpty = left === null || left === undefined || left === "";
+    const rightEmpty = right === null || right === undefined || right === "";
+    if (leftEmpty || rightEmpty) {
+      if (leftEmpty && rightEmpty) return byPosition(a, b);
+      return leftEmpty ? 1 : -1;
+    }
+
+    if (typeof left === "number" && typeof right === "number") {
+      return (left - right) * sign || byPosition(a, b);
+    }
+
+    // Dates are ISO strings, which compare correctly as text.
+    return String(left).localeCompare(String(right)) * sign || byPosition(a, b);
+  };
 }
 
 /** Field keys shown as columns in the collection overview. */
