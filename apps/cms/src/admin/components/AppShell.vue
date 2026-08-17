@@ -59,23 +59,14 @@ async function signOut(): Promise<void> {
 
     <aside
       :class="[
-        'fixed inset-y-0 left-0 z-30 flex w-64 shrink-0 flex-col border-r border-line bg-surface transition-transform lg:static lg:translate-x-0',
+        'fixed inset-y-0 left-0 z-30 flex w-56 shrink-0 flex-col border-r border-line bg-canvas transition-transform lg:static lg:translate-x-0',
         menuOpen ? 'translate-x-0' : '-translate-x-full',
       ]"
     >
-      <div class="flex h-14 items-center gap-2.5 border-b border-line px-5">
-        <svg viewBox="0 0 32 32" class="h-7 w-7" aria-hidden="true">
-          <rect width="32" height="32" rx="8" fill="var(--color-brand)" />
-          <path
-            d="M8 22V10l8 7 8-7v12"
-            stroke="#fff"
-            stroke-width="2.5"
-            fill="none"
-            stroke-linejoin="round"
-            stroke-linecap="round"
-          />
-        </svg>
-        <span class="text-[15px] font-semibold tracking-tight">Mica</span>
+      <div class="flex h-16 items-center border-b border-line px-5">
+        <span class="mica-wordmark text-[30px]" role="img" aria-label="Mica">
+          <span aria-hidden="true">M<span class="mica-wordmark__i">ı</span>ca</span>
+        </span>
       </div>
 
       <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-5" aria-label="Main">
@@ -128,7 +119,7 @@ async function signOut(): Promise<void> {
           class="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-canvas"
         >
           <span
-            class="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand-soft text-xs font-semibold text-brand"
+            class="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line bg-raised text-xs font-medium text-muted"
             aria-hidden="true"
           >
             {{ initials }}
@@ -156,7 +147,7 @@ async function signOut(): Promise<void> {
 
     <div class="flex min-w-0 flex-1 flex-col">
       <header
-        class="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-line bg-surface/85 px-4 backdrop-blur lg:hidden"
+        class="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-line bg-raised/90 px-4 backdrop-blur lg:hidden"
       >
         <button
           type="button"
@@ -170,10 +161,12 @@ async function signOut(): Promise<void> {
           </svg>
           <span class="sr-only">Toggle navigation</span>
         </button>
-        <span class="text-sm font-semibold">Mica</span>
+        <span class="mica-wordmark text-[24px]" role="img" aria-label="Mica">
+          <span aria-hidden="true">M<span class="mica-wordmark__i">ı</span>ca</span>
+        </span>
       </header>
 
-      <main class="min-w-0 flex-1">
+      <main class="min-w-0 flex-1 bg-surface">
         <slot />
       </main>
     </div>
@@ -184,19 +177,24 @@ async function signOut(): Promise<void> {
 @reference "../style.css";
 
 .nav-heading {
-  @apply px-2 pb-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted;
+  @apply px-2 pb-1.5 font-mono text-[10px] font-medium uppercase tracking-[.08em] text-faint;
 }
 
 .nav-link {
-  @apply flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm text-ink
-    transition hover:bg-canvas;
+  @apply relative flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-sm text-muted
+    transition hover:bg-stone/60 hover:text-ink;
 }
 
 .nav-link.router-link-active {
-  @apply bg-brand-soft font-medium text-brand;
+  @apply font-medium text-ink;
+}
+
+.nav-link.router-link-active::before {
+  content: "";
+  @apply absolute inset-y-1 left-0 w-0.5 bg-accent;
 }
 
 .nav-dot {
-  @apply h-1.5 w-1.5 rounded-full bg-current opacity-40;
+  @apply h-1.5 w-1.5 rounded-full bg-current opacity-35;
 }
 </style>

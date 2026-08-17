@@ -90,7 +90,7 @@ function unlock(): void {
   >
     <div class="flex items-stretch">
       <span
-        class="inline-flex select-none items-center rounded-l-lg border border-r-0 border-line bg-canvas px-3 text-sm text-muted"
+        class="inline-flex select-none items-center rounded-l-sm border border-r-0 border-line bg-canvas px-3 font-mono text-sm text-muted"
         aria-hidden="true"
       >
         /

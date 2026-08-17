@@ -135,7 +135,7 @@ function move(index: number, direction: -1 | 1): void {
             <button
               v-if="field.multiple && index > 0"
               type="button"
-              class="rounded bg-white/90 px-1.5 text-xs font-semibold hover:bg-white"
+              class="rounded-sm bg-raised/90 px-1.5 text-xs font-semibold hover:bg-raised"
               :disabled="disabled"
               @click="move(index, -1)"
             >
@@ -144,7 +144,7 @@ function move(index: number, direction: -1 | 1): void {
             <button
               v-if="field.multiple && index < items.length - 1"
               type="button"
-              class="rounded bg-white/90 px-1.5 text-xs font-semibold hover:bg-white"
+              class="rounded-sm bg-raised/90 px-1.5 text-xs font-semibold hover:bg-raised"
               :disabled="disabled"
               @click="move(index, 1)"
             >
@@ -152,7 +152,7 @@ function move(index: number, direction: -1 | 1): void {
             </button>
             <button
               type="button"
-              class="rounded bg-white/90 px-1.5 text-xs font-semibold text-danger hover:bg-white"
+              class="rounded-sm bg-raised/90 px-1.5 text-xs font-semibold text-danger hover:bg-raised"
               :disabled="disabled"
               @click="removeAt(index)"
             >

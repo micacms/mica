@@ -20,7 +20,7 @@ const checked = computed(() => props.modelValue === true);
          without any ARIA work of our own. -->
     <label
       :for="inputId"
-      class="flex cursor-pointer items-start gap-3 rounded-lg border border-line bg-white p-3 transition hover:bg-canvas has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
+      class="flex cursor-pointer items-start gap-3 rounded-sm border border-line bg-raised p-3 transition hover:bg-canvas has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
     >
       <input
         :id="inputId"
@@ -28,7 +28,7 @@ const checked = computed(() => props.modelValue === true);
         :checked="checked"
         :disabled="disabled || field.readonly"
         :aria-describedby="describedBy"
-        class="mt-0.5 h-4 w-4 shrink-0 rounded border-line text-brand focus:ring-brand/25"
+        class="mt-0.5 h-4 w-4 shrink-0 rounded-sm border-line text-brand focus:ring-ink/20"
         @change="emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
       />
       <span class="min-w-0">

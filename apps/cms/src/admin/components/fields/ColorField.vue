@@ -38,7 +38,7 @@ function emitValue(next: string): void {
         :value="swatchValue"
         :disabled="disabled || field.readonly"
         :aria-label="`${label} colour picker`"
-        class="h-9.5 w-12 shrink-0 cursor-pointer rounded-lg border border-line bg-white p-1"
+        class="h-9.5 w-12 shrink-0 cursor-pointer rounded-sm border border-line bg-raised p-1"
         @input="emitValue(($event.target as HTMLInputElement).value)"
       />
       <input

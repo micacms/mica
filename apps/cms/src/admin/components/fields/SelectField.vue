@@ -45,13 +45,13 @@ function toggle(value: string): void {
       <label
         v-for="option in field.options"
         :key="option.value"
-        class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-line bg-white px-3 py-2 text-sm hover:bg-canvas"
+        class="flex cursor-pointer items-center gap-2.5 rounded-sm border border-line bg-raised px-3 py-2 text-sm hover:bg-canvas"
       >
         <input
           type="checkbox"
           :checked="selected.includes(option.value)"
           :disabled="disabled || field.readonly"
-          class="h-4 w-4 rounded border-line text-brand focus:ring-brand/25"
+          class="h-4 w-4 rounded-sm border-line text-brand focus:ring-ink/20"
           @change="toggle(option.value)"
         />
         {{ option.label }}

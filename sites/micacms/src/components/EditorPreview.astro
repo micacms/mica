@@ -1,27 +1,25 @@
 ---
 /**
- * A faithful-enough sketch of the real admin: same navy brand, same light canvas,
+ * A faithful sketch of the real admin: same brand, same tokens,
  * same field chrome as `apps/cms/src/admin/style.css`. If the product changes, this
  * should change with it — a marketing screenshot that lies is worse than none.
  */
 ---
 
-<div class="overflow-hidden rounded-xl border border-line bg-surface shadow-[0_1px_2px_rgba(33,31,28,.05)]" aria-label="Preview of the Mica editing interface">
+<div class="overflow-hidden rounded-md border border-line bg-surface" aria-label="Preview of the Mica editing interface">
   <div class="flex h-13 items-center border-b border-line bg-surface px-4 text-xs">
     <div class="flex items-center gap-2 font-semibold text-ink">
-      <svg class="h-4 w-4" viewBox="0 0 32 32" aria-hidden="true">
-        <path d="M16 14.5 28 20 16 25.5 4 20z" fill="#211f1c" />
-        <path d="M16 9 28 14.5 16 20 4 14.5z" fill="#5d574e" />
-        <path d="M16 3.5 28 9 16 14.5 4 9z" fill="#96603a" />
-      </svg> Mica
+      <span class="mica-wordmark text-[18px]" role="img" aria-label="Mica">
+        <span aria-hidden="true">M<span class="mica-wordmark__i">ı</span>ca</span>
+      </span>
     </div>
-    <div class="mx-auto text-muted">MicaCMS website</div>
-    <div class="flex h-7 w-7 items-center justify-center rounded-full bg-brand-soft text-[9px] font-medium text-brand">AM</div>
+    <div class="mx-auto text-muted">Mica website</div>
+    <div class="flex h-7 w-7 items-center justify-center rounded-full border border-line bg-paper text-[9px] font-medium text-muted">AM</div>
   </div>
   <div class="flex min-h-[480px]">
     <aside class="hidden w-52 shrink-0 border-r border-line bg-canvas p-3 md:block [&_a]:mb-0.5 [&_a]:flex [&_a]:items-center [&_a]:gap-2 [&_a]:rounded-md [&_a]:px-3 [&_a]:py-2 [&_a]:text-xs [&_a]:text-muted [&_a>b]:ml-auto [&_a>b]:font-mono [&_a>b]:text-[9px] [&_a>b]:font-normal [&_a>b]:text-faint">
       <span class="label-mono mb-2 block px-3">Content</span>
-      <a class="bg-brand-soft font-medium !text-brand">Pages <b>12</b></a><a>Features <b>6</b></a><a>Releases <b>2</b></a>
+      <a class="border-l-2 border-ember font-medium !text-ink">Pages <b>12</b></a><a>Features <b>6</b></a><a>Releases <b>2</b></a>
       <span class="label-mono mb-2 mt-7 block px-3">Settings</span>
       <a>Navigation</a><a>Website</a>
     </aside>
@@ -31,11 +29,11 @@
           <span class="text-[10px] text-muted">Pages /</span>
           <h3 class="text-lg font-semibold text-ink">Getting started</h3>
         </div>
-        <button class="rounded-lg bg-brand px-3.5 py-2 text-[11px] font-medium text-white">Save changes</button>
+        <button class="rounded-sm bg-ink px-3.5 py-2 text-[11px] font-medium text-paper">Save changes</button>
       </div>
       <div class="mb-5 flex flex-wrap items-center gap-2 text-[10px] text-muted">
-        <span class="h-1.5 w-1.5 rounded-full bg-moss"></span> Saved to repository
-        <code class="font-mono text-[10px] text-faint">content/docs/getting-started/</code>
+        <span class="h-1.5 w-1.5 rounded-full bg-moss"></span> Saved
+        <code class="font-mono text-[10px] text-faint">main · content/docs/getting-started/</code>
       </div>
       <div class="rounded-xl border border-line bg-surface p-5 sm:p-6 [&_label]:mb-4 [&_label]:block [&_label]:text-[11px] [&_label]:font-medium [&_label]:text-ink [&_input]:mt-1.5 [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-line [&_input]:bg-white [&_input]:px-3 [&_input]:py-2 [&_input]:text-xs [&_input]:font-normal [&_input]:text-ink [&_textarea]:mt-1.5 [&_textarea]:min-h-16 [&_textarea]:w-full [&_textarea]:resize-none [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-line [&_textarea]:px-3 [&_textarea]:py-2 [&_textarea]:text-xs [&_textarea]:font-normal">
         <label>Title<input value="Getting started" readonly /></label>

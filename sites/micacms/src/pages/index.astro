@@ -3,7 +3,7 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import CodeWindow from "@/components/CodeWindow.astro";
 import EditorPreview from "@/components/EditorPreview.astro";
 import Icon from "@/components/Icon.astro";
-import Strata from "@/components/Strata.astro";
+import WorkflowPath from "@/components/WorkflowPath.astro";
 import { getFeatures, getHome, getSite } from "@/lib/content";
 const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatures()]);
 ---
@@ -13,7 +13,7 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
     <div class="wrap grid items-start gap-14 py-16 md:py-24 lg:grid-cols-[1fr_1fr] lg:gap-16">
       <div class="lg:pt-6">
         <p class="eyebrow">{home.heroEyebrow}</p>
-        <h1 class="display max-w-xl text-[2.6rem] leading-[1.08] sm:text-5xl lg:text-[3.4rem]">{home.heroTitle}</h1>
+        <h1 class="display max-w-xl text-[2.3rem] leading-[1.1] sm:text-[42px]">{home.heroTitle}</h1>
         <p class="lead mt-6 max-w-lg">{home.heroSummary}</p>
         <div class="mt-8 flex flex-wrap gap-3">
           <a class="btn-primary" href={home.primaryCta.href}>{home.primaryCta.label}</a>
@@ -51,10 +51,10 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
     <div class="wrap grid gap-14 lg:grid-cols-[.85fr_1.15fr] lg:gap-20">
       <div class="lg:sticky lg:top-28 lg:self-start">
         <p class="eyebrow">{home.problemEyebrow}</p>
-        <h2 class="display max-w-md text-[2rem] leading-[1.15] md:text-[2.4rem]">{home.problemTitle}</h2>
+        <h2 class="display max-w-md text-[30px] leading-[1.15]">{home.problemTitle}</h2>
         <p class="lead mt-5 max-w-md">{home.problemSummary}</p>
       </div>
-      <Strata />
+      <WorkflowPath />
     </div>
   </section>
 
@@ -62,7 +62,7 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
     <div class="wrap">
       <div class="max-w-2xl">
         <p class="eyebrow">From model to production</p>
-        <h2 class="display text-[2rem] leading-[1.15] md:text-[2.4rem]">{home.workflowTitle}</h2>
+        <h2 class="display text-[30px] leading-[1.15]">{home.workflowTitle}</h2>
         <p class="lead mt-5">{home.workflowSummary}</p>
       </div>
       <div class="mt-12 grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-3">
@@ -83,7 +83,7 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
       <div class="grid items-end gap-8 md:grid-cols-[1fr_auto]">
         <div class="max-w-xl">
           <p class="eyebrow">For the people who write</p>
-          <h2 class="display text-[2rem] leading-[1.15] md:text-[2.4rem]">A real editor, not a repository in nicer colours.</h2>
+          <h2 class="display text-[30px] leading-[1.15]">A real editor, not a repository in nicer colours.</h2>
         </div>
         <p class="lead max-w-sm md:text-right">
           Model-generated forms give editors the controls they need. Validation happens before an entry reaches the repository.
@@ -103,7 +103,7 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
       <div class="grid items-end gap-8 md:grid-cols-[1fr_auto]">
         <div class="max-w-xl">
           <p class="eyebrow">{home.featuresEyebrow}</p>
-          <h2 class="display text-[2rem] leading-[1.15] md:text-[2.4rem]">{home.featuresTitle}</h2>
+          <h2 class="display text-[30px] leading-[1.15]">{home.featuresTitle}</h2>
         </div>
         <p class="lead max-w-sm md:text-right">{home.featuresSummary}</p>
       </div>
@@ -129,7 +129,7 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
     <div class="wrap">
       <div class="max-w-xl">
         <p class="eyebrow">Built with a point of view</p>
-        <h2 class="display text-[2rem] leading-[1.15] md:text-[2.4rem]">Less infrastructure. More ownership.</h2>
+        <h2 class="display text-[30px] leading-[1.15]">Less infrastructure. More ownership.</h2>
       </div>
       <div class="mt-12 border-t border-line">
         {home.principles.map((principle) => (
@@ -147,7 +147,7 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
     <div class="wrap grid items-end gap-8 md:grid-cols-[1fr_auto]">
       <div>
         <p class="eyebrow">Ready when your repository is</p>
-        <h2 class="display max-w-xl text-[2rem] leading-[1.15] md:text-[2.4rem]">{home.ctaTitle}</h2>
+        <h2 class="display max-w-xl text-[30px] leading-[1.15]">{home.ctaTitle}</h2>
         <p class="lead mt-4 max-w-lg">{home.ctaText}</p>
       </div>
       <div class="md:text-right">

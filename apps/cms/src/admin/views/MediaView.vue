@@ -126,7 +126,7 @@ async function copyPath(path: string): Promise<void> {
 
   <div
     class="mx-auto max-w-5xl px-4 py-5 sm:px-6"
-    :class="dragging && 'rounded-xl outline-2 outline-dashed outline-brand'"
+    :class="dragging && 'rounded-md outline-2 outline-dashed outline-ink'"
     @dragover.prevent="dragging = true"
     @dragleave.prevent="dragging = false"
     @drop.prevent="

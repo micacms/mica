@@ -82,13 +82,13 @@ function toggle(slug: string): void {
         <label
           v-for="option in options"
           :key="option.slug"
-          class="flex cursor-pointer items-center gap-2.5 rounded-lg border border-line bg-white px-3 py-2 text-sm hover:bg-canvas"
+          class="flex cursor-pointer items-center gap-2.5 rounded-sm border border-line bg-raised px-3 py-2 text-sm hover:bg-canvas"
         >
           <input
             type="checkbox"
             :checked="selected.includes(option.slug)"
             :disabled="disabled || field.readonly"
-            class="h-4 w-4 rounded border-line text-brand focus:ring-brand/25"
+            class="h-4 w-4 rounded-sm border-line text-brand focus:ring-ink/20"
             @change="toggle(option.slug)"
           />
           <span class="min-w-0 flex-1 truncate">{{ option.title }}</span>

@@ -73,7 +73,7 @@ function sourceFor(field: AnyField): string | null {
   <div class="space-y-6">
     <template v-for="(group, index) in groups" :key="`${group.name ?? 'ungrouped'}-${index}`">
       <fieldset v-if="group.name" class="card p-4 sm:p-5">
-        <legend class="px-1 text-xs font-semibold uppercase tracking-wider text-muted">
+        <legend class="px-1 font-mono text-[11px] font-medium uppercase tracking-[.08em] text-muted">
           {{ group.name }}
         </legend>
 
