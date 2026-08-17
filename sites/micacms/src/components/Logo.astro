@@ -1,14 +1,5 @@
----
-interface Props { compact?: boolean; }
-const { compact = false } = Astro.props;
----
-
-{/* Mica cleaves into stacked sheets; the mark is three plates seen edge-on. */}
-<a class="inline-flex items-center gap-2.5 text-[17px] font-semibold tracking-[-.01em] text-ink" href="/" aria-label="Mica home">
-  <svg class="h-7 w-7" viewBox="0 0 32 32" aria-hidden="true">
-    <path d="M16 14.5 28 20 16 25.5 4 20z" fill="#211f1c" />
-    <path d="M16 9 28 14.5 16 20 4 14.5z" fill="#5d574e" />
-    <path d="M16 3.5 28 9 16 14.5 4 9z" fill="#96603a" />
-  </svg>
-  {!compact && <span>Mica</span>}
+<a class="inline-flex items-center" href="/" aria-label="Mica home">
+  <span class="mica-wordmark text-[30px]" aria-hidden="true">
+    M<span class="mica-wordmark__i">ı</span>ca
+  </span>
 </a>

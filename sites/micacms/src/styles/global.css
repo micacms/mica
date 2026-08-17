@@ -1,45 +1,87 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@500;600&display=swap");
 @import "tailwindcss";
 
-/**
- * Design tokens.
- *
- * The palette is deliberately close to the CMS admin (`apps/cms/src/admin/style.css`):
- * same navy `brand`, same light-surface approach, so the website and the product
- * that it advertises look like one piece of software.
- *
- * Where the site departs is temperature. Mica — Glimmererde — is a sheet mineral
- * dug out of the ground, so the neutrals are warm (loess, clay, biotite) rather
- * than the admin's cool greys, and the second accent is a phlogopite bronze.
- * Nothing here glows: mica has a sheen, not a light source.
- */
-@theme {
-  --color-paper: #fcfbf9;
-  --color-canvas: #f5f2ec;
-  --color-stone: #ece8e0;
-  --color-surface: #ffffff;
+/* Mica design system v1.4 */
+:root {
+  --mica-ink-900: #16181b;
+  --mica-ink-800: #22262b;
+  --mica-ink-700: #343a42;
+  --mica-ink-600: #4a525c;
+  --mica-ink-500: #666e79;
+  --mica-ink-400: #98a0aa;
+  --mica-ink-300: #c4c9cf;
+  --mica-ink-200: #dfe2e6;
+  --mica-ink-100: #eceef0;
 
-  --color-line: #e6e1d8;
-  --color-line-strong: #d5cec1;
+  --mica-stone-0: #fff;
+  --mica-stone-50: #fbfaf7;
+  --mica-stone-100: #f5f2ec;
+  --mica-stone-200: #eae6dd;
+  --mica-stone-300: #d9d4c8;
 
-  --color-ink: #211f1c;
-  --color-ink-soft: #43403a;
-  --color-muted: #6d675e;
-  --color-faint: #948d82;
+  --mica-kyanit-800: #25415a;
+  --mica-kyanit-700: #2f5678;
+  --mica-kyanit-600: #3d6e9c;
+  --mica-kyanit-500: #5a8cbb;
+  --mica-kyanit-300: #b4cde1;
+  --mica-kyanit-100: #e4edf4;
 
-  --color-brand: #1e3a5f;
-  --color-brand-soft: #eaeff5;
-  --color-ember: #96603a;
-  --color-ember-soft: #f3ebe2;
-  --color-moss: #4a6b4f;
+  --mica-ok: #3f6b52;
+  --mica-warn: #8a6a1f;
+  --mica-err: #9b3b33;
 
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
-  /* A book serif for display type. No web font: it is on every target machine. */
-  --font-display:
-    "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, ui-serif,
-    serif;
-  --font-mono: ui-monospace, "SFMono-Regular", "SF Mono", Menlo, Consolas, monospace;
+  --mica-bg: var(--mica-stone-100);
+  --mica-surface: var(--mica-stone-50);
+  --mica-surface-raised: var(--mica-stone-0);
+  --mica-border: #dcd7cc;
+  --mica-border-strong: #c3bcae;
+  --mica-text: var(--mica-ink-900);
+  --mica-text-muted: var(--mica-ink-500);
+  --mica-text-subtle: var(--mica-ink-400);
+  --mica-accent: var(--mica-kyanit-600);
+  --mica-accent-text: var(--mica-kyanit-700);
+  --mica-accent-bg: var(--mica-kyanit-100);
+  --mica-focus: var(--mica-ink-900);
+
+  --mica-font-sans: "Inter", "Inter var", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mica-font-display: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mica-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --mica-ease: cubic-bezier(.2, .6, .3, 1);
+  --mica-dur-1: 90ms;
+  --mica-dur-2: 160ms;
+}
+
+@theme inline {
+  --color-paper: var(--mica-surface);
+  --color-canvas: var(--mica-bg);
+  --color-stone: var(--mica-stone-200);
+  --color-surface: var(--mica-surface-raised);
+  --color-line: var(--mica-border);
+  --color-line-strong: var(--mica-border-strong);
+  --color-ink: var(--mica-text);
+  --color-ink-soft: var(--mica-ink-700);
+  --color-muted: var(--mica-text-muted);
+  --color-faint: var(--mica-text-subtle);
+  --color-brand: var(--mica-accent-text);
+  --color-brand-soft: var(--mica-accent-bg);
+  --color-ember: var(--mica-accent);
+  --color-ember-soft: var(--mica-accent-bg);
+  --color-moss: var(--mica-ok);
+  --color-warning: var(--mica-warn);
+  --color-danger: var(--mica-err);
+
+  --font-sans: var(--mica-font-sans);
+  --font-display: var(--mica-font-display);
+  --font-mono: var(--mica-font-mono);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+  --radius-2xl: 10px;
+
+  --shadow-sm: 0 1px 2px rgba(22, 24, 27, .06);
+  --shadow-lg: 0 8px 24px -8px rgba(22, 24, 27, .18);
 }
 
 @layer base {
@@ -50,11 +92,30 @@
 
   body {
     margin: 0;
-    background: var(--color-paper);
-    color: var(--color-ink);
-    font-family: var(--font-sans);
+    background: var(--mica-surface);
+    color: var(--mica-text);
+    font-family: var(--mica-font-sans);
+    font-size: .9375rem;
+    font-optical-sizing: auto;
+    font-weight: 400;
     line-height: 1.6;
+    letter-spacing: -.006em;
     -webkit-font-smoothing: antialiased;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--mica-font-display);
+    font-weight: 600;
+  }
+
+  strong,
+  b {
+    font-weight: 600;
   }
 
   a {
@@ -73,33 +134,58 @@
   }
 
   ::selection {
-    background: var(--color-brand-soft);
-    color: var(--color-ink);
+    background: var(--mica-accent-bg);
+    color: var(--mica-text);
   }
 
-  /* Same focus ring as the admin, so keyboard use feels identical in both. */
   :focus-visible {
-    outline: 2px solid var(--color-brand);
-    outline-offset: 2px;
     border-radius: 4px;
+    outline: 2px solid var(--mica-focus);
+    outline-offset: 2px;
   }
 }
 
-/* Registered utilities compose with `@apply`, which keeps the markup readable. */
+.mica-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  color: var(--mica-text);
+  font-family: var(--mica-font-display);
+  font-weight: 600;
+  letter-spacing: -.018em;
+  line-height: 1;
+}
+
+.mica-wordmark__i {
+  position: relative;
+  display: inline-block;
+}
+
+.mica-wordmark__i::after {
+  position: absolute;
+  top: .055em;
+  left: 50%;
+  width: .17em;
+  height: .17em;
+  border-radius: 999px;
+  background: var(--mica-accent);
+  content: "";
+  transform: translateX(-50%);
+}
+
 @utility wrap {
   @apply mx-auto w-full max-w-[1120px] px-5 sm:px-8;
 }
 
 @utility section {
-  @apply py-20 md:py-28;
+  @apply py-16 md:py-24;
 }
 
 @utility eyebrow {
-  @apply mb-4 block text-xs font-semibold uppercase tracking-[.12em] text-ember;
+  @apply mb-4 block font-mono text-[11px] font-medium uppercase tracking-[.08em] text-muted;
 }
 
 @utility display {
-  @apply font-display font-normal tracking-[-.012em] text-ink;
+  @apply font-display font-semibold tracking-[-.018em] text-ink;
 }
 
 @utility lead {
@@ -107,40 +193,34 @@
 }
 
 @utility btn {
-  @apply inline-flex min-h-11 select-none items-center justify-center gap-2 rounded-lg px-4
-    text-sm font-medium transition;
+  @apply inline-flex min-h-10 select-none items-center justify-center gap-2 rounded-sm border
+    border-transparent px-3.5 py-2 text-sm font-medium transition;
+  transition-duration: var(--mica-dur-1);
+  transition-timing-function: var(--mica-ease);
 }
 
 @utility btn-primary {
-  @apply btn bg-brand text-white hover:bg-brand/90;
+  @apply btn bg-ink text-paper hover:bg-ink-soft;
 }
 
 @utility btn-secondary {
-  @apply btn border border-line-strong bg-surface text-ink hover:bg-canvas;
+  @apply btn border-line-strong bg-transparent text-ink hover:bg-surface;
 }
 
 @utility card {
-  @apply rounded-xl border border-line bg-surface;
+  @apply rounded-md border border-line bg-surface;
 }
 
 @utility label-mono {
-  @apply font-mono text-[10px] uppercase tracking-[.12em] text-faint;
-}
-
-/*
- * Cleavage: mica splits into stacked sheets. Evenly spaced hairlines, fading as
- * they go down, read as that stack — and replace the generic tech dot-grid.
- */
-@utility sheets {
-  background-image: repeating-linear-gradient(
-    to bottom,
-    var(--color-line-strong) 0 1px,
-    transparent 1px 8px
-  );
-  mask-image: linear-gradient(to bottom, #000, transparent);
+  @apply font-mono text-[11px] font-normal uppercase tracking-[.08em] text-faint;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --mica-dur-1: 0ms;
+    --mica-dur-2: 0ms;
+  }
+
   html {
     scroll-behavior: auto;
   }

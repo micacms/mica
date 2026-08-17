@@ -68,7 +68,7 @@ function onKeydown(event: KeyboardEvent): void {
         aria-modal="true"
         aria-labelledby="confirm-title"
         aria-describedby="confirm-body"
-        class="w-full max-w-md rounded-xl bg-white p-5 shadow-2xl"
+        class="w-full max-w-md rounded-xl border border-line bg-raised p-5 shadow-2xl"
       >
         <h2 id="confirm-title" class="text-base font-semibold">{{ title }}</h2>
 

@@ -245,8 +245,8 @@ const buttons = computed<ToolbarButton[]>(() => {
   >
     <div
       :class="[
-        'rich-text overflow-hidden rounded-lg border bg-white focus-within:ring-2 focus-within:ring-brand/15',
-        error ? 'border-danger' : 'border-line focus-within:border-brand',
+        'rich-text overflow-hidden rounded-sm border bg-raised focus-within:ring-2 focus-within:ring-ink/10',
+        error ? 'border-danger' : 'border-line focus-within:border-ink',
       ]"
     >
       <div
@@ -265,8 +265,8 @@ const buttons = computed<ToolbarButton[]>(() => {
           :class="[
             'h-7 min-w-7 rounded px-1.5 text-xs font-semibold transition',
             button.isActive()
-              ? 'bg-brand text-white'
-              : 'text-muted hover:bg-white hover:text-ink',
+              ? 'bg-ink text-surface'
+              : 'text-muted hover:bg-raised hover:text-ink',
           ]"
           @click="button.run()"
         >

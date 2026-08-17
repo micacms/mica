@@ -1,27 +1,88 @@
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Outfit:wght@500;600&display=swap");
 @import "tailwindcss";
 
-/**
- * Design tokens.
- *
- * Declared in `@theme` so Tailwind generates matching utilities — `bg-canvas`,
- * `text-ink`, `border-line` and so on. Adjusting a customer's palette is then a
- * change to these values alone.
- */
-@theme {
-  --color-surface: #ffffff;
-  --color-canvas: #f6f7f9;
-  --color-line: #e4e7ec;
-  --color-ink: #101828;
-  --color-muted: #667085;
-  --color-brand: #1e3a5f;
-  --color-brand-soft: #eef2f7;
-  --color-danger: #b42318;
-  --color-success: #067647;
-  --color-warning: #b54708;
+/* Mica design system v1.4 */
+:root {
+  --mica-ink-900: #16181b;
+  --mica-ink-800: #22262b;
+  --mica-ink-700: #343a42;
+  --mica-ink-600: #4a525c;
+  --mica-ink-500: #666e79;
+  --mica-ink-400: #98a0aa;
+  --mica-ink-300: #c4c9cf;
+  --mica-ink-200: #dfe2e6;
+  --mica-ink-100: #eceef0;
 
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-    sans-serif;
+  --mica-stone-0: #fff;
+  --mica-stone-50: #fbfaf7;
+  --mica-stone-100: #f5f2ec;
+  --mica-stone-200: #eae6dd;
+  --mica-stone-300: #d9d4c8;
+
+  --mica-kyanit-800: #25415a;
+  --mica-kyanit-700: #2f5678;
+  --mica-kyanit-600: #3d6e9c;
+  --mica-kyanit-500: #5a8cbb;
+  --mica-kyanit-300: #b4cde1;
+  --mica-kyanit-100: #e4edf4;
+
+  --mica-ok: #3f6b52;
+  --mica-warn: #8a6a1f;
+  --mica-err: #9b3b33;
+
+  --mica-bg: var(--mica-stone-100);
+  --mica-surface: var(--mica-stone-50);
+  --mica-surface-raised: var(--mica-stone-0);
+  --mica-border: #dcd7cc;
+  --mica-border-strong: #c3bcae;
+  --mica-text: var(--mica-ink-900);
+  --mica-text-muted: var(--mica-ink-500);
+  --mica-text-subtle: var(--mica-ink-400);
+  --mica-accent: var(--mica-kyanit-600);
+  --mica-accent-text: var(--mica-kyanit-700);
+  --mica-accent-bg: var(--mica-kyanit-100);
+  --mica-focus: var(--mica-ink-900);
+
+  --mica-font-sans: "Inter", "Inter var", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mica-font-display: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mica-font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+  --mica-ease: cubic-bezier(.2, .6, .3, 1);
+  --mica-dur-1: 90ms;
+  --mica-dur-2: 160ms;
+}
+
+@theme inline {
+  --color-surface: var(--mica-surface);
+  --color-raised: var(--mica-surface-raised);
+  --color-canvas: var(--mica-bg);
+  --color-stone: var(--mica-stone-200);
+  --color-line: var(--mica-border);
+  --color-line-strong: var(--mica-border-strong);
+  --color-ink: var(--mica-text);
+  --color-ink-soft: var(--mica-ink-700);
+  --color-muted: var(--mica-text-muted);
+  --color-faint: var(--mica-text-subtle);
+  --color-brand: var(--mica-accent-text);
+  --color-brand-soft: var(--mica-accent-bg);
+  --color-accent: var(--mica-accent);
+  --color-danger: var(--mica-err);
+  --color-success: var(--mica-ok);
+  --color-warning: var(--mica-warn);
+
+  --font-sans: var(--mica-font-sans);
+  --font-display: var(--mica-font-display);
+  --font-mono: var(--mica-font-mono);
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 6px;
+  --radius-xl: 10px;
+  --radius-2xl: 10px;
+
+  --shadow-xs: 0 1px 2px rgba(22, 24, 27, .06);
+  --shadow-sm: 0 1px 2px rgba(22, 24, 27, .06);
+  --shadow-lg: 0 8px 24px -8px rgba(22, 24, 27, .18);
+  --shadow-2xl: 0 8px 24px -8px rgba(22, 24, 27, .18);
 }
 
 @layer base {
@@ -30,19 +91,41 @@
   }
 
   body {
-    background: var(--color-canvas);
-    color: var(--color-ink);
-    font-family: var(--font-sans);
-    /* Editors work in long sessions; comfortable defaults matter. */
-    line-height: 1.55;
+    background: var(--mica-bg);
+    color: var(--mica-text);
+    font-family: var(--mica-font-sans);
+    font-size: .9375rem;
+    font-optical-sizing: auto;
+    font-weight: 400;
+    line-height: 1.45;
+    letter-spacing: -.006em;
     -webkit-font-smoothing: antialiased;
   }
 
-  /* A visible, consistent focus ring is the backbone of keyboard use. */
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--mica-font-display);
+    font-weight: 600;
+  }
+
+  strong,
+  b {
+    font-weight: 600;
+  }
+
   :focus-visible {
-    outline: 2px solid var(--color-brand);
-    outline-offset: 2px;
     border-radius: 4px;
+    outline: 2px solid var(--mica-focus);
+    outline-offset: 2px;
+  }
+
+  ::selection {
+    background: var(--mica-accent-bg);
+    color: var(--mica-text);
   }
 
   [hidden] {
@@ -50,11 +133,33 @@
   }
 }
 
-/*
- * Custom utilities rather than plain classes in `@layer components`: only a
- * registered utility can be composed with `@apply`, which is what lets the
- * button variants share one base.
- */
+.mica-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  color: var(--mica-text);
+  font-family: var(--mica-font-display);
+  font-weight: 600;
+  letter-spacing: -.018em;
+  line-height: 1;
+}
+
+.mica-wordmark__i {
+  position: relative;
+  display: inline-block;
+}
+
+.mica-wordmark__i::after {
+  position: absolute;
+  top: .055em;
+  left: 50%;
+  width: .17em;
+  height: .17em;
+  border-radius: 999px;
+  background: var(--mica-accent);
+  content: "";
+  transform: translateX(-50%);
+}
+
 @utility field-label {
   @apply block text-sm font-medium text-ink;
 }
@@ -68,49 +173,51 @@
 }
 
 @utility input {
-  @apply block w-full rounded-lg border border-line bg-white px-3 py-2 text-sm text-ink
-    shadow-xs transition
-    placeholder:text-muted/70
-    focus:border-brand focus:ring-2 focus:ring-brand/15
+  @apply block w-full rounded-sm border border-line bg-raised px-2.5 py-2 text-[15px] text-ink
+    transition placeholder:text-muted/70
     disabled:cursor-not-allowed disabled:bg-canvas disabled:text-muted;
+  transition-duration: var(--mica-dur-1);
+  transition-timing-function: var(--mica-ease);
 }
 
 @utility input-invalid {
-  @apply border-danger focus:border-danger focus:ring-danger/15;
+  @apply border-danger;
 }
 
 @utility btn {
-  @apply inline-flex select-none items-center justify-center gap-2 rounded-lg px-3.5 py-2
-    text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55;
+  @apply inline-flex select-none items-center justify-center gap-2 rounded-sm border border-transparent
+    px-3.5 py-2 text-sm font-medium transition disabled:cursor-not-allowed disabled:opacity-55;
+  transition-duration: var(--mica-dur-1);
+  transition-timing-function: var(--mica-ease);
 }
 
 @utility btn-primary {
-  @apply btn bg-brand text-white hover:bg-brand/90;
+  @apply btn bg-ink text-surface hover:bg-ink-soft;
 }
 
 @utility btn-secondary {
-  @apply btn border border-line bg-white text-ink hover:bg-canvas;
+  @apply btn border-line-strong bg-transparent text-ink hover:bg-raised;
 }
 
 @utility btn-ghost {
-  @apply btn text-muted hover:bg-canvas hover:text-ink;
+  @apply btn bg-transparent text-muted hover:bg-stone/60 hover:text-ink;
 }
 
 @utility btn-danger {
-  @apply btn border border-danger/25 bg-white text-danger hover:bg-danger/5;
+  @apply btn border-danger bg-transparent text-danger hover:bg-danger/5;
 }
 
 @utility card {
-  @apply rounded-xl border border-line bg-surface;
+  @apply rounded-md border border-line bg-raised;
 }
 
 @utility badge {
-  @apply inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium;
+  @apply inline-flex items-center gap-1.5 rounded-full border border-line px-2 py-0.5
+    font-mono text-[11px] font-normal text-muted;
 }
 
-/* Tiptap's editable region has no classes of its own to hook onto. */
 .rich-text .ProseMirror {
-  @apply min-h-40 px-3 py-2.5 text-sm leading-relaxed outline-none;
+  @apply min-h-40 px-3 py-2.5 text-[15px] leading-relaxed outline-none;
 }
 
 .rich-text .ProseMirror > * + * {
@@ -134,7 +241,7 @@
 }
 
 .rich-text .ProseMirror blockquote {
-  @apply border-l-2 border-line pl-4 text-muted;
+  @apply border-l-2 border-line-strong pl-4 text-muted;
 }
 
 .rich-text .ProseMirror a {
@@ -145,13 +252,17 @@
   @apply my-5 border-t border-line;
 }
 
-/* Placeholder for an empty document. */
 .rich-text .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   @apply pointer-events-none float-left h-0 text-muted/70;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :root {
+    --mica-dur-1: 0ms;
+    --mica-dur-2: 0ms;
+  }
+
   *,
   *::before,
   *::after {

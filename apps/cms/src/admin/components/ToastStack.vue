@@ -4,9 +4,9 @@ import { useToast } from "@/stores/toast";
 const { toasts, dismiss } = useToast();
 
 const STYLES: Record<string, string> = {
-  success: "border-success/25 bg-white",
-  error: "border-danger/30 bg-white",
-  info: "border-line bg-white",
+  success: "border-success/40 bg-raised",
+  error: "border-danger/40 bg-raised",
+  info: "border-line bg-raised",
 };
 
 const DOTS: Record<string, string> = {

@@ -6,9 +6,7 @@ const [navigation, site] = await Promise.all([getNavigation(), getSite()]);
 ---
 
 <footer class="border-t border-line bg-canvas">
-  {/* Bedrock: the page ends in stacked sheets, the way the mineral does. */}
-  <div class="sheets h-10 w-full" aria-hidden="true"></div>
-  <div class="wrap pb-14">
+  <div class="wrap py-14">
     <div class="grid gap-12 md:grid-cols-[1fr_1.5fr]">
       <div>
         <Logo />
@@ -34,7 +32,7 @@ const [navigation, site] = await Promise.all([getNavigation(), getSite()]);
     </div>
     <div class="mt-12 flex flex-col gap-2 border-t border-line pt-6 text-xs text-faint sm:flex-row sm:justify-between">
       <span>
-        © {new Date().getFullYear()} MicaCMS ·
+        © {new Date().getFullYear()} Mica ·
         <a class="transition hover:text-ink" href="/imprint/">Imprint</a>
       </span>
       <span>{navigation.footerNote}</span>

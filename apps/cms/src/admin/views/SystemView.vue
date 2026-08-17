@@ -72,7 +72,7 @@ function report(): string {
   if (!data) return "";
 
   const lines = [
-    `Mica CMS ${data.cms.version} (${data.cms.environment})`,
+    `Mica ${data.cms.version} (${data.cms.environment})`,
     `Node ${data.cms.node} on ${data.cms.platform}, up ${formatDuration(data.cms.uptimeSeconds)}`,
     `Schema — ${data.schema.totals.collections} collections, ` +
       `${data.schema.totals.singletons} singletons, ${data.schema.totals.total} fields`,
@@ -109,7 +109,7 @@ async function copyReport(): Promise<void> {
 <template>
   <PageHeader
     title="System"
-    :subtitle="info ? `Mica CMS ${info.cms.version} · ${info.cms.environment}` : null"
+    :subtitle="info ? `Mica ${info.cms.version} · ${info.cms.environment}` : null"
   >
     <button type="button" class="btn-ghost" :disabled="loading" @click="load">Refresh</button>
     <button type="button" class="btn-secondary" :disabled="!info" @click="copyReport">

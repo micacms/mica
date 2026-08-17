@@ -200,7 +200,7 @@ const folderOf = (path: string): string => {
         role="dialog"
         aria-modal="true"
         aria-labelledby="media-picker-title"
-        class="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl"
+        class="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-t-xl border border-line bg-raised shadow-2xl sm:rounded-xl"
       >
         <header class="flex items-center gap-3 border-b border-line px-5 py-3.5">
           <h2 id="media-picker-title" class="text-base font-semibold">Media</h2>
@@ -229,7 +229,7 @@ const folderOf = (path: string): string => {
           @drop.prevent="onDrop"
         >
           <label
-            class="mb-4 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-line bg-canvas/50 px-4 py-6 text-center transition hover:border-brand/40"
+            class="mb-4 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-line-strong bg-canvas/50 px-4 py-6 text-center transition hover:border-ink/40"
           >
             <input
               ref="fileInput"

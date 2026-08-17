@@ -9,8 +9,8 @@ defineProps<{
 </script>
 
 <template>
-  <header class="border-b border-line bg-surface">
-    <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-3 px-4 py-4 sm:px-6">
+  <header class="border-b border-line bg-raised">
+    <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-4 py-4 sm:px-6">
       <div class="min-w-0 flex-1">
         <RouterLink
           v-if="back"
@@ -23,8 +23,8 @@ defineProps<{
           {{ backLabel ?? "Back" }}
         </RouterLink>
 
-        <h1 class="truncate text-xl font-semibold tracking-tight">{{ title }}</h1>
-        <p v-if="subtitle" class="mt-0.5 truncate text-sm text-muted">{{ subtitle }}</p>
+        <h1 class="truncate text-[22px] font-semibold leading-tight tracking-[-.018em]">{{ title }}</h1>
+        <p v-if="subtitle" class="mt-1 truncate font-mono text-xs text-muted">{{ subtitle }}</p>
       </div>
 
       <div class="flex shrink-0 items-center gap-2">

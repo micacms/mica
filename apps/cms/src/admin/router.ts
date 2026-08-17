@@ -106,5 +106,5 @@ router.beforeEach(async (to) => {
 
 router.afterEach((to) => {
   const title = typeof to.meta.title === "string" ? to.meta.title : null;
-  document.title = title ? `${title} · Mica CMS` : "Mica CMS";
+  document.title = title ? `${title} · Mica` : "Mica";
 });

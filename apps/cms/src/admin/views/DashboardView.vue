@@ -63,7 +63,7 @@ onMounted(async () => {
           <li v-for="collection in overview.collections" :key="collection.name">
             <RouterLink
               :to="{ name: 'collection', params: { collection: collection.name } }"
-              class="card block p-4 transition hover:border-brand/35"
+              class="card block p-4 transition hover:border-line-strong hover:bg-raised"
             >
               <p class="text-sm text-muted">{{ collection.label }}</p>
               <p class="mt-1 text-2xl font-semibold tabular-nums">{{ collection.total }}</p>
@@ -74,7 +74,7 @@ onMounted(async () => {
           </li>
 
           <li>
-            <RouterLink :to="{ name: 'media' }" class="card block p-4 transition hover:border-brand/35">
+            <RouterLink :to="{ name: 'media' }" class="card block p-4 transition hover:border-line-strong hover:bg-raised">
               <p class="text-sm text-muted">Media</p>
               <p class="mt-1 text-2xl font-semibold tabular-nums">{{ overview.media.files }}</p>
               <p class="mt-1 text-xs text-muted">{{ overview.media.readable }}</p>

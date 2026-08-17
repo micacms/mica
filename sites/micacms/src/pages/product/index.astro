@@ -19,7 +19,7 @@ const [product, features] = await Promise.all([getProduct(), getFeatures()]);
     <div class="wrap">
       <div class="max-w-xl">
         <p class="eyebrow">One system, three clear views</p>
-        <h2 class="display text-[2rem] leading-[1.15] md:text-[2.4rem]">Good for the whole site team.</h2>
+        <h2 class="display text-[30px] leading-[1.15]">Good for the whole site team.</h2>
       </div>
       <div class="mt-12 grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-3">
         {product.audiences.map((audience) => (
@@ -37,7 +37,7 @@ const [product, features] = await Promise.all([getProduct(), getFeatures()]);
       <div class="grid items-end gap-8 md:grid-cols-[1fr_auto]">
         <div class="max-w-xl">
           <p class="eyebrow">A clean work surface</p>
-          <h2 class="display text-[2rem] leading-[1.15] md:text-[2.4rem]">The model does the busy work.</h2>
+          <h2 class="display text-[30px] leading-[1.15]">The model does the busy work.</h2>
         </div>
         <p class="lead max-w-sm md:text-right">
           Add a collection or field in code. Mica reads the new model and updates the editing interface — no admin screen to build, no form schema to copy.
@@ -51,7 +51,7 @@ const [product, features] = await Promise.all([getProduct(), getFeatures()]);
     <div class="wrap">
       <div class="max-w-xl">
         <p class="eyebrow">Complete workflow</p>
-        <h2 class="display text-[2rem] leading-[1.15] md:text-[2.4rem]">Every layer has one job.</h2>
+        <h2 class="display text-[30px] leading-[1.15]">Every layer has one job.</h2>
       </div>
       <div class="mt-10 border-t border-line">
         {features.map((feature) => (
@@ -72,7 +72,7 @@ const [product, features] = await Promise.all([getProduct(), getFeatures()]);
     <div class="wrap grid gap-12 lg:grid-cols-[.85fr_1.15fr] lg:gap-20">
       <div>
         <p class="eyebrow">What runs where</p>
-        <h2 class="display max-w-sm text-[2rem] leading-[1.15] md:text-[2.4rem]">Small pieces with clean boundaries.</h2>
+        <h2 class="display max-w-sm text-[30px] leading-[1.15]">Small pieces with clean boundaries.</h2>
         <p class="lead mt-5 max-w-md">
           The public site gets no client library. It receives the static output that Astro already makes.
         </p>
