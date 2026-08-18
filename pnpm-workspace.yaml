@@ -1,7 +1,6 @@
 packages:
   - "apps/*"
   - "packages/*"
-  - "examples/*"
   - "sites/*"
 
 # Build scripts are opt-in.
