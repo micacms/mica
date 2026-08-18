@@ -68,7 +68,7 @@ Ask the user before you:
 - When the user asks for a branch, create it from an up-to-date `main` branch.
 - Use one of these branch prefixes: `docs/`, `feature/`, `chore/`, `bugfix/`, `refactor/`, or `content/`.
 - Use a short, descriptive branch name after the prefix.
-- Keep commit messages to one concise line.
+- Keep commit messages to one concise line. Do not add AI co-authoring information to commit messages or pull requests.
 - Keep each commit focused on one logical change.
 - Structure a pull request description in this order:
   1. `Description`
