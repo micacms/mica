@@ -55,7 +55,7 @@ const schema = z
     CMS_BASE_URL: z.string().url().default(DEFAULT_BASE_URL),
 
     /**
-     * Set by `npx @micacms/cms`, and by nothing else.
+     * Set by `npx @micacms/editor`, and by nothing else.
      *
      * The audience for the startup output: a person at a terminal gets one
      * banner, a log collector gets the structured lines. Neither is a mode —
@@ -205,7 +205,7 @@ export class ConfigError extends Error {
  * `process.loadEnvFile` leaves already-set variables alone, so a container's
  * `environment:` block still beats a file that happened to be copied into the
  * image. Resolved against the working directory, like `DATA_DIR` above, which
- * is `apps/cms` for every documented way of starting the server.
+ * is `packages/editor` for every documented way of starting the server.
  */
 function loadEnvFile(): void {
   try {

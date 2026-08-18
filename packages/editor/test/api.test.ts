@@ -137,7 +137,7 @@ describe("authentication", () => {
 
 /**
  * The local experience, which is the one almost everybody meets first: `npx
- * @micacms/cms`, a link, and the editor. No sign-in screen, because there is
+ * @micacms/editor`, a link, and the editor. No sign-in screen, because there is
  * no identity provider to send anybody to and therefore no question to ask.
  */
 describe("opening the editor in local mode", () => {

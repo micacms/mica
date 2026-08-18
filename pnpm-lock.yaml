@@ -34,7 +34,20 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
-  packages/cms:
+  packages/connectors:
+    dependencies:
+      '@micacms/model':
+        specifier: workspace:*
+        version: link:../model
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/editor:
     dependencies:
       '@hono/node-server':
         specifier: ^1.13.8
@@ -109,19 +122,6 @@ importers:
       vue-tsc:
         specifier: ^2.2.0
         version: 2.2.12(typescript@5.9.3)
-
-  packages/connectors:
-    dependencies:
-      '@micacms/model':
-        specifier: workspace:*
-        version: link:../model
-    devDependencies:
-      '@types/node':
-        specifier: ^22.20.1
-        version: 22.20.1
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.3
 
   packages/model:
     dependencies:

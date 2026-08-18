@@ -22,7 +22,7 @@ docker compose exec cms node dist/server/scripts/grant-access.js \
 ## Start the service
 
 ```bash
-cp apps/cms/.env.example .env
+cp packages/editor/.env.example .env
 docker compose up -d --build
 curl -s https://cms.example.com/health
 ```

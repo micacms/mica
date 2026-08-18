@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `npx @micacms/cms` — Mica against a project on this machine.
+ * `npx @micacms/editor` — Mica against a project on this machine.
  *
  * The point of this file is that adopting Mica should not mean adopting this
  * repository. Everything it does is set environment variables and hand over to
@@ -49,7 +49,7 @@ const USAGE = `
   mica — edit your Astro project's content, on this machine
 
   Usage
-    $ npx @micacms/cms [content directory]
+    $ npx @micacms/editor [content directory]
 
   Options
     -c, --content <dir>   The content root (default: ./content)
@@ -109,7 +109,7 @@ export function parse(argv: string[]): Options {
         process.exit(0);
 
       default:
-        // A bare path is the content root, so `npx @micacms/cms ./site/content`
+        // A bare path is the content root, so `npx @micacms/editor ./site/content`
         // does what it looks like it does.
         if (!flag.startsWith("-")) options.content = flag;
         else fail(`Unknown option "${flag}".`);
@@ -131,7 +131,7 @@ function report(title: string, lines: string[]): void {
 }
 
 function fail(message: string): never {
-  report(message, ["Run `npx @micacms/cms --help` to see every option."]);
+  report(message, ["Run `npx @micacms/editor --help` to see every option."]);
   process.exit(64); // EX_USAGE
 }
 
@@ -176,7 +176,7 @@ export async function main(): Promise<void> {
       "Mica edits the directory your Astro project publishes content into —",
       "the `root` in your `defineSite({ root: \"./content\" })`.",
       "",
-      "  npx @micacms/cms ./path/to/content",
+      "  npx @micacms/editor ./path/to/content",
       "",
       "If this is a new project, create the directory and Mica writes the first",
       "entry into it.",
@@ -229,7 +229,7 @@ export async function main(): Promise<void> {
 // `realpathSync` matters: npm and npx run this file through a symlink in
 // `node_modules/.bin`, and Node resolves `import.meta.url` to the symlink's
 // real target. Comparing against the raw `argv[1]` never matched there, so
-// `npx @micacms/cms` silently did nothing.
+// `npx @micacms/editor` silently did nothing.
 if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
   main().catch((error: unknown) => {
     process.stderr.write(`\n${error instanceof Error ? error.stack : String(error)}\n`);

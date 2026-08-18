@@ -1,7 +1,7 @@
 /**
  * Grants somebody access to a site, from the command line.
  *
- *   pnpm --filter @micacms/cms grant-access -- --email a@b.ch --role admin
+ *   pnpm --filter @micacms/editor grant-access -- --email a@b.ch --role admin
  *
  * This is the bootstrap: an empty deployment has no members, so nobody can be
  * invited through the admin, because inviting requires being an administrator.

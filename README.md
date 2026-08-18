@@ -139,7 +139,7 @@ it cannot inject a script into the built site.
 ## Running it
 
 ```bash
-npx @micacms/cms          # reads ./content, opens the editor on localhost:6422/admin/
+npx @micacms/editor       # reads ./content, opens the editor on localhost:6422/admin/
 ```
 
 |                 |                                                                                                                                                                                               |
@@ -161,10 +161,10 @@ which site.
 packages/
 ├── model/       the field DSL, the content model, and the authoring format
 ├── connectors/  repository access: local working tree, GitHub, GitLab
-└── astro/       Content Layer loader and the dev integration
-apps/
-└── cms/         Hono API + Vue 3 admin SPA
+├── astro/       Content Layer loader and the dev integration
+└── editor/      Hono API + Vue 3 admin SPA
 sites/
+├── micacms/             the public micacms.com website
 └── muster-consulting/   a complete site to read: model, content, templates
 docs/
 ├── getting-started.md   add Mica to an Astro project, and run it locally
@@ -210,7 +210,7 @@ mandatory cloud services.
 | `pnpm dev:site`         | the example website, in a second terminal                        |
 | `pnpm test`             | 296 tests across the model, connectors, Astro loader and CMS API |
 | `pnpm typecheck`        | every package, including `.vue` and `.astro`                     |
-| `pnpm cms:grant-access` | let an email address edit a site                                 |
+| `pnpm grant-access`     | let an email address edit a site                                 |
 
 ### Releasing
 

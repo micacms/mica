@@ -51,7 +51,7 @@ work.
 | `@micacms/model`          | The field DSL, the content model, and the authoring format — serialise, parse, layout |
 | `@micacms/connectors`     | Repository access, and the content store built on it                                  |
 | `@micacms/astro`          | Content Layer loader, dev integration, Markdoc rendering                              |
-| `apps/cms`                | Hono API and the Vue admin it serves                                                  |
+| `@micacms/editor`         | Hono API and the Vue admin it serves                                                  |
 | `sites/muster-consulting` | A complete Astro site: a starter to copy, not a dependency                            |
 
 **Why the model package is not inside the Astro package.** The editor, the

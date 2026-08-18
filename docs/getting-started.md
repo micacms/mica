@@ -17,7 +17,7 @@ Add Mica to an Astro project and edit its content on your machine. Five minutes.
 npm install @micacms/astro @micacms/model
 # write src/mica.ts and src/content.config.ts — steps 2 and 3
 npx astro build          # writes content/.mica/schema.json
-npx @micacms/cms         # opens the editor
+npx @micacms/editor      # opens the editor
 ```
 
 The steps below are the same four commands, with the two files written out.
@@ -133,7 +133,7 @@ repository, so commit it after each model change. Every build rewrites it.
 ## 5. Run Mica
 
 ```bash
-npx @micacms/cms
+npx @micacms/editor
 ```
 
 ```
@@ -146,7 +146,7 @@ npx @micacms/cms
 
 The command reads `./content`, listens on loopback, and opens your browser on
 the editor. Give it a different content root with
-`npx @micacms/cms ./site/content`, keep the browser shut with `--no-open`, and
+`npx @micacms/editor ./site/content`, keep the browser shut with `--no-open`, and
 see `--help` for the rest. Port 6422 is Mica's own, so `astro dev` can run
 beside it.
 
@@ -228,7 +228,7 @@ static host. See [self-hosting.md](./self-hosting.md).
 Run step 4, and commit the file to the branch Mica reads.
 
 **"Port 6422 is already in use".**
-Another Mica, most likely. Stop it, or run `npx @micacms/cms --port 6423`.
+Another Mica, most likely. Stop it, or run `npx @micacms/editor --port 6423`.
 
 **The admin shows collections you removed, or misses one you added.**
 The model in the repository is stale. Re-run the build, commit, and restart

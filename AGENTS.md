@@ -81,7 +81,7 @@ Ask the user before you:
 - `packages/model`: content model, field DSL, validation, serialization, and authoring format.
 - `packages/connectors`: local, GitHub, and GitLab repository access.
 - `packages/astro`: Astro Content Layer integration and Markdoc rendering.
-- `packages/cms`: Hono server and Vue administration application.
+- `packages/editor`: Hono server and Vue administration application.
 - `sites/micacms`: public Mica website.
 - `sites/muster-consulting`: example website and evolving reference project.
 - `docs`: product, architecture, setup, and decision documentation.

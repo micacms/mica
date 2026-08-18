@@ -1,5 +1,5 @@
 /**
- * The front door: `npx @micacms/cms`.
+ * The front door: `npx @micacms/editor`.
  *
  * Argument handling is tested in-process; everything that ends in
  * `process.exit` is tested by running the real command, because an exit code
@@ -125,7 +125,7 @@ describe("running it", () => {
     assert.equal(result.status, 64);
     assert.match(result.stderr, /definitely-not-here/);
     // And says what that directory is, rather than only that it is missing.
-    assert.match(result.stderr, /npx @micacms\/cms \.\/path\/to\/content/);
+    assert.match(result.stderr, /npx @micacms\/editor \.\/path\/to\/content/);
   });
 
   it("says how to publish a model when the project has not", () => {

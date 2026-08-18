@@ -8,7 +8,7 @@ data/
 .env
 .env.local
 .DS_Store
-apps/cms/public/admin/
+packages/editor/public/admin/
 *.tsbuildinfo
 backups/
 

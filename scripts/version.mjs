@@ -26,7 +26,7 @@ export const MANIFESTS = [
   "packages/model/package.json",
   "packages/connectors/package.json",
   "packages/astro/package.json",
-  "apps/cms/package.json",
+  "packages/editor/package.json",
 ];
 
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;

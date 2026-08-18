@@ -1,9 +1,9 @@
-# Mica CMS
+# Mica Editor
 
 > **Experimental.** Pre-1.0: the CLI, the API and the content format can still
 > change without notice. Use it at your own risk.
 
-The CMS application: a Hono API and the Vue administration SPA it serves. It
+The editor application: a Hono API and the Vue administration SPA it serves. It
 holds no content — content is committed to a Git repository through a connector,
 and the SQLite file next to this process holds accounts and sessions only.
 
@@ -26,7 +26,7 @@ SQLite: accounts, sessions
 ## Running it against a project
 
 ```bash
-npx @micacms/cms --content ./content
+npx @micacms/editor --content ./content
 ```
 
 The published package carries the API and the built admin, so this is one
@@ -44,13 +44,13 @@ Everything else it does is set environment variables and hand over to
 `src/server/index.ts`, so there is one server with one configuration path.
 Explicit environment beats the flags.
 
-## Working on the CMS itself
+## Working on the editor itself
 
 ```bash
 pnpm install
 pnpm build:packages
 
-cd apps/cms
+cd packages/editor
 cp .env.example .env
 
 pnpm dev                               # API on :6422, admin on :5173

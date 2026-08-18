@@ -1,6 +1,6 @@
 # Reference deployment.
 #
-#   cp apps/cms/.env.example .env   # fill in the secrets and the repository
+#   cp packages/editor/.env.example .env   # fill in the secrets and the repository
 #   docker compose up -d
 #
 # One container. No database server, no cache, no queue, no object storage —

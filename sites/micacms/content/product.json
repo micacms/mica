@@ -20,7 +20,7 @@
     { "name": "@micacms/model", "role": "Fields, validation, and file layout" },
     { "name": "@micacms/astro", "role": "Typed Astro Content Layer loaders" },
     { "name": "@micacms/connectors", "role": "Local, GitHub, and GitLab writes" },
-    { "name": "@micacms/cms", "role": "Hono API and Vue editor" },
+    { "name": "@micacms/editor", "role": "Hono API and Vue editor" },
     { "name": "SQLite", "role": "Accounts and sessions only" },
     { "name": "OpenID Connect", "role": "Authentication in production" }
   ]
