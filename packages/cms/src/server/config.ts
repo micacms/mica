@@ -26,8 +26,12 @@ const bool = (fallback: boolean) =>
 
 const schema = z
   .object({
-    NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-    LOG_LEVEL: z.enum(["debug", "info", "warn", "error", "silent"]).default("info"),
+    NODE_ENV: z
+      .enum(["development", "test", "production"])
+      .default("development"),
+    LOG_LEVEL: z
+      .enum(["debug", "info", "warn", "error", "silent"])
+      .default("info"),
 
     /**
      * How this deployment is being run.
@@ -73,7 +77,7 @@ const schema = z
      * The default is the example project in this repository, which is what
      * `pnpm dev` edits.
      */
-    CONTENT_ROOT: z.string().default("../../examples/muster-consulting/content"),
+    CONTENT_ROOT: z.string().default("../../sites/muster-consulting/content"),
 
     /**
      * How Mica reaches that repository.
@@ -122,13 +126,29 @@ const schema = z
 
     /** Signs session cookies. Rotating it invalidates every session. */
     SESSION_SECRET: z.string().min(32).optional(),
-    SESSION_TTL_HOURS: z.coerce.number().int().positive().default(24 * 14),
-    SESSION_IDLE_HOURS: z.coerce.number().int().positive().default(24 * 3),
+    SESSION_TTL_HOURS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(24 * 14),
+    SESSION_IDLE_HOURS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(24 * 3),
 
-    MAX_UPLOAD_BYTES: z.coerce.number().int().positive().default(25 * 1024 * 1024),
+    MAX_UPLOAD_BYTES: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(25 * 1024 * 1024),
 
     LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
-    LOGIN_WINDOW_MS: z.coerce.number().int().positive().default(15 * 60 * 1000),
+    LOGIN_WINDOW_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .default(15 * 60 * 1000),
 
     /** Read the client IP from X-Forwarded-For. Only enable behind a proxy. */
     TRUST_PROXY: bool(false),
@@ -143,7 +163,9 @@ const schema = z
       ...env,
       isProduction: env.NODE_ENV === "production",
       dataDir,
-      databasePath: path.resolve(env.DATABASE_PATH ?? path.join(dataDir, "cms.sqlite")),
+      databasePath: path.resolve(
+        env.DATABASE_PATH ?? path.join(dataDir, "cms.sqlite"),
+      ),
       contentRoot: path.resolve(env.CONTENT_ROOT),
       /**
        * Local mode has no identity provider, and therefore no authentication:
@@ -158,7 +180,9 @@ const schema = z
        */
       oidcAllowInsecure:
         env.NODE_ENV !== "production" &&
-        /^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(env.OIDC_ISSUER ?? ""),
+        /^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(
+          env.OIDC_ISSUER ?? "",
+        ),
       adminOrigins: (env.ADMIN_ORIGINS ?? "")
         .split(",")
         .map((origin) => origin.trim())
@@ -207,7 +231,9 @@ function loadEnvFile(): void {
  */
 function withoutBlanks(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   return Object.fromEntries(
-    Object.entries(env).filter(([, value]) => value !== undefined && value.trim() !== ""),
+    Object.entries(env).filter(
+      ([, value]) => value !== undefined && value.trim() !== "",
+    ),
   );
 }
 
@@ -266,7 +292,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
       );
     }
   } else {
-    const needed = (["OIDC_ISSUER", "OIDC_CLIENT_ID"] as const).filter((key) => !config[key]);
+    const needed = (["OIDC_ISSUER", "OIDC_CLIENT_ID"] as const).filter(
+      (key) => !config[key],
+    );
 
     if (needed.length > 0) {
       throw new ConfigError(
@@ -302,7 +330,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     }
   }
 
-  const sessionSecret = config.SESSION_SECRET ?? randomBytes(32).toString("hex");
+  const sessionSecret =
+    config.SESSION_SECRET ?? randomBytes(32).toString("hex");
 
   return {
     ...config,

@@ -12,7 +12,29 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
-  apps/cms:
+  packages/astro:
+    dependencies:
+      '@markdoc/markdoc':
+        specifier: ^0.5.9
+        version: 0.5.9
+      '@micacms/model':
+        specifier: workspace:*
+        version: link:../model
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
+      astro:
+        specifier: ^7.2.2
+        version: 7.2.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@22.20.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/cms:
     dependencies:
       '@hono/node-server':
         specifier: ^1.13.8
@@ -22,10 +44,10 @@ importers:
         version: 0.5.9
       '@micacms/connectors':
         specifier: workspace:*
-        version: link:../../packages/connectors
+        version: link:../connectors
       '@micacms/model':
         specifier: workspace:*
-        version: link:../../packages/model
+        version: link:../model
       hono:
         specifier: ^4.6.20
         version: 4.13.1
@@ -39,6 +61,9 @@ importers:
         specifier: ^4.3.6
         version: 4.4.3
     devDependencies:
+      '@lucide/vue':
+        specifier: ^1.31.0
+        version: 1.31.0(vue@3.5.41(typescript@5.9.3))
       '@tailwindcss/vite':
         specifier: ^4.0.0
         version: 4.3.3(vite@6.4.3(@types/node@22.20.1)(jiti@2.7.0)(lightningcss@1.33.0)(tsx@4.23.12)(yaml@2.9.0))
@@ -84,62 +109,6 @@ importers:
       vue-tsc:
         specifier: ^2.2.0
         version: 2.2.12(typescript@5.9.3)
-
-  examples/muster-consulting:
-    dependencies:
-      '@micacms/astro':
-        specifier: workspace:*
-        version: link:../../packages/astro
-      '@micacms/model':
-        specifier: workspace:*
-        version: link:../../packages/model
-      astro:
-        specifier: ^7.2.2
-        version: 7.2.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@22.20.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)
-      sharp:
-        specifier: ^0.34.5
-        version: 0.34.5
-    devDependencies:
-      '@astrojs/check':
-        specifier: ^0.9.4
-        version: 0.9.10(prettier@3.9.6)(typescript@5.9.3)
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.3.3(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
-      '@types/node':
-        specifier: ^22.20.1
-        version: 22.20.1
-      maplibre-gl:
-        specifier: ^5.0.0
-        version: 5.24.0
-      tailwindcss:
-        specifier: ^4.0.0
-        version: 4.3.3
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.3
-
-  packages/astro:
-    dependencies:
-      '@markdoc/markdoc':
-        specifier: ^0.5.9
-        version: 0.5.9
-      '@micacms/model':
-        specifier: workspace:*
-        version: link:../model
-      zod:
-        specifier: ^4.3.6
-        version: 4.4.3
-    devDependencies:
-      '@types/node':
-        specifier: ^22.20.1
-        version: 22.20.1
-      astro:
-        specifier: ^7.2.2
-        version: 7.2.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@22.20.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.3
 
   packages/connectors:
     dependencies:
@@ -191,6 +160,40 @@ importers:
       '@types/node':
         specifier: ^22.20.1
         version: 22.20.1
+      tailwindcss:
+        specifier: ^4.0.0
+        version: 4.3.3
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  sites/muster-consulting:
+    dependencies:
+      '@micacms/astro':
+        specifier: workspace:*
+        version: link:../../packages/astro
+      '@micacms/model':
+        specifier: workspace:*
+        version: link:../../packages/model
+      astro:
+        specifier: ^7.2.2
+        version: 7.2.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@22.20.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
+    devDependencies:
+      '@astrojs/check':
+        specifier: ^0.9.4
+        version: 0.9.10(prettier@3.9.6)(typescript@5.9.3)
+      '@tailwindcss/vite':
+        specifier: ^4.0.0
+        version: 4.3.3(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
+      maplibre-gl:
+        specifier: ^5.0.0
+        version: 5.24.0
       tailwindcss:
         specifier: ^4.0.0
         version: 4.3.3
@@ -905,6 +908,11 @@ packages:
     resolution: {integrity: sha512-36wUVbnUFk/IVuUzObbPZtjuW4rcK3BdrxpCQQwvI9LXKhXti/m3DVOu9VTJrxxOUkR6vlFwiNyHrIj9F4u8cg==}
     peerDependencies:
       astro: ^4 || ^5 || ^6 || ^7
+
+  '@lucide/vue@1.31.0':
+    resolution: {integrity: sha512-NtjEHhcAa7umPh40wrRmlESJqNGdnpc7LziBKFnW3fmlrW0g2xMCDpdWU7WeEHRSl3xOpxbqiFTLKxoK3CoVCg==}
+    peerDependencies:
+      vue: '>=3.0.1'
 
   '@mapbox/jsonlint-lines-primitives@2.0.3':
     resolution: {integrity: sha512-0SElaV0uMxEnxzBhhX9WTuPyUeMsAN/SS0i16tjuba4/mio63MG9khjC1a0JAiPGXAwvwm4UfHJURCN7nyudQg==}
@@ -3528,6 +3536,10 @@ snapshots:
   '@lucide/astro@1.31.0(astro@7.2.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@22.20.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))':
     dependencies:
       astro: 7.2.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@22.20.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)
+
+  '@lucide/vue@1.31.0(vue@3.5.41(typescript@5.9.3))':
+    dependencies:
+      vue: 3.5.41(typescript@5.9.3)
 
   '@mapbox/jsonlint-lines-primitives@2.0.3': {}
 

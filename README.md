@@ -45,7 +45,14 @@ Describe your content as a plain module:
 
 ```ts
 // src/mica.ts
-import { collection, defineSite, media, richText, slug, text } from "@micacms/model";
+import {
+  collection,
+  defineSite,
+  media,
+  richText,
+  slug,
+  text,
+} from "@micacms/model";
 
 export const site = defineSite({
   root: "./content",
@@ -84,7 +91,9 @@ side by side:
 ```ts
 export const collections = {
   ...micaCollections(site),
-  docs: defineCollection({ loader: glob({ pattern: "**/*.md", base: "./src/docs" }) }),
+  docs: defineCollection({
+    loader: glob({ pattern: "**/*.md", base: "./src/docs" }),
+  }),
 };
 ```
 
@@ -133,15 +142,15 @@ it cannot inject a script into the built site.
 npx @micacms/cms          # reads ./content, opens the editor on localhost:6422/admin/
 ```
 
-| | |
-| --- | --- |
-| **Locally** | The command above. Loopback only, no identity provider, no accounts, no passwords, no sign-in screen, nothing written into your repository — see [getting-started](./docs/getting-started.md) |
-| **On a server** | One container, an OIDC provider, a token for the repository — see [self-hosting](./docs/self-hosting.md) |
+|                 |                                                                                                                                                                                               |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Locally**     | The command above. Loopback only, no identity provider, no accounts, no passwords, no sign-in screen, nothing written into your repository — see [getting-started](./docs/getting-started.md) |
+| **On a server** | One container, an OIDC provider, a token for the repository — see [self-hosting](./docs/self-hosting.md)                                                                                      |
 
 Deployed, Mica authenticates with **OpenID Connect** and nothing else. No
 passwords, no reset flow, no MFA enrolment, no passkeys, and no breach
 notification to write. An identity provider does all of it better. What Mica
-keeps is the part that is genuinely its own: a *membership* saying who may edit
+keeps is the part that is genuinely its own: a _membership_ saying who may edit
 which site.
 
 ---
@@ -155,7 +164,7 @@ packages/
 └── astro/       Content Layer loader and the dev integration
 apps/
 └── cms/         Hono API + Vue 3 admin SPA
-examples/
+sites/
 └── muster-consulting/   a complete site to read: model, content, templates
 docs/
 ├── getting-started.md   add Mica to an Astro project, and run it locally
@@ -166,7 +175,7 @@ docs/
 e2e/                     a runnable Mica + Keycloak, for the deployed shape
 ```
 
-`packages/*` are the published surface. `examples/muster-consulting` is a site
+`packages/*` are the published surface. `sites/muster-consulting` is a site
 to copy and redesign, not a dependency — the design is the part that should
 differ between projects.
 
@@ -195,13 +204,13 @@ mandatory cloud services.
 
 ## Development
 
-| | |
-| --- | --- |
-| `pnpm dev` | build the packages, then run the CMS against the example project |
-| `pnpm dev:site` | the example website, in a second terminal |
-| `pnpm test` | 296 tests across the model, connectors, Astro loader and CMS API |
-| `pnpm typecheck` | every package, including `.vue` and `.astro` |
-| `pnpm cms:grant-access` | let an email address edit a site |
+|                         |                                                                  |
+| ----------------------- | ---------------------------------------------------------------- |
+| `pnpm dev`              | build the packages, then run the CMS against the example project |
+| `pnpm dev:site`         | the example website, in a second terminal                        |
+| `pnpm test`             | 296 tests across the model, connectors, Astro loader and CMS API |
+| `pnpm typecheck`        | every package, including `.vue` and `.astro`                     |
+| `pnpm cms:grant-access` | let an email address edit a site                                 |
 
 ### Releasing
 

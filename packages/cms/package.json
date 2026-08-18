@@ -1,10 +1,7 @@
 {
   "name": "@micacms/cms",
   "version": "0.1.1",
-  "type": "module",
   "description": "Mica CMS — Hono API plus the Vue administration SPA it serves.",
-  "license": "MIT",
-  "author": "Alexander Müdespacher",
   "keywords": [
     "mica",
     "cms",
@@ -13,12 +10,9 @@
     "markdoc",
     "headless-cms"
   ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "engines": {
-    "node": ">=22.12.0"
-  },
+  "license": "MIT",
+  "author": "Alexander Müdespacher",
+  "type": "module",
   "bin": {
     "mica": "./dist/server/cli.js"
   },
@@ -27,17 +21,16 @@
     "README.md"
   ],
   "scripts": {
-    "dev": "concurrently -n api,admin -c blue,magenta \"pnpm dev:api\" \"pnpm dev:admin\"",
-    "//dev:api": "--include watches the model the example project publishes, so editing a collection restarts the API the way editing the server does.",
-    "dev:api": "tsx watch --clear-screen=false --include ../../examples/muster-consulting/content/.mica/schema.json src/server/index.ts",
-    "dev:admin": "vite",
     "build": "pnpm build:admin && pnpm build:server",
-    "build:server": "tsc -p tsconfig.server.json",
     "build:admin": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "dev": "concurrently -n api,admin -c blue,magenta \"pnpm dev:api\" \"pnpm dev:admin\"",
+    "dev:admin": "vite",
+    "dev:api": "tsx watch --clear-screen=false --include ../../sites/muster-consulting/content/.mica/schema.json src/server/index.ts",
+    "grant-access": "tsx src/server/scripts/grant-access.ts",
     "start": "node dist/server/index.js",
-    "typecheck": "tsc -p tsconfig.server.json --noEmit && vue-tsc -p tsconfig.json --noEmit",
     "test": "tsc -p tsconfig.server.json --noEmit && node --test --import tsx test/**/*.test.ts",
-    "grant-access": "tsx src/server/scripts/grant-access.ts"
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && vue-tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
@@ -50,6 +43,7 @@
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@lucide/vue": "^1.31.0",
     "@tailwindcss/vite": "^4.0.0",
     "@tiptap/core": "^2.11.0",
     "@tiptap/extension-link": "^2.11.0",
@@ -65,5 +59,11 @@
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",
     "vue-tsc": "^2.2.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

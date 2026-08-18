@@ -56,7 +56,7 @@ cp .env.example .env
 pnpm dev                               # API on :6422, admin on :5173
 ```
 
-`REPOSITORY=local` and `CONTENT_ROOT=../../examples/muster-consulting/content`
+`REPOSITORY=local` and `CONTENT_ROOT=../../sites/muster-consulting/content`
 are the defaults, so the server edits the example project's content. There is
 nothing to seed: the content is already there, in Git.
 
@@ -86,7 +86,7 @@ pnpm build && pnpm start               # everything on :6422
 
 ## Giving somebody access
 
-Mica does not create people; an identity provider does. Access is a *membership*
+Mica does not create people; an identity provider does. Access is a _membership_
 saying that whoever holds an email address may edit a site.
 
 An empty deployment has no members, so nobody can invite anyone — one shell
@@ -147,7 +147,7 @@ definition:
 
 Adding a field therefore needs no change here and no SQL migration: entry
 payloads are JSON validated against whatever the model currently says. Adding a
-new *field kind* means a builder in the model package, an entry in `FIELD_KINDS`
+new _field kind_ means a builder in the model package, an entry in `FIELD_KINDS`
 (the compiler enforces this), and one line in
 `src/admin/components/fields/registry.ts`.
 
@@ -156,7 +156,7 @@ The model reaches the server as plain data, read out of the repository by
 newer `@micacms/model` than the server is running fails at startup naming the
 field, rather than at an editor's screen. Because the model is in the
 repository, `src/server/index.ts` opens the database and builds the connector
-*before* composing the application: there is no context to hold until the model
+_before_ composing the application: there is no context to hold until the model
 has been read.
 
 ## Authentication
@@ -193,26 +193,26 @@ nothing prunes it, and no version of Mica has to be running to read it.
 
 ## API surface
 
-| Method | Path | Auth |
-| --- | --- | --- |
-| `GET` | `/health` | none |
-| `GET` | `/api/auth/config` | none |
-| `GET` | `/api/auth/login` · `/callback` | none — starts and ends the OIDC flow |
-| `POST` | `/api/auth/logout` | session |
-| `GET` | `/api/auth/me` | session |
-| `GET` | `/api/admin/schema` · `/overview` · `/system` | session |
-| `GET/POST` | `/api/admin/collections/:collection/entries` | session |
-| `GET/PUT/DELETE` | `/api/admin/collections/:collection/entries/:slug` | session |
-| `GET` | `/api/admin/collections/:collection/entries/:slug/references` | session |
-| `POST` | `/api/admin/collections/:collection/reorder` | session |
-| `GET` | `/api/admin/collections/:collection/slug` | session |
-| `GET/PUT` | `/api/admin/singletons/:name` | session |
-| `GET/POST` | `/api/admin/media` | session |
-| `GET` | `/api/admin/media/file/*` | session |
-| `GET/POST/PATCH/DELETE` | `/api/admin/users[/:id]` | session + admin |
+| Method                  | Path                                                          | Auth                                 |
+| ----------------------- | ------------------------------------------------------------- | ------------------------------------ |
+| `GET`                   | `/health`                                                     | none                                 |
+| `GET`                   | `/api/auth/config`                                            | none                                 |
+| `GET`                   | `/api/auth/login` · `/callback`                               | none — starts and ends the OIDC flow |
+| `POST`                  | `/api/auth/logout`                                            | session                              |
+| `GET`                   | `/api/auth/me`                                                | session                              |
+| `GET`                   | `/api/admin/schema` · `/overview` · `/system`                 | session                              |
+| `GET/POST`              | `/api/admin/collections/:collection/entries`                  | session                              |
+| `GET/PUT/DELETE`        | `/api/admin/collections/:collection/entries/:slug`            | session                              |
+| `GET`                   | `/api/admin/collections/:collection/entries/:slug/references` | session                              |
+| `POST`                  | `/api/admin/collections/:collection/reorder`                  | session                              |
+| `GET`                   | `/api/admin/collections/:collection/slug`                     | session                              |
+| `GET/PUT`               | `/api/admin/singletons/:name`                                 | session                              |
+| `GET/POST`              | `/api/admin/media`                                            | session                              |
+| `GET`                   | `/api/admin/media/file/*`                                     | session                              |
+| `GET/POST/PATCH/DELETE` | `/api/admin/users[/:id]`                                      | session + admin                      |
 
 `/api/auth/login` and `/callback` are redirects, not JSON: the browser has to
-*visit* the identity provider, which an XHR cannot do. A failed callback
+_visit_ the identity provider, which an XHR cannot do. A failed callback
 redirects to the sign-in page with a readable reason rather than returning an
 error envelope a browser would render as raw braces.
 

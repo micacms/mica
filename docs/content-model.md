@@ -76,7 +76,7 @@ maintains the templates stays in the repository, reviewed in a pull request.
 Pages read both with the same `getCollection`. Keep the names distinct: a clash
 is resolved by whichever spread comes last, silently.
 
-`examples/muster-consulting` does exactly this, with a `glossary` collection
+`sites/muster-consulting` does exactly this, with a `glossary` collection
 beside four Mica ones.
 
 ---
@@ -94,15 +94,15 @@ projects: collection({
 });
 ```
 
-| Option | Meaning |
-| --- | --- |
-| `label` | Plural name in the navigation. Required |
-| `labelSingular` | Used for buttons like "New project" |
-| `description` | Shown above the list |
-| `titleField` | Field key used as the entry title. Defaults to `title` |
-| `slugField` | Field key holding the slug. Defaults to the first `slug()` field |
-| `defaultSort` | `{ field, direction }` over `title`, `position`, `createdAt`, `updatedAt`, `publishedAt` |
-| `sortable` | Lets editors drag entries into an order, kept in `_order.json` |
+| Option          | Meaning                                                                                  |
+| --------------- | ---------------------------------------------------------------------------------------- |
+| `label`         | Plural name in the navigation. Required                                                  |
+| `labelSingular` | Used for buttons like "New project"                                                      |
+| `description`   | Shown above the list                                                                     |
+| `titleField`    | Field key used as the entry title. Defaults to `title`                                   |
+| `slugField`     | Field key holding the slug. Defaults to the first `slug()` field                         |
+| `defaultSort`   | `{ field, direction }` over `title`, `position`, `createdAt`, `updatedAt`, `publishedAt` |
+| `sortable`      | Lets editors drag entries into an order, kept in `_order.json`                           |
 
 Every collection needs exactly one `slug()` field: it is the entry's identity in
 the repository and its address on the website.
@@ -113,44 +113,44 @@ Singletons take `label`, `description` and `fields`, and nothing else.
 
 ## Options every field has
 
-| Option | Meaning |
-| --- | --- |
-| `label` | Falls back to the field key |
-| `description` | Help text under the input |
-| `required` | Empty values are rejected |
-| `listed` | Show this field as a column in the entry list |
-| `readonly` | Rendered, not editable |
-| `hidden` | Kept in the payload, hidden from the editor |
-| `group` | Fields sharing a group are boxed together |
-| `width` | `"full"` (default), `"half"`, `"third"` |
+| Option        | Meaning                                       |
+| ------------- | --------------------------------------------- |
+| `label`       | Falls back to the field key                   |
+| `description` | Help text under the input                     |
+| `required`    | Empty values are rejected                     |
+| `listed`      | Show this field as a column in the entry list |
+| `readonly`    | Rendered, not editable                        |
+| `hidden`      | Kept in the payload, hidden from the editor   |
+| `group`       | Fields sharing a group are boxed together     |
+| `width`       | `"full"` (default), `"half"`, `"third"`       |
 
 ---
 
 ## Field types
 
-| Field | Stored as | Options beyond the shared ones |
-| --- | --- | --- |
-| `text()` | string | `minLength`, `maxLength`, `pattern`, `placeholder`, `default` |
-| `textarea()` | string | `minLength`, `maxLength`, `rows`, `placeholder`, `default` |
-| `richText()` | **a `.mdoc` file beside the entry** | `toolbar`, `maxLength`, `default` |
-| `number()` | number | `min`, `max`, `step`, `integer`, `unit`, `default` |
-| `boolean()` | boolean | `default` |
-| `date()` | ISO string | `includeTime`, `min`, `max`, `default` |
-| `email()` | string | `placeholder`, `default` |
-| `url()` | string | `placeholder`, `default` |
-| `slug()` | string | `from` (field key to derive from), `maxLength` |
-| `select()` | string, or string[] | `options: [{ label, value }]` (required), `multiple`, `default` |
-| `object()` | nested object | `fields` (required), `collapsible`, `collapsed` |
-| `repeater()` | array of objects | `fields` (required), `min`, `max`, `itemLabel`, `addLabel` |
-| `relation()` | the target's slug | `collection` (required), `multiple` |
-| `media()` | repository path | `accept: "image" \| "document" \| "any"`, `multiple`, `max` |
-| `color()` | hex string | `presets`, `default` |
-| `coordinates()` | `{ lat, lng }` | `defaultCenter`, `defaultZoom` |
+| Field           | Stored as                           | Options beyond the shared ones                                  |
+| --------------- | ----------------------------------- | --------------------------------------------------------------- |
+| `text()`        | string                              | `minLength`, `maxLength`, `pattern`, `placeholder`, `default`   |
+| `textarea()`    | string                              | `minLength`, `maxLength`, `rows`, `placeholder`, `default`      |
+| `richText()`    | **a `.mdoc` file beside the entry** | `toolbar`, `maxLength`, `default`                               |
+| `number()`      | number                              | `min`, `max`, `step`, `integer`, `unit`, `default`              |
+| `boolean()`     | boolean                             | `default`                                                       |
+| `date()`        | ISO string                          | `includeTime`, `min`, `max`, `default`                          |
+| `email()`       | string                              | `placeholder`, `default`                                        |
+| `url()`         | string                              | `placeholder`, `default`                                        |
+| `slug()`        | string                              | `from` (field key to derive from), `maxLength`                  |
+| `select()`      | string, or string[]                 | `options: [{ label, value }]` (required), `multiple`, `default` |
+| `object()`      | nested object                       | `fields` (required), `collapsible`, `collapsed`                 |
+| `repeater()`    | array of objects                    | `fields` (required), `min`, `max`, `itemLabel`, `addLabel`      |
+| `relation()`    | the target's slug                   | `collection` (required), `multiple`                             |
+| `media()`       | repository path                     | `accept: "image" \| "document" \| "any"`, `multiple`, `max`     |
+| `color()`       | hex string                          | `presets`, `default`                                            |
+| `coordinates()` | `{ lat, lng }`                      | `defaultCenter`, `defaultZoom`                                  |
 
 A few that repay a closer look:
 
 **`richText()`** is [Markdoc](https://markdoc.dev), stored in its own file and
-*absent* from `index.json`. Readable in a diff, and it cannot inject a script
+_absent_ from `index.json`. Readable in a diff, and it cannot inject a script
 into the built site: Markdoc escapes raw HTML and renders an undeclared
 `{% tag %}` as nothing. `toolbar` limits what the editor offers — `bold`,
 `italic`, `strike`, `heading`, `bulletList`, `orderedList`, `blockquote`,

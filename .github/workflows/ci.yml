@@ -45,7 +45,7 @@ jobs:
 
       - name: Assert the output is self-contained
         run: |
-          if grep -rl "localhost:6422" examples/muster-consulting/dist; then
+          if grep -rl "localhost:6422" sites/muster-consulting/dist; then
             echo "::error::The static output references the CMS."
             exit 1
           fi
@@ -54,7 +54,7 @@ jobs:
       # means someone changed a collection and did not commit the result, which
       # would leave a deployed Mica serving the previous model.
       - name: Assert the published content model is committed
-        run: git diff --exit-code examples/muster-consulting/content/.mica/schema.json
+        run: git diff --exit-code sites/muster-consulting/content/.mica/schema.json
 
       # The public website is built here rather than only on Vercel, so that a
       # pull request fails on a broken site before it can reach main — Vercel
@@ -106,7 +106,7 @@ jobs:
             -e OIDC_ISSUER=https://id.example.com \
             -e OIDC_CLIENT_ID=mica-ci \
             -e CONTENT_ROOT=/content \
-            -v "$PWD/examples/muster-consulting/content:/content:ro" \
+            -v "$PWD/sites/muster-consulting/content:/content:ro" \
             -p 6422:6422 micacms/cms:ci
 
           for i in $(seq 1 30); do

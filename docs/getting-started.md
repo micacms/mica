@@ -40,7 +40,16 @@ Astro:
 
 ```ts
 // src/mica.ts
-import { collection, date, defineSite, media, richText, singleton, slug, text } from "@micacms/model";
+import {
+  collection,
+  date,
+  defineSite,
+  media,
+  richText,
+  singleton,
+  slug,
+  text,
+} from "@micacms/model";
 
 export const site = defineSite({
   // Relative to the Astro project root, like Astro's own `glob({ base })`.
@@ -51,7 +60,12 @@ export const site = defineSite({
       label: "News",
       labelSingular: "Article",
       fields: {
-        title: text({ label: "Title", required: true, maxLength: 120, listed: true }),
+        title: text({
+          label: "Title",
+          required: true,
+          maxLength: 120,
+          listed: true,
+        }),
         slug: slug({ from: "title" }),
         publishedOn: date({ label: "Published on", listed: true }),
         cover: media({ accept: "image" }),
@@ -192,11 +206,11 @@ Run `astro dev` beside Mica. A save in one reloads the other.
 
 ## The three pieces
 
-| | What it is | Where it lives |
-| --- | --- | --- |
-| **Your repository** | Entries as JSON and Markdoc, images beside them | GitHub, GitLab, or a checkout |
-| **Mica** | One Node process; a SQLite file of accounts and sessions | Your machine now, a server later |
-| **Your website** | Static files from `astro build` | Any static host |
+|                     | What it is                                               | Where it lives                   |
+| ------------------- | -------------------------------------------------------- | -------------------------------- |
+| **Your repository** | Entries as JSON and Markdoc, images beside them          | GitHub, GitLab, or a checkout    |
+| **Mica**            | One Node process; a SQLite file of accounts and sessions | Your machine now, a server later |
+| **Your website**    | Static files from `astro build`                          | Any static host                  |
 
 Your content stays in the repository, in formats Git and a text editor can
 read. The website builds from those files, with or without Mica running.
@@ -234,5 +248,5 @@ The website build reports it. Edit those entries, or make the field optional.
 
 ---
 
-`examples/muster-consulting` is a complete site — model, content and templates.
+`sites/muster-consulting` is a complete site — model, content and templates.
 `pnpm dev` from a clone edits it.

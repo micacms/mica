@@ -107,7 +107,7 @@ services:
       # The example project's content, mounted read-write, so `git diff` on the
       # host shows exactly what an editor changed. The content model comes from
       # `.mica/schema.json` inside it — there is nothing else to mount.
-      - ../examples/muster-consulting/content:/content
+      - ../sites/muster-consulting/content:/content
       - cms-data:/data
 
 volumes:
