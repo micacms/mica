@@ -1,0 +1,29 @@
+{
+  "companyName": "Muster Consulting AG",
+  "logo": null,
+  "tagline": "Practical advice for owner-led businesses",
+  "address": "Löwenstrasse 24\n8001 Zürich",
+  "email": "hallo@muster-consulting.example",
+  "phone": "+41 44 123 45 67",
+  "openingHours": "Monday to Friday, 08:00–17:00",
+  "position": {
+    "lat": 47.3739,
+    "lng": 8.5352
+  },
+  "social": [
+    {
+      "platform": "linkedin",
+      "url": "https://www.linkedin.com/company/example"
+    }
+  ],
+  "seo": {
+    "titleSuffix": "— Muster Consulting AG",
+    "defaultDescription": "Independent consultancy in Zürich. Strategy, operations and digital projects for small and medium-sized businesses.",
+    "defaultImage": null
+  },
+  "analytics": {
+    "provider": "none",
+    "siteId": null,
+    "scriptUrl": null
+  }
+}

@@ -261,7 +261,7 @@ knowing the reasoning stops someone reintroducing the problem.
 - **Publishing is not a webhook.** A push is the trigger. An in-process queue
   cannot survive a crash, and the repository's CI already solves this.
 - **Rich text is Markdoc, never HTML.** The editor converts at the boundary and
-  must never call Tiptap's `getHTML()` — see `apps/cms/src/admin/lib/markdoc.ts`.
+  must never call Tiptap's `getHTML()` — see `packages/editor/src/admin/lib/markdoc.ts`.
 - **Git is the history.** No revision table, no retention policy, nothing to
   prune.
 - **Nothing hashes a password.** Reintroducing one would mean owning reset, MFA,

@@ -137,7 +137,7 @@ provider's to disable, and keeping the two separate is the point.
 ## 3. Start it
 
 ```bash
-cp apps/cms/.env.example .env
+cp packages/editor/.env.example .env
 # fill in: SESSION_SECRET, CMS_BASE_URL, the OIDC block, the REPOSITORY block
 docker compose up -d
 ```
@@ -183,7 +183,7 @@ For a small Hetzner box (CX22 or similar) with Docker and Caddy installed:
 # on the server — this is the Mica repository, not your website's
 git clone <this-repository> /srv/mica
 cd /srv/mica
-cp apps/cms/.env.example .env && $EDITOR .env
+cp packages/editor/.env.example .env && $EDITOR .env
 docker compose up -d --build
 docker compose logs -f cms
 curl -s https://cms.example.com/health

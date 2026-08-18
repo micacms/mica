@@ -19,11 +19,11 @@ Then open <http://localhost:6422/admin/>.
 
 ## The three accounts
 
-| Sign in as | Password | What happens |
-| --- | --- | --- |
-| `alice` | `alice` | Administrator. `OIDC_BOOTSTRAP_ADMIN` grants it on first sign-in |
-| `bob` | `bob` | Nothing, until alice adds him on the **People** screen |
-| `mallory` | `mallory` | Authenticates perfectly, and is refused |
+| Sign in as | Password  | What happens                                                     |
+| ---------- | --------- | ---------------------------------------------------------------- |
+| `alice`    | `alice`   | Administrator. `OIDC_BOOTSTRAP_ADMIN` grants it on first sign-in |
+| `bob`      | `bob`     | Nothing, until alice adds him on the **People** screen           |
+| `mallory`  | `mallory` | Authenticates perfectly, and is refused                          |
 
 **Mallory is the point.** Keycloak vouches for her; Mica turns her away because
 nobody gave her a membership. Authentication and authorization are separate
@@ -36,8 +36,8 @@ questions, and this is where you can watch that be true.
 1. **Sign in as alice.** You are redirected to Keycloak, sign in there, and
    come back with a session. Mica never saw a password.
 
-2. **Open People, add `bob@example.com` as an editor.** He shows as *Invited —
-   not signed in yet*: the membership exists, the identity does not.
+2. **Open People, add `bob@example.com` as an editor.** He shows as _Invited —
+   not signed in yet_: the membership exists, the identity does not.
 
 3. **Sign out, sign in as bob.** The invitation and the Keycloak identity
    resolve to the same account. The People screen is now forbidden to him —
@@ -46,7 +46,7 @@ questions, and this is where you can watch that be true.
 4. **Edit an entry and save.** Then, on your host:
 
    ```bash
-   git diff examples/muster-consulting/content/
+   git diff sites/muster-consulting/content/
    ```
 
    One file, one line. That is the whole architecture in one command: the
@@ -92,7 +92,7 @@ curl -s -b jar http://localhost:6422/api/auth/me
 ## Two things about the setup
 
 **Why the CMS shares Keycloak's network namespace.** Mica and your browser must
-reach the issuer at the *same* URL, or the `iss` claim in the ID token will not
+reach the issuer at the _same_ URL, or the `iss` claim in the ID token will not
 match what discovery returned and the token is rejected. `network_mode:
 service:keycloak` makes `localhost:8080` mean the same thing in both places.
 It is also why both ports are published on the `keycloak` service.
@@ -110,5 +110,5 @@ check.
 
 ```bash
 docker compose -f e2e/compose.yml down -v      # -v also drops the CMS database
-git checkout examples/                        # discard anything you edited
+git checkout sites/                        # discard anything you edited
 ```

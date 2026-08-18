@@ -1,0 +1,69 @@
+{
+  "name": "@micacms/editor",
+  "version": "0.1.1",
+  "description": "Mica editor — Hono API plus the Vue administration SPA it serves.",
+  "keywords": [
+    "mica",
+    "cms",
+    "astro",
+    "git",
+    "markdoc",
+    "headless-cms"
+  ],
+  "license": "MIT",
+  "author": "Alexander Müdespacher",
+  "type": "module",
+  "bin": {
+    "mica": "./dist/server/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "pnpm build:admin && pnpm build:server",
+    "build:admin": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "dev": "concurrently -n api,admin -c blue,magenta \"pnpm dev:api\" \"pnpm dev:admin\"",
+    "dev:admin": "vite",
+    "dev:api": "tsx watch --clear-screen=false --include ../../sites/muster-consulting/content/.mica/schema.json src/server/index.ts",
+    "grant-access": "tsx src/server/scripts/grant-access.ts",
+    "start": "node dist/server/index.js",
+    "test": "tsc -p tsconfig.server.json --noEmit && node --test --import tsx test/**/*.test.ts",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && vue-tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.13.8",
+    "@markdoc/markdoc": "^0.5.9",
+    "@micacms/connectors": "workspace:*",
+    "@micacms/model": "workspace:*",
+    "hono": "^4.6.20",
+    "image-size": "^1.2.0",
+    "openid-client": "^6.8.5",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@lucide/vue": "^1.31.0",
+    "@tailwindcss/vite": "^4.0.0",
+    "@tiptap/core": "^2.11.0",
+    "@tiptap/extension-link": "^2.11.0",
+    "@tiptap/starter-kit": "^2.11.0",
+    "@tiptap/vue-3": "^2.11.0",
+    "@types/node": "^22.20.1",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "concurrently": "^9.1.2",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "vue-tsc": "^2.2.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

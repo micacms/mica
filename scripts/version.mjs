@@ -4,9 +4,9 @@
  *
  *   pnpm release:version 0.2.0
  *
- * Everything here carries one version — three published packages, the CMS and
- * its image — so a release is one number in five manifests. Doing that by hand
- * is how four of them end up right and the fifth ships as the previous
+ * Everything here carries one version — three published packages, the editor
+ * and its image — so a release is one number in six files. Doing that by hand
+ * is how five of them end up right and the sixth ships as the previous
  * version, which npm will happily accept and nobody notices until a bug report
  * quotes a version that never existed.
  *
@@ -20,43 +20,57 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-/** Every manifest that carries the release version. */
+/** A manifest's `version` field. */
+const VERSION_FIELD = /^(\s*"version":\s*")([^"]+)(")/m;
+
+/** The image tag in the reference deployment, which carries the same version. */
+const IMAGE_TAG = /^(\s*image:\s*micacms\/editor:)(\S+)(\s*)$/m;
+
+/**
+ * Every file that carries the release version, and the pattern that finds it.
+ *
+ * The compose file is here because it is the one that drifts: it holds the
+ * version in an image tag rather than a `version` field, so a rewrite that only
+ * knew about manifests left the reference deployment pinned a release behind.
+ *
+ * Each pattern captures prefix, version and suffix, so a rewrite replaces the
+ * middle group and nothing else in the file moves.
+ */
 export const MANIFESTS = [
-  "package.json",
-  "packages/model/package.json",
-  "packages/connectors/package.json",
-  "packages/astro/package.json",
-  "apps/cms/package.json",
+  { file: "package.json", pattern: VERSION_FIELD },
+  { file: "packages/model/package.json", pattern: VERSION_FIELD },
+  { file: "packages/connectors/package.json", pattern: VERSION_FIELD },
+  { file: "packages/astro/package.json", pattern: VERSION_FIELD },
+  { file: "packages/editor/package.json", pattern: VERSION_FIELD },
+  { file: "docker-compose.yml", pattern: IMAGE_TAG },
 ];
 
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 
 export function readVersions(root = ROOT) {
-  return MANIFESTS.map((file) => ({
-    file,
-    version: JSON.parse(readFileSync(path.join(root, file), "utf8")).version,
-  }));
+  return MANIFESTS.map(({ file, pattern }) => {
+    const match = readFileSync(path.join(root, file), "utf8").match(pattern);
+    if (!match) throw new Error(`No version to read in ${file}.`);
+    return { file, version: match[2] };
+  });
 }
 
 /**
- * Rewrites the `version` field textually rather than through `JSON.parse` and
- * `JSON.stringify`, so key order, indentation and the trailing newline survive
- * untouched. A release should not also be a reformat of five files.
+ * Rewrites the version textually rather than through a parser, so key order,
+ * indentation, comments and the trailing newline survive untouched. A release
+ * should not also be a reformat of every file it touches.
  */
 export function setVersion(version, root = ROOT) {
   if (!SEMVER.test(version)) {
     throw new Error(`"${version}" is not a version. Expected e.g. 0.2.0 or 1.0.0-rc.1.`);
   }
 
-  for (const file of MANIFESTS) {
+  for (const { file, pattern } of MANIFESTS) {
     const target = path.join(root, file);
     const before = readFileSync(target, "utf8");
-    const after = before.replace(/^(\s*"version":\s*")[^"]+(")/m, `$1${version}$2`);
 
-    if (after === before && !before.includes(`"version": "${version}"`)) {
-      throw new Error(`No version field to set in ${file}.`);
-    }
-    writeFileSync(target, after);
+    if (!pattern.test(before)) throw new Error(`No version to set in ${file}.`);
+    writeFileSync(target, before.replace(pattern, `$1${version}$3`));
   }
 
   return version;
@@ -98,7 +112,7 @@ function main(argv) {
   const notes = changelogSection(version);
   const lines = [
     "",
-    `  Set ${MANIFESTS.length} manifests to ${version}.`,
+    `  Set ${MANIFESTS.length} files to ${version}.`,
     "",
     notes
       ? `  CHANGELOG.md has a [${version}] section. Good.`

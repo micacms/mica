@@ -1,6 +1,6 @@
 # Reference deployment.
 #
-#   cp apps/cms/.env.example .env   # fill in the secrets and the repository
+#   cp packages/editor/.env.example .env   # fill in the secrets and the repository
 #   docker compose up -d
 #
 # One container. No database server, no cache, no queue, no object storage —
@@ -21,7 +21,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: micacms/cms:0.1.0
+    image: micacms/editor:0.1.1
     restart: unless-stopped
 
     env_file: .env

@@ -49,13 +49,13 @@ const sectionLabels = { start: "Start here", build: "Build", operate: "Operate" 
         {previous ? (
           <a class="card p-4 transition hover:bg-canvas" href={`/docs/${previous.id}/`}>
             <span class="label-mono block">Previous</span>
-            <strong class="mt-1 block text-sm font-medium text-ink">← {previous.data.title}</strong>
+            <strong class="mt-1 flex items-center gap-1.5 text-sm font-medium text-ink"><Icon name="arrow-left" size={14} /> {previous.data.title}</strong>
           </a>
         ) : <i></i>}
         {next && (
           <a class="card p-4 text-right transition hover:bg-canvas" href={`/docs/${next.id}/`}>
             <span class="label-mono block">Next</span>
-            <strong class="mt-1 block text-sm font-medium text-ink">{next.data.title} →</strong>
+            <strong class="mt-1 flex items-center justify-end gap-1.5 text-sm font-medium text-ink">{next.data.title} <Icon name="arrow" size={14} /></strong>
           </a>
         )}
       </nav>

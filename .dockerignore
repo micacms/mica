@@ -9,7 +9,7 @@
 !**/.env.example
 .git
 .github
-examples
+sites
 docs
 e2e
 *.md

@@ -46,13 +46,13 @@ Mica never learns where the website is hosted. The website never contacts Mica.
 They meet in the repository, and neither has to be running for the other to
 work.
 
-| Package | What it is |
-| --- | --- |
-| `@micacms/model` | The field DSL, the content model, and the authoring format — serialise, parse, layout |
-| `@micacms/connectors` | Repository access, and the content store built on it |
-| `@micacms/astro` | Content Layer loader, dev integration, Markdoc rendering |
-| `apps/cms` | Hono API and the Vue admin it serves |
-| `examples/muster-consulting` | A complete Astro site: a starter to copy, not a dependency |
+| Package                   | What it is                                                                            |
+| ------------------------- | ------------------------------------------------------------------------------------- |
+| `@micacms/model`          | The field DSL, the content model, and the authoring format — serialise, parse, layout |
+| `@micacms/connectors`     | Repository access, and the content store built on it                                  |
+| `@micacms/astro`          | Content Layer loader, dev integration, Markdoc rendering                              |
+| `@micacms/editor`         | Hono API and the Vue admin it serves                                                  |
+| `sites/muster-consulting` | A complete Astro site: a starter to copy, not a dependency                            |
 
 **Why the model package is not inside the Astro package.** The editor, the
 server and the build all need the model, and a Hono server depending on an
@@ -72,7 +72,7 @@ and forms, the Astro collections, and the layout on disk. Details in
 [content-model.md](./content-model.md).
 
 It imports nothing from Astro, and `src/content.config.ts` is the only file that
-imports *it* — six lines turning it into collections. That separation is not
+imports _it_ — six lines turning it into collections. That separation is not
 bookkeeping: `content.config.ts` may import `astro:content`, a virtual module
 that resolves only inside the app's module graph, so anything that also has to
 be read from outside that graph cannot live there.
@@ -103,7 +103,7 @@ of step. Sending the model the way content already travels means there is one
 channel, one place to look, and a model change that is reviewable in a diff.
 
 The envelope carries a `protocolVersion`, bumped only when an older reader
-would *misinterpret* a newer manifest. A Mica deployment and the
+would _misinterpret_ a newer manifest. A Mica deployment and the
 `@micacms/astro` in a project are upgraded by different people at different
 times, so they are not required to move together. Whatever arrives is
 re-validated as if hand-written: an unknown field kind is reported by name at
@@ -126,7 +126,7 @@ content/
 ```
 
 **JSON for structure, Markdoc for prose.** A field's value is JSON unless it is
-rich text, in which case it is a sibling `.mdoc` and *absent* from the JSON.
+rich text, in which case it is a sibling `.mdoc` and _absent_ from the JSON.
 Keys are written in model order, so the file is byte-identical for the same
 input and a diff shows only what changed.
 
@@ -154,7 +154,7 @@ and merged like any other change — strictly more capable, and free.
 ```ts
 interface RepositoryConnector extends ContentSource {
   readBinary(path): Promise<Uint8Array | null>;
-  revision(path): Promise<string | null>;   // opaque; equality only
+  revision(path): Promise<string | null>; // opaque; equality only
   commit(input: CommitInput): Promise<CommitResult>;
 }
 ```
@@ -167,11 +167,11 @@ Because the interface extends `ContentSource`, the Astro build reading a
 checkout and the server reading a remote repository run **the same** discovery
 and parsing code. They cannot disagree about what a content directory means.
 
-| Connector | What it does |
-| --- | --- |
-| `local` | A working tree on disk. Not a Git client: the developer commits with their own tools |
-| `github` | Git Data API — blob, tree, commit, ref |
-| `gitlab` | The commits API, which takes a whole change set |
+| Connector | What it does                                                                         |
+| --------- | ------------------------------------------------------------------------------------ |
+| `local`   | A working tree on disk. Not a Git client: the developer commits with their own tools |
+| `github`  | Git Data API — blob, tree, commit, ref                                               |
+| `gitlab`  | The commits API, which takes a whole change set                                      |
 
 **One commit, or none.** An entry is an `index.json`, its sidecars and its
 media, and a half-written entry is content corruption — so `commit()` applies
@@ -205,7 +205,7 @@ Tenant
 ```
 
 **Authentication and authorization are separate questions.** A provider may
-vouch for an entire company; a *membership* says this person may edit this
+vouch for an entire company; a _membership_ says this person may edit this
 site. Someone who authenticates perfectly and has no membership is turned away.
 
 Two details that matter:
@@ -228,11 +228,11 @@ expensive, and doing it now costs one column. What does not exist is a UI.
 
 One implementation, three shapes, selected by `MICA_MODE`.
 
-| | Identity | Repository | Sites |
-| --- | --- | --- | --- |
-| `local` | **None** — see below | A working tree | One |
-| `self-hosted` | OIDC | Usually a provider connector | One |
-| `cloud` | OIDC | Provider connectors | Many |
+|               | Identity             | Repository                   | Sites |
+| ------------- | -------------------- | ---------------------------- | ----- |
+| `local`       | **None** — see below | A working tree               | One   |
+| `self-hosted` | OIDC                 | Usually a provider connector | One   |
+| `cloud`       | OIDC                 | Provider connectors          | Many  |
 
 ### Local mode disables authentication
 
@@ -267,7 +267,7 @@ No content, no media, no revisions. Two rules keep it navigable: only
 `repositories/` writes SQL, and only `db/driver.ts` knows which SQLite library
 is in use.
 
-Note the startup order this implies. The content model is *in* the repository,
+Note the startup order this implies. The content model is _in_ the repository,
 so the database opens first, the connector is built from it, the model is read
 through the connector, and only then is the application composed. The entry
 point does that explicitly rather than hiding it in the composition root.

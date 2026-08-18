@@ -24,10 +24,10 @@ ENV CI=true
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY packages/model/package.json packages/model/
 COPY packages/connectors/package.json packages/connectors/
-COPY apps/cms/package.json apps/cms/
+COPY packages/editor/package.json packages/editor/
 
 RUN pnpm install --frozen-lockfile \
-      --filter @micacms/cms... \
+      --filter @micacms/editor... \
       --filter @micacms/model... \
       --filter @micacms/connectors...
 
@@ -37,16 +37,16 @@ FROM deps AS build
 COPY tsconfig.base.json ./
 COPY packages/model packages/model
 COPY packages/connectors packages/connectors
-COPY apps/cms apps/cms
+COPY packages/editor packages/editor
 
 # In dependency order: connectors imports model, the CMS imports both.
 RUN pnpm --filter @micacms/model build \
  && pnpm --filter @micacms/connectors build \
- && pnpm --filter @micacms/cms build
+ && pnpm --filter @micacms/editor build
 
 # Re-resolve with dev dependencies pruned.
 RUN pnpm install --frozen-lockfile --prod \
-      --filter @micacms/cms... \
+      --filter @micacms/editor... \
       --filter @micacms/model... \
       --filter @micacms/connectors...
 
@@ -79,12 +79,12 @@ COPY --from=build --chown=node:node /app/packages/model/package.json ./packages/
 COPY --from=build --chown=node:node /app/packages/connectors/node_modules ./packages/connectors/node_modules
 COPY --from=build --chown=node:node /app/packages/connectors/dist ./packages/connectors/dist
 COPY --from=build --chown=node:node /app/packages/connectors/package.json ./packages/connectors/
-COPY --from=build --chown=node:node /app/apps/cms/node_modules ./apps/cms/node_modules
-COPY --from=build --chown=node:node /app/apps/cms/dist ./apps/cms/dist
-COPY --from=build --chown=node:node /app/apps/cms/package.json ./apps/cms/
+COPY --from=build --chown=node:node /app/packages/editor/node_modules ./packages/editor/node_modules
+COPY --from=build --chown=node:node /app/packages/editor/dist ./packages/editor/dist
+COPY --from=build --chown=node:node /app/packages/editor/package.json ./packages/editor/
 
 USER node
-WORKDIR /app/apps/cms
+WORKDIR /app/packages/editor
 
 VOLUME ["/data"]
 EXPOSE 6422

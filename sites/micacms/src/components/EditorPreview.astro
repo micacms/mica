@@ -1,26 +1,19 @@
 ---
 /**
  * A faithful sketch of the real admin: same brand, same tokens,
- * same field chrome as `apps/cms/src/admin/style.css`. If the product changes, this
+ * same field chrome as `packages/editor/src/admin/style.css`. If the product changes, this
  * should change with it — a marketing screenshot that lies is worse than none.
  */
+import { ChevronDown, ExternalLink, List } from "@lucide/astro";
 ---
 
 <div class="overflow-hidden rounded-md border border-line bg-surface" aria-label="Preview of the Mica editing interface">
-  <div class="flex h-13 items-center border-b border-line bg-surface px-4 text-xs">
-    <div class="flex items-center gap-2 font-semibold text-ink">
-      <span class="mica-wordmark text-[18px]" role="img" aria-label="Mica">
-        <span aria-hidden="true">M<span class="mica-wordmark__i">ı</span>ca</span>
-      </span>
-    </div>
-    <div class="mx-auto text-muted">Mica website</div>
-    <div class="flex h-7 w-7 items-center justify-center rounded-full border border-line bg-paper text-[9px] font-medium text-muted">AM</div>
-  </div>
   <div class="flex min-h-[480px]">
-    <aside class="hidden w-52 shrink-0 border-r border-line bg-canvas p-3 md:block [&_a]:mb-0.5 [&_a]:flex [&_a]:items-center [&_a]:gap-2 [&_a]:rounded-md [&_a]:px-3 [&_a]:py-2 [&_a]:text-xs [&_a]:text-muted [&_a>b]:ml-auto [&_a>b]:font-mono [&_a>b]:text-[9px] [&_a>b]:font-normal [&_a>b]:text-faint">
-      <span class="label-mono mb-2 block px-3">Content</span>
-      <a class="border-l-2 border-ember font-medium !text-ink">Pages <b>12</b></a><a>Features <b>6</b></a><a>Releases <b>2</b></a>
-      <span class="label-mono mb-2 mt-7 block px-3">Settings</span>
+    <aside class="hidden w-[220px] shrink-0 bg-ink p-3 text-white md:block [&_a]:mb-0.5 [&_a]:flex [&_a]:h-9 [&_a]:items-center [&_a]:gap-2 [&_a]:rounded-md [&_a]:px-2 [&_a]:text-xs [&_a]:text-white/55 [&_a>b]:ml-auto [&_a>b]:font-mono [&_a>b]:text-[9px] [&_a>b]:font-normal">
+      <img src="/brand/mica-logo-glimmer.svg" alt="Mica" class="mb-5 h-6 w-auto brightness-0 invert" />
+      <span class="mb-1.5 block px-2 font-mono text-[10px] uppercase tracking-[.08em] text-white/35">Content</span>
+      <a class="bg-ember/20 font-medium !text-glimmer">Pages <b>12</b></a><a>Features <b>6</b></a><a>Releases <b>2</b></a>
+      <span class="mb-1.5 mt-5 block px-2 font-mono text-[10px] uppercase tracking-[.08em] text-white/35">Settings</span>
       <a>Navigation</a><a>Website</a>
     </aside>
     <main class="min-w-0 flex-1 bg-canvas p-5 sm:p-7">
@@ -29,22 +22,22 @@
           <span class="text-[10px] text-muted">Pages /</span>
           <h3 class="text-lg font-semibold text-ink">Getting started</h3>
         </div>
-        <button class="rounded-sm bg-ink px-3.5 py-2 text-[11px] font-medium text-paper">Save changes</button>
+        <button class="rounded-md bg-ink px-4 py-2 text-xs font-medium text-paper">Save changes</button>
       </div>
       <div class="mb-5 flex flex-wrap items-center gap-2 text-[10px] text-muted">
         <span class="h-1.5 w-1.5 rounded-full bg-moss"></span> Saved
         <code class="font-mono text-[10px] text-faint">main · content/docs/getting-started/</code>
       </div>
-      <div class="rounded-xl border border-line bg-surface p-5 sm:p-6 [&_label]:mb-4 [&_label]:block [&_label]:text-[11px] [&_label]:font-medium [&_label]:text-ink [&_input]:mt-1.5 [&_input]:w-full [&_input]:rounded-lg [&_input]:border [&_input]:border-line [&_input]:bg-white [&_input]:px-3 [&_input]:py-2 [&_input]:text-xs [&_input]:font-normal [&_input]:text-ink [&_textarea]:mt-1.5 [&_textarea]:min-h-16 [&_textarea]:w-full [&_textarea]:resize-none [&_textarea]:rounded-lg [&_textarea]:border [&_textarea]:border-line [&_textarea]:px-3 [&_textarea]:py-2 [&_textarea]:text-xs [&_textarea]:font-normal">
+      <div class="rounded-md border border-line bg-surface p-5 sm:p-6 [&_label]:mb-4 [&_label]:block [&_label]:text-xs [&_label]:font-medium [&_label]:text-ink [&_input]:mt-1.5 [&_input]:min-h-[38px] [&_input]:w-full [&_input]:rounded-md [&_input]:border [&_input]:border-line [&_input]:bg-white [&_input]:px-3 [&_input]:py-2 [&_input]:text-sm [&_input]:font-normal [&_input]:text-ink [&_textarea]:mt-1.5 [&_textarea]:min-h-16 [&_textarea]:w-full [&_textarea]:resize-none [&_textarea]:rounded-md [&_textarea]:border [&_textarea]:border-line [&_textarea]:px-3 [&_textarea]:py-2 [&_textarea]:text-sm [&_textarea]:font-normal">
         <label>Title<input value="Getting started" readonly /></label>
         <div class="grid grid-cols-2 gap-4">
-          <label>Section<div class="mt-1.5 flex w-full justify-between rounded-lg border border-line bg-white px-3 py-2 text-xs font-normal text-ink">Start <span class="text-faint">⌄</span></div></label>
-          <label>Read time<div class="mt-1.5 flex w-full justify-between rounded-lg border border-line bg-white px-3 py-2 text-xs font-normal text-ink">8 <small class="text-muted">min</small></div></label>
+          <label>Section<div class="mt-1.5 flex min-h-[38px] w-full items-center justify-between rounded-md border border-line bg-white px-3 py-2 text-sm font-normal text-ink">Start <ChevronDown size={14} class="text-faint" aria-hidden="true" /></div></label>
+          <label>Read time<div class="mt-1.5 flex min-h-[38px] w-full items-center justify-between rounded-md border border-line bg-white px-3 py-2 text-sm font-normal text-ink">8 <small class="text-muted">min</small></div></label>
         </div>
         <label>Summary<textarea readonly>Add Mica to an Astro 5 project and open the local editor.</textarea></label>
         <label class="!mb-0">Guide
-          <div class="mt-1.5 flex h-9 items-center gap-4 rounded-t-lg border border-line bg-canvas px-3 text-[11px] text-muted"><b>B</b><i class="font-display">I</i><span>H2</span><span>≡</span><span>↗</span></div>
-          <div class="min-h-24 rounded-b-lg border-x border-b border-line p-3 text-xs font-normal">
+          <div class="mt-1.5 flex h-9 items-center gap-4 rounded-t-md border border-line bg-canvas px-3 text-[11px] text-muted"><b>B</b><i class="font-display">I</i><span>H2</span><List size={14} aria-hidden="true" /><ExternalLink size={14} aria-hidden="true" /></div>
+          <div class="min-h-24 rounded-b-md border-x border-b border-line p-3 text-xs font-normal">
             <strong>What you need</strong>
             <p class="mt-2 leading-relaxed text-muted">Mica adds an editing interface to an Astro project. The website still reads local files.</p>
           </div>

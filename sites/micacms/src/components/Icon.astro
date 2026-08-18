@@ -1,6 +1,6 @@
 ---
 import {
-  ArrowRight, Check, Clock3, CodeXml, Copy, ExternalLink, FileImage,
+  ArrowLeft, ArrowRight, Check, Clock3, CodeXml, Copy, ExternalLink, FileImage,
   GitBranch, GitFork, Menu, PanelsTopLeft, PencilLine, RotateCcwClock, ShieldCheck,
 } from "@lucide/astro";
 
@@ -9,6 +9,7 @@ const { name, size = 20, strokeWidth = 1.8 } = Astro.props;
 const icons: Record<string, typeof ArrowRight> = {
   repository: GitBranch, model: CodeXml, edit: PencilLine, history: RotateCcwClock,
   image: FileImage, shield: ShieldCheck, arrow: ArrowRight, check: Check,
+  "arrow-left": ArrowLeft,
   github: GitFork, menu: Menu, external: ExternalLink, clock: Clock3,
   copy: Copy, panels: PanelsTopLeft,
 };

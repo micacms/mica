@@ -4,7 +4,7 @@
   "description": "Give editors a clear CMS. Keep content as reviewable files in Git. Build a fast, static Astro website with no runtime CMS dependency.",
   "currentVersion": "0.1.1",
   "githubUrl": "https://github.com/amuedespacher/micacms",
-  "npmUrl": "https://www.npmjs.com/package/@micacms/cms",
+  "npmUrl": "https://www.npmjs.com/package/@micacms/editor",
   "announcement": {
     "text": "Mica 0.1.1 is available",
     "href": "/changelog/"

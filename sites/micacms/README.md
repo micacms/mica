@@ -17,8 +17,8 @@ The site opens at `http://localhost:4321`.
 Build the CMS once, then point its local command at this site's content root:
 
 ```bash
-pnpm --filter @micacms/cms build
-node apps/cms/dist/server/cli.js --content sites/micacms/content
+pnpm --filter @micacms/editor build
+node packages/editor/dist/server/cli.js --content sites/micacms/content
 ```
 
 Open `http://localhost:6422/admin/`. Local mode has no authentication and listens only on the local computer.
