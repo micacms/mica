@@ -21,7 +21,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: micacms/cms:0.1.0
+    image: micacms/editor:0.1.0
     restart: unless-stopped
 
     env_file: .env

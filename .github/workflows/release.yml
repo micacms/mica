@@ -122,5 +122,5 @@ jobs:
           context: .
           push: true
           tags: |
-            micacms/cms:${{ github.ref_name }}
-            micacms/cms:latest
+            micacms/editor:${{ github.ref_name }}
+            micacms/editor:latest

@@ -81,7 +81,7 @@ jobs:
           context: .
           push: false
           load: true
-          tags: micacms/cms:ci
+          tags: micacms/editor:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -107,7 +107,7 @@ jobs:
             -e OIDC_CLIENT_ID=mica-ci \
             -e CONTENT_ROOT=/content \
             -v "$PWD/sites/muster-consulting/content:/content:ro" \
-            -p 6422:6422 micacms/cms:ci
+            -p 6422:6422 micacms/editor:ci
 
           for i in $(seq 1 30); do
             curl -fsS http://localhost:6422/health && exit 0
