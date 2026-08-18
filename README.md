@@ -208,7 +208,7 @@ mandatory cloud services.
 | ----------------------- | ---------------------------------------------------------------- |
 | `pnpm dev`              | build the packages, then run the CMS against the example project |
 | `pnpm dev:site`         | the example website, in a second terminal                        |
-| `pnpm test`             | 296 tests across the model, connectors, Astro loader and CMS API |
+| `pnpm test`             | 309 tests across the model, connectors, Astro loader and editor  |
 | `pnpm typecheck`        | every package, including `.vue` and `.astro`                     |
 | `pnpm grant-access`     | let an email address edit a site                                 |
 

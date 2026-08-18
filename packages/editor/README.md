@@ -274,7 +274,7 @@ See [self-hosting.md](../../docs/self-hosting.md#backups).
 ## Tests
 
 ```bash
-pnpm test          # 103 tests: API, config, schema and the Markdoc bridge
+pnpm test          # 127 tests: API, config, schema and the Markdoc bridge
 pnpm typecheck     # server (tsc) and admin (vue-tsc)
 ```
 
