@@ -23,7 +23,10 @@ try {
 export default defineConfig({
   // Static output, no adapter: deployable to any static host.
   output: "static",
-  site: process.env.SITE_URL ?? "http://localhost:4321",
+  // `||`, not `??`: an undefined CI variable — `${{ vars.SITE_URL }}` with
+  // nothing behind it — arrives as an empty string, which Astro rejects as
+  // an invalid URL rather than falling back.
+  site: process.env.SITE_URL || "http://localhost:4321",
 
   /**
    * No Mica here at all. The content model, the content root, the collections,
