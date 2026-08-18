@@ -105,7 +105,14 @@ describe("saving an entry", () => {
 
   it("reads back exactly what was saved", async () => {
     await store.save("projects", {
-      data: { title: "Haus A", year: 2024, description: "Body text.", cover: "media/photo.jpg" },
+      data: {
+        title: "Haus A",
+        year: 2024,
+        description: "Body text.",
+        // Root-relative, because that is the form `get` hands out and the form
+        // an upload reports — so it is what the editor sends back.
+        cover: "projects/haus-a/media/photo.jpg",
+      },
     });
 
     const entry = await store.get("projects", "haus-a");
@@ -114,6 +121,43 @@ describe("saving an entry", () => {
     assert.equal(entry?.data.description, "Body text.");
     // Media comes back resolved against the content root.
     assert.equal(entry?.data.cover, "projects/haus-a/media/photo.jpg");
+  });
+
+  it("stores a colocated media path relative to the entry", async () => {
+    await store.save("projects", {
+      data: { title: "Haus A", year: 2024, cover: "projects/haus-a/media/photo.jpg" },
+    });
+
+    // What a person reading the repository sees, and what the entry keeps if
+    // its directory is ever moved.
+    const onDisk = JSON.parse(await read("projects/haus-a/index.json"));
+    assert.equal(onDisk.cover, "media/photo.jpg");
+  });
+
+  it("does not accumulate the entry directory over repeated saves", async () => {
+    await store.save("projects", {
+      data: { title: "Haus A", year: 2024, cover: "projects/haus-a/media/photo.jpg" },
+    });
+
+    // Saving what `get` returned is the ordinary case: an editor changes one
+    // field and sends the whole entry back. The media path must survive it
+    // unchanged, or every save buries the file one directory deeper.
+    for (let round = 0; round < 3; round += 1) {
+      const current = await store.get("projects", "haus-a");
+      await store.save("projects", { data: { ...current!.data }, slug: "haus-a" });
+    }
+
+    const entry = await store.get("projects", "haus-a");
+    assert.equal(entry?.data.cover, "projects/haus-a/media/photo.jpg");
+  });
+
+  it("keeps a media path from outside the entry pointing where it did", async () => {
+    await store.save("projects", {
+      data: { title: "Haus A", year: 2024, cover: "media/shared-logo.svg" },
+    });
+
+    const entry = await store.get("projects", "haus-a");
+    assert.equal(entry?.data.cover, "media/shared-logo.svg");
   });
 
   it("refuses a payload the model rejects, and names the fields", async () => {

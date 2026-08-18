@@ -32,6 +32,23 @@ release note before upgrading.
   than refusing to serve a site over the order of a list. The project's next
   build reports it properly.
 
+### Fixed
+
+- **Saving an entry no longer rewrites its media paths.** Reading an entry
+  resolves a media reference against the content root, so the editor holds an
+  unambiguous path; nothing did the inverse on the way back, so the path the
+  editor returned was stored verbatim and the entry's own directory ended up
+  named twice — once in the stored value and once by the next read. It
+  compounded with every save, and the reference stopped resolving after the
+  first one, in the admin and in the built site alike. Media paths now go back
+  to the form the repository stores: `media/photo.jpg` for a file beside the
+  entry, `/media/logo.svg` for one the whole site shares
+  (`@micacms/model`, `@micacms/connectors`).
+
+  An entry saved by an earlier version has the wrong path on disk and will not
+  repair itself. `git log -p` over the content directory shows which, and the
+  fix is to restore the path the entry had before that save.
+
 ## [0.1.1] — 2026-08-16
 
 ### Fixed
