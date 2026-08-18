@@ -226,7 +226,7 @@ async function remove(): Promise<void> {
         <div
           v-if="conflict"
           role="alert"
-          class="mb-5 rounded-sm border border-warning/30 border-l-2 bg-warning/5 p-3.5"
+          class="mb-5 rounded-md border border-warning/15 bg-warning-soft p-4"
         >
           <p class="text-sm font-medium text-warning">This entry changed while you were editing</p>
           <p class="mt-1 text-xs text-muted">
@@ -241,7 +241,7 @@ async function remove(): Promise<void> {
         <div
           v-if="issues.length"
           role="alert"
-          class="mb-5 rounded-sm border border-danger/25 border-l-2 bg-danger/5 p-3.5"
+          class="mb-5 rounded-md border border-danger/15 bg-danger-soft p-4"
         >
           <p class="text-sm font-medium text-danger">
             {{ issues.length }} field{{ issues.length === 1 ? "" : "s" }} need attention
@@ -288,7 +288,7 @@ async function remove(): Promise<void> {
         the history still has it.
       </p>
 
-      <div v-if="references.length" class="mt-3 rounded-lg bg-warning/10 p-3">
+      <div v-if="references.length" class="mt-3 rounded-md border border-warning/15 bg-warning-soft p-4">
         <p class="text-sm font-medium text-warning">
           {{ references.length }} other entr{{ references.length === 1 ? "y" : "ies" }} link to this
           one:

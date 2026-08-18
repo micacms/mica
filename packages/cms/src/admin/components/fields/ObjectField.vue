@@ -4,6 +4,7 @@
  */
 
 import { computed, ref } from "vue";
+import { ChevronDown } from "@lucide/vue";
 
 import type { ObjectField } from "@micacms/model";
 
@@ -52,22 +53,17 @@ const expanded = computed(() => open.value || hasIssueInside.value);
 
       <span
         v-if="hasIssueInside"
-        class="badge bg-danger/10 text-danger"
+        class="badge bg-danger-soft text-danger"
       >
         Needs attention
       </span>
 
-      <svg
+      <ChevronDown
         v-if="field.collapsible"
-        viewBox="0 0 20 20"
+        :size="16"
         :class="['ml-auto h-4 w-4 text-muted transition', expanded && 'rotate-180']"
-        fill="none"
-        stroke="currentColor"
-        stroke-width="1.75"
         aria-hidden="true"
-      >
-        <path d="M6 8l4 4 4-4" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
+      />
     </component>
 
     <div v-show="expanded" class="border-t border-line p-4 sm:p-5">

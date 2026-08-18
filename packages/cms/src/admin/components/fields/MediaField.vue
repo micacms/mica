@@ -8,6 +8,7 @@
  */
 
 import { computed, ref } from "vue";
+import { ArrowLeft, ArrowRight, Plus, X } from "@lucide/vue";
 
 import type { MediaField } from "@micacms/model";
 
@@ -139,7 +140,8 @@ function move(index: number, direction: -1 | 1): void {
               :disabled="disabled"
               @click="move(index, -1)"
             >
-              ←<span class="sr-only">Move {{ item.filename }} earlier</span>
+              <ArrowLeft :size="14" aria-hidden="true" />
+              <span class="sr-only">Move {{ item.filename }} earlier</span>
             </button>
             <button
               v-if="field.multiple && index < items.length - 1"
@@ -148,7 +150,8 @@ function move(index: number, direction: -1 | 1): void {
               :disabled="disabled"
               @click="move(index, 1)"
             >
-              →<span class="sr-only">Move {{ item.filename }} later</span>
+              <ArrowRight :size="14" aria-hidden="true" />
+              <span class="sr-only">Move {{ item.filename }} later</span>
             </button>
             <button
               type="button"
@@ -156,7 +159,8 @@ function move(index: number, direction: -1 | 1): void {
               :disabled="disabled"
               @click="removeAt(index)"
             >
-              ×<span class="sr-only">Remove {{ item.filename }}</span>
+              <X :size="14" aria-hidden="true" />
+              <span class="sr-only">Remove {{ item.filename }}</span>
             </button>
           </div>
         </li>
@@ -169,9 +173,7 @@ function move(index: number, direction: -1 | 1): void {
         :disabled="disabled || field.readonly || atLimit"
         @click="pickerOpen = true"
       >
-        <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75">
-          <path d="M10 4v12M4 10h12" stroke-linecap="round" />
-        </svg>
+        <Plus :size="16" aria-hidden="true" />
         {{ items.length && !field.multiple ? "Replace" : "Add" }}
       </button>
 

@@ -9,6 +9,16 @@
 
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import {
+  Files,
+  Image as ImageIcon,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Settings,
+  SlidersHorizontal,
+  Users,
+} from "@lucide/vue";
 
 import { useAuth } from "@/stores/auth";
 import { useSchema } from "@/stores/schema";
@@ -58,21 +68,20 @@ async function signOut(): Promise<void> {
     />
 
     <aside
+      id="main-navigation"
       :class="[
-        'fixed inset-y-0 left-0 z-30 flex w-56 shrink-0 flex-col border-r border-line bg-canvas transition-transform lg:static lg:translate-x-0',
+        'fixed inset-y-0 left-0 z-30 flex w-[220px] shrink-0 flex-col border-r border-white/10 bg-[#111110] text-white transition-transform lg:static lg:translate-x-0',
         menuOpen ? 'translate-x-0' : '-translate-x-full',
       ]"
     >
-      <div class="flex h-16 items-center border-b border-line px-5">
-        <span class="mica-wordmark text-[30px]" role="img" aria-label="Mica">
-          <span aria-hidden="true">M<span class="mica-wordmark__i">ı</span>ca</span>
-        </span>
+      <div class="flex h-14 items-center border-b border-white/10 px-3">
+        <img src="/brand/mica-logo-glimmer-light.svg" alt="Mica" class="h-7 w-auto" />
       </div>
 
-      <nav class="flex-1 space-y-6 overflow-y-auto px-3 py-5" aria-label="Main">
+      <nav class="flex-1 space-y-5 overflow-y-auto px-2 py-3" aria-label="Main">
         <div>
           <RouterLink :to="{ name: 'dashboard' }" class="nav-link">
-            <span class="nav-dot" aria-hidden="true" />
+            <LayoutDashboard :size="14" aria-hidden="true" />
             Overview
           </RouterLink>
         </div>
@@ -85,9 +94,13 @@ async function signOut(): Promise<void> {
             :to="{ name: 'collection', params: { collection: collection.name } }"
             class="nav-link"
           >
+            <Files :size="14" aria-hidden="true" />
             {{ collection.label }}
           </RouterLink>
-          <RouterLink :to="{ name: 'media' }" class="nav-link">Media</RouterLink>
+          <RouterLink :to="{ name: 'media' }" class="nav-link">
+            <ImageIcon :size="14" aria-hidden="true" />
+            Media
+          </RouterLink>
         </div>
 
         <div v-if="singletons.length">
@@ -98,6 +111,7 @@ async function signOut(): Promise<void> {
             :to="{ name: 'singleton', params: { name: singleton.name } }"
             class="nav-link"
           >
+            <SlidersHorizontal :size="14" aria-hidden="true" />
             {{ singleton.label }}
           </RouterLink>
         </div>
@@ -105,30 +119,34 @@ async function signOut(): Promise<void> {
         <div>
           <p class="nav-heading">Administration</p>
           <RouterLink v-if="auth.isAdmin.value" :to="{ name: 'users' }" class="nav-link">
+            <Users :size="14" aria-hidden="true" />
             People
           </RouterLink>
           <!-- Editors see it too: version and content model answer their
                questions as often as an administrator's. -->
-          <RouterLink :to="{ name: 'system' }" class="nav-link">System</RouterLink>
+          <RouterLink :to="{ name: 'system' }" class="nav-link">
+            <Settings :size="14" aria-hidden="true" />
+            System
+          </RouterLink>
         </div>
       </nav>
 
-      <div class="border-t border-line p-3">
+      <div class="border-t border-white/10 p-2">
         <RouterLink
           :to="{ name: 'account' }"
-          class="flex items-center gap-3 rounded-lg px-2 py-2 hover:bg-canvas"
+          class="flex items-center gap-2.5 rounded-md px-2 py-2 hover:bg-white/5"
         >
           <span
-            class="grid h-8 w-8 shrink-0 place-items-center rounded-full border border-line bg-raised text-xs font-medium text-muted"
+            class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent text-[10px] font-semibold text-white"
             aria-hidden="true"
           >
             {{ initials }}
           </span>
           <span class="min-w-0 flex-1">
-            <span class="block truncate text-sm font-medium">
+            <span class="block truncate text-xs font-medium text-white/80">
               {{ auth.user.value?.name || auth.user.value?.email }}
             </span>
-            <span class="block text-xs text-muted">
+            <span class="block truncate text-[10px] text-white/35">
               {{ auth.user.value?.role === "admin" ? "Administrator" : "Editor" }}
             </span>
           </span>
@@ -137,9 +155,10 @@ async function signOut(): Promise<void> {
         <button
           v-if="canSignOut"
           type="button"
-          class="btn-ghost mt-1 w-full justify-start"
+          class="sidebar-signout mt-1 w-full"
           @click="signOut"
         >
+          <LogOut :size="14" aria-hidden="true" />
           Sign out
         </button>
       </div>
@@ -147,7 +166,7 @@ async function signOut(): Promise<void> {
 
     <div class="flex min-w-0 flex-1 flex-col">
       <header
-        class="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-line bg-raised/90 px-4 backdrop-blur lg:hidden"
+        class="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-line bg-white/90 px-4 backdrop-blur lg:hidden"
       >
         <button
           type="button"
@@ -156,14 +175,10 @@ async function signOut(): Promise<void> {
           aria-controls="main-navigation"
           @click="menuOpen = !menuOpen"
         >
-          <svg viewBox="0 0 20 20" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75">
-            <path d="M3 5h14M3 10h14M3 15h14" stroke-linecap="round" />
-          </svg>
+          <Menu :size="20" aria-hidden="true" />
           <span class="sr-only">Toggle navigation</span>
         </button>
-        <span class="mica-wordmark text-[24px]" role="img" aria-label="Mica">
-          <span aria-hidden="true">M<span class="mica-wordmark__i">ı</span>ca</span>
-        </span>
+        <img src="/brand/mica-logo-glimmer.svg" alt="Mica" class="h-7 w-auto" />
       </header>
 
       <main class="min-w-0 flex-1 bg-surface">
@@ -177,24 +192,23 @@ async function signOut(): Promise<void> {
 @reference "../style.css";
 
 .nav-heading {
-  @apply px-2 pb-1.5 font-mono text-[10px] font-medium uppercase tracking-[.08em] text-faint;
+  @apply px-2 pb-1.5 font-mono text-[10px] font-medium uppercase tracking-[.08em] text-white/35;
 }
 
 .nav-link {
-  @apply relative flex items-center gap-2 rounded-sm px-2.5 py-1.5 text-sm text-muted
-    transition hover:bg-stone/60 hover:text-ink;
+  @apply flex h-9 items-center gap-2.5 rounded-md px-2 text-[13px] text-white/55
+    transition hover:bg-white/5 hover:text-white/80;
+  transition-duration: var(--mica-duration-fast);
+  transition-timing-function: var(--mica-ease-standard);
 }
 
 .nav-link.router-link-active {
-  @apply font-medium text-ink;
+  background: rgb(107 92 166 / 20%);
+  color: var(--mica-glimmer-400);
 }
 
-.nav-link.router-link-active::before {
-  content: "";
-  @apply absolute inset-y-1 left-0 w-0.5 bg-accent;
-}
-
-.nav-dot {
-  @apply h-1.5 w-1.5 rounded-full bg-current opacity-35;
+.sidebar-signout {
+  @apply flex items-center justify-start gap-2.5 rounded-md px-2 py-1.5 text-xs text-white/40 transition
+    hover:bg-white/5 hover:text-white/70 disabled:opacity-40;
 }
 </style>

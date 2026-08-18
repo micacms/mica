@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { ChevronLeft } from "@lucide/vue";
+
 defineProps<{
   title: string;
   subtitle?: string | null;
@@ -17,14 +19,12 @@ defineProps<{
           :to="back"
           class="mb-0.5 inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-ink"
         >
-          <svg viewBox="0 0 20 20" class="h-3.5 w-3.5" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M12 5l-5 5 5 5" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
+          <ChevronLeft :size="14" aria-hidden="true" />
           {{ backLabel ?? "Back" }}
         </RouterLink>
 
-        <h1 class="truncate text-[22px] font-semibold leading-tight tracking-[-.018em]">{{ title }}</h1>
-        <p v-if="subtitle" class="mt-1 truncate font-mono text-xs text-muted">{{ subtitle }}</p>
+        <h1 class="truncate font-display text-2xl font-normal leading-8 tracking-[.02em]">{{ title }}</h1>
+        <p v-if="subtitle" class="mt-1 truncate text-xs text-muted">{{ subtitle }}</p>
       </div>
 
       <div class="flex shrink-0 items-center gap-2">

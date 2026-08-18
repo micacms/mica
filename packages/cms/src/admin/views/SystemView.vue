@@ -12,6 +12,7 @@
  */
 
 import { computed, onMounted, ref } from "vue";
+import { ArrowRight } from "@lucide/vue";
 
 import { api, ApiError, type SystemInfo } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
@@ -301,7 +302,7 @@ async function copyReport(): Promise<void> {
               {{ labels.get(`${edge.fromType}:${edge.from}`) ?? edge.from }}
             </span>
             <span class="mono text-muted">{{ edge.path }}</span>
-            <span class="text-muted" aria-hidden="true">→</span>
+            <ArrowRight :size="14" class="text-muted" aria-hidden="true" />
             <span>{{ collectionLabel(edge.to) }}</span>
             <span v-if="edge.multiple" class="badge bg-brand-soft text-brand">many</span>
           </li>
@@ -375,7 +376,7 @@ async function copyReport(): Promise<void> {
 
         <p
           v-if="info.deployment.generatedSecrets.length"
-          class="mt-3 rounded-lg bg-warning/10 px-3 py-2 text-xs text-warning"
+          class="mt-3 rounded-md border border-warning/15 bg-warning-soft px-4 py-3 text-xs text-warning"
         >
           Running with generated development secrets
           ({{ info.deployment.generatedSecrets.join(", ") }}). Everyone is signed out on restart —

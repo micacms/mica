@@ -10,6 +10,7 @@
  */
 
 import { computed, onMounted, ref, watch } from "vue";
+import { ArrowDown, ArrowUp, Plus } from "@lucide/vue";
 
 import { api, ApiError, type EntrySummary } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
@@ -105,9 +106,7 @@ const canReorder = computed(() => (definition.value?.sortable ?? false) && !sear
       "
     >
       <RouterLink :to="{ name: 'entry-new', params: { collection } }" class="btn-primary">
-        <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M10 4v12M4 10h12" stroke-linecap="round" />
-        </svg>
+        <Plus :size="16" aria-hidden="true" />
         New {{ definition.labelSingular.toLowerCase() }}
       </RouterLink>
     </PageHeader>
@@ -186,9 +185,7 @@ const canReorder = computed(() => (definition.value?.sortable ?? false) && !sear
                     :disabled="index === 0 || reordering"
                     @click="move(index, -1)"
                   >
-                    <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75">
-                      <path d="M10 15V5M6 9l4-4 4 4" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
+                    <ArrowUp :size="16" aria-hidden="true" />
                     <span class="sr-only">Move "{{ entry.title }}" up</span>
                   </button>
                   <button
@@ -197,9 +194,7 @@ const canReorder = computed(() => (definition.value?.sortable ?? false) && !sear
                     :disabled="index === matching.length - 1 || reordering"
                     @click="move(index, 1)"
                   >
-                    <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75">
-                      <path d="M10 5v10M6 11l4 4 4-4" stroke-linecap="round" stroke-linejoin="round" />
-                    </svg>
+                    <ArrowDown :size="16" aria-hidden="true" />
                     <span class="sr-only">Move "{{ entry.title }}" down</span>
                   </button>
                 </div>

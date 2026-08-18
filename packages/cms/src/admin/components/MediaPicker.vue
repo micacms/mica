@@ -15,6 +15,7 @@
  */
 
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { X } from "@lucide/vue";
 
 import { api, ApiError, type MediaItem } from "@/api";
 import { useToast } from "@/stores/toast";
@@ -214,9 +215,7 @@ const folderOf = (path: string): string => {
           />
 
           <button type="button" class="btn-ghost -mr-2 px-2" @click="emit('close')">
-            <svg viewBox="0 0 20 20" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="1.75">
-              <path d="M5 5l10 10M15 5L5 15" stroke-linecap="round" />
-            </svg>
+            <X :size="20" aria-hidden="true" />
             <span class="sr-only">Close</span>
           </button>
         </header>

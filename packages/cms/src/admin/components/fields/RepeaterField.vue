@@ -8,6 +8,7 @@
  */
 
 import { computed, ref } from "vue";
+import { ArrowDown, ArrowUp, ChevronDown, Copy, Plus, Trash2 } from "@lucide/vue";
 
 import { defaultValues, type RepeaterField } from "@micacms/model";
 
@@ -106,23 +107,18 @@ function toggle(index: number): void {
             :aria-expanded="!collapsed.has(index)"
             @click="toggle(index)"
           >
-            <svg
-              viewBox="0 0 20 20"
+            <ChevronDown
+              :size="16"
               :class="[
                 'h-4 w-4 shrink-0 text-muted transition',
                 !collapsed.has(index) && 'rotate-180',
               ]"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="1.75"
               aria-hidden="true"
-            >
-              <path d="M6 8l4 4 4-4" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
+            />
             <span class="truncate text-sm font-medium">{{ summaryFor(row, index) }}</span>
             <span
               v-if="rowHasIssue(index)"
-              class="badge shrink-0 bg-danger/10 text-danger"
+              class="badge shrink-0 bg-danger-soft text-danger"
             >
               Needs attention
             </span>
@@ -135,9 +131,7 @@ function toggle(index: number): void {
               :disabled="disabled || index === 0"
               @click="move(index, -1)"
             >
-              <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75">
-                <path d="M10 15V5M6 9l4-4 4 4" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <ArrowUp :size="16" aria-hidden="true" />
               <span class="sr-only">Move "{{ summaryFor(row, index) }}" up</span>
             </button>
 
@@ -147,9 +141,7 @@ function toggle(index: number): void {
               :disabled="disabled || index === rows.length - 1"
               @click="move(index, 1)"
             >
-              <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75">
-                <path d="M10 5v10M6 11l4 4 4-4" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <ArrowDown :size="16" aria-hidden="true" />
               <span class="sr-only">Move "{{ summaryFor(row, index) }}" down</span>
             </button>
 
@@ -159,10 +151,7 @@ function toggle(index: number): void {
               :disabled="disabled || atMax"
               @click="duplicate(index)"
             >
-              <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75">
-                <rect x="7" y="7" width="9" height="9" rx="2" />
-                <path d="M13 7V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2" />
-              </svg>
+              <Copy :size="16" aria-hidden="true" />
               <span class="sr-only">Duplicate "{{ summaryFor(row, index) }}"</span>
             </button>
 
@@ -172,9 +161,7 @@ function toggle(index: number): void {
               :disabled="disabled || atMin"
               @click="remove(index)"
             >
-              <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75">
-                <path d="M4 6h12M8 6V4h4v2M7 6l.7 9h4.6L13 6" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
+              <Trash2 :size="16" aria-hidden="true" />
               <span class="sr-only">Remove "{{ summaryFor(row, index) }}"</span>
             </button>
           </div>
@@ -205,9 +192,7 @@ function toggle(index: number): void {
       :disabled="disabled || field.readonly || atMax"
       @click="add"
     >
-      <svg viewBox="0 0 20 20" class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="1.75">
-        <path d="M10 4v12M4 10h12" stroke-linecap="round" />
-      </svg>
+      <Plus :size="16" aria-hidden="true" />
       {{ field.addLabel ?? "Add item" }}
     </button>
 

@@ -143,7 +143,7 @@ async function remove(): Promise<void> {
               <span class="block text-xs text-muted">{{ user.email }}</span>
               <!-- An invitation still outstanding after a few days is usually a
                    mistyped address, so it is worth showing rather than hiding. -->
-              <span v-if="user.pending" class="badge mt-1 bg-warning/10 text-warning">
+              <span v-if="user.pending" class="badge mt-1 bg-warning-soft text-warning">
                 Invited — not signed in yet
               </span>
             </td>
@@ -200,7 +200,7 @@ async function remove(): Promise<void> {
     @confirm="invite"
   >
     <div class="space-y-3 text-left">
-      <p v-if="formError" role="alert" class="rounded bg-danger/8 px-2.5 py-1.5 text-xs text-danger">
+      <p v-if="formError" role="alert" class="rounded-md border border-danger/15 bg-danger-soft px-3 py-2 text-xs text-danger">
         {{ formError }}
       </p>
 

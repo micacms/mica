@@ -66,9 +66,7 @@ function signIn(): void {
   <div v-else class="grid min-h-full place-items-center p-6">
     <div class="w-full max-w-sm">
       <div class="mb-7 flex flex-col items-center gap-4 text-center">
-        <span class="mica-wordmark text-[34px]" role="img" aria-label="Mica">
-          <span aria-hidden="true">M<span class="mica-wordmark__i">ı</span>ca</span>
-        </span>
+        <img src="/brand/mica-logo-glimmer.svg" alt="Mica" class="h-10 w-auto" />
         <div>
           <h1 class="text-lg font-semibold tracking-tight">Sign in to Mica</h1>
           <p class="mt-0.5 text-sm text-muted">Manage your website content.</p>
@@ -76,7 +74,7 @@ function signIn(): void {
       </div>
 
       <div class="card space-y-4 p-5">
-        <p v-if="error" role="alert" class="rounded-sm border-l-2 border-danger bg-danger/5 px-3 py-2 text-sm text-danger">
+        <p v-if="error" role="alert" class="rounded-md border border-danger/15 bg-danger-soft px-4 py-3 text-sm text-danger">
           {{ error }}
         </p>
 
