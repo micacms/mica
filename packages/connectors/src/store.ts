@@ -29,6 +29,7 @@ import {
   isValidSlug,
   readCollection,
   readSingleton,
+  relativizeMedia,
   resolveSlugField,
   serializeEntry,
   singletonPath,
@@ -39,6 +40,7 @@ import {
   type Collection,
   type ContentEntry,
   type FieldIssue,
+  type FieldMap,
   type Singleton,
   type Site,
 } from "@micacms/model";
@@ -219,7 +221,10 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
           ? collectionEntryPath(def.fields, collectionName, input.slug)
           : null;
 
-      const serialized = serializeEntry(def.fields, data);
+      // Back to the on-disk form. The editor works in root-relative paths
+      // because that is what `readCollection` hands it; writing those through
+      // unchanged would bake the entry's own directory into the stored path.
+      const serialized = serializeEntry(def.fields, mediaForDisk(def.fields, data, base));
       const files = entryFiles(def.fields, base, serialized);
 
       const changes: Change[] = Object.entries(files).map(([path, contents]) => ({
@@ -296,7 +301,7 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
       const data = validate(def, payload, `The "${def.label}" settings`);
 
       const base = singletonPath(def.fields, name);
-      const serialized = serializeEntry(def.fields, data);
+      const serialized = serializeEntry(def.fields, mediaForDisk(def.fields, data, base));
 
       const changes: Change[] = Object.entries(entryFiles(def.fields, base, serialized)).map(
         ([path, contents]) => ({ type: "write", path, contents }),
@@ -394,6 +399,21 @@ export type ContentStore = ReturnType<typeof createContentStore>;
 /* ------------------------------------------------------------------ */
 
 /** The file whose revision identifies an entry, for concurrency checks. */
+/**
+ * Media paths as the repository stores them.
+ *
+ * Mirrors the read side, which resolves media only for directory-shaped
+ * entries: a file-shaped entry has no directory of its own for a colocated
+ * path to be relative to, so there is nothing to undo.
+ */
+function mediaForDisk(
+  fields: FieldMap,
+  data: Record<string, unknown>,
+  base: string,
+): Record<string, unknown> {
+  return entryLayout(fields) === "directory" ? relativizeMedia(fields, data, base) : data;
+}
+
 function dataPath(def: Collection, collection: string, slug: string): string {
   const base = collectionEntryPath(def.fields, collection, slug);
   return entryLayout(def.fields) === "directory" ? `${base}/${INDEX_FILE}` : base;

@@ -193,6 +193,39 @@ async function readEntry(
 }
 
 /**
+ * Walks every media field in an entry, replacing each path with `mapOne`.
+ *
+ * The two directions below have to agree about *which* values are media —
+ * including the ones nested in objects and repeaters — so they share one
+ * traversal rather than each keeping their own copy of the rules.
+ */
+function mapMedia(
+  fields: FieldMap,
+  data: Record<string, unknown>,
+  mapOne: (value: unknown) => unknown,
+): Record<string, unknown> {
+  const visit = (map: FieldMap, record: Record<string, unknown>): Record<string, unknown> => {
+    const result: Record<string, unknown> = { ...record };
+
+    for (const [key, field] of Object.entries(map)) {
+      const value = record[key];
+
+      if (field.kind === "media") {
+        result[key] = Array.isArray(value) ? value.map(mapOne) : mapOne(value);
+      } else if (field.kind === "object" && isRecord(value)) {
+        result[key] = visit(field.fields, value);
+      } else if (field.kind === "repeater" && Array.isArray(value)) {
+        result[key] = value.map((row) => (isRecord(row) ? visit(field.fields, row) : row));
+      }
+    }
+
+    return result;
+  };
+
+  return visit(fields, data);
+}
+
+/**
  * Rewrites media references to paths relative to the content root.
  *
  * On disk a reference is written the way a person reading the entry would
@@ -205,32 +238,40 @@ function resolveMedia(
   data: Record<string, unknown>,
   base: string,
 ): Record<string, unknown> {
-  const resolveOne = (value: unknown): unknown =>
+  return mapMedia(fields, data, (value) =>
     typeof value === "string" && value !== ""
       ? value.startsWith("/")
         ? value.slice(1)
         : `${base}/${value}`
-      : value;
+      : value,
+  );
+}
 
-  const visit = (map: FieldMap, record: Record<string, unknown>): Record<string, unknown> => {
-    const result: Record<string, unknown> = { ...record };
+/**
+ * The inverse of `resolveMedia`: root-relative back to the on-disk form.
+ *
+ * Every save has to do this, or the root-relative path the editor was handed
+ * is written back verbatim and the entry's own directory ends up named twice
+ * — once by the stored path and once by `resolveMedia` on the next read. That
+ * compounds with each save, and the reference stops resolving immediately.
+ *
+ * A file inside the entry's directory goes back to the colocated form; one
+ * anywhere else keeps the leading slash that says "from the content root".
+ */
+export function relativizeMedia(
+  fields: FieldMap,
+  data: Record<string, unknown>,
+  base: string,
+): Record<string, unknown> {
+  const prefix = `${base}/`;
 
-    for (const [key, field] of Object.entries(map)) {
-      const value = record[key];
-
-      if (field.kind === "media") {
-        result[key] = Array.isArray(value) ? value.map(resolveOne) : resolveOne(value);
-      } else if (field.kind === "object" && isRecord(value)) {
-        result[key] = visit(field.fields, value);
-      } else if (field.kind === "repeater" && Array.isArray(value)) {
-        result[key] = value.map((row) => (isRecord(row) ? visit(field.fields, row) : row));
-      }
-    }
-
-    return result;
-  };
-
-  return visit(fields, data);
+  return mapMedia(fields, data, (value) =>
+    typeof value === "string" && value !== ""
+      ? value.startsWith(prefix)
+        ? value.slice(prefix.length)
+        : `/${value}`
+      : value,
+  );
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
