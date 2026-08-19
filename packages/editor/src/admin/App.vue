@@ -4,13 +4,13 @@ import { useRoute } from "vue-router";
 
 import AppShell from "@/components/AppShell.vue";
 import ToastStack from "@/components/ToastStack.vue";
-import { useAuth } from "@/stores/auth";
+import { useSession } from "@/stores/session";
 
 const route = useRoute();
-const auth = useAuth();
+const session = useSession();
 
 // The sign-in view has no navigation around it.
-const chrome = computed(() => auth.isAuthenticated.value && !route.meta.public);
+const chrome = computed(() => session.isActive.value && !route.meta.public);
 </script>
 
 <template>

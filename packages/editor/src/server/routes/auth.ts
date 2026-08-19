@@ -7,15 +7,14 @@
  * person is.
  *
  * What Mica still decides is whether that person may edit *this site*. A valid
- * token from a correctly configured provider gets you a `users` row and
- * nothing more; the `memberships` table is the gate, and an unknown person
- * hits it.
+ * token from a correctly configured provider proves an identity and nothing
+ * more; `services/admission.ts` is the gate, and an unknown person hits it.
  *
- * In local mode there is no provider and no authentication at all, and no
- * route here to reach either: serving the admin page signs the developer in
- * (see `services/sign-in.ts`), so nobody meets a sign-in screen on their own
- * machine. `/login` still works, for a bookmark that predates the session. The
- * config layer refuses that mode anywhere it could be reached by someone else.
+ * In local mode there is no provider, no authentication and nobody to be.
+ * Serving the admin page starts a session with no identity in it (see
+ * `routes/admin-spa.ts`), so nobody meets a sign-in screen on their own
+ * machine, and the config layer refuses that mode anywhere it could be reached
+ * by someone else.
  */
 
 import { Hono } from "hono";
@@ -23,11 +22,14 @@ import { deleteCookie, getCookie, setCookie } from "hono/cookie";
 
 import { ApiError } from "../lib/errors.js";
 import { clientIp, type Env } from "../http.js";
-import { requireAuth } from "../middleware/index.js";
-import { DEFAULT_SITE_ID } from "../repositories/sites.js";
-import type { AppContext } from "../context.js";
-import { CSRF_COOKIE, SESSION_COOKIE } from "../services/session.js";
-import { establishSession, signInLocalDeveloper } from "../services/sign-in.js";
+import { requireAccess } from "../middleware/index.js";
+import type { SessionIdentity } from "../repositories/sessions.js";
+import {
+  CSRF_COOKIE,
+  establishSession,
+  SESSION_COOKIE,
+  startLocalSession,
+} from "../services/session.js";
 import {
   openTransaction,
   sealTransaction,
@@ -35,59 +37,20 @@ import {
   type OidcClaims,
 } from "../services/oidc.js";
 
-/**
- * Turns a set of claims into a signed-in user.
- *
- * The subject is the account key, never the email — a provider that lets a
- * person change their address must not thereby let them take over somebody
- * else's Mica account. An email that has moved is simply updated on the row
- * the subject already points at.
- */
-function resolveUser(ctx: AppContext, claims: OidcClaims): string {
-  const { users, identities, memberships } = ctx.repositories;
-
-  const existing = identities.find(claims.issuer, claims.subject);
-  if (existing) {
-    const user = users.findById(existing.userId);
-    // The provider is authoritative for both, so keep them current.
-    if (user && (user.email !== claims.email.toLowerCase() || user.name !== claims.name)) {
-      users.update(user.id, { email: claims.email, name: claims.name });
-    }
-    return existing.userId;
-  }
-
-  /**
-   * A first sign-in for this subject.
-   *
-   * If a user already holds the address, this is almost always the same person
-   * arriving through a newly configured provider, so the identity is linked to
-   * the existing row rather than creating a duplicate account. That does mean
-   * trusting the provider's `email` claim once, at link time — which is why a
-   * deployment should point Mica at one provider it controls, and why the
-   * subject takes over as the key immediately afterwards.
-   */
-  const byEmail = users.findByEmail(claims.email);
-  const userId = byEmail?.id ?? users.create({ email: claims.email, name: claims.name }).id;
-
-  identities.link({ issuer: claims.issuer, subject: claims.subject, userId });
-
-  /**
-   * Bootstrap. An empty deployment has no members, so nobody could ever be
-   * granted one — the first configured administrator breaks that circle.
-   */
-  const bootstrap = ctx.config.OIDC_BOOTSTRAP_ADMIN?.trim().toLowerCase();
-  if (bootstrap && bootstrap === claims.email.toLowerCase()) {
-    memberships.grant({ siteId: DEFAULT_SITE_ID, userId, role: "admin" });
-  }
-
-  return userId;
-}
-
 /** Only ever a path on this server, so the callback cannot be an open redirect. */
 function safeReturnTo(raw: string | undefined): string {
   if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/admin/";
   return raw;
 }
+
+const identityOf = (claims: OidcClaims): SessionIdentity => ({
+  issuer: claims.issuer,
+  subject: claims.subject,
+  email: claims.email,
+  emailVerified: claims.emailVerified,
+  name: claims.name,
+  groups: claims.groups,
+});
 
 export function authRoutes(): Hono<Env> {
   const app = new Hono<Env>();
@@ -95,15 +58,16 @@ export function authRoutes(): Hono<Env> {
   /**
    * What the sign-in screen needs to know before it draws anything.
    *
-   * Public: it reveals only which provider this deployment uses, which the
-   * redirect would reveal a moment later anyway.
+   * Public: it reveals only whether this deployment authenticates and which
+   * provider it uses, which the redirect would reveal a moment later anyway.
    */
   app.get("/config", (c) => {
     const { config } = c.get("ctx");
     return c.json({
-      mode: config.MICA_MODE,
-      authDisabled: config.authDisabled,
-      provider: config.OIDC_ISSUER ? new URL(config.OIDC_ISSUER).hostname : null,
+      authRequired: !config.authDisabled,
+      provider: config.MICA_OIDC_ISSUER
+        ? new URL(config.MICA_OIDC_ISSUER).hostname
+        : null,
     });
   });
 
@@ -112,9 +76,16 @@ export function authRoutes(): Hono<Env> {
     const ctx = c.get("ctx");
     const returnTo = safeReturnTo(c.req.query("returnTo"));
 
+    /**
+     * Nothing to sign in to, and nobody to sign in as.
+     *
+     * The session still has to start somewhere, because the CSRF token lives
+     * on it. Serving the admin page is the usual place — but the page is
+     * served by Vite during development, and by nothing at all for a bookmark
+     * that lands here first, so this stays the second door.
+     */
     if (ctx.config.authDisabled) {
-      establishSession(c, signInLocalDeveloper(ctx));
-      c.get("logger").warn("Signed in without authentication (MICA_MODE=local)");
+      startLocalSession(c);
       return c.redirect(returnTo);
     }
 
@@ -177,26 +148,30 @@ export function authRoutes(): Hono<Env> {
       );
     }
 
-    const userId = resolveUser(ctx, claims);
+    const identity = identityOf(claims);
 
     /**
-     * Authentication succeeded; authorization is a separate question.
+     * Authentication succeeded; admission is a separate question.
      *
-     * A provider may vouch for an entire company. Membership is what says this
-     * particular person may edit this particular site, and its absence is the
-     * expected answer for everybody who has not been invited — so it is a
-     * plain message, not an error.
+     * A provider may vouch for an entire company. The admission rules are what
+     * say this particular person may edit this particular site, and their
+     * refusal is the expected answer for everybody who was not meant to be
+     * here — so it is a plain message, not an error.
      */
-    if (!ctx.repositories.memberships.find(ctx.siteId, userId)) {
-      logger.warn("Authenticated user has no membership", { email: claims.email });
+    const verdict = ctx.services.admission.admits(identity);
+    if (!verdict.admitted) {
+      logger.warn("Authenticated but not admitted", {
+        subject: identity.subject,
+        reason: verdict.reason,
+      });
       return refuse(
-        `You are signed in as ${claims.email}, but that address has no access to ` +
-          "this site. Ask an administrator to add you.",
+        `You are signed in as ${claims.email}, but that account has no access to ` +
+          "this site. Ask whoever runs it to add you.",
       );
     }
 
-    establishSession(c, userId);
-    logger.info("Signed in", { userId, issuer: claims.issuer });
+    establishSession(c, identity);
+    logger.info("Signed in", { subject: identity.subject, issuer: identity.issuer });
 
     return c.redirect(transaction.returnTo);
   });
@@ -215,20 +190,21 @@ export function authRoutes(): Hono<Env> {
     return c.json({ ok: true, endSession });
   });
 
-  app.get("/me", requireAuth(), (c) => {
-    const session = c.get("session");
-    const user = c.get("user");
+  /**
+   * The session this request is in, and who it belongs to.
+   *
+   * `identity` is null in local mode, where there is nobody. The SPA reads
+   * that as "draw no account chrome", which is the whole of what local mode
+   * has to say about users.
+   */
+  app.get("/me", requireAccess(), (c) => {
+    const { identity, session } = c.get("access");
 
     return c.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        // The role is the membership's, not the user's: the same person can be
-        // an administrator on one site and an editor on another.
-        role: c.get("membership").role,
-        createdAt: user.createdAt,
-        lastLoginAt: user.lastLoginAt,
+      identity: identity && {
+        subject: identity.subject,
+        email: identity.email,
+        name: identity.name,
       },
       csrfToken: session.csrfToken,
       expiresAt: session.expiresAt,

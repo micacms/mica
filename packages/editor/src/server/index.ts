@@ -34,14 +34,14 @@ async function main(): Promise<void> {
   // `quiet` under the CLI: the banner is that audience's whole startup story,
   // and it cannot be printed until the schema has been read.
   const db = openDatabase(config.databasePath, { logger, quiet: config.MICA_CLI });
-  const connector = createConnector(config, db);
+  const connector = createConnector(config);
 
   // A bad or absent model is a deployment mistake rather than a crash: exit the
   // way a bad environment does, with the message on stderr instead of a stack
   // trace.
-  let site;
+  let model;
   try {
-    site = await loadSchema(connector);
+    model = await loadSchema(connector);
   } catch (error) {
     if (error instanceof SchemaError) {
       process.stderr.write(`\n${error.message}\n\n`);
@@ -50,7 +50,7 @@ async function main(): Promise<void> {
     throw error;
   }
 
-  const ctx = createContext({ config, site, db, connector, logger });
+  const ctx = createContext({ config, model, db, connector, logger });
 
   const devSecrets = (config as { devSecrets?: string[] }).devSecrets ?? [];
   // Not said under the CLI: there, the database is a cache directory that gets
@@ -64,22 +64,9 @@ async function main(): Promise<void> {
     });
   }
 
-  /**
-   * Nobody can get in yet, and nobody can be invited either — inviting needs an
-   * administrator. Say how to break the circle rather than leaving the first
-   * sign-in to fail with "no access to this site".
-   */
-  if (!config.authDisabled && ctx.repositories.memberships.count(ctx.siteId) === 0) {
-    logger.warn("Nobody has access to this site yet", {
-      next:
-        "Set OIDC_BOOTSTRAP_ADMIN, or run: " +
-        "node dist/server/scripts/grant-access.js --email you@example.com",
-    });
-  }
-
   const app = createApp(ctx);
 
-  const fingerprint = await schemaFingerprint(site);
+  const fingerprint = await schemaFingerprint(model);
 
   const server = serve({ fetch: app.fetch, hostname: config.HOST, port: config.PORT }, (info) => {
     /**
@@ -96,10 +83,10 @@ async function main(): Promise<void> {
         startupBanner(
           {
             version: VERSION,
-            url: config.CMS_BASE_URL,
+            url: config.MICA_PUBLIC_URL,
             contentRoot: connector.origin,
-            collections: Object.keys(site.collections).length,
-            singletons: Object.keys(site.singletons).length,
+            collections: Object.keys(model.collections).length,
+            singletons: Object.keys(model.singletons).length,
             dataDir: config.dataDir,
             writesToWorkingTree: config.REPOSITORY === "local",
           },
@@ -107,7 +94,7 @@ async function main(): Promise<void> {
         ),
       );
 
-      if (config.MICA_OPEN) openInBrowser(`${config.CMS_BASE_URL}/admin/`);
+      if (config.MICA_OPEN) openInBrowser(`${config.MICA_PUBLIC_URL}/admin/`);
       return;
     }
 
@@ -122,24 +109,30 @@ async function main(): Promise<void> {
      */
     if (config.authDisabled) {
       logger.warn("Authentication is DISABLED (MICA_MODE=local)", {
-        signedInAs: "developer@localhost",
-        note: "Every request is an administrator. Never expose this to a network.",
+        note: "There is no user and no sign-in. Never expose this to a network.",
       });
     }
 
     logger.info("Mica CMS started", {
-      url: config.CMS_BASE_URL,
+      url: config.MICA_PUBLIC_URL,
       listening: `${config.HOST}:${info.port}`,
+      site: ctx.site.id,
       mode: config.MICA_MODE,
       environment: config.NODE_ENV,
-      auth: config.authDisabled ? "disabled" : `oidc:${new URL(config.OIDC_ISSUER!).hostname}`,
+      auth: config.authDisabled
+        ? "disabled"
+        : `oidc:${new URL(config.MICA_OIDC_ISSUER!).hostname}`,
+      // Who may edit, in the operator's own words. Said at startup because a
+      // rule that admits nobody and a rule that admits everybody look the
+      // same from outside until somebody tries to sign in.
+      admission: ctx.services.admission.summary,
       database: config.databasePath,
       content: connector.origin,
       // Enough to tell two deployments apart when a website was built against
       // one model and the CMS is serving another.
       schema: schemaOrigin(connector),
       schemaFingerprint: fingerprint,
-      collections: Object.keys(site.collections).length,
+      collections: Object.keys(model.collections).length,
     });
   });
 

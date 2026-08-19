@@ -17,9 +17,17 @@
 
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
 
+import type { Context } from "hono";
+import { getCookie, setCookie } from "hono/cookie";
+
 import type { Config } from "../config.js";
+import { clientIp, type Env } from "../http.js";
 import { randomToken } from "../lib/id.js";
-import type { SessionRecord, SessionRepository } from "../repositories/sessions.js";
+import type {
+  SessionIdentity,
+  SessionRecord,
+  SessionRepository,
+} from "../repositories/sessions.js";
 
 export const SESSION_COOKIE = "mica_session";
 export const CSRF_COOKIE = "mica_csrf";
@@ -29,14 +37,19 @@ export const CSRF_HEADER = "x-csrf-token";
 const TOUCH_INTERVAL_MS = 5 * 60 * 1000;
 
 export interface SessionService {
+  /**
+   * `identity` is null in local mode, where there is no provider and no user:
+   * the row exists to carry a CSRF token and an expiry, and nothing else.
+   */
   create(input: {
-    userId: string;
+    identity: SessionIdentity | null;
     ip?: string | null;
     userAgent?: string | null;
   }): { record: SessionRecord; cookie: string; csrfToken: string };
   resolve(cookieValue: string | undefined): SessionRecord | null;
   destroy(cookieValue: string | undefined): void;
-  destroyAllForUser(userId: string, exceptCookieValue?: string): void;
+  /** Signs one person out on every device. */
+  destroyAllForIdentity(issuer: string, subject: string): void;
   sessionCookieOptions(): CookieOptions;
   csrfCookieOptions(): CookieOptions;
   clearedCookieOptions(): CookieOptions;
@@ -93,14 +106,14 @@ export function createSessionService(
   };
 
   return {
-    create({ userId, ip, userAgent }) {
+    create({ identity, ip, userAgent }) {
       const token = randomToken(32);
       const csrfToken = randomToken(32);
       const now = Date.now();
 
       const record = sessions.create({
         id: sha256(token),
-        userId,
+        identity,
         csrfToken,
         expiresAt: nextExpiry(now, now),
         ip: ip ?? null,
@@ -137,9 +150,8 @@ export function createSessionService(
       if (token) sessions.delete(sha256(token));
     },
 
-    destroyAllForUser(userId, exceptCookieValue) {
-      const token = unwrap(exceptCookieValue);
-      sessions.deleteForUser(userId, token ? sha256(token) : undefined);
+    destroyAllForIdentity(issuer, subject) {
+      sessions.deleteForIdentity(issuer, subject);
     },
 
     sessionCookieOptions() {
@@ -180,4 +192,56 @@ export function createSessionService(
       return sessions.deleteExpired();
     },
   };
+}
+
+/* ------------------------------------------------------------------ *
+ * Starting one
+ * ------------------------------------------------------------------ */
+
+/**
+ * Issues the session cookies for a browser that has just been identified.
+ *
+ * `identity` is null in local mode, where nobody was identified because there
+ * is nobody: the session then carries a CSRF token and an expiry, and says
+ * nothing about who anyone is.
+ */
+export function establishSession(
+  c: Context<Env>,
+  identity: SessionIdentity | null,
+): void {
+  const ctx = c.get("ctx");
+
+  // Session fixation: discard whatever identifier the client already holds.
+  ctx.services.sessions.destroy(getCookie(c, SESSION_COOKIE));
+
+  const { cookie, csrfToken } = ctx.services.sessions.create({
+    identity,
+    ip: clientIp(c),
+    userAgent: c.req.header("user-agent") ?? null,
+  });
+
+  setCookie(c, SESSION_COOKIE, cookie, ctx.services.sessions.sessionCookieOptions());
+  setCookie(c, CSRF_COOKIE, csrfToken, ctx.services.sessions.csrfCookieOptions());
+}
+
+/**
+ * Local mode: the whole of "signing in" on a developer's own machine.
+ *
+ * Opening the editor is it. There is no provider to ask, no credential to
+ * check and no person to name, so what this establishes is not an identity —
+ * it is the CSRF token that lets the page write, and the reason a request that
+ * never loaded the page still gets a 401.
+ *
+ * Called while serving the admin page, which is a top-level navigation and so
+ * the one place a cookie can be set without a round trip anybody can see.
+ * Deliberately not middleware on the API: a request that arrives without a
+ * session still gets 401 there, so the authorization tests keep testing
+ * authorization.
+ */
+export function startLocalSession(c: Context<Env>): void {
+  const ctx = c.get("ctx");
+  if (!ctx.config.authDisabled) return;
+  if (ctx.services.sessions.resolve(getCookie(c, SESSION_COOKIE))) return;
+
+  establishSession(c, null);
 }

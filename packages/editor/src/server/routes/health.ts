@@ -29,7 +29,7 @@ export function healthRoutes(): Hono<Env> {
     // `list` on a missing root returns an empty array rather than throwing, so
     // this proves reachability, not that anyone has written content yet.
     try {
-      await ctx.connector.list("");
+      await ctx.site.contentRepository.list("");
     } catch (error) {
       c.get("logger").error("Content repository is unreachable", { error: String(error) });
       return c.json({ status: "error", repository: "unavailable" }, 503);
@@ -39,7 +39,7 @@ export function healthRoutes(): Hono<Env> {
       status: "ok",
       uptimeSeconds: Math.floor((Date.now() - startedAt) / 1000),
       database: "ok",
-      repository: ctx.connector.origin,
+      repository: ctx.site.contentRepository.origin,
     });
   });
 

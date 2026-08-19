@@ -27,7 +27,6 @@
     "dev": "concurrently -n api,admin -c blue,magenta \"pnpm dev:api\" \"pnpm dev:admin\"",
     "dev:admin": "vite",
     "dev:api": "tsx watch --clear-screen=false --include ../../sites/muster-consulting/content/.mica/schema.json src/server/index.ts",
-    "grant-access": "tsx src/server/scripts/grant-access.ts",
     "start": "node dist/server/index.js",
     "test": "tsc -p tsconfig.server.json --noEmit && node --test --import tsx test/**/*.test.ts",
     "typecheck": "tsc -p tsconfig.server.json --noEmit && vue-tsc -p tsconfig.json --noEmit"

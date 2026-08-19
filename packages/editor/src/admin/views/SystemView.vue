@@ -80,18 +80,15 @@ function report(): string {
     `Repository ${data.repository.origin}`,
     `Repository holds ${data.repository.entries} entries and ` +
       `${data.repository.media.files} media files (${data.repository.media.readable})`,
-    `Database: ${data.database.users} users, migration ${data.database.version}, ` +
+    `Database: ${data.database.sessions} sessions, migration ${data.database.version}, ` +
       `${data.database.bytes === null ? "size unknown" : formatBytes(data.database.bytes)}`,
+    `Site ${data.deployment.site}`,
+    `Base URL ${data.deployment.baseUrl}`,
+    `Content model ${data.deployment.schemaOrigin}`,
+    `Content root ${data.deployment.contentRoot}`,
+    `Data directory ${data.deployment.dataDir}`,
+    `Admission ${data.deployment.admission}`,
   ];
-
-  if (data.deployment) {
-    lines.push(
-      `Base URL ${data.deployment.baseUrl}`,
-      `Content model ${data.deployment.schemaOrigin}`,
-      `Content root ${data.deployment.contentRoot}`,
-      `Data directory ${data.deployment.dataDir}`,
-    );
-  }
 
   return lines.join("\n");
 }
@@ -348,13 +345,14 @@ async function copyReport(): Promise<void> {
       <section class="card p-4" aria-labelledby="database-heading">
         <h2 id="database-heading" class="text-sm font-semibold">Operational database</h2>
         <p class="mt-1 text-xs text-muted">
-          Accounts and sessions only. Losing it signs everyone out; no content is in it.
+          Sessions only — there are no accounts. Losing it signs everyone out; no
+          content is in it.
         </p>
 
         <dl class="spec mt-3">
           <div>
-            <dt>Accounts</dt>
-            <dd class="tabular-nums">{{ info.database.users }}</dd>
+            <dt>Sessions</dt>
+            <dd class="tabular-nums">{{ info.database.sessions }}</dd>
           </div>
           <div>
             <dt>Size</dt>
@@ -368,10 +366,10 @@ async function copyReport(): Promise<void> {
 
       <!-- ----------------------------------------------------- deployment -->
 
-      <section v-if="info.deployment" class="card p-4" aria-labelledby="deployment-heading">
+      <section class="card p-4" aria-labelledby="deployment-heading">
         <h2 id="deployment-heading" class="text-sm font-semibold">Deployment</h2>
         <p class="mt-1 text-xs text-muted">
-          Visible to administrators. Secrets are never shown — only whether they are set.
+          How this Mica is configured. Secrets are never shown — only whether they are set.
         </p>
 
         <p
@@ -384,6 +382,10 @@ async function copyReport(): Promise<void> {
         </p>
 
         <dl class="spec mt-3">
+          <div>
+            <dt>Site</dt>
+            <dd class="mono">{{ info.deployment.site }}</dd>
+          </div>
           <div>
             <dt>Base URL</dt>
             <dd class="mono">{{ info.deployment.baseUrl }}</dd>
@@ -415,6 +417,10 @@ async function copyReport(): Promise<void> {
           <div>
             <dt>Upload limit</dt>
             <dd class="tabular-nums">{{ info.deployment.maxUploadReadable }}</dd>
+          </div>
+          <div>
+            <dt>Who may edit</dt>
+            <dd class="mono">{{ info.deployment.admission }}</dd>
           </div>
           <div>
             <dt>Session lifetime</dt>

@@ -22,7 +22,7 @@ export interface Banner {
   contentRoot: string;
   collections: number;
   singletons: number;
-  /** Where accounts and sessions go — outside the project, and worth saying. */
+  /** Where Mica's own state goes — outside the project, and worth saying. */
   dataDir: string;
   /** False when the repository is reached through GitHub or GitLab instead. */
   writesToWorkingTree: boolean;
@@ -88,7 +88,7 @@ export function startupBanner(banner: Banner, useColor: boolean): string {
     ),
     "",
     `  ${c.dim("No sign-in on your own machine — the link above opens straight into the editor.")}`,
-    `  ${c.dim(`Accounts and sessions stay out of your project, in ${banner.dataDir}.`)}`,
+    `  ${c.dim(`Mica keeps its own state out of your project, in ${banner.dataDir}.`)}`,
     "",
     `  ${c.dim("Run your site's dev server beside this to see the changes. Ctrl+C stops Mica.")}`,
     "",

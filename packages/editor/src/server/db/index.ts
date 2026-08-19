@@ -32,7 +32,7 @@ export function openDatabase(filename: string, options: OpenDatabaseOptions = {}
   }
 
   const db = openSqlite(filename, options);
-  const { applied, currentVersion } = migrate(db);
+  const { applied, currentVersion } = migrate(db, filename);
 
   if (applied.length > 0 && options.logger) {
     const line = {

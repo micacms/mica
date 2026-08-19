@@ -43,7 +43,7 @@ export function adminSystemRoutes(): Hono<Env> {
     const { site } = c.get("ctx");
 
     return c.json({
-      collections: Object.values(site.collections).map((def) => ({
+      collections: Object.values(site.model.collections).map((def) => ({
         name: def.name,
         label: def.label,
         labelSingular: def.labelSingular ?? def.label,
@@ -55,7 +55,7 @@ export function adminSystemRoutes(): Hono<Env> {
         listedFields: listedFields(def),
         fields: def.fields,
       })),
-      singletons: Object.values(site.singletons).map((def) => ({
+      singletons: Object.values(site.model.singletons).map((def) => ({
         name: def.name,
         label: def.label,
         description: def.description ?? null,
@@ -71,7 +71,7 @@ export function adminSystemRoutes(): Hono<Env> {
     // Read from the repository rather than counted in SQL. A count that can
     // disagree with the files is worse than no count.
     const collections = await Promise.all(
-      Object.values(ctx.site.collections).map(async (def) => ({
+      Object.values(ctx.site.model.collections).map(async (def) => ({
         name: def.name,
         label: def.label,
         total: (await content.list(def.name)).length,
@@ -87,8 +87,7 @@ export function adminSystemRoutes(): Hono<Env> {
         bytes: files.reduce((sum, file) => sum + file.size, 0),
         readable: formatBytes(files.reduce((sum, file) => sum + file.size, 0)),
       },
-      users: ctx.repositories.users.count(),
-      repository: ctx.connector.origin,
+      repository: ctx.site.contentRepository.origin,
     });
   });
 
@@ -97,21 +96,22 @@ export function adminSystemRoutes(): Hono<Env> {
    *
    * Answers the questions that otherwise need shell access: which version is
    * running, which content model it was handed, how large the database has
-   * grown, whether builds are wired up. Everything an editor may see is
-   * descriptive; the deployment block — filesystem paths, limits, which
-   * secrets are still development defaults — is for administrators only.
+   * grown, how this deployment decides who may edit it.
    *
-   * No secret value is returned anywhere, only whether one is set.
+   * All of it goes to everybody who is admitted. There is no administrator
+   * role to withhold it from: admission is configuration, so the people who
+   * reach this endpoint are exactly the people the operator named. No secret
+   * value is returned anywhere, only whether one is set.
    */
   app.get("/system", async (c) => {
     const ctx = c.get("ctx");
     const { config } = ctx;
 
-    const stats = schemaStats(ctx.site);
+    const stats = schemaStats(ctx.site.model);
 
     const counts = Object.fromEntries(
       await Promise.all(
-        Object.values(ctx.site.collections).map(
+        Object.values(ctx.site.model.collections).map(
           async (def) => [def.name, (await ctx.services.content.list(def.name)).length] as const,
         ),
       ),
@@ -153,43 +153,43 @@ export function adminSystemRoutes(): Hono<Env> {
        *
        * `repository` is where the website's content lives and what must be
        * backed up — by Git, which is doing it already. `database` is Mica's own
-       * operational state: users and sessions. Losing it logs everyone out and
-       * costs nothing else, and the shape of this response should say so.
+       * operational state: sessions. Losing it signs everyone out and costs
+       * nothing else, and the shape of this response should say so.
        */
       repository: {
-        origin: ctx.connector.origin,
+        origin: ctx.site.contentRepository.origin,
         entries: Object.values(counts).reduce((sum, count) => sum + count, 0),
         media: { files: files.length, bytes: mediaBytes, readable: formatBytes(mediaBytes) },
       },
       database: {
-        users: ctx.repositories.users.count(),
+        sessions: ctx.repositories.sessions.count(),
         version: databaseVersion(ctx.db),
         bytes: databaseBytes === null ? null : databaseBytes + (walBytes ?? 0),
       },
-      deployment:
-        c.get("membership").role === "admin"
-          ? {
-              baseUrl: config.CMS_BASE_URL,
-              schemaOrigin: schemaOrigin(ctx.connector),
-              repositoryMode: config.REPOSITORY,
-              // Only meaningful for the local connector; a remote one names
-              // itself in `repository.origin` above.
-              contentRoot: config.REPOSITORY === "local" ? config.contentRoot : null,
-              dataDir: config.dataDir,
-              databasePath: config.databasePath,
-              logLevel: config.LOG_LEVEL,
-              maxUploadBytes: config.MAX_UPLOAD_BYTES,
-              maxUploadReadable: formatBytes(config.MAX_UPLOAD_BYTES),
-              sessionTtlHours: config.SESSION_TTL_HOURS,
-              sessionIdleHours: config.SESSION_IDLE_HOURS,
-              trustProxy: config.TRUST_PROXY,
-              cookieSecure: config.cookieSecure,
-              adminOrigins: config.adminOrigins,
-              /** Names of the secrets this process generated for itself. */
-              generatedSecrets: (config as { devSecrets?: string[] }).devSecrets ?? [],
-              memoryBytes: process.memoryUsage().rss,
-            }
-          : null,
+      deployment: {
+        site: ctx.site.id,
+        baseUrl: config.MICA_PUBLIC_URL,
+        schemaOrigin: schemaOrigin(ctx.site.contentRepository),
+        repositoryMode: config.REPOSITORY,
+        // Only meaningful for the local connector; a remote one names itself
+        // in `repository.origin` above.
+        contentRoot: config.REPOSITORY === "local" ? config.contentRoot : null,
+        dataDir: config.dataDir,
+        databasePath: config.databasePath,
+        logLevel: config.LOG_LEVEL,
+        maxUploadBytes: config.MAX_UPLOAD_BYTES,
+        maxUploadReadable: formatBytes(config.MAX_UPLOAD_BYTES),
+        sessionTtlHours: config.SESSION_TTL_HOURS,
+        sessionIdleHours: config.SESSION_IDLE_HOURS,
+        /** What decides who may edit here, in the operator's own words. */
+        admission: ctx.services.admission.summary,
+        trustProxy: config.TRUST_PROXY,
+        cookieSecure: config.cookieSecure,
+        adminOrigins: config.adminOrigins,
+        /** Names of the secrets this process generated for itself. */
+        generatedSecrets: (config as { devSecrets?: string[] }).devSecrets ?? [],
+        memoryBytes: process.memoryUsage().rss,
+      },
     });
   });
 

@@ -1,27 +1,36 @@
 /**
  * Session state.
  *
- * A module-scoped ref rather than a store library: there is exactly one signed-
- * in user per tab, and nothing here needs devtools time-travel or plugins.
+ * A module-scoped ref rather than a store library: there is exactly one session
+ * per tab, and nothing here needs devtools time-travel or plugins.
+ *
+ * Note what it is not. There is no account, no role and no profile, because
+ * Mica stores none of those. `identity` is what the provider said at sign-in,
+ * and it is null wherever there is no provider — which is what local mode
+ * looks like from here: not an anonymous user, but no user at all.
  */
 
 import { computed, ref } from "vue";
 
-import { api, ApiError, type AdminUser, type AuthConfig } from "@/api";
+import { api, ApiError, type AuthConfig, type Identity } from "@/api";
 
-const user = ref<AdminUser | null>(null);
+const identity = ref<Identity | null>(null);
+const active = ref(false);
 const checked = ref(false);
 const authConfig = ref<AuthConfig | null>(null);
 
-export function useAuth() {
+export function useSession() {
   return {
-    user: computed(() => user.value),
-    isAuthenticated: computed(() => user.value !== null),
-    isAdmin: computed(() => user.value?.role === "admin"),
+    /** Who this is, where anybody asked. Null in local mode. */
+    identity: computed(() => identity.value),
+    /** Whether the editor may be used at all. */
+    isActive: computed(() => active.value),
     /** False until the first `/auth/me` has resolved, so guards can wait. */
     checked: computed(() => checked.value),
     /** How this deployment authenticates. Null until `restore` has run. */
     config: computed(() => authConfig.value),
+    /** True only where there is a provider, and therefore something to show. */
+    showsIdentity: computed(() => authConfig.value?.authRequired === true),
 
     /** Restores the session on a page load. Never throws. */
     async restore(): Promise<void> {
@@ -30,13 +39,15 @@ export function useAuth() {
       const [session, config] = await Promise.allSettled([api.auth.me(), api.auth.config()]);
 
       if (session.status === "fulfilled") {
-        user.value = session.value.user;
+        identity.value = session.value.identity;
+        active.value = true;
       } else {
         const error = session.reason;
         if (!(error instanceof ApiError) || !error.isUnauthenticated) {
           console.error("Failed to restore session", error);
         }
-        user.value = null;
+        identity.value = null;
+        active.value = false;
       }
 
       if (config.status === "fulfilled") authConfig.value = config.value;
@@ -59,7 +70,8 @@ export function useAuth() {
       try {
         ({ endSession } = await api.auth.logout());
       } finally {
-        user.value = null;
+        identity.value = null;
+        active.value = false;
       }
 
       // Mica's session is gone either way. If the provider offers to end its
@@ -70,12 +82,9 @@ export function useAuth() {
 
     /** Called when any request comes back 401, so the UI drops to sign-in. */
     clear(): void {
-      user.value = null;
+      identity.value = null;
+      active.value = false;
       checked.value = true;
-    },
-
-    setUser(next: AdminUser): void {
-      user.value = next;
     },
   };
 }

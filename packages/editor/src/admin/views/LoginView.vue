@@ -7,24 +7,22 @@
  * which does the actual authenticating and sends it back.
  *
  * The error banner exists because the round trip can fail after the provider
- * is satisfied: someone can authenticate perfectly well and still have no
- * membership on this site, and that has to read as "ask for access", not as
+ * is satisfied: someone can authenticate perfectly well and still not be
+ * admitted to this site, and that has to read as "ask for access", not as
  * "your password was wrong".
  *
- * In local mode this screen is not reached at all: the server signs the
- * developer in while serving the page, because a mode with no identity
- * provider has nothing to ask. The redirect below is the fallback for the one
- * way in that skips that — a browser still holding `/admin/login` from an
- * earlier session — and it goes straight through rather than offering a button
- * whose only answer is yes.
+ * In local mode this screen is not reached at all: there is no provider, no
+ * account and nobody to be, and the session starts as the page is served. The
+ * redirect below is the fallback for the one way in that skips that — a
+ * browser still holding `/admin/login` from an earlier session.
  */
 
 import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
-import { useAuth } from "@/stores/auth";
+import { useSession } from "@/stores/session";
 
-const auth = useAuth();
+const session = useSession();
 const route = useRoute();
 
 const busy = ref(false);
@@ -32,8 +30,9 @@ const busy = ref(false);
 /** Set by the callback when it bounces the browser back here with a reason. */
 const error = ref<string | null>(null);
 
-const provider = computed(() => auth.config.value?.provider);
-const authDisabled = computed(() => auth.config.value?.authDisabled ?? false);
+const provider = computed(() => session.config.value?.provider);
+/** Local mode: no provider to send anybody to, so there is nothing to show. */
+const authDisabled = computed(() => session.config.value?.authRequired === false);
 
 /** Where to land afterwards. Always a path on this server. */
 const returnTo = computed(() => {
@@ -53,7 +52,7 @@ onMounted(() => {
 
 function signIn(): void {
   busy.value = true;
-  auth.signIn(returnTo.value);
+  session.signIn(returnTo.value);
 }
 </script>
 

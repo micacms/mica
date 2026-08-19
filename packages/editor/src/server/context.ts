@@ -5,9 +5,9 @@
  * singletons, no service locator. That is what lets a test build a complete
  * application against an in-memory database and a temporary content directory.
  *
- * Note what the database is now for: users and sessions. Content, media and
- * their history live in the repository, reached through a connector. Losing
- * this database costs everyone their login, and nothing else.
+ * Note what the database is now for: sessions. Content, media and their history
+ * live in the repository, reached through a connector. Losing this database
+ * signs everyone out, and nothing else.
  */
 
 import {
@@ -24,45 +24,49 @@ import type { Config } from "./config.js";
 import { openDatabase, type SqlDatabase } from "./db/index.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
-import { createIdentityRepository } from "./repositories/identities.js";
-import { createMembershipRepository } from "./repositories/memberships.js";
 import { createSessionRepository } from "./repositories/sessions.js";
-import {
-  createSiteRepository,
-  DEFAULT_SITE_ID,
-  type RepositoryConnectionRecord,
-} from "./repositories/sites.js";
-import { createUserRepository } from "./repositories/users.js";
+import { createAdmissionPolicy, type AdmissionPolicy } from "./services/admission.js";
 import { createMediaService, type MediaService } from "./services/media.js";
 import { createOidcService, type OidcService } from "./services/oidc.js";
 import { createSessionService, type SessionService } from "./services/session.js";
 
+/**
+ * The site this process serves. One, explicitly.
+ *
+ * Explicit rather than implicit even though there is only ever one: a runtime
+ * that names its site is testable and has no global state, and a runtime that
+ * *assumes* its site is the one that quietly grows a second. This is not a
+ * hidden multi-site implementation — there are no tenants, no memberships and
+ * no site table to hold a second one. Several sites means several processes.
+ */
+export interface SiteContext {
+  /**
+   * Identifies this site in logs and, later, in a draft store shared by
+   * nothing. Constant while one runtime serves one site; it becomes
+   * configuration on the day a control plane runs several.
+   */
+  id: string;
+  /** The content model, read from the repository at startup. */
+  model: Site;
+  contentRepository: RepositoryConnector;
+}
+
+export const DEFAULT_SITE_ID = "default";
+
 export interface AppContext {
   config: Config;
-  site: Site;
+  site: SiteContext;
   logger: Logger;
   db: SqlDatabase;
-  connector: RepositoryConnector;
-  /**
-   * The site this process is serving.
-   *
-   * One, for now. Every query that reads a membership or a repository
-   * connection is already keyed by it, so serving several means resolving this
-   * per request instead of once — and nothing above that line changes.
-   */
-  siteId: string;
   repositories: {
     sessions: ReturnType<typeof createSessionRepository>;
-    users: ReturnType<typeof createUserRepository>;
-    sites: ReturnType<typeof createSiteRepository>;
-    memberships: ReturnType<typeof createMembershipRepository>;
-    identities: ReturnType<typeof createIdentityRepository>;
   };
   services: {
     content: ContentStore;
     media: MediaService;
     sessions: SessionService;
     oidc: OidcService;
+    admission: AdmissionPolicy;
   };
   limiters: {
     login: RateLimiter;
@@ -74,39 +78,16 @@ export interface AppContext {
 
 export interface CreateContextOptions {
   config: Config;
-  site: Site;
+  model: Site;
   /** Overrides for tests: in-memory database, temporary content directory. */
   db?: SqlDatabase;
   connector?: RepositoryConnector;
-  /** Defaults to the site migration 3 creates. */
   siteId?: string;
   logger?: Logger;
 }
 
-/**
- * The repository connector for a site, before there is a context to hold it.
- *
- * Separate from `createContext` because of an ordering the design implies: the
- * content model is *in* the repository, so it has to be read through a
- * connector, and the context cannot be built until the model is known. The
- * process entry point therefore opens the database, builds the connector,
- * reads the model, and only then composes everything.
- *
- * The site's stored connection wins over the environment. The environment is
- * how a single-site deployment is configured and will stay that way; the
- * stored connection is how a second site ever gets one. Reading the row first
- * means both work without a second code path.
- */
-export function createConnector(
-  config: Config,
-  db: SqlDatabase,
-  siteId: string = DEFAULT_SITE_ID,
-): RepositoryConnector {
-  return connectorFor(config, createSiteRepository(db).connection(siteId));
-}
-
 export function createContext(options: CreateContextOptions): AppContext {
-  const { config, site } = options;
+  const { config, model } = options;
 
   const logger =
     options.logger ??
@@ -117,24 +98,25 @@ export function createContext(options: CreateContextOptions): AppContext {
 
   const db = options.db ?? openDatabase(config.databasePath, { logger });
 
-  const siteId = options.siteId ?? DEFAULT_SITE_ID;
+  const site: SiteContext = {
+    id: options.siteId ?? DEFAULT_SITE_ID,
+    model,
+    contentRepository: options.connector ?? createConnector(config),
+  };
 
   const repositories = {
     sessions: createSessionRepository(db),
-    users: createUserRepository(db),
-    sites: createSiteRepository(db),
-    memberships: createMembershipRepository(db),
-    identities: createIdentityRepository(db),
   };
 
-  const connector =
-    options.connector ?? connectorFor(config, repositories.sites.connection(siteId));
-
   const services = {
-    content: createContentStore(site, connector),
-    media: createMediaService({ connector, maxBytes: config.MAX_UPLOAD_BYTES }),
+    content: createContentStore(model, site.contentRepository),
+    media: createMediaService({
+      connector: site.contentRepository,
+      maxBytes: config.MAX_UPLOAD_BYTES,
+    }),
     sessions: createSessionService(repositories.sessions, config),
     oidc: createOidcService({ config, logger }),
+    admission: createAdmissionPolicy(config),
   };
 
   const limiters = {
@@ -161,8 +143,6 @@ export function createContext(options: CreateContextOptions): AppContext {
     site,
     logger,
     db,
-    connector,
-    siteId,
     repositories,
     services,
     limiters,
@@ -183,54 +163,47 @@ export function createContext(options: CreateContextOptions): AppContext {
  * content store, not a route, not the media service — can tell which one it
  * got. That is the property that makes a hosted Mica and a developer's
  * `pnpm dev` the same program.
+ *
+ * Configuration, and only configuration. A repository connection used to be
+ * readable from a `repository_connections` row as well, which was the multi-
+ * site model arriving early: one runtime serves one site, and the environment
+ * is where a deployment is described.
+ *
+ * Separate from `createContext` because of an ordering the design implies: the
+ * content model is *in* the repository, so the process entry point has to build
+ * a connector, read the model, and only then compose everything.
  */
-function connectorFor(
-  config: Config,
-  stored: RepositoryConnectionRecord | undefined,
-): RepositoryConnector {
+export function createConnector(config: Config): RepositoryConnector {
   const author = { name: "Mica CMS", email: "mica@localhost" };
 
-  // The stored connection if the site has one, otherwise the environment.
-  // Written as one shape so the switch below does not have to know which.
-  const settings = stored ?? {
-    kind: config.REPOSITORY,
-    project: config.REPOSITORY_PROJECT ?? null,
-    branch: config.REPOSITORY_BRANCH,
-    root: config.REPOSITORY_ROOT,
-    apiBase: config.REPOSITORY_API_BASE ?? null,
-    token: config.REPOSITORY_TOKEN ?? null,
-  };
-
-  const require = (value: string | null, what: string): string => {
+  const require = (value: string | undefined, what: string): string => {
     if (!value) {
-      throw new Error(
-        `The repository connection for this site is a ${settings.kind} connection but has no ${what}.`,
-      );
+      throw new Error(`REPOSITORY is "${config.REPOSITORY}" but ${what} is not set.`);
     }
     return value;
   };
 
-  switch (settings.kind) {
+  switch (config.REPOSITORY) {
     case "github": {
-      const project = require(settings.project, "project");
+      const project = require(config.REPOSITORY_PROJECT, "REPOSITORY_PROJECT");
       return githubConnector({
         owner: project.split("/")[0]!,
         repo: project.split("/").slice(1).join("/"),
-        branch: settings.branch,
-        root: settings.root,
-        token: require(settings.token, "token"),
-        apiBase: settings.apiBase ?? undefined,
+        branch: config.REPOSITORY_BRANCH,
+        root: config.REPOSITORY_ROOT,
+        token: require(config.REPOSITORY_TOKEN, "REPOSITORY_TOKEN"),
+        apiBase: config.REPOSITORY_API_BASE,
         author,
       });
     }
 
     case "gitlab":
       return gitlabConnector({
-        project: require(settings.project, "project"),
-        branch: settings.branch,
-        root: settings.root,
-        token: require(settings.token, "token"),
-        apiBase: settings.apiBase ?? undefined,
+        project: require(config.REPOSITORY_PROJECT, "REPOSITORY_PROJECT"),
+        branch: config.REPOSITORY_BRANCH,
+        root: config.REPOSITORY_ROOT,
+        token: require(config.REPOSITORY_TOKEN, "REPOSITORY_TOKEN"),
+        apiBase: config.REPOSITORY_API_BASE,
         author,
       });
 

@@ -3,7 +3,7 @@ import { createApp } from "vue";
 import App from "@/App.vue";
 import { router } from "@/router";
 import { ApiError } from "@/api";
-import { useAuth } from "@/stores/auth";
+import { useSession } from "@/stores/session";
 import { useToast } from "@/stores/toast";
 
 import "@/style.css";
@@ -16,7 +16,7 @@ const app = createApp(App);
  */
 app.config.errorHandler = (error) => {
   if (error instanceof ApiError && error.isUnauthenticated) {
-    useAuth().clear();
+    useSession().clear();
     void router.push({ name: "login" });
     return;
   }

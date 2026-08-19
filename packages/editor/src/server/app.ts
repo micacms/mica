@@ -30,15 +30,13 @@ import {
   originGuard,
   rateLimit,
   requestContext,
-  requireAdmin,
-  requireAuth,
+  requireAccess,
   securityHeaders,
 } from "./middleware/index.js";
 import { adminContentRoutes } from "./routes/admin-content.js";
 import { adminMediaRoutes } from "./routes/admin-media.js";
 import { adminSpaRoutes, adminAssetsExist, defaultAdminDir } from "./routes/admin-spa.js";
 import { adminSystemRoutes } from "./routes/admin-system.js";
-import { adminUserRoutes } from "./routes/admin-users.js";
 import { authRoutes } from "./routes/auth.js";
 import { healthRoutes } from "./routes/health.js";
 
@@ -84,16 +82,15 @@ export function createApp(ctx: AppContext, options: CreateAppOptions = {}): Hono
 
   /* ------------------------------------------------------- admin API */
 
-  app.use("/api/admin/*", requireAuth());
+  // One gate, and no second one behind it: admission decides who gets in, and
+  // everybody who gets in is an editor of this site. There are no roles,
+  // because there are no accounts to hang them on.
+  app.use("/api/admin/*", requireAccess());
   app.use("/api/admin/*", csrfProtection());
-  // User management is administrator-only; everything else is open to editors.
-  app.use("/api/admin/users", requireAdmin());
-  app.use("/api/admin/users/*", requireAdmin());
 
   app.route("/api/admin", adminSystemRoutes());
   app.route("/api/admin", adminContentRoutes());
   app.route("/api/admin/media", adminMediaRoutes());
-  app.route("/api/admin/users", adminUserRoutes());
 
   app.all("/api/*", (c) =>
     c.json({ error: { code: "not_found" as const, message: "No such endpoint." } }, 404),
