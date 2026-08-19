@@ -11,8 +11,8 @@ itself.
 > Losing Mica's database must never mean losing website content.
 
 Everything below follows from that sentence. Content lives in a Git repository;
-Mica's own SQLite file holds accounts, memberships and sessions. Delete it and
-three editors sign in again. Delete the repository and you have lost the
+Mica's own SQLite file holds browser sessions. Delete it and three editors sign
+in again. Delete the repository and you have lost the
 website — which is why the repository is the thing under version control,
 replication and review, and the database is not.
 
@@ -196,57 +196,78 @@ Mica authenticates nobody. It asks an OpenID Connect provider who you are and
 records the answer. There are no passwords in the codebase — no hashing, no
 reset flow, no MFA, no passkeys, no breach notification to write.
 
+It stores no users either. Who may edit is configuration:
+
 ```
-Tenant
-  └── Site
-        └── Membership
-              ├── administrator
-              └── editor
+provider says who you are        MICA_OIDC_*
+        │
+        ▼
+rules say whether you are in     MICA_ADMIT_GROUP
+        │                        MICA_ADMIT_DOMAIN
+        ▼                        MICA_ADMIT_SUBJECTS
+everybody admitted is an editor of this site
 ```
 
-**Authentication and authorization are separate questions.** A provider may
-vouch for an entire company; a _membership_ says this person may edit this
-site. Someone who authenticates perfectly and has no membership is turned away.
+**Authentication and admission are separate questions.** A provider vouches for
+an entire company; the rules say this person may edit this site. Someone who
+authenticates perfectly and matches no rule is turned away, and Mica refuses to
+start outside local mode until at least one rule exists — admitting everybody
+the issuer knows is a misconfiguration, not a default.
 
-Two details that matter:
+There are no roles, because there are no accounts to hang them on. The set of
+people who get in is exactly the set the operator named, and all of them can
+edit everything.
+
+Four details that matter:
 
 - Identities are keyed by `(issuer, subject)`, never by email. An email is a
-  display attribute a provider may let someone change; binding an account to
-  whoever holds an address today is a well-trodden route to account takeover.
-- Authorization is re-read on every request, never copied into the session.
-  Removing someone takes effect now, not when their cookie expires.
+  display attribute a provider may let someone change; admitting an address
+  means admitting whoever holds it next.
+- The domain rule requires the provider's `email_verified`. Without it, an open
+  self-registration would let anybody claim an admitted domain.
+- The rules are re-read on every request, never copied into the session. A
+  configuration change takes effect now.
+- A **group** change at the provider does not. Mica sees the claims it was
+  given at sign-in, and learns better at the next one, so the session lifetime
+  is the upper bound — hours, not weeks. That trade is recorded as a P1
+  decision in [`decisions.md`](decisions.md).
 
-**Multi-tenancy.** The schema is `tenants → sites → memberships`, with a
-repository connection per site. A single-site deployment gets an implicit
-default and never meets the concept. The structure exists before it is needed
-because retrofitting a site id onto every membership and connection query is
-expensive, and doing it now costs one column. What does not exist is a UI.
+**Multi-site is not here.** One runtime serves one site, named by an explicit
+`SiteContext` rather than assumed. There are no tenant, site or membership
+tables: several sites means several processes, and a control plane that runs
+them is a separate, private product — see [`v3-arch.md`](v3-arch.md) §14.
 
 ---
 
 ## Deployment modes
 
-One implementation, three shapes, selected by `MICA_MODE`.
+One implementation, two shapes, selected by `MICA_MODE`.
 
-|               | Identity             | Repository                   | Sites |
-| ------------- | -------------------- | ---------------------------- | ----- |
-| `local`       | **None** — see below | A working tree               | One   |
-| `self-hosted` | OIDC                 | Usually a provider connector | One   |
-| `cloud`       | OIDC                 | Provider connectors          | Many  |
+|               | Identity             | Repository                   |
+| ------------- | -------------------- | ---------------------------- |
+| `local`       | **None** — see below | A working tree               |
+| `self-hosted` | OIDC                 | Usually a provider connector |
 
-### Local mode disables authentication
+Both serve one site. The variable is temporary: the mode becomes which
+application you run once the packages split — see [`v3-plan.md`](v3-plan.md),
+Phase C.
 
-`MICA_MODE=local` signs every request in as one developer account. There is no
-provider and no credential.
+### Local mode has no authentication, and no user
+
+`MICA_MODE=local` has no provider, no credential and nobody to be. It does not
+invent a developer account: there is no name, no avatar, no account menu and no
+sign-out, because there is nothing behind any of them. A session still exists,
+carrying the CSRF token and nothing else.
 
 This is the honest resolution of two requirements that genuinely conflict: Mica
 ships no passwords, and a developer cannot be asked to stand up Keycloak before
 running `pnpm dev`. The third option — a built-in dev identity provider — is
 auth code, which is the thing being avoided.
 
-It is the most dangerous state the software has, so it is contained four ways:
-refused when `NODE_ENV=production`; refused when `CMS_BASE_URL` is any host but
-localhost; a warning on every start; a banner on the sign-in page.
+It is the most dangerous state the software has, so it is contained: refused
+when `NODE_ENV=production`; refused when `MICA_PUBLIC_URL` is any host but
+localhost; refused when `HOST` is anything but the loopback address; and a
+warning on every start.
 
 ---
 
@@ -255,15 +276,13 @@ localhost; a warning on every start; a banner on the sign-in page.
 SQLite, holding:
 
 ```
-users                   who someone is (no credential)
-oidc_identities         (issuer, subject) → user
-tenants / sites         the deployment's shape
-memberships             who may edit what
-repository_connections  how a site reaches its repository
-sessions
+sessions                a browser session, and the claims it was opened with
 ```
 
-No content, no media, no revisions. Two rules keep it navigable: only
+One table. No content, no media, no revisions, no accounts — the claims are
+copied onto the session row because the rules are re-checked per request, and
+asking the provider each time is not something a provider would thank us for.
+Two rules keep it navigable: only
 `repositories/` writes SQL, and only `db/driver.ts` knows which SQLite library
 is in use.
 

@@ -209,7 +209,7 @@ Run `astro dev` beside Mica. A save in one reloads the other.
 |                     | What it is                                               | Where it lives                   |
 | ------------------- | -------------------------------------------------------- | -------------------------------- |
 | **Your repository** | Entries as JSON and Markdoc, images beside them          | GitHub, GitLab, or a checkout    |
-| **Mica**            | One Node process; a SQLite file of accounts and sessions | Your machine now, a server later |
+| **Mica**            | One Node process; a SQLite file of browser sessions | Your machine now, a server later |
 | **Your website**    | Static files from `astro build`                          | Any static host                  |
 
 Your content stays in the repository, in formats Git and a text editor can
