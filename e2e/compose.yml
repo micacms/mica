@@ -8,15 +8,19 @@
 # through a real identity provider, with the CMS running from the image rather
 # than from source.
 #
-# Three accounts, chosen to make the three outcomes visible:
+# Three accounts, chosen to make the outcomes visible:
 #
-#   alice / alice        administrator — bootstrapped on first sign-in
-#   bob / bob            editor, once alice adds him on the People screen
-#   mallory / mallory    authenticates perfectly and is refused, because
-#                        nobody gave her a membership
+#   alice / alice        in the `mica-editors` group, and therefore an editor
+#   bob / bob            in the same group, and therefore the same. There is no
+#                        role to tell them apart: everybody admitted is an
+#                        editor of this site
+#   mallory / mallory    authenticates perfectly and is refused, because she is
+#                        in no group Mica was told to admit
 #
-# Mallory is the point. Authentication and authorization are separate
-# questions, and this is where you can watch that be true.
+# Mallory is the point. Authentication and admission are separate questions,
+# and this is where you can watch that be true. Note where the answer lives:
+# alice and bob are editors because of a group in Keycloak, not because of a
+# row in Mica — there is no user table, and no People screen.
 #
 # Everything here is deliberately insecure and deliberately local: plain HTTP,
 # a committed client secret, one-word passwords. It is a test rig.
@@ -58,8 +62,8 @@ services:
       retries: 40
       start_period: 15s
 
-  # ----------------------------------------------------------------- cms
-  cms:
+  # ---------------------------------------------------------------- mica
+  mica:
     build:
       context: ..
       dockerfile: Dockerfile
@@ -82,19 +86,21 @@ services:
       # one flag rather than the rule.
       #
       # What is being tested is MICA_MODE=self-hosted: real provider, real
-      # redirect, real membership check.
+      # redirect, real admission check against a real group claim.
       NODE_ENV: development
       LOG_LEVEL: debug
 
-      CMS_BASE_URL: http://localhost:6422
+      MICA_PUBLIC_URL: http://localhost:6422
       MICA_MODE: self-hosted
 
-      OIDC_ISSUER: http://localhost:8080/realms/mica
-      OIDC_CLIENT_ID: mica
-      OIDC_CLIENT_SECRET: e2e-client-secret-not-for-production
-      # Breaks the chicken and egg: an empty deployment has no members, so
-      # nobody could ever be invited. Alice becomes an admin on first sign-in.
-      OIDC_BOOTSTRAP_ADMIN: alice@example.com
+      MICA_OIDC_ISSUER: http://localhost:8080/realms/mica
+      MICA_OIDC_CLIENT_ID: mica
+      MICA_OIDC_CLIENT_SECRET: e2e-client-secret-not-for-production
+
+      # Who may edit. The realm puts alice and bob in this group and leaves
+      # mallory out of it, so this one line is the whole of authorization —
+      # there is nothing to bootstrap and nobody to invite.
+      MICA_ADMIT_GROUP: mica-editors
 
       # A checkout, mounted read-write, so `git diff` on the host shows exactly
       # what an editor changed. That is the demonstration.
@@ -108,7 +114,7 @@ services:
       # host shows exactly what an editor changed. The content model comes from
       # `.mica/schema.json` inside it — there is nothing else to mount.
       - ../sites/muster-consulting/content:/content
-      - cms-data:/data
+      - mica-data:/data
 
 volumes:
-  cms-data:
+  mica-data:

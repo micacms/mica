@@ -18,12 +18,31 @@
       "implicitFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
-      "redirectUris": ["http://localhost:6422/api/auth/callback"],
-      "webOrigins": ["http://localhost:6422"],
+      "redirectUris": [
+        "http://localhost:6422/api/auth/callback"
+      ],
+      "webOrigins": [
+        "http://localhost:6422"
+      ],
       "attributes": {
         "post.logout.redirect.uris": "http://localhost:6422/admin/*",
         "pkce.code.challenge.method": "S256"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "groups",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-group-membership-mapper",
+          "consentRequired": false,
+          "config": {
+            "full.path": "false",
+            "claim.name": "groups",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
     }
   ],
   "users": [
@@ -34,7 +53,16 @@
       "firstName": "Alice",
       "lastName": "Admin",
       "enabled": true,
-      "credentials": [{ "type": "password", "value": "alice", "temporary": false }]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "alice",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/mica-editors"
+      ]
     },
     {
       "username": "bob",
@@ -43,7 +71,16 @@
       "firstName": "Bob",
       "lastName": "Editor",
       "enabled": true,
-      "credentials": [{ "type": "password", "value": "bob", "temporary": false }]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "bob",
+          "temporary": false
+        }
+      ],
+      "groups": [
+        "/mica-editors"
+      ]
     },
     {
       "username": "mallory",
@@ -52,7 +89,19 @@
       "firstName": "Mallory",
       "lastName": "Nobody",
       "enabled": true,
-      "credentials": [{ "type": "password", "value": "mallory", "temporary": false }]
+      "credentials": [
+        {
+          "type": "password",
+          "value": "mallory",
+          "temporary": false
+        }
+      ]
+    }
+  ],
+  "groups": [
+    {
+      "name": "mica-editors",
+      "path": "/mica-editors"
     }
   ]
 }
