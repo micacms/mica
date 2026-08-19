@@ -85,10 +85,32 @@ The loopback rule is now enforced rather than promised: local mode defaults
 `HOST` to `127.0.0.1` and refuses any other address, alongside the existing
 refusals on `NODE_ENV=production` and a non-local `MICA_PUBLIC_URL`.
 
-**v3 — pending (Phase C).** Local mode is still `MICA_MODE=local` inside one
-process. In Phase C it becomes a separate package — the mode is which app you
-run — with a CI check proving the bundle contains no auth route, token code or
-profile store.
+**v3 — pending (Phase C).** Two things are still true that this entry says
+should not be.
+
+Local mode is still `MICA_MODE=local` inside one process. In Phase C it becomes
+a separate package — the mode is which app you run — with a CI check proving the
+bundle contains no auth route, token code or profile store.
+
+And local mode still starts a **session**. Nobody is in it, but it is a row in a
+`sessions` table in a `cms.sqlite` file on a developer's machine, and it exists
+to carry one CSRF token. Phase A could not remove it without designing the
+replacement; Phase C removes the session, the token and the database together —
+see [`v3-plan.md`](v3-plan.md) C4.
+
+The token was never the defence. The Origin check refuses a cross-origin write
+with no cookie involved, and a double-submit token is a second layer over a
+first one that already stopped the attack. What the cookie *was* quietly also
+doing is blocking a DNS-rebinding **read** — a page that re-resolves its own
+name to `127.0.0.1` is treated as same-origin, and only a cookie scoped to
+`localhost` keeps it out. That is replaced by a Host allowlist, not by keeping
+the token: the local app answers to `localhost`, `127.0.0.1` and `[::1]` and
+refuses any other `Host`.
+
+**Accepted with it:** a request without a cookie stops being a 401, so any
+process on the developer's own machine can call the local API. A process on that
+machine can already edit the working tree directly, which is where the content
+is.
 
 ---
 

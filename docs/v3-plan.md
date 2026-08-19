@@ -383,11 +383,47 @@ never without a working self-hosted path.
 
 `MICA_MODE` is deleted here. The mode is the app.
 
-**C4 — Boundary tests.**
-The five checks of §6.4: clean-install dependency graph, browser bundle, no
-identity UI, loopback works, non-loopback bind fails.
+**C4 — Local mode loses its session, its token and its database.**
 
-**C5 — Verify the entry point.**
+Phase A left a residue that only Phase C can clear cleanly: local mode still
+starts a session. There is nobody in it — `issuer`, `subject` and `email` are
+all null — and it exists to carry one CSRF token, which is why `cms.sqlite`,
+the `sessions` table and the migration runner are still there on a developer's
+machine. A file called `cms.sqlite` with a table called `sessions` in it
+contradicts the sentence this design is built on.
+
+It can all go, because the token was never the defence:
+
+- **The Origin check is.** A browser always sends `Origin` on a cross-origin
+  write, so a page on another site is refused with no cookie, no session and no
+  token involved. The double-submit token is a second layer over a first layer
+  that already stopped the attack.
+- **One thing the cookie was quietly also doing** must be replaced rather than
+  deleted. Under DNS rebinding a page re-resolves its own name to `127.0.0.1`,
+  and the browser then treats `http://evil.example:6422/api/…` as same-origin.
+  Writes still fail on the Origin header; *reads* succeed, and the only reason
+  they do not today is that a cookie scoped to `localhost` is never sent.
+
+  The replacement is a **Host allowlist**: the local app answers to `localhost`,
+  `127.0.0.1` and `[::1]`, and refuses any other `Host`. Smaller than what it
+  replaces, standard for exactly this, and it states the true rule — this server
+  answers only to itself.
+
+So `apps/local-editor` constructs no session service, no admission policy and no
+database. `DATA_DIR` goes unused until Phase B's draft media claims it, and
+`npx @micacms/editor` writes nothing outside the content directory.
+
+**Accepted, and worth stating:** the property that a request without a cookie
+gets 401 disappears, so any process on the developer's own machine can call the
+local API. That property was close to theatre — a process on that machine can
+edit the working tree directly, which is where the content is.
+
+**C5 — Boundary tests.**
+The five checks of §6.4: clean-install dependency graph, browser bundle, no
+identity UI, loopback works, non-loopback bind fails. Plus the two C4 adds: a
+foreign `Host` is refused, and a local run creates no database.
+
+**C6 — Verify the entry point.**
 The bin is named `mica` today. Confirm `npx @micacms/editor` resolves it, or
 rename the bin to `editor`. §18 lists this as an acceptance criterion.
 
@@ -398,6 +434,9 @@ rename the bin to `editor`. §18 lists this as an acceptance criterion.
 - `@micacms/editor` has no path to `openid-client` or `jose`.
 - The local bundle contains no auth route, token code or profile store.
 - Local mode binds to loopback and refuses any other address.
+- Local mode answers no request whose `Host` is not this machine.
+- A local run creates no database and writes nothing outside the content
+  directory.
 - `apps/self-hosted` composes the runtime; it does not fork it.
 - One runtime, one `SiteContext`.
 
@@ -454,12 +493,13 @@ Eight packages under one lockstep version;
 
 | Risk | Contained by |
 | --- | --- |
-| Revocation is slower than today | 8-hour sessions; re-check on refresh; recorded as P1 |
+| Revocation is slower than today | 8-hour sessions; rules re-read per request; recorded as P1 |
 | Local publish is a new Git failure surface | spawn `git`; opt-out; `committed-pending-push` is explicit state |
 | Draft media becomes the public media route | authenticated, scoped to the change set, tested signed-out |
 | Model drift under a pending draft | resolved inside Phase B; refuse and name the drift |
 | The Vercel deployment breaks in D1 | `sites/micacms` does not move; `vercel.json` reviewed in the same PR |
 | Phase B is large | B1–B3 land before B4–B7; each is independently testable |
+| Dropping the local session opens DNS rebinding | a Host allowlist replaces it in C4, and is tested |
 
 ---
 
