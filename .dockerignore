@@ -12,6 +12,7 @@
 sites
 docs
 e2e
+demo
 *.md
 
 # A project's content model is read from its repository at runtime, never baked
