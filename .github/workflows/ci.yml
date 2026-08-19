@@ -89,11 +89,16 @@ jobs:
         run: |
           # Configured the way a real deployment is, because that is the thing
           # worth testing. The image sets NODE_ENV=production, and in production
-          # Mica refuses MICA_MODE=local outright — local mode disables
-          # authentication. So this asks for the OIDC path.
+          # Mica refuses MICA_MODE=local outright — local mode has no
+          # authentication and no user. So this asks for the OIDC path.
           #
           # The issuer never has to answer: discovery is lazy, and happens on
           # the first sign-in rather than at startup. Nothing here signs in.
+          #
+          # An admission rule is required all the same. Mica refuses to start
+          # without one, because a deployment that admits everybody its issuer
+          # knows is a misconfiguration rather than a default — and this step is
+          # where that refusal would be noticed if it ever stopped working.
           #
           # REPOSITORY defaults to `local`, so the container needs a content
           # directory to point at rather than a provider token. The content
@@ -101,10 +106,11 @@ jobs:
           # without one and refuses to start until it finds one.
           docker run -d --name cms \
             -e SESSION_SECRET=ci-session-secret-0000000000000000 \
-            -e CMS_BASE_URL=http://localhost:6422 \
+            -e MICA_PUBLIC_URL=http://localhost:6422 \
             -e MICA_MODE=self-hosted \
-            -e OIDC_ISSUER=https://id.example.com \
-            -e OIDC_CLIENT_ID=mica-ci \
+            -e MICA_OIDC_ISSUER=https://id.example.com \
+            -e MICA_OIDC_CLIENT_ID=mica-ci \
+            -e MICA_ADMIT_GROUP=mica-editors \
             -e CONTENT_ROOT=/content \
             -v "$PWD/sites/muster-consulting/content:/content:ro" \
             -p 6422:6422 micacms/editor:ci
