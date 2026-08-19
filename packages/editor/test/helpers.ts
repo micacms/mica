@@ -19,8 +19,8 @@ import { collection, defineSite, media, number, relation, richText, select, sing
 
 import { createApp } from "../src/server/app.js";
 import { loadConfig, type Config } from "../src/server/config.js";
-import { DEFAULT_SITE_ID } from "../src/server/repositories/sites.js";
 import { createContext, type AppContext } from "../src/server/context.js";
+import type { SessionIdentity } from "../src/server/repositories/sessions.js";
 import { openTestDatabase } from "../src/server/db/index.js";
 import { createLogger } from "../src/server/lib/logger.js";
 
@@ -76,16 +76,17 @@ export interface TestHarness {
   /** Issues a request; `session` carries cookies and the CSRF token. */
   request(path: string, init?: RequestInit & { session?: Session }): Promise<Response>;
   /**
-   * Signs in without an identity provider.
+   * Starts a session without an identity provider.
    *
-   * The tests exercise `MICA_MODE=local`, where there is no OIDC round trip to
-   * make — which is the point: nothing below the session cookie cares how the
-   * cookie was obtained, so the authorization tests do not need a fake IdP to
-   * be meaningful.
+   * There is no OIDC round trip to make here, which is the point: nothing
+   * below the session cookie cares how the cookie was obtained, so the
+   * admission tests do not need a fake provider to be meaningful. They state
+   * the claims a provider would have returned and go from there.
+   *
+   * Defaults to whatever the harness's mode implies — nobody in local mode,
+   * and `ADMITTED` where there is a provider to have said something.
    */
-  signIn(email?: string): Promise<Session>;
-  /** Records that this person may edit the test site. */
-  addMember(input: { email: string; role?: "admin" | "editor" }): string;
+  signIn(identity?: SessionIdentity | null): Promise<Session>;
   close(): Promise<void>;
 }
 
@@ -94,7 +95,34 @@ export interface Session {
   csrfToken: string;
 }
 
-export const ADMIN_EMAIL = "admin@example.com";
+export const ISSUER = "https://id.example.test";
+
+/** The claims a provider would return for somebody the rules let in. */
+export const ADMITTED: SessionIdentity = {
+  issuer: ISSUER,
+  subject: "admitted-subject",
+  email: "editor@example.com",
+  emailVerified: true,
+  name: "Ed Editor",
+  groups: ["mica-editors"],
+};
+
+/** Authenticates perfectly well, and is in no group and no list. */
+export const REFUSED: SessionIdentity = {
+  issuer: ISSUER,
+  subject: "refused-subject",
+  email: "mallory@elsewhere.example",
+  emailVerified: true,
+  name: "Mallory",
+  groups: ["everyone"],
+};
+
+/** The environment an authenticated deployment needs, minus the admission rule. */
+export const AUTHENTICATED_ENV = {
+  MICA_MODE: "self-hosted",
+  MICA_OIDC_ISSUER: ISSUER,
+  MICA_OIDC_CLIENT_ID: "mica",
+} as const;
 
 export async function createHarness(
   overrides: Partial<NodeJS.ProcessEnv> = {},
@@ -110,7 +138,7 @@ export async function createHarness(
   const config = loadConfig({
     NODE_ENV: "test",
     LOG_LEVEL: "silent",
-    CMS_BASE_URL: TEST_ORIGIN,
+    MICA_PUBLIC_URL: TEST_ORIGIN,
     SESSION_SECRET: "0".repeat(32),
     DATA_DIR: "/tmp/mica-test-unused",
     CONTENT_ROOT: contentRoot,
@@ -119,7 +147,7 @@ export async function createHarness(
 
   const ctx = createContext({
     config,
-    site: options.site ?? testSite,
+    model: options.site ?? testSite,
     db: openTestDatabase(),
     connector: localConnector({ root: contentRoot }),
     logger: createLogger({ level: "silent", pretty: false }),
@@ -149,12 +177,9 @@ export async function createHarness(
       return app.request(`${TEST_ORIGIN}${path}`, { ...rest, headers });
     },
 
-    async signIn(email = ADMIN_EMAIL) {
-      const user = ctx.repositories.users.findByEmail(email);
-      if (!user) throw new Error(`No such user: ${email}. Call addMember first.`);
-
+    async signIn(identity = config.authDisabled ? null : ADMITTED) {
       const { cookie, csrfToken } = ctx.services.sessions.create({
-        userId: user.id,
+        identity,
         ip: "127.0.0.1",
         userAgent: "test",
       });
@@ -165,22 +190,12 @@ export async function createHarness(
       };
     },
 
-    addMember({ email, role = "admin" }) {
-      const user =
-        ctx.repositories.users.findByEmail(email) ??
-        ctx.repositories.users.create({ email, name: email.split("@")[0]! });
-
-      ctx.repositories.memberships.grant({ siteId: DEFAULT_SITE_ID, userId: user.id, role });
-      return user.id;
-    },
-
     async close() {
       await ctx.shutdown();
       rmSync(contentRoot, { recursive: true, force: true });
     },
   };
 
-  harness.addMember({ email: ADMIN_EMAIL, role: "admin" });
   return harness;
 }
 

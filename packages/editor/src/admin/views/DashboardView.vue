@@ -15,17 +15,26 @@ import { computed, onMounted, ref } from "vue";
 
 import { api, ApiError, type Overview } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
-import { useAuth } from "@/stores/auth";
+import { useSession } from "@/stores/session";
 import { useToast } from "@/stores/toast";
 
-const auth = useAuth();
+const session = useSession();
 const toast = useToast();
 
 const overview = ref<Overview | null>(null);
 const loading = ref(true);
 
+/**
+ * Greeted by name only where somebody said what the name is.
+ *
+ * Local mode has no user, so there is nobody to greet — and "Good morning,
+ * there" would be a greeting to an imaginary person, which is exactly the
+ * synthetic local user this design does without.
+ */
 const greeting = computed(() => {
-  const name = auth.user.value?.name?.split(" ")[0] || "there";
+  const name = session.identity.value?.name?.split(" ")[0];
+  if (!name) return "Overview";
+
   const hour = new Date().getHours();
   const part = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   return `${part}, ${name}`;

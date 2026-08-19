@@ -13,14 +13,20 @@ Priorities:
 | **P2** | Resolve before the second customer, or when the trigger fires |
 | **P3** | Revisit when there is a concrete reason; fine as-is otherwise |
 
+An entry marked **v3 — pending** is decided and not yet built. It constrains new
+work from now on, and the code still shows the old shape. The phase that closes
+it is named in the entry; the phases are in [`v3-plan.md`](v3-plan.md). A note
+marked **built in Phase A** records what the code now does, and what the entry
+therefore costs in practice.
+
 ---
 
 ## Accepted trade-offs
 
-### P1 — Editors commit straight to a branch, with no review step
+### P1 — Publishing commits straight to a branch, with no review step
 
-**Decided:** a save is a commit onto `REPOSITORY_BRANCH`. Mica does not open a
-pull request and has no concept of one.
+**Decided:** Mica does not open a pull request and has no concept of one. The
+branch an editor publishes to is the branch CI builds.
 
 **Why:** the editors this is built for are the site's owners. Making them wait
 for their own approval would be theatre, and a review queue nobody empties is
@@ -29,35 +35,185 @@ worse than no review.
 **Consequence:** a typo is live as soon as CI finishes. There is no gate.
 
 **What would change it:** point Mica at a `staging` branch and merge on a human's
-schedule — this already works and needs no code. A per-save pull request would
-be a connector change: both providers can create a branch and a PR, and the
+schedule — this already works and needs no code. A pull request per publication
+would be a connector change: both providers can create a branch and a PR, and the
 `RepositoryConnector` interface is where it would go.
 
 **Trigger:** a customer with more than one editor who does not trust all of them,
 or a compliance regime that requires four eyes.
 
+**v3 — pending (Phase B).** Today a *save* is that commit, which is why the
+history fills with one commit per keystroke-batch. The unit becomes an explicit
+Publish over an accumulated change set. What does not change is the sentence
+above: publishing writes to the branch, and nothing reviews it.
+
 ---
 
-### P1 — Local mode has no authentication at all
+### P1 — Local mode has no authentication, and no user either
 
-**Decided:** `MICA_MODE=local` signs every request in as one developer account,
-with no identity provider and no credential.
+**Decided:** the local editor has no identity provider, no credential, and no
+user. Not a signed-in developer — *nobody*. There is no login screen, no name,
+no avatar, no account menu, no sign-out, and no empty space reserved for one.
+Authorization is a policy that allows every editor action, which is not the same
+thing as a person.
 
 **Why:** the alternative is asking a developer to stand up Keycloak before they
 can run `pnpm dev`. Mica ships no passwords, so there is no third option that
 does not mean writing the auth code the project exists to avoid.
 
-**Consequence:** a Mica in local mode is an open administrator console. This is
-the single most dangerous state the software has.
+**Consequence:** a local Mica is an open editor. This is the single most
+dangerous state the software has.
 
-**What contains it:** the config layer refuses local mode when `NODE_ENV` is
-production, and refuses it when `CMS_BASE_URL` is any host but localhost. The
-server logs a warning at every start, and the sign-in screen says so on the
-page. Four independent statements, because one is not enough for this.
+**What contains it:** the local editor binds to loopback and refuses to start on
+any other address. There is no override flag, and there will not be one —
+reaching Mica from another machine is what the self-hosted distribution is for.
+The local package also carries no OIDC dependency, so there is no auth code to
+misconfigure.
 
 **What would change it:** a small built-in OIDC provider for development, so the
 local path exercises the production code. Considered and not taken — it is auth
 code, which is what this was avoiding.
+
+**Built in Phase A.** The `developer@localhost` row and its membership are gone
+with the tables that held them, and so are the account and People screens. What
+local mode keeps is a session carrying the CSRF token — no identity, no name,
+and no chrome to draw one with. `startLocalSession` in
+[`session.ts`](../packages/editor/src/server/services/session.ts) is the whole
+of it.
+
+The loopback rule is now enforced rather than promised: local mode defaults
+`HOST` to `127.0.0.1` and refuses any other address, alongside the existing
+refusals on `NODE_ENV=production` and a non-local `MICA_PUBLIC_URL`.
+
+**v3 — pending (Phase C).** Two things are still true that this entry says
+should not be.
+
+Local mode is still `MICA_MODE=local` inside one process. In Phase C it becomes
+a separate package — the mode is which app you run — with a CI check proving the
+bundle contains no auth route, token code or profile store.
+
+And local mode still starts a **session**. Nobody is in it, but it is a row in a
+`sessions` table in a `cms.sqlite` file on a developer's machine, and it exists
+to carry one CSRF token. Phase A could not remove it without designing the
+replacement; Phase C removes the session, the token and the database together —
+see [`v3-plan.md`](v3-plan.md) C4.
+
+The token was never the defence. The Origin check refuses a cross-origin write
+with no cookie involved, and a double-submit token is a second layer over a
+first one that already stopped the attack. What the cookie *was* quietly also
+doing is blocking a DNS-rebinding **read** — a page that re-resolves its own
+name to `127.0.0.1` is treated as same-origin, and only a cookie scoped to
+`localhost` keeps it out. That is replaced by a Host allowlist, not by keeping
+the token: the local app answers to `localhost`, `127.0.0.1` and `[::1]` and
+refuses any other `Host`.
+
+**Accepted with it:** a request without a cookie stops being a 401, so any
+process on the developer's own machine can call the local API. A process on that
+machine can already edit the working tree directly, which is where the content
+is.
+
+---
+
+### P1 — Access removed at the provider is revoked at the next sign-in
+
+**Decided:** who may edit a self-hosted site is decided by configuration, not by
+a table. Either a rule over provider claims (`MICA_ADMIT_GROUP`,
+`MICA_ADMIT_DOMAIN`) or an explicit list keyed by `(issuer, subject)`
+(`MICA_ADMIT_SUBJECTS`). The server refuses to start outside local mode when
+neither is set: an OIDC deployment that admits everybody its issuer knows is a
+misconfiguration, not a default.
+
+**Why:** the alternative is a `users`/`memberships` schema, the screens to
+administer it, and an invitation lifecycle — an identity product inside a CMS,
+duplicating what the operator's identity provider already does properly. With a
+claim rule, adding an editor is a group change in the IdP and Mica is not
+touched.
+
+**Consequence:** revocation splits in two, and only half of it is immediate.
+Changing the *rules* takes effect at once, because they are re-read on every
+request. Removing somebody from a *group at the provider* does not: Mica checks
+the claims the provider sent at sign-in, and learns better only at the next one.
+Until then they can still publish.
+
+**What contains it:** session lifetimes measured in hours, not weeks — the
+defaults are 8 hours absolute and 4 idle; the rules re-checked on every request
+against the claims stored on the session row; and `MICA_ADMIT_SUBJECTS` as the
+instant answer for a departure that cannot wait.
+
+**What would change it:** re-checking admission against the provider on every
+request, which is a network call per request, or bringing back a local table of
+admitted subjects that an operator can empty instantly.
+
+**Trigger:** a customer who must cut somebody's access within seconds — a
+dismissal, or a compromised account.
+
+**Built in Phase A.**
+[`admission.ts`](../packages/editor/src/server/services/admission.ts) holds the
+rules; `requireAccess` in
+[`middleware/index.ts`](../packages/editor/src/server/middleware/index.ts)
+applies them per request. The membership row it replaced was immediate for both
+halves, and that is the behaviour this entry gives up.
+
+Two details the implementation had to settle. The domain rule requires the
+provider's `email_verified`, because an open self-registration would otherwise
+let anybody claim an admitted domain. And the group claim has no standard name,
+so `MICA_OIDC_GROUPS_CLAIM` names it — a Keycloak path and a bare name are both
+accepted, since an operator writes the name their own console shows them.
+
+---
+
+### P2 — One shared pending change set per site
+
+**Decided:** a site has one draft workspace, not one per editor. Two people
+editing the same site accumulate changes into the same pending set, and either
+of them can publish all of it.
+
+**Why:** per-user drafts need merge rules between them, a way to see somebody
+else's unfinished work, and an answer to "who publishes whose changes". For the
+target deployment — one small organisation, a handful of editors, usually one at
+a time — that machinery costs more than the problem.
+
+**Consequence:** an editor can publish a colleague's half-finished entry without
+meaning to. The Recent changes view is the containment: it lists everything in
+the pending set before Publish is pressed, so the publication is at least
+visible rather than silent.
+
+**What would change it:** a change set per editor, with the publish gate moving
+to a merge. That is the design if it becomes necessary; it is not the first one.
+
+**Trigger:** two editors working the same site at the same time often enough to
+collide, or a customer who asks who published what.
+
+**v3 — pending (Phase B).**
+
+---
+
+### P2 — Local publishing spawns the `git` binary
+
+**Decided:** the local editor commits and pushes by running `git`, not by
+linking a JavaScript Git implementation. On by default;
+`MICA_LOCAL_PUBLISH=false` reduces local mode to autosave plus a read-only view
+of the changes.
+
+**Why:** credentials. A developer's push already works because of their SSH
+agent, credential helper and remote configuration. The binary inherits all
+three. A library would have to reimplement them, and would do it worse — which
+is the reason [`local.ts`](../packages/connectors/src/local.ts) refuses to be a
+Git client in the first place.
+
+**Consequence:** `git` must be on the path, and Mica now meets Git's failure
+modes — no upstream, a diverged branch, a rejected push. A commit and a push are
+not one operation, so `committed-pending-push` is a state the editor must show
+and a retry must resume rather than repeat.
+
+**What contains it:** Mica stages an explicit path set from the change model and
+never runs `git add -A`, so a developer's unrelated work in the same checkout is
+never swept into an editor's commit.
+
+**What would change it:** nothing foreseen. Self-hosted mode does not use this
+path at all — it publishes through the provider API.
+
+**v3 — pending (Phase B).**
 
 ---
 
@@ -83,6 +239,12 @@ cheaply, so this is small — it just has no reason to exist yet.
 
 **Trigger:** a project where a non-developer changes the model, or a deployment
 that cannot be restarted casually.
+
+**v3 — open (Phase B).** A pending change set gives this a second edge. If the
+repository gains a model change while a draft is waiting, staged content may
+stop validating, and publication requires the whole staged set to be valid. The
+expected answer is to refuse, name the drift, and require a restart — but it is
+not decided, and Phase B has to decide it and record it here.
 
 ---
 
@@ -125,6 +287,10 @@ the tree keyed by the branch head would remove most of the cost.
 
 **Trigger:** a save taking visibly long, or the truncation error appearing.
 
+**v3 — pending (Phase B).** The cost mostly disappears. A commit stops being the
+unit of saving and becomes the unit of publishing, so the extra round trip is
+paid once per publication instead of once per edit. The ceiling is unchanged.
+
 ---
 
 ### P2 — No map widget in the admin
@@ -160,6 +326,22 @@ inside the container.
 point of the interface.
 
 **Trigger:** a driver bug, or a deployment target stuck on older Node.
+
+**Built in Phase A, half of it.** `users`, `oidc_identities`, `memberships`,
+`sites`, `tenants` and `repository_connections` are gone; `sessions` is the only
+table left, and it carries the claims admission is checked against. The
+migration chain was reset to a single `initial_schema` rather than extended,
+because a fifth migration would have been three quarters `DROP TABLE` and no
+deployment existed to carry forward. Append-only applies again from here, and a
+database that predates the reset is refused with a message saying that deleting
+it costs only sign-ins.
+
+**v3 — pending (Phase B).** Phase B gives SQLite its new job: the self-hosted
+draft store, holding work that is saved and not yet published. That inverts one
+of the oldest sentences in this project. Losing the database used to cost three
+editors their login and nothing else. It will cost unpublished work, which Git
+is not protecting yet — the self-hosted backup guidance has to say so, and the
+editor has to make Saved and Published visibly different words.
 
 ---
 
@@ -222,26 +404,45 @@ work on a slow mobile connection.
 
 ## Deferred scope
 
-Explicitly not built; the seams they attach to exist and are tested.
+Explicitly not built.
 
-- **P2** — Site management in the UI. The data model is there — tenants, sites,
-  memberships and per-site repository connections — and every query is already
-  keyed by site. What is missing is a screen, and a reason to build one.
+- **Multi-site, tenants, memberships and roles.** One Mica process manages one
+  site. Running several sites means running several instances, which is a
+  product boundary and not a feature limit. The tables that once anticipated
+  this are deleted in Phase A rather than kept as an unused schema; the
+  capability belongs to the private Cloud control plane described in
+  [`v3-arch.md`](v3-arch.md) §14, which consumes published Mica releases and
+  never enters this repository.
+- **P2** — A per-editor draft instead of one shared change set. "One shared
+  pending change set per site" above records what that costs today.
+- **P3** — Approval workflows, named releases, and more than one pending change
+  set at a time.
 - **P3** — Scheduled publishing.
 
 ## Known gaps to close
 
 - **P2** — No end-to-end browser test of the admin. The API has good coverage
   and the Vue app typechecks, but no test drives a real browser through "sign
-  in, edit, save". The one place a regression could reach production unseen.
+  in, edit, publish". The one place a regression could reach production unseen.
 - **P2** — The OIDC round trip is verified by hand, not by CI. `e2e/compose.yml`
-  runs Mica against a real Keycloak and the whole flow has been walked through
-  there; nothing re-runs it automatically, so a regression would not be caught
-  until somebody tried.
+  runs Mica against a real Keycloak with a real group claim, and
+  `demo/compose.yml` against a real ZITADEL with a subject list. Nothing re-runs
+  them automatically, so a regression would not be caught until somebody tried.
+  This stops being optional: once local mode carries no auth code at all, the
+  OIDC path has no second user exercising it by accident — and admission now
+  depends on a claim whose name and shape differ per provider, which is exactly
+  the kind of thing a unit test cannot check.
+- **P2** — Nothing yet proves the local package boundary. The rule that
+  `@micacms/editor` installs no OIDC dependency and bundles no auth code is only
+  a rule until CI checks the resolved dependency graph and the built bundle.
+  Phase C adds those checks; without them the boundary will erode the first time
+  somebody shares a helper between the two apps.
 - **P2** — The provider connectors are tested against a stub, not against a real
   repository. The request shapes are asserted; the providers' agreement with
-  their own documentation is not. Worth one manual run against a scratch
-  repository before a customer depends on it.
+  their own documentation is not. `demo/compose.yml` is the manual run —
+  point it at a scratch repository on github.com or gitlab.com — but nothing
+  automates it. `REPOSITORY_API_BASE` against GitHub Enterprise Server or a
+  self-managed GitLab has had neither.
 - **P3** — Entry search filters in the browser over the whole collection. Fine at
   the stated scale (hundreds to low thousands); a repository large enough to
   need an index is a repository large enough to need a different design.
@@ -258,11 +459,23 @@ knowing the reasoning stops someone reintroducing the problem.
   reads them directly. Do not add a public media route: the "unguessable, not
   access-controlled" trade-off it used to carry disappears only as long as the
   route does.
+
+  Staging needs one narrow exception, and it is not that route. An image that is
+  uploaded and not yet published is not in the repository, so the editor cannot
+  show it from there. Phase B adds an **authenticated** route that reads the
+  draft store, scoped to the pending change set, and serves nothing that has
+  already been published. If that route is ever reachable without a session, or
+  ever starts answering for repository paths, it has become the public media
+  route this decision forbids.
 - **Publishing is not a webhook.** A push is the trigger. An in-process queue
-  cannot survive a crash, and the repository's CI already solves this.
+  cannot survive a crash, and the repository's CI already solves this. Autosave
+  is not a trigger either: the successful remote branch update is, which is the
+  point of separating the two.
 - **Rich text is Markdoc, never HTML.** The editor converts at the boundary and
   must never call Tiptap's `getHTML()` — see `packages/editor/src/admin/lib/markdoc.ts`.
 - **Git is the history.** No revision table, no retention policy, nothing to
-  prune.
+  prune. The draft store is not a second history and must never become one: it
+  holds exactly the current pending change set, and a successful publication
+  clears what it published.
 - **Nothing hashes a password.** Reintroducing one would mean owning reset, MFA,
   passkeys and breach response, which is the whole reason it is not here.

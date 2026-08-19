@@ -3,10 +3,16 @@
   "slug": "small-secure-runtime",
   "icon": "shield",
   "eyebrow": "Operate less",
-  "summary": "Deploy one container. OpenID Connect handles identity. SQLite holds accounts and sessions, but never website content.",
+  "summary": "Deploy one container. OpenID Connect gives identity, and one setting gives permission. SQLite holds sessions, but never website content.",
   "outcomes": [
-    { "text": "No passwords in Mica" },
-    { "text": "One container" },
-    { "text": "Immediate access removal" }
+    {
+      "text": "No passwords or accounts in Mica"
+    },
+    {
+      "text": "One container"
+    },
+    {
+      "text": "Editors come from your provider"
+    }
   ]
 }

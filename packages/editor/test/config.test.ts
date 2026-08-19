@@ -72,8 +72,9 @@ describe("repository configuration", () => {
  */
 describe("deployment modes", () => {
   const oidc = {
-    OIDC_ISSUER: "https://auth.example.com",
-    OIDC_CLIENT_ID: "mica",
+    MICA_OIDC_ISSUER: "https://auth.example.com",
+    MICA_OIDC_CLIENT_ID: "mica",
+    MICA_ADMIT_GROUP: "mica-editors",
   };
 
   it("defaults to local, with authentication disabled", () => {
@@ -97,32 +98,45 @@ describe("deployment modes", () => {
 
   it("refuses local mode on any host but this machine", () => {
     assert.throws(
-      () => loadConfig({ ...base, MICA_MODE: "local", CMS_BASE_URL: "https://cms.example.com" }),
+      () => loadConfig({ ...base, MICA_MODE: "local", MICA_PUBLIC_URL: "https://cms.example.com" }),
       /local mode is for a developer's own machine only/i,
     );
 
     // ...and allows the hosts that are this machine.
     for (const url of ["http://localhost:6422", "http://127.0.0.1:6422"]) {
-      assert.doesNotThrow(() => loadConfig({ ...base, MICA_MODE: "local", CMS_BASE_URL: url }));
+      assert.doesNotThrow(() => loadConfig({ ...base, MICA_MODE: "local", MICA_PUBLIC_URL: url }));
     }
   });
 
-  for (const mode of ["self-hosted", "cloud"] as const) {
-    it(`requires an identity provider in ${mode} mode`, () => {
-      assert.throws(() => loadConfig({ ...base, MICA_MODE: mode }), (error: unknown) => {
-        assert.ok(error instanceof ConfigError);
-        assert.match(error.message, /OIDC_ISSUER and OIDC_CLIENT_ID/);
-        // The message should say where to point the provider.
-        assert.match(error.message, /\/api\/auth\/callback/);
-        return true;
-      });
-    });
+  /**
+   * The same rule for the socket. A base URL saying `localhost` while the
+   * process listens on every interface is an unauthenticated editor on the
+   * network, and the URL check says nothing about it.
+   */
+  it("binds local mode to loopback, and refuses to be talked out of it", () => {
+    assert.equal(loadConfig({ ...base }).HOST, "127.0.0.1");
+    assert.equal(loadConfig({ ...base, MICA_MODE: "self-hosted", ...oidc }).HOST, "0.0.0.0");
 
-    it(`enables authentication in ${mode} mode`, () => {
-      const config = loadConfig({ ...base, MICA_MODE: mode, ...oidc });
-      assert.equal(config.authDisabled, false);
+    assert.throws(
+      () => loadConfig({ ...base, MICA_MODE: "local", HOST: "0.0.0.0" }),
+      /binds to the loopback address/i,
+    );
+  });
+
+  it("requires an identity provider in self-hosted mode", () => {
+    assert.throws(() => loadConfig({ ...base, MICA_MODE: "self-hosted" }), (error: unknown) => {
+      assert.ok(error instanceof ConfigError);
+      assert.match(error.message, /MICA_OIDC_ISSUER and MICA_OIDC_CLIENT_ID/);
+      // The message should say where to point the provider.
+      assert.match(error.message, /\/api\/auth\/callback/);
+      return true;
     });
-  }
+  });
+
+  it("enables authentication in self-hosted mode", () => {
+    const config = loadConfig({ ...base, MICA_MODE: "self-hosted", ...oidc });
+    assert.equal(config.authDisabled, false);
+  });
 
   it("does not require a client secret, so a public PKCE client works", () => {
     assert.doesNotThrow(() => loadConfig({ ...base, MICA_MODE: "self-hosted", ...oidc }));
@@ -137,16 +151,16 @@ describe("deployment modes", () => {
     const local = loadConfig({
       ...base,
       MICA_MODE: "self-hosted",
-      OIDC_ISSUER: "http://localhost:8080/realms/mica",
-      OIDC_CLIENT_ID: "mica",
+      ...oidc,
+      MICA_OIDC_ISSUER: "http://localhost:8080/realms/mica",
     });
     assert.equal(local.oidcAllowInsecure, true);
 
     const remote = loadConfig({
       ...base,
       MICA_MODE: "self-hosted",
-      OIDC_ISSUER: "http://auth.example.com",
-      OIDC_CLIENT_ID: "mica",
+      ...oidc,
+      MICA_OIDC_ISSUER: "http://auth.example.com",
     });
     assert.equal(remote.oidcAllowInsecure, false);
 
@@ -154,10 +168,82 @@ describe("deployment modes", () => {
       ...base,
       NODE_ENV: "production",
       MICA_MODE: "self-hosted",
-      CMS_BASE_URL: "https://cms.example.com",
-      OIDC_ISSUER: "http://localhost:8080/realms/mica",
-      OIDC_CLIENT_ID: "mica",
+      MICA_PUBLIC_URL: "https://cms.example.com",
+      ...oidc,
+      MICA_OIDC_ISSUER: "http://localhost:8080/realms/mica",
     });
     assert.equal(production.oidcAllowInsecure, false);
+  });
+});
+
+/**
+ * Admission is configuration now, and configuration that is absent has to be
+ * an error rather than a default. Both possible defaults are wrong: admitting
+ * everybody the provider knows is a public CMS, and admitting nobody is a
+ * deployment that looks fine until the first person tries to sign in.
+ */
+describe("who may edit", () => {
+  const authenticated = {
+    MICA_MODE: "self-hosted",
+    MICA_OIDC_ISSUER: "https://auth.example.com",
+    MICA_OIDC_CLIENT_ID: "mica",
+  };
+
+  it("refuses to start with a provider and no admission rule", () => {
+    assert.throws(() => loadConfig({ ...base, ...authenticated }), (error: unknown) => {
+      assert.ok(error instanceof ConfigError);
+      assert.match(error.message, /nothing says who may edit this site/i);
+      assert.match(error.message, /MICA_ADMIT_GROUP/);
+      return true;
+    });
+  });
+
+  it("needs no admission rule locally, because there is nobody to admit", () => {
+    assert.doesNotThrow(() => loadConfig({ ...base }));
+  });
+
+  for (const rule of [
+    { MICA_ADMIT_GROUP: "mica-editors" },
+    { MICA_ADMIT_DOMAIN: "example.com" },
+    { MICA_ADMIT_SUBJECTS: "https://auth.example.com|a1b2c3" },
+  ]) {
+    it(`accepts ${Object.keys(rule)[0]} on its own`, () => {
+      assert.doesNotThrow(() => loadConfig({ ...base, ...authenticated, ...rule }));
+    });
+  }
+
+  it("reads all three as comma-separated lists", () => {
+    const config = loadConfig({
+      ...base,
+      ...authenticated,
+      MICA_ADMIT_GROUP: "editors, writers",
+      MICA_ADMIT_DOMAIN: "Example.com, @acme.test",
+      MICA_ADMIT_SUBJECTS: "https://a.test|one, https://b.test|two",
+    });
+
+    assert.deepEqual(config.admitGroups, ["editors", "writers"]);
+    // Lowercased, and an `@` the operator typed out of habit is not part of it.
+    assert.deepEqual(config.admitDomains, ["example.com", "acme.test"]);
+    assert.deepEqual(config.admitSubjects, [
+      { issuer: "https://a.test", subject: "one" },
+      { issuer: "https://b.test", subject: "two" },
+    ]);
+  });
+
+  /**
+   * A subject list keyed on an email address would rebind access to whoever
+   * holds that address today, which is how account takeover happens. Refusing
+   * the shape is how an operator finds that out at startup rather than never.
+   */
+  it("refuses a subject that is not keyed by issuer", () => {
+    assert.throws(
+      () =>
+        loadConfig({
+          ...base,
+          ...authenticated,
+          MICA_ADMIT_SUBJECTS: "you@example.com",
+        }),
+      /issuer\|subject/,
+    );
   });
 });

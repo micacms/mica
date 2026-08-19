@@ -3,7 +3,7 @@
  *
  * Ordering matters and is asserted in `app.ts`:
  *   requestContext → securityHeaders → errorBoundary → rateLimit
- *   → requireAuth → csrfProtection → route
+ *   → requireAccess → csrfProtection → route
  */
 
 import { getCookie } from "hono/cookie";
@@ -117,8 +117,11 @@ export function rateLimit(): MiddlewareHandler<Env> {
   };
 }
 
-/** Rejects the request unless a valid session cookie is present. */
-export function requireAuth(): MiddlewareHandler<Env> {
+/**
+ * Rejects the request unless there is a live session, and — outside local mode
+ * — unless the person it belongs to is still admitted.
+ */
+export function requireAccess(): MiddlewareHandler<Env> {
   return async (c, next) => {
     const ctx = c.get("ctx");
     const session = ctx.services.sessions.resolve(getCookie(c, SESSION_COOKIE));
@@ -127,37 +130,46 @@ export function requireAuth(): MiddlewareHandler<Env> {
       throw new ApiError("unauthenticated", "Your session has expired. Please sign in again.");
     }
 
-    const user = ctx.repositories.users.findById(session.userId);
-    if (!user) {
-      // The account was deleted while the session was still alive.
+    /**
+     * Local mode: a session with nobody in it.
+     *
+     * The cookie still matters — it carries the CSRF token, and it is why a
+     * page that has not been served by this server cannot drive the API — but
+     * there is no identity behind it and nothing to admit.
+     */
+    if (ctx.config.authDisabled) {
+      c.set("access", { identity: null, session });
+      await next();
+      return;
+    }
+
+    const { identity } = session;
+    if (!identity) {
+      // A session from a local-mode run of the same database. It authenticates
+      // nobody, so it is not a session for an authenticated deployment.
       ctx.repositories.sessions.delete(session.id);
-      throw new ApiError("unauthenticated", "This account no longer exists.");
+      throw new ApiError("unauthenticated", "Please sign in again.");
     }
 
     /**
-     * Authorization is re-read on every request, not carried in the session.
+     * Admission is re-read on every request, not decided once at sign-in.
      *
-     * Revoking someone's access has to take effect now. If the role were
-     * copied into the session at sign-in, a removed editor would keep editing
-     * until their cookie happened to expire.
+     * That is what makes a configuration change immediate: an operator who
+     * takes somebody out of `MICA_ADMIT_SUBJECTS` and restarts has removed
+     * them, rather than waiting for a cookie to expire. What it cannot make
+     * immediate is a group removal at the provider — the claims here are the
+     * ones the provider sent, and Mica learns better at the next sign-in.
      */
-    const membership = ctx.repositories.memberships.find(ctx.siteId, user.id);
-    if (!membership) {
+    const verdict = ctx.services.admission.admits(identity);
+    if (!verdict.admitted) {
+      c.get("logger").warn("Session no longer admitted", {
+        subject: identity.subject,
+        reason: verdict.reason,
+      });
       throw new ApiError("forbidden", "You no longer have access to this site.");
     }
 
-    c.set("session", session);
-    c.set("user", user);
-    c.set("membership", membership);
-    await next();
-  };
-}
-
-export function requireAdmin(): MiddlewareHandler<Env> {
-  return async (c, next) => {
-    if (c.get("membership").role !== "admin") {
-      throw new ApiError("forbidden", "This action requires an administrator account.");
-    }
+    c.set("access", { identity, session });
     await next();
   };
 }
@@ -172,8 +184,11 @@ const normaliseOrigin = (value: string): string => {
   }
 };
 
-export function allowedOrigins(config: { CMS_BASE_URL: string; adminOrigins: string[] }): string[] {
-  return [...new Set([config.CMS_BASE_URL, ...config.adminOrigins].map(normaliseOrigin))];
+export function allowedOrigins(config: {
+  MICA_PUBLIC_URL: string;
+  adminOrigins: string[];
+}): string[] {
+  return [...new Set([config.MICA_PUBLIC_URL, ...config.adminOrigins].map(normaliseOrigin))];
 }
 
 /**
@@ -212,7 +227,7 @@ export function originGuard(): MiddlewareHandler<Env> {
  * cookie the SPA can read and must be echoed in a header. Cross-origin
  * JavaScript can neither read the cookie nor set the header.
  *
- * Runs after `requireAuth`, and complements the session cookie's `SameSite=Lax`
+ * Runs after `requireAccess`, and complements the session cookie's `SameSite=Lax`
  * which already blocks the classic cross-site form post.
  */
 export function csrfProtection(): MiddlewareHandler<Env> {
@@ -222,7 +237,7 @@ export function csrfProtection(): MiddlewareHandler<Env> {
       return;
     }
 
-    const session = c.get("session");
+    const { session } = c.get("access");
     const header = c.req.header(CSRF_HEADER);
     const cookie = getCookie(c, CSRF_COOKIE);
 

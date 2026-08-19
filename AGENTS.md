@@ -28,7 +28,7 @@ Ask the user before you:
 ## Architecture rules
 
 - Git is the source of truth for website content.
-- The SQLite database can hold accounts, identities, memberships, sites, and sessions. It must not hold website content.
+- The SQLite database holds browser sessions, and later the drafts that are not published yet. It must not hold website content, accounts, or memberships.
 - Do not add a content API, public media route, media server, or build webhook.
 - Keep `@micacms/model` independent from Astro and other frameworks.
 - Keep Node-only code out of browser bundles. Put Node-only model exports in the `@micacms/model/node` entry point.

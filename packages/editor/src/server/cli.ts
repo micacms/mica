@@ -13,9 +13,9 @@
  *     to; a laptop does not, and this mode disables authentication. Anything
  *     reachable by anyone else needs `docker compose`, an identity provider and
  *     `MICA_MODE=self-hosted` — see docs/self-hosting.md.
- *   - accounts and sessions go to a cache directory outside the project. In
- *     local mode there is one implicit developer and nothing worth keeping, so
- *     writing a database into somebody's repository would be litter.
+ *   - its own state goes to a cache directory outside the project. In local
+ *     mode there is no account and nothing worth keeping, so writing a
+ *     database into somebody's repository would be litter.
  *   - it talks to a person instead of to a log collector: one short banner
  *     saying where the editor is and what happens when you save, and the
  *     browser opened on it. `MICA_CLI` is how the server is told which of the
@@ -55,15 +55,15 @@ const USAGE = `
     -c, --content <dir>   The content root (default: ./content)
     -p, --port <number>   Port to listen on (default: ${DEFAULT_PORT})
         --host <address>  Address to bind (default: 127.0.0.1)
-        --data <dir>      Where accounts and sessions are kept
+        --data <dir>      Where Mica keeps its own state
         --no-open         Do not open the browser
     -h, --help            Show this
     -v, --version         Print the version
 
   There is no sign-in here, because there is nothing to sign in to: this mode
-  has no identity provider and makes every request one developer account. That
-  is right for your own machine and wrong everywhere else — a Mica other people
-  reach runs as a container with an identity provider. See docs/self-hosting.md.
+  has no identity provider, no account and no user. That is right for your own
+  machine and wrong everywhere else — a Mica other people reach runs as a
+  container with an identity provider. See docs/self-hosting.md.
 `;
 
 export function parse(argv: string[]): Options {
@@ -150,7 +150,7 @@ export function shouldOpenBrowser(options: Options, env: NodeJS.ProcessEnv): boo
  *
  * Keyed by the content root so two checkouts do not share a database, and
  * hashed so the path stays short and has no separators in it. Losing this
- * costs nothing here: local mode has no accounts and no passwords.
+ * costs nothing here: local mode has no account to lose.
  */
 export function cacheDir(contentRoot: string): string {
   const base =
@@ -214,9 +214,10 @@ export async function main(): Promise<void> {
   for (const [key, value] of Object.entries(defaults)) {
     process.env[key] ??= value;
   }
-  // CMS_BASE_URL has to agree with the port, and only matters here for cookie
-  // scope and the Origin check — both of which are this process's own address.
-  process.env["CMS_BASE_URL"] ??= `http://localhost:${process.env["PORT"]}`;
+  // MICA_PUBLIC_URL has to agree with the port, and only matters here for
+  // cookie scope and the Origin check — both of which are this process's own
+  // address.
+  process.env["MICA_PUBLIC_URL"] ??= `http://localhost:${process.env["PORT"]}`;
 
   // The server is imported rather than spawned: one process, one signal
   // handler, and a stack trace that points at the real thing.

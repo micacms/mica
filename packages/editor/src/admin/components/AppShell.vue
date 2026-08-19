@@ -2,9 +2,15 @@
 /**
  * Navigation frame.
  *
- * The sidebar is generated from the content model: collections first,
- * then media, then singletons, then administration. Nothing here is hard-coded
- * per customer.
+ * The sidebar is generated from the content model: collections first, then
+ * media, then singletons, then the system page. Nothing here is hard-coded per
+ * customer.
+ *
+ * The identity block at the foot is the one part that is not the editor. It
+ * appears only where a provider said who somebody is, which means it is absent
+ * on a developer's own machine — no name, no avatar, no sign-out, and no empty
+ * space reserved for them. It belongs to the self-hosted shell rather than to
+ * the editor, and moves there when the packages split.
  */
 
 import { computed, ref, watch } from "vue";
@@ -17,15 +23,14 @@ import {
   Menu,
   Settings,
   SlidersHorizontal,
-  Users,
 } from "@lucide/vue";
 
-import { useAuth } from "@/stores/auth";
 import { useSchema } from "@/stores/schema";
+import { useSession } from "@/stores/session";
 
 const route = useRoute();
 const router = useRouter();
-const auth = useAuth();
+const session = useSession();
 const { collections, singletons } = useSchema();
 
 const menuOpen = ref(false);
@@ -34,7 +39,7 @@ const menuOpen = ref(false);
 watch(() => route.fullPath, () => (menuOpen.value = false));
 
 const initials = computed(() => {
-  const source = auth.user.value?.name || auth.user.value?.email || "";
+  const source = session.identity.value?.name || session.identity.value?.email || "";
   return (
     source
       .split(/[\s@._-]+/)
@@ -45,14 +50,8 @@ const initials = computed(() => {
   );
 });
 
-/**
- * Hidden in local mode. There is no session to end: the next page load signs
- * the developer straight back in, so the button could only ever look broken.
- */
-const canSignOut = computed(() => !(auth.config.value?.authDisabled ?? false));
-
 async function signOut(): Promise<void> {
-  await auth.signOut();
+  await session.signOut();
   await router.push({ name: "login" });
 }
 </script>
@@ -117,13 +116,7 @@ async function signOut(): Promise<void> {
         </div>
 
         <div>
-          <p class="nav-heading">Administration</p>
-          <RouterLink v-if="auth.isAdmin.value" :to="{ name: 'users' }" class="nav-link">
-            <Users :size="14" aria-hidden="true" />
-            People
-          </RouterLink>
-          <!-- Editors see it too: version and content model answer their
-               questions as often as an administrator's. -->
+          <p class="nav-heading">Deployment</p>
           <RouterLink :to="{ name: 'system' }" class="nav-link">
             <Settings :size="14" aria-hidden="true" />
             System
@@ -131,11 +124,9 @@ async function signOut(): Promise<void> {
         </div>
       </nav>
 
-      <div class="border-t border-white/10 p-2">
-        <RouterLink
-          :to="{ name: 'account' }"
-          class="flex items-center gap-2.5 rounded-md px-2 py-2 hover:bg-white/5"
-        >
+      <!-- Absent entirely where there is no provider: see the note above. -->
+      <div v-if="session.showsIdentity.value" class="border-t border-white/10 p-2">
+        <div class="flex items-center gap-2.5 rounded-md px-2 py-2">
           <span
             class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent text-[10px] font-semibold text-white"
             aria-hidden="true"
@@ -144,20 +135,12 @@ async function signOut(): Promise<void> {
           </span>
           <span class="min-w-0 flex-1">
             <span class="block truncate text-xs font-medium text-white/80">
-              {{ auth.user.value?.name || auth.user.value?.email }}
-            </span>
-            <span class="block truncate text-[10px] text-white/35">
-              {{ auth.user.value?.role === "admin" ? "Administrator" : "Editor" }}
+              {{ session.identity.value?.name || session.identity.value?.email }}
             </span>
           </span>
-        </RouterLink>
+        </div>
 
-        <button
-          v-if="canSignOut"
-          type="button"
-          class="sidebar-signout mt-1 w-full"
-          @click="signOut"
-        >
+        <button type="button" class="sidebar-signout mt-1 w-full" @click="signOut">
           <LogOut :size="14" aria-hidden="true" />
           Sign out
         </button>

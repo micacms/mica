@@ -5,7 +5,7 @@
 
 The editor application: a Hono API and the Vue administration SPA it serves. It
 holds no content — content is committed to a Git repository through a connector,
-and the SQLite file next to this process holds accounts and sessions only.
+and the SQLite file next to this process holds browser sessions only.
 
 ```
 cms.example.com
@@ -20,7 +20,7 @@ cms.example.com
   │                         │
 connector ──▶ content repository
   │
-SQLite: accounts, sessions
+SQLite: sessions
 ```
 
 ## Running it against a project
@@ -31,14 +31,15 @@ npx @micacms/editor --content ./content
 
 The published package carries the API and the built admin, so this is one
 command and no clone. It sets `MICA_MODE=local` (no identity provider, no
-authentication), binds to **loopback** rather than `0.0.0.0`, keeps accounts and
-sessions in a cache directory outside the project, and prints a banner instead
-of startup log lines before opening a browser on the editor — four defaults that
-differ from the container's, because a laptop is not a deployment.
+authentication and no user), binds to **loopback** rather than `0.0.0.0`, keeps
+its own state in a cache directory outside the project, and prints a banner
+instead of startup log lines before opening a browser on the editor — four
+defaults that differ from the container's, because a laptop is not a deployment.
 
-Serving the admin page is also where local mode signs somebody in: there is no
-provider to ask, so the page load is the sign-in and the SPA never sees a 401.
-The API is untouched by this — a request without a session is still refused.
+Serving the admin page is also where the local session starts. There is nobody
+to sign in, so what it establishes is the CSRF token the page needs in order to
+write, and the SPA never sees a 401. The API is untouched by this — a request
+without a session is still refused.
 
 Everything else it does is set environment variables and hand over to
 `src/server/index.ts`, so there is one server with one configuration path.
@@ -60,10 +61,10 @@ pnpm dev                               # API on :6422, admin on :5173
 are the defaults, so the server edits the example project's content. There is
 nothing to seed: the content is already there, in Git.
 
-`MICA_MODE=local` is also the default, which **disables authentication** — you
-are signed in as a developer account with no password and no identity provider.
-Mica refuses to start that way in production or on any host but this one, and
-says so at every start.
+`MICA_MODE=local` is also the default, which **disables authentication** — there
+is no identity provider, no account and nobody to be. Mica refuses to start that
+way in production, on any host but this one, or bound to anything but the
+loopback address, and says so at every start.
 
 The server has no content model of its own. It reads one from the content
 repository at `.mica/schema.json`, which the Astro project publishes and the
@@ -71,7 +72,8 @@ developer commits — identically in development and in production. If it is not
 there, the server says so and exits.
 
 Then open <http://localhost:5173/admin/>. There is no sign-in to do: local mode
-has no identity provider, so the editor opens directly.
+has no identity provider, so the editor opens directly — and shows no name, no
+avatar and no account menu, because there is nothing behind them.
 
 `pnpm dev` runs the API and the Vite dev server together. Vite proxies `/api` to
 the API so the session cookie stays same-origin; the API still needs
@@ -86,19 +88,23 @@ pnpm build && pnpm start               # everything on :6422
 
 ## Giving somebody access
 
-Mica does not create people; an identity provider does. Access is a _membership_
-saying that whoever holds an email address may edit a site.
+Mica creates no people and stores none. An identity provider says who somebody
+is; configuration says whether that person may edit this site:
 
-An empty deployment has no members, so nobody can invite anyone — one shell
-command breaks the circle:
-
-```bash
-pnpm grant-access -- --email a@b.ch --role admin
+```env
+MICA_ADMIT_GROUP=mica-editors            # a claim your provider sends
+MICA_ADMIT_DOMAIN=example.com            # every verified address there
+MICA_ADMIT_SUBJECTS=https://id.example.com|a1b2c3
 ```
 
-(`OIDC_BOOTSTRAP_ADMIN` does the same declaratively.) After that, administrators
-add people on the **People** screen. There is nothing to send them: they sign in
-with that address and they are in.
+At least one is required outside local mode, and the server refuses to start
+without one — a deployment that admits everybody its issuer knows is a
+misconfiguration rather than a default. There is no invitation, no People screen
+and nothing to send anybody: adding an editor is a group change in the identity
+provider, and Mica is not touched.
+
+Everybody admitted is an editor of this site. There are no roles, because there
+are no accounts to hang them on.
 
 ## Layout
 
@@ -111,16 +117,14 @@ src/
 │   ├── db/
 │   │   ├── driver.ts       the only file that imports node:sqlite
 │   │   └── migrations.ts   append-only, numbered, deterministic
-│   ├── repositories/       the only files that write SQL — users, sessions,
-│   │                       sites, memberships, oidc identities
-│   ├── services/           oidc, sessions, media validation
-│   ├── middleware/         auth, CSRF, rate limiting, errors, logging
-│   ├── routes/             thin: parse, delegate, serialise
-│   └── scripts/            grant-access
+│   ├── repositories/       the only file that writes SQL — sessions
+│   ├── services/           oidc, admission, sessions, media validation
+│   ├── middleware/         access, CSRF, rate limiting, errors, logging
+│   └── routes/             thin: parse, delegate, serialise
 └── admin/
     ├── api.ts              typed client for the admin API
-    ├── router.ts           routes and the auth guard
-    ├── stores/             auth, schema, toasts (plain composables)
+    ├── router.ts           routes and the session guard
+    ├── stores/             session, schema, toasts (plain composables)
     ├── lib/markdoc.ts      ProseMirror JSON <-> Markdoc, at the boundary
     ├── components/fields/  one component per field kind + the registry
     └── views/              dashboard, collection, entry, singleton, media, users
@@ -162,17 +166,23 @@ has been read.
 ## Authentication
 
 There is none in this codebase, and that is the design. `services/oidc.ts` runs
-the authorization code flow against a provider; `repositories/identities.ts`
-maps the resulting subject to a user; `repositories/memberships.ts` decides what
-that user may do here. Nothing hashes, resets or challenges anything.
+the authorization code flow against a provider; `services/admission.ts` decides
+whether the person it identified may edit this site. Nothing hashes, resets or
+challenges anything, and no table holds a user.
 
-`MICA_MODE=local` skips the provider entirely and signs every request in as one
-developer account. The config layer refuses that mode in production and on any
-host but localhost — see the P1 entry in [docs/decisions.md](../../docs/decisions.md).
+The rules are re-read on every request, so a configuration change is immediate.
+A group change *at the provider* is not: Mica sees the claims it was given at
+sign-in and learns better at the next one, which is why sessions last hours
+rather than weeks. That trade is the P1 entry in
+[docs/decisions.md](../../docs/decisions.md).
+
+`MICA_MODE=local` skips the provider entirely and has no user at all. The config
+layer refuses that mode in production, on any host but localhost, and on any
+address but loopback.
 
 ## Saving
 
-A save is a commit. There is no draft state and no publish button: unfinished
+A save is a commit. There is no draft state and no publish button yet: unfinished
 work stays in the editor's form and never reaches the server, and what does
 reach the server is validated in full before it becomes a file.
 
@@ -209,7 +219,6 @@ nothing prunes it, and no version of Mica has to be running to read it.
 | `GET/PUT`               | `/api/admin/singletons/:name`                                 | session                              |
 | `GET/POST`              | `/api/admin/media`                                            | session                              |
 | `GET`                   | `/api/admin/media/file/*`                                     | session                              |
-| `GET/POST/PATCH/DELETE` | `/api/admin/users[/:id]`                                      | session + admin                      |
 
 `/api/auth/login` and `/callback` are redirects, not JSON: the browser has to
 _visit_ the identity provider, which an XHR cannot do. A failed callback
@@ -233,11 +242,12 @@ the repository.
 - **Identities** are keyed by `(issuer, subject)`, never by email. A provider
   that lets someone change their address therefore cannot be used to take over
   an existing account.
-- **Authorization** is a membership on a site, re-read on every request. Removing
-  someone takes effect immediately rather than when their cookie expires.
+- **Admission** is a rule over claims, re-read on every request. Changing the
+  rule takes effect immediately; a group change at the provider takes effect at
+  the person's next sign-in, which is what the short session lifetime bounds.
 - **Sessions** — 256-bit random token, HMAC-signed in the cookie, stored only as
-  its SHA-256. Rotated at sign-in (session fixation), revoked when a membership
-  is withdrawn. Idle and absolute expiry both apply.
+  its SHA-256. Rotated at sign-in (session fixation). Idle and absolute expiry
+  both apply, and default to 4 and 8 hours.
 - **The OIDC flow** uses PKCE, `state` and `nonce`, all verified. The
   transaction is carried in a short-lived signed cookie scoped to `/api/auth`,
   so a callback that Mica did not start is refused.
@@ -266,7 +276,7 @@ the repository.
 ## Backups
 
 Your content repository is the backup, and Git is keeping it. This server's
-SQLite file holds accounts and sessions; losing it signs everyone out and costs
+SQLite file holds browser sessions; losing it signs everyone out and costs
 nothing else.
 
 See [self-hosting.md](../../docs/self-hosting.md#backups).

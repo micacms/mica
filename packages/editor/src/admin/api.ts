@@ -122,27 +122,24 @@ export interface Schema {
   singletons: SchemaSingleton[];
 }
 
-export interface AdminUser {
-  id: string;
+/**
+ * Who the identity provider said this is.
+ *
+ * Null wherever there is no provider. Mica holds no accounts, so this is not a
+ * record of anybody — it is what the last sign-in was told, kept only for as
+ * long as the session, and there is nothing here to administer.
+ */
+export interface Identity {
+  /** The provider's subject. Stable, opaque, and not shown to anybody. */
+  subject: string;
   email: string;
   name: string;
-  /** The role on *this* site. It comes from the membership, not the account. */
-  role: "admin" | "editor";
-  createdAt: string;
-  lastLoginAt: string | null;
-  /**
-   * Invited, but has never signed in through the identity provider.
-   *
-   * Absent on the signed-in user, who by definition has.
-   */
-  pending?: boolean;
 }
 
-/** What the sign-in screen needs before it can draw anything. */
+/** What the SPA needs before it can draw anything. */
 export interface AuthConfig {
-  mode: "local" | "self-hosted" | "cloud";
-  /** True when MICA_MODE=local: no provider, and no authentication at all. */
-  authDisabled: boolean;
+  /** False in local mode: no provider, no sign-in, and nobody to be. */
+  authRequired: boolean;
   /** Hostname of the identity provider, for the button label. */
   provider: string | null;
 }
@@ -206,7 +203,6 @@ export interface MediaItem {
 export interface Overview {
   collections: Array<{ name: string; label: string; total: number }>;
   media: { files: number; bytes: number; readable: string };
-  users: number;
   repository: string;
 }
 
@@ -224,7 +220,7 @@ export interface MediaUsage {
   readable: string;
 }
 
-/** Everything the System view shows. `deployment` is null for editors. */
+/** Everything the System view shows. */
 export interface SystemInfo {
   cms: {
     version: string;
@@ -272,11 +268,12 @@ export interface SystemInfo {
    * nothing else.
    */
   database: {
-    users: number;
+    sessions: number;
     version: number;
     bytes: number | null;
   };
   deployment: {
+    site: string;
     baseUrl: string;
     /** Where the content model was read from, e.g. `<repo>/.mica/schema.json`. */
     schemaOrigin: string;
@@ -290,12 +287,14 @@ export interface SystemInfo {
     maxUploadReadable: string;
     sessionTtlHours: number;
     sessionIdleHours: number;
+    /** What decides who may edit here: a group, a domain, a subject list. */
+    admission: string;
     trustProxy: boolean;
     cookieSecure: boolean;
     adminOrigins: string[];
     generatedSecrets: string[];
     memoryBytes: number;
-  } | null;
+  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -304,7 +303,8 @@ export interface SystemInfo {
 
 export const api = {
   auth: {
-    me: () => request<{ user: AdminUser; csrfToken: string }>("/auth/me"),
+    me: () =>
+      request<{ identity: Identity | null; csrfToken: string; expiresAt: string }>("/auth/me"),
     config: () => request<AuthConfig>("/auth/config"),
 
     /**
@@ -382,16 +382,5 @@ export const api = {
     /** Absolute URL for previewing a repository file inside the admin. */
     url: (path: string) =>
       `${BASE}/admin/media/file/${path.split("/").map(encodeURIComponent).join("/")}`,
-  },
-
-  users: {
-    list: () => request<{ users: AdminUser[] }>("/admin/users"),
-    /** Records that the holder of this address may edit this site. */
-    invite: (body: { email: string; name: string; role: string }) =>
-      request<{ user: AdminUser }>("/admin/users", { method: "POST", body }),
-    update: (id: string, body: { name?: string; role?: string }) =>
-      request<{ user: AdminUser }>(`/admin/users/${id}`, { method: "PATCH", body }),
-    /** Withdraws access to this site. The account itself survives. */
-    remove: (id: string) => request<{ ok: true }>(`/admin/users/${id}`, { method: "DELETE" }),
   },
 };

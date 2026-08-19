@@ -3,13 +3,34 @@
  *
  * The primary key is the SHA-256 of the cookie token, never the token itself:
  * a leaked database backup therefore does not hand an attacker usable sessions.
+ *
+ * A row carries who the provider said this is, because there is no user table
+ * to look it up in. That is the whole of Mica's identity storage.
  */
 
 import type { SqlDatabase } from "../db/driver.js";
 
+/**
+ * What the identity provider stated about the person holding this session.
+ *
+ * `null` where there is no provider: local mode has no user, and the row is
+ * then a CSRF token with an expiry.
+ */
+export interface SessionIdentity {
+  issuer: string;
+  /** Opaque and stable at that issuer. The account key, and never the email. */
+  subject: string;
+  email: string;
+  /** The provider's own `email_verified`. Absent counts as false. */
+  emailVerified: boolean;
+  name: string;
+  /** The groups claim as it arrived, or empty when the provider sends none. */
+  groups: string[];
+}
+
 export interface SessionRecord {
   id: string;
-  userId: string;
+  identity: SessionIdentity | null;
   csrfToken: string;
   createdAt: string;
   lastSeenAt: string;
@@ -20,7 +41,12 @@ export interface SessionRecord {
 
 interface SessionRow {
   id: string;
-  user_id: string;
+  issuer: string | null;
+  subject: string | null;
+  email: string | null;
+  email_verified: number;
+  name: string | null;
+  groups: string;
   csrf_token: string;
   created_at: string;
   last_seen_at: string;
@@ -29,10 +55,34 @@ interface SessionRow {
   user_agent: string | null;
 }
 
+/**
+ * The groups column holds whatever the provider sent, serialised. It is read
+ * back defensively — a claim that was a string, or an object, or absent, must
+ * not throw four weeks later on a request that has nothing to do with it.
+ */
+function parseGroups(value: string): string[] {
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((entry) => typeof entry === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
 function toRecord(row: SessionRow): SessionRecord {
   return {
     id: row.id,
-    userId: row.user_id,
+    identity:
+      row.issuer && row.subject
+        ? {
+            issuer: row.issuer,
+            subject: row.subject,
+            email: row.email ?? "",
+            emailVerified: row.email_verified === 1,
+            name: row.name ?? "",
+            groups: parseGroups(row.groups),
+          }
+        : null,
     csrfToken: row.csrf_token,
     createdAt: row.created_at,
     lastSeenAt: row.last_seen_at,
@@ -42,13 +92,15 @@ function toRecord(row: SessionRow): SessionRecord {
   };
 }
 
-const COLUMNS = "id, user_id, csrf_token, created_at, last_seen_at, expires_at, ip, user_agent";
+const COLUMNS =
+  "id, issuer, subject, email, email_verified, name, groups, csrf_token, " +
+  "created_at, last_seen_at, expires_at, ip, user_agent";
 
 export function createSessionRepository(db: SqlDatabase) {
   return {
     create(input: {
       id: string;
-      userId: string;
+      identity: SessionIdentity | null;
       csrfToken: string;
       expiresAt: string;
       ip?: string | null;
@@ -57,10 +109,15 @@ export function createSessionRepository(db: SqlDatabase) {
       const now = new Date().toISOString();
       db.run(
         `INSERT INTO sessions
-           (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+           (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           input.id,
-          input.userId,
+          input.identity?.issuer ?? null,
+          input.identity?.subject ?? null,
+          input.identity?.email ?? null,
+          input.identity?.emailVerified ? 1 : 0,
+          input.identity?.name ?? null,
+          JSON.stringify(input.identity?.groups ?? []),
           input.csrfToken,
           now,
           now,
@@ -89,24 +146,18 @@ export function createSessionRepository(db: SqlDatabase) {
       return db.run("DELETE FROM sessions WHERE id = ?", [id]).changes > 0;
     },
 
-    /** Used when a password changes, so other devices are signed out. */
-    deleteForUser(userId: string, exceptId?: string): number {
-      return exceptId
-        ? db.run("DELETE FROM sessions WHERE user_id = ? AND id != ?", [userId, exceptId]).changes
-        : db.run("DELETE FROM sessions WHERE user_id = ?", [userId]).changes;
+    /** Every session this person holds, on every device. */
+    deleteForIdentity(issuer: string, subject: string): number {
+      return db.run("DELETE FROM sessions WHERE issuer = ? AND subject = ?", [issuer, subject])
+        .changes;
     },
 
     deleteExpired(now = new Date().toISOString()): number {
       return db.run("DELETE FROM sessions WHERE expires_at <= ?", [now]).changes;
     },
 
-    listForUser(userId: string): SessionRecord[] {
-      return db
-        .all<SessionRow>(
-          `SELECT ${COLUMNS} FROM sessions WHERE user_id = ? ORDER BY last_seen_at DESC`,
-          [userId],
-        )
-        .map(toRecord);
+    count(): number {
+      return db.get<{ count: number }>("SELECT COUNT(*) AS count FROM sessions")?.count ?? 0;
     },
   };
 }

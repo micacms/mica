@@ -1,7 +1,13 @@
 # Reference deployment.
 #
-#   cp packages/editor/.env.example .env   # fill in the secrets and the repository
+#   curl -O https://raw.githubusercontent.com/amuedespacher/micacms/main/docker-compose.yml
+#   curl -o .env https://raw.githubusercontent.com/amuedespacher/micacms/main/.env.example
+#   $EDITOR .env                           # the repository, the provider, one secret
 #   docker compose up -d
+#
+# Two files on a server, and no clone of this repository: the image is
+# published, and the content model comes out of your content repository at
+# runtime.
 #
 # One container. No database server, no cache, no queue, no object storage —
 # and, since content moved into Git, no content volume either.
@@ -12,27 +18,28 @@
 # changing the model is a commit plus a restart rather than a rebuild.
 #
 # There is no backup service any more. The content is in a Git repository, which
-# is already replicated, versioned and off-site; the volume below holds accounts,
-# memberships and sessions, and losing it signs everyone out and costs nothing
-# else. It holds no passwords — Mica has none.
+# is already replicated, versioned and off-site; the volume below holds browser
+# sessions, and losing it signs everyone out and costs nothing else. There are
+# no accounts in it, and no passwords — Mica has neither.
 
 services:
-  cms:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: micacms/editor:0.1.1
+  mica:
+    image: ghcr.io/amuedespacher/micacms:0.1.1
     restart: unless-stopped
 
+    # Written from .env.example. Everything the deployment needs is in there.
     env_file: .env
     environment:
       NODE_ENV: production
       DATA_DIR: /data
 
       # OIDC or nothing. `local` disables authentication, and Mica refuses to
-      # start that way with NODE_ENV=production — set OIDC_ISSUER and
-      # OIDC_CLIENT_ID in .env, and register
-      # ${CMS_BASE_URL}/api/auth/callback with the provider.
+      # start that way with NODE_ENV=production — set MICA_OIDC_ISSUER and
+      # MICA_OIDC_CLIENT_ID in .env, and register
+      # ${MICA_PUBLIC_URL}/api/auth/callback with the provider.
+      #
+      # Who may then edit is a separate answer, and also required: set
+      # MICA_ADMIT_GROUP, MICA_ADMIT_DOMAIN or MICA_ADMIT_SUBJECTS in .env.
       MICA_MODE: ${MICA_MODE:-self-hosted}
 
       # How this deployment reaches its content repository.
@@ -52,9 +59,9 @@ services:
       - "127.0.0.1:6422:6422"
 
     volumes:
-      # Accounts and sessions. Not the website — that is in the repository, and
-      # so is the content model.
-      - cms-data:/data
+      # Browser sessions. Not the website — that is in the repository, and so
+      # is the content model.
+      - mica-data:/data
       # For REPOSITORY=local only — a checkout of the content repository:
       # - ./content:/content
 
@@ -84,4 +91,4 @@ services:
         max-file: "5"
 
 volumes:
-  cms-data:
+  mica-data:

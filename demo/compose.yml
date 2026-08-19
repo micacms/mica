@@ -1,0 +1,174 @@
+# Mica in its deployed shape, on your machine.
+#
+#   cp demo/.env.example demo/.env    # your repository and its token
+#   docker compose -f demo/compose.yml --env-file demo/.env up --build
+#
+# What a self-hosted Mica consists of, and nothing more:
+#
+#   mica        Mica itself: one Node process, one SQLite file of sessions
+#   zitadel     the identity provider, with its database
+#
+# The third part is your content repository on github.com or gitlab.com. It is
+# not in here, and that is the architecture rather than a shortcut: Mica commits
+# to a repository you already own, and the website is built from that repository
+# by CI that never contacts Mica.
+#
+# Nothing has to be clicked to make this work. ZITADEL generates its own
+# credentials on first boot, so a seed job registers Mica as an application and
+# creates the three demo people over ZITADEL's API.
+#
+# Deliberately local: plain HTTP, passwords in this file, a master key anybody
+# can read. Do not copy it to a server — copy docker-compose.yml in the
+# repository root, which is the reference deployment.
+
+name: mica-demo
+
+services:
+  # ------------------------------------------------------------ identity
+  zitadel:
+    image: ghcr.io/zitadel/zitadel:v3.4.15
+    command: >
+      start-from-init
+      --masterkey "MicaDemoMasterkey32CharactersXX"
+      --tlsMode disabled
+    depends_on:
+      db:
+        condition: service_healthy
+      prepare:
+        condition: service_completed_successfully
+
+    environment:
+      ZITADEL_DATABASE_POSTGRES_HOST: db
+      ZITADEL_DATABASE_POSTGRES_PORT: 5432
+      ZITADEL_DATABASE_POSTGRES_DATABASE: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: zitadel
+      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: postgres
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: postgres
+      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
+
+      # Mica and your browser must reach the issuer at the *same* URL, or the
+      # `iss` claim will not match what discovery returned.
+      ZITADEL_EXTERNALDOMAIN: localhost
+      ZITADEL_EXTERNALPORT: 8080
+      ZITADEL_EXTERNALSECURE: false
+
+      # The console account, for looking around: admin, Admin-Demo1.
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: admin
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: Admin-Demo1
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: false
+
+      # A service account whose token ZITADEL writes to the shared volume. The
+      # seed job uses it to register Mica and create the demo people.
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: seed
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: Demo seed
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: 2100-01-01T00:00:00Z
+      ZITADEL_FIRSTINSTANCE_PATPATH: /seed/zitadel.pat
+
+    # Mica's port is published here too: the CMS shares this container's network
+    # namespace, so this is the only place either port can be exposed from.
+    ports:
+      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:6422:6422"
+
+    volumes:
+      - seed:/seed
+
+  db:
+    image: postgres:17-alpine
+    environment:
+      PGUSER: postgres
+      POSTGRES_PASSWORD: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "zitadel", "-U", "postgres"]
+      interval: 10s
+      timeout: 30s
+      retries: 5
+      start_period: 20s
+    volumes:
+      - db-data:/var/lib/postgresql/data
+
+  # ZITADEL runs unprivileged and writes its service-account token into the
+  # shared volume, which Docker creates owned by root. One chmod, once.
+  prepare:
+    image: alpine:3.22
+    command: ["/bin/sh", "-c", "chmod 0777 /seed"]
+    volumes:
+      - seed:/seed
+
+  # Registers Mica as an OIDC application and creates alice, bob and mallory.
+  # Runs once: it stops at the first line if it has run before.
+  seed-identity:
+    image: alpine:3.22
+    depends_on:
+      zitadel:
+        condition: service_started
+    # Shares ZITADEL's network namespace, so this calls the instance by the one
+    # name ZITADEL answers to.
+    network_mode: "service:zitadel"
+    command: ["/bin/sh", "/opt/seed-identity.sh"]
+    environment:
+      ZITADEL_URL: http://localhost:8080
+      CALLBACK_URL: http://localhost:6422/api/auth/callback
+    volumes:
+      - ./seed/seed-identity.sh:/opt/seed-identity.sh:ro
+      - seed:/seed
+
+  # ---------------------------------------------------------------- mica
+  mica:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    # Swap the build block for the published image to run a release instead:
+    # image: ghcr.io/amuedespacher/micacms:latest
+
+    depends_on:
+      seed-identity:
+        condition: service_completed_successfully
+
+    # Shares ZITADEL's network namespace, so `localhost:8080` means the same
+    # thing here as it does in your browser.
+    network_mode: "service:zitadel"
+
+    # ZITADEL generated the client credentials and everybody's subject on first
+    # boot, so none of them can be written into this file. The seed job leaves
+    # them in the volume, MICA_ADMIT_SUBJECTS among them.
+    command:
+      - /bin/sh
+      - -c
+      - "set -a; . /seed/oidc.env; set +a; exec node dist/server/index.js"
+
+    environment:
+      # Development, deliberately: Mica refuses plain-HTTP OIDC discovery under
+      # NODE_ENV=production, correctly, and giving ZITADEL a certificate is more
+      # machinery than a local rig deserves. Everything else is the deployed
+      # shape — a real provider, a real connector, a real admission rule.
+      NODE_ENV: development
+      LOG_LEVEL: debug
+
+      MICA_PUBLIC_URL: http://localhost:6422
+      MICA_MODE: self-hosted
+      SESSION_SECRET: demo-session-secret-0000000000000
+
+      MICA_OIDC_ISSUER: http://localhost:8080
+
+      # Your repository on github.com or gitlab.com, from demo/.env. This is the
+      # same connector, configured the same way, as a real deployment.
+      REPOSITORY: ${REPOSITORY:?set REPOSITORY in demo/.env}
+      REPOSITORY_PROJECT: ${REPOSITORY_PROJECT:?set REPOSITORY_PROJECT in demo/.env}
+      REPOSITORY_TOKEN: ${REPOSITORY_TOKEN:?set REPOSITORY_TOKEN in demo/.env}
+      REPOSITORY_ROOT: ${REPOSITORY_ROOT:-content}
+      REPOSITORY_BRANCH: ${REPOSITORY_BRANCH:-main}
+
+      DATA_DIR: /data
+
+    volumes:
+      - seed:/seed:ro
+      - mica-data:/data
+
+volumes:
+  db-data:
+  mica-data:
+  # The credentials ZITADEL generated for this demo.
+  seed:

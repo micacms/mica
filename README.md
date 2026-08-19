@@ -30,8 +30,8 @@ They meet in the repository.
 **Content lives in your Git repository, not in Mica's database.** Everything
 that follows from a commit follows for free: history, review, rollback,
 branching, and a website that can be rebuilt from the repository alone. Mica's
-own SQLite file holds accounts and sessions — losing it signs everyone out and
-costs nothing else.
+own SQLite file holds browser sessions and nothing else — losing it signs
+everyone out and costs nothing more.
 
 ---
 
@@ -144,14 +144,17 @@ npx @micacms/editor       # reads ./content, opens the editor on localhost:6422/
 
 |                 |                                                                                                                                                                                               |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Locally**     | The command above. Loopback only, no identity provider, no accounts, no passwords, no sign-in screen, nothing written into your repository — see [getting-started](./docs/getting-started.md) |
-| **On a server** | One container, an OIDC provider, a token for the repository — see [self-hosting](./docs/self-hosting.md)                                                                                      |
+| **Locally**     | The command above. Loopback only, no identity provider, no account, no user at all, no sign-in screen, nothing written into your repository — see [getting-started](./docs/getting-started.md) |
+| **On a server** | One container, an OIDC provider, a token for the repository — see [self-hosting](./docs/self-hosting.md). [`demo/`](./demo/README.md) runs that whole shape on your machine                    |
 
 Deployed, Mica authenticates with **OpenID Connect** and nothing else. No
 passwords, no reset flow, no MFA enrolment, no passkeys, and no breach
-notification to write. An identity provider does all of it better. What Mica
-keeps is the part that is genuinely its own: a _membership_ saying who may edit
-which site.
+notification to write. An identity provider does all of it better.
+
+It stores no users either. Who may edit is one line of configuration — a group
+your provider already manages, a verified domain, or an explicit list of
+subjects — so adding an editor happens where you already handle joiners and
+leavers, and Mica has nothing to administer.
 
 ---
 
@@ -172,7 +175,8 @@ docs/
 ├── self-hosting.md      deploy it: Docker, OIDC, repository, CI, backups
 ├── architecture.md      what Mica is, and why it is shaped this way
 └── decisions.md         accepted trade-offs and known gaps
-e2e/                     a runnable Mica + Keycloak, for the deployed shape
+demo/                    the deployed shape on your machine: Mica + ZITADEL
+e2e/                     a fast sign-in rig: Mica + Keycloak + a checkout
 ```
 
 `packages/*` are the published surface. `sites/muster-consulting` is a site
@@ -208,9 +212,8 @@ mandatory cloud services.
 | ----------------------- | ---------------------------------------------------------------- |
 | `pnpm dev`              | build the packages, then run the CMS against the example project |
 | `pnpm dev:site`         | the example website, in a second terminal                        |
-| `pnpm test`             | 309 tests across the model, connectors, Astro loader and editor  |
+| `pnpm test`             | 313 tests across the model, connectors, Astro loader and editor  |
 | `pnpm typecheck`        | every package, including `.vue` and `.astro`                     |
-| `pnpm grant-access`     | let an email address edit a site                                 |
 
 ### Releasing
 

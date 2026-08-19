@@ -7,8 +7,8 @@
  * wrong.
  *
  * What is Mica's is the small part here: run the authorization code flow
- * correctly, map the resulting subject to a user, and let the membership table
- * decide what that user may do.
+ * correctly and report what the provider said. Whether that person may edit
+ * this site is `services/admission.ts`, and deliberately not a table.
  *
  * Three checks carry the security of the flow, and all three are enforced
  * rather than assumed:
@@ -58,7 +58,11 @@ export interface OidcClaims {
   issuer: string;
   subject: string;
   email: string;
+  /** The provider's `email_verified`. Absent counts as false, never as true. */
+  emailVerified: boolean;
   name: string;
+  /** The configured groups claim, or empty when the provider sends none. */
+  groups: string[];
 }
 
 /* ------------------------------------------------------------------ *
@@ -112,7 +116,7 @@ export interface OidcServiceDeps {
 export function createOidcService(deps: OidcServiceDeps) {
   const { config, logger } = deps;
 
-  const redirectUri = new URL("/api/auth/callback", config.CMS_BASE_URL).toString();
+  const redirectUri = new URL("/api/auth/callback", config.MICA_PUBLIC_URL).toString();
 
   /**
    * Discovery, done once and remembered.
@@ -126,9 +130,9 @@ export function createOidcService(deps: OidcServiceDeps) {
   function configuration(): Promise<client.Configuration> {
     discovered ??= client
       .discovery(
-        new URL(config.OIDC_ISSUER!),
-        config.OIDC_CLIENT_ID!,
-        config.OIDC_CLIENT_SECRET,
+        new URL(config.MICA_OIDC_ISSUER!),
+        config.MICA_OIDC_CLIENT_ID!,
+        config.MICA_OIDC_CLIENT_SECRET,
         undefined,
         // Only ever for a provider on localhost, and only outside production —
         // the config layer refuses the combination anywhere else.
@@ -139,7 +143,7 @@ export function createOidcService(deps: OidcServiceDeps) {
         // rejected promise for the life of the process.
         discovered = null;
         logger.error("OIDC discovery failed", {
-          issuer: config.OIDC_ISSUER,
+          issuer: config.MICA_OIDC_ISSUER,
           error: String(error),
         });
         throw new ApiError(
@@ -167,7 +171,7 @@ export function createOidcService(deps: OidcServiceDeps) {
 
       const url = client.buildAuthorizationUrl(as, {
         redirect_uri: redirectUri,
-        scope: config.OIDC_SCOPE,
+        scope: config.MICA_OIDC_SCOPE,
         state: transaction.state,
         nonce: transaction.nonce,
         code_challenge: await client.calculatePKCECodeChallenge(verifier),
@@ -205,25 +209,32 @@ export function createOidcService(deps: OidcServiceDeps) {
         throw new ApiError("unauthenticated", "The identity provider returned no subject.");
       }
 
-      // Not every provider puts email and name in the ID token; some keep them
-      // at the userinfo endpoint. Ask only when something is missing.
+      // Not every provider puts email, name and groups in the ID token; some
+      // keep them at the userinfo endpoint, and some only release groups
+      // there. Ask only when something is missing.
+      const groupsClaim = config.MICA_OIDC_GROUPS_CLAIM;
+
       let email = typeof claims["email"] === "string" ? claims["email"] : "";
       let name = typeof claims["name"] === "string" ? claims["name"] : "";
+      let emailVerified = claims["email_verified"] === true;
+      let groups = readGroups(claims[groupsClaim]);
 
-      if (!email || !name) {
+      if (!email || !name || groups.length === 0) {
         try {
           const info = await client.fetchUserInfo(as, tokens.access_token, claims.sub);
           email ||= typeof info.email === "string" ? info.email : "";
           name ||= typeof info.name === "string" ? info.name : "";
+          emailVerified ||= info["email_verified"] === true;
+          if (groups.length === 0) groups = readGroups(info[groupsClaim]);
         } catch (error) {
           logger.debug("OIDC userinfo unavailable", { error: String(error) });
         }
       }
 
       if (!email) {
-        // Mica identifies people to each other by email — in the Users screen,
-        // and as the author of every commit. An identity without one cannot be
-        // shown to anybody, so it is refused rather than displayed as blank.
+        // Mica names people by email — it is who the commits are from. An
+        // identity without one cannot be shown to anybody, so it is refused
+        // rather than displayed as blank.
         throw new ApiError(
           "unauthenticated",
           "The identity provider did not release an email address. " +
@@ -235,7 +246,9 @@ export function createOidcService(deps: OidcServiceDeps) {
         issuer: String(claims.iss),
         subject: String(claims.sub),
         email,
+        emailVerified,
         name: name || email,
+        groups,
       };
     },
 
@@ -251,7 +264,7 @@ export function createOidcService(deps: OidcServiceDeps) {
         const as = await configuration();
         return client
           .buildEndSessionUrl(as, {
-            post_logout_redirect_uri: new URL("/admin/", config.CMS_BASE_URL).toString(),
+            post_logout_redirect_uri: new URL("/admin/", config.MICA_PUBLIC_URL).toString(),
           })
           .toString();
       } catch {
@@ -262,6 +275,21 @@ export function createOidcService(deps: OidcServiceDeps) {
 }
 
 export type OidcService = ReturnType<typeof createOidcService>;
+
+/**
+ * A groups claim, from a provider that may not send one and is under no
+ * obligation to send it as an array.
+ *
+ * Keycloak sends a list of paths, Entra a list of ids, some deployments a
+ * single string, and a misconfigured mapper sends an object. Everything that
+ * is not a string in a list is dropped rather than coerced, because a group
+ * name Mica invented would be a group name that could match a rule.
+ */
+function readGroups(value: unknown): string[] {
+  if (typeof value === "string") return value.split(/[,\s]+/).filter(Boolean);
+  if (!Array.isArray(value)) return [];
+  return value.filter((entry): entry is string => typeof entry === "string");
+}
 
 /** A random return path token, for the local mode that has no provider. */
 export const randomToken = (): string => randomBytes(32).toString("base64url");

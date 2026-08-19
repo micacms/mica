@@ -15,8 +15,8 @@ depends on a cloud service.
 └────┬─────┘                        │ push
      │                              ▼
   cms.sqlite                   ┌─────────┐
-  accounts &                   │   CI    │  astro build
-  sessions                     └────┬────┘
+  sessions                     │   CI    │  astro build
+                               └────┬────┘
                                     ▼
                               static files → any static host
 ```
@@ -25,149 +25,195 @@ Those two arrows out of Mica are the whole integration surface. No content API,
 no read token, no build webhook — a push is the trigger, which every CI system
 already understands.
 
-**Before you start**
-
-- The content model has to be in the repository. Your Astro build writes it to
-  `content/.mica/schema.json`; commit it, or Mica has nothing to edit. See
-  [getting-started.md](./getting-started.md).
-- There is no published image yet, so `docker compose` builds one from a clone
-  of this repository. Everything below assumes that clone is on the server.
+**Want to see it running first?** [`demo/`](../demo/README.md) starts Mica and
+an identity provider on your machine with two commands. Everything below is the
+same shape, with your own domain and provider.
 
 ---
 
-## 1. How Mica reaches the repository
+## Quickstart
 
-| `REPOSITORY` | What it does | Use it when |
-| --- | --- | --- |
-| `github` | Commits through the GitHub API | The repository is on GitHub |
-| `gitlab` | Commits through the GitLab API | The repository is on GitLab |
-| `local` | Writes into a checkout on disk | Development, or you have a checkout and your own sync |
+Ten minutes, on a server with Docker and a reverse proxy.
 
-Prefer a provider connector for anything deployed: no clone to keep in sync, no
-deploy key on disk, and no risk of the container's working tree drifting from
-the remote.
+### Before you start
 
-**GitHub** — a fine-grained personal access token, or a GitHub App installation
-token, scoped to **that one repository** with **Contents: read and write**.
-Nothing else: Mica does not open pull requests, read issues or run workflows.
+- **A content repository on github.com or gitlab.com**, with the content model
+  committed at `content/.mica/schema.json`. Your Astro build writes that file;
+  you commit it. See [getting-started.md](./getting-started.md).
+- **An OpenID Connect provider.** Mica has no passwords of its own. If you do
+  not have one, [step 3](#3-an-identity-provider) starts one.
+- **A hostname with TLS**, terminated by a proxy in front of the container.
+
+### 1. The two files
+
+No clone of this repository. The image is published, and the content model
+comes out of your content repository at runtime.
+
+```bash
+mkdir -p /srv/mica && cd /srv/mica
+curl -O https://raw.githubusercontent.com/amuedespacher/micacms/main/docker-compose.yml
+curl -o .env https://raw.githubusercontent.com/amuedespacher/micacms/main/.env.example
+```
+
+### 2. A repository token
+
+Mica commits through the provider's API. There is no clone to keep in sync and
+no deploy key on disk.
+
+**github.com** — a fine-grained personal access token, scoped to **that one
+repository**, with **Contents: read and write**. Nothing else: Mica opens no
+pull requests, reads no issues and runs no workflows.
+
+> Settings → Developer settings → Personal access tokens → Fine-grained tokens
+> → Generate new token → Repository access: Only select repositories →
+> Repository permissions → Contents: Read and write
 
 ```env
 REPOSITORY=github
-REPOSITORY_PROJECT=acme/website
+REPOSITORY_PROJECT=acme/website        # owner/repo
 REPOSITORY_TOKEN=github_pat_…
 REPOSITORY_ROOT=content
 REPOSITORY_BRANCH=main
 ```
 
-**GitLab** — a project access token with the `write_repository` scope.
+**gitlab.com** — a project access token with the `write_repository` scope.
+
+> The project → Settings → Access tokens → Add new token → Role: Developer →
+> Scopes: write_repository
 
 ```env
 REPOSITORY=gitlab
-REPOSITORY_PROJECT=acme/website        # or the numeric project id
+REPOSITORY_PROJECT=acme/website        # group/project, or the numeric id
 REPOSITORY_TOKEN=glpat-…
 REPOSITORY_ROOT=content
 REPOSITORY_BRANCH=main
 ```
 
-For GitHub Enterprise Server or self-managed GitLab, add
-`REPOSITORY_API_BASE=https://git.example.com`.
+Both connectors write **one commit per save**, whatever the save touched — an
+`index.json`, its rich-text sidecars and its images — so the repository never
+holds half an entry.
 
 `REPOSITORY_ROOT` is a real boundary: Mica reads and writes only below it. A
 token with write access to the whole repository still cannot be used *through
 Mica* to touch the website's source, its CI configuration or its dependencies.
 Keep content in its own directory and that holds by construction.
 
-## 2. An identity provider
+<a id="3-an-identity-provider"></a>
+
+### 3. An identity provider
 
 Mica implements no passwords, no reset flow, no MFA and no passkeys. It asks an
 OpenID Connect provider who you are and records the answer — a smaller attack
 surface than any of those features, and it means an editor's account is
 governed by whatever your organisation already uses.
 
-Any OIDC provider works: Keycloak, Authentik, ZITADEL, Entra ID, Okta, Auth0,
-Google Workspace.
-
-```env
-MICA_MODE=self-hosted
-OIDC_ISSUER=https://auth.example.com/realms/mica
-OIDC_CLIENT_ID=mica
-OIDC_CLIENT_SECRET=…            # omit for a public client using PKCE alone
-```
-
-Register this redirect URI with the provider:
+Any OIDC provider works: ZITADEL, Keycloak, Authentik, Entra ID, Okta, Auth0,
+Google Workspace. Register **one** redirect URI:
 
 ```
 https://cms.example.com/api/auth/callback
 ```
 
-The flow uses PKCE, `state` and `nonce`, all verified. Mica requests
-`openid profile email`; the email address is how editors are identified to each
-other, and is required.
-
-To watch it work before wiring up your own,
-`docker compose -f e2e/compose.yml up --build` runs Mica against a
-pre-configured Keycloak — see [e2e/README.md](../e2e/README.md).
-
-### Authentication is not authorization
-
-A provider vouching for someone does **not** let them in. Access is a
-*membership* on a site, and an authenticated person without one is turned away
-with a message telling them to ask an administrator.
-
-That leaves a chicken-and-egg on a fresh deployment: no members means nobody
-can invite anyone. Break it either way:
+Then:
 
 ```env
-OIDC_BOOTSTRAP_ADMIN=you@example.com   # becomes an admin on first sign-in
+MICA_MODE=self-hosted
+MICA_OIDC_ISSUER=https://auth.example.com
+MICA_OIDC_CLIENT_ID=mica
+MICA_OIDC_CLIENT_SECRET=…              # omit for a public client using PKCE alone
 ```
 
-```bash
-docker compose exec cms node dist/server/scripts/grant-access.js \
-  --email you@example.com --role admin
+`MICA_OIDC_ISSUER` is the value the provider itself publishes as `issuer` — check it
+at `<issuer>/.well-known/openid-configuration`. The flow uses PKCE, `state` and
+`nonce`, all verified. Mica asks for `openid profile email`; the email address
+is how editors are identified to each other, and is required.
+
+<a id="4-who-may-edit"></a>
+
+### 4. Who may edit
+
+Authentication is not admission. Your provider will vouch for everybody it
+knows, and nothing in a valid token says the holder may edit this website — so
+Mica **refuses to start** until you say who may. There is no user
+administration, no invitation and no People screen; this is the whole of it.
+
+```env
+# A — a group your provider already manages. The one to grow into.
+MICA_ADMIT_GROUP=mica-editors
+
+# B — every address in a domain, and only where the provider says it has
+#     verified the address.
+MICA_ADMIT_DOMAIN=example.com
+
+# C — an explicit list, keyed by issuer and subject.
+MICA_ADMIT_SUBJECTS=https://auth.example.com|a1b2c3,https://auth.example.com|d4e5f6
 ```
 
-After that, administrators add people from the **People** screen. There is
-nothing to send them: they sign in with that address and they are in.
+Any one of them is enough, and they are comma-separated lists. Set the group
+rule and adding an editor becomes a group change in your identity provider —
+where you already handle joiners and leavers — with nothing to do in Mica: no
+restart, no invitation, and no copy of the list here to go stale.
 
-Removing a membership ends every session for that person immediately, on every
-device — authorization is re-read on each request rather than copied into the
-session. It does not touch their account at the provider, which is the
-provider's to disable, and keeping the two separate is the point.
+The claim that carries groups has no standard name. Keycloak and Entra normally
+send `groups`; if yours sends something else, name it:
 
-## 3. Start it
-
-```bash
-cp packages/editor/.env.example .env
-# fill in: SESSION_SECRET, CMS_BASE_URL, the OIDC block, the REPOSITORY block
-docker compose up -d
+```env
+MICA_OIDC_GROUPS_CLAIM=roles
 ```
 
-`SESSION_SECRET` is mandatory in production and signs the session cookie:
+The subject list is the escape hatch for a provider with no groups, and for the
+first sign-in before a group exists. It is keyed by `issuer|subject` and never
+by an email address: providers let people change addresses, and admitting an
+address means admitting whoever holds it next. The subject is in the ID token
+as `sub`, and your provider's console shows it as the user's id.
+
+The domain rule needs `email_verified` from the provider. Without it Mica
+refuses and says so — an unverified address is one the person typed, and where
+self-registration is open that would let anybody claim your domain.
+
+### 5. The rest of `.env`
+
+```env
+MICA_PUBLIC_URL=https://cms.example.com
+TRUST_PROXY=true
+SESSION_SECRET=…
+```
+
+`MICA_PUBLIC_URL` must be exactly what the browser shows. It decides the cookie
+scope, the Origin check and the redirect URI, and `https://` is what turns on
+`Secure` cookies. Generate the secret:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+`TRUST_PROXY` makes Mica read the client address from `X-Forwarded-For` —
+enable it **only** behind a proxy you control, or clients can spoof their
+address and walk past the login rate limit.
+
+### 6. Start it
+
+```bash
+docker compose up -d
+docker compose logs -f mica
+curl -s https://cms.example.com/health
+```
+
+The startup line says which rule is in force, as `admission`. There is nothing
+to bootstrap and nobody to invite: anybody your rule admits signs in and is an
+editor, and the **System** page shows the rule under _Who may edit_.
 
 Mica refuses to start if `REPOSITORY` names a provider without a project and a
 token, or if the repository has no content model. Both are deliberate: a CMS
 that starts, shows an editor their content and only fails when they press Save
 has already cost them their work.
 
-### The reverse proxy
+---
 
-The container binds to loopback. Terminate TLS in front of it:
+## The reverse proxy
 
-```env
-CMS_BASE_URL=https://cms.example.com
-TRUST_PROXY=true
-```
-
-`CMS_BASE_URL` starting with `https://` is what turns on `Secure` cookies.
-`TRUST_PROXY` makes Mica read the client address from `X-Forwarded-For` —
-enable it **only** behind a proxy you control, or clients can spoof their
-address and walk past the login rate limit.
-
-Caddy is two lines and gets a certificate by itself:
+The container binds to loopback. Terminate TLS in front of it. Caddy is two
+lines and gets a certificate by itself:
 
 ```
 cms.example.com {
@@ -175,34 +221,37 @@ cms.example.com {
 }
 ```
 
-## 4. A VPS, end to end
+Firewall: 80 and 443 only. Mica never needs to be reachable from the internet
+by anything but the editors' browsers, and the website build never contacts it
+at all.
 
-For a small Hetzner box (CX22 or similar) with Docker and Caddy installed:
+## Taking access away
 
-```bash
-# on the server — this is the Mica repository, not your website's
-git clone <this-repository> /srv/mica
-cd /srv/mica
-cp packages/editor/.env.example .env && $EDITOR .env
-docker compose up -d --build
-docker compose logs -f cms
-curl -s https://cms.example.com/health
+Two paths, and they take effect at different speeds.
+
+**Changing the rules is immediate.** Mica re-reads them on every request rather
+than copying an answer into the session, so somebody removed from
+`MICA_ADMIT_SUBJECTS` is refused on their next request once the container has
+the new value.
+
+**Removing somebody at the provider is not.** Mica checks the claims the
+provider sent at sign-in, and it cannot know they have changed until the person
+signs in again. Somebody taken out of `mica-editors` therefore keeps working
+until their session ends. That is the cost of having no user database, and it
+is why sessions are hours rather than weeks:
+
+```env
+SESSION_TTL_HOURS=8                    # absolute lifetime
+SESSION_IDLE_HOURS=4                   # and the idle window
 ```
 
-Nothing of your project is on this machine: Mica reaches your repository over
-the provider's API, and the model comes back with it.
+Disabling the account at the provider is the fast path for a departure, and it
+is the provider's to do. Where access must be cut within seconds, restart the
+container after removing the person — every session is in one table, and
+restarting does not clear it, so use `MICA_ADMIT_SUBJECTS` to state exactly who
+remains.
 
-Then, once:
-
-```bash
-docker compose exec cms node dist/server/scripts/grant-access.js --email you@example.com
-```
-
-Firewall: 80 and 443 only. Mica itself never needs to be reachable from the
-internet by anything but the editors' browsers, and the website build never
-contacts it at all.
-
-## 5. Build the website
+## Build the website
 
 The build reads the repository. It needs no token, no CMS URL and no network
 access to Mica.
@@ -242,19 +291,30 @@ Mica at `REPOSITORY_BRANCH=staging` and editors have a staging site, reviewed
 and merged like any other change. That is how Mica does staging, and why it has
 no draft/published states.
 
-## 6. Changing the content model
+## Changing the content model
 
 In the project: edit the model, `astro build`, commit `.mica/schema.json`, push.
 Then:
 
 ```bash
-docker compose restart cms
+docker compose restart mica
 ```
 
 The image holds no model — only the field types that interpret one — so it
 never needs rebuilding for a content or model change. Deploy the matching
 website build at the same time: adding a required field makes existing entries
 invalid until they are edited, and the website build is where you find out.
+
+## Upgrading
+
+The image tag in `docker-compose.yml` is the version. Change it, then:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Mica is pre-1.0: read the [changelog](../CHANGELOG.md) first, and pin a
+version rather than tracking `latest`, so an upgrade is a decision.
 
 ---
 
@@ -278,8 +338,8 @@ everybody already working.
 
 **Your content repository is the backup, and Git is already keeping it.** Every
 save is a commit, so the history is complete by construction rather than by
-schedule, and any clone is a full copy. If it is on GitHub or GitLab it is
-already off-site and replicated; if you want a copy of your own, mirror it:
+schedule, and any clone is a full copy. If it is on github.com or gitlab.com it
+is already off-site and replicated; if you want a copy of your own, mirror it:
 
 ```bash
 git clone --mirror git@github.com:acme/website.git
@@ -289,16 +349,28 @@ git --git-dir=website.git remote update --prune      # on a schedule
 Restoring is a clone. There is nothing to import and no schema to match, and no
 version of Mica has to be running for the files to be readable.
 
-`cms.sqlite` holds accounts, memberships and sessions — no content, no
-credentials. Backing it up is optional: decide by asking what you would rather
-do after losing the volume, restore a file or run `grant-access` once and tell
-three editors to sign in again. If you do want a copy, take it with SQLite's
-own `.backup` (a plain `cp` is unsafe: WAL mode keeps recent writes in
+`cms.sqlite` holds browser sessions — no accounts, no content, no credentials.
+Backing it up is close to pointless: losing the volume signs three editors out,
+and they sign in again. If you do want a copy, take it with SQLite's own
+`.backup` (a plain `cp` is unsafe: WAL mode keeps recent writes in
 `cms.sqlite-wal`).
 
 There is no `mica backup` command, because shipping one would imply that a Mica
 backup protects your content — and it is not what you would reach for if you
 ever needed it.
+
+## Self-managed Git providers
+
+github.com and gitlab.com are the two connectors Mica has. A GitHub Enterprise
+Server or a self-managed GitLab speaks the same API, and `REPOSITORY_API_BASE`
+points the same connector at it:
+
+```env
+REPOSITORY_API_BASE=https://git.example.com
+```
+
+That path is not covered by tests against a real instance yet. Other providers
+— Gitea, Forgejo, Bitbucket — need their own connector, and do not have one.
 
 ---
 
@@ -310,12 +382,13 @@ ever needed it.
 | Exits with "No content model at …" | `.mica/schema.json` was never committed, or is on another branch | Build the Astro project, commit it, push to `REPOSITORY_BRANCH` |
 | Exits with "Could not read the content model" | The repository is unreachable — bad token, wrong project, provider down | Check the token's scope and `REPOSITORY_PROJECT` |
 | Health 503, `repository: unavailable` | Token expired, revoked, or wrong scope | Reissue with contents write / `write_repository` |
-| Admin loads with the wrong collections | The model in the repository is stale | Rebuild the project, commit, `docker compose restart cms` |
+| Admin loads with the wrong collections | The model in the repository is stale | Rebuild the project, commit, `docker compose restart mica` |
 | Saving returns 409 | Someone else changed that entry, or a push landed mid-save | Reload; the editor's work is still in the form |
 | Saving returns 422 | The entry does not satisfy the model | The response names the fields |
 | Editors signed out after a restart | `SESSION_SECRET` unset, so an ephemeral one was generated | Set it |
-| "No access to this site" after signing in | Authenticated, but no membership | Add them on the People screen, or run `grant-access` |
-| Sign-in returns to the login page with "expired" | The transaction cookie was lost — usually a `CMS_BASE_URL` that does not match the browser's address | Make them identical |
-| 503, "identity provider could not be reached" | `OIDC_ISSUER` wrong, or discovery blocked | Check `<issuer>/.well-known/openid-configuration` from the container |
+| "No access to this site" after signing in | Authenticated, but not admitted | Check the group claim actually arrives — `LOG_LEVEL=debug` names the reason — or add the subject to `MICA_ADMIT_SUBJECTS` |
+| Refuses to start: "nothing says who may edit this site" | No admission rule | Set `MICA_ADMIT_GROUP`, `MICA_ADMIT_DOMAIN` or `MICA_ADMIT_SUBJECTS` |
+| Sign-in returns to the login page with "expired" | The transaction cookie was lost — usually a `MICA_PUBLIC_URL` that does not match the browser's address | Make them identical |
+| 503, "identity provider could not be reached" | `MICA_OIDC_ISSUER` wrong, or discovery blocked | Check `<issuer>/.well-known/openid-configuration` from the container |
 | Refuses to start: "disables authentication" | `MICA_MODE=local` in production, or on a non-local host | Set `MICA_MODE=self-hosted` and configure OIDC |
 | Site build succeeds but content is stale | The host built an older commit | Check CI ran on the editorial commit |

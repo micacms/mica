@@ -7,10 +7,13 @@ import { after, before, describe, it } from "node:test";
 import { collection, defineSite, number, slug, text } from "@micacms/model";
 
 import {
-  ADMIN_EMAIL,
+  ADMITTED,
+  AUTHENTICATED_ENV,
   createHarness,
+  ISSUER,
   multipart,
   pngBytes,
+  REFUSED,
   TEST_ORIGIN,
   testSite,
   type Session,
@@ -39,7 +42,7 @@ describe("health", () => {
   });
 });
 
-describe("authentication", () => {
+describe("sessions, without an account to attach them to", () => {
   let harness: TestHarness;
   before(async () => {
     harness = await createHarness();
@@ -47,8 +50,8 @@ describe("authentication", () => {
   after(() => harness.close());
 
   it("issues an HttpOnly session cookie and a readable CSRF cookie", async () => {
-    // Local mode: /login signs the developer in and redirects, with no
-    // identity provider in the way.
+    // Local mode: /login starts the session and redirects, with no identity
+    // provider in the way and nobody to be.
     const response = await harness.request("/api/auth/login");
 
     assert.equal(response.status, 302);
@@ -63,13 +66,12 @@ describe("authentication", () => {
     assert.doesNotMatch(csrf, /HttpOnly/i);
   });
 
-  it("says how this deployment authenticates, without requiring a session", async () => {
+  it("says whether this deployment authenticates, without requiring a session", async () => {
     const response = await harness.request("/api/auth/config");
     assert.equal(response.status, 200);
 
     assert.deepEqual(await response.json(), {
-      mode: "local",
-      authDisabled: true,
+      authRequired: false,
       provider: null,
     });
   });
@@ -79,15 +81,18 @@ describe("authentication", () => {
     assert.equal(response.status, 401);
   });
 
-  it("returns the signed-in user from /me", async () => {
+  /**
+   * The shape of the answer is the decision: local mode has a session and no
+   * identity, which is not an anonymous user but the absence of the concept.
+   */
+  it("has a session and nobody in it", async () => {
     const session = await harness.signIn();
     const response = await harness.request("/api/auth/me", { session });
-    const body = (await response.json()) as { user: Record<string, unknown> };
+    const body = (await response.json()) as { identity: unknown; csrfToken: string };
 
-    assert.equal(body.user["email"], ADMIN_EMAIL);
-    assert.equal(body.user["role"], "admin");
-    // There is no such field any more, and there must never be one again.
-    assert.ok(!("passwordHash" in body.user));
+    assert.equal(response.status, 200);
+    assert.equal(body.identity, null);
+    assert.ok(body.csrfToken);
   });
 
   it("issues a different session token on each sign-in", async () => {
@@ -104,109 +109,129 @@ describe("authentication", () => {
     const after = await harness.request("/api/auth/me", { session });
     assert.equal(after.status, 401);
   });
-
-  /**
-   * The property that matters most in the new model: authentication and
-   * authorization are separate, and the second is re-read on every request.
-   */
-  it("refuses a valid session whose membership has been revoked", async () => {
-    const userId = harness.addMember({ email: "temporary@example.com", role: "editor" });
-    const session = await harness.signIn("temporary@example.com");
-
-    assert.equal((await harness.request("/api/auth/me", { session })).status, 200);
-
-    harness.ctx.repositories.memberships.revoke(harness.ctx.siteId, userId);
-
-    // Immediately, not when the cookie happens to expire.
-    const after = await harness.request("/api/auth/me", { session });
-    assert.equal(after.status, 403);
-  });
-
-  it("keeps administrator actions away from editors", async () => {
-    harness.addMember({ email: "editor@example.com", role: "editor" });
-    const session = await harness.signIn("editor@example.com");
-
-    // Content is open to editors...
-    assert.equal((await harness.request("/api/admin/schema", { session })).status, 200);
-
-    // ...managing people is not.
-    const forbidden = await harness.request("/api/admin/users", { session });
-    assert.equal(forbidden.status, 403);
-  });
 });
 
 /**
- * The local experience, which is the one almost everybody meets first: `npx
- * @micacms/editor`, a link, and the editor. No sign-in screen, because there is
- * no identity provider to send anybody to and therefore no question to ask.
+ * Admission — who may edit this site, now that no table says so.
+ *
+ * Authentication and authorization stay separate, and the second is
+ * configuration: these tests state the claims a provider would have returned
+ * and check what the rules do with them.
  */
-describe("opening the editor in local mode", () => {
-  /** A stand-in for the built SPA: `adminSpaRoutes` mounts on `index.html`. */
-  function fakeAdminBuild(): string {
-    const directory = mkdtempSync(join(tmpdir(), "mica-test-admin-"));
-    writeFileSync(join(directory, "index.html"), "<!doctype html><title>Mica</title>");
-    return directory;
-  }
+describe("admission", () => {
+  const authenticated = (rules: Partial<NodeJS.ProcessEnv>) =>
+    createHarness({ ...AUTHENTICATED_ENV, ...rules });
 
-  it("signs the developer in while serving the page", async () => {
-    const harness = await createHarness({}, { adminDir: fakeAdminBuild() });
+  it("admits a group the operator named, and refuses everybody else", async () => {
+    const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
 
-    const page = await harness.request("/admin/");
-    assert.equal(page.status, 200);
+    const admitted = await harness.signIn(ADMITTED);
+    assert.equal((await harness.request("/api/auth/me", { session: admitted })).status, 200);
 
-    const cookies = page.headers.getSetCookie();
-    const session = cookies.find((value) => value.startsWith("mica_session="));
-    assert.ok(session, "the page load is the sign-in");
+    const refused = await harness.signIn(REFUSED);
+    const response = await harness.request("/api/auth/me", { session: refused });
+    assert.equal(response.status, 403);
 
-    // And the session it issued is a real one: the SPA's first request
-    // succeeds, so it never renders a sign-in screen.
-    const me = await harness.request("/api/auth/me", {
-      headers: { cookie: session.split(";")[0]! },
+    await harness.close();
+  });
+
+  it("reports who is signed in, from the claims and not from a row", async () => {
+    const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
+    const session = await harness.signIn(ADMITTED);
+
+    const response = await harness.request("/api/auth/me", { session });
+    const body = (await response.json()) as {
+      identity: { email: string; name: string; subject: string };
+    };
+
+    assert.equal(body.identity.email, ADMITTED.email);
+    assert.equal(body.identity.subject, ADMITTED.subject);
+    // There is no role, because there are no roles.
+    assert.ok(!("role" in body.identity));
+
+    await harness.close();
+  });
+
+  it("accepts a Keycloak group path where a bare name was configured", async () => {
+    const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
+    const session = await harness.signIn({ ...ADMITTED, groups: ["/mica-editors"] });
+
+    assert.equal((await harness.request("/api/auth/me", { session })).status, 200);
+    await harness.close();
+  });
+
+  it("admits an explicit subject, keyed by issuer and never by email", async () => {
+    const harness = await authenticated({
+      MICA_ADMIT_SUBJECTS: `${ISSUER}|${ADMITTED.subject}`,
     });
 
-    assert.equal(me.status, 200);
-    const body = (await me.json()) as { user: { email: string; role: string } };
-    assert.equal(body.user.email, "developer@localhost");
-    assert.equal(body.user.role, "admin");
+    const session = await harness.signIn(ADMITTED);
+    assert.equal((await harness.request("/api/auth/me", { session })).status, 200);
+
+    // The same address at a different provider is a different person.
+    const impostor = await harness.signIn({
+      ...ADMITTED,
+      issuer: "https://id.attacker.test",
+      subject: ADMITTED.subject,
+    });
+    assert.equal((await harness.request("/api/auth/me", { session: impostor })).status, 403);
 
     await harness.close();
   });
 
-  it("issues one session, not one per page load", async () => {
-    const harness = await createHarness({}, { adminDir: fakeAdminBuild() });
+  it("admits a domain only when the provider says the address is verified", async () => {
+    const harness = await authenticated({ MICA_ADMIT_DOMAIN: "example.com" });
 
-    const first = await harness.request("/admin/");
-    const cookie = first.headers.getSetCookie()[0]!.split(";")[0]!;
+    const verified = await harness.signIn({ ...ADMITTED, groups: [] });
+    assert.equal((await harness.request("/api/auth/me", { session: verified })).status, 200);
 
-    const second = await harness.request("/admin/", { headers: { cookie } });
-    assert.deepEqual(second.headers.getSetCookie(), []);
-
-    await harness.close();
-  });
-
-  it("changes nothing about the API: no session is still no access", async () => {
-    const harness = await createHarness({}, { adminDir: fakeAdminBuild() });
-
-    const response = await harness.request("/api/admin/schema");
-    assert.equal(response.status, 401);
+    const unverified = await harness.signIn({
+      ...ADMITTED,
+      subject: "unverified",
+      emailVerified: false,
+      groups: [],
+    });
+    assert.equal((await harness.request("/api/auth/me", { session: unverified })).status, 403);
 
     await harness.close();
   });
 
-  it("does not happen where there is an identity provider to ask", async () => {
-    const harness = await createHarness(
-      {
-        MICA_MODE: "self-hosted",
-        OIDC_ISSUER: "https://id.example.com",
-        OIDC_CLIENT_ID: "mica",
-      },
-      { adminDir: fakeAdminBuild() },
-    );
+  /**
+   * The property the membership table used to give, kept: admission is re-read
+   * on every request rather than copied into the session at sign-in.
+   */
+  it("refuses a live session the moment the rules stop admitting it", async () => {
+    const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
+    const session = await harness.signIn(ADMITTED);
 
-    const page = await harness.request("/admin/");
-    assert.equal(page.status, 200);
-    assert.deepEqual(page.headers.getSetCookie(), []);
+    assert.equal((await harness.request("/api/auth/me", { session })).status, 200);
 
+    harness.ctx.services.admission = {
+      summary: "nobody",
+      admits: () => ({ admitted: false, reason: "removed" }),
+    };
+
+    assert.equal((await harness.request("/api/auth/me", { session })).status, 403);
+    await harness.close();
+  });
+
+  /** Everybody admitted is an editor: there is no second gate behind the first. */
+  it("gives every admitted person the whole editor", async () => {
+    const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
+    const session = await harness.signIn(ADMITTED);
+
+    for (const path of ["/api/admin/schema", "/api/admin/overview", "/api/admin/system"]) {
+      assert.equal((await harness.request(path, { session })).status, 200, path);
+    }
+
+    await harness.close();
+  });
+
+  it("refuses a session that carries no identity where one is required", async () => {
+    const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
+    const session = await harness.signIn(null);
+
+    assert.equal((await harness.request("/api/auth/me", { session })).status, 401);
     await harness.close();
   });
 });
@@ -446,7 +471,6 @@ describe("content", () => {
         }),
       },
     );
-    sorted.addMember({ email: ADMIN_EMAIL, role: "admin" });
     const sortedSession = await sorted.signIn();
 
     for (const [title, year] of [["Oldest", 2019], ["Newest", 2026], ["Middle", 2022]] as const) {
@@ -628,139 +652,6 @@ describe("media", () => {
   });
 });
 
-describe("site membership", () => {
-  let harness: TestHarness;
-
-  before(async () => {
-    harness = await createHarness();
-    harness.addMember({ email: "editor@example.com", role: "editor" });
-  });
-  after(() => harness.close());
-
-  it("lists the people who can edit this site", async () => {
-    const session = await harness.signIn();
-    const response = await harness.request("/api/admin/users", { session });
-    const body = (await response.json()) as { users: Array<Record<string, unknown>> };
-
-    assert.equal(response.status, 200);
-    assert.deepEqual(
-      body.users.map((user) => user["email"]).sort(),
-      [ADMIN_EMAIL, "editor@example.com"],
-    );
-    // Nothing resembling a credential, now or ever.
-    for (const user of body.users) {
-      assert.ok(!("passwordHash" in user));
-      assert.ok(!("mustChangePassword" in user));
-    }
-  });
-
-  /**
-   * Inviting somebody who has never signed in is the normal case, not an edge
-   * case: Mica does not create people, so an invitation is a membership
-   * waiting for its identity.
-   */
-  it("invites an address that has no account yet, and marks it pending", async () => {
-    // In a deployment that actually has a provider: "pending" means nobody has
-    // vouched for this address yet, and local mode has no provider to do so.
-    const hosted = await createHarness({
-      MICA_MODE: "self-hosted",
-      OIDC_ISSUER: "https://auth.example.com",
-      OIDC_CLIENT_ID: "mica",
-    });
-
-    try {
-      hosted.addMember({ email: ADMIN_EMAIL, role: "admin" });
-      const session = await hosted.signIn();
-
-      const response = await hosted.request("/api/admin/users", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: "new@example.com", name: "New", role: "editor" }),
-        session,
-      });
-
-      assert.equal(response.status, 201);
-      const body = (await response.json()) as { user: { pending: boolean; role: string } };
-
-      assert.equal(body.user.pending, true);
-      assert.equal(body.user.role, "editor");
-    } finally {
-      await hosted.close();
-    }
-  });
-
-  it("does not call anybody pending when there is no provider to wait for", async () => {
-    const session = await harness.signIn();
-    const response = await harness.request("/api/admin/users", { session });
-    const body = (await response.json()) as { users: Array<{ pending: boolean }> };
-
-    // Local mode: the distinction is meaningless, so it is not made.
-    assert.ok(body.users.every((user) => user.pending === false));
-  });
-
-  it("refuses to invite somebody who is already a member", async () => {
-    const session = await harness.signIn();
-    const response = await harness.request("/api/admin/users", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "editor@example.com", role: "editor" }),
-      session,
-    });
-
-    assert.equal(response.status, 409);
-  });
-
-  it("refuses to demote or remove the last administrator", async () => {
-    const session = await harness.signIn();
-    const admin = harness.ctx.repositories.users.findByEmail(ADMIN_EMAIL)!;
-
-    const demote = await harness.request(`/api/admin/users/${admin.id}`, {
-      method: "PATCH",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ role: "editor" }),
-      session,
-    });
-    assert.equal(demote.status, 409);
-
-    const remove = await harness.request(`/api/admin/users/${admin.id}`, {
-      method: "DELETE",
-      session,
-    });
-    assert.equal(remove.status, 409);
-  });
-
-  /**
-   * Removing access ends every session immediately. Waiting for a cookie to
-   * expire is not "removed".
-   */
-  it("signs somebody out everywhere the moment their access is removed", async () => {
-    const userId = harness.addMember({ email: "leaving@example.com", role: "editor" });
-    const theirs = await harness.signIn("leaving@example.com");
-    const admin = await harness.signIn();
-
-    assert.equal((await harness.request("/api/auth/me", { session: theirs })).status, 200);
-
-    const removed = await harness.request(`/api/admin/users/${userId}`, {
-      method: "DELETE",
-      session: admin,
-    });
-    assert.equal(removed.status, 200);
-
-    assert.equal((await harness.request("/api/auth/me", { session: theirs })).status, 401);
-  });
-
-  /** The account survives a removal; only the membership goes. */
-  it("keeps the account, because it may belong to another site", async () => {
-    const userId = harness.addMember({ email: "elsewhere@example.com", role: "editor" });
-    const session = await harness.signIn();
-
-    await harness.request(`/api/admin/users/${userId}`, { method: "DELETE", session });
-
-    assert.ok(harness.ctx.repositories.users.findById(userId));
-    assert.equal(harness.ctx.repositories.memberships.find(harness.ctx.siteId, userId), undefined);
-  });
-});
-
 describe("system information", () => {
   let harness: TestHarness;
   let session: Session;
@@ -777,15 +668,14 @@ describe("system information", () => {
 
     const body = (await response.json()) as {
       repository: { origin: string; entries: number; media: { files: number } };
-      database: { users: number; version: number };
+      database: { sessions: number; version: number };
     };
 
     // The shape is the point: content is in the repository, and the database
-    // holds users. Losing the second must not look like losing the first.
+    // holds sessions. Losing the second must not look like losing the first.
     assert.equal(body.repository.origin, harness.contentRoot);
     assert.equal(body.repository.entries, 0);
-    assert.equal(body.database.users, 1);
-    assert.ok(body.database.version >= 2, "the content tables must have been dropped");
+    assert.equal(body.database.sessions, 1);
   });
 
   it("counts entries by reading the repository", async () => {
@@ -814,13 +704,13 @@ describe("system information", () => {
     assert.ok(body.schema.relations.some((item) => item.from === "projects" && item.to === "team"));
   });
 
-  it("keeps deployment details to administrators", async () => {
-    harness.addMember({ email: "editor@example.com", role: "editor" });
-    const editor = await harness.signIn("editor@example.com");
+  it("says what decides who may edit here", async () => {
+    const response = await harness.request("/api/admin/system", { session });
+    const body = (await response.json()) as {
+      deployment: { site: string; admission: string; databasePath: string };
+    };
 
-    const response = await harness.request("/api/admin/system", { session: editor });
-    const body = (await response.json()) as { deployment: unknown };
-
-    assert.equal(body.deployment, null);
+    assert.equal(body.deployment.site, "default");
+    assert.match(body.deployment.admission, /local mode/);
   });
 });

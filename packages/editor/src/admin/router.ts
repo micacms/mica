@@ -1,6 +1,6 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
 
-import { useAuth } from "@/stores/auth";
+import { useSession } from "@/stores/session";
 import { useSchema } from "@/stores/schema";
 
 const routes: RouteRecordRaw[] = [
@@ -49,22 +49,10 @@ const routes: RouteRecordRaw[] = [
     meta: { title: "Media" },
   },
   {
-    path: "/users",
-    name: "users",
-    component: () => import("@/views/UsersView.vue"),
-    meta: { title: "People", adminOnly: true },
-  },
-  {
     path: "/system",
     name: "system",
     component: () => import("@/views/SystemView.vue"),
     meta: { title: "System" },
-  },
-  {
-    path: "/account",
-    name: "account",
-    component: () => import("@/views/AccountView.vue"),
-    meta: { title: "Your account" },
   },
   {
     path: "/:pathMatch(.*)*",
@@ -82,24 +70,20 @@ export const router = createRouter({
 });
 
 router.beforeEach(async (to) => {
-  const auth = useAuth();
+  const session = useSession();
 
-  if (!auth.checked.value) await auth.restore();
+  if (!session.checked.value) await session.restore();
 
   if (to.meta.public) {
-    // A signed-in user has no reason to see the sign-in form.
-    return auth.isAuthenticated.value ? { name: "dashboard" } : true;
+    // Nobody with a live session has a reason to see the sign-in screen.
+    return session.isActive.value ? { name: "dashboard" } : true;
   }
 
-  if (!auth.isAuthenticated.value) {
+  if (!session.isActive.value) {
     return { name: "login", query: to.fullPath === "/" ? {} : { redirect: to.fullPath } };
   }
 
-  if (to.meta.adminOnly && !auth.isAdmin.value) {
-    return { name: "dashboard" };
-  }
-
-  // Every authenticated view renders from the model, so it must be present.
+  // Every view renders from the model, so it must be present.
   await useSchema().load();
   return true;
 });

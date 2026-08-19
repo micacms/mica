@@ -20,6 +20,7 @@ on:
 permissions:
   contents: write # the GitHub release
   id-token: write # npm provenance
+  packages: write # the container image
 
 jobs:
   release:
@@ -101,12 +102,16 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md
 
-  # The image carries the same version. Separate job so a Docker Hub outage
-  # cannot un-publish npm, and skipped entirely until the credentials exist.
+  # The image carries the same version. Separate job so a registry outage cannot
+  # un-publish npm.
+  #
+  # It goes to this repository's own container registry, which needs no account
+  # and no secret: GITHUB_TOKEN is the credential. One manual step remains, once
+  # — the package is created private, and self-hosters cannot pull it until it
+  # is made public under Packages → mica → Package settings.
   image:
     runs-on: ubuntu-latest
     needs: release
-    if: vars.PUBLISH_IMAGE == 'true'
     timeout-minutes: 20
 
     steps:
@@ -114,13 +119,20 @@ jobs:
 
       - uses: docker/login-action@v3
         with:
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # Without the `v`: the tag is `v0.2.0`, the image is `:0.2.0`, and
+      # docker-compose.yml pins that number.
+      - name: The version, without the tag's `v`
+        id: version
+        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
       - uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: |
-            micacms/editor:${{ github.ref_name }}
-            micacms/editor:latest
+            ghcr.io/${{ github.repository }}:${{ steps.version.outputs.value }}
+            ghcr.io/${{ github.repository }}:latest
