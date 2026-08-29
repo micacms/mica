@@ -122,6 +122,16 @@ function contract(harness: Harness): void {
       assert.deepEqual(await connector.list("nowhere"), []);
     });
 
+    it("names the branch head, and null when the branch is not there", async () => {
+      const { connector } = harness.make();
+      assert.equal(await connector.head(), "head-sha");
+
+      const missing = harness.make([
+        { match: /GET .*(ref\/heads|branches)/, status: 404 },
+      ]);
+      assert.equal(await missing.connector.head(), null);
+    });
+
     it("writes a whole change set as one commit", async () => {
       const { connector, calls } = harness.make();
 
@@ -417,6 +427,10 @@ const gitlabRoutes: Route[] = [
   // the loop.
   { match: /repository\/tree\?.*recursive=true.*page=1/, json: GITLAB_TREE },
   { match: /repository\/tree\?.*recursive=true.*page=\d/, json: [] },
+  {
+    match: /GET \/api\/v4\/projects\/acme%2Fsite\/repository\/branches\/main/,
+    json: { commit: { id: "head-sha" } },
+  },
   { match: /POST \/api\/v4\/projects\/acme%2Fsite\/repository\/commits/, json: { id: "new-commit" } },
 ];
 

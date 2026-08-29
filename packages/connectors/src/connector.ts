@@ -85,6 +85,20 @@ export interface RepositoryConnector extends ContentSource {
   revision(path: string): Promise<string | null>;
 
   /**
+   * The current head of the configured branch, or null when the repository
+   * cannot name one.
+   *
+   * A draft records this when it begins, so the editor can show what the
+   * pending changes are based on. Display only: the publish gate stays per
+   * path (`expect`), because a branch head moves on every push, including
+   * pushes that touch nothing an editor cares about.
+   *
+   * Null for the local connector — a working tree has no commit identity of
+   * its own, and asking Git is the local publisher's job, not this one's.
+   */
+  head(): Promise<string | null>;
+
+  /**
    * Applies every change, or none of them.
    *
    * Atomicity is what makes publishing safe: an entry is an `index.json`, its

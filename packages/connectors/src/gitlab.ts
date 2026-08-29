@@ -159,6 +159,14 @@ export function gitlabConnector(options: GitLabConnectorOptions): RepositoryConn
 
     revision: blobId,
 
+    async head() {
+      const found = await http.json<{ commit: { id: string } }>(
+        `${projectBase}/repository/branches/${encodeURIComponent(branch)}`,
+        { optional: true },
+      );
+      return found?.commit.id ?? null;
+    },
+
     async commit(input: CommitInput): Promise<CommitResult> {
       if (input.changes.length === 0) {
         throw new ConnectorError("A commit needs at least one change.");
