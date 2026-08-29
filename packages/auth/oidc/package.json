@@ -1,0 +1,47 @@
+{
+  "name": "@micacms/auth-oidc",
+  "version": "0.1.1",
+  "type": "module",
+  "description": "The server-only OIDC gate for Mica: sign-in, sessions and admission around @micacms/runtime. Never enters a browser bundle, and never a dependency of the local editor.",
+  "license": "MIT",
+  "author": "Alexander Müdespacher",
+  "keywords": [
+    "mica",
+    "cms",
+    "oidc",
+    "authentication"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "test": "tsc -p tsconfig.json && node --test --import tsx test/*.test.ts"
+  },
+  "dependencies": {
+    "@micacms/core": "workspace:*",
+    "@micacms/runtime": "workspace:*",
+    "hono": "^4.6.20",
+    "openid-client": "^6.8.5",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

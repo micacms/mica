@@ -1,0 +1,45 @@
+{
+  "name": "@micacms/self-hosted",
+  "version": "0.1.1",
+  "type": "module",
+  "description": "The self-hosted Mica composition: the runtime and editor UI behind an external OIDC provider, with SQLite for sessions and the draft store. What the Docker image runs.",
+  "license": "MIT",
+  "author": "Alexander Müdespacher",
+  "keywords": [
+    "mica",
+    "cms",
+    "self-hosted",
+    "oidc"
+  ],
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "test": "tsc -p tsconfig.test.json && node --test --import tsx test/*.test.ts"
+  },
+  "dependencies": {
+    "@micacms/auth-oidc": "workspace:*",
+    "@micacms/connectors": "workspace:*",
+    "@micacms/core": "workspace:*",
+    "@micacms/editor-ui": "workspace:*",
+    "@micacms/runtime": "workspace:*",
+    "hono": "^4.6.20",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

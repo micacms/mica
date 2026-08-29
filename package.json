@@ -10,7 +10,7 @@
     "build": "pnpm -r build",
     "build:packages": "pnpm --filter \"./packages/**\" build",
     "clean": "rm -rf node_modules packages/*/node_modules packages/*/dist sites/*/node_modules sites/*/dist",
-    "dev": "pnpm build:packages && pnpm --filter @micacms/editor dev",
+    "dev": "pnpm build:packages && pnpm --parallel --filter @micacms/editor --filter @micacms/editor-ui dev",
     "dev:micacms-site": "pnpm --filter @micacms/site dev",
     "dev:site": "pnpm --filter @micacms/example-muster-consulting dev",
     "release:version": "node scripts/version.mjs",
