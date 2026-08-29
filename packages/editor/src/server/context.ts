@@ -5,9 +5,11 @@
  * singletons, no service locator. That is what lets a test build a complete
  * application against an in-memory database and a temporary content directory.
  *
- * Note what the database is now for: sessions. Content, media and their history
- * live in the repository, reached through a connector. Losing this database
- * signs everyone out, and nothing else.
+ * Note what the database is for: sessions, and — with a provider repository —
+ * the pending draft. Content, media and their history live in the repository,
+ * reached through a connector. Losing this database signs everyone out; where
+ * saves are staged in it, losing it also loses work that was saved and not
+ * yet published, which the self-hosted backup guidance says out loud.
  */
 
 import {
@@ -15,6 +17,7 @@ import {
   githubConnector,
   gitlabConnector,
   localConnector,
+  stagedConnector,
   type ContentStore,
   type RepositoryConnector,
 } from "@micacms/connectors";
@@ -24,11 +27,14 @@ import type { Config } from "./config.js";
 import { openDatabase, type SqlDatabase } from "./db/index.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
+import { createDraftRepository } from "./repositories/drafts.js";
 import { createSessionRepository } from "./repositories/sessions.js";
 import { createAdmissionPolicy, type AdmissionPolicy } from "./services/admission.js";
 import { createMediaService, type MediaService } from "./services/media.js";
 import { createOidcService, type OidcService } from "./services/oidc.js";
 import { createSessionService, type SessionService } from "./services/session.js";
+import { createDraftStagingService, type ContentStagingService } from "./services/staging.js";
+import { createWorkingTreeStagingService } from "./services/staging-local.js";
 
 /**
  * The site this process serves. One, explicitly.
@@ -48,7 +54,18 @@ export interface SiteContext {
   id: string;
   /** The content model, read from the repository at startup. */
   model: Site;
+  /**
+   * What everything reads and saves through. With a provider repository this
+   * is the staged overlay — saves land in the draft store, and only the
+   * staging service's Publish reaches the repository itself.
+   */
   contentRepository: RepositoryConnector;
+  /**
+   * Revision of `.mica/schema.json` when the model was loaded. The publish
+   * drift gate compares against it: content staged under one model must not
+   * be published under another — see decisions.md.
+   */
+  schemaRevision: string | null;
 }
 
 export const DEFAULT_SITE_ID = "default";
@@ -67,6 +84,7 @@ export interface AppContext {
     sessions: SessionService;
     oidc: OidcService;
     admission: AdmissionPolicy;
+    staging: ContentStagingService;
   };
   limiters: {
     login: RateLimiter;
@@ -84,6 +102,8 @@ export interface CreateContextOptions {
   connector?: RepositoryConnector;
   siteId?: string;
   logger?: Logger;
+  /** Revision of the manifest the model was read from. Null when unknown. */
+  schemaRevision?: string | null;
 }
 
 export function createContext(options: CreateContextOptions): AppContext {
@@ -98,10 +118,24 @@ export function createContext(options: CreateContextOptions): AppContext {
 
   const db = options.db ?? openDatabase(config.databasePath, { logger });
 
+  /**
+   * How saving relates to the repository — the Phase B fork in the road.
+   *
+   * A working tree *is* the draft workspace: autosave writes files the Astro
+   * dev server can hot-reload, and Publish is Git. A provider repository
+   * cannot work that way — writing through its API is already a commit — so
+   * saves are staged in the database and read back through an overlay, and
+   * only the staging service's Publish touches the repository itself.
+   */
+  const repository = options.connector ?? createConnector(config);
+  const schemaRevision = options.schemaRevision ?? null;
+  const drafts = config.REPOSITORY === "local" ? null : createDraftRepository(db);
+
   const site: SiteContext = {
     id: options.siteId ?? DEFAULT_SITE_ID,
     model,
-    contentRepository: options.connector ?? createConnector(config),
+    contentRepository: drafts ? stagedConnector(repository, drafts) : repository,
+    schemaRevision,
   };
 
   const repositories = {
@@ -117,6 +151,22 @@ export function createContext(options: CreateContextOptions): AppContext {
     sessions: createSessionService(repositories.sessions, config),
     oidc: createOidcService({ config, logger }),
     admission: createAdmissionPolicy(config),
+    staging: drafts
+      ? createDraftStagingService({
+          model,
+          drafts,
+          repository,
+          overlay: site.contentRepository,
+          schemaRevision,
+        })
+      : createWorkingTreeStagingService({
+          model,
+          connector: site.contentRepository,
+          contentRoot: config.contentRoot,
+          schemaRevision,
+          publishEnabled: config.MICA_LOCAL_PUBLISH,
+          logger,
+        }),
   };
 
   const limiters = {

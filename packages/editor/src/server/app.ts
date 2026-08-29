@@ -36,6 +36,7 @@ import {
 import { adminContentRoutes } from "./routes/admin-content.js";
 import { adminMediaRoutes } from "./routes/admin-media.js";
 import { adminSpaRoutes, adminAssetsExist, defaultAdminDir } from "./routes/admin-spa.js";
+import { adminStagingRoutes } from "./routes/admin-staging.js";
 import { adminSystemRoutes } from "./routes/admin-system.js";
 import { authRoutes } from "./routes/auth.js";
 import { healthRoutes } from "./routes/health.js";
@@ -90,6 +91,7 @@ export function createApp(ctx: AppContext, options: CreateAppOptions = {}): Hono
 
   app.route("/api/admin", adminSystemRoutes());
   app.route("/api/admin", adminContentRoutes());
+  app.route("/api/admin", adminStagingRoutes());
   app.route("/api/admin/media", adminMediaRoutes());
 
   app.all("/api/*", (c) =>
