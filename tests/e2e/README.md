@@ -121,8 +121,8 @@ It is also why both ports are published on the `keycloak` service.
 `NODE_ENV=production` — correctly, since an ID token over http is one anybody
 on the path can read. Giving Keycloak a certificate is more machinery than a
 local rig deserves, so the rig relaxes that one flag. What is under test is
-`MICA_MODE=self-hosted`: a real provider, a real redirect, and a real admission
-check against a real group claim.
+the self-hosted composition: a real provider, a real redirect, and a real
+admission check against a real group claim.
 
 ---
 
