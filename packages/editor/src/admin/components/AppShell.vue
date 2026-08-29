@@ -13,7 +13,7 @@
  * the editor, and moves there when the packages split.
  */
 
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   Files,
@@ -21,22 +21,35 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Send,
   Settings,
   SlidersHorizontal,
 } from "@lucide/vue";
 
 import { useSchema } from "@/stores/schema";
 import { useSession } from "@/stores/session";
+import { useStaging } from "@/stores/staging";
 
 const route = useRoute();
 const router = useRouter();
 const session = useSession();
+const staging = useStaging();
 const { collections, singletons } = useSchema();
 
 const menuOpen = ref(false);
 
-// On a phone the sidebar is an overlay; navigating must dismiss it.
-watch(() => route.fullPath, () => (menuOpen.value = false));
+// On a phone the sidebar is an overlay; navigating must dismiss it. The badge
+// refreshes on the same signal: navigation is when an editor looks at the
+// sidebar again, and one small request per page keeps it honest enough.
+watch(
+  () => route.fullPath,
+  () => {
+    menuOpen.value = false;
+    void staging.refresh();
+  },
+);
+
+onMounted(() => void staging.refresh());
 
 const initials = computed(() => {
   const source = session.identity.value?.name || session.identity.value?.email || "";
@@ -82,6 +95,17 @@ async function signOut(): Promise<void> {
           <RouterLink :to="{ name: 'dashboard' }" class="nav-link">
             <LayoutDashboard :size="14" aria-hidden="true" />
             Overview
+          </RouterLink>
+          <RouterLink :to="{ name: 'changes' }" class="nav-link">
+            <Send :size="14" aria-hidden="true" />
+            <span class="flex-1">Publish</span>
+            <span
+              v-if="staging.pendingCount.value > 0"
+              class="rounded-full bg-accent px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none text-white"
+              :aria-label="`${staging.pendingCount.value} pending change${staging.pendingCount.value === 1 ? '' : 's'}`"
+            >
+              {{ staging.pendingCount.value }}
+            </span>
           </RouterLink>
         </div>
 

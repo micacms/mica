@@ -1,0 +1,44 @@
+/**
+ * The pending change set, shared between the sidebar badge, the dashboard and
+ * the Publish view.
+ *
+ * One module-level state, like the schema store: everybody who asks sees the
+ * same answer, and a refresh after a save updates the badge without the shell
+ * polling anything.
+ */
+
+import { computed, ref } from "vue";
+
+import { api, type StagingStatus } from "@/api";
+
+const status = ref<StagingStatus | null>(null);
+let inFlight: Promise<void> | null = null;
+
+export function useStaging() {
+  return {
+    status: computed(() => status.value),
+    pendingCount: computed(() => status.value?.changes.length ?? 0),
+
+    /** Concurrent callers share one request; failures leave the last answer. */
+    async refresh(): Promise<void> {
+      inFlight ??= api.staging
+        .changes()
+        .then((result) => {
+          status.value = result;
+        })
+        .catch(() => {
+          // The badge is a convenience. A failed refresh must not toast on
+          // every navigation; the Publish view reports its own errors.
+        })
+        .finally(() => {
+          inFlight = null;
+        });
+      return inFlight;
+    },
+
+    reset(): void {
+      status.value = null;
+      inFlight = null;
+    },
+  };
+}
