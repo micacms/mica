@@ -8,15 +8,15 @@ depends on a cloud service.
    editor
      │
      ▼
-┌──────────┐   commits    ┌────────────────────┐
+┌──────────┐   publishes  ┌────────────────────┐
 │   Mica   │ ───────────▶ │ content repository │
-│  1 GB    │              │  github / gitlab   │
+│  1 GB    │  one commit  │  github / gitlab   │
 │  RAM     │              └─────────┬──────────┘
 └────┬─────┘                        │ push
      │                              ▼
   cms.sqlite                   ┌─────────┐
-  sessions                     │   CI    │  astro build
-                               └────┬────┘
+  sessions +                   │   CI    │  astro build
+  pending draft                └────┬────┘
                                     ▼
                               static files → any static host
 ```
@@ -89,9 +89,12 @@ REPOSITORY_ROOT=content
 REPOSITORY_BRANCH=main
 ```
 
-Both connectors write **one commit per save**, whatever the save touched — an
+Saving and publishing are two different things. A save lands in Mica's draft
+workspace — durable, but not in Git. An editor's explicit **Publish** writes
+the whole accumulated change set as **one commit**, whatever it touched — an
 `index.json`, its rich-text sidecars and its images — so the repository never
-holds half an entry.
+holds half an entry, and the history reads as publications rather than
+keystrokes.
 
 `REPOSITORY_ROOT` is a real boundary: Mica reads and writes only below it. A
 token with write access to the whole repository still cannot be used *through
@@ -275,8 +278,9 @@ jobs:
       # …then upload dist/ wherever you like.
 ```
 
-An editor pressing Save produces a commit, which triggers this. There is
-nothing to wire up on Mica's side.
+An editor pressing Publish produces a commit, which triggers this. There is
+nothing to wire up on Mica's side — and autosaves trigger nothing, which is
+the point of separating the two.
 
 If your host builds from the repository itself — Vercel, Netlify, Cloudflare
 Pages — you do not need the workflow at all. An editorial commit is just a
@@ -288,8 +292,9 @@ often than developers. If you have expensive jobs on `main`, filter them with
 
 **Editing on a branch.** `REPOSITORY_BRANCH` can be any branch. Point a second
 Mica at `REPOSITORY_BRANCH=staging` and editors have a staging site, reviewed
-and merged like any other change. That is how Mica does staging, and why it has
-no draft/published states.
+and merged like any other change. That is how Mica does *release-level*
+staging — a step above the built-in draft workspace, which only separates
+Saved from Published and has no approval or review of its own.
 
 ## Changing the content model
 
@@ -304,6 +309,11 @@ The image holds no model — only the field types that interpret one — so it
 never needs rebuilding for a content or model change. Deploy the matching
 website build at the same time: adding a required field makes existing entries
 invalid until they are edited, and the website build is where you find out.
+
+A model change while editors have a **pending draft** is refused at Publish:
+the draft was validated against the model the server started with, and Mica
+will not publish across the difference. The message says so; restart, review
+the pending changes against the new model, and publish then.
 
 ## Upgrading
 
@@ -336,10 +346,11 @@ everybody already working.
 
 ## Backups
 
-**Your content repository is the backup, and Git is already keeping it.** Every
-save is a commit, so the history is complete by construction rather than by
-schedule, and any clone is a full copy. If it is on github.com or gitlab.com it
-is already off-site and replicated; if you want a copy of your own, mirror it:
+**Your published content is in the repository, and Git is already keeping
+it.** Every publication is a commit, so the history is complete by
+construction rather than by schedule, and any clone is a full copy. If it is
+on github.com or gitlab.com it is already off-site and replicated; if you want
+a copy of your own, mirror it:
 
 ```bash
 git clone --mirror git@github.com:acme/website.git
@@ -349,15 +360,15 @@ git --git-dir=website.git remote update --prune      # on a schedule
 Restoring is a clone. There is nothing to import and no schema to match, and no
 version of Mica has to be running for the files to be readable.
 
-`cms.sqlite` holds browser sessions — no accounts, no content, no credentials.
-Backing it up is close to pointless: losing the volume signs three editors out,
-and they sign in again. If you do want a copy, take it with SQLite's own
-`.backup` (a plain `cp` is unsafe: WAL mode keeps recent writes in
-`cms.sqlite-wal`).
-
-There is no `mica backup` command, because shipping one would imply that a Mica
-backup protects your content — and it is not what you would reach for if you
-ever needed it.
+**`cms.sqlite` now holds unpublished work, and that changes what losing it
+costs.** It carries browser sessions *and the pending draft* — everything that
+is Saved and not yet Published, media uploads included. Git is not protecting
+that yet; only publication moves it into the repository. Losing the volume
+therefore signs editors out *and* loses whatever was saved but never
+published. Back up the data volume on a schedule, and take the copy with
+SQLite's own `.backup` (a plain `cp` is unsafe: WAL mode keeps recent writes
+in `cms.sqlite-wal`). Encourage editors to publish rather than to hoard a
+large pending set — the draft workspace is a staging area, not an archive.
 
 ## Self-managed Git providers
 
@@ -383,8 +394,10 @@ That path is not covered by tests against a real instance yet. Other providers
 | Exits with "Could not read the content model" | The repository is unreachable — bad token, wrong project, provider down | Check the token's scope and `REPOSITORY_PROJECT` |
 | Health 503, `repository: unavailable` | Token expired, revoked, or wrong scope | Reissue with contents write / `write_repository` |
 | Admin loads with the wrong collections | The model in the repository is stale | Rebuild the project, commit, `docker compose restart mica` |
-| Saving returns 409 | Someone else changed that entry, or a push landed mid-save | Reload; the editor's work is still in the form |
+| Saving returns 409 | Someone else changed that entry in the shared draft | Reload; the editor's work is still in the form |
 | Saving returns 422 | The entry does not satisfy the model | The response names the fields |
+| Publishing returns 409 | A push landed on a staged path, or the content model changed since startup | The message says which; refresh and review, or restart after a model change |
+| Publishing returns 422 | Something in the pending set no longer validates | The response names the entries and fields |
 | Editors signed out after a restart | `SESSION_SECRET` unset, so an ephemeral one was generated | Set it |
 | "No access to this site" after signing in | Authenticated, but not admitted | Check the group claim actually arrives — `LOG_LEVEL=debug` names the reason — or add the subject to `MICA_ADMIT_SUBJECTS` |
 | Refuses to start: "nothing says who may edit this site" | No admission rule | Set `MICA_ADMIT_GROUP`, `MICA_ADMIT_DOMAIN` or `MICA_ADMIT_SUBJECTS` |
