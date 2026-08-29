@@ -1,6 +1,6 @@
 # A complete Mica, end to end, on your machine.
 #
-#   docker compose -f e2e/compose.yml up --build
+#   docker compose -f tests/e2e/compose.yml up --build
 #
 # Then open http://localhost:6422/admin/ and sign in as alice / alice.
 #
@@ -65,7 +65,7 @@ services:
   # ---------------------------------------------------------------- mica
   mica:
     build:
-      context: ..
+      context: ../..
       dockerfile: Dockerfile
     depends_on:
       keycloak:
@@ -112,7 +112,7 @@ services:
       # The example project's content, mounted read-write, so `git diff` on the
       # host shows exactly what an editor changed. The content model comes from
       # `.mica/schema.json` inside it — there is nothing else to mount.
-      - ../sites/muster-consulting/content:/content
+      - ../../examples/muster-consulting/content:/content
       - mica-data:/data
 
 volumes:

@@ -437,9 +437,9 @@ Explicitly not built.
 - **P2** — No end-to-end browser test of the admin. The API has good coverage
   and the Vue app typechecks, but no test drives a real browser through "sign
   in, edit, publish". The one place a regression could reach production unseen.
-- **P2** — The OIDC round trip is verified by hand, not by CI. `e2e/compose.yml`
+- **P2** — The OIDC round trip is verified by hand, not by CI. `tests/e2e/compose.yml`
   runs Mica against a real Keycloak with a real group claim, and
-  `demo/compose.yml` against a real ZITADEL with a subject list. Nothing re-runs
+  `deploy/demo-identity/compose.yml` against a real ZITADEL with a subject list. Nothing re-runs
   them automatically, so a regression would not be caught until somebody tried.
   This stops being optional: once local mode carries no auth code at all, the
   OIDC path has no second user exercising it by accident — and admission now
@@ -452,7 +452,7 @@ Explicitly not built.
   somebody shares a helper between the two apps.
 - **P2** — The provider connectors are tested against a stub, not against a real
   repository. The request shapes are asserted; the providers' agreement with
-  their own documentation is not. `demo/compose.yml` is the manual run —
+  their own documentation is not. `deploy/demo-identity/compose.yml` is the manual run —
   point it at a scratch repository on github.com or gitlab.com — but nothing
   automates it. `REPOSITORY_API_BASE` against GitHub Enterprise Server or a
   self-managed GitLab has had neither.
