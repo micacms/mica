@@ -12,6 +12,7 @@
  *   serialize/parse      how it is written there and read back
  *   protocol             how a project describes itself to Mica
  *   source/read          how a content directory is discovered and loaded
+ *   staging              what sits between saved and published
  *
  * `fileSystemSource` is not here. It is in `@micacms/model/node`, because this
  * entry point is bundled into the editor and must stay free of `node:` imports.
@@ -29,3 +30,4 @@ export * from "./parse.js";
 export * from "./protocol.js";
 export * from "./source.js";
 export * from "./read.js";
+export * from "./staging.js";
