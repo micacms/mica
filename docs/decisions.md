@@ -77,41 +77,33 @@ code, which is what this was avoiding.
 
 **Built in Phase A.** The `developer@localhost` row and its membership are gone
 with the tables that held them, and so are the account and People screens. What
-local mode keeps is a session carrying the CSRF token — no identity, no name,
-and no chrome to draw one with. `startLocalSession` in
-[`session.ts`](../packages/editor/src/server/services/session.ts) is the whole
-of it.
+local mode kept at that point was a session carrying the CSRF token — no
+identity, no name, and no chrome to draw one with; `startLocalSession` was the
+whole of it, until Phase C removed the session entirely (below).
 
 The loopback rule is now enforced rather than promised: local mode defaults
 `HOST` to `127.0.0.1` and refuses any other address, alongside the existing
 refusals on `NODE_ENV=production` and a non-local `MICA_PUBLIC_URL`.
 
-**v3 — pending (Phase C).** Two things are still true that this entry says
-should not be.
+**Built in Phase C.** The mode is now which app you run. `apps/local-editor`
+(published as `@micacms/editor`) composes the runtime with `allowAll()` and
+the local connector; its dependency graph has no path to `openid-client`,
+`jose` or `@micacms/auth-oidc`, and `test/boundary.test.ts` walks the graph,
+greps the built UI bundle and exercises the running composition to keep every
+sentence above true.
 
-Local mode is still `MICA_MODE=local` inside one process. In Phase C it becomes
-a separate package — the mode is which app you run — with a CI check proving the
-bundle contains no auth route, token code or profile store.
-
-And local mode still starts a **session**. Nobody is in it, but it is a row in a
-`sessions` table in a `cms.sqlite` file on a developer's machine, and it exists
-to carry one CSRF token. Phase A could not remove it without designing the
-replacement; Phase C removes the session, the token and the database together —
-see [`v3-plan.md`](v3-plan.md) C4.
-
-The token was never the defence. The Origin check refuses a cross-origin write
-with no cookie involved, and a double-submit token is a second layer over a
-first one that already stopped the attack. What the cookie *was* quietly also
-doing is blocking a DNS-rebinding **read** — a page that re-resolves its own
-name to `127.0.0.1` is treated as same-origin, and only a cookie scoped to
-`localhost` keeps it out. That is replaced by a Host allowlist, not by keeping
-the token: the local app answers to `localhost`, `127.0.0.1` and `[::1]` and
-refuses any other `Host`.
+The local session, its CSRF token and the database went together, as planned.
+The token was never the defence: the Origin check refuses a cross-origin write
+with no cookie involved. What the cookie *was* quietly also doing — blocking a
+DNS-rebinding read, because a rebound name never received a cookie scoped to
+`localhost` — is now a **Host allowlist**: the local app answers to
+`localhost`, `127.0.0.1` and `[::1]` and refuses any other `Host`, in front of
+everything including `/health`.
 
 **Accepted with it:** a request without a cookie stops being a 401, so any
-process on the developer's own machine can call the local API. A process on that
-machine can already edit the working tree directly, which is where the content
-is.
+process on the developer's own machine can call the local API. A process on
+that machine can already edit the working tree directly, which is where the
+content is.
 
 ---
 
@@ -149,10 +141,9 @@ admitted subjects that an operator can empty instantly.
 dismissal, or a compromised account.
 
 **Built in Phase A.**
-[`admission.ts`](../packages/editor/src/server/services/admission.ts) holds the
-rules; `requireAccess` in
-[`middleware/index.ts`](../packages/editor/src/server/middleware/index.ts)
-applies them per request. The membership row it replaced was immediate for both
+[`admission.ts`](../packages/auth/oidc/src/admission.ts) holds the rules;
+`requireAccess` in [`gate.ts`](../packages/auth/oidc/src/gate.ts) applies them
+per request (both live in `@micacms/auth-oidc` since Phase C). The membership row it replaced was immediate for both
 halves, and that is the behaviour this entry gives up.
 
 Two details the implementation had to settle. The domain rule requires the
@@ -495,7 +486,7 @@ knowing the reasoning stops someone reintroducing the problem.
   is not a trigger either: the successful remote branch update is, which is the
   point of separating the two.
 - **Rich text is Markdoc, never HTML.** The editor converts at the boundary and
-  must never call Tiptap's `getHTML()` — see `packages/editor/src/admin/lib/markdoc.ts`.
+  must never call Tiptap's `getHTML()` — see `packages/editor-ui/src/lib/markdoc.ts`.
 - **Git is the history.** No revision table, no retention policy, nothing to
   prune. The draft store is not a second history and must never become one: it
   holds exactly the current pending change set, and a successful publication
