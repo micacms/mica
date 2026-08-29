@@ -16,6 +16,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          # `changeset status` compares against main, which needs the history
+          # to be in the checkout.
+          fetch-depth: 0
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -23,6 +27,12 @@ jobs:
           cache: pnpm
 
       - run: pnpm install --frozen-lockfile
+
+      # A change to a published package must carry a changeset — the file that
+      # will become its release notes. A refactor that should not be in the
+      # notes still carries one, created empty with `pnpm changeset --empty`.
+      - name: Check for a changeset
+        run: pnpm changeset status --since origin/main
 
       - name: Build packages
         run: pnpm --filter "./packages/**" build

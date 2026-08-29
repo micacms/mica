@@ -557,6 +557,27 @@ lockstep version. Mark `examples/`, `deploy/` and `tests/` private. Add
 `changeset status` to CI. Retire [`scripts/version.mjs`](../scripts/version.mjs)
 only when the release path is proven end to end.
 
+> **Done.** One `fixed` group holds all nine published packages (the eight of
+> §4 plus the `@micacms/model` shim, which carries the lockstep version while
+> it exists); `privatePackages: { version: false, tag: false }` keeps the two
+> private sites out of versioning, so nothing needed a new `private` marker —
+> `examples/muster-consulting` already had one, and `deploy/` and `tests/`
+> contain no manifests to mark. CI's verify job runs
+> `changeset status --since origin/main` (its checkout now fetches history),
+> so a pull request that changes a published package without a changeset
+> fails; `pnpm changeset --empty` is the escape for changes that should not
+> reach the notes.
+>
+> `scripts/version.mjs` is **not** retired, per the plan — and the two tools
+> are bridged instead of coexisting blindly: Changesets knows nothing of the
+> root manifest or the image tag in `deploy/self-hosted/compose.yml`, so
+> `pnpm changeset:version` runs `changeset version` and then
+> `version.mjs --sync`, which carries the version Changesets chose to both.
+> A dry-run in a scratch worktree confirmed one `0.2.0` across all eleven
+> version-bearing files. Release publishing still runs through the existing
+> tag-triggered workflow; `changeset publish` can replace it once the path is
+> proven.
+
 **Exit criteria**
 
 - micacms.com still deploys from Vercel.
