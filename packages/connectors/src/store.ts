@@ -43,9 +43,11 @@ import {
   type FieldMap,
   type Singleton,
   type Site,
-} from "@micacms/model";
-
-import { ConnectorError, type Author, type Change, type RepositoryConnector } from "./connector.js";
+  ConnectorError,
+  type Author,
+  type Change,
+  type RepositoryConnector,
+} from "@micacms/core";
 
 export class ContentError extends ConnectorError {
   override name = "ContentError";

@@ -17,9 +17,9 @@ importers:
       '@markdoc/markdoc':
         specifier: ^0.5.9
         version: 0.5.9
-      '@micacms/model':
+      '@micacms/core':
         specifier: workspace:*
-        version: link:../model
+        version: link:../core
       zod:
         specifier: ^4.3.6
         version: 4.4.3
@@ -36,9 +36,22 @@ importers:
 
   packages/connectors:
     dependencies:
-      '@micacms/model':
+      '@micacms/core':
         specifier: workspace:*
-        version: link:../model
+        version: link:../core
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
+  packages/core:
+    dependencies:
+      zod:
+        specifier: ^4.3.6
+        version: 4.4.3
     devDependencies:
       '@types/node':
         specifier: ^22.20.1
@@ -58,9 +71,9 @@ importers:
       '@micacms/connectors':
         specifier: workspace:*
         version: link:../connectors
-      '@micacms/model':
+      '@micacms/core':
         specifier: workspace:*
-        version: link:../model
+        version: link:../core
       hono:
         specifier: ^4.6.20
         version: 4.13.1
@@ -125,9 +138,9 @@ importers:
 
   packages/model:
     dependencies:
-      zod:
-        specifier: ^4.3.6
-        version: 4.4.3
+      '@micacms/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@types/node':
         specifier: ^22.20.1
@@ -144,9 +157,9 @@ importers:
       '@micacms/astro':
         specifier: workspace:*
         version: link:../../packages/astro
-      '@micacms/model':
+      '@micacms/core':
         specifier: workspace:*
-        version: link:../../packages/model
+        version: link:../../packages/core
       astro:
         specifier: ^7.2.2
         version: 7.2.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@22.20.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)
@@ -172,9 +185,9 @@ importers:
       '@micacms/astro':
         specifier: workspace:*
         version: link:../../packages/astro
-      '@micacms/model':
+      '@micacms/core':
         specifier: workspace:*
-        version: link:../../packages/model
+        version: link:../../packages/core
       astro:
         specifier: ^7.2.2
         version: 7.2.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@22.20.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)

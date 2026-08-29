@@ -35,7 +35,7 @@
     "@hono/node-server": "^1.13.8",
     "@markdoc/markdoc": "^0.5.9",
     "@micacms/connectors": "workspace:*",
-    "@micacms/model": "workspace:*",
+    "@micacms/core": "workspace:*",
     "hono": "^4.6.20",
     "image-size": "^1.2.0",
     "openid-client": "^6.8.5",

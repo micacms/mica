@@ -3,7 +3,7 @@
 
 import { computed } from "vue";
 
-import type { EmailField, TextField, UrlField } from "@micacms/model";
+import type { EmailField, TextField, UrlField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
 import { useField, type FieldProps } from "@/composables/useField";

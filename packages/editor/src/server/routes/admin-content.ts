@@ -18,7 +18,7 @@
  */
 
 import { ConflictError, ValidationError } from "@micacms/connectors";
-import { collectionEntryPath, compareEntries, entryTitle, singletonPath } from "@micacms/model";
+import { collectionEntryPath, compareEntries, entryTitle, singletonPath } from "@micacms/core";
 import { Hono } from "hono";
 import { z } from "zod";
 

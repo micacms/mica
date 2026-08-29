@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { beforeEach, afterEach, describe, it } from "node:test";
 
-import { memoryDraftStore, type DraftStore } from "@micacms/model";
+import { memoryDraftStore, type DraftStore } from "@micacms/core";
 
 import {
   ConflictError,

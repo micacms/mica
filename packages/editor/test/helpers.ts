@@ -15,7 +15,7 @@ import { deflateSync } from "node:zlib";
 
 import { localConnector } from "@micacms/connectors";
 
-import { collection, defineSite, media, number, relation, richText, select, singleton, slug, text, type Site } from "@micacms/model";
+import { collection, defineSite, media, number, relation, richText, select, singleton, slug, text, type Site } from "@micacms/core";
 
 import { createApp } from "../src/server/app.js";
 import { loadConfig, type Config } from "../src/server/config.js";

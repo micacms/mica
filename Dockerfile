@@ -5,7 +5,7 @@
 # This image is the CMS alone.
 #
 # Nor is any content model baked in. The image knows the *field types* — it
-# carries `@micacms/model` for validation — but it knows no collections until it
+# carries `@micacms/core` for validation — but it knows no collections until it
 # reads the model out of the content repository, at `.mica/schema.json`. That is
 # what makes one published image serve any project instead of one image per
 # customer, and why a content change never needs a rebuild.
@@ -22,32 +22,32 @@ ENV CI=true
 
 # Only the manifests, so a dependency install is cached until they change.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
-COPY packages/model/package.json packages/model/
+COPY packages/core/package.json packages/core/
 COPY packages/connectors/package.json packages/connectors/
 COPY packages/editor/package.json packages/editor/
 
 RUN pnpm install --frozen-lockfile \
       --filter @micacms/editor... \
-      --filter @micacms/model... \
+      --filter @micacms/core... \
       --filter @micacms/connectors...
 
 # ---------------------------------------------------------------- build
 FROM deps AS build
 
 COPY tsconfig.base.json ./
-COPY packages/model packages/model
+COPY packages/core packages/core
 COPY packages/connectors packages/connectors
 COPY packages/editor packages/editor
 
-# In dependency order: connectors imports model, the CMS imports both.
-RUN pnpm --filter @micacms/model build \
+# In dependency order: connectors imports core, the CMS imports both.
+RUN pnpm --filter @micacms/core build \
  && pnpm --filter @micacms/connectors build \
  && pnpm --filter @micacms/editor build
 
 # Re-resolve with dev dependencies pruned.
 RUN pnpm install --frozen-lockfile --prod \
       --filter @micacms/editor... \
-      --filter @micacms/model... \
+      --filter @micacms/core... \
       --filter @micacms/connectors...
 
 # ---------------------------------------------------------------- runtime
@@ -71,11 +71,11 @@ RUN mkdir -p /data && chown -R node:node /data
 # pnpm keeps the real packages in the root `.pnpm` store and gives each
 # workspace package a directory of relative symlinks into it. Every one of those
 # directories has to come across, or a dependency resolves to nothing at
-# runtime — `packages/model/node_modules` is where zod lives.
+# runtime — `packages/core/node_modules` is where zod lives.
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
-COPY --from=build --chown=node:node /app/packages/model/node_modules ./packages/model/node_modules
-COPY --from=build --chown=node:node /app/packages/model/dist ./packages/model/dist
-COPY --from=build --chown=node:node /app/packages/model/package.json ./packages/model/
+COPY --from=build --chown=node:node /app/packages/core/node_modules ./packages/core/node_modules
+COPY --from=build --chown=node:node /app/packages/core/dist ./packages/core/dist
+COPY --from=build --chown=node:node /app/packages/core/package.json ./packages/core/
 COPY --from=build --chown=node:node /app/packages/connectors/node_modules ./packages/connectors/node_modules
 COPY --from=build --chown=node:node /app/packages/connectors/dist ./packages/connectors/dist
 COPY --from=build --chown=node:node /app/packages/connectors/package.json ./packages/connectors/

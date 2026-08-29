@@ -16,7 +16,7 @@ import { join } from "node:path";
 import { after, describe, it } from "node:test";
 
 import { localConnector } from "@micacms/connectors";
-import { collection, defineSite, slug, text } from "@micacms/model";
+import { collection, defineSite, slug, text } from "@micacms/core";
 
 import { ApiError } from "../src/server/lib/errors.js";
 import { createLogger } from "../src/server/lib/logger.js";

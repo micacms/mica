@@ -16,7 +16,7 @@ a group. Zod is generated from the DSL, never the reverse.
 
 ```ts
 // src/mica.ts
-import { collection, defineSite, singleton, slug, text } from "@micacms/model";
+import { collection, defineSite, singleton, slug, text } from "@micacms/core";
 
 export const site = defineSite({
   root: "./content",
