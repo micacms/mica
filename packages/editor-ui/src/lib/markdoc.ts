@@ -156,6 +156,22 @@ export function toMarkdoc(doc: ProseMirrorNode | null | undefined): string {
   return text === "" ? "" : `${text}\n`;
 }
 
+/**
+ * Whether two Markdoc sources describe the same stored document.
+ *
+ * The two sides of the form serialize differently around the edges — this file
+ * emits a trailing newline, the server returns the body without one — and no
+ * whitespace at either end survives a parse. Equivalence rather than equality
+ * is what "did the editor change anything" means, and both directions of the
+ * rich text field's sync use this same answer.
+ */
+export function equivalentMarkdoc(
+  a: string | null | undefined,
+  b: string | null | undefined,
+): boolean {
+  return (a ?? "").trim() === (b ?? "").trim();
+}
+
 /* ------------------------------------------------------------------ *
  * Markdoc  ->  Tiptap
  * ------------------------------------------------------------------ */
