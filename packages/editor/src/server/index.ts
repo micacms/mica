@@ -3,6 +3,7 @@
  */
 
 import { serve } from "@hono/node-server";
+import { MANIFEST_PATH } from "@micacms/model";
 
 import { createApp } from "./app.js";
 import { ConfigError, loadConfig } from "./config.js";
@@ -50,7 +51,12 @@ async function main(): Promise<void> {
     throw error;
   }
 
-  const ctx = createContext({ config, model, db, connector, logger });
+  // The manifest's revision at the moment the model was read. The publish
+  // drift gate compares against it, so a model that moves under a pending
+  // draft is a named refusal rather than a corrupted publication.
+  const schemaRevision = await connector.revision(MANIFEST_PATH);
+
+  const ctx = createContext({ config, model, db, connector, logger, schemaRevision });
 
   const devSecrets = (config as { devSecrets?: string[] }).devSecrets ?? [];
   // Not said under the CLI: there, the database is a cache directory that gets

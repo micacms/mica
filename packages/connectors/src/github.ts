@@ -207,6 +207,14 @@ export function githubConnector(options: GitHubConnectorOptions): RepositoryConn
       return item.sha;
     },
 
+    async head() {
+      const ref = await http.json<RefResponse>(
+        `${repoBase}/git/ref/heads/${encodePath(branch)}`,
+        { optional: true },
+      );
+      return ref?.object.sha ?? null;
+    },
+
     async commit(input: CommitInput): Promise<CommitResult> {
       if (input.changes.length === 0) {
         throw new ConnectorError("A commit needs at least one change.");

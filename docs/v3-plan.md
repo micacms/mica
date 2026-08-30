@@ -291,72 +291,102 @@ are a further +501/−225, most of it the admission chapter in
 
 The user-visible change. Done in the current package layout.
 
-**B1 — Model types.**
-Add `DraftChangeSet`, `ContentChange`, `PublishRequest`, `PublishResult`,
-`Revision` and the `DraftStore` port to `packages/model`, per §10.2. Keep the
-`expect` map on `PublishRequest` — see §2.2 above.
+**B1 — Model types.** *(done)*
+`Revision`, `ContentChange`, `DraftChangeSet`, `PublishResult`, the
+`DraftStore` port and its staged-change types are in `packages/model`
+(`staging.ts`), together with `memoryDraftStore` — the reference
+implementation the SQLite store's tests mirror. One deviation:
+**`PublishRequest` was not added.** Phase A's connector already carries the
+publication contract as `CommitInput` — changes plus the per-path `expect`
+map §2.2 decided on — and a second name for the same request would be two
+vocabularies for one operation.
 
-**B2 — Connector publication.**
-Extend `RepositoryConnector` with `publishChangeSet`. GitHub builds blobs, a
-tree on the expected base tree, a commit and a non-forced ref update. GitLab
-uses the Commits API with multiple file actions. Neither ever force-updates the
-configured branch.
+**B2 — Connector publication.** *(done, and mostly already true)*
+The extension the architecture asked for turned out to exist: Phase A's
+`commit()` *is* `publishChangeSet` — GitHub already builds blobs, a tree on
+the expected base tree, a commit and a non-forced ref update; GitLab already
+uses the Commits API with multiple file actions; neither ever force-updates
+the branch. What B2 actually added is `head()`, the branch-head read the
+draft records for display, plus `stagedConnector` — a decorator that overlays
+a `DraftStore` on any connector, so reads see the repository as it will be
+once published and `commit()` records into the draft instead of writing.
+`deleteTree` is resolved to per-file deletions at staging time, which keeps
+the draft a flat map and keeps directory operations away from providers.
 
-**B3 — `ContentStagingService`.**
+**B3 — `ContentStagingService`.** *(done)*
 Orchestration in the server: autosave into the draft store, list recent
-changes, validate the whole staged result, discard, publish, and the state
-machine of §10.7 including `committed-pending-push`.
+changes with owners and validation, discard, publish, and
+`committed-pending-push` as an explicit result state. Validation at publish is
+scoped to the *changed* documents (§10.6's list), so pre-existing hand-committed
+breakage elsewhere cannot hold an unrelated publication hostage.
 
-**B4 — Two draft stores, for a stated reason.**
+**B4 — Two draft stores, for a stated reason.** *(done)*
 
 `v3-arch.md` §10.2 gives two implementations and no reason. The reason is
-this, and it must stay in the code as a comment:
+this, and it is stated in the code:
 
 > Local autosave writes to the working tree, because the Astro dev server
 > cannot hot-reload a change that is not in the tree. Live preview is the whole
 > value of local mode. A shared draft store would break it.
 
 The consequence is that Saved and Published mean different things in the two
-modes, and Recent changes reads `git status` in one and a stored change set in
-the other. The editor UI handles both shapes behind one API.
+workspaces, and Recent changes reads `git status` in one and a stored change
+set in the other. The editor UI handles both shapes behind one API.
 
-- Local: working tree, plus `git status` over Mica-managed paths.
-- Self-hosted: SQLite plus a media directory, surviving restarts.
+- Working tree: the checkout, plus `git status` over Mica-managed paths.
+- Draft store: SQLite, surviving restarts.
 
-**B5 — Local publish.**
-Commit and push through the spawned `git` binary. Stage only the reviewed path
-set — never `git add -A`. Verify HEAD against the expected base before
-committing. Retain and display `committed-pending-push`; a retry retries the
-push and never creates a second commit. `MICA_LOCAL_PUBLISH=false` disables it.
+Two deviations, decided while building it:
+
+- **Which workspace applies follows the connector, not the mode.**
+  `REPOSITORY=local` stages in the working tree wherever it runs — including a
+  self-hosted deployment with a checkout beside it — because a draft store
+  shadowing a working tree would show editors a tree that lies. Provider
+  connectors stage in SQLite.
+- **Media bytes live in the database, not a directory beside it.** §10.4
+  sketched "SQLite plus a media directory"; the second location would make
+  staging a two-phase write and the backup a two-file promise, and uploads
+  are capped small enough for BLOBs.
+
+**B5 — Local publish.** *(done)*
+Commit and push through the spawned `git` binary. The pathspec limits both
+`git add` and `git commit`, so only the reviewed set is ever staged — never
+`git add -A`, and a developer's own staged work survives untouched. HEAD is
+verified against the base the editor reviewed. `committed-pending-push` is
+returned as a state; the retry pushes and never creates a second commit.
+`MICA_LOCAL_PUBLISH=false` disables it.
 
 **B6 — Editor UI.**
 Recent changes, validation state, discard, commit message and Publish. No user
 concepts. Saved and Published must be visibly different words.
 
-**B7 — Draft media.**
+**B7 — Draft media.** *(done)*
 Unpublished media must be visible in the editor before it reaches the
 repository. [`decisions.md`](decisions.md) settles that Mica serves no public
-media route, and that decision holds. This is an **authenticated** draft-media
-route reading the draft store, scoped to the pending change set, and it must
-never become the public route.
+media route, and that decision holds. No new route was needed: the existing
+authenticated admin media route reads through the staged overlay, so pending
+uploads are served from the draft store behind the same session as everything
+else, and nothing is reachable signed out.
 
 **Exit criteria**
 
-- Ten edits to one entry produce one commit.
-- Invalid staged content cannot be published.
-- A concurrent change to a *different* path does not block Publish.
-- A concurrent change to the *same* path blocks it, with an actionable message.
-- A failed push is recoverable without a duplicate commit.
-- Self-hosted drafts survive a restart.
-- Publication clears only what was published.
-- Unpublished media renders in the editor and is unreachable when signed out.
+- Ten edits to one entry produce one commit. ✔
+- Invalid staged content cannot be published. ✔
+- A concurrent change to a *different* path does not block Publish. ✔
+- A concurrent change to the *same* path blocks it, with an actionable message. ✔
+- A failed push is recoverable without a duplicate commit. ✔
+- Self-hosted drafts survive a restart. ✔
+- Publication clears only what was published. ✔
+- Unpublished media renders in the editor and is unreachable when signed out. ✔
 
-**Open question to resolve inside this phase.** The content model is read once
-at startup — [`decisions.md`](decisions.md) P2. If the repository gains a model
-change while a draft is pending, the staged content may stop validating, and
-§10.6 requires the whole staged result to be valid. Decide the behaviour: most
-likely refuse to publish, name the drift, and require a restart. Record it in
-`decisions.md`.
+Everything server-side is built and tested; **B6 is the remaining item**, and
+until it lands the pending set and Publish are reachable only through the API.
+
+**Open question — resolved.** The model-drift behaviour is decided and built:
+refuse to publish, name the drift, require a restart. Both staging
+implementations compare the manifest's revision against the one recorded at
+startup, immediately before publishing. Recorded in
+[`decisions.md`](decisions.md).
 
 ---
 

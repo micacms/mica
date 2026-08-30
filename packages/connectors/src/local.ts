@@ -84,6 +84,12 @@ export function localConnector(options: LocalConnectorOptions): RepositoryConnec
       return createHash("sha256").update(bytes).digest("hex").slice(0, 16);
     },
 
+    // A working tree has no commit identity; asking Git about the checkout is
+    // the local publisher's business, deliberately not this connector's.
+    async head() {
+      return null;
+    },
+
     async commit(input: CommitInput): Promise<CommitResult> {
       await assertExpected(this, input);
 

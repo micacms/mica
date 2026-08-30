@@ -109,6 +109,17 @@ const schema = z
      */
     REPOSITORY: z.enum(["local", "github", "gitlab"]).default("local"),
 
+    /**
+     * Whether local mode may commit and push.
+     *
+     * On by default: Publish in the local editor commits the reviewed paths
+     * and pushes through the developer's own `git`, credentials and all.
+     * `false` reduces local mode to autosave plus a read-only view of the
+     * pending changes — for a developer who prefers committing themselves.
+     * Ignored with a provider repository, which publishes through its API.
+     */
+    MICA_LOCAL_PUBLISH: bool(true),
+
     /** Where the content root sits *inside* the remote repository. */
     REPOSITORY_ROOT: z.string().default("content"),
     REPOSITORY_BRANCH: z.string().default("main"),

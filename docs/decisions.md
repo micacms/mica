@@ -42,10 +42,11 @@ would be a connector change: both providers can create a branch and a PR, and th
 **Trigger:** a customer with more than one editor who does not trust all of them,
 or a compliance regime that requires four eyes.
 
-**v3 — pending (Phase B).** Today a *save* is that commit, which is why the
-history fills with one commit per keystroke-batch. The unit becomes an explicit
-Publish over an accumulated change set. What does not change is the sentence
-above: publishing writes to the branch, and nothing reviews it.
+**Built in Phase B.** A save is no longer that commit: it lands in the draft
+workspace — the working tree locally, SQLite behind a provider connector — and
+an explicit Publish writes the accumulated set as one commit. What did not
+change is the sentence above: publishing writes to the branch, and nothing
+reviews it.
 
 ---
 
@@ -184,7 +185,10 @@ to a merge. That is the design if it becomes necessary; it is not the first one.
 **Trigger:** two editors working the same site at the same time often enough to
 collide, or a customer who asks who published what.
 
-**v3 — pending (Phase B).**
+**Built in Phase B.** One draft workspace per site, either shape. Within it,
+concurrent sessions still check per-document revisions against the *draft*, so
+one browser cannot silently overwrite a colleague's newer autosave; publishing
+takes the whole set, whoever presses the button.
 
 ---
 
@@ -213,7 +217,16 @@ never swept into an editor's commit.
 **What would change it:** nothing foreseen. Self-hosted mode does not use this
 path at all — it publishes through the provider API.
 
-**v3 — pending (Phase B).**
+**Built in Phase B.** `lib/git.ts` spawns the binary with
+`GIT_TERMINAL_PROMPT=0`, and `services/staging-local.ts` holds the rules: the
+pathspec limits both `git add` and `git commit`, so a developer's unrelated
+work — staged or not — never enters an editor's commit; HEAD is verified
+against the base the editor reviewed; a failed push returns
+`committed-pending-push` and a retry pushes rather than committing again. One
+choice the plan left open is now fixed: which workspace a deployment stages in
+follows the *connector* (`REPOSITORY`), not `MICA_MODE` — a self-hosted
+deployment with a checkout beside it stages in that checkout, because shadowing
+a working tree with a draft store would show editors a tree that lies.
 
 ---
 
@@ -240,11 +253,14 @@ cheaply, so this is small — it just has no reason to exist yet.
 **Trigger:** a project where a non-developer changes the model, or a deployment
 that cannot be restarted casually.
 
-**v3 — open (Phase B).** A pending change set gives this a second edge. If the
-repository gains a model change while a draft is waiting, staged content may
-stop validating, and publication requires the whole staged set to be valid. The
-expected answer is to refuse, name the drift, and require a restart — but it is
-not decided, and Phase B has to decide it and record it here.
+**Decided and built in Phase B.** A pending change set gave this a second
+edge: if the repository gains a model change while a draft is waiting, staged
+content was validated against a model that no longer holds. The answer is the
+expected one — **refuse, name the drift, require a restart**. The manifest's
+revision is recorded at startup; both staging implementations compare it
+immediately before publishing and answer 409 with a message that names the
+restart. Nothing is discarded: the draft survives, and after the restart it is
+re-validated against the new model like any other pending set.
 
 ---
 
@@ -287,9 +303,11 @@ the tree keyed by the branch head would remove most of the cost.
 
 **Trigger:** a save taking visibly long, or the truncation error appearing.
 
-**v3 — pending (Phase B).** The cost mostly disappears. A commit stops being the
-unit of saving and becomes the unit of publishing, so the extra round trip is
+**Built in Phase B.** The cost mostly disappeared. A commit stopped being the
+unit of saving and became the unit of publishing, so the extra round trip is
 paid once per publication instead of once per edit. The ceiling is unchanged.
+A save still costs one provider read per newly staged path — the revision the
+publish gate will expect — which is far cheaper than the commit it replaced.
 
 ---
 
@@ -336,12 +354,16 @@ deployment existed to carry forward. Append-only applies again from here, and a
 database that predates the reset is refused with a message saying that deleting
 it costs only sign-ins.
 
-**v3 — pending (Phase B).** Phase B gives SQLite its new job: the self-hosted
-draft store, holding work that is saved and not yet published. That inverts one
-of the oldest sentences in this project. Losing the database used to cost three
-editors their login and nothing else. It will cost unpublished work, which Git
-is not protecting yet — the self-hosted backup guidance has to say so, and the
-editor has to make Saved and Published visibly different words.
+**Built in Phase B.** SQLite has its new job: the self-hosted draft store —
+`drafts` and `draft_base`, migration 2 — holding work that is saved and not
+yet published. That inverted one of the oldest sentences in this project.
+Losing the database used to cost three editors their login and nothing else;
+it now also costs unpublished work, which Git is not protecting yet. The
+self-hosted backup guidance says so. One deviation from the `v3-arch.md`
+§10.4 sketch: media bytes live in the same database rather than a directory
+beside it, because a second location would make staging a two-phase write and
+the backup a two-file promise — uploads are capped and content trees are
+small, so the rows stay within what SQLite is comfortable holding.
 
 ---
 
@@ -460,13 +482,14 @@ knowing the reasoning stops someone reintroducing the problem.
   access-controlled" trade-off it used to carry disappears only as long as the
   route does.
 
-  Staging needs one narrow exception, and it is not that route. An image that is
-  uploaded and not yet published is not in the repository, so the editor cannot
-  show it from there. Phase B adds an **authenticated** route that reads the
-  draft store, scoped to the pending change set, and serves nothing that has
-  already been published. If that route is ever reachable without a session, or
-  ever starts answering for repository paths, it has become the public media
-  route this decision forbids.
+  Staging needed one narrow exception, and it is not that route. An image that
+  is uploaded and not yet published is not in the repository, so the editor
+  cannot show it from there. Phase B built it without a new route at all: the
+  existing **authenticated** admin media route reads through the staged
+  overlay, so pending uploads are served from the draft store behind the same
+  session as everything else, and nothing is reachable signed-out. If media
+  bytes are ever served without a session, the public media route this
+  decision forbids has come back.
 - **Publishing is not a webhook.** A push is the trigger. An in-process queue
   cannot survive a crash, and the repository's CI already solves this. Autosave
   is not a trigger either: the successful remote branch update is, which is the

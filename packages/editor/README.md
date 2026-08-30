@@ -180,17 +180,26 @@ rather than weeks. That trade is the P1 entry in
 layer refuses that mode in production, on any host but localhost, and on any
 address but loopback.
 
-## Saving
+## Saving and publishing
 
-A save is a commit. There is no draft state and no publish button yet: unfinished
-work stays in the editor's form and never reaches the server, and what does
-reach the server is validated in full before it becomes a file.
+**Saved and Published are different words.** A save lands in the site's draft
+workspace — the checked-out working tree with `REPOSITORY=local`, a SQLite
+draft store behind a provider connector — and is validated in full before it
+becomes a file. An explicit **Publish** turns the accumulated change set into
+exactly one commit: `git commit` and `git push` through the developer's own
+Git locally (`MICA_LOCAL_PUBLISH=false` turns that off), one provider-side
+commit self-hosted. There is one shared pending change set per site, no
+per-user drafts and no approval queue.
 
 Concurrency is handled with an opaque **revision** token. The editor is given
-one when it opens an entry and sends it back with the save; if the file changed
-in the meantime the server answers 409 and the editor is offered the current
-version rather than being overwritten. A `null` revision asserts the entry does
-not exist, which is what stops two people creating the same slug.
+one when it opens an entry and sends it back with the save; if the entry
+changed in the meantime — in the shared draft, or in the repository — the
+server answers 409 and the editor is offered the current version rather than
+being overwritten. A `null` revision asserts the entry does not exist, which
+is what stops two people creating the same slug. Publication has its own gate:
+every staged path records the repository revision it had when first staged,
+and a branch that moved on one of *those* paths refuses with 409, while
+commits elsewhere in the repository never block.
 
 Rich text is Markdoc. The admin's Tiptap editor converts at the boundary — see
 `src/admin/lib/markdoc.ts` — and never emits HTML, because a `.mdoc` file has to
@@ -198,8 +207,11 @@ be readable in a diff and safe to render into a static build.
 
 ## History
 
-Git is the history. Every save is a commit with the editor's name as the author;
-nothing prunes it, and no version of Mica has to be running to read it.
+Git is the history. Every publication is a commit — self-hosted, with the
+editor's name as the author; locally, with the developer's own Git identity.
+Nothing prunes it, and no version of Mica has to be running to read it. The
+draft workspace is not a second history: it holds exactly the current pending
+change set, and publication clears what it published.
 
 ## API surface
 
@@ -217,6 +229,9 @@ nothing prunes it, and no version of Mica has to be running to read it.
 | `POST`                  | `/api/admin/collections/:collection/reorder`                  | session                              |
 | `GET`                   | `/api/admin/collections/:collection/slug`                     | session                              |
 | `GET/PUT`               | `/api/admin/singletons/:name`                                 | session                              |
+| `GET`                   | `/api/admin/changes`                                          | session                              |
+| `POST`                  | `/api/admin/changes/discard`                                  | session                              |
+| `POST`                  | `/api/admin/publish` · `/publish/push`                        | session                              |
 | `GET/POST`              | `/api/admin/media`                                            | session                              |
 | `GET`                   | `/api/admin/media/file/*`                                     | session                              |
 

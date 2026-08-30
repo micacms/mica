@@ -175,8 +175,12 @@ content/news/we-are-hiring/
     └── office.jpg
 ```
 
-Commit it with your usual tools. A deployed Mica writes the same files and
-commits them itself.
+A save changes only your working tree — the dev server hot-reloads it, and
+nothing is committed yet. The editor's **Publish** commits exactly the changed
+content paths and pushes with your own Git configuration; or set
+`MICA_LOCAL_PUBLISH=false` and commit with your usual tools instead. A
+deployed Mica stages saves the same way and publishes them itself, as one
+commit per publication.
 
 ## 7. Render it
 

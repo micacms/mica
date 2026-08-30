@@ -74,6 +74,48 @@ export const migrations: Migration[] = [
       CREATE INDEX sessions_identity ON sessions (issuer, subject);
     `,
   },
+  {
+    version: 2,
+    name: "draft_store",
+    up: `
+      -- The self-hosted draft store: work that is saved and not yet published.
+      --
+      -- This is SQLite's second job, and it changes what losing this database
+      -- costs. It used to cost sign-ins and nothing else; from here it costs
+      -- unpublished work, which Git is not protecting yet. The self-hosted
+      -- backup guidance says so.
+      --
+      -- A flat map of file paths, deliberately. Not entries, not revisions,
+      -- not history — Git is the history, and a successful publication clears
+      -- what it published. One row per path: the pending state of that file,
+      -- and the repository revision it had when it was first staged, which is
+      -- the per-path publish gate.
+      CREATE TABLE drafts (
+        path          TEXT PRIMARY KEY,
+        kind          TEXT NOT NULL CHECK (kind IN ('write', 'delete')),
+        -- The staged bytes. Null for a deletion.
+        contents      BLOB,
+        -- Whether the bytes were staged as text, so a publication can send
+        -- them as text and keep the provider's diff readable.
+        is_text       INTEGER NOT NULL DEFAULT 0,
+        -- Null asserts the path was absent from the repository when staged.
+        base_revision TEXT,
+        -- Monotonic across the store; re-staging a path bumps it. Publication
+        -- clears rows by (path, version), which is how an autosave that lands
+        -- mid-publish survives.
+        version       INTEGER NOT NULL,
+        updated_at    TEXT NOT NULL
+      );
+
+      -- The branch head the pending draft began from. Display only: the
+      -- publish gate is per path, so this is one row of context, not a lock.
+      CREATE TABLE draft_base (
+        id          INTEGER PRIMARY KEY CHECK (id = 1),
+        revision    TEXT NOT NULL,
+        recorded_at TEXT NOT NULL
+      );
+    `,
+  },
 ];
 
 const MIGRATIONS_TABLE = `

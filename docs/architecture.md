@@ -138,14 +138,28 @@ Markdoc escapes raw HTML and renders an undeclared `{% tag %}` as nothing.
 directory move. **Order is a file**, so dragging one entry is a one-line diff
 rather than a rewrite of every entry in the collection.
 
-### There are no drafts
+### Saved and Published are different words
 
-An entry is saved or it is not, and saved means committed. Unfinished work
-stays in the editor's form and never reaches the server.
+A save lands in the site's draft workspace; an explicit **Publish** turns the
+accumulated changes into one commit. The two must never blur: Saved means the
+work is durable in Mica, and only Published means it is in Git and on its way
+to a deployment.
 
-A status column was always a weak imitation of a branch. Point a second Mica at
-`REPOSITORY_BRANCH=staging` and editors have a staging site that is reviewed
-and merged like any other change — strictly more capable, and free.
+There is one shared pending change set per site — not one per editor, and no
+approval queue. The draft workspace differs by deployment shape, because the
+two shapes genuinely differ:
+
+- **A working tree** (`REPOSITORY=local`): autosave writes the checkout, which
+  is what lets the Astro dev server hot-reload it. Recent changes is `git
+  status` over the content root; Publish commits exactly the reviewed paths
+  and pushes with the developer's own Git.
+- **A draft store** (`github` / `gitlab`): writing through a provider API is
+  already a commit, so saves accumulate in SQLite behind a connector overlay,
+  and Publish sends the whole set as one provider-side commit.
+
+There is still no status column on an entry. Release-level staging is a
+branch: point a second Mica at `REPOSITORY_BRANCH=staging` and editors have a
+staging site that is reviewed and merged like any other change.
 
 ---
 
@@ -155,13 +169,16 @@ and merged like any other change — strictly more capable, and free.
 interface RepositoryConnector extends ContentSource {
   readBinary(path): Promise<Uint8Array | null>;
   revision(path): Promise<string | null>; // opaque; equality only
+  head(): Promise<string | null>; // the branch head, for display
   commit(input: CommitInput): Promise<CommitResult>;
 }
 ```
 
-Four operations. Mica does not implement Git: a Git client inside a server
+Five operations. Mica does not implement Git: a Git client inside a server
 would be a working tree to keep in sync, a credential on disk and a merge to
-resolve.
+resolve. (Local publishing does spawn the developer's own `git` binary — the
+one place Git itself is the right tool, precisely because it brings the
+developer's credentials and remotes with it.)
 
 Because the interface extends `ContentSource`, the Astro build reading a
 checkout and the server reading a remote repository run **the same** discovery
@@ -172,6 +189,7 @@ and parsing code. They cannot disagree about what a content directory means.
 | `local`   | A working tree on disk. Not a Git client: the developer commits with their own tools |
 | `github`  | Git Data API — blob, tree, commit, ref                                               |
 | `gitlab`  | The commits API, which takes a whole change set                                      |
+| `staged`  | A decorator: a draft store overlaid on any of the above. Reads see the repository as it will be once published; `commit()` records into the draft instead of writing |
 
 **One commit, or none.** An entry is an `index.json`, its sidecars and its
 media, and a half-written entry is content corruption — so `commit()` applies
@@ -186,7 +204,10 @@ in the form. Per path, not per repository head — two editors on different
 entries must never block each other. A `null` revision asserts absence, which is
 how two people creating the same slug produce a conflict rather than a silent
 overwrite. GitHub adds a second layer for free: the ref update is never forced,
-so a push that lands mid-save is rejected rather than overwritten.
+so a push that lands mid-publication is rejected rather than overwritten. The
+draft store records, for every staged path, the repository revision it had
+when first staged — that map is the publish gate, so a branch that moved on
+*other* paths never blocks a publication.
 
 ---
 
@@ -277,14 +298,19 @@ SQLite, holding:
 
 ```
 sessions                a browser session, and the claims it was opened with
+drafts                  the pending change set, where saves are staged (provider repositories only)
+draft_base              the branch head that pending set began from
 ```
 
-One table. No content, no media, no revisions, no accounts — the claims are
-copied onto the session row because the rules are re-checked per request, and
-asking the provider each time is not something a provider would thank us for.
-Two rules keep it navigable: only
-`repositories/` writes SQL, and only `db/driver.ts` knows which SQLite library
-is in use.
+No content history, no media library, no revisions, no accounts — the claims
+are copied onto the session row because the rules are re-checked per request,
+and asking the provider each time is not something a provider would thank us
+for. The draft tables hold exactly the current pending change set and are
+cleared by publication; Git stays the history. Losing this database signs
+everyone out — and, where saves are staged in it, loses work that was saved
+and not yet published, which the self-hosted backup guidance says out loud.
+Two rules keep it navigable: only `repositories/` writes SQL, and only
+`db/driver.ts` knows which SQLite library is in use.
 
 Note the startup order this implies. The content model is _in_ the repository,
 so the database opens first, the connector is built from it, the model is read

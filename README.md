@@ -5,8 +5,10 @@
 
 A Git-native content editor for Astro websites.
 
-Editors get forms. What comes out is a commit: JSON, Markdoc and images in your
-repository, which your normal build turns into a static site.
+Editors get forms. What comes out when they publish is a commit: JSON, Markdoc
+and images in your repository, which your normal build turns into a static
+site. Saves accumulate in a draft workspace until then, so the history reads
+as publications, not keystrokes.
 
 Not a general-purpose CMS. It is the specific case of a content-driven business
 website — a handful of editors, a few hundred entries, a static frontend, and
@@ -15,9 +17,9 @@ current.
 
 ```
    editor
-     │  fills in a form
+     │  fills in a form, presses Publish
      ▼
-┌──────────┐   commits    ┌────────────────────┐   push    ┌────┐  astro build
+┌──────────┐  one commit  ┌────────────────────┐   push    ┌────┐  astro build
 │   Mica   │ ───────────▶ │  your repository   │ ────────▶ │ CI │ ─────────────▶ static host
 └──────────┘              │  content/…         │           └────┘
                           │  .mica/schema.json │
@@ -30,8 +32,9 @@ They meet in the repository.
 **Content lives in your Git repository, not in Mica's database.** Everything
 that follows from a commit follows for free: history, review, rollback,
 branching, and a website that can be rebuilt from the repository alone. Mica's
-own SQLite file holds browser sessions and nothing else — losing it signs
-everyone out and costs nothing more.
+own SQLite file holds browser sessions, and — on a deployment that publishes
+through a provider API — the pending draft between Save and Publish. Nothing
+published is ever only in there.
 
 ---
 
@@ -196,10 +199,11 @@ understands.
 **No media server.** Images are files in the repository, processed by Astro at
 build time.
 
-**No draft/published states.** An entry is saved or it is not, and saved means
-committed. Point a second Mica at a `staging` branch and editors have a staging
-site, reviewed and merged like any other change — strictly more capable than a
-status column, and free.
+**No status column on entries.** Saved means durable in the draft workspace;
+Published means committed — one shared pending change set per site, and
+nothing more. Release-level staging is a branch: point a second Mica at a
+`staging` branch and editors have a staging site, reviewed and merged like any
+other change — strictly more capable than a status column, and free.
 
 No GraphQL, no plugin architecture, no page builder, no approval workflows, no
 mandatory cloud services.
