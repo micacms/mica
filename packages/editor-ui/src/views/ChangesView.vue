@@ -15,15 +15,27 @@
  * behaviour.
  */
 
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { RefreshCw } from "@lucide/vue";
 
-import { api, ApiError, type PendingChange, type PublishOutcome } from "@/api";
+import type { FieldMap } from "@micacms/core";
+
+import {
+  api,
+  ApiError,
+  type Comparison,
+  type CompareTarget,
+  type PendingChange,
+  type PublishOutcome,
+} from "@/api";
+import ChangeComparison from "@/components/ChangeComparison.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
+const schema = useSchema();
 const staging = useStaging();
 const toast = useToast();
 
@@ -44,6 +56,8 @@ interface Group {
   label: string;
   link: { name: string; params?: Record<string, string> } | null;
   changes: PendingChange[];
+  /** What a before/after comparison would compare — null where none applies. */
+  target: CompareTarget | null;
 }
 
 /**
@@ -82,6 +96,14 @@ const groups = computed<Group[]>(() => {
                 ? { name: "media" }
                 : null,
         changes: [],
+        target:
+          owner.kind === "entry"
+            ? { kind: "entry", collection: owner.collection, slug: owner.slug }
+            : owner.kind === "singleton"
+              ? { kind: "singleton", name: owner.name }
+              : owner.kind === "order"
+                ? { kind: "order", collection: owner.collection }
+                : null,
       };
       byKey.set(key, group);
     }
@@ -89,6 +111,46 @@ const groups = computed<Group[]>(() => {
   }
 
   return [...byKey.values()];
+});
+
+/* ------------------------------------------------- before/after */
+
+interface LoadedComparison {
+  loading: boolean;
+  error: string | null;
+  comparison: Comparison | null;
+}
+
+const comparisons = ref<Record<string, LoadedComparison>>({});
+
+/** The compared document's fields — null for an order comparison. */
+function fieldsFor(target: CompareTarget): FieldMap | null {
+  if (target.kind === "entry") return schema.collection(target.collection)?.fields ?? null;
+  if (target.kind === "singleton") return schema.singleton(target.name)?.fields ?? null;
+  return null;
+}
+
+async function loadComparison(group: Group): Promise<void> {
+  if (!group.target) return;
+  comparisons.value[group.key] = { loading: true, error: null, comparison: null };
+  try {
+    const comparison = await api.staging.compare(group.target);
+    comparisons.value[group.key] = { loading: false, error: null, comparison };
+  } catch (error) {
+    comparisons.value[group.key] = {
+      loading: false,
+      error: error instanceof ApiError ? error.message : "Could not load the comparison.",
+      comparison: null,
+    };
+  }
+}
+
+// The comparison is the change list, so it loads with it — every group, as
+// soon as it appears, without anything to click.
+watch(groups, (next) => {
+  for (const group of next) {
+    if (group.target && !comparisons.value[group.key]) void loadComparison(group);
+  }
 });
 
 const workspace = computed(() => status.value?.workspace ?? "draft-store");
@@ -124,7 +186,13 @@ const kindWord: Record<PendingChange["kind"], string> = {
 };
 
 async function refresh(): Promise<void> {
+  // Forget the comparisons first, so the groups watcher reloads every one of
+  // them against the refreshed change set instead of showing a stale panel.
+  comparisons.value = {};
   await staging.refresh();
+  for (const group of groups.value) {
+    if (group.target && !comparisons.value[group.key]) void loadComparison(group);
+  }
   loading.value = false;
 }
 
@@ -289,7 +357,24 @@ function short(revision: string): string {
                 {{ group.label }}
               </component>
 
-              <ul class="mt-1 space-y-0.5">
+              <!-- What the change does. Groups with a document get the
+                   before/after view and no file paths; media and everything
+                   else have only their files to show. -->
+              <template v-if="group.target">
+                <p v-if="comparisons[group.key]?.loading" class="mt-2 text-xs text-muted">
+                  Comparing…
+                </p>
+                <p v-else-if="comparisons[group.key]?.error" class="mt-2 text-xs text-danger">
+                  {{ comparisons[group.key]?.error }}
+                </p>
+                <ChangeComparison
+                  v-else-if="comparisons[group.key]?.comparison"
+                  :comparison="comparisons[group.key]!.comparison!"
+                  :fields="fieldsFor(group.target)"
+                />
+              </template>
+
+              <ul v-else class="mt-1 space-y-0.5">
                 <li
                   v-for="change in group.changes"
                   :key="change.path"

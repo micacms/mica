@@ -26,6 +26,7 @@ import {
   entryTitle,
   isValidSlug,
   readCollection,
+  readCollectionEntry,
   readSingleton,
   singletonPath,
   toContentChange,
@@ -99,6 +100,73 @@ export interface ContentStagingService {
   discard(paths: string[]): Promise<{ discarded: string[] }>;
   /** Retries the push after `committed-pending-push`. Working tree only. */
   push(): Promise<PublishResult>;
+  /** The document a pending change touches, before and after that change. */
+  compare(target: CompareTarget): Promise<Comparison>;
+}
+
+/** One thing an editor recognises on the Publish page, named for comparison. */
+export type CompareTarget =
+  | { kind: "entry"; collection: string; slug: string }
+  | { kind: "singleton"; name: string }
+  | { kind: "order"; collection: string };
+
+/**
+ * A document on both sides of the pending change set.
+ *
+ * Raw field data, deliberately: the editor holds the model and can name,
+ * order and render every field, so the friendly comparison is its job. What
+ * only the server can do is read the same document from two places.
+ */
+export interface Comparison {
+  /** As the repository has it — null when the change creates the document. */
+  before: Record<string, unknown> | null;
+  /** As staged for publication — null when the change deletes it. */
+  after: Record<string, unknown> | null;
+}
+
+/**
+ * Reads one document from the repository (`published`) and from the pending
+ * workspace (`staged`) — the whole of a before/after comparison, shared by
+ * both staging implementations since a `ContentSource` is all it needs.
+ *
+ * An order target compares the collection's ordering rather than a document:
+ * each side becomes `{ order: [{ slug, title }] }`, in position order.
+ */
+export async function compareSources(
+  model: Site,
+  published: ContentSource,
+  staged: ContentSource,
+  target: CompareTarget,
+): Promise<Comparison> {
+  if (target.kind === "singleton") {
+    const def = model.singletons[target.name];
+    if (!def) throw badRequest(`There is no singleton called "${target.name}".`);
+    return {
+      before: await readSingleton(published, def, target.name),
+      after: await readSingleton(staged, def, target.name),
+    };
+  }
+
+  const def = model.collections[target.collection];
+  if (!def) throw badRequest(`There is no collection called "${target.collection}".`);
+
+  if (target.kind === "entry") {
+    if (!isValidSlug(target.slug)) throw badRequest(`"${target.slug}" is not a slug.`);
+    return {
+      before: await readCollectionEntry(published, def, target.collection, target.slug),
+      after: await readCollectionEntry(staged, def, target.collection, target.slug),
+    };
+  }
+
+  const ordering = async (source: ContentSource) => {
+    const entries = await readCollection(source, def, target.collection);
+    if (entries.length === 0) return null;
+    return {
+      order: entries.map((entry) => ({ slug: entry.slug, title: entryTitle(def, entry.data) })),
+    };
+  };
+
+  return { before: await ordering(published), after: await ordering(staged) };
 }
 
 /* ------------------------------------------------------------------ *
@@ -409,6 +477,12 @@ export function createDraftStagingService(deps: DraftStagingDeps): ContentStagin
     async push(): Promise<PublishResult> {
       // A provider commit is already on the branch; there is no second step.
       throw badRequest("Publications here are single repository commits. There is nothing to push.");
+    },
+
+    async compare(target: CompareTarget): Promise<Comparison> {
+      // "Before" is the repository the drafts have not touched; "after" is the
+      // overlay every other read already goes through.
+      return compareSources(model, repository, overlay, target);
     },
   };
 }

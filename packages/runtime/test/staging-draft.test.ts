@@ -233,3 +233,77 @@ describe("model drift under a pending draft", () => {
     rmSync(join(harness.contentRoot, ".mica"), { recursive: true, force: true });
   });
 });
+
+describe("before/after comparison with a draft store", () => {
+  let harness: TestHarness;
+  let session: Session;
+
+  before(async () => {
+    ({ harness, session } = await draftHarness());
+  });
+  after(() => harness.close());
+
+  const compare = async (query: string) => {
+    const response = await harness.request(`/api/admin/changes/compare?${query}`, { session });
+    return { status: response.status, body: (await response.json()) as {
+      before: Record<string, unknown> | null;
+      after: Record<string, unknown> | null;
+    } };
+  };
+
+  it("compares the repository against the staged overlay", async () => {
+    // Publish one version, then stage an edit on top of it.
+    const created = await post(harness, session, "/api/admin/collections/projects/entries", {
+      data: { title: "Chalet", year: 2019 },
+    });
+    assert.equal(created.status, 201);
+    const published = await post(harness, session, "/api/admin/publish", {
+      message: "First version",
+    });
+    assert.equal(published.status, 200);
+
+    const updated = await harness.request("/api/admin/collections/projects/entries/chalet", {
+      method: "PUT",
+      session,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ data: { title: "Chalet, extended", slug: "chalet", year: 2019 } }),
+    });
+    assert.equal(updated.status, 200);
+
+    const { status, body } = await compare("kind=entry&collection=projects&slug=chalet");
+    assert.equal(status, 200);
+    assert.equal(body.before?.["title"], "Chalet");
+    assert.equal(body.after?.["title"], "Chalet, extended");
+  });
+
+  it("a staged creation has no before", async () => {
+    const created = await post(harness, session, "/api/admin/collections/projects/entries", {
+      data: { title: "Neubau", year: 2026 },
+    });
+    assert.equal(created.status, 201);
+
+    const { body } = await compare("kind=entry&collection=projects&slug=neubau");
+    assert.equal(body.before, null);
+    assert.equal(body.after?.["title"], "Neubau");
+  });
+
+  it("a staged deletion has no after", async () => {
+    const removed = await harness.request("/api/admin/collections/projects/entries/chalet", {
+      method: "DELETE",
+      session,
+    });
+    assert.equal(removed.status, 200);
+
+    const { body } = await compare("kind=entry&collection=projects&slug=chalet");
+    assert.equal(body.before?.["title"], "Chalet");
+    assert.equal(body.after, null);
+  });
+
+  it("refuses a malformed or unknown target", async () => {
+    const malformed = await harness.request("/api/admin/changes/compare?kind=entry", { session });
+    assert.equal(malformed.status, 400);
+
+    const unknown = await compare("kind=entry&collection=nope&slug=chalet");
+    assert.equal(unknown.status, 400);
+  });
+});

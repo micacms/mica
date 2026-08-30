@@ -297,3 +297,72 @@ describe("discard", () => {
     assert.equal(existsSync(join(contentRoot, "projects/haus-a.json")), true);
   });
 });
+
+describe("before/after comparison", () => {
+  it("an edited entry compares HEAD against the working tree", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(
+      join(contentRoot, "projects/haus-a.json"),
+      JSON.stringify({ title: "Haus A, renovated", slug: "haus-a" }, null, 2),
+    );
+
+    const { before, after } = await service.compare({
+      kind: "entry",
+      collection: "projects",
+      slug: "haus-a",
+    });
+    assert.equal(before?.["title"], "Haus A");
+    assert.equal(after?.["title"], "Haus A, renovated");
+  });
+
+  it("a new entry has no before, a deleted one no after", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(
+      join(contentRoot, "projects/haus-b.json"),
+      JSON.stringify({ title: "Haus B", slug: "haus-b" }, null, 2),
+    );
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+
+    const created = await service.compare({ kind: "entry", collection: "projects", slug: "haus-b" });
+    assert.equal(created.before, null);
+    assert.equal(created.after?.["title"], "Haus B");
+
+    const removed = await service.compare({ kind: "entry", collection: "projects", slug: "haus-a" });
+    assert.equal(removed.before?.["title"], "Haus A");
+    assert.equal(removed.after, null);
+  });
+
+  it("outside a repository, everything reads as new", async () => {
+    const contentRoot = join(temp("mica-wt-norepo-"), "content");
+    mkdirSync(join(contentRoot, "projects"), { recursive: true });
+    writeFileSync(
+      join(contentRoot, "projects/haus-a.json"),
+      JSON.stringify({ title: "Haus A", slug: "haus-a" }, null, 2),
+    );
+
+    const service = createWorkingTreeStagingService({
+      model,
+      connector: localConnector({ root: contentRoot }),
+      contentRoot,
+      schemaRevision: null,
+      publishEnabled: true,
+      logger: createLogger({ level: "silent", pretty: false }),
+    });
+
+    const { before, after } = await service.compare({
+      kind: "entry",
+      collection: "projects",
+      slug: "haus-a",
+    });
+    assert.equal(before, null);
+    assert.equal(after?.["title"], "Haus A");
+  });
+
+  it("an unknown collection is refused", async () => {
+    const { service } = makeRepo();
+    await assert.rejects(
+      service.compare({ kind: "entry", collection: "nope", slug: "haus-a" }),
+      (error: unknown) => error instanceof ApiError,
+    );
+  });
+});
