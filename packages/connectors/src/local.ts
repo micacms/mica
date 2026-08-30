@@ -18,7 +18,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
-import { isMissing, within } from "@micacms/model/node";
+import { isMissing, within } from "@micacms/core/node";
 
 import {
   ConflictError,
@@ -26,7 +26,7 @@ import {
   type CommitInput,
   type CommitResult,
   type RepositoryConnector,
-} from "./connector.js";
+} from "@micacms/core";
 
 export interface LocalConnectorOptions {
   /** The content root: the directory collections and singletons live in. */

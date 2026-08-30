@@ -15,7 +15,7 @@
  *
  * Whatever arrives is re-validated as if it had just been written by hand. A
  * manifest from a repository is untrusted input: it may have been produced by a
- * different version of `@micacms/model`, hand-edited, or truncated.
+ * different version of `@micacms/core`, hand-edited, or truncated.
  */
 
 import {
@@ -30,7 +30,7 @@ import {
   type FieldMap,
   type Singleton,
   type Site,
-} from "@micacms/model";
+} from "@micacms/core";
 
 export class SchemaError extends Error {
   override name = "SchemaError";
@@ -94,7 +94,7 @@ function describeMissing(origin: string): string {
  * questions a `kind`. Field kinds reach a `switch` with no default when a form
  * is rendered and when a payload is validated, so an unknown one surfaces as an
  * incoherent failure much later, on an editor's screen. Catching it here turns
- * a version mismatch between the project's `@micacms/model` and the image's
+ * a version mismatch between the project's `@micacms/core` and the image's
  * into a startup error that names the field.
  */
 export function checkSchema(raw: unknown, origin = "the schema"): Site {

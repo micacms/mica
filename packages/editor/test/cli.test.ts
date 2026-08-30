@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 
-import { MANIFEST_PATH } from "@micacms/model";
+import { MANIFEST_PATH } from "@micacms/core";
 
 import { cacheDir, parse, shouldOpenBrowser } from "../src/server/cli.js";
 import { DEFAULT_PORT } from "../src/server/lib/ports.js";

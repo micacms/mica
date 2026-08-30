@@ -21,15 +21,16 @@
 
 import { createHash } from "node:crypto";
 
-import type { DirectoryEntry, DraftStore, StageInput } from "@micacms/model";
-
 import {
   ConflictError,
   ConnectorError,
   type CommitInput,
   type CommitResult,
+  type DirectoryEntry,
+  type DraftStore,
   type RepositoryConnector,
-} from "./connector.js";
+  type StageInput,
+} from "@micacms/core";
 
 /** A content path with no leading or trailing slash — how the store keys it. */
 const clean = (path: string): string => path.replace(/^\/+|\/+$/g, "");

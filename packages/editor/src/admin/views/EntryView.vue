@@ -19,7 +19,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 
-import { defaultValues, type FieldIssue } from "@micacms/model";
+import { defaultValues, type FieldIssue } from "@micacms/core";
 
 import { api, ApiError, type EntryDetail } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";

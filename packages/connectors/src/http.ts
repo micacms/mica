@@ -8,7 +8,7 @@
  * touching.
  */
 
-import { ConnectorError } from "./connector.js";
+import { ConnectorError } from "@micacms/core";
 
 /**
  * The subset of `fetch` a connector uses.

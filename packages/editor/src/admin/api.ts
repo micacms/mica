@@ -6,7 +6,7 @@
  * can place them next to the right input.
  */
 
-import type { AnyField, FieldIssue } from "@micacms/model";
+import type { AnyField, FieldIssue } from "@micacms/core";
 
 const BASE = "/api";
 

@@ -8,7 +8,7 @@
 
 import { getCollection, getEntry } from "astro:content";
 
-import type { InferSingleton } from "@micacms/model";
+import type { InferSingleton } from "@micacms/core";
 
 import type { site } from "../mica";
 

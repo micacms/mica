@@ -6,6 +6,9 @@
  * is configured with.
  */
 
+// The port and its value types live in @micacms/core now — connectors
+// implement it, they do not define it. Re-exported here so existing imports
+// keep working through the rename.
 export {
   ConflictError,
   ConnectorError,
@@ -14,7 +17,7 @@ export {
   type CommitInput,
   type CommitResult,
   type RepositoryConnector,
-} from "./connector.js";
+} from "@micacms/core";
 
 export { localConnector, type LocalConnectorOptions } from "./local.js";
 export { githubConnector, type GitHubConnectorOptions } from "./github.js";

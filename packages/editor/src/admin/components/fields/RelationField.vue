@@ -6,7 +6,7 @@
 
 import { computed, onMounted, ref } from "vue";
 
-import type { RelationField } from "@micacms/model";
+import type { RelationField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
 import { api, type EntrySummary } from "@/api";

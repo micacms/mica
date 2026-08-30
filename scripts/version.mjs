@@ -38,6 +38,9 @@ const IMAGE_TAG = /^(\s*image:\s*ghcr\.io\/amuedespacher\/micacms:)(\S+)(\s*)$/m
  */
 export const MANIFESTS = [
   { file: "package.json", pattern: VERSION_FIELD },
+  { file: "packages/core/package.json", pattern: VERSION_FIELD },
+  // The old name, kept as a re-export for one release cycle. It carries the
+  // lockstep version like everything else while it exists.
   { file: "packages/model/package.json", pattern: VERSION_FIELD },
   { file: "packages/connectors/package.json", pattern: VERSION_FIELD },
   { file: "packages/astro/package.json", pattern: VERSION_FIELD },

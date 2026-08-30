@@ -13,7 +13,7 @@
  * content directory means.
  */
 
-import type { ContentSource } from "@micacms/model";
+import type { ContentSource } from "./source.js";
 
 export class ConnectorError extends Error {
   override name = "ConnectorError";

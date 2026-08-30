@@ -10,7 +10,7 @@
 import { computed, ref } from "vue";
 import { ArrowDown, ArrowUp, ChevronDown, Copy, Plus, Trash2 } from "@lucide/vue";
 
-import { defaultValues, type RepeaterField } from "@micacms/model";
+import { defaultValues, type RepeaterField } from "@micacms/core";
 
 import FieldList from "./FieldList.vue";
 import { humanise, useField, type FieldProps } from "@/composables/useField";

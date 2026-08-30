@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@markdoc/markdoc": "^0.5.9",
-    "@micacms/model": "workspace:*",
+    "@micacms/core": "workspace:*",
     "zod": "^4.3.6"
   },
   "peerDependencies": {

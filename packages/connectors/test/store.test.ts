@@ -23,7 +23,7 @@ import {
   singleton,
   slug,
   text,
-} from "@micacms/model";
+} from "@micacms/core";
 
 import {
   ConflictError,

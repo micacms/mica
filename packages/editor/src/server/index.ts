@@ -3,7 +3,7 @@
  */
 
 import { serve } from "@hono/node-server";
-import { MANIFEST_PATH } from "@micacms/model";
+import { MANIFEST_PATH } from "@micacms/core";
 
 import { createApp } from "./app.js";
 import { ConfigError, loadConfig } from "./config.js";
