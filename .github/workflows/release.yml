@@ -8,8 +8,8 @@
 # main, so a release is a decision rather than a side effect of landing a pull
 # request.
 #
-# Everything here carries one version — three packages and the CMS — so this
-# publishes all four together or none of them.
+# Everything here carries one version — every published package and the image
+# — so this publishes all of them together or none of them.
 
 name: Release
 
@@ -124,7 +124,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Without the `v`: the tag is `v0.2.0`, the image is `:0.2.0`, and
-      # docker-compose.yml pins that number.
+      # deploy/self-hosted/compose.yml pins that number.
       - name: The version, without the tag's `v`
         id: version
         run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"

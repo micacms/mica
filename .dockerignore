@@ -10,9 +10,10 @@
 .git
 .github
 sites
+examples
 docs
-e2e
-demo
+tests
+deploy
 *.md
 
 # A project's content model is read from its repository at runtime, never baked

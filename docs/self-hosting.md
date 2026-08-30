@@ -25,7 +25,7 @@ Those two arrows out of Mica are the whole integration surface. No content API,
 no read token, no build webhook — a push is the trigger, which every CI system
 already understands.
 
-**Want to see it running first?** [`demo/`](../demo/README.md) starts Mica and
+**Want to see it running first?** [`deploy/demo-identity/`](../deploy/demo-identity/README.md) starts Mica and
 an identity provider on your machine with two commands. Everything below is the
 same shape, with your own domain and provider.
 
@@ -51,8 +51,8 @@ comes out of your content repository at runtime.
 
 ```bash
 mkdir -p /srv/mica && cd /srv/mica
-curl -O https://raw.githubusercontent.com/amuedespacher/micacms/main/docker-compose.yml
-curl -o .env https://raw.githubusercontent.com/amuedespacher/micacms/main/.env.example
+curl -o compose.yml https://raw.githubusercontent.com/amuedespacher/micacms/main/deploy/self-hosted/compose.yml
+curl -o .env https://raw.githubusercontent.com/amuedespacher/micacms/main/deploy/self-hosted/.env.example
 ```
 
 ### 2. A repository token
@@ -316,7 +316,7 @@ the pending changes against the new model, and publish then.
 
 ## Upgrading
 
-The image tag in `docker-compose.yml` is the version. Change it, then:
+The image tag in `compose.yml` is the version. Change it, then:
 
 ```bash
 docker compose pull && docker compose up -d

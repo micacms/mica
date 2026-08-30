@@ -49,7 +49,7 @@ export const MANIFESTS = [
   { file: "packages/auth/oidc/package.json", pattern: VERSION_FIELD },
   { file: "apps/local-editor/package.json", pattern: VERSION_FIELD },
   { file: "apps/self-hosted/package.json", pattern: VERSION_FIELD },
-  { file: "docker-compose.yml", pattern: IMAGE_TAG },
+  { file: "deploy/self-hosted/compose.yml", pattern: IMAGE_TAG },
 ];
 
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
