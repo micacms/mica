@@ -4,11 +4,13 @@
  *
  * Counts and where the content lives, and deliberately little else.
  *
- * No draft count: an entry is saved or it is not. No "Rebuild website" button:
- * the commit is the trigger, and what follows belongs to the repository's own
- * pipeline. No "recently edited" list either — the honest source for that is
- * the repository's history, which a connector in front of a plain working tree
- * cannot read, and a half-true version would be worse than none.
+ * One pending-changes card, because Saved and Published are different words
+ * now and the difference should be visible from the front door. Still no
+ * "Rebuild website" button: the published commit is the trigger, and what
+ * follows belongs to the repository's own pipeline. No "recently edited" list
+ * either — the honest source for that is the repository's history, which a
+ * connector in front of a plain working tree cannot read, and a half-true
+ * version would be worse than none.
  */
 
 import { computed, onMounted, ref } from "vue";
@@ -16,9 +18,11 @@ import { computed, onMounted, ref } from "vue";
 import { api, ApiError, type Overview } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
 import { useSession } from "@/stores/session";
+import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
 const session = useSession();
+const staging = useStaging();
 const toast = useToast();
 
 const overview = ref<Overview | null>(null);
@@ -92,14 +96,34 @@ onMounted(async () => {
         </ul>
       </section>
 
+      <section
+        v-if="staging.pendingCount.value > 0"
+        class="card p-4"
+        aria-labelledby="pending-heading"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 id="pending-heading" class="text-sm font-semibold">
+              {{ staging.pendingCount.value }} change{{ staging.pendingCount.value === 1 ? "" : "s" }}
+              waiting to be published
+            </h2>
+            <p class="mt-1 text-sm text-muted">
+              Saved, and not yet in the repository. The whole set is published together.
+            </p>
+          </div>
+          <RouterLink :to="{ name: 'changes' }" class="btn-secondary">Review and publish</RouterLink>
+        </div>
+      </section>
+
       <section class="card p-4" aria-labelledby="repository-heading">
         <h2 id="repository-heading" class="text-sm font-semibold">Content repository</h2>
 
         <p class="mt-2 break-all font-mono text-xs text-muted">{{ overview.repository }}</p>
 
         <p class="mt-3 text-sm text-muted">
-          Every entry and every uploaded file is a file in this repository. Saving writes it there,
-          so the website can be rebuilt from the repository alone — with or without this server.
+          Every entry and every uploaded file becomes a file in this repository when it is
+          published, so the website can be rebuilt from the repository alone — with or without
+          this server.
         </p>
       </section>
     </template>

@@ -356,9 +356,15 @@ verified against the base the editor reviewed. `committed-pending-push` is
 returned as a state; the retry pushes and never creates a second commit.
 `MICA_LOCAL_PUBLISH=false` disables it.
 
-**B6 — Editor UI.**
-Recent changes, validation state, discard, commit message and Publish. No user
-concepts. Saved and Published must be visibly different words.
+**B6 — Editor UI.** *(done)*
+The Publish page: the pending set grouped by entry, singleton and media rather
+than by file, validation problems named, per-group discard behind a
+confirmation, a commit-message input and Publish. `committed-pending-push`
+renders as a retryable state, derived from Git's own ahead count so it
+survives a restart. The sidebar carries a pending-changes badge, the dashboard
+a "waiting to be published" card. No user concepts anywhere, and Saved and
+Published are visibly different words — the entry header still says Saved; the
+Publish page is where Published happens.
 
 **B7 — Draft media.** *(done)*
 Unpublished media must be visible in the editor before it reaches the
@@ -379,8 +385,9 @@ else, and nothing is reachable signed out.
 - Publication clears only what was published. ✔
 - Unpublished media renders in the editor and is unreachable when signed out. ✔
 
-Everything server-side is built and tested; **B6 is the remaining item**, and
-until it lands the pending set and Publish are reachable only through the API.
+**Phase B is complete.** The standing gap from [`decisions.md`](decisions.md)
+applies to it in full: no browser test drives "sign in, edit, publish", so the
+Publish page is verified by the API tests beneath it and by hand.
 
 **Open question — resolved.** The model-drift behaviour is decided and built:
 refuse to publish, name the drift, require a restart. Both staging
