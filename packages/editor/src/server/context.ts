@@ -21,7 +21,7 @@ import {
   type ContentStore,
   type RepositoryConnector,
 } from "@micacms/connectors";
-import type { Site } from "@micacms/model";
+import type { Site } from "@micacms/core";
 
 import type { Config } from "./config.js";
 import { openDatabase, type SqlDatabase } from "./db/index.js";

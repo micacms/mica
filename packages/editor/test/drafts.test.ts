@@ -1,7 +1,7 @@
 /**
  * The SQLite draft store.
  *
- * The same behaviour `memoryDraftStore` specifies in @micacms/model, proven
+ * The same behaviour `memoryDraftStore` specifies in @micacms/core, proven
  * against the real schema — plus the one property memory cannot show: bytes
  * survive the round trip through a BLOB column.
  */

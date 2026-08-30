@@ -16,7 +16,7 @@
 
 import path from "node:path";
 
-import { slugify } from "@micacms/model";
+import { slugify } from "@micacms/core";
 import type { RepositoryConnector } from "@micacms/connectors";
 import { imageSize } from "image-size";
 

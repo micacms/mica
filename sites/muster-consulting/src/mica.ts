@@ -41,7 +41,7 @@ import {
   text,
   textarea,
   url,
-} from "@micacms/model";
+} from "@micacms/core";
 
 export const site = defineSite({
   /**

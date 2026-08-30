@@ -3,7 +3,7 @@
  *
  *   // src/content.config.ts
  *   import { micaCollections } from "@micacms/astro";
- *   import { defineSite } from "@micacms/model";
+ *   import { defineSite } from "@micacms/core";
  *
  *   export const site = defineSite({ collections: { … } });
  *   export const collections = micaCollections(site, { root: "./content" });
@@ -31,8 +31,8 @@ import {
   type InferSingleton,
   type Singleton,
   type Site,
-} from "@micacms/model";
-import { fileSystemSource } from "@micacms/model/node";
+} from "@micacms/core";
+import { fileSystemSource } from "@micacms/core/node";
 import { z } from "zod";
 
 import { manifestFor } from "./manifest.js";
@@ -416,7 +416,7 @@ export {
 /**
  * Re-exported for convenience, so a project that only depends on this package
  * can still build a source or read a collection. They are defined in
- * `@micacms/model`, where the Mica server can reach them too.
+ * `@micacms/core`, where the Mica server can reach them too.
  */
 export {
   ContentReadError,
@@ -427,5 +427,5 @@ export {
   readSingleton,
   type ContentSource,
   type DirectoryEntry,
-} from "@micacms/model";
-export { fileSystemSource } from "@micacms/model/node";
+} from "@micacms/core";
+export { fileSystemSource } from "@micacms/core/node";

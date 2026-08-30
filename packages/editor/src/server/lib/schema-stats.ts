@@ -19,7 +19,7 @@ import {
   type FieldKind,
   type FieldMap,
   type Site,
-} from "@micacms/model";
+} from "@micacms/core";
 
 export interface KindUsage {
   kind: FieldKind;

@@ -10,7 +10,7 @@
 
 import { computed, onMounted, ref, watch } from "vue";
 
-import { withDefaults as fillDefaults, type FieldIssue } from "@micacms/model";
+import { withDefaults as fillDefaults, type FieldIssue } from "@micacms/core";
 
 import { api, ApiError } from "@/api";
 import FieldList from "@/components/fields/FieldList.vue";

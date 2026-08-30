@@ -37,7 +37,7 @@ import {
   type FieldIssue,
   type PublishResult,
   type Site,
-} from "@micacms/model";
+} from "@micacms/core";
 
 import { ApiError, badRequest } from "../lib/errors.js";
 

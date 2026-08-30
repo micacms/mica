@@ -12,7 +12,7 @@ being down, slow, or mid-deploy.
 
 ```ts
 // src/mica.ts
-import { collection, defineSite, slug, text } from "@micacms/model";
+import { collection, defineSite, slug, text } from "@micacms/core";
 
 export const site = defineSite({
   root: "./content",

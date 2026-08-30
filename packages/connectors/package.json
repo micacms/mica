@@ -33,7 +33,7 @@
     "test": "tsc -p tsconfig.json && node --test test/*.test.ts"
   },
   "dependencies": {
-    "@micacms/model": "workspace:*"
+    "@micacms/core": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.20.1",

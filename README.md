@@ -41,7 +41,7 @@ published is ever only in there.
 ## Add it to an Astro site
 
 ```bash
-npm install @micacms/astro @micacms/model
+npm install @micacms/astro @micacms/core
 ```
 
 Describe your content as a plain module:
@@ -55,7 +55,7 @@ import {
   richText,
   slug,
   text,
-} from "@micacms/model";
+} from "@micacms/core";
 
 export const site = defineSite({
   root: "./content",
@@ -165,7 +165,8 @@ leavers, and Mica has nothing to administer.
 
 ```
 packages/
-├── model/       the field DSL, the content model, and the authoring format
+├── core/        the field DSL, the content model, the authoring format, and the repository port
+├── model/       the old name for core — a thin re-export, kept for one release cycle
 ├── connectors/  repository access: local working tree, GitHub, GitLab
 ├── astro/       Content Layer loader and the dev integration
 └── editor/      Hono API + Vue 3 admin SPA

@@ -13,16 +13,15 @@
  * `expect` is therefore checked in Mica, and the atomicity is GitLab's.
  */
 
-import type { DirectoryEntry } from "@micacms/model";
-
 import {
   ConflictError,
   ConnectorError,
   type Author,
   type CommitInput,
   type CommitResult,
+  type DirectoryEntry,
   type RepositoryConnector,
-} from "./connector.js";
+} from "@micacms/core";
 import { createHttpClient, encodePath, HttpError, type FetchLike } from "./http.js";
 
 export interface GitLabConnectorOptions {

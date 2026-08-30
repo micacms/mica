@@ -5,7 +5,7 @@
 
 import { computed } from "vue";
 
-import type { AnyField, FieldIssue } from "@micacms/model";
+import type { AnyField, FieldIssue } from "@micacms/core";
 
 import { fieldComponents } from "./registry";
 

@@ -30,8 +30,8 @@ Ask the user before you:
 - Git is the source of truth for website content.
 - The SQLite database holds browser sessions, and later the drafts that are not published yet. It must not hold website content, accounts, or memberships.
 - Do not add a content API, public media route, media server, or build webhook.
-- Keep `@micacms/model` independent from Astro and other frameworks.
-- Keep Node-only code out of browser bundles. Put Node-only model exports in the `@micacms/model/node` entry point.
+- Keep `@micacms/core` independent from Astro and other frameworks; its boundary test enforces this.
+- Keep Node-only code out of browser bundles. Put Node-only model exports in the `@micacms/core/node` entry point.
 - Treat `docs/architecture.md` and `docs/decisions.md` as design constraints.
 - Do not manually edit generated files. Change their source and run the applicable generation process.
 
@@ -78,7 +78,7 @@ Ask the user before you:
 
 ## Repository map
 
-- `packages/model`: content model, field DSL, validation, serialization, and authoring format.
+- `packages/core`: content model, field DSL, validation, serialization, authoring format, and the repository port. `packages/model` is a thin re-export of it, kept for one release cycle.
 - `packages/connectors`: local, GitHub, and GitLab repository access.
 - `packages/astro`: Astro Content Layer integration and Markdoc rendering.
 - `packages/editor`: Hono server and Vue administration application.

@@ -157,7 +157,7 @@ new _field kind_ means a builder in the model package, an entry in `FIELD_KINDS`
 
 The model reaches the server as plain data, read out of the repository by
 `src/server/schema.ts` and re-validated there — so a model built against a
-newer `@micacms/model` than the server is running fails at startup naming the
+newer `@micacms/core` than the server is running fails at startup naming the
 field, rather than at an editor's screen. Because the model is in the
 repository, `src/server/index.ts` opens the database and builds the connector
 _before_ composing the application: there is no context to hold until the model
