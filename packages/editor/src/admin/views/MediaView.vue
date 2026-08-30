@@ -21,6 +21,7 @@ import { computed, onMounted, ref } from "vue";
 import { api, ApiError, type MediaItem } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
 import { formatBytes } from "@/lib/format";
+import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
 const toast = useToast();
@@ -85,6 +86,7 @@ async function upload(files: FileList | File[] | null): Promise<void> {
   try {
     const { items: uploaded } = await api.media.upload(list);
     toast.success(`Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}.`);
+    void useStaging().refresh();
     await load();
     selected.value = items.value.find((item) => item.path === uploaded[0]?.path) ?? null;
   } catch (error) {

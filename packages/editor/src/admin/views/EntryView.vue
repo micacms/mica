@@ -2,9 +2,10 @@
 /**
  * Entry editor.
  *
- * One Save button. The repository holds one file per entry and saving writes
- * it; unfinished work stays in this form and never reaches the server, which is
- * what the unsaved-changes guard is for.
+ * One Save button, and Saved is not Published: a save lands in the site's
+ * draft workspace and collects on the Publish page until somebody publishes
+ * it. Unfinished work stays in this form and never reaches the server, which
+ * is what the unsaved-changes guard is for.
  *
  * `revision` is how two editors stay out of each other's way. The form
  * remembers which version of the entry it opened and sends that token back with
@@ -26,12 +27,14 @@ import FieldList from "@/components/fields/FieldList.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
 import { useSchema } from "@/stores/schema";
+import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
 const props = defineProps<{ collection: string; slug?: string }>();
 
 const router = useRouter();
 const schema = useSchema();
+const staging = useStaging();
 const toast = useToast();
 
 const definition = computed(() => schema.collection(props.collection));
@@ -127,6 +130,7 @@ async function save(): Promise<void> {
     // moved the entry. Re-open at whatever it decided rather than assuming.
     unsaved.markClean();
     toast.success(saved.renamed ? `Saved as “${saved.slug}”.` : "Saved.");
+    void staging.refresh();
 
     if (saved.slug !== props.slug) {
       await router.replace({
@@ -193,6 +197,7 @@ async function remove(): Promise<void> {
     await api.entries.remove(props.collection, props.slug);
     unsaved.release();
     toast.success("Deleted.");
+    void staging.refresh();
     await router.replace({ name: "collection", params: { collection: props.collection } });
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not delete this entry.");
@@ -281,11 +286,12 @@ async function remove(): Promise<void> {
       @cancel="confirmDelete = false"
       @confirm="remove"
     >
-      <!-- Honest about what a delete is now: a commit, which the repository's
-           history keeps whether or not this server ever runs again. -->
+      <!-- Honest about what a delete is now: a pending change. It reaches the
+           repository's history when the pending set is published, and the
+           history keeps it from then on. -->
       <p>
-        This removes <code>{{ location }}</code> from the repository. The deletion is a commit, so
-        the history still has it.
+        This removes <code>{{ location }}</code>. Like any edit, the removal joins the pending
+        changes and reaches the repository when they are published.
       </p>
 
       <div v-if="references.length" class="mt-3 rounded-md border border-warning/15 bg-warning-soft p-4">
