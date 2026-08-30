@@ -189,6 +189,56 @@ export interface SingletonDetail {
   revision: string | null;
 }
 
+/** Where a pending change happened, in words an editor recognises. */
+export type ChangeOwner =
+  | { kind: "entry"; collection: string; slug: string; label: string }
+  | { kind: "singleton"; name: string; label: string }
+  | { kind: "order"; collection: string; label: string }
+  | { kind: "media"; label: string }
+  | { kind: "other"; label: string };
+
+/** One file in the pending change set. */
+export interface PendingChange {
+  path: string;
+  kind: "create" | "update" | "delete";
+  updatedAt?: string;
+  owner: ChangeOwner;
+}
+
+/** One thing that would make the pending set unpublishable. */
+export interface StagingProblem {
+  path: string;
+  label: string;
+  issues: FieldIssue[];
+}
+
+/**
+ * The pending change set — what is Saved and not yet Published.
+ *
+ * `workspace` decides the words: a working tree is the developer's checkout
+ * and publishing runs their own Git; a draft store lives in Mica and
+ * publishing writes one commit through the provider.
+ */
+export interface StagingStatus {
+  workspace: "working-tree" | "draft-store";
+  publish: { enabled: boolean; reason?: string };
+  /** What the pending changes are based on. Sent back with Publish. */
+  baseRevision: string | null;
+  branch: string | null;
+  /** Commits created and not yet pushed. Working tree only. */
+  ahead: number | null;
+  changes: PendingChange[];
+  validation: { ok: boolean; problems: StagingProblem[] };
+  updatedAt: string | null;
+}
+
+export interface PublishOutcome {
+  /** `committed-pending-push`: the commit exists, only the push failed. */
+  state: "published" | "committed-pending-push";
+  revision: string | null;
+  pushError?: string;
+}
+
 /** A file in the content repository. */
 export interface MediaItem {
   /** Path relative to the content root — the value a media field holds. */
@@ -365,6 +415,22 @@ export const api = {
       request<{ revision: string }>(`/admin/singletons/${name}`, {
         method: "PUT",
         body: { data, revision },
+      }),
+  },
+
+  staging: {
+    changes: () => request<StagingStatus>("/admin/changes"),
+    publish: (message: string, expectedBase: string | null) =>
+      request<PublishOutcome>("/admin/publish", {
+        method: "POST",
+        body: { message, expectedBase },
+      }),
+    /** Retries the push after `committed-pending-push`. Never commits again. */
+    push: () => request<PublishOutcome>("/admin/publish/push", { method: "POST" }),
+    discard: (paths: string[]) =>
+      request<{ discarded: string[] }>("/admin/changes/discard", {
+        method: "POST",
+        body: { paths },
       }),
   },
 

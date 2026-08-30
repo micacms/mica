@@ -17,6 +17,7 @@ import FieldList from "@/components/fields/FieldList.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
 import { useSchema } from "@/stores/schema";
+import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
 const props = defineProps<{ name: string }>();
@@ -69,6 +70,7 @@ async function save(): Promise<void> {
     conflict.value = false;
     markClean();
     toast.success("Settings saved.");
+    void useStaging().refresh();
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
       conflict.value = true;
