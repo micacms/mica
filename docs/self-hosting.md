@@ -120,7 +120,6 @@ https://cms.example.com/api/auth/callback
 Then:
 
 ```env
-MICA_MODE=self-hosted
 MICA_OIDC_ISSUER=https://auth.example.com
 MICA_OIDC_CLIENT_ID=mica
 MICA_OIDC_CLIENT_SECRET=…              # omit for a public client using PKCE alone
@@ -403,5 +402,4 @@ That path is not covered by tests against a real instance yet. Other providers
 | Refuses to start: "nothing says who may edit this site" | No admission rule | Set `MICA_ADMIT_GROUP`, `MICA_ADMIT_DOMAIN` or `MICA_ADMIT_SUBJECTS` |
 | Sign-in returns to the login page with "expired" | The transaction cookie was lost — usually a `MICA_PUBLIC_URL` that does not match the browser's address | Make them identical |
 | 503, "identity provider could not be reached" | `MICA_OIDC_ISSUER` wrong, or discovery blocked | Check `<issuer>/.well-known/openid-configuration` from the container |
-| Refuses to start: "disables authentication" | `MICA_MODE=local` in production, or on a non-local host | Set `MICA_MODE=self-hosted` and configure OIDC |
 | Site build succeeds but content is stale | The host built an older commit | Check CI ran on the editorial commit |

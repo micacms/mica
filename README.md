@@ -165,11 +165,16 @@ leavers, and Mica has nothing to administer.
 
 ```
 packages/
-├── core/        the field DSL, the content model, the authoring format, and the repository port
+├── core/        the field DSL, the content model, the authoring format, and the port contracts
 ├── model/       the old name for core — a thin re-export, kept for one release cycle
 ├── connectors/  repository access: local working tree, GitHub, GitLab
 ├── astro/       Content Layer loader and the dev integration
-└── editor/      Hono API + Vue 3 admin SPA
+├── runtime/     the single-site Hono API and services, authentication-neutral
+├── editor-ui/   the Vue 3 admin SPA, shipped as built assets
+└── auth/oidc/   the server-only OIDC gate
+apps/
+├── local-editor/  @micacms/editor — the npx composition: loopback, no auth, no database
+└── self-hosted/   @micacms/self-hosted — the Docker composition, behind OIDC
 sites/
 ├── micacms/             the public micacms.com website
 └── muster-consulting/   a complete site to read: model, content, templates
@@ -183,9 +188,10 @@ demo/                    the deployed shape on your machine: Mica + ZITADEL
 e2e/                     a fast sign-in rig: Mica + Keycloak + a checkout
 ```
 
-`packages/*` are the published surface. `sites/muster-consulting` is a site
-to copy and redesign, not a dependency — the design is the part that should
-differ between projects.
+`packages/*` are reusable libraries and `apps/*` are the two things you run;
+all of them are published under one lockstep version. `sites/muster-consulting`
+is a site to copy and redesign, not a dependency — the design is the part that
+should differ between projects.
 
 ---
 

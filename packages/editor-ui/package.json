@@ -1,0 +1,51 @@
+{
+  "name": "@micacms/editor-ui",
+  "version": "0.1.1",
+  "type": "module",
+  "description": "The Mica editor SPA — identity-neutral Vue administration UI, shipped as built assets and mounted by a composing app.",
+  "license": "MIT",
+  "author": "Alexander Müdespacher",
+  "keywords": [
+    "mica",
+    "cms",
+    "editor",
+    "vue"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite",
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit",
+    "test": "node --test --import tsx test/*.test.ts"
+  },
+  "devDependencies": {
+    "@lucide/vue": "^1.31.0",
+    "@markdoc/markdoc": "^0.5.9",
+    "@micacms/core": "workspace:*",
+    "@tailwindcss/vite": "^4.0.0",
+    "@tiptap/core": "^2.11.0",
+    "@tiptap/extension-link": "^2.11.0",
+    "@tiptap/starter-kit": "^2.11.0",
+    "@tiptap/vue-3": "^2.11.0",
+    "@types/node": "^22.20.1",
+    "@vitejs/plugin-vue": "^5.2.1",
+    "tailwindcss": "^4.0.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vite": "^6.0.7",
+    "vue": "^3.5.13",
+    "vue-router": "^4.5.0",
+    "vue-tsc": "^2.2.0"
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  }
+}

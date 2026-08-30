@@ -4,9 +4,9 @@
  *
  *   pnpm release:version 0.2.0
  *
- * Everything here carries one version — three published packages, the editor
- * and its image — so a release is one number in six files. Doing that by hand
- * is how five of them end up right and the sixth ships as the previous
+ * Everything here carries one version — every published package, both apps
+ * and the image — so a release is one number in a handful of files. Doing
+ * that by hand is how most of them end up right and one ships as the previous
  * version, which npm will happily accept and nobody notices until a bug report
  * quotes a version that never existed.
  *
@@ -44,7 +44,11 @@ export const MANIFESTS = [
   { file: "packages/model/package.json", pattern: VERSION_FIELD },
   { file: "packages/connectors/package.json", pattern: VERSION_FIELD },
   { file: "packages/astro/package.json", pattern: VERSION_FIELD },
-  { file: "packages/editor/package.json", pattern: VERSION_FIELD },
+  { file: "packages/editor-ui/package.json", pattern: VERSION_FIELD },
+  { file: "packages/runtime/package.json", pattern: VERSION_FIELD },
+  { file: "packages/auth/oidc/package.json", pattern: VERSION_FIELD },
+  { file: "apps/local-editor/package.json", pattern: VERSION_FIELD },
+  { file: "apps/self-hosted/package.json", pattern: VERSION_FIELD },
   { file: "docker-compose.yml", pattern: IMAGE_TAG },
 ];
 

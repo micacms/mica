@@ -48,10 +48,14 @@ work.
 
 | Package                   | What it is                                                                            |
 | ------------------------- | ------------------------------------------------------------------------------------- |
-| `@micacms/core`           | The field DSL, the content model, the authoring format, and the repository port. `@micacms/model` re-exports it for one release cycle |
+| `@micacms/core`           | The field DSL, the content model, the authoring format, and the port contracts. `@micacms/model` re-exports it for one release cycle |
 | `@micacms/connectors`     | Repository access, and the content store built on it                                  |
 | `@micacms/astro`          | Content Layer loader, dev integration, Markdoc rendering                              |
-| `@micacms/editor`         | Hono API and the Vue admin it serves                                                  |
+| `@micacms/runtime`        | The single-site Hono API and application services, authentication-neutral             |
+| `@micacms/editor-ui`      | The Vue admin SPA, shipped as built assets                                            |
+| `@micacms/auth-oidc`      | The server-only OIDC gate: sign-in, sessions, admission                               |
+| `@micacms/editor`         | `apps/local-editor` — the `npx` composition: loopback, no auth, no database           |
+| `@micacms/self-hosted`    | `apps/self-hosted` — the Docker composition: runtime + UI behind OIDC                 |
 | `sites/muster-consulting` | A complete Astro site: a starter to copy, not a dependency                            |
 
 **Why the core package is not inside the Astro package.** The editor, the
@@ -260,35 +264,42 @@ them is a separate, private product — see [`v3-arch.md`](v3-arch.md) §14.
 
 ---
 
-## Deployment modes
+## The two apps
 
-One implementation, two shapes, selected by `MICA_MODE`.
+One runtime, two composition roots. The mode is which app you run.
 
-|               | Identity             | Repository                   |
-| ------------- | -------------------- | ---------------------------- |
-| `local`       | **None** — see below | A working tree               |
-| `self-hosted` | OIDC                 | Usually a provider connector |
+|                        | Identity             | Repository                   | Database                    |
+| ---------------------- | -------------------- | ---------------------------- | --------------------------- |
+| `@micacms/editor`      | **None** — see below | A working tree, always       | **None**                    |
+| `@micacms/self-hosted` | OIDC                 | Usually a provider connector | SQLite: sessions and drafts |
 
-Both serve one site. The variable is temporary: the mode becomes which
-application you run once the packages split — see [`v3-plan.md`](v3-plan.md),
-Phase C.
+Both compose `@micacms/runtime` — neither forks it — and hand it an
+`AuthSurface`: routes for `/api/auth` plus the gate in front of the admin API.
+The self-hosted app passes the OIDC surface from `@micacms/auth-oidc`; the
+local editor passes nothing and gets the unauthenticated surface, which is a
+statement of fact rather than a bypass.
 
-### Local mode has no authentication, and no user
+### The local editor has no authentication, no user, and no database
 
-`MICA_MODE=local` has no provider, no credential and nobody to be. It does not
-invent a developer account: there is no name, no avatar, no account menu and no
-sign-out, because there is nothing behind any of them. A session still exists,
-carrying the CSRF token and nothing else.
+`npx @micacms/editor` has no provider, no credential and nobody to be. It does
+not invent a developer account: there is no name, no avatar, no account menu
+and no sign-out, because there is nothing behind any of them. There is no
+session either, and no SQLite file anywhere — the content directory is the
+only place the process writes.
 
 This is the honest resolution of two requirements that genuinely conflict: Mica
 ships no passwords, and a developer cannot be asked to stand up Keycloak before
 running `pnpm dev`. The third option — a built-in dev identity provider — is
-auth code, which is the thing being avoided.
+auth code, which is the thing being avoided. The package boundary makes it
+structural: `@micacms/editor` has no dependency path to `openid-client`, and a
+test walks the graph to keep it that way.
 
 It is the most dangerous state the software has, so it is contained: refused
 when `NODE_ENV=production`; refused when `MICA_PUBLIC_URL` is any host but
 localhost; refused when `HOST` is anything but the loopback address; and a
-warning on every start.
+**Host allowlist** in front of everything, so a DNS-rebound name gets a 403
+where the old local session cookie used to be the accidental defence. The
+Origin check handles cross-site writes as before.
 
 ---
 
@@ -309,13 +320,16 @@ for. The draft tables hold exactly the current pending change set and are
 cleared by publication; Git stays the history. Losing this database signs
 everyone out — and, where saves are staged in it, loses work that was saved
 and not yet published, which the self-hosted backup guidance says out loud.
-Two rules keep it navigable: only `repositories/` writes SQL, and only
-`db/driver.ts` knows which SQLite library is in use.
+Two rules keep it navigable: SQL is written only by the stores that own their
+tables — sessions in `@micacms/auth-oidc`, drafts and migrations in
+`apps/self-hosted` — and only the runtime's `db/driver.ts` knows which SQLite
+library is in use. The local editor opens no database at all.
 
 Note the startup order this implies. The content model is _in_ the repository,
-so the database opens first, the connector is built from it, the model is read
-through the connector, and only then is the application composed. The entry
-point does that explicitly rather than hiding it in the composition root.
+so the self-hosted entry point opens the database, builds the connector from
+the environment, reads the model through the connector, and only then composes
+the application — explicitly, rather than hiding it in the composition root.
+The local editor does the same minus the database.
 
 ---
 

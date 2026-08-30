@@ -85,13 +85,12 @@ services:
       # more machinery than a local test rig deserves, so the rig relaxes the
       # one flag rather than the rule.
       #
-      # What is being tested is MICA_MODE=self-hosted: real provider, real
+      # What is being tested is the self-hosted composition: real provider, real
       # redirect, real admission check against a real group claim.
       NODE_ENV: development
       LOG_LEVEL: debug
 
       MICA_PUBLIC_URL: http://localhost:6422
-      MICA_MODE: self-hosted
 
       MICA_OIDC_ISSUER: http://localhost:8080/realms/mica
       MICA_OIDC_CLIENT_ID: mica
