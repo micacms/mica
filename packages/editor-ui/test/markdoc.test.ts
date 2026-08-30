@@ -10,7 +10,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { fromMarkdoc, toMarkdoc, type ProseMirrorNode } from "../src/lib/markdoc.js";
+import { equivalentMarkdoc, fromMarkdoc, toMarkdoc, type ProseMirrorNode } from "../src/lib/markdoc.js";
 
 /** Markdoc in, Markdoc out, through the editor's representation. */
 const roundTrip = (source: string): string => toMarkdoc(fromMarkdoc(source));
@@ -161,5 +161,24 @@ describe("round trips", () => {
       "<script>alert(1)</script>",
     );
     assert.equal(roundTrip(out), out);
+  });
+});
+
+describe("equivalentMarkdoc", () => {
+  it("treats the serializers' trailing-newline difference as no change", () => {
+    // The server returns the stored body without a trailing newline; toMarkdoc
+    // emits one. A form that saved must not become dirty over that gap.
+    assert.equal(equivalentMarkdoc("Hello **there**\n", "Hello **there**"), true);
+  });
+
+  it("treats null, undefined and empty as the same absent document", () => {
+    assert.equal(equivalentMarkdoc(null, ""), true);
+    assert.equal(equivalentMarkdoc(undefined, null), true);
+    assert.equal(equivalentMarkdoc("", "  \n"), true);
+  });
+
+  it("still sees a real edit", () => {
+    assert.equal(equivalentMarkdoc("Hello\n", "Hello there\n"), false);
+    assert.equal(equivalentMarkdoc("Hello\n", null), false);
   });
 });

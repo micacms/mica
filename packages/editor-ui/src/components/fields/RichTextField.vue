@@ -23,7 +23,7 @@ import type { RichTextFeature, RichTextField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
 import { useField, type FieldProps } from "@/composables/useField";
-import { fromMarkdoc, toMarkdoc, type ProseMirrorNode } from "@/lib/markdoc";
+import { equivalentMarkdoc, fromMarkdoc, toMarkdoc, type ProseMirrorNode } from "@/lib/markdoc";
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
@@ -84,10 +84,16 @@ const editor = useEditor({
   onUpdate({ editor: instance }) {
     // ProseMirror represents "empty" as one empty paragraph; the model wants
     // null, so that an untouched field does not write a file.
-    emit(
-      "update:modelValue",
-      instance.isEmpty ? null : toMarkdoc(instance.getJSON() as ProseMirrorNode),
-    );
+    const next = instance.isEmpty ? null : toMarkdoc(instance.getJSON() as ProseMirrorNode);
+
+    // Tiptap also fires transactions that change nothing stored — normalising
+    // the parsed document on mount, or re-parsing after a reload. Emitting
+    // those would replace the value with a differently-serialized twin and
+    // mark a freshly saved form dirty, so only a real change leaves here.
+    const current = typeof props.modelValue === "string" ? props.modelValue : null;
+    if (equivalentMarkdoc(next, current)) return;
+
+    emit("update:modelValue", next);
   },
 });
 
@@ -109,7 +115,7 @@ watch(
     const incoming = typeof next === "string" ? next : "";
     const current = instance.isEmpty ? "" : toMarkdoc(instance.getJSON() as ProseMirrorNode);
 
-    if (incoming.trim() !== current.trim()) {
+    if (!equivalentMarkdoc(incoming, current)) {
       // `false` suppresses the update event, so this does not loop back.
       instance.commands.setContent(fromMarkdoc(incoming), false);
     }
