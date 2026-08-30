@@ -13,7 +13,7 @@ on:
     paths:
       # The content directory is what editors change. The rest is what
       # developers change. Both need a rebuild; nothing else does.
-      - "sites/muster-consulting/**"
+      - "examples/muster-consulting/**"
       - "packages/**"
       - ".github/workflows/build-site.yml"
 
@@ -56,13 +56,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: website
-          path: sites/muster-consulting/dist
+          path: examples/muster-consulting/dist
           retention-days: 7
 
       # Replace with whatever hosts the site. The build above is
       # provider-agnostic; only this step is not.
       #
       # - name: Deploy
-      #   run: npx wrangler pages deploy sites/muster-consulting/dist --project-name=example
+      #   run: npx wrangler pages deploy examples/muster-consulting/dist --project-name=example
       #   env:
       #     CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

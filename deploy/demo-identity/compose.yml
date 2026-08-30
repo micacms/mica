@@ -1,7 +1,7 @@
 # Mica in its deployed shape, on your machine.
 #
-#   cp demo/.env.example demo/.env    # your repository and its token
-#   docker compose -f demo/compose.yml --env-file demo/.env up --build
+#   cp deploy/demo-identity/.env.example deploy/demo-identity/.env    # your repository and its token
+#   docker compose -f deploy/demo-identity/compose.yml --env-file deploy/demo-identity/.env up --build
 #
 # What a self-hosted Mica consists of, and nothing more:
 #
@@ -18,8 +18,8 @@
 # creates the three demo people over ZITADEL's API.
 #
 # Deliberately local: plain HTTP, passwords in this file, a master key anybody
-# can read. Do not copy it to a server — copy docker-compose.yml in the
-# repository root, which is the reference deployment.
+# can read. Do not copy it to a server — copy deploy/self-hosted/compose.yml,
+# which is the reference deployment.
 
 name: mica-demo
 
@@ -118,7 +118,7 @@ services:
   # ---------------------------------------------------------------- mica
   mica:
     build:
-      context: ..
+      context: ../..
       dockerfile: Dockerfile
     # Swap the build block for the published image to run a release instead:
     # image: ghcr.io/amuedespacher/micacms:latest
@@ -137,7 +137,7 @@ services:
     command:
       - /bin/sh
       - -c
-      - "set -a; . /seed/oidc.env; set +a; exec node dist/server/index.js"
+      - "set -a; . /seed/oidc.env; set +a; exec node dist/index.js"
 
     environment:
       # Development, deliberately: Mica refuses plain-HTTP OIDC discovery under
@@ -152,11 +152,11 @@ services:
 
       MICA_OIDC_ISSUER: http://localhost:8080
 
-      # Your repository on github.com or gitlab.com, from demo/.env. This is the
-      # same connector, configured the same way, as a real deployment.
-      REPOSITORY: ${REPOSITORY:?set REPOSITORY in demo/.env}
-      REPOSITORY_PROJECT: ${REPOSITORY_PROJECT:?set REPOSITORY_PROJECT in demo/.env}
-      REPOSITORY_TOKEN: ${REPOSITORY_TOKEN:?set REPOSITORY_TOKEN in demo/.env}
+      # Your repository on github.com or gitlab.com, from deploy/demo-identity/.env.
+      # This is the same connector, configured the same way, as a real deployment.
+      REPOSITORY: ${REPOSITORY:?set REPOSITORY in deploy/demo-identity/.env}
+      REPOSITORY_PROJECT: ${REPOSITORY_PROJECT:?set REPOSITORY_PROJECT in deploy/demo-identity/.env}
+      REPOSITORY_TOKEN: ${REPOSITORY_TOKEN:?set REPOSITORY_TOKEN in deploy/demo-identity/.env}
       REPOSITORY_ROOT: ${REPOSITORY_ROOT:-content}
       REPOSITORY_BRANCH: ${REPOSITORY_BRANCH:-main}
 

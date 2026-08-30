@@ -77,6 +77,40 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  examples/muster-consulting:
+    dependencies:
+      '@micacms/astro':
+        specifier: workspace:*
+        version: link:../../packages/astro
+      '@micacms/core':
+        specifier: workspace:*
+        version: link:../../packages/core
+      astro:
+        specifier: ^7.2.2
+        version: 7.2.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@22.20.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)
+      sharp:
+        specifier: ^0.34.5
+        version: 0.34.5
+    devDependencies:
+      '@astrojs/check':
+        specifier: ^0.9.4
+        version: 0.9.10(prettier@3.9.6)(typescript@5.9.3)
+      '@tailwindcss/vite':
+        specifier: ^4.0.0
+        version: 4.3.3(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.1
+      maplibre-gl:
+        specifier: ^5.0.0
+        version: 5.24.0
+      tailwindcss:
+        specifier: ^4.0.0
+        version: 4.3.3
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   packages/astro:
     dependencies:
       '@markdoc/markdoc':
@@ -275,40 +309,6 @@ importers:
       '@types/node':
         specifier: ^22.20.1
         version: 22.20.1
-      tailwindcss:
-        specifier: ^4.0.0
-        version: 4.3.3
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.3
-
-  sites/muster-consulting:
-    dependencies:
-      '@micacms/astro':
-        specifier: workspace:*
-        version: link:../../packages/astro
-      '@micacms/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      astro:
-        specifier: ^7.2.2
-        version: 7.2.2(@emnapi/core@1.11.1)(@emnapi/runtime@1.11.3)(@types/node@22.20.1)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0)
-      sharp:
-        specifier: ^0.34.5
-        version: 0.34.5
-    devDependencies:
-      '@astrojs/check':
-        specifier: ^0.9.4
-        version: 0.9.10(prettier@3.9.6)(typescript@5.9.3)
-      '@tailwindcss/vite':
-        specifier: ^4.0.0
-        version: 4.3.3(vite@8.2.1(@types/node@22.20.1)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.12)(yaml@2.9.0))
-      '@types/node':
-        specifier: ^22.20.1
-        version: 22.20.1
-      maplibre-gl:
-        specifier: ^5.0.0
-        version: 5.24.0
       tailwindcss:
         specifier: ^4.0.0
         version: 4.3.3

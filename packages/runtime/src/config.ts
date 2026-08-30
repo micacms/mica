@@ -58,7 +58,7 @@ export const runtimeEnv = {
    * tree on disk. Ignored for a provider connector, which is given
    * REPOSITORY_ROOT inside the remote repository instead.
    */
-  CONTENT_ROOT: z.string().default("../../sites/muster-consulting/content"),
+  CONTENT_ROOT: z.string().default("../../examples/muster-consulting/content"),
 
   /**
    * How Mica reaches that repository. `local` is a working tree beside the

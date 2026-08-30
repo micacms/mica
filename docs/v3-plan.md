@@ -525,7 +525,7 @@ matters.
 
 No behaviour change. Two pull requests.
 
-**D1 — Folders.**
+**D1 — Folders.** *(done)*
 `sites/muster-consulting` to `examples/split-content-repository` or a named
 business-site example. `sites/micacms` **stays**. `demo/` to
 `deploy/demo-identity`. Root Compose files to `deploy/self-hosted`. `e2e/` to
@@ -534,6 +534,22 @@ business-site example. `sites/micacms` **stays**. `demo/` to
 Update [`vercel.json`](../vercel.json), the three workflows in
 [`.github/workflows/`](../.github/workflows), the root manifest scripts,
 [`AGENTS.md`](../AGENTS.md) and the docs. Preserve history where practical.
+
+> **Done, with the plan's second option.** The example moved to
+> `examples/muster-consulting` — the named business-site example — because the
+> package is already `@micacms/example-muster-consulting` and the site is a
+> business site; `split-content-repository` would promise a repository split
+> the example does not demonstrate. All moves are `git mv`, so history
+> follows. The root Compose file took Compose's canonical name on the way:
+> `deploy/self-hosted/compose.yml`, beside its `.env.example`.
+>
+> `vercel.json` was reviewed and needed no change: `sites/micacms` did not
+> move, and its `ignoreCommand` names only paths that still exist.
+>
+> Two stale leftovers surfaced by the sweep were fixed in the same commit:
+> the demo compose still launched `dist/server/index.js` — the pre-Phase-C
+> entry path, which no longer exists in the image — and CI's docker job still
+> passed the deleted `MICA_MODE` variable.
 
 **D2 — Changesets.**
 Adopt Changesets with `fixed` grouping over the published packages, keeping one

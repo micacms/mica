@@ -4,8 +4,8 @@ Mica in its deployed shape, on your machine: the CMS from its image, a real
 identity provider, and a real repository on github.com or gitlab.com.
 
 ```bash
-cp demo/.env.example demo/.env      # your repository and its token
-docker compose -f demo/compose.yml up --build
+cp deploy/demo-identity/.env.example deploy/demo-identity/.env   # your repository and its token
+docker compose -f deploy/demo-identity/compose.yml up --build
 ```
 
 Then open <http://localhost:6422/admin/> and sign in as `alice` /
@@ -25,8 +25,8 @@ that repository by CI that never contacts Mica.
 
 > Deliberately local: plain HTTP, passwords in the Compose file, a master key
 > anybody can read. It is a demo, not an example deployment. The reference
-> deployment is [docker-compose.yml](../docker-compose.yml) in the repository
-> root — see [docs/self-hosting.md](../docs/self-hosting.md).
+> deployment is [deploy/self-hosted/compose.yml](../self-hosted/compose.yml) —
+> see [docs/self-hosting.md](../../docs/self-hosting.md).
 
 ---
 
@@ -94,7 +94,7 @@ ZITADEL's own console is at <http://localhost:8080>, as `admin` /
    claims it was given and learns better at the next sign-in. That is the
    accepted cost of having no user table, and it is why sessions last hours
    rather than weeks — see the P1 entry in
-   [`decisions.md`](../docs/decisions.md).
+   [`decisions.md`](../../docs/decisions.md).
 
 ---
 
@@ -110,7 +110,7 @@ is also why both ports are published on the `zitadel` service.
 `NODE_ENV=production` — correctly, since an ID token over http is one anybody
 on the path can read. Giving ZITADEL a certificate is more machinery than a
 local rig deserves, so the rig relaxes that one flag. What is under test is
-`MICA_MODE=self-hosted`: a real provider, a real connector, and a real
+the self-hosted composition: a real provider, a real connector, and a real
 admission check.
 
 ---
@@ -118,9 +118,9 @@ admission check.
 ## Cleaning up
 
 ```bash
-docker compose -f demo/compose.yml down -v
+docker compose -f deploy/demo-identity/compose.yml down -v
 ```
 
-`-v` drops the volumes: ZITADEL's database, Mica's accounts and sessions, and
+`-v` drops the volumes: ZITADEL's database, Mica's sessions, and
 the generated credentials. Your content repository is untouched — anything an
 editor saved is a commit in it, and stays there.

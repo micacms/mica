@@ -51,7 +51,7 @@ cp .env.example .env
 pnpm -w dev                            # API on :6422, admin on :5173
 ```
 
-`CONTENT_ROOT=../../sites/muster-consulting/content` is the default, so the
+`CONTENT_ROOT=../../examples/muster-consulting/content` is the default, so the
 server edits the example project's content. There is nothing to seed: the
 content is already there, in Git.
 

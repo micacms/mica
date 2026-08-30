@@ -56,7 +56,7 @@ work.
 | `@micacms/auth-oidc`      | The server-only OIDC gate: sign-in, sessions, admission                               |
 | `@micacms/editor`         | `apps/local-editor` — the `npx` composition: loopback, no auth, no database           |
 | `@micacms/self-hosted`    | `apps/self-hosted` — the Docker composition: runtime + UI behind OIDC                 |
-| `sites/muster-consulting` | A complete Astro site: a starter to copy, not a dependency                            |
+| `examples/muster-consulting` | A complete Astro site: a starter to copy, not a dependency                            |
 
 **Why the core package is not inside the Astro package.** The editor, the
 server and the build all need the model, and a Hono server depending on an

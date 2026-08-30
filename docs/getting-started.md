@@ -250,5 +250,5 @@ The website build reports it. Edit those entries, or make the field optional.
 
 ---
 
-`sites/muster-consulting` is a complete site — model, content and templates.
+`examples/muster-consulting` is a complete site — model, content and templates.
 `pnpm dev` from a clone edits it.
