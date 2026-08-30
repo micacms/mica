@@ -10,7 +10,7 @@ import {
   slug,
   text,
   type ContentSource,
-} from "@micacms/model";
+} from "@micacms/core";
 
 import { checkSchema, loadSchema, schemaFingerprint, SchemaError } from "../src/server/schema.js";
 

@@ -48,18 +48,18 @@ work.
 
 | Package                   | What it is                                                                            |
 | ------------------------- | ------------------------------------------------------------------------------------- |
-| `@micacms/model`          | The field DSL, the content model, and the authoring format — serialise, parse, layout |
+| `@micacms/core`           | The field DSL, the content model, the authoring format, and the repository port. `@micacms/model` re-exports it for one release cycle |
 | `@micacms/connectors`     | Repository access, and the content store built on it                                  |
 | `@micacms/astro`          | Content Layer loader, dev integration, Markdoc rendering                              |
 | `@micacms/editor`         | Hono API and the Vue admin it serves                                                  |
 | `sites/muster-consulting` | A complete Astro site: a starter to copy, not a dependency                            |
 
-**Why the model package is not inside the Astro package.** The editor, the
+**Why the core package is not inside the Astro package.** The editor, the
 server and the build all need the model, and a Hono server depending on an
-Astro integration is the wrong direction. `@micacms/model` has no framework in
-it at all. Its `./node` subpath holds the one thing that cannot run in a
-browser — a filesystem `ContentSource` — so the admin bundle stays free of
-`node:` imports.
+Astro integration is the wrong direction. `@micacms/core` has no framework in
+it at all — a boundary test asserts it. Its `./node` subpath holds the one
+thing that cannot run in a browser — a filesystem `ContentSource` — so the
+admin bundle stays free of `node:` imports.
 
 ---
 

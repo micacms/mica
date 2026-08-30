@@ -401,11 +401,14 @@ startup, immediately before publishing. Recorded in
 
 Mechanical, once B is stable.
 
-**C1 — `packages/model` becomes `packages/core`.**
-Move the `RepositoryConnector` port and repository value types in from
-`packages/connectors`. Publish `@micacms/model` as a thin re-export for one
-release cycle. Add the dependency rule of §5.2: no UI framework, no HTTP
-framework, no auth implementation, no provider SDK.
+**C1 — `packages/model` becomes `packages/core`.** *(done)*
+The `RepositoryConnector` port and its value types moved in from
+`packages/connectors` (`core/src/repository.ts`); `@micacms/connectors`
+re-exports them so existing imports survive the move. `@micacms/model` is a
+thin re-export of core, kept for one release cycle and still carrying the
+lockstep version. The dependency rule of §5.2 is a test, not a sentence:
+`core/test/boundary.test.ts` fails the build if core gains any dependency but
+`zod` or any `node:` import outside the deliberate `/node` entry.
 
 **C2 — UI and runtime.**
 `packages/editor-ui` takes the SPA. `packages/runtime` takes the Hono API,

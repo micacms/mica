@@ -31,7 +31,7 @@ import { homedir, tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { MANIFEST_PATH } from "@micacms/model";
+import { MANIFEST_PATH } from "@micacms/core";
 
 import { DEFAULT_PORT } from "./lib/ports.js";
 import { VERSION } from "./lib/version.js";

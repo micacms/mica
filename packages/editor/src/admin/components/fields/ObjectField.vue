@@ -6,7 +6,7 @@
 import { computed, ref } from "vue";
 import { ChevronDown } from "@lucide/vue";
 
-import type { ObjectField } from "@micacms/model";
+import type { ObjectField } from "@micacms/core";
 
 import FieldList from "./FieldList.vue";
 import { useField, type FieldProps } from "@/composables/useField";

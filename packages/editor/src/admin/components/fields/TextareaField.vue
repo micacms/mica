@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import type { TextareaField } from "@micacms/model";
+import type { TextareaField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
 import { useField, type FieldProps } from "@/composables/useField";

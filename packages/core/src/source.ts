@@ -7,7 +7,7 @@
  * connector answering from a provider API, and an in-memory fixture in a test.
  *
  * Nothing here touches a filesystem. `fileSystemSource` lives in
- * `@micacms/model/node`, because this module is also bundled into the browser.
+ * `@micacms/core/node`, because this module is also bundled into the browser.
  */
 
 export interface DirectoryEntry {

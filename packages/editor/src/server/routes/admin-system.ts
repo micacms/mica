@@ -13,7 +13,7 @@ import fs from "node:fs";
 
 import { Hono } from "hono";
 
-import { listedFields, resolveSlugField, resolveTitleField } from "@micacms/model";
+import { listedFields, resolveSlugField, resolveTitleField } from "@micacms/core";
 
 import { databaseVersion } from "../db/migrations.js";
 import type { Env } from "../http.js";

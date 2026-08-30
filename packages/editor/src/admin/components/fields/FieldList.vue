@@ -9,7 +9,7 @@
 
 import { computed } from "vue";
 
-import type { AnyField, FieldIssue, FieldMap } from "@micacms/model";
+import type { AnyField, FieldIssue, FieldMap } from "@micacms/core";
 
 import FieldRenderer from "./FieldRenderer.vue";
 import { widthClass } from "@/composables/useField";

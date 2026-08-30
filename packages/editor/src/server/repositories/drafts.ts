@@ -11,11 +11,11 @@
  * within what SQLite is comfortable holding.
  *
  * The port's semantics — replace-but-keep-base, versioning, clearing by
- * (path, version) — are specified by `memoryDraftStore` in @micacms/model and
+ * (path, version) — are specified by `memoryDraftStore` in @micacms/core and
  * its tests; this file is the durable twin.
  */
 
-import type { DraftStore, Revision, StagedChange, StageInput } from "@micacms/model";
+import type { DraftStore, Revision, StagedChange, StageInput } from "@micacms/core";
 
 import type { SqlDatabase } from "../db/driver.js";
 

@@ -14,7 +14,7 @@ import {
   text,
   textarea,
   url,
-} from "@micacms/model";
+} from "@micacms/core";
 
 const linkFields = {
   label: text({ label: "Label", required: true, width: "half" }),

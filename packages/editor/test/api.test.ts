@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, defineSite, number, slug, text } from "@micacms/model";
+import { collection, defineSite, number, slug, text } from "@micacms/core";
 
 import {
   ADMITTED,

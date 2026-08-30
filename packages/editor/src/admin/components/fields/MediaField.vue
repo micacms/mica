@@ -10,7 +10,7 @@
 import { computed, ref } from "vue";
 import { ArrowLeft, ArrowRight, Plus, X } from "@lucide/vue";
 
-import type { MediaField } from "@micacms/model";
+import type { MediaField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
 import MediaPicker from "@/components/MediaPicker.vue";

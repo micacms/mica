@@ -14,7 +14,7 @@ Add Mica to an Astro project and edit its content on your machine. Five minutes.
 ## The short version
 
 ```bash
-npm install @micacms/astro @micacms/model
+npm install @micacms/astro @micacms/core
 # write src/mica.ts and src/content.config.ts — steps 2 and 3
 npx astro build          # writes content/.mica/schema.json
 npx @micacms/editor      # opens the editor
@@ -27,10 +27,10 @@ The steps below are the same four commands, with the two files written out.
 ## 1. Install the packages
 
 ```bash
-npm install @micacms/astro @micacms/model
+npm install @micacms/astro @micacms/core
 ```
 
-`@micacms/model` defines fields. `@micacms/astro` turns a model into Astro
+`@micacms/core` defines fields. `@micacms/astro` turns a model into Astro
 collections and publishes it for Mica.
 
 ## 2. Define the content model
@@ -49,7 +49,7 @@ import {
   singleton,
   slug,
   text,
-} from "@micacms/model";
+} from "@micacms/core";
 
 export const site = defineSite({
   // Relative to the Astro project root, like Astro's own `glob({ base })`.

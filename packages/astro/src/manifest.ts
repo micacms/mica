@@ -7,7 +7,7 @@
  * import each other.
  */
 
-import { createManifest, type ProtocolManifest, type Site } from "@micacms/model";
+import { createManifest, type ProtocolManifest, type Site } from "@micacms/core";
 
 /** Replaced at publish time; the fallback keeps a workspace build honest. */
 const PACKAGE_VERSION = "0.0.1";

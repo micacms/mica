@@ -14,7 +14,7 @@ import { join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, it } from "node:test";
 
-import { collection, createManifest, defineSite, slug, text } from "@micacms/model";
+import { collection, createManifest, defineSite, slug, text } from "@micacms/core";
 
 import { DEFAULT_CONTENT_ROOT, micaCollections, resolveContentRoot } from "../dist/index.js";
 

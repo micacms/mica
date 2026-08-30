@@ -23,8 +23,8 @@ import { realpath, rm } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
 import type { RepositoryConnector } from "@micacms/connectors";
-import { MANIFEST_PATH, type ContentChange, type PublishResult, type Site } from "@micacms/model";
-import { within } from "@micacms/model/node";
+import { MANIFEST_PATH, type ContentChange, type PublishResult, type Site } from "@micacms/core";
+import { within } from "@micacms/core/node";
 
 import { ApiError, badRequest } from "../lib/errors.js";
 import { firstLine, gitRunner, GitError, type GitRunner } from "../lib/git.js";
