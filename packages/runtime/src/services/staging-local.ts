@@ -23,7 +23,15 @@ import { realpath, rm } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
 import type { RepositoryConnector } from "@micacms/connectors";
-import { MANIFEST_PATH, type ContentChange, type PublishResult, type Site } from "@micacms/core";
+import {
+  MANIFEST_PATH,
+  memorySource,
+  type ContentChange,
+  type ContentSource,
+  type DirectoryEntry,
+  type PublishResult,
+  type Site,
+} from "@micacms/core";
 import { within } from "@micacms/core/node";
 
 import { ApiError, badRequest } from "../lib/errors.js";
@@ -31,8 +39,11 @@ import { firstLine, gitRunner, GitError, type GitRunner } from "../lib/git.js";
 import type { Logger } from "../lib/logger.js";
 import {
   analyseChanges,
+  compareSources,
   describeProblems,
   flattenProblems,
+  type CompareTarget,
+  type Comparison,
   type ContentStagingService,
   type PublishInput,
   type StagingStatus,
@@ -325,6 +336,50 @@ export function createWorkingTreeStagingService(
 
         return { discarded };
       });
+    },
+
+    async compare(target: CompareTarget): Promise<Comparison> {
+      const located = await locate();
+      // Without a repository (or before the first commit) nothing has ever
+      // been published, so the honest "before" is a source with no files.
+      const published = "reason" in located ? memorySource({}, "unpublished") : headSource(located);
+      return compareSources(model, published, connector, target);
+    },
+  };
+}
+
+/**
+ * The content root as HEAD has it — the published side of a comparison.
+ *
+ * Reading `HEAD:` rather than the tree is the point: the working tree *is*
+ * the draft workspace here, so the repository's own version of a document
+ * only exists in Git's object store.
+ */
+function headSource(workspace: Workspace): ContentSource {
+  const at = (path: string) => `HEAD:${path === "" ? workspace.prefix : inRepo(workspace.prefix, path)}`;
+
+  return {
+    origin: "HEAD",
+
+    async read(path) {
+      // tryRun, because "not in HEAD" and "no commits yet" both simply mean
+      // there is no published version. Stdout arrives trimmed, which the
+      // entry parsers already tolerate.
+      return workspace.git.tryRun(["show", at(path)]);
+    },
+
+    async list(path) {
+      const raw = await workspace.git.tryRun(["ls-tree", "-z", at(path)]);
+      if (raw === null) return [];
+
+      const entries: DirectoryEntry[] = [];
+      for (const field of raw.split("\0")) {
+        const tab = field.indexOf("\t");
+        if (tab === -1) continue;
+        const type = field.slice(0, tab).split(" ")[1];
+        entries.push({ name: field.slice(tab + 1), type: type === "tree" ? "directory" : "file" });
+      }
+      return entries;
     },
   };
 }

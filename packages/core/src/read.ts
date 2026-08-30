@@ -67,6 +67,22 @@ export async function readCollection(
 }
 
 /**
+ * One entry of a collection, or null when the source has no such entry.
+ *
+ * Reading a single document matters where the neighbours must not: comparing
+ * a pending change against the repository has to work even when an unrelated
+ * entry in the same collection is malformed.
+ */
+export async function readCollectionEntry(
+  source: ContentSource,
+  def: Collection,
+  name: string,
+  slug: string,
+): Promise<Record<string, unknown> | null> {
+  return readEntry(source, def.fields, `${name}/${slug}`, entryBase(def.fields, name, slug));
+}
+
+/**
  * Slugs present in a collection directory.
  *
  * The layout decides what to look at: directory-shaped entries are directories,

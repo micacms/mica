@@ -25,6 +25,12 @@ const publishSchema = z.object({
 
 const discardSchema = z.object({ paths: z.array(z.string().min(1)).min(1).max(2000) });
 
+const compareSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("entry"), collection: z.string().min(1), slug: z.string().min(1) }),
+  z.object({ kind: z.literal("singleton"), name: z.string().min(1) }),
+  z.object({ kind: z.literal("order"), collection: z.string().min(1) }),
+]);
+
 async function jsonBody(c: { req: { json(): Promise<unknown> } }): Promise<unknown> {
   return c.req.json().catch(() => {
     throw badRequest("The request body must be valid JSON.");
@@ -47,6 +53,21 @@ export function adminStagingRoutes(): Hono<Env> {
   app.get("/changes", async (c) => {
     const { staging } = c.get("ctx").services;
     return c.json(await staging.status());
+  });
+
+  // The document one pending change touches, before and after that change —
+  // raw data on both sides; the editor renders the comparison from the model.
+  app.get("/changes/compare", async (c) => {
+    const { staging } = c.get("ctx").services;
+    const parsed = compareSchema.safeParse({
+      kind: c.req.query("kind"),
+      collection: c.req.query("collection"),
+      slug: c.req.query("slug"),
+      name: c.req.query("name"),
+    });
+    if (!parsed.success) throw badRequest("The compare target is malformed.");
+
+    return c.json(await staging.compare(parsed.data));
   });
 
   app.post("/publish", async (c) => {

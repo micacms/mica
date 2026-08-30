@@ -239,6 +239,22 @@ export interface PublishOutcome {
   pushError?: string;
 }
 
+/** One thing on the Publish page, named for a before/after comparison. */
+export type CompareTarget =
+  | { kind: "entry"; collection: string; slug: string }
+  | { kind: "singleton"; name: string }
+  | { kind: "order"; collection: string };
+
+/**
+ * A document on both sides of the pending change set: `before` as the
+ * repository has it, `after` as staged. Null marks the side that does not
+ * exist — a creation has no before, a deletion no after.
+ */
+export interface Comparison {
+  before: Record<string, unknown> | null;
+  after: Record<string, unknown> | null;
+}
+
 /** A file in the content repository. */
 export interface MediaItem {
   /** Path relative to the content root — the value a media field holds. */
@@ -433,6 +449,10 @@ export const api = {
         method: "POST",
         body: { paths },
       }),
+    compare: (target: CompareTarget) =>
+      request<Comparison>(
+        `/admin/changes/compare?${new URLSearchParams(target as unknown as Record<string, string>)}`,
+      ),
   },
 
   media: {
