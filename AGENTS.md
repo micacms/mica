@@ -22,7 +22,7 @@ Ask the user before you:
 - Add or replace a production or development dependency.
 - Create or apply a database migration.
 - Make a breaking change to a public API, CLI, content format, database schema, or repository protocol.
-- Change `sites/muster-consulting`, `sites/micacms` or its contents.
+- Change `examples/muster-consulting`, `sites/micacms` or its contents.
 - Take another action that can break compatibility or cause data loss.
 
 ## Architecture rules
@@ -87,6 +87,8 @@ Ask the user before you:
 - `apps/local-editor`: the `npx @micacms/editor` composition — loopback, no auth, no database.
 - `apps/self-hosted`: the Docker composition — runtime and UI behind OIDC, with SQLite.
 - `sites/micacms`: public Mica website.
-- `sites/muster-consulting`: example website and evolving reference project.
+- `examples/muster-consulting`: example website and evolving reference project.
 - `docs`: product, architecture, setup, and decision documentation.
-- `e2e`: manual deployed-shape environment with Keycloak. Do not treat it as an automated browser test suite.
+- `deploy/self-hosted`: the reference deployment — the Compose file and its `.env.example`.
+- `deploy/demo-identity`: the demo stack with ZITADEL.
+- `tests/e2e`: manual deployed-shape environment with Keycloak. Do not treat it as an automated browser test suite.

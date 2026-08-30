@@ -148,7 +148,7 @@ npx @micacms/editor       # reads ./content, opens the editor on localhost:6422/
 |                 |                                                                                                                                                                                               |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Locally**     | The command above. Loopback only, no identity provider, no account, no user at all, no sign-in screen, nothing written into your repository — see [getting-started](./docs/getting-started.md) |
-| **On a server** | One container, an OIDC provider, a token for the repository — see [self-hosting](./docs/self-hosting.md). [`demo/`](./demo/README.md) runs that whole shape on your machine                    |
+| **On a server** | One container, an OIDC provider, a token for the repository — see [self-hosting](./docs/self-hosting.md). [`deploy/demo-identity/`](./deploy/demo-identity/README.md) runs that whole shape on your machine |
 
 Deployed, Mica authenticates with **OpenID Connect** and nothing else. No
 passwords, no reset flow, no MFA enrolment, no passkeys, and no breach
@@ -176,7 +176,8 @@ apps/
 ├── local-editor/  @micacms/editor — the npx composition: loopback, no auth, no database
 └── self-hosted/   @micacms/self-hosted — the Docker composition, behind OIDC
 sites/
-├── micacms/             the public micacms.com website
+└── micacms/             the public micacms.com website
+examples/
 └── muster-consulting/   a complete site to read: model, content, templates
 docs/
 ├── getting-started.md   add Mica to an Astro project, and run it locally
@@ -184,14 +185,17 @@ docs/
 ├── self-hosting.md      deploy it: Docker, OIDC, repository, CI, backups
 ├── architecture.md      what Mica is, and why it is shaped this way
 └── decisions.md         accepted trade-offs and known gaps
-demo/                    the deployed shape on your machine: Mica + ZITADEL
-e2e/                     a fast sign-in rig: Mica + Keycloak + a checkout
+deploy/
+├── self-hosted/         the reference deployment: compose.yml + .env.example
+└── demo-identity/       the deployed shape on your machine: Mica + ZITADEL
+tests/
+└── e2e/                 a fast sign-in rig: Mica + Keycloak + a checkout
 ```
 
 `packages/*` are reusable libraries and `apps/*` are the two things you run;
-all of them are published under one lockstep version. `sites/muster-consulting`
-is a site to copy and redesign, not a dependency — the design is the part that
-should differ between projects.
+all of them are published under one lockstep version.
+`examples/muster-consulting` is a site to copy and redesign, not a dependency —
+the design is the part that should differ between projects.
 
 ---
 

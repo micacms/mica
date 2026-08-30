@@ -7,14 +7,14 @@ This exercises the parts unit tests cannot — a real OpenID Connect round trip,
 and the container as it would actually be deployed.
 
 ```bash
-docker compose -f e2e/compose.yml up --build
+docker compose -f tests/e2e/compose.yml up --build
 ```
 
 Then open <http://localhost:6422/admin/>.
 
 It is the *fast* rig: no provider connector and no repository server, so it
 starts in under a minute. For the deployed shape — Mica against ZITADEL and a
-real repository on github.com or gitlab.com — see [demo/](../demo/README.md).
+real repository on github.com or gitlab.com — see [deploy/demo-identity/](../../deploy/demo-identity/README.md).
 
 > Deliberately insecure and deliberately local: plain HTTP, a committed client
 > secret, one-word passwords. It is a test rig, not an example deployment.
@@ -59,7 +59,7 @@ on.
 4. **Edit an entry and save.** Then, on your host:
 
    ```bash
-   git diff sites/muster-consulting/content/
+   git diff examples/muster-consulting/content/
    ```
 
    One file, one line. That is the whole architecture in one command: the
@@ -74,7 +74,7 @@ on.
    until her session ends, because Mica checks the claims her provider sent at
    sign-in and cannot know they have changed. That is the accepted cost of
    having no user table, and it is why sessions last hours rather than weeks —
-   see the P1 entry in [`decisions.md`](../docs/decisions.md).
+   see the P1 entry in [`decisions.md`](../../docs/decisions.md).
 
 7. **Take her out of `MICA_ADMIT_GROUP` instead** and restart the container.
    Her next request is refused at once: the rules are re-read on every request,
@@ -129,6 +129,6 @@ check against a real group claim.
 ## Cleaning up
 
 ```bash
-docker compose -f e2e/compose.yml down -v      # -v also drops the CMS database
+docker compose -f tests/e2e/compose.yml down -v      # -v also drops the CMS database
 git checkout sites/                        # discard anything you edited
 ```

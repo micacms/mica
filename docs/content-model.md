@@ -76,7 +76,7 @@ maintains the templates stays in the repository, reviewed in a pull request.
 Pages read both with the same `getCollection`. Keep the names distinct: a clash
 is resolved by whichever spread comes last, silently.
 
-`sites/muster-consulting` does exactly this, with a `glossary` collection
+`examples/muster-consulting` does exactly this, with a `glossary` collection
 beside four Mica ones.
 
 ---

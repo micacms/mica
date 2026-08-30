@@ -45,7 +45,7 @@ jobs:
 
       - name: Assert the output is self-contained
         run: |
-          if grep -rl "localhost:6422" sites/muster-consulting/dist; then
+          if grep -rl "localhost:6422" examples/muster-consulting/dist; then
             echo "::error::The static output references the CMS."
             exit 1
           fi
@@ -54,7 +54,7 @@ jobs:
       # means someone changed a collection and did not commit the result, which
       # would leave a deployed Mica serving the previous model.
       - name: Assert the published content model is committed
-        run: git diff --exit-code sites/muster-consulting/content/.mica/schema.json
+        run: git diff --exit-code examples/muster-consulting/content/.mica/schema.json
 
       # The public website is built here rather than only on Vercel, so that a
       # pull request fails on a broken site before it can reach main — Vercel
@@ -88,9 +88,9 @@ jobs:
       - name: Boot it and check health
         run: |
           # Configured the way a real deployment is, because that is the thing
-          # worth testing. The image sets NODE_ENV=production, and in production
-          # Mica refuses MICA_MODE=local outright — local mode has no
-          # authentication and no user. So this asks for the OIDC path.
+          # worth testing. The image is the self-hosted app, which has no
+          # unauthenticated mode to fall back to: OIDC configuration is
+          # mandatory, so this provides it.
           #
           # The issuer never has to answer: discovery is lazy, and happens on
           # the first sign-in rather than at startup. Nothing here signs in.
@@ -107,12 +107,11 @@ jobs:
           docker run -d --name cms \
             -e SESSION_SECRET=ci-session-secret-0000000000000000 \
             -e MICA_PUBLIC_URL=http://localhost:6422 \
-            -e MICA_MODE=self-hosted \
             -e MICA_OIDC_ISSUER=https://id.example.com \
             -e MICA_OIDC_CLIENT_ID=mica-ci \
             -e MICA_ADMIT_GROUP=mica-editors \
             -e CONTENT_ROOT=/content \
-            -v "$PWD/sites/muster-consulting/content:/content:ro" \
+            -v "$PWD/examples/muster-consulting/content:/content:ro" \
             -p 6422:6422 micacms/editor:ci
 
           for i in $(seq 1 30); do

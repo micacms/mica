@@ -16,3 +16,6 @@ backups/
 # content model reaches Mica: the Astro build writes it, and Mica reads it back
 # out of the repository.
 .vercel
+
+# Local scratch space for tooling.
+.tmp/
