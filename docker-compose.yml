@@ -40,7 +40,6 @@ services:
       #
       # Who may then edit is a separate answer, and also required: set
       # MICA_ADMIT_GROUP, MICA_ADMIT_DOMAIN or MICA_ADMIT_SUBJECTS in .env.
-      MICA_MODE: ${MICA_MODE:-self-hosted}
 
       # How this deployment reaches its content repository.
       #

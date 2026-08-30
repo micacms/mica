@@ -410,20 +410,48 @@ lockstep version. The dependency rule of §5.2 is a test, not a sentence:
 `core/test/boundary.test.ts` fails the build if core gains any dependency but
 `zod` or any `node:` import outside the deliberate `/node` entry.
 
-**C2 — UI and runtime.**
-`packages/editor-ui` takes the SPA. `packages/runtime` takes the Hono API,
-application services, staging orchestration and capability enforcement. Both
-are authentication-neutral.
+**C2 — UI and runtime.** *(done)*
+`packages/editor-ui` takes the SPA, shipped as built assets the apps serve.
+`packages/runtime` takes the Hono API, application services and staging
+orchestration; it receives an `AuthSurface` — routes for `/api/auth` plus the
+gate before the admin API — and consumes the auth-neutral `AccessContext` now
+defined in `@micacms/core` (§7.2 as written). The generic SQLite driver stays
+in the runtime as exported infrastructure — §4.1 gives the runtime the
+"sessions interface" — while the tables live with their owners: the sessions
+repository in `auth/oidc`, the migrations and the SQLite draft store in
+`apps/self-hosted`.
 
-**C3 — OIDC and the two apps, in one pull request.**
-Move the existing OIDC service and auth routes to `packages/auth/oidc`. Create
-`apps/local-editor` (published as `@micacms/editor`) and `apps/self-hosted`.
-Remove identity chrome from the SPA *in the same pull request*, so `main` is
-never without a working self-hosted path.
+**C3 — OIDC and the two apps, in one pull request.** *(done)*
+The OIDC service, sessions, admission and auth routes are
+`packages/auth/oidc`; `apps/local-editor` (published as `@micacms/editor`) and
+`apps/self-hosted` compose the runtime, and `main` never lost the self-hosted
+path. `MICA_MODE` is deleted: the mode is the app, and neither app's schema
+reads the other's variables — which is a stronger statement than refusing
+them.
 
-`MICA_MODE` is deleted here. The mode is the app.
+Two deviations, decided while building it:
 
-**C4 — Local mode loses its session, its token and its database.**
+- **`@micacms/auth-oidc` depends on `@micacms/runtime`.** §5.2 has adapters
+  implement ports from core alone, but an HTTP auth gate necessarily shares
+  the runtime's error envelope, request context and driver interface, and
+  duplicating those into core would move HTTP into the one package that must
+  not have it. The boundary those rules protect is directional and holds: the
+  runtime never imports auth, and the local editor has no path to it — walked
+  by a test.
+- **The identity chrome was made conditional, not deleted.** The SPA draws
+  sign-in and account chrome only when the server's `/api/auth/config` says
+  authentication exists, and the login view is its own lazily-loaded chunk the
+  local editor never fetches. One bundle serves both apps; what §6.2 actually
+  forbids — OIDC client code, token handling, provider assets — was never in
+  it, and the boundary test greps the build to keep it that way. A second
+  build variant would double the distribution to remove a screen the local
+  editor already never shows.
+
+**C4 — Local mode loses its session, its token and its database.** *(done —
+as designed below, with one addition: `DATA_DIR` is not merely unused but gone
+from the local configuration entirely, because working-tree draft media needs
+no store; and the Host allowlist stands in front of everything, `/health`
+included.)*
 
 Phase A left a residue that only Phase C can clear cleanly: local mode still
 starts a session. There is nobody in it — `issuer`, `subject` and `email` are
@@ -458,27 +486,38 @@ gets 401 disappears, so any process on the developer's own machine can call the
 local API. That property was close to theatre — a process on that machine can
 edit the working tree directly, which is where the content is.
 
-**C5 — Boundary tests.**
-The five checks of §6.4: clean-install dependency graph, browser bundle, no
-identity UI, loopback works, non-loopback bind fails. Plus the two C4 adds: a
-foreign `Host` is refused, and a local run creates no database.
+**C5 — Boundary tests.** *(done)*
+`apps/local-editor/test/boundary.test.ts` walks the dependency graph from
+`@micacms/editor` and fails on any path to `openid-client`, `jose` or
+`@micacms/auth-oidc`; greps the built UI bundle for OIDC markers; proves the
+Host allowlist refuses foreign names and answers this machine's; proves the
+unauthenticated surface has no login route to disable; and proves a run
+writes into the content directory and nowhere else, with no database
+appearing. The loopback refusals are config tests beside it. The one §6.4
+check that remains manual is driving a real browser through the rendered UI —
+the same standing gap [`decisions.md`](decisions.md) records for everything
+else.
 
-**C6 — Verify the entry point.**
-The bin is named `mica` today. Confirm `npx @micacms/editor` resolves it, or
-rename the bin to `editor`. §18 lists this as an acceptance criterion.
+**C6 — Verify the entry point.** *(done)*
+The bin keeps the name `mica`: `npx @micacms/editor` runs a package's only
+binary whatever it is called, and `mica` is the better command name. The CLI
+tests execute the real bin through the shell, which is the resolution that
+matters.
 
 `packages/connectors` stays one package.
 
 **Exit criteria**
 
-- `@micacms/editor` has no path to `openid-client` or `jose`.
-- The local bundle contains no auth route, token code or profile store.
-- Local mode binds to loopback and refuses any other address.
-- Local mode answers no request whose `Host` is not this machine.
+- `@micacms/editor` has no path to `openid-client` or `jose`. ✔ (tested)
+- The local bundle contains no auth route, token code or profile store. ✔
+  (no OIDC/token code, by grep; the sign-in screen is a lazily-loaded chunk
+  the local editor never fetches — see the C3 deviation)
+- Local mode binds to loopback and refuses any other address. ✔
+- Local mode answers no request whose `Host` is not this machine. ✔
 - A local run creates no database and writes nothing outside the content
-  directory.
-- `apps/self-hosted` composes the runtime; it does not fork it.
-- One runtime, one `SiteContext`.
+  directory. ✔ (tested)
+- `apps/self-hosted` composes the runtime; it does not fork it. ✔
+- One runtime, one `SiteContext`. ✔
 
 ---
 
