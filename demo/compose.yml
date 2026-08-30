@@ -148,7 +148,6 @@ services:
       LOG_LEVEL: debug
 
       MICA_PUBLIC_URL: http://localhost:6422
-      MICA_MODE: self-hosted
       SESSION_SECRET: demo-session-secret-0000000000000
 
       MICA_OIDC_ISSUER: http://localhost:8080

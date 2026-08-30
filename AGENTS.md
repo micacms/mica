@@ -78,10 +78,14 @@ Ask the user before you:
 
 ## Repository map
 
-- `packages/core`: content model, field DSL, validation, serialization, authoring format, and the repository port. `packages/model` is a thin re-export of it, kept for one release cycle.
+- `packages/core`: content model, field DSL, validation, serialization, authoring format, and the port contracts. `packages/model` is a thin re-export of it, kept for one release cycle.
 - `packages/connectors`: local, GitHub, and GitLab repository access.
 - `packages/astro`: Astro Content Layer integration and Markdoc rendering.
-- `packages/editor`: Hono server and Vue administration application.
+- `packages/runtime`: the authentication-neutral single-site Hono API and services.
+- `packages/editor-ui`: the Vue administration SPA, shipped as built assets.
+- `packages/auth/oidc`: the server-only OIDC gate (`@micacms/auth-oidc`). Never a dependency of the local editor.
+- `apps/local-editor`: the `npx @micacms/editor` composition — loopback, no auth, no database.
+- `apps/self-hosted`: the Docker composition — runtime and UI behind OIDC, with SQLite.
 - `sites/micacms`: public Mica website.
 - `sites/muster-consulting`: example website and evolving reference project.
 - `docs`: product, architecture, setup, and decision documentation.

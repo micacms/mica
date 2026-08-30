@@ -141,7 +141,7 @@ npx @micacms/editor
 
   Editor     http://localhost:6422/admin/
   Content    ./content — 1 collection and 1 singleton
-  Saving     writes files into that directory. Commit them like any other change.
+  Saving     writes files into that directory; Publish commits and pushes them.
 ```
 
 The command reads `./content`, listens on loopback, and opens your browser on
@@ -151,12 +151,10 @@ see `--help` for the rest. Port 6422 is Mica's own, so `astro dev` can run
 beside it.
 
 The editor opens directly: on your machine Mica runs without an identity
-provider, and every request is one developer account with administrator rights.
-Mica refuses to start this way in production or on any host but this one. To let
+provider, without an account, and without a database — the content directory
+is the only thing it writes. It refuses to start this way in production, on
+any host but this one, and it answers only to this machine's own names. To let
 other people in, deploy it — see [self-hosting.md](./self-hosting.md).
-
-Accounts and sessions go to a cache directory outside your project. The command
-prints the path.
 
 ## 6. Save an entry, and read the diff
 
