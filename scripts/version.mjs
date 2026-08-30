@@ -97,7 +97,17 @@ export function changelogSection(version, root = ROOT) {
 }
 
 function main(argv) {
-  const version = argv[0];
+  let version = argv[0];
+
+  // `changeset version` bumps every published manifest but knows nothing of
+  // the root manifest or the image tag in the reference deployment. `--sync`
+  // reads the version Changesets chose and carries it to everything else, so
+  // `pnpm changeset:version` leaves all of it agreeing.
+  if (version === "--sync") {
+    version = JSON.parse(
+      readFileSync(path.join(ROOT, "packages/core/package.json"), "utf8"),
+    ).version;
+  }
 
   if (!version) {
     const current = readVersions();

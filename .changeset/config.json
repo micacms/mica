@@ -1,0 +1,27 @@
+{
+  "$schema": "https://unpkg.com/@changesets/config@3.2.0/schema.json",
+  "changelog": "@changesets/cli/changelog",
+  "commit": false,
+  "fixed": [
+    [
+      "@micacms/core",
+      "@micacms/model",
+      "@micacms/connectors",
+      "@micacms/astro",
+      "@micacms/editor-ui",
+      "@micacms/runtime",
+      "@micacms/auth-oidc",
+      "@micacms/editor",
+      "@micacms/self-hosted"
+    ]
+  ],
+  "linked": [],
+  "access": "public",
+  "baseBranch": "main",
+  "updateInternalDependencies": "patch",
+  "ignore": [],
+  "privatePackages": {
+    "version": false,
+    "tag": false
+  }
+}
