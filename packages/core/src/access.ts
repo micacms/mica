@@ -7,9 +7,9 @@
  * there is no provider, no account and nobody to be. That null is not an
  * anonymous user; it is the absence of the concept.
  *
- * There is deliberately no capability set. An admitted person has every editor
- * capability on this site (v3-arch §7.3), and a `can()` that always answers
- * yes would be structure standing in for a decision nobody has made.
+ * There is deliberately no capability set. An admitted person has every
+ * editor capability on this site, and a `can()` that always answers yes
+ * would be structure standing in for a decision nobody has made.
  */
 
 export interface AccessIdentity {

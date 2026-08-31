@@ -61,10 +61,9 @@ export interface AuthSurface {
 /**
  * The unauthenticated surface: every request is allowed, and none is anybody.
  *
- * An authorization policy, not authentication code — v3-arch §6.2's
- * `allowAll()`. It exists so action checks stay uniform without inventing a
- * user, and it is safe only because the local editor is loopback-bound and
- * Host-guarded by construction.
+ * An authorization policy, not authentication code. It exists so action
+ * checks stay uniform without inventing a user, and it is safe only because
+ * the local editor is loopback-bound and Host-guarded by construction.
  */
 export function allowAll(): MiddlewareHandler<Env> {
   return async (c, next) => {

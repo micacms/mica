@@ -5,12 +5,12 @@
  * next one. Each runs inside a transaction and is recorded in `_migrations`,
  * so the sequence is deterministic across every deployment.
  *
- * The chain was reset once, for v3, and this is the migration it was reset to.
- * The four it replaced built accounts, tenants, sites and memberships, and v3
- * deletes all of them — a fifth migration would have been three quarters
- * `DROP TABLE`. No deployment existed to carry forward, which is the only
- * condition under which the append-only rule may be broken. It applies again
- * from here.
+ * The chain was reset once, for 0.2.0, and this is the migration it was reset
+ * to. The four it replaced built accounts, tenants, sites and memberships,
+ * all dropped in that release — a fifth migration would have been three
+ * quarters `DROP TABLE`. No deployment existed to carry forward, which is
+ * the only condition under which the append-only rule may be broken. It
+ * applies again from here.
  *
  * Note how little is left. Content, media and their history live in the content
  * repository; this database holds sessions, and later the drafts that have not
@@ -149,7 +149,7 @@ export function migrate(db: SqlDatabase, filename?: string): MigrationResult {
   /**
    * A migration recorded in the database but absent from the code means one of
    * two things: the deployment was rolled back to an older build, or the file
-   * predates the v3 reset. Refuse either way rather than writing into a shape
+   * predates the 0.2.0 reset. Refuse either way rather than writing into a shape
    * this build does not understand — and say what it costs to start again,
    * because for this database it costs very little.
    */
@@ -158,7 +158,7 @@ export function migrate(db: SqlDatabase, filename?: string): MigrationResult {
     if (!known.has(version)) {
       throw new Error(
         `Database is at migration ${version}, which this build does not know about.\n` +
-          "  Either this is an older build than the database, or the file predates Mica v3.\n" +
+          "  Either this is an older build than the database, or the file predates Mica 0.2.0.\n" +
           "  This database holds sessions and nothing else — no content, no accounts — so\n" +
           `  deleting ${filename ?? "it"} signs everyone out and costs nothing more.`,
       );

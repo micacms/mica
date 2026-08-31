@@ -2,7 +2,7 @@
  * The self-hosted deployment's process entry point — what the Docker image
  * runs.
  *
- * The composition v3-arch §7 asks for: the runtime behind the OIDC gate from
+ * The whole composition: the runtime behind the OIDC gate from
  * `@micacms/auth-oidc`, a repository connector built from the environment,
  * and one SQLite database holding sessions and — behind a provider
  * repository — the draft store. It composes `@micacms/runtime`; it does not

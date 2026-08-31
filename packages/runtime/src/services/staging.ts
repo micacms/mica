@@ -180,8 +180,8 @@ export async function compareSources(
  * read of the same entries, and content trees are small enough to read the
  * affected collections whole.
  *
- * Validation is scoped to *changed* documents (v3-arch §10.6). Content that
- * was already in the repository is not this publication's problem — refusing
+ * Validation is scoped to *changed* documents. Content that was already in
+ * the repository is not this publication's problem — refusing
  * to publish a fixed typo because somebody once hand-committed a broken entry
  * elsewhere would make the editor hostage to history it cannot touch.
  */
@@ -409,9 +409,8 @@ export function createDraftStagingService(deps: DraftStagingDeps): ContentStagin
         if (snapshot.length === 0) throw badRequest("There is nothing to publish.");
 
         /**
-         * The model drift gate — the open question v3-plan.md left to this
-         * phase, answered as it predicted: refuse, name the drift, require a
-         * restart. The staged set was validated against the model this
+         * The model drift gate: refuse, name the drift, require a restart.
+         * The staged set was validated against the model this
          * process read at startup; a manifest that moved since may disagree,
          * and publishing content the new model rejects would hand the next
          * build a broken tree.

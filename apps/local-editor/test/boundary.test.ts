@@ -1,5 +1,5 @@
 /**
- * The product boundary, as tests (v3-arch §6.4).
+ * The product boundary, as tests.
  *
  * `npx @micacms/editor` must install no authentication code, keep no state,
  * and answer only to this machine. Rules like these erode the first time
@@ -142,7 +142,7 @@ describe("the running composition", () => {
       assert.equal(response.status, 403, host);
 
       const body = await response.text();
-      // §6.3: a clear error directing remote users to the self-hosted shape.
+      // A clear error directing remote users to the self-hosted shape.
       assert.match(body, /self-hosted/);
     }
   });

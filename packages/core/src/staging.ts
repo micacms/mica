@@ -1,7 +1,7 @@
 /**
  * Staging: the vocabulary between "saved" and "published".
  *
- * Phase B separates the two words. A save lands in a draft workspace; an
+ * The two words are not synonyms here. A save lands in a draft workspace; an
  * explicit Publish turns the accumulated changes into one commit. These are
  * the types both sides of that boundary speak — the editor UI showing a
  * pending change set, and the server deciding what a publication writes.

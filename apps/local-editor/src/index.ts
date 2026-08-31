@@ -1,7 +1,7 @@
 /**
  * The local editor's process entry point.
  *
- * The composition v3-arch §6 asks for, in one page: the local connector, the
+ * The whole composition, in one page: the local connector, the
  * auth-neutral runtime with `allowAll()`, the Host allowlist, and nothing
  * else. No session service, no admission policy, no database — `npx
  * @micacms/editor` writes nothing outside the content directory, and there is

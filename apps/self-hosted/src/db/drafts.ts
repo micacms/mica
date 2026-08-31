@@ -4,11 +4,11 @@
  * Implements the `DraftStore` port over the same database that holds
  * sessions, which is deliberate: a self-hosted deployment has exactly one
  * file to back up, and a backup cannot capture the sessions and miss the
- * unpublished work. `v3-arch.md` §10.4 sketches "SQLite plus a media
- * directory"; the media bytes live in here instead, because a second
- * location would make staging a two-phase write and the backup a two-file
- * promise. Content trees are small and uploads are capped, so the rows stay
- * within what SQLite is comfortable holding.
+ * unpublished work. The media bytes live in here too, rather than in a
+ * directory beside the database, because a second location would make
+ * staging a two-phase write and the backup a two-file promise. Content
+ * trees are small and uploads are capped, so the rows stay within what
+ * SQLite is comfortable holding.
  *
  * The port's semantics — replace-but-keep-base, versioning, clearing by
  * (path, version) — are specified by `memoryDraftStore` in @micacms/core and
