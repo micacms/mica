@@ -22,6 +22,20 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     sourcemap: true,
+    // The admin is one deliberate bundle: fetched once, behind a sign-in, from
+    // the app that serves it — route-splitting would buy round trips, not a
+    // faster first paint. The limit sits where real growth would cross it,
+    // not where a dependency bump does; today's bundle is ~510 kB.
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      onwarn(warning, warn) {
+        // zod ships comments that Rollup misreads as misplaced tree-shaking
+        // annotations and nags about on every build. Third-party code is not
+        // ours to fix; annotations in our own code still warn.
+        if (warning.code === "INVALID_ANNOTATION" && warning.id?.includes("node_modules")) return;
+        warn(warning);
+      },
+    },
   },
 
   server: {
