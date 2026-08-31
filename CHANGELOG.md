@@ -5,15 +5,33 @@ Notable changes to Mica. The format follows
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Everything in this repository is released together and carries one version: the
-three published packages and the CMS image.
+eight published packages and the CMS image.
 
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
-## [Unreleased]
+## [0.2.0] — 2026-08-31
+
+A larger refactor: publishing became explicit, and the CMS became packages you
+compose. Two package names change — `@micacms/cms` and `@micacms/model` are
+replaced — so read Breaking before upgrading.
 
 ### Changed
 
+- **Saving no longer commits; Publish does.** A save lands in a draft
+  workspace, and an explicit Publish writes everything pending to the
+  repository as one commit — a working tree under the local connector, a draft
+  store behind the provider connectors. The first release's "saving is
+  committing" is gone: edits accumulate where only the editor sees them, and
+  the repository moves once, when someone decides it should.
+- **The Publish page can show what a pending change does**, as a before/after
+  comparison rather than a diff: each changed field is one row with the stored
+  value beside the staged one, worded by the field type — Yes/No for booleans,
+  option labels for selects, file names for media, breadcrumbs into sections.
+  The server gained `GET /api/admin/changes/compare`, which reads the same
+  document from the repository and from the pending workspace — HEAD versus
+  the working tree locally, the repository versus the draft overlay when
+  deployed.
 - **`defaultSort` now orders the entry list, and its field is checked.** It
   described an order for a long time without producing one: nothing read the
   option, so a collection opened in whatever order its directory happened to be
@@ -32,8 +50,28 @@ release note before upgrading.
   than refusing to serve a site over the order of a list. The project's next
   build reports it properly.
 
+### Breaking
+
+- **The editor split into composable packages, and `MICA_MODE` is gone.** The
+  mode is now which app you run: `npx @micacms/editor` is the local one —
+  loopback, and no authentication code at all — and `@micacms/self-hosted` is
+  the Docker image, behind OIDC. Under both sit an authentication-neutral
+  runtime (`@micacms/runtime`), the admin SPA as built assets
+  (`@micacms/editor-ui`) and a server-only OIDC gate (`@micacms/auth-oidc`).
+  `npx @micacms/cms` and `MICA_MODE=local` stop working; the two apps above
+  replace them.
+- **`@micacms/model` is renamed to `@micacms/core`.** Update the dependency
+  and the imports in your model module; the module itself is what it was.
+
 ### Fixed
 
+- **A saved entry no longer warns about unsaved changes when leaving.** The
+  rich text editor fires transactions that change nothing stored — normalising
+  the parsed document on mount, and re-parsing after a save reloads the
+  entry — and its serialization differs from the server's stored form by a
+  trailing newline, so each of those emits marked a clean form dirty. The
+  field now emits only when the value it would emit actually differs from the
+  one it holds (`@micacms/editor-ui`).
 - **Saving an entry no longer rewrites its media paths.** Reading an entry
   resolves a media reference against the content root, so the editor holds an
   unambiguous path; nothing did the inverse on the way back, so the path the
@@ -43,7 +81,7 @@ release note before upgrading.
   first one, in the admin and in the built site alike. Media paths now go back
   to the form the repository stores: `media/photo.jpg` for a file beside the
   entry, `/media/logo.svg` for one the whole site shares
-  (`@micacms/model`, `@micacms/connectors`).
+  (`@micacms/core`, `@micacms/connectors`).
 
   An entry saved by an earlier version has the wrong path on disk and will not
   repair itself. `git log -p` over the content directory shows which, and the
@@ -75,7 +113,7 @@ second half before upgrading.
   missing content directory or content model instead of only naming it.
 - **Local mode has no sign-in screen.** There was never anything to sign in
   to — no identity provider, no password, one implicit developer — so opening
-  the editor now *is* the sign-in: the admin page issues the session as it is
+  the editor now _is_ the sign-in: the admin page issues the session as it is
   served. No screen announcing that authentication is disabled, and no 401 on
   the SPA's first request. The API is unchanged: a request without a session is
   still refused, and every other mode still goes through the provider.
@@ -117,7 +155,7 @@ second half before upgrading.
 ## [0.0.2] — 2026-08-14
 
 The first release. Everything below is new, so this entry describes what Mica
-*is* rather than what changed.
+_is_ rather than what changed.
 
 ### The content repository
 
@@ -160,7 +198,7 @@ The first release. Everything below is new, so this entry describes what Mica
   and no second factor, and stores no credential.
 - Identities are keyed by `(issuer, subject)`. An email address links an
   invitation to an identity once, at first sign-in, and never re-binds after.
-- A role belongs to a person *on a site*, held in a membership and re-read on
+- A role belongs to a person _on a site_, held in a membership and re-read on
   every request. Removing someone takes effect on their next request.
 - `MICA_MODE=local` disables authentication for development. Mica refuses to
   start that way with `NODE_ENV=production`, or on any host but localhost.

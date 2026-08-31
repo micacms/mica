@@ -1,6 +1,6 @@
 {
   "name": "@micacms/self-hosted",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "type": "module",
   "description": "The self-hosted Mica composition: the runtime and editor UI behind an external OIDC provider, with SQLite for sessions and the draft store. What the Docker image runs.",
   "license": "MIT",
