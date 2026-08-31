@@ -74,7 +74,7 @@ export function adminSpaRoutes(directory: string): Hono<Env> {
     try {
       return await send(c, path.join(root, "index.html"), false);
     } catch {
-      return c.text("The admin interface has not been built. Run `pnpm build`.", 503);
+      return c.text("The admin interface has not been built. Run `rush build`.", 503);
     }
   });
 

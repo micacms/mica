@@ -1,0 +1,100 @@
+/**
+ * The commands this repository adds to Rush, replacing the old root
+ * package.json scripts.
+ *
+ *   rush test               — every project's test script   (was: pnpm -r test)
+ *   rush typecheck          — every project's typecheck     (was: pnpm typecheck)
+ *   rush dev                — build, then watch the local editor and its UI
+ *   rush version-bump       — consume the change files, sync the version everywhere
+ *   rush release-version    — set the one release version   (was: pnpm release:version)
+ *
+ * Change files themselves are Rush's own: `rush change` records one on a
+ * feature branch, CI verifies with `rush change --verify`, and
+ * `rush version --bump` (inside version-bump) consumes them — bumping the
+ * lockstep policy and writing each package's CHANGELOG from the comments.
+ */
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/command-line.schema.json",
+
+  "commands": [
+    // The built-in build command, redefined for one reason: a project that
+    // writes to stderr but exits 0 — Vite's chunk-size advice, a deprecation
+    // notice — is a success with warnings, not a failure. That is what the
+    // exit code meant under pnpm, and what these scripts were written against.
+    {
+      "commandKind": "bulk",
+      "name": "build",
+      "summary": "Build projects that changed, in dependency order",
+      "enableParallelism": true,
+      "incremental": true,
+      "allowWarningsInSuccessfulBuild": true,
+      "safeForSimultaneousRushProcesses": false
+    },
+    {
+      "commandKind": "bulk",
+      "name": "rebuild",
+      "summary": "Build every project from scratch",
+      "enableParallelism": true,
+      "incremental": false,
+      "allowWarningsInSuccessfulBuild": true,
+      "safeForSimultaneousRushProcesses": false
+    },
+    {
+      "commandKind": "bulk",
+      "name": "test",
+      "summary": "Run every project's tests",
+      "description": "Runs the `test` script of every project that has one, in dependency order.",
+      "enableParallelism": true,
+      // The sites have no test script; that is fine rather than an error.
+      "ignoreMissingScript": true,
+      "ignoreDependencyOrder": false,
+      "allowWarningsInSuccessfulBuild": true,
+      "safeForSimultaneousRushProcesses": false
+    },
+    {
+      "commandKind": "bulk",
+      "name": "typecheck",
+      "summary": "Typecheck every project",
+      "description": "Runs the `typecheck` script of every project. Every project has one — including the sites, whose `astro check` reads collection types from committed files, so nothing has to be running.",
+      "enableParallelism": true,
+      "ignoreMissingScript": false,
+      "ignoreDependencyOrder": false,
+      "allowWarningsInSuccessfulBuild": true,
+      "safeForSimultaneousRushProcesses": false
+    },
+    {
+      "commandKind": "global",
+      "name": "dev",
+      "summary": "Run the local editor and its UI in watch mode",
+      "description": "Builds the editor's dependency closure, then watches @micacms/editor and @micacms/editor-ui in parallel.",
+      "shellCommand": "node scripts/dev.mjs",
+      "safeForSimultaneousRushProcesses": false
+    },
+    {
+      "commandKind": "global",
+      "name": "version-bump",
+      "summary": "Consume the change files and carry the version everywhere",
+      "description": "Runs `rush version --bump` — the lockstep bump and the package changelogs — then carries the version it chose to the root manifest and the image tag in the reference deployment.",
+      "shellCommand": "node common/scripts/install-run-rush.js version --bump && node scripts/version.mjs --sync",
+      "safeForSimultaneousRushProcesses": false
+    },
+    {
+      "commandKind": "global",
+      "name": "release-version",
+      "summary": "Set the one version every manifest carries",
+      "description": "Sets the one version every manifest carries, and checks the changelog has a section for it. Pushing the tag is what publishes.",
+      "shellCommand": "node scripts/version.mjs",
+      "safeForSimultaneousRushProcesses": false
+    }
+  ],
+
+  "parameters": [
+    {
+      "parameterKind": "string",
+      "longName": "--version",
+      "argumentName": "VERSION",
+      "description": "The version to set, e.g. 0.2.0 or 1.0.0-rc.1.",
+      "associatedCommands": ["release-version"]
+    }
+  ]
+}

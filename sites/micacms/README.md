@@ -4,10 +4,10 @@ The public MicaCMS website. It is an Astro 7 static site and uses Mica for its o
 
 ## Run the website
 
-From the repository root:
+From this directory:
 
 ```bash
-pnpm dev:micacms-site
+rushx dev
 ```
 
 The site opens at `http://localhost:4321`.
@@ -17,7 +17,7 @@ The site opens at `http://localhost:4321`.
 Build the CMS once, then point its local command at this site's content root:
 
 ```bash
-pnpm --filter @micacms/editor build
+rush build --to @micacms/editor
 node packages/editor/dist/server/cli.js --content sites/micacms/content
 ```
 
@@ -28,8 +28,8 @@ The content model is in `src/mica.ts`. Mica-managed content is in `content/`. An
 ## Build
 
 ```bash
-pnpm --filter @micacms/site typecheck
-pnpm --filter @micacms/site build
+rush typecheck --to @micacms/site
+rush build --to @micacms/site
 ```
 
 Set `SITE_URL` in CI when the canonical production URL is not `https://micacms.com`.
@@ -44,13 +44,14 @@ this directory. Everything it needs is in [`vercel.json`](../../vercel.json):
 | Setting | Value |
 | --- | --- |
 | Root Directory | repository root (leave empty) |
-| Install Command | `pnpm install --frozen-lockfile` |
-| Build Command | `pnpm --filter @micacms/site... build` |
+| Install Command | `node common/scripts/install-run-rush.js install --to @micacms/site` |
+| Build Command | `node common/scripts/install-run-rush.js build --to @micacms/site` |
 | Output Directory | `sites/micacms/dist` |
 
-The trailing `...` in the build command is pnpm's "and its dependencies" filter:
-it builds `@micacms/model`, then `@micacms/astro`, then this site, in that order.
-The CMS and the examples are not built.
+`--to @micacms/site` is Rush's "and its dependencies" filter: it builds the
+packages the site imports, then the site, in dependency order. The CMS and the
+examples are not built. `install-run-rush` bootstraps Rush itself, so Vercel's
+builder needs nothing preinstalled.
 
 ### Vercel's Git integration owns the deployment
 
@@ -87,9 +88,9 @@ usually the right default everywhere else.
 
 ### Notes
 
-- **Node and pnpm.** The root `package.json` pins `node >=22.12.0` and
-  `pnpm@11.3.0`. Since the build runs in Actions, the runner's `setup-node` and
-  `pnpm/action-setup` decide the versions, not Vercel's builder.
+- **Node and pnpm.** `rush.json` pins both — `nodeSupportedVersionRange` and
+  `pnpmVersion` — and Rush fetches its own pnpm copy wherever it runs, so the
+  same versions apply on a laptop, in Actions, and on Vercel's builder.
 - **`SITE_URL`.** Unset, the canonical URL is `https://micacms.com`, which is
   what production wants. Preview deployments will also claim that canonical, but
   Vercel serves previews with `X-Robots-Tag: noindex`, so they stay unindexed.

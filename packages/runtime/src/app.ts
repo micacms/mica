@@ -157,7 +157,7 @@ export function createApp(ctx: RuntimeContext, options: CreateAppOptions = {}): 
     app.get("/admin/*", (c) =>
       c.text(
         "The admin interface has not been built.\n" +
-          "Run `pnpm build`, or use `pnpm dev` and open the Vite dev server.",
+          "Run `rush build`, or use `rush dev` and open the Vite dev server.",
         503,
       ),
     );

@@ -17,33 +17,44 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          # `changeset status` compares against main, which needs the history
-          # to be in the checkout.
+          # `rush change --verify` compares against main, which needs the
+          # history to be in the checkout.
           fetch-depth: 0
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      # Rush installs its own pinned copy of itself and of pnpm, so there is
+      # no pnpm setup step — rush.json is the only place versions live. The
+      # cache holds the pnpm store plus the Rush install.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rush
+            common/temp/pnpm-store
+          key: rush-${{ runner.os }}-${{ hashFiles('rush.json', 'common/config/rush/pnpm-lock.yaml') }}
+          restore-keys: rush-${{ runner.os }}-
 
-      # A change to a published package must carry a changeset — the file that
-      # will become its release notes. A refactor that should not be in the
-      # notes still carries one, created empty with `pnpm changeset --empty`.
-      - name: Check for a changeset
-        run: pnpm changeset status --since origin/main
+      # `rush install` is frozen by definition: it refuses rather than update
+      # the committed lockfile.
+      - run: node common/scripts/install-run-rush.js install
+
+      # A change to a published package must carry a change file — the entry
+      # that will become its release notes. A refactor that should not be in
+      # the notes still carries one, recorded with the bump type `none`.
+      - name: Check for a change file
+        run: node common/scripts/install-run-rush.js change --verify
 
       - name: Build packages
-        run: pnpm --filter "./packages/**" build
+        run: node common/scripts/install-run-rush.js build --to tag:packages
 
       # The example website is included: its collection types come from files
       # in the repository, so nothing has to be running for `astro check`.
       - name: Typecheck
-        run: pnpm typecheck
+        run: node common/scripts/install-run-rush.js typecheck
 
       - name: Test
-        run: pnpm -r test
+        run: node common/scripts/install-run-rush.js test
 
       # No CMS is started. The build reads its content directory directly,
       # which is the property worth protecting — if this step ever needs a
@@ -51,7 +62,7 @@ jobs:
       - name: Build the example website
         env:
           SITE_URL: https://example.com
-        run: pnpm --filter @micacms/example-muster-consulting build
+        run: node common/scripts/install-run-rush.js build --to @micacms/example-muster-consulting
 
       - name: Assert the output is self-contained
         run: |
@@ -70,7 +81,7 @@ jobs:
       # pull request fails on a broken site before it can reach main — Vercel
       # deploys whatever main contains, without consulting this workflow.
       - name: Build the website
-        run: pnpm --filter @micacms/site build
+        run: node common/scripts/install-run-rush.js build --to @micacms/site
 
       - name: Assert the website's published content model is committed
         run: git diff --exit-code sites/micacms/content/.mica/schema.json

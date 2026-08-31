@@ -2,7 +2,7 @@
 /**
  * Sets the version everything in this repository is released under.
  *
- *   pnpm release:version 0.2.0
+ *   rush release-version --version 0.2.0
  *
  * Everything here carries one version — every published package, both apps
  * and the image — so a release is one number in a handful of files. Doing
@@ -38,6 +38,9 @@ const IMAGE_TAG = /^(\s*image:\s*ghcr\.io\/amuedespacher\/micacms:)(\S+)(\s*)$/m
  */
 export const MANIFESTS = [
   { file: "package.json", pattern: VERSION_FIELD },
+  // The lockstep policy `rush version --bump` bumps from. Managed here too, so
+  // a manual `rush release-version` cannot leave Rush bumping from a stale base.
+  { file: "common/config/rush/version-policies.json", pattern: VERSION_FIELD },
   { file: "packages/core/package.json", pattern: VERSION_FIELD },
   // The old name, kept as a re-export for one release cycle. It carries the
   // lockstep version like everything else while it exists.
@@ -99,10 +102,14 @@ export function changelogSection(version, root = ROOT) {
 function main(argv) {
   let version = argv[0];
 
-  // `changeset version` bumps every published manifest but knows nothing of
+  // Rush passes the version as `--version 0.2.0`; a bare `0.2.0` still works
+  // for anyone running the script directly.
+  if (version === "--version") version = argv[1];
+
+  // `rush version --bump` bumps every published manifest but knows nothing of
   // the root manifest or the image tag in the reference deployment. `--sync`
-  // reads the version Changesets chose and carries it to everything else, so
-  // `pnpm changeset:version` leaves all of it agreeing.
+  // reads the version Rush chose and carries it to everything else, so
+  // `rush version-bump` leaves all of it agreeing.
   if (version === "--sync") {
     version = JSON.parse(
       readFileSync(path.join(ROOT, "packages/core/package.json"), "utf8"),
@@ -117,10 +124,10 @@ function main(argv) {
       `${[...current.map((e) => `  ${e.version.padEnd(12)} ${e.file}`)].join("\n")}\n`,
     );
     if (agreed.size > 1) {
-      process.stderr.write("\n  These disagree. Run `pnpm release:version <version>`.\n");
+      process.stderr.write("\n  These disagree. Run `rush release-version --version <version>`.\n");
       process.exit(1);
     }
-    process.stdout.write("\n  Usage: pnpm release:version <version>\n");
+    process.stdout.write("\n  Usage: rush release-version --version <version>\n");
     return;
   }
 

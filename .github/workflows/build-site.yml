@@ -15,6 +15,8 @@ on:
       # developers change. Both need a rebuild; nothing else does.
       - "examples/muster-consulting/**"
       - "packages/**"
+      - "rush.json"
+      - "common/config/rush/**"
       - ".github/workflows/build-site.yml"
 
   workflow_dispatch:
@@ -34,24 +36,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
 
-      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rush
+            common/temp/pnpm-store
+          key: rush-${{ runner.os }}-${{ hashFiles('rush.json', 'common/config/rush/pnpm-lock.yaml') }}
+          restore-keys: rush-${{ runner.os }}-
 
-      - name: Build shared packages
-        run: pnpm --filter "./packages/**" build
+      - run: node common/scripts/install-run-rush.js install --to @micacms/example-muster-consulting
 
       # No CMS_URL and no token: the content is in this checkout. The build
-      # cannot be broken by the CMS being down, slow, or mid-deploy.
+      # cannot be broken by the CMS being down, slow, or mid-deploy. `--to`
+      # builds the shared packages first — they are the site's dependencies.
       - name: Build the website
         env:
           SITE_URL: ${{ vars.SITE_URL }}
-        run: pnpm --filter @micacms/example-muster-consulting build
+        run: node common/scripts/install-run-rush.js build --to @micacms/example-muster-consulting
 
       - uses: actions/upload-artifact@v4
         with:

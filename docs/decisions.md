@@ -59,7 +59,7 @@ Authorization is a policy that allows every editor action, which is not the same
 thing as a person.
 
 **Why:** the alternative is asking a developer to stand up Keycloak before they
-can run `pnpm dev`. Mica ships no passwords, so there is no third option that
+can run `rush dev`. Mica ships no passwords, so there is no third option that
 does not mean writing the auth code the project exists to avoid.
 
 **Consequence:** a local Mica is an open editor. This is the single most

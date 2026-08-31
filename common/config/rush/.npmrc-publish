@@ -1,0 +1,5 @@
+# The npm configuration `rush publish` uses. Only the release workflow
+# publishes, and it provides the token; nothing here works — by design —
+# on a developer machine.
+registry=https://registry.npmjs.org/
+//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}

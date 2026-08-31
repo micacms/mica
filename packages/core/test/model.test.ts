@@ -32,7 +32,7 @@ import {
   type InferFields,
 } from "../dist/index.js";
 
-/* Type-level assertions — these fail at `pnpm typecheck`, not at runtime. */
+/* Type-level assertions — these fail at `rush typecheck`, not at runtime. */
 type Equal<A, B> =
   (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ? 1 : 2 ? true : false;
 type Expect<T extends true> = T;

@@ -49,8 +49,8 @@ Ask the user before you:
 
 - Add or update tests when behavior changes or a defect is fixed.
 - Run the tests that are closest to the changed code during development.
-- After a code change, run `pnpm typecheck` and `pnpm test` before completion.
-- Run `pnpm build` when a change can affect package output, the CMS bundle, an Astro site, packaging, or a release.
+- After a code change, run `rush typecheck` and `rush test` before completion.
+- Run `rush build` when a change can affect package output, the CMS bundle, an Astro site, packaging, or a release.
 - Do not claim that a check passed if you did not run it.
 - If a check cannot run, state the reason and the checks that remain.
 
@@ -60,7 +60,8 @@ Ask the user before you:
 - Update `docs/decisions.md` when the change adds or changes an architectural decision, trade-off, known gap, or deferred item.
 - Keep README files and examples consistent with the current behavior.
 - Update `CHANGELOG.md` when a new version is created. Do not add routine unreleased changes unless the user asks for them.
-- Use `pnpm release:version <version>` for version changes. Do not edit package versions separately.
+- Record a change file with `rush change` when a change touches a published package; use the bump type `none` when the release notes should not mention it.
+- Use `rush version-bump` to release the pending change files, or `rush release-version --version <version>` to set an explicit version. Do not edit package versions separately.
 
 ## Git and pull requests
 

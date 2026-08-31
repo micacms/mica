@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "A saved entry no longer warns about unsaved changes when leaving. The rich text editor fires transactions that change nothing stored — normalising the parsed document on mount, and re-parsing after a save reloads the entry — and its serialization differs from the server's stored form by a trailing newline, so each of those emits marked a clean form dirty. The field now emits only when the value it would emit actually differs from the one it holds.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/editor-ui",
+  "email": "alexander@muedespacher.ch"
+}

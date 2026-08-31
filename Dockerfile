@@ -14,25 +14,30 @@
 # ---------------------------------------------------------------- deps
 FROM node:24-alpine AS deps
 
-RUN corepack enable
 WORKDIR /app
 
-# pnpm asks for confirmation before purging node_modules (which the --prod
-# re-resolve below does) and aborts without a TTY. This is that confirmation.
-ENV CI=true
-
 # Only the manifests, so a dependency install is cached until they change.
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
+# Every project in rush.json must have one — Rush reads them all at startup,
+# even for a filtered install — which is why the two site manifests are let
+# through .dockerignore's wholesale exclusion of sites/ and examples/.
+COPY rush.json ./
+COPY common ./common
 COPY packages/core/package.json packages/core/
+COPY packages/model/package.json packages/model/
 COPY packages/connectors/package.json packages/connectors/
+COPY packages/astro/package.json packages/astro/
 COPY packages/runtime/package.json packages/runtime/
 COPY packages/auth/oidc/package.json packages/auth/oidc/
 COPY packages/editor-ui/package.json packages/editor-ui/
+COPY apps/local-editor/package.json apps/local-editor/
 COPY apps/self-hosted/package.json apps/self-hosted/
+COPY sites/micacms/package.json sites/micacms/
+COPY examples/muster-consulting/package.json examples/muster-consulting/
 
-RUN pnpm install --frozen-lockfile \
-      --filter @micacms/self-hosted... \
-      --filter @micacms/editor-ui...
+# install-run-rush bootstraps the Rush version rush.json pins, then installs
+# only the closure the image needs. `rush install` is frozen by definition: it
+# refuses rather than update the committed lockfile.
+RUN node common/scripts/install-run-rush.js install --to @micacms/self-hosted
 
 # ---------------------------------------------------------------- build
 FROM deps AS build
@@ -45,19 +50,17 @@ COPY packages/auth/oidc packages/auth/oidc
 COPY packages/editor-ui packages/editor-ui
 COPY apps/self-hosted apps/self-hosted
 
-# In dependency order: connectors and runtime import core, auth imports the
-# runtime, the app composes all of them, and the UI builds on its own.
-RUN pnpm --filter @micacms/core build \
- && pnpm --filter @micacms/connectors build \
- && pnpm --filter @micacms/runtime build \
- && pnpm --filter @micacms/auth-oidc build \
- && pnpm --filter @micacms/editor-ui build \
- && pnpm --filter @micacms/self-hosted build
+# Rush knows the dependency order; `--to` builds the app's closure and nothing
+# else. (No .git in the build context, so every project builds — there is no
+# history for the incremental analysis to compare against.)
+RUN node common/scripts/install-run-rush.js build --to @micacms/self-hosted
 
-# Re-resolve with dev dependencies pruned. The editor UI is finished assets by
-# now, so its toolchain does not survive into the runtime image.
-RUN pnpm install --frozen-lockfile --prod \
-      --filter @micacms/self-hosted...
+# Assemble the runtime tree: the app, its workspace dependencies, and their
+# production node_modules only — common/config/rush/deploy.json is the
+# scenario. This replaces the old `pnpm install --prod` re-resolve; the editor
+# UI is finished assets by now, so its toolchain does not survive into the
+# runtime image.
+RUN node common/scripts/install-run-rush.js deploy --overwrite --target-folder /deploy
 
 # ---------------------------------------------------------------- runtime
 FROM node:24-alpine AS runtime
@@ -78,28 +81,12 @@ WORKDIR /app
 # repository — so the volume is part of the backup story now.
 RUN mkdir -p /data && chown -R node:node /data
 
-# pnpm keeps the real packages in the root `.pnpm` store and gives each
-# workspace package a directory of relative symlinks into it. Every one of
-# those directories has to come across, or a dependency resolves to nothing at
-# runtime — `packages/core/node_modules` is where zod lives.
-COPY --from=build --chown=node:node /app/node_modules ./node_modules
-COPY --from=build --chown=node:node /app/packages/core/node_modules ./packages/core/node_modules
-COPY --from=build --chown=node:node /app/packages/core/dist ./packages/core/dist
-COPY --from=build --chown=node:node /app/packages/core/package.json ./packages/core/
-COPY --from=build --chown=node:node /app/packages/connectors/node_modules ./packages/connectors/node_modules
-COPY --from=build --chown=node:node /app/packages/connectors/dist ./packages/connectors/dist
-COPY --from=build --chown=node:node /app/packages/connectors/package.json ./packages/connectors/
-COPY --from=build --chown=node:node /app/packages/runtime/node_modules ./packages/runtime/node_modules
-COPY --from=build --chown=node:node /app/packages/runtime/dist ./packages/runtime/dist
-COPY --from=build --chown=node:node /app/packages/runtime/package.json ./packages/runtime/
-COPY --from=build --chown=node:node /app/packages/auth/oidc/node_modules ./packages/auth/oidc/node_modules
-COPY --from=build --chown=node:node /app/packages/auth/oidc/dist ./packages/auth/oidc/dist
-COPY --from=build --chown=node:node /app/packages/auth/oidc/package.json ./packages/auth/oidc/
-COPY --from=build --chown=node:node /app/packages/editor-ui/dist ./packages/editor-ui/dist
-COPY --from=build --chown=node:node /app/packages/editor-ui/package.json ./packages/editor-ui/
-COPY --from=build --chown=node:node /app/apps/self-hosted/node_modules ./apps/self-hosted/node_modules
-COPY --from=build --chown=node:node /app/apps/self-hosted/dist ./apps/self-hosted/dist
-COPY --from=build --chown=node:node /app/apps/self-hosted/package.json ./apps/self-hosted/
+# The deploy folder mirrors the repository layout. Its node_modules are real
+# directories plus symlinks into the pnpm store it carries; the symlinks are
+# recreated here by the script `rush deploy` wrote next to the files, so
+# nothing depends on Docker preserving link targets across COPY --from.
+COPY --from=build --chown=node:node /deploy ./
+RUN node create-links.js create
 
 USER node
 WORKDIR /app/apps/self-hosted

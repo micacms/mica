@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "Migrated the repository tooling from pnpm workspaces to Rush.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}
