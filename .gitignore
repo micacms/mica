@@ -19,3 +19,12 @@ backups/
 
 # Local scratch space for tooling.
 .tmp/
+
+# Rush working files. The lockfile is NOT here: it lives at
+# common/config/rush/pnpm-lock.yaml and is committed, as are the
+# autoinstaller lockfiles and the scripts under common/scripts/.
+common/temp/
+common/deploy/
+common/autoinstallers/*/.npmrc
+**/.rush/temp/
+rush-logs/

@@ -1,6 +1,6 @@
 # Publishing, from a tag.
 #
-#   pnpm release:version 0.2.0
+#   rush version-bump          # or: rush release-version --version 0.2.0
 #   git commit -am "Release 0.2.0" && git tag v0.2.0
 #   git push origin main --follow-tags
 #
@@ -32,12 +32,20 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-          cache: pnpm
-          registry-url: https://registry.npmjs.org
+
+      # Rush installs its own pinned copy of itself and of pnpm; rush.json is
+      # the only place versions live. Publishing authenticates through
+      # common/config/rush/.npmrc-publish, not setup-node's registry file.
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rush
+            common/temp/pnpm-store
+          key: rush-${{ runner.os }}-${{ hashFiles('rush.json', 'common/config/rush/pnpm-lock.yaml') }}
+          restore-keys: rush-${{ runner.os }}-
 
       # The tag says one thing and the manifests say another exactly when
       # somebody tags without running `release:version`. Caught here, that is a
@@ -57,14 +65,14 @@ jobs:
             process.exit(1);
           ' --input-type=module "$tag"
 
-      - run: pnpm install --frozen-lockfile
+      - run: node common/scripts/install-run-rush.js install
 
       # The same gate a pull request passes. A tag can be pushed to a commit CI
       # never saw — a hotfix branch, a manual tag — so the release re-runs it
       # rather than trusting that it happened.
-      - run: pnpm build
-      - run: pnpm typecheck
-      - run: pnpm -r test
+      - run: node common/scripts/install-run-rush.js build
+      - run: node common/scripts/install-run-rush.js typecheck
+      - run: node common/scripts/install-run-rush.js test
 
       # Provenance is an attestation that these bytes were built by this
       # workflow from this commit, and npm will only verify one when it can
@@ -73,17 +81,21 @@ jobs:
       # working. So it is asked for exactly when it can be given, and this
       # starts signing releases by itself on the day the repository goes
       # public.
+      # `rush publish --include-all` publishes every project marked
+      # `shouldPublish` in rush.json, rewriting `workspace:*` ranges to the
+      # real versions as pnpm used to. npm reads provenance from the
+      # environment, so the flag survives Rush standing between us and it.
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           PRIVATE: ${{ github.event.repository.private }}
         run: |
           if [ "$PRIVATE" = "false" ]; then
-            pnpm publish --recursive --access public --no-git-checks --provenance
+            export NPM_CONFIG_PROVENANCE=true
           else
             echo "::notice::Private repository — publishing without provenance."
-            pnpm publish --recursive --access public --no-git-checks
           fi
+          node common/scripts/install-run-rush.js publish --include-all --publish --set-access-level public
 
       - name: Release notes from the changelog
         id: notes

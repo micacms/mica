@@ -8,10 +8,10 @@ should differ between projects; the loader, the model and the CMS are the parts
 that should not.
 
 ```bash
-pnpm --filter @micacms/example-muster-consulting dev    # or: pnpm dev:site
+cd examples/muster-consulting && rushx dev
 ```
 
-<http://localhost:4321>. To edit the content, run Mica beside it — `pnpm dev`
+<http://localhost:4321>. To edit the content, run Mica beside it — `rush dev`
 from the repository root points at this project's `content/` by default.
 
 ---

@@ -289,7 +289,7 @@ only place the process writes.
 
 This is the honest resolution of two requirements that genuinely conflict: Mica
 ships no passwords, and a developer cannot be asked to stand up Keycloak before
-running `pnpm dev`. The third option — a built-in dev identity provider — is
+running `rush dev`. The third option — a built-in dev identity provider — is
 auth code, which is the thing being avoided. The package boundary makes it
 structural: `@micacms/editor` has no dependency path to `openid-client`, and a
 test walks the graph to keep it that way.

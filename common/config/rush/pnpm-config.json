@@ -1,0 +1,21 @@
+/**
+ * How Rush drives pnpm. What used to live in pnpm-workspace.yaml and .npmrc
+ * moved here — Rush generates the actual workspace file under common/temp/.
+ */
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/pnpm-config.schema.json",
+
+  "useWorkspaces": true,
+
+  // Carried over from the old .npmrc: peer-dependency mismatches warn rather
+  // than fail the install.
+  "strictPeerDependencies": false,
+
+  /**
+   * Build scripts are opt-in.
+   *   esbuild — Vite and Astro
+   *   sharp   — Astro's image service; optimises the images the build finds in
+   *             the content repository, which is what keeps the output static
+   */
+  "globalOnlyBuiltDependencies": ["esbuild", "sharp"]
+}

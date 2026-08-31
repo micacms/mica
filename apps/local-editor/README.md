@@ -42,13 +42,13 @@ keeps Publish out of the editor entirely).
 ## Working on Mica itself
 
 ```bash
-pnpm install
-pnpm build:packages
+rush update
+rush build --to tag:packages
 
 cd apps/local-editor
 cp .env.example .env
 
-pnpm -w dev                            # API on :6422, admin on :5173
+rush dev                               # API on :6422, admin on :5173
 ```
 
 `CONTENT_ROOT=../../examples/muster-consulting/content` is the default, so the
@@ -62,7 +62,7 @@ developer commits. If it is not there, the server says so and exits.
 Then open <http://localhost:5173/admin/>. The editor opens directly — no name,
 no avatar and no account menu, because there is nothing behind them.
 
-The root `pnpm dev` runs this app and the Vite dev server together. Vite
+`rush dev` runs this app and the Vite dev server together. Vite
 proxies `/api` to the API; the API still needs
 `ADMIN_ORIGINS=http://localhost:5173` for its Origin check, which
 `.env.example` already sets.

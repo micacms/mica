@@ -1,0 +1,19 @@
+/**
+ * What `rush deploy` assembles for the Docker image: @micacms/self-hosted and
+ * its production dependency closure, copied into common/deploy/ with the same
+ * folder layout as the repository.
+ *
+ * This replaces the old `pnpm install --prod` re-resolve in the Dockerfile —
+ * dev dependencies never enter the deploy folder, so the editor UI's toolchain
+ * does not survive into the runtime image.
+ */
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/deploy-scenario.schema.json",
+
+  "deploymentProjectNames": ["@micacms/self-hosted"],
+
+  // Symlinks are recreated inside the image by create-links.js rather than
+  // copied out of the build stage, so nothing depends on Docker preserving
+  // absolute link targets across COPY --from.
+  "linkCreation": "script"
+}

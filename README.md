@@ -225,17 +225,22 @@ mandatory cloud services.
 
 |                         |                                                                  |
 | ----------------------- | ---------------------------------------------------------------- |
-| `pnpm dev`              | build the packages, then run the CMS against the example project |
-| `pnpm dev:site`         | the example website, in a second terminal                        |
-| `pnpm test`             | 313 tests across the model, connectors, Astro loader and editor  |
-| `pnpm typecheck`        | every package, including `.vue` and `.astro`                     |
+| `rush update`           | install — Rush fetches its own pinned pnpm, nothing global       |
+| `rush dev`              | build the packages, then run the CMS against the example project |
+| `rushx dev`             | the example website, from `examples/muster-consulting`           |
+| `rush test`             | 313 tests across the model, connectors, Astro loader and editor  |
+| `rush typecheck`        | every package, including `.vue` and `.astro`                     |
 
 ### Releasing
 
-Everything here ships together under one version.
+Everything here ships together under one version. A pull request that changes
+a published package carries a change file — `rush change` records one, CI
+verifies it, and its comment becomes the package's changelog entry (bump type
+`none` for changes the release notes should not mention).
 
 ```bash
-pnpm release:version 0.2.0        # writes it into all five manifests
+rush version-bump                 # consume the change files: bump every
+                                  # manifest, write the package changelogs
 git commit -am "Release 0.2.0"
 git tag v0.2.0
 git push origin main --follow-tags

@@ -1,0 +1,17 @@
+/**
+ * One lockstep version for everything Mica publishes: the nine packages move
+ * together, whatever the release notes say about each. `rush version --bump`
+ * consumes the change files under common/changes/, bumps every member to the
+ * same next version, and writes each package's CHANGELOG from the comments.
+ *
+ * `nextBump` is what the next release will be — a patch release means setting
+ * it to "patch" first (or `rush version --bump --override-bump patch`).
+ */
+[
+  {
+    "definitionName": "lockStepVersion",
+    "policyName": "mica",
+    "version": "0.1.1",
+    "nextBump": "minor"
+  }
+]

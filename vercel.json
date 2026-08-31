@@ -1,11 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": null,
-  "installCommand": "pnpm install --frozen-lockfile",
-  "buildCommand": "pnpm --filter @micacms/site... build",
+  "installCommand": "node common/scripts/install-run-rush.js install --to @micacms/site",
+  "buildCommand": "node common/scripts/install-run-rush.js build --to @micacms/site",
   "outputDirectory": "sites/micacms/dist",
   "trailingSlash": true,
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- sites/micacms packages pnpm-lock.yaml vercel.json",
+  "ignoreCommand": "git diff --quiet HEAD^ HEAD -- sites/micacms packages rush.json common/config/rush vercel.json",
   "redirects": [
     {
       "source": "/(.*)",

@@ -162,6 +162,16 @@ Changesets covers every stated need with roughly one configuration file, is the
 convention in pnpm workspace projects, and replaces
 [`scripts/version.mjs`](../scripts/version.mjs) directly.
 
+> **Superseded (2026-08-30).** The repository migrated to Rush after all — the
+> whole monorepo, not only releases — and with pnpm workspaces gone, Changesets
+> lost the argument from convention and needed a discovery shim to find the
+> packages at all. Its pending changesets were converted to Rush change files
+> under `common/changes/`; `rush change --verify` is the CI gate,
+> `rush version-bump` consumes them, and a `lockStepVersion` policy in
+> `common/config/rush/version-policies.json` holds the one version.
+> `scripts/version.mjs` still carries that version to the root manifest and
+> the compose image tag, exactly as it did beside Changesets.
+
 ### 2.8 Sequence: scope, then value, then layers
 
 `v3-arch.md` Phases 1–3 are moves that no user notices. Phase 4 is the change
@@ -577,6 +587,12 @@ only when the release path is proven end to end.
 > version-bearing files. Release publishing still runs through the existing
 > tag-triggered workflow; `changeset publish` can replace it once the path is
 > proven.
+>
+> **Superseded (2026-08-30)** by the Rush migration — see the note under §2.7.
+> The bridge survives with the names changed: `rush version-bump` runs
+> `rush version --bump` and then `version.mjs --sync`, and the same scratch
+> rehearsal confirmed one `0.2.0` across all twelve version-bearing files,
+> with each package's CHANGELOG generated from the converted change files.
 
 **Exit criteria**
 

@@ -1,0 +1,110 @@
+/**
+ * Rush drives this repository: it installs one dependency tree for every
+ * project listed below, links them together, and builds them in dependency
+ * order.
+ *
+ *   rush update   — install (after changing any package.json)
+ *   rush install  — install exactly what the lockfile says (CI)
+ *   rush build    — build everything that changed, in order
+ *   rush test     — every project's test script
+ *
+ * There are no workspace globs: a new project is added by listing it in
+ * `projects` below. pnpm is still the package manager underneath — Rush
+ * downloads its own copy, pinned here, so nothing depends on what is
+ * installed globally.
+ */
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/rush/v5/rush.schema.json",
+
+  "rushVersion": "5.178.1",
+  "pnpmVersion": "11.3.0",
+
+  // Matches the `engines` field the published packages declare.
+  "nodeSupportedVersionRange": ">=22.12.0 <27.0.0",
+
+  // packages/auth/oidc sits three levels down; Rush's default limit is two.
+  "projectFolderMaxDepth": 3,
+
+  "repository": {
+    "defaultBranch": "main"
+  },
+
+  "projects": [
+    // ---------------------------------------------------------- packages
+    // The published libraries. The `mica` version policy (see
+    // common/config/rush/version-policies.json) is what publishes them, all
+    // at one lockstep version. The `packages` tag is what CI builds first:
+    // `rush build --to tag:packages` is the old `pnpm --filter "./packages/**" build`.
+    {
+      "packageName": "@micacms/core",
+      "projectFolder": "packages/core",
+      "versionPolicyName": "mica",
+      "tags": ["packages"]
+    },
+    {
+      // The old name, kept as a re-export for one release cycle.
+      "packageName": "@micacms/model",
+      "projectFolder": "packages/model",
+      "versionPolicyName": "mica",
+      "tags": ["packages"]
+    },
+    {
+      "packageName": "@micacms/connectors",
+      "projectFolder": "packages/connectors",
+      "versionPolicyName": "mica",
+      "tags": ["packages"]
+    },
+    {
+      "packageName": "@micacms/astro",
+      "projectFolder": "packages/astro",
+      "versionPolicyName": "mica",
+      "tags": ["packages"]
+    },
+    {
+      "packageName": "@micacms/editor-ui",
+      "projectFolder": "packages/editor-ui",
+      "versionPolicyName": "mica",
+      "tags": ["packages"]
+    },
+    {
+      "packageName": "@micacms/runtime",
+      "projectFolder": "packages/runtime",
+      "versionPolicyName": "mica",
+      "tags": ["packages"]
+    },
+    {
+      "packageName": "@micacms/auth-oidc",
+      "projectFolder": "packages/auth/oidc",
+      "versionPolicyName": "mica",
+      "tags": ["packages"]
+    },
+
+    // -------------------------------------------------------------- apps
+    {
+      "packageName": "@micacms/editor",
+      "projectFolder": "apps/local-editor",
+      "versionPolicyName": "mica",
+      "tags": ["apps"]
+    },
+    {
+      "packageName": "@micacms/self-hosted",
+      "projectFolder": "apps/self-hosted",
+      "versionPolicyName": "mica",
+      "tags": ["apps"]
+    },
+
+    // ------------------------------------------------------------- sites
+    // Never published: no version policy, and their manifests say
+    // `"private": true` besides.
+    {
+      "packageName": "@micacms/site",
+      "projectFolder": "sites/micacms",
+      "tags": ["sites"]
+    },
+    {
+      "packageName": "@micacms/example-muster-consulting",
+      "projectFolder": "examples/muster-consulting",
+      "tags": ["sites"]
+    }
+  ]
+}
