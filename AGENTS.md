@@ -79,7 +79,7 @@ Ask the user before you:
 
 ## Repository map
 
-- `packages/core`: content model, field DSL, validation, serialization, authoring format, and the port contracts. `packages/model` is a thin re-export of it, kept for one release cycle.
+- `packages/core`: content model, field DSL, validation, serialization, authoring format, and the port contracts.
 - `packages/connectors`: local, GitHub, and GitLab repository access.
 - `packages/astro`: Astro Content Layer integration and Markdoc rendering.
 - `packages/runtime`: the authentication-neutral single-site Hono API and services.

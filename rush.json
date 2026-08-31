@@ -42,13 +42,6 @@
       "tags": ["packages"]
     },
     {
-      // The old name, kept as a re-export for one release cycle.
-      "packageName": "@micacms/model",
-      "projectFolder": "packages/model",
-      "versionPolicyName": "mica",
-      "tags": ["packages"]
-    },
-    {
       "packageName": "@micacms/connectors",
       "projectFolder": "packages/connectors",
       "versionPolicyName": "mica",

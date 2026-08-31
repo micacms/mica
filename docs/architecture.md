@@ -48,7 +48,7 @@ work.
 
 | Package                   | What it is                                                                            |
 | ------------------------- | ------------------------------------------------------------------------------------- |
-| `@micacms/core`           | The field DSL, the content model, the authoring format, and the port contracts. `@micacms/model` re-exports it for one release cycle |
+| `@micacms/core`           | The field DSL, the content model, the authoring format, and the port contracts |
 | `@micacms/connectors`     | Repository access, and the content store built on it                                  |
 | `@micacms/astro`          | Content Layer loader, dev integration, Markdoc rendering                              |
 | `@micacms/runtime`        | The single-site Hono API and application services, authentication-neutral             |

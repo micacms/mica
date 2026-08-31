@@ -17,7 +17,7 @@
     }
   ],
   "stack": [
-    { "name": "@micacms/model", "role": "Fields, validation, and file layout" },
+    { "name": "@micacms/core", "role": "Fields, validation, and file layout" },
     { "name": "@micacms/astro", "role": "Typed Astro Content Layer loaders" },
     { "name": "@micacms/connectors", "role": "Local, GitHub, and GitLab writes" },
     { "name": "@micacms/editor", "role": "Hono API and Vue editor" },

@@ -32,7 +32,6 @@ const FORBIDDEN = new Set(["openid-client", "jose", "@micacms/auth-oidc"]);
 /** Where a workspace package's manifest lives, by name. */
 const WORKSPACE_DIRS: Record<string, string> = {
   "@micacms/core": "packages/core",
-  "@micacms/model": "packages/model",
   "@micacms/connectors": "packages/connectors",
   "@micacms/runtime": "packages/runtime",
   "@micacms/editor-ui": "packages/editor-ui",
