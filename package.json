@@ -3,7 +3,7 @@
   "version": "0.1.1",
   "private": true,
   "description": "Mica — a Git-native content editor for Astro websites.",
-  "type": "module",
+  "//type": "No `type: module` here, deliberately: Rush generates the CommonJS bundles in common/scripts/, and this manifest is the scope they run in. The repository's own scripts are `.mjs`, which declares them ES modules by itself; every package sets its own `type`.",
   "//": "Rush drives this repository — see rush.json. There are no root scripts and no root node_modules: `rush update` installs, `rush build` builds, `rush test` tests, and the repository's own commands live in common/config/rush/command-line.json.",
   "//backup": "There is no backup script: the content is in Git, and the database holds only sessions.",
   "engines": {
