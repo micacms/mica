@@ -61,7 +61,7 @@ Ask the user before you:
 - Keep README files and examples consistent with the current behavior.
 - Update `CHANGELOG.md` when a new version is created. Do not add routine unreleased changes unless the user asks for them.
 - Record a change file with `rush change` when a change touches a published package; use the bump type `none` when the release notes should not mention it.
-- Use `rush version-bump` to release the pending change files, or `rush release-version --version <version>` to set an explicit version. Do not edit package versions separately.
+- Use `rush version-bump` to release the pending change files, or `rush release-version --version <version>` to set an explicit version. Do not edit package versions separately. The `/release` skill (`.claude/skills/release/`) walks the whole flow — bump choice, changelog section, verification.
 
 ## Git and pull requests
 
