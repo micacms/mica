@@ -23,7 +23,6 @@ WORKDIR /app
 COPY rush.json ./
 COPY common ./common
 COPY packages/core/package.json packages/core/
-COPY packages/model/package.json packages/model/
 COPY packages/connectors/package.json packages/connectors/
 COPY packages/astro/package.json packages/astro/
 COPY packages/runtime/package.json packages/runtime/
