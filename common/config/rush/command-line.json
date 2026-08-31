@@ -74,9 +74,12 @@
       "commandKind": "global",
       "name": "version-bump",
       "summary": "Consume the change files and carry the version everywhere",
-      "description": "Runs `rush version --bump` — the lockstep bump and the package changelogs — then carries the version it chose to the root manifest and the image tag in the reference deployment.",
+      "description": "Runs `rush version --bump` — the lockstep bump and the package changelogs — then carries the version it chose to the image tag in the reference deployment.",
       "shellCommand": "node common/scripts/install-run-rush.js version --bump && node scripts/version.mjs --sync",
-      "safeForSimultaneousRushProcesses": false
+      // This wrapper invokes Rush recursively; it must not hold the repo lock
+      // the inner `rush version` needs, or the bump dies halfway — after the
+      // manifests are rewritten, before the lockfile refresh and the sync.
+      "safeForSimultaneousRushProcesses": true
     },
     {
       "commandKind": "global",
