@@ -37,7 +37,6 @@ const IMAGE_TAG = /^(\s*image:\s*ghcr\.io\/amuedespacher\/micacms:)(\S+)(\s*)$/m
  * middle group and nothing else in the file moves.
  */
 export const MANIFESTS = [
-  { file: "package.json", pattern: VERSION_FIELD },
   // The lockstep policy `rush version --bump` bumps from. Managed here too, so
   // a manual `rush release-version` cannot leave Rush bumping from a stale base.
   { file: "common/config/rush/version-policies.json", pattern: VERSION_FIELD },
@@ -104,9 +103,9 @@ function main(argv) {
   if (version === "--version") version = argv[1];
 
   // `rush version --bump` bumps every published manifest but knows nothing of
-  // the root manifest or the image tag in the reference deployment. `--sync`
-  // reads the version Rush chose and carries it to everything else, so
-  // `rush version-bump` leaves all of it agreeing.
+  // the image tag in the reference deployment. `--sync` reads the version Rush
+  // chose and carries it to everything else, so `rush version-bump` leaves all
+  // of it agreeing.
   if (version === "--sync") {
     version = JSON.parse(
       readFileSync(path.join(ROOT, "packages/core/package.json"), "utf8"),
