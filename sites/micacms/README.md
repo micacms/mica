@@ -18,7 +18,7 @@ Build the CMS once, then point its local command at this site's content root:
 
 ```bash
 rush build --to @micacms/editor
-node packages/editor/dist/server/cli.js --content sites/micacms/content
+node apps/local-editor/dist/cli.js --content sites/micacms/content
 ```
 
 Open `http://localhost:6422/admin/`. Local mode has no authentication and listens only on the local computer.
@@ -36,7 +36,7 @@ Set `SITE_URL` in CI when the canonical production URL is not `https://micacms.c
 
 ## Deploy to Vercel
 
-The site depends on `@micacms/model` and `@micacms/astro`, which are workspace
+The site depends on `@micacms/core` and `@micacms/astro`, which are workspace
 packages compiled to `dist/` and never committed. A deployment therefore has to
 build them first, so the project builds from the **repository root**, not from
 this directory. Everything it needs is in [`vercel.json`](../../vercel.json):

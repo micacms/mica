@@ -242,19 +242,6 @@ importers:
         specifier: ^2.2.0
         version: 2.2.12(typescript@5.9.3)
 
-  ../../packages/model:
-    dependencies:
-      '@micacms/core':
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      '@types/node':
-        specifier: ^22.20.1
-        version: 22.20.1
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.3
-
   ../../packages/runtime:
     dependencies:
       '@hono/node-server':

@@ -7,8 +7,7 @@ The core of Mica — a Git-native content editor for static Astro websites: the
 content model, the format its entries take on disk, and the provider-neutral
 `RepositoryConnector` port every repository adapter implements.
 
-Formerly published as `@micacms/model`, which remains available as a thin
-re-export for one release cycle.
+Formerly published as `@micacms/model`.
 
 One model file is the single source of truth for TypeScript types, runtime
 validation, the CMS's forms, the layout on disk and the Astro collection
