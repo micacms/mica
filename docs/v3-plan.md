@@ -169,8 +169,10 @@ convention in pnpm workspace projects, and replaces
 > under `common/changes/`; `rush change --verify` is the CI gate,
 > `rush version-bump` consumes them, and a `lockStepVersion` policy in
 > `common/config/rush/version-policies.json` holds the one version.
-> `scripts/version.mjs` still carries that version to the root manifest and
-> the compose image tag, exactly as it did beside Changesets.
+> `scripts/version.mjs` still carries that version to the compose image tag,
+> exactly as it did beside Changesets. (There is no root manifest left to
+> sync: with no root scripts and no workspace globs, the repository has no
+> root package.json at all.)
 
 ### 2.8 Sequence: scope, then value, then layers
 
