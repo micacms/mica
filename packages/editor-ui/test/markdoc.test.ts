@@ -10,7 +10,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { getSchema } from "@tiptap/core";
+
 import { equivalentMarkdoc, fromMarkdoc, toMarkdoc, type ProseMirrorNode } from "../src/lib/markdoc.js";
+import { createRichTextExtensions } from "../src/lib/rich-text-extensions.js";
 
 /** Markdoc in, Markdoc out, through the editor's representation. */
 const roundTrip = (source: string): string => toMarkdoc(fromMarkdoc(source));
@@ -129,6 +132,7 @@ describe("round trips", () => {
     ["a quote", "> Quoted words.\n"],
     ["a divider", "Above\n\n---\n\nBelow\n"],
     ["a code span", "Run `pnpm build` first.\n"],
+    ["a fenced code block", "```ts\nconst ready = true;\n```\n"],
     ["mixed blocks", "## Title\n\nA paragraph.\n\n- One\n- Two\n\n> A quote.\n"],
   ];
 
@@ -161,6 +165,17 @@ describe("round trips", () => {
       "<script>alert(1)</script>",
     );
     assert.equal(roundTrip(out), out);
+  });
+});
+
+describe("Tiptap schema", () => {
+  it("accepts inline and fenced code from stored Markdoc", () => {
+    const parsed = fromMarkdoc("Run `rush build`.\n\n```ts\nconst ready = true;\n```\n");
+    const schema = getSchema(createRichTextExtensions([]));
+
+    assert.doesNotThrow(() => schema.nodeFromJSON(parsed));
+    assert.equal(parsed.content?.[0]?.content?.[1]?.marks?.[0]?.type, "code");
+    assert.equal(parsed.content?.[1]?.type, "codeBlock");
   });
 });
 

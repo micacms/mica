@@ -2,14 +2,15 @@
   "name": "@micacms/site",
   "version": "0.0.1",
   "private": true,
-  "type": "module",
   "description": "The public website for MicaCMS, built with Astro and edited with Mica.",
+  "type": "module",
   "scripts": {
-    "dev": "astro dev",
+    "astro": "astro",
     "build": "astro build",
+    "dev": "astro dev",
+    "mica": "mica --port 3000",
     "preview": "astro preview",
-    "typecheck": "astro check",
-    "astro": "astro"
+    "typecheck": "astro check"
   },
   "dependencies": {
     "@lucide/astro": "^1.31.0",
@@ -19,6 +20,7 @@
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.4",
+    "@micacms/editor": "workspace:*",
     "@tailwindcss/vite": "^4.0.0",
     "@types/node": "^22.20.1",
     "tailwindcss": "^4.0.0",
