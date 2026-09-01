@@ -4,4 +4,4 @@ One setting says who can edit: a group from your provider, a verified email doma
 
 Mica reads the rule on each request, thus a change to the rule is immediate. A change in your provider is not: Mica uses the data that the provider sent at sign-in, and gets new data at the next sign-in. Sessions therefore continue for hours, not weeks.
 
-The operational database contains sessions only. If it is lost, editors sign in again and the website content does not change.
+The operational database contains sessions and unpublished drafts, never the published website. If it is lost, editors sign in again and everything published is still in the repository.

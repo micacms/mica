@@ -1,4 +1,6 @@
-Deploy Mica as one container. It needs a repository connection, an OpenID Connect provider, a rule that says who can edit, and a persistent volume for its small SQLite file.
+Deploy Mica as one container: the published `@micacms/self-hosted` image. It needs a repository connection, an OpenID Connect provider, a rule that says who can edit, and a persistent volume for its small SQLite file.
+
+A save stages a draft in that database, where only editors see it. An editor's Publish writes everything pending to the repository as one commit.
 
 > Mica is pre-1.0. Test upgrades and keep the version fixed in production.
 
@@ -13,7 +15,6 @@ Set `REPOSITORY_ROOT` to the content directory. Mica rejects paths outside this 
 Mica delegates sign-in to an OpenID Connect provider. It stores no password, and no account.
 
 ```env
-MICA_MODE=self-hosted
 MICA_OIDC_ISSUER=https://auth.example.com
 MICA_OIDC_CLIENT_ID=mica
 MICA_OIDC_CLIENT_SECRET=
@@ -51,17 +52,21 @@ SESSION_IDLE_HOURS=4
 ## Start the service
 
 ```bash
-curl -o .env https://raw.githubusercontent.com/amuedespacher/micacms/main/.env.example
-docker compose up -d --build
+curl -o compose.yml https://raw.githubusercontent.com/amuedespacher/micacms/main/deploy/self-hosted/compose.yml
+curl -o .env https://raw.githubusercontent.com/amuedespacher/micacms/main/deploy/self-hosted/.env.example
+$EDITOR .env
+docker compose up -d
 curl -s https://cms.example.com/health
 ```
+
+The compose file pulls the published image from `ghcr.io/amuedespacher/micacms`. Nothing is built on the server, and there is no clone of the Mica repository: the content model comes out of your content repository at runtime.
 
 Terminate TLS in a reverse proxy and set `MICA_PUBLIC_URL` to the public HTTPS address. Enable `TRUST_PROXY` only behind a proxy that you control.
 
 ## Build the website
 
-The website build needs no CMS URL and no read token. It reads the checked-out files. A normal push trigger is the complete connection between save and deploy.
+The website build needs no CMS URL and no read token. It reads the checked-out files. A normal push trigger is the complete connection between publish and deploy: a publish is a commit on the branch, and the branch already rebuilds on a push.
 
 ## Backups
 
-The content repository is the content backup, with history from every save. The SQLite file contains sessions only. If you lose it, editors sign in again and you lose nothing more.
+The content repository is the content backup, with history from every publish. The SQLite file contains sessions and the drafts that nobody has published yet. If you lose it, editors sign in again and unpublished work is gone; everything published is in the repository. One file to back up covers both.

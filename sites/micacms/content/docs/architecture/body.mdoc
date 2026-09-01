@@ -4,20 +4,24 @@ Mica follows one constraint: losing its database must never mean losing website 
 
 The model is a plain TypeScript module. Astro imports it to create typed collections. An Astro build also writes the model as data to `.mica/schema.json`.
 
-Mica reads that model from the repository and generates its navigation, tables, and forms. When an editor saves, Mica commits the changed content files. A push starts the existing site build.
+Mica reads that model from the repository and generates its navigation, tables, and forms. A save lands in a draft workspace that only the editor sees: the working tree on your machine, a draft store in the deployed CMS. An explicit Publish writes everything pending to the repository as one commit, and the push starts the existing site build.
 
 The website never calls Mica. Mica never needs to know where the website is hosted. They meet in the repository.
 
 ## The packages
 
-- `@micacms/model` defines fields, validation, serialization, and file layout.
+- `@micacms/core` defines fields, validation, serialization, and file layout.
 - `@micacms/connectors` reads and writes local folders, GitHub, and GitLab.
 - `@micacms/astro` connects the model and content to the Astro Content Layer.
-- `@micacms/editor` provides the Hono server and Vue editing interface.
+- `@micacms/runtime` is the API server, with no authentication of its own.
+- `@micacms/editor-ui` is the editing interface, shipped as built assets.
+- `@micacms/auth-oidc` is the OpenID Connect gate for deployments.
+
+Two applications compose them. `@micacms/editor` is the local one: loopback only, no authentication code at all. `@micacms/self-hosted` is the Docker image, behind OpenID Connect.
 
 ## Atomic changes
 
-An entry can include JSON, rich text, and many media files. Mica writes all of these in one commit or writes nothing. A stale revision gives a conflict response and leaves the editor's changes in the form.
+An entry can include JSON, rich text, and many media files. A publish writes everything pending in one commit or writes nothing. A stale revision gives a conflict response and leaves the editor's changes in the form.
 
 ## Deliberate limits
 

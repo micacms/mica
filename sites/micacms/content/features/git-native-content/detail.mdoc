@@ -2,6 +2,6 @@ Your repository is not a backup of the CMS. It is the content store.
 
 Structured fields use stable JSON. Long-form text uses Markdoc. Images sit beside the entry that uses them. The same input always produces the same file order, so reviews show the change that matters.
 
-## One save, one commit
+## One publish, one commit
 
-Mica writes an entry and all of its sidecar files as one change set. GitHub uses the Git Data API. GitLab uses the commits API. The local connector gives the same all-or-nothing result in a working tree.
+Saves accumulate in a draft workspace where only editors see them. Publish writes everything pending — entries, sidecar files, and media together — as one change set. GitHub uses the Git Data API. GitLab uses the commits API. The local connector gives the same all-or-nothing result in a working tree.

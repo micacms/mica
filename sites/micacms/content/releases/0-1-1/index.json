@@ -4,5 +4,5 @@
   "version": "0.1.1",
   "publishDate": "2026-08-16",
   "summary": "The first start in a new project showed a database line above the startup banner. The banner now comes first.",
-  "latest": true
+  "latest": false
 }

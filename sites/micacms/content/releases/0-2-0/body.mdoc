@@ -1,0 +1,19 @@
+## Changed
+
+**Saving no longer commits; Publish does.** A save lands in a draft workspace: the working tree on your own machine, a draft store in the deployed CMS. Edits accumulate where only the editor sees them, and an explicit Publish writes everything pending to the repository as one commit. The repository moves once, when someone decides it should.
+
+**The Publish page shows what a pending change does.** Each changed field is one row with the stored value beside the staged one, worded by the field type: Yes/No for booleans, option labels for selects, file names for media. You review a comparison, not a diff.
+
+**`defaultSort` now orders the entry list, and its field is checked.** The admin lists entries the way the model asks — by a field, or by the position editors arranged by hand. `defineSite` refuses a sort field the collection does not declare, and names the ones it has. A model already committed with such a value keeps working: the option is dropped and the manual order applies, and the project's next build reports it.
+
+## Breaking
+
+**The editor split into composable packages.** The mode is now which application you run: `npx @micacms/editor` is the local one — loopback only, and no authentication code at all — and `@micacms/self-hosted` is the Docker image, behind OpenID Connect. Under both sit the authentication-neutral server, the editing interface as built assets, and a server-only OpenID Connect gate. `npx @micacms/cms` and `MICA_MODE` stop working; the two applications replace them.
+
+**`@micacms/model` is renamed to `@micacms/core`.** Update the dependency and the imports in your model module. The module itself is what it was.
+
+## Fixed
+
+A saved entry no longer warns about unsaved changes when leaving: the rich text field emits only when its value actually differs from the stored one.
+
+Saving an entry no longer rewrites its media paths. The paths compounded with every save, and the reference stopped resolving after the first one. An entry saved by an earlier version has the wrong path on disk and will not repair itself: `git log -p` over the content directory shows which, and the fix is to restore the path the entry had before that save.

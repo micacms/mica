@@ -1,0 +1,8 @@
+{
+  "title": "Publishing becomes explicit",
+  "slug": "0-2-0",
+  "version": "0.2.0",
+  "publishDate": "2026-08-31",
+  "summary": "A save now stages a draft; an explicit Publish writes one commit. The CMS split into composable packages: the local editor is npx @micacms/editor, and @micacms/model became @micacms/core.",
+  "latest": true
+}
