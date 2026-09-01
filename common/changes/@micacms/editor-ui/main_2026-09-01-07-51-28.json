@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "Preserve fenced code blocks when rich-text content opens in the editor.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@micacms/editor-ui"
+}

@@ -3,9 +3,8 @@
  * Rich text.
  *
  * Tiptap over ProseMirror, constrained to the marks and nodes the field
- * declares. An editor never has to know a markup language, and restricting the
- * schema means they cannot accidentally produce markup the frontend has no
- * styles for.
+ * declares. The schema also keeps code that is already in Markdoc because code
+ * has no toolbar action. An editor never has to know a markup language.
  *
  * What leaves this component is **Markdoc**, not HTML. Tiptap's own `getHTML()`
  * is never called: the value is converted from ProseMirror JSON on the way out
@@ -15,8 +14,6 @@
 
 import { computed, onBeforeUnmount, watch } from "vue";
 
-import Link from "@tiptap/extension-link";
-import StarterKit from "@tiptap/starter-kit";
 import { EditorContent, useEditor } from "@tiptap/vue-3";
 
 import type { RichTextFeature, RichTextField } from "@micacms/core";
@@ -24,6 +21,7 @@ import type { RichTextFeature, RichTextField } from "@micacms/core";
 import FieldShell from "./FieldShell.vue";
 import { useField, type FieldProps } from "@/composables/useField";
 import { equivalentMarkdoc, fromMarkdoc, toMarkdoc, type ProseMirrorNode } from "@/lib/markdoc";
+import { createRichTextExtensions } from "@/lib/rich-text-extensions";
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
@@ -47,30 +45,7 @@ const editor = useEditor({
   content: fromMarkdoc(typeof props.modelValue === "string" ? props.modelValue : ""),
   editable: !(props.disabled || field.value.readonly),
 
-  extensions: [
-    StarterKit.configure({
-      // Only offer what the field declares, so the output stays predictable.
-      heading: enabled("heading") ? { levels: [2, 3] } : false,
-      bulletList: enabled("bulletList") ? {} : false,
-      orderedList: enabled("orderedList") ? {} : false,
-      blockquote: enabled("blockquote") ? {} : false,
-      horizontalRule: enabled("horizontalRule") ? {} : false,
-      strike: enabled("strike") ? {} : false,
-      code: false,
-      codeBlock: false,
-    }),
-    ...(enabled("link")
-      ? [
-          Link.configure({
-            openOnClick: false,
-            autolink: true,
-            protocols: ["http", "https", "mailto", "tel"],
-            // Never emit javascript: or data: URLs from pasted content.
-            HTMLAttributes: { rel: "noopener noreferrer", target: "_blank" },
-          }),
-        ]
-      : []),
-  ],
+  extensions: createRichTextExtensions(toolbar.value),
 
   editorProps: {
     attributes: {
