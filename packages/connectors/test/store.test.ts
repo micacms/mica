@@ -201,7 +201,12 @@ describe("renaming an entry", () => {
     const revision = await store.revisionOf("projects", "haus-a");
     const saved = await store.save("projects", {
       slug: "haus-a",
-      data: { title: "Haus B", slug: "haus-b", description: "Body." },
+      data: {
+        title: "Haus B",
+        slug: "haus-b",
+        description: "Body.",
+        cover: "projects/haus-a/media/photo.jpg",
+      },
       expectedRevision: revision,
     });
 
@@ -209,6 +214,8 @@ describe("renaming an entry", () => {
     assert.equal(saved.renamed, true);
     assert.deepEqual(await files("projects"), ["haus-b"]);
     assert.equal(await read("projects/haus-b/media/photo.jpg"), "bytes");
+    // The reference follows the file instead of naming the deleted directory.
+    assert.equal(JSON.parse(await read("projects/haus-b/index.json")).cover, "media/photo.jpg");
     assert.equal(await read("projects/haus-b/description.mdoc"), "Body.\n");
   });
 });
@@ -342,6 +349,21 @@ describe("ordering", () => {
     assert.equal(await read("projects/_order.json"), '[\n  "haus-b",\n  "haus-a"\n]\n');
     const listed = (await store.list("projects")).map((entry) => entry.slug);
     assert.deepEqual(listed, ["haus-b", "haus-a"]);
+  });
+
+  it("a renamed entry keeps its place in the order", async () => {
+    await store.save("projects", { data: { title: "Haus A" } });
+    await store.save("projects", { data: { title: "Haus B" } });
+    await store.reorder("projects", ["haus-b", "haus-a"]);
+    const revision = await store.revisionOf("projects", "haus-b");
+
+    await store.save("projects", {
+      slug: "haus-b",
+      data: { title: "Haus B", slug: "haus-c", year: 2024 },
+      expectedRevision: revision,
+    });
+
+    assert.equal(await read("projects/_order.json"), '[\n  "haus-c",\n  "haus-a"\n]\n');
   });
 
   it("refuses to reorder a collection the model does not call sortable", async () => {

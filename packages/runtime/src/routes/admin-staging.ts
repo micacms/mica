@@ -26,7 +26,12 @@ const publishSchema = z.object({
 const discardSchema = z.object({ paths: z.array(z.string().min(1)).min(1).max(2000) });
 
 const compareSchema = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("entry"), collection: z.string().min(1), slug: z.string().min(1) }),
+  z.object({
+    kind: z.literal("entry"),
+    collection: z.string().min(1),
+    slug: z.string().min(1),
+    from: z.string().min(1).optional(),
+  }),
   z.object({ kind: z.literal("singleton"), name: z.string().min(1) }),
   z.object({ kind: z.literal("order"), collection: z.string().min(1) }),
 ]);
@@ -63,6 +68,7 @@ export function adminStagingRoutes(): Hono<Env> {
       kind: c.req.query("kind"),
       collection: c.req.query("collection"),
       slug: c.req.query("slug"),
+      from: c.req.query("from"),
       name: c.req.query("name"),
     });
     if (!parsed.success) throw badRequest("The compare target is malformed.");

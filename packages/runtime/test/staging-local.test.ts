@@ -146,6 +146,81 @@ describe("status", () => {
     assert.equal(byPath.get("projects/haus-a.json"), "delete");
   });
 
+  it("a URL change reads as one renamed entry", async () => {
+    const { contentRoot, service } = makeRepo();
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+    writeFileSync(
+      join(contentRoot, "projects/haus-z.json"),
+      JSON.stringify({ title: "Haus A", slug: "haus-z" }, null, 2),
+    );
+
+    const status = await service.status();
+    for (const change of status.changes) {
+      assert.deepEqual(change.owner, {
+        kind: "entry",
+        collection: "projects",
+        slug: "haus-z",
+        label: "Projects: Haus A",
+        renamedFrom: "haus-a",
+      });
+    }
+
+    const { before, after } = await service.compare({
+      kind: "entry",
+      collection: "projects",
+      slug: "haus-z",
+      from: "haus-a",
+    });
+    assert.deepEqual(before, { title: "Haus A", slug: "haus-a" });
+    assert.deepEqual(after, { title: "Haus A", slug: "haus-z" });
+  });
+
+  it("an order file changed only by the rename belongs to the renamed entry", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-b.json"), JSON.stringify({ title: "Haus B", slug: "haus-b" }));
+    writeFileSync(join(contentRoot, "projects/_order.json"), JSON.stringify(["haus-b", "haus-a"]));
+    git(root, "add", "-A");
+    git(root, "commit", "-q", "-m", "order");
+
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+    writeFileSync(
+      join(contentRoot, "projects/haus-z.json"),
+      JSON.stringify({ title: "Haus A", slug: "haus-z" }, null, 2),
+    );
+    writeFileSync(join(contentRoot, "projects/_order.json"), JSON.stringify(["haus-b", "haus-z"]));
+
+    const status = await service.status();
+    const order = status.changes.find((change) => change.path === "projects/_order.json");
+    assert.deepEqual(order?.owner, {
+      kind: "entry",
+      collection: "projects",
+      slug: "haus-z",
+      label: "Projects: Haus A",
+      renamedFrom: "haus-a",
+    });
+  });
+
+  it("an unrelated deletion and creation stay two entries", async () => {
+    const { contentRoot, service } = makeRepo();
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+    writeFileSync(
+      join(contentRoot, "projects/haus-b.json"),
+      JSON.stringify({ title: "Haus B", slug: "haus-b" }, null, 2),
+    );
+
+    const status = await service.status();
+    const bySlug = new Map(status.changes.map((change) => [change.path, change.owner]));
+    assert.deepEqual(
+      [bySlug.get("projects/haus-a.json"), bySlug.get("projects/haus-b.json")].map(
+        (owner) => owner?.kind === "entry" && [owner.slug, owner.renamedFrom],
+      ),
+      [
+        ["haus-a", undefined],
+        ["haus-b", undefined],
+      ],
+    );
+  });
+
   it("invalid staged content is named, and blocks nothing else", async () => {
     const { contentRoot, service } = makeRepo();
     writeFileSync(
@@ -203,6 +278,23 @@ describe("publish", () => {
     // The content change list is clean — published, even if not yet pushed.
     const status = await service.status();
     assert.deepEqual(status.changes, []);
+  });
+
+  it("a published URL change is a rename in Git, so the history follows the file", async () => {
+    const { root, contentRoot, service, head } = makeRepo();
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+    writeFileSync(
+      join(contentRoot, "projects/haus-z.json"),
+      JSON.stringify({ title: "Haus A", slug: "haus-z" }, null, 2),
+    );
+
+    await service.publish({ message: "Move Haus A", expectedBase: head() });
+
+    assert.match(
+      git(root, "show", "-M", "--name-status", "--format=", "HEAD"),
+      /^R\d{3}\tcontent\/projects\/haus-a\.json\tcontent\/projects\/haus-z\.json$/,
+    );
+    assert.equal(git(root, "log", "--follow", "--format=%s", "--", "content/projects/haus-z.json"), "Move Haus A\ninit");
   });
 
   it("push retries the push and never creates a second commit", async () => {

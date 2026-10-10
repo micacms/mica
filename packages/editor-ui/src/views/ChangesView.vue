@@ -87,8 +87,9 @@ const groups = computed<Group[]>(() => {
       group = {
         key,
         label: owner.label,
+        // A rename's group can start with a deleted file of the old slug.
         link:
-          owner.kind === "entry" && change.kind !== "delete"
+          owner.kind === "entry" && (change.kind !== "delete" || owner.renamedFrom)
             ? { name: "entry", params: { collection: owner.collection, slug: owner.slug } }
             : owner.kind === "singleton"
               ? { name: "singleton", params: { name: owner.name } }
@@ -98,7 +99,12 @@ const groups = computed<Group[]>(() => {
         changes: [],
         target:
           owner.kind === "entry"
-            ? { kind: "entry", collection: owner.collection, slug: owner.slug }
+            ? {
+                kind: "entry",
+                collection: owner.collection,
+                slug: owner.slug,
+                ...(owner.renamedFrom ? { from: owner.renamedFrom } : {}),
+              }
             : owner.kind === "singleton"
               ? { kind: "singleton", name: owner.name }
               : owner.kind === "order"

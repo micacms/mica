@@ -191,7 +191,14 @@ export interface SingletonDetail {
 
 /** Where a pending change happened, in words an editor recognises. */
 export type ChangeOwner =
-  | { kind: "entry"; collection: string; slug: string; label: string }
+  | {
+      kind: "entry";
+      collection: string;
+      slug: string;
+      label: string;
+      /** The slug before a pending rename. Set on the files of both slugs. */
+      renamedFrom?: string;
+    }
   | { kind: "singleton"; name: string; label: string }
   | { kind: "order"; collection: string; label: string }
   | { kind: "media"; label: string }
@@ -241,7 +248,8 @@ export interface PublishOutcome {
 
 /** One thing on the Publish page, named for a before/after comparison. */
 export type CompareTarget =
-  | { kind: "entry"; collection: string; slug: string }
+  /** `from` names the published slug of a renamed entry. */
+  | { kind: "entry"; collection: string; slug: string; from?: string }
   | { kind: "singleton"; name: string }
   | { kind: "order"; collection: string };
 
