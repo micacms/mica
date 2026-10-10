@@ -1,0 +1,78 @@
+This page sets up sign-in with Google for a self-hosted Mica. It is the shortest path for most teams. You need the files and the repository token from [Self-hosting](/docs/self-hosting/), steps 1 and 2.
+
+Google gives Mica the address of the person. Mica checks that address against your list. Google sends no groups claim, so you use `MICA_ADMIT_EMAILS`. For a Google Workspace organisation you can use `MICA_ADMIT_DOMAIN` with your domain.
+
+## Before you start
+
+- Your Mica address with HTTPS, for example `https://cms.example.com`. Google requires HTTPS redirect URIs, except for localhost.
+- A Google account that can open the Google Cloud Console.
+- The addresses of the people who may edit.
+
+## 1. Set up the consent screen
+
+1. Open the [Google Cloud Console](https://console.cloud.google.com/) and select or create a project.
+2. Open the OAuth consent screen.
+3. Choose the user type. Choose **Internal** for a Google Workspace organisation, so that only its members can sign in. Otherwise choose **External**.
+4. Fill in the app name and the support email.
+
+Google shows the screens with pictures in its own guide: [Setting up OAuth 2.0](https://support.google.com/cloud/answer/6158849).
+
+## 2. Create the client
+
+1. Create an OAuth client ID.
+2. Choose the application type **Web application**.
+3. Add this authorized redirect URI. Use your own host.
+
+```text
+https://cms.example.com/api/auth/callback
+```
+
+4. Create the client. Copy the client ID and the client secret.
+
+## 3. Fill in `.env`
+
+```env
+MICA_OIDC_ISSUER=https://accounts.google.com
+MICA_OIDC_CLIENT_ID=<the client ID from Google>
+MICA_OIDC_CLIENT_SECRET=<the client secret from Google>
+MICA_PUBLIC_URL=https://cms.example.com
+```
+
+Now say who may edit. For named people, use the email list:
+
+```env
+MICA_ADMIT_EMAILS=alice@gmail.com,bob@example.com
+```
+
+For a Google Workspace organisation, use the domain instead:
+
+```env
+MICA_ADMIT_DOMAIN=example.com
+```
+
+Mica refuses `MICA_ADMIT_DOMAIN=gmail.com` at start-up, because it would admit the public. Mica accepts only addresses that Google reports as verified.
+
+Remove or comment out the `MICA_ADMIT_GROUP` line in the example file. Google does not send groups.
+
+## 4. Start and sign in
+
+```bash
+docker compose up -d
+docker compose logs mica
+```
+
+1. Open `https://cms.example.com/admin/`.
+2. Sign in with Google.
+
+You should see the editor with your collections. The log shows the rule in force.
+
+## If it does not work
+
+- **Google shows `redirect_uri_mismatch`.** The redirect URI in Google must equal `<MICA_PUBLIC_URL>/api/auth/callback`, character for character.
+- **"No access to this site".** The person signed in, but no rule admits them. Check the address in `MICA_ADMIT_EMAILS`.
+- **The login page says "expired".** `MICA_PUBLIC_URL` is not what the browser shows. Make them identical.
+- **Mica says it cannot reach the identity provider.** Check that `MICA_OIDC_ISSUER` is `https://accounts.google.com` and that the container can reach the internet.
+
+## Next
+
+To use another provider, read [Other sign-in providers](/docs/other-providers/). To manage sessions, backups, and upgrades, go back to [Self-hosting](/docs/self-hosting/).

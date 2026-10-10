@@ -4,7 +4,7 @@ Mica follows one constraint: losing its database must never mean losing website 
 
 The model is a plain TypeScript module. Astro imports it to create typed collections. An Astro build also writes the model as data to `.mica/schema.json`.
 
-Mica reads that model from the repository and generates its navigation, tables, and forms. A save lands in a draft workspace that only the editor sees: the working tree on your machine, a draft store in the deployed CMS. An explicit Publish writes everything pending to the repository as one commit, and the push starts the existing site build.
+Mica reads that model from the repository and generates its navigation, tables, and forms. A save lands in a draft workspace that only the editor sees. In the local editor it is your checkout: autosave writes files, and Publish makes a Git commit with your own `git`. In the self-hosted editor it is a draft store, one SQLite file. Publish sends the drafts to GitHub or GitLab as one commit through their API. An explicit Publish writes everything pending to the repository as one commit, and the push starts the existing site build.
 
 The website never calls Mica. Mica never needs to know where the website is hosted. They meet in the repository.
 
@@ -17,7 +17,9 @@ The website never calls Mica. Mica never needs to know where the website is host
 - `@micacms/editor-ui` is the editing interface, shipped as built assets.
 - `@micacms/auth-oidc` is the OpenID Connect gate for deployments.
 
-Two applications compose them. `@micacms/editor` is the local one: loopback only, no authentication code at all. `@micacms/self-hosted` is the Docker image, behind OpenID Connect.
+Two applications compose them. `@micacms/editor` is the local one: loopback only, no authentication, no user, no database, and it refuses to run in production. `@micacms/self-hosted` is the Docker image, behind OpenID Connect, with drafts in SQLite. It publishes only through GitHub or GitLab and never runs Git on the server.
+
+See [Choose how to run Mica](/docs/choose-how-to-run/) for how to pick one.
 
 ## Atomic changes
 
@@ -26,3 +28,7 @@ An entry can include JSON, rich text, and many media files. A publish writes eve
 ## Deliberate limits
 
 Mica has no content API, GraphQL layer, media server, build webhook, page builder, or password system. These limits keep the public website independent and the editing system small.
+
+## Next
+
+To run the self-hosted editor, go to [Self-hosting](/docs/self-hosting/).

@@ -1,0 +1,41 @@
+Mica works with any OpenID Connect provider. Google has its own page: [Sign in with Google](/docs/sign-in-with-google/). This page covers the others.
+
+Every provider needs the same four things:
+
+- `MICA_OIDC_ISSUER`, equal to the `issuer` in `<issuer>/.well-known/openid-configuration`.
+- `MICA_OIDC_CLIENT_ID`, and `MICA_OIDC_CLIENT_SECRET` if the provider gives one.
+- One redirect URI: `<MICA_PUBLIC_URL>/api/auth/callback`.
+- At least one admission rule. See [Self-hosting](/docs/self-hosting/), step 4.
+
+The provider must report a verified email address if you use the email or domain rule.
+
+## Dex: a small option
+
+[Dex](https://dexidp.io) is a small OpenID Connect provider with one YAML file. It can hold a few users itself, with static passwords as bcrypt hashes. It can also connect to GitHub, GitLab, LDAP, SAML, or Google, and pass an OpenID Connect token to Mica.
+
+- The built-in users of Dex have no groups. Use `MICA_ADMIT_EMAILS`.
+- In production, Dex needs its own HTTPS host. Read the [Dex documentation](https://dexidp.io/docs/) for deployment.
+- The Mica repository tests against Dex in `tests/oidc/`. The file `dex.yaml` there is a useful reference, but it is insecure and only for tests: plain HTTP, a committed secret, and in-memory storage.
+
+## Microsoft Entra, Keycloak, Authentik, ZITADEL
+
+Register Mica as an OpenID Connect client in the console of the provider. Use the redirect URI above and copy the client ID. Then choose a rule.
+
+- Entra and Keycloak normally send a `groups` claim. Use `MICA_ADMIT_GROUP`. A Keycloak group path such as `/mica-editors` and the bare name both match.
+- Other providers may send the groups in another claim, for example `roles`. Set the claim name:
+
+```env
+MICA_OIDC_GROUPS_CLAIM=roles
+```
+
+- If your provider sends no groups, use `MICA_ADMIT_DOMAIN`, `MICA_ADMIT_EMAILS`, or `MICA_ADMIT_SUBJECTS`.
+
+A change of group membership at the provider counts from the next sign-in. Keep the sessions short. See [Self-hosting](/docs/self-hosting/).
+
+## Check the groups claim
+
+If a person signs in and sees "No access to this site", the group claim may not arrive. Set `LOG_LEVEL=debug`, restart, and sign in again. The log names the reason. Compare the claim name and the group name with the rule.
+
+## Next
+
+Go back to [Self-hosting](/docs/self-hosting/) for sessions, backups, and upgrades. Go to [Architecture](/docs/architecture/) to see how the parts fit together.

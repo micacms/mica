@@ -1,4 +1,4 @@
-Mica adds an editing interface to an Astro project. The website keeps reading local files and builds to static output.
+Mica adds an editing interface to an Astro project. The website keeps reading local files and builds to static output. This page uses the local editor, the way for a developer. Editors who are not developers need the [self-hosted editor](/docs/self-hosting/). See [Choose how to run Mica](/docs/choose-how-to-run/) if you are not sure.
 
 > Mica is experimental and pre-1.0. Its API and content format can change. Use it for work that you can update as the project changes.
 
@@ -57,7 +57,7 @@ npx @micacms/editor
 
 The command prints the address and opens your browser on `http://localhost:6422/admin/`.
 
-The editor opens directly. On your machine Mica runs without an identity provider, so there is no account and no password to create. It listens on the local computer only, and refuses to run this way on a server.
+You should see the editor in your browser, with your collections in the menu. It opens directly. There is no sign-in, no account, no user, and no database. It listens on the local computer only, and it refuses to run in production.
 
 To pin the editor's version with the project, install it as a dev dependency and add a script:
 
@@ -90,6 +90,10 @@ const news = await getCollection("news");
 
 ## 6. Save, then publish
 
-A save writes files into your working tree, and the Astro dev server reloads them at once. Run `git diff` after a save: the whole change is there as JSON, Markdoc and media files, uncommitted.
+Autosave writes files into your checkout, and the Astro dev server reloads them at once. Run `git diff` after a save. You should see the whole change as JSON, Markdoc and media files, uncommitted.
 
-Nothing reaches the repository's history until you press **Publish**. The Publish page lists every pending change and can show, field by field, what each one does. Publishing turns the reviewed changes into one commit and pushes it with your own Git configuration.
+Nothing reaches the history until you press **Publish**. The Publish page lists every pending change and can show, field by field, what each one does. Publish makes one commit and pushes it with your own Git credentials. To commit with your own tools instead, set `MICA_LOCAL_PUBLISH=false`.
+
+## Next
+
+Learn how to describe your content in [Content model](/docs/content-model/). When editors who are not developers must edit, go to [Self-hosting](/docs/self-hosting/).
