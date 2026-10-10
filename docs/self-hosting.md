@@ -216,7 +216,7 @@ to bootstrap and nobody to invite: anybody your rule admits signs in and is an
 editor, and the **System** page shows the rule under _Who may edit_.
 
 Mica refuses to start if `REPOSITORY` is not `github` or `gitlab`, if the
-project or the token is missing, or if the repository has no content model. Both are deliberate: a CMS
+project or the token is missing, or if the repository has no content model. All three are deliberate: a CMS
 that starts, shows an editor their content and only fails when they press Save
 has already cost them their work.
 

@@ -137,7 +137,7 @@ npx @micacms/editor
 ```
 
 ```
-  ◆ Mica 0.1.0
+  ◆ Mica 0.2.2
 
   Editor     http://localhost:6422/admin/
   Content    ./content — 1 collection and 1 singleton
@@ -211,7 +211,7 @@ Run `astro dev` beside Mica. A save in one reloads the other.
 |                     | What it is                                               | Where it lives                   |
 | ------------------- | -------------------------------------------------------- | -------------------------------- |
 | **Your repository** | Entries as JSON and Markdoc, images beside them          | GitHub, GitLab, or a checkout    |
-| **Mica**            | One Node process; a SQLite file for unpublished drafts | Your machine now, a server later |
+| **Mica**            | One Node process; self-hosted, a SQLite file for unpublished drafts | Your machine now, a server later |
 | **Your website**    | Static files from `astro build`                          | Any static host                  |
 
 Your content stays in the repository, in formats Git and a text editor can

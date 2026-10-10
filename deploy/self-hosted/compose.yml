@@ -19,7 +19,7 @@
 #
 # There is no backup service any more. The content is in a Git repository, which
 # is already replicated, versioned and off-site; the volume below holds only
-# unpublished drafts, and losing it costs nothing else. There are
+# unpublished drafts, and losing it loses those and nothing else. There are
 # no accounts in it, and no passwords — Mica has neither.
 
 services:
