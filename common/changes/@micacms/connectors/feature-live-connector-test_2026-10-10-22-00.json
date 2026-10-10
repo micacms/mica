@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/connectors",
+      "comment": "Test the GitHub connector against a real scratch repository every week; GitLab follows when a token is configured.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@micacms/connectors"
+}
