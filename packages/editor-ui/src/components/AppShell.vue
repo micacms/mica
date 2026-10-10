@@ -74,7 +74,7 @@ async function signOut(): Promise<void> {
     <!-- Backdrop for the mobile overlay -->
     <div
       v-if="menuOpen"
-      class="fixed inset-0 z-20 bg-black/25 lg:hidden"
+      class="fixed inset-0 z-20 bg-ink/25 lg:hidden"
       aria-hidden="true"
       @click="menuOpen = false"
     />
@@ -82,11 +82,11 @@ async function signOut(): Promise<void> {
     <aside
       id="main-navigation"
       :class="[
-        'fixed inset-y-0 left-0 z-30 flex w-[220px] shrink-0 flex-col border-r border-white/10 bg-[var(--mica-aubergine-700)] text-[var(--mica-creme-100)] transition-transform lg:static lg:translate-x-0',
+        'fixed inset-y-0 left-0 z-30 flex w-[220px] shrink-0 flex-col border-r border-creme/10 bg-aubergine text-creme transition-transform lg:static lg:translate-x-0',
         menuOpen ? 'translate-x-0' : '-translate-x-full',
       ]"
     >
-      <div class="flex h-14 items-center border-b border-white/10 px-3">
+      <div class="flex h-14 items-center border-b border-creme/10 px-3">
         <img src="/brand/micacms-wordmark-light.svg" alt="micacms" class="h-5 w-auto" />
       </div>
 
@@ -101,7 +101,7 @@ async function signOut(): Promise<void> {
             <span class="flex-1">Publish</span>
             <span
               v-if="staging.editCount.value > 0"
-              class="rounded-full bg-accent px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none text-white"
+              class="rounded-full bg-creme px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none text-aubergine"
               :aria-label="`${staging.editCount.value} pending edit${staging.editCount.value === 1 ? '' : 's'}`"
             >
               {{ staging.editCount.value }}
@@ -149,16 +149,16 @@ async function signOut(): Promise<void> {
       </nav>
 
       <!-- Absent entirely where there is no provider: see the note above. -->
-      <div v-if="session.showsIdentity.value" class="border-t border-white/10 p-2">
+      <div v-if="session.showsIdentity.value" class="border-t border-creme/10 p-2">
         <div class="flex items-center gap-2.5 rounded-md px-2 py-2">
           <span
-            class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-accent text-[10px] font-semibold text-white"
+            class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-creme text-[10px] font-semibold text-aubergine"
             aria-hidden="true"
           >
             {{ initials }}
           </span>
           <span class="min-w-0 flex-1">
-            <span class="block truncate text-xs font-medium text-white/80">
+            <span class="block truncate text-xs font-medium text-creme/80">
               {{ session.identity.value?.name || session.identity.value?.email }}
             </span>
           </span>
@@ -199,23 +199,22 @@ async function signOut(): Promise<void> {
 @reference "../style.css";
 
 .nav-heading {
-  @apply px-2 pb-1.5 font-mono text-[10px] font-medium uppercase tracking-[.08em] text-white/35;
+  @apply px-2 pb-1.5 font-mono text-[10px] font-medium uppercase tracking-[.08em] text-creme/60;
 }
 
 .nav-link {
-  @apply flex h-9 items-center gap-2.5 rounded-md px-2 text-[13px] text-white/55
-    transition hover:bg-white/5 hover:text-white/80;
+  @apply flex h-9 items-center gap-2.5 rounded-md px-2 text-[13px] text-creme/70
+    transition hover:bg-creme/5 hover:text-creme/90;
   transition-duration: var(--mica-duration-fast);
   transition-timing-function: var(--mica-ease-standard);
 }
 
 .nav-link.router-link-active {
-  background: rgb(251 245 236 / 12%);
-  color: var(--mica-creme-100);
+  @apply bg-creme/12 text-creme;
 }
 
 .sidebar-signout {
-  @apply flex items-center justify-start gap-2.5 rounded-md px-2 py-1.5 text-xs text-white/40 transition
-    hover:bg-white/5 hover:text-white/70 disabled:opacity-40;
+  @apply flex items-center justify-start gap-2.5 rounded-md px-2 py-1.5 text-xs text-creme/65 transition
+    hover:bg-creme/5 hover:text-creme/90 disabled:opacity-40;
 }
 </style>

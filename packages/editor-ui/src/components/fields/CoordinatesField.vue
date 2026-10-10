@@ -123,7 +123,7 @@ const previewUrl = computed(() =>
         :href="previewUrl"
         target="_blank"
         rel="noopener noreferrer"
-        class="font-medium text-brand underline underline-offset-2"
+        class="font-medium text-accent underline underline-offset-2"
       >
         Check on the map
       </a>

@@ -88,7 +88,7 @@ function toggle(slug: string): void {
             type="checkbox"
             :checked="selected.includes(option.slug)"
             :disabled="disabled || field.readonly"
-            class="h-4 w-4 rounded-sm border-line text-brand focus:ring-ink/20"
+            class="h-4 w-4 rounded-sm border-line text-accent focus:ring-ink/20"
             @change="toggle(option.slug)"
           />
           <span class="min-w-0 flex-1 truncate">{{ option.title }}</span>

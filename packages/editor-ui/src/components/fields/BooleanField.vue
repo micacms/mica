@@ -28,7 +28,7 @@ const checked = computed(() => props.modelValue === true);
         :checked="checked"
         :disabled="disabled || field.readonly"
         :aria-describedby="describedBy"
-        class="mt-0.5 h-4 w-4 shrink-0 rounded-sm border-line text-brand focus:ring-ink/20"
+        class="mt-0.5 h-4 w-4 shrink-0 rounded-sm border-line text-accent focus:ring-ink/20"
         @change="emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
       />
       <span class="min-w-0">

@@ -215,7 +215,7 @@ async function remove(): Promise<void> {
       :back="{ name: 'collection', params: { collection } }"
       :back-label="definition.label"
     >
-      <span :class="['badge', dirty ? 'border-brand bg-brand-soft text-brand' : 'text-success']">
+      <span :class="['badge', dirty ? 'border-accent bg-accent-soft text-accent' : 'text-success']">
         <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
         {{ dirty ? "Unsaved" : "Saved" }}
       </span>

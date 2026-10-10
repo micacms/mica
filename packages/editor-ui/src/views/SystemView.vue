@@ -192,7 +192,7 @@ async function copyReport(): Promise<void> {
             <span class="w-28 shrink-0 truncate">{{ kindLabel(item.kind) }}</span>
             <span class="h-1.5 min-w-0 flex-1 rounded-full bg-canvas" aria-hidden="true">
               <span
-                class="block h-full rounded-full bg-brand/60"
+                class="block h-full rounded-full bg-accent/60"
                 :style="{ width: `${(item.count / busiestKind) * 100}%` }"
               />
             </span>
@@ -228,7 +228,7 @@ async function copyReport(): Promise<void> {
                 <td class="px-4 py-2.5">
                   <RouterLink
                     :to="{ name: 'collection', params: { collection: item.name } }"
-                    class="font-medium hover:text-brand"
+                    class="font-medium hover:text-accent"
                   >
                     {{ item.label }}
                   </RouterLink>
@@ -271,7 +271,7 @@ async function copyReport(): Promise<void> {
             <dt>
               <RouterLink
                 :to="{ name: 'singleton', params: { name: item.name } }"
-                class="hover:text-brand"
+                class="hover:text-accent"
               >
                 {{ item.label }}
               </RouterLink>
@@ -303,7 +303,7 @@ async function copyReport(): Promise<void> {
             <span class="mono text-muted">{{ edge.path }}</span>
             <ArrowRight :size="14" class="text-muted" aria-hidden="true" />
             <span>{{ collectionLabel(edge.to) }}</span>
-            <span v-if="edge.multiple" class="badge bg-brand-soft text-brand">many</span>
+            <span v-if="edge.multiple" class="badge bg-accent-soft text-accent">many</span>
           </li>
         </ul>
       </section>

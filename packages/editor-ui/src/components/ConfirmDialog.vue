@@ -58,7 +58,7 @@ function onKeydown(event: KeyboardEvent): void {
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4"
+      class="fixed inset-0 z-50 grid place-items-center bg-ink/40 p-4"
       @click.self="!busy && emit('cancel')"
       @keydown="onKeydown"
     >

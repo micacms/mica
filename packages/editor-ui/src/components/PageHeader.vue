@@ -23,7 +23,7 @@ defineProps<{
           {{ backLabel ?? "Back" }}
         </RouterLink>
 
-        <h1 class="truncate font-display text-2xl font-normal leading-8 tracking-[.02em]">{{ title }}</h1>
+        <h1 class="truncate font-display text-2xl font-normal leading-8 tracking-tight">{{ title }}</h1>
         <p v-if="subtitle" class="mt-1 truncate text-xs text-muted">{{ subtitle }}</p>
       </div>
 

@@ -226,7 +226,7 @@ const buttons = computed<ToolbarButton[]>(() => {
   >
     <div
       :class="[
-        'rich-text overflow-hidden rounded-sm border bg-raised focus-within:ring-2 focus-within:ring-ink/10',
+        'rich-text overflow-hidden rounded-sm border bg-surface focus-within:ring-2 focus-within:ring-ink/10',
         error ? 'border-danger' : 'border-line focus-within:border-ink',
       ]"
     >
