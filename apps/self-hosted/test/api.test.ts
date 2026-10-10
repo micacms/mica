@@ -12,6 +12,7 @@ import {
   createHarness,
   ISSUER,
   REFUSED,
+  PROVIDER,
   type Session,
   type TestHarness,
 } from "./helpers.js";
@@ -19,7 +20,7 @@ import {
 describe("health", () => {
   let harness: TestHarness;
   before(async () => {
-    harness = await createHarness();
+    harness = await createHarness(PROVIDER);
   });
   after(() => harness.close());
 
@@ -304,13 +305,8 @@ describe("the draft store behind a provider repository", () => {
   let session: Session;
 
   before(async () => {
-    // Provider-shaped: saves stage in SQLite. The local connector stands in
-    // as "the provider", so the temporary directory is the repository.
-    harness = await createHarness({
-      REPOSITORY: "github",
-      REPOSITORY_PROJECT: "acme/site",
-      REPOSITORY_TOKEN: "unused-by-the-test-connector",
-    });
+    // The temporary directory is the repository.
+    harness = await createHarness(PROVIDER);
     session = await harness.signIn();
   });
   after(() => harness.close());
@@ -325,7 +321,7 @@ describe("the draft store behind a provider repository", () => {
     assert.equal(saved.status, 201);
 
     // In the database, not the repository: the SQLite draft store holds it.
-    const staged = harness.db.all<{ path: string }>("SELECT path FROM drafts ORDER BY path");
+    const staged = harness.db!.all<{ path: string }>("SELECT path FROM drafts ORDER BY path");
     assert.ok(staged.some((row) => row.path === "projects/persistent/index.json"));
 
     const published = await harness.request("/api/admin/publish", {
@@ -337,7 +333,7 @@ describe("the draft store behind a provider repository", () => {
     assert.equal(published.status, 200);
 
     assert.equal(
-      harness.db.all("SELECT path FROM drafts").length,
+      harness.db!.all("SELECT path FROM drafts").length,
       0,
       "publication clears what it published",
     );
@@ -347,7 +343,7 @@ describe("the draft store behind a provider repository", () => {
 describe("system information", () => {
   let harness: TestHarness;
   before(async () => {
-    harness = await createHarness();
+    harness = await createHarness(PROVIDER);
   });
   after(() => harness.close());
 
@@ -363,5 +359,24 @@ describe("system information", () => {
     assert.equal(body.database.version, 3);
     assert.match(body.deployment.auth, /oidc:/);
     assert.match(body.deployment.admission ?? "", /group=mica-editors/);
+  });
+});
+
+describe("a deployment on a working tree", () => {
+  it("opens no database, because it has no draft store to keep", async () => {
+    const harness = await createHarness();
+    assert.equal(harness.db, undefined);
+
+    const health = (await (await harness.request("/health")).json()) as Record<string, unknown>;
+    assert.equal(health["status"], "ok");
+    assert.ok(!("database" in health));
+
+    const session = await harness.signIn();
+    const system = (await (await harness.request("/api/admin/system", { session })).json()) as {
+      database: unknown;
+    };
+    assert.equal(system.database, null);
+
+    await harness.close();
   });
 });

@@ -43,6 +43,13 @@ import type { SqlDatabase } from "@micacms/runtime";
 export const TEST_ORIGIN = "http://localhost:6422";
 export const ISSUER = "https://id.example.test";
 
+/** A provider-shaped repository: saves stage in SQLite, with the local connector as "the provider". */
+export const PROVIDER = {
+  REPOSITORY: "github",
+  REPOSITORY_PROJECT: "acme/site",
+  REPOSITORY_TOKEN: "unused-by-the-test-connector",
+};
+
 /** A deliberately small model, so assertions stay readable. */
 export const testSite = defineSite({
   collections: {
@@ -113,7 +120,8 @@ export interface TestHarness {
   ctx: RuntimeContext;
   config: SelfHostedConfig;
   auth: OidcAuth;
-  db: SqlDatabase;
+  /** Present only behind a provider repository, as in src/index.ts. */
+  db: SqlDatabase | undefined;
   /** The temporary content directory, so a test can assert on the files. */
   contentRoot: string;
   /** Issues a request; `session` carries cookies and the CSRF token. */
@@ -149,14 +157,14 @@ export async function createHarness(
   } as NodeJS.ProcessEnv);
 
   const logger = createLogger({ level: "silent", pretty: false });
-  const db = openTestDatabase();
+  // Like src/index.ts: a database only behind a provider repository. Tests
+  // that want it set REPOSITORY=github and get the local connector standing
+  // in as "the provider".
+  const db = config.REPOSITORY === "local" ? undefined : openTestDatabase();
   const connector = localConnector({ root: contentRoot });
   const auth = createOidcAuth({ config, logger });
 
-  // Like src/index.ts: which draft workspace follows the connector. Tests
-  // that want the SQLite draft store set REPOSITORY=github and get the local
-  // connector standing in as "the provider".
-  const drafts = config.REPOSITORY === "local" ? undefined : createDraftRepository(db);
+  const drafts = db && createDraftRepository(db);
 
   const ctx = createRuntimeContext({
     config,
@@ -167,20 +175,16 @@ export async function createHarness(
     operational: () => ({
       auth: `oidc:${new URL(ISSUER).hostname}`,
       admission: auth.admission.summary,
-      database: {
-        path: config.databasePath,
-        version: databaseVersion(db),
-        bytes: null,
-      },
+      database: db ? { path: config.databasePath, version: databaseVersion(db), bytes: null } : null,
       dataDir: config.dataDir,
       sessionTtlHours: config.SESSION_TTL_HOURS,
       sessionIdleHours: config.SESSION_IDLE_HOURS,
       generatedSecrets: config.devSecrets,
     }),
-    health: { database: () => void db.get("SELECT 1 AS ok") },
+    health: db ? { database: () => void db.get("SELECT 1 AS ok") } : {},
     onShutdown: () => {
       auth.loginLimiter.stop();
-      db.close();
+      db?.close();
     },
   });
 

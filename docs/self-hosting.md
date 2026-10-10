@@ -378,7 +378,7 @@ costs.** It carries the pending draft — everything that
 is Saved and not yet Published, media uploads included. Git is not protecting
 that yet; only publication moves it into the repository. Losing the volume
 therefore loses whatever was saved but never published. It signs nobody out:
-sessions are cookies. With `REPOSITORY=local` the file holds nothing in use.
+sessions are cookies. With `REPOSITORY=local` Mica creates no database at all.
 Back up the data volume on a schedule, and take the copy with SQLite's own
 `.backup` (a plain `cp` is unsafe: WAL mode keeps recent writes in
 `cms.sqlite-wal`). Encourage editors to publish rather than to hoard a

@@ -4,8 +4,8 @@
  *
  * The whole composition: the runtime behind the OIDC gate from
  * `@micacms/auth-oidc`, a repository connector built from the environment,
- * and one SQLite database holding — behind a provider repository — the draft
- * store. Sessions are cookies and need no storage. It composes `@micacms/runtime`; it does not
+ * and — behind a provider repository only — one SQLite database holding the
+ * draft store. Sessions are cookies and need no storage. It composes `@micacms/runtime`; it does not
  * fork it.
  */
 
@@ -64,7 +64,13 @@ async function main(): Promise<void> {
   // The repository comes first, because the content model is in it. Mica holds
   // no model of its own: the Astro project writes one into the content root
   // and the developer commits it, so reading it is a repository read.
-  const db = openDatabase(config.databasePath, { logger });
+  //
+  // Which draft workspace this deployment stages in follows the connector: a
+  // provider repository stages in the database, a checkout beside the server
+  // stages in the checkout — see decisions.md, "Local publishing spawns the
+  // `git` binary". Without a draft store there is nothing to keep, so no file.
+  const db =
+    config.REPOSITORY === "local" ? undefined : openDatabase(config.databasePath, { logger });
   const connector = createConnector(config);
 
   let model;
@@ -91,13 +97,7 @@ async function main(): Promise<void> {
 
   const auth = createOidcAuth({ config, logger });
 
-  /**
-   * Which draft workspace this deployment stages in follows the connector: a
-   * provider repository stages in the database, a checkout beside the server
-   * stages in the checkout — see decisions.md, "Local publishing spawns the
-   * `git` binary".
-   */
-  const drafts = config.REPOSITORY === "local" ? undefined : createDraftRepository(db);
+  const drafts = db && createDraftRepository(db);
 
   const ctx = createRuntimeContext({
     config,
@@ -110,24 +110,24 @@ async function main(): Promise<void> {
     operational: () => ({
       auth: `oidc:${new URL(config.MICA_OIDC_ISSUER!).hostname}`,
       admission: auth.admission.summary,
-      database: {
-        path: config.databasePath,
-        version: databaseVersion(db),
-        bytes: databaseBytes(config.databasePath),
-      },
+      database: db
+        ? {
+            path: config.databasePath,
+            version: databaseVersion(db),
+            bytes: databaseBytes(config.databasePath),
+          }
+        : null,
       dataDir: config.dataDir,
       sessionTtlHours: config.SESSION_TTL_HOURS,
       sessionIdleHours: config.SESSION_IDLE_HOURS,
       generatedSecrets: config.devSecrets,
     }),
 
-    health: {
-      database: () => void db.get<{ ok: number }>("SELECT 1 AS ok"),
-    },
+    health: db ? { database: () => void db.get<{ ok: number }>("SELECT 1 AS ok") } : {},
 
     onShutdown: () => {
       auth.loginLimiter.stop();
-      db.close();
+      db?.close();
     },
   });
 
@@ -155,7 +155,7 @@ async function main(): Promise<void> {
         // rule that admits nobody and a rule that admits everybody look the
         // same from outside until somebody tries to sign in.
         admission: auth.admission.summary,
-        database: config.databasePath,
+        database: db ? config.databasePath : "none",
         content: connector.origin,
         // Enough to tell two deployments apart when a website was built
         // against one model and the CMS is serving another.
