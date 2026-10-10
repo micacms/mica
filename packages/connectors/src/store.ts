@@ -164,6 +164,28 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
     return revision;
   };
 
+  /**
+   * The order file with a renamed slug in its old place, or null when the file
+   * does not list it. Without it a renamed entry drops to the end of the list.
+   */
+  const renameInOrder = async (name: string, from: string, to: string): Promise<Change | null> => {
+    const path = `${name}/${ORDER_FILE}`;
+    const raw = await connector.read(path);
+    if (raw === null) return null;
+
+    let listed: unknown;
+    try {
+      listed = JSON.parse(raw);
+    } catch {
+      // Reading the collection reports a malformed order file; a save need not.
+      return null;
+    }
+    if (!Array.isArray(listed) || !listed.includes(from)) return null;
+
+    const order = listed.map((slug: unknown) => (slug === from ? to : slug));
+    return { type: "write", path, contents: `${JSON.stringify(order, null, 2)}\n` };
+  };
+
   /** Slugs already taken in a collection, so a new one can be made unique. */
   const takenSlugs = async (def: Collection, name: string, except?: string): Promise<string[]> => {
     const entries = await readCollection(connector, def, name);
@@ -248,6 +270,8 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
             : { type: "delete", path: previousBase },
         );
         await moveMedia(connector, previousBase, base, changes);
+        const order = await renameInOrder(collectionName, input.slug!, slug);
+        if (order) changes.push(order);
       } else if (entryLayout(def.fields) === "directory") {
         changes.push(...(await staleDocuments(base, new Set(Object.keys(serialized.documents)))));
       }

@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/connectors",
+      "comment": "Keep a renamed entry in its place in the collection's manual order.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/connectors"
+}

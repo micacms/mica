@@ -351,6 +351,21 @@ describe("ordering", () => {
     assert.deepEqual(listed, ["haus-b", "haus-a"]);
   });
 
+  it("a renamed entry keeps its place in the order", async () => {
+    await store.save("projects", { data: { title: "Haus A" } });
+    await store.save("projects", { data: { title: "Haus B" } });
+    await store.reorder("projects", ["haus-b", "haus-a"]);
+    const revision = await store.revisionOf("projects", "haus-b");
+
+    await store.save("projects", {
+      slug: "haus-b",
+      data: { title: "Haus B", slug: "haus-c", year: 2024 },
+      expectedRevision: revision,
+    });
+
+    assert.equal(await read("projects/_order.json"), '[\n  "haus-c",\n  "haus-a"\n]\n');
+  });
+
   it("refuses to reorder a collection the model does not call sortable", async () => {
     await assert.rejects(() => store.reorder("team", []), /not manually sortable/);
   });

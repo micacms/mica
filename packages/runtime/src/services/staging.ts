@@ -244,7 +244,9 @@ export async function analyseChanges(
     }
   }
 
-  if (published) await detectRenames(model, published, changes, owners, entriesByCollection);
+  if (published) {
+    await detectRenames(model, published, source, changes, owners, entriesByCollection);
+  }
 
   /* ---------------------------------------------------- validation */
 
@@ -370,10 +372,15 @@ const RENAME_SIMILARITY = 0.5;
  * holds only files and an entry has no identity but its slug, so the pairs are
  * found by content, like Git's rename detection: the published version of the
  * deleted entry against the staged version of the created one.
+ *
+ * An order file whose only change is the renamed slug joins the renamed entry:
+ * it is part of the same edit, and discarding one without the other would
+ * leave the order naming a slug that does not exist.
  */
 async function detectRenames(
   model: Site,
   published: ContentSource,
+  source: ContentSource,
   changes: ContentChange[],
   owners: ChangeOwner[],
   staged: Map<string, Map<string, Record<string, unknown>>>,
@@ -427,8 +434,22 @@ async function detectRenames(
       paired.add(to);
     }
 
+    if (renamedTo.size === 0) continue;
+
     const renamedFrom = new Map([...renamedTo].map(([from, to]) => [to, from]));
+    const orderMovesOnlySlugs = await onlyRenamedInOrder(published, source, name, renamedTo);
+    const [firstFrom, firstTo] = [...renamedTo][0]!;
+
     owners.forEach((owner, index) => {
+      if (owner.kind === "order" && owner.collection === name && orderMovesOnlySlugs) {
+        owners[index] = {
+          kind: "entry",
+          collection: name,
+          slug: firstTo,
+          label: firstTo,
+          renamedFrom: firstFrom,
+        };
+      }
       if (owner.kind !== "entry" || owner.collection !== name) return;
       const to = renamedTo.get(owner.slug);
       if (to) owners[index] = { ...owner, slug: to, label: to, renamedFrom: owner.slug };
@@ -436,6 +457,32 @@ async function detectRenames(
       if (from) owners[index] = { ...owner, renamedFrom: from };
     });
   }
+}
+
+/** True when a collection's staged order is the published one with the renamed slugs replaced. */
+async function onlyRenamedInOrder(
+  published: ContentSource,
+  staged: ContentSource,
+  name: string,
+  renamedTo: Map<string, string>,
+): Promise<boolean> {
+  const path = `${name}/${ORDER_FILE}`;
+  const parse = (raw: string | null): unknown => {
+    try {
+      return raw === null ? null : JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  };
+
+  const before = parse(await published.read(path));
+  const after = parse(await staged.read(path));
+  if (!Array.isArray(before) || !Array.isArray(after)) return false;
+
+  const expected = before.map((slug: unknown) =>
+    typeof slug === "string" ? (renamedTo.get(slug) ?? slug) : slug,
+  );
+  return canonical(expected) === canonical(after);
 }
 
 /** The share of non-empty fields, the slug aside, that two versions of an entry agree on. */

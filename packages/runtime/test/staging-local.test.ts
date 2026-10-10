@@ -175,6 +175,31 @@ describe("status", () => {
     assert.deepEqual(after, { title: "Haus A", slug: "haus-z" });
   });
 
+  it("an order file changed only by the rename belongs to the renamed entry", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-b.json"), JSON.stringify({ title: "Haus B", slug: "haus-b" }));
+    writeFileSync(join(contentRoot, "projects/_order.json"), JSON.stringify(["haus-b", "haus-a"]));
+    git(root, "add", "-A");
+    git(root, "commit", "-q", "-m", "order");
+
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+    writeFileSync(
+      join(contentRoot, "projects/haus-z.json"),
+      JSON.stringify({ title: "Haus A", slug: "haus-z" }, null, 2),
+    );
+    writeFileSync(join(contentRoot, "projects/_order.json"), JSON.stringify(["haus-b", "haus-z"]));
+
+    const status = await service.status();
+    const order = status.changes.find((change) => change.path === "projects/_order.json");
+    assert.deepEqual(order?.owner, {
+      kind: "entry",
+      collection: "projects",
+      slug: "haus-z",
+      label: "Projects: Haus A",
+      renamedFrom: "haus-a",
+    });
+  });
+
   it("an unrelated deletion and creation stay two entries", async () => {
     const { contentRoot, service } = makeRepo();
     unlinkSync(join(contentRoot, "projects/haus-a.json"));
