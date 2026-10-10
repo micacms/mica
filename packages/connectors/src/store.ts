@@ -226,7 +226,11 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
       // Back to the on-disk form. The editor works in root-relative paths
       // because that is what `readCollection` hands it; writing those through
       // unchanged would bake the entry's own directory into the stored path.
-      const serialized = serializeEntry(def.fields, mediaForDisk(def.fields, data, base));
+      // A rename relativizes against the old directory, whose media moves along.
+      const serialized = serializeEntry(
+        def.fields,
+        mediaForDisk(def.fields, data, previousBase ?? base),
+      );
       const files = entryFiles(def.fields, base, serialized);
 
       const changes: Change[] = Object.entries(files).map(([path, contents]) => ({

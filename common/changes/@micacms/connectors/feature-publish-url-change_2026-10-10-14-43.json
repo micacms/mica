@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/connectors",
+      "comment": "Keep colocated media references working when an entry's URL changes.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/connectors"
+}

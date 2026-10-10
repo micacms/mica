@@ -201,7 +201,12 @@ describe("renaming an entry", () => {
     const revision = await store.revisionOf("projects", "haus-a");
     const saved = await store.save("projects", {
       slug: "haus-a",
-      data: { title: "Haus B", slug: "haus-b", description: "Body." },
+      data: {
+        title: "Haus B",
+        slug: "haus-b",
+        description: "Body.",
+        cover: "projects/haus-a/media/photo.jpg",
+      },
       expectedRevision: revision,
     });
 
@@ -209,6 +214,8 @@ describe("renaming an entry", () => {
     assert.equal(saved.renamed, true);
     assert.deepEqual(await files("projects"), ["haus-b"]);
     assert.equal(await read("projects/haus-b/media/photo.jpg"), "bytes");
+    // The reference follows the file instead of naming the deleted directory.
+    assert.equal(JSON.parse(await read("projects/haus-b/index.json")).cover, "media/photo.jpg");
     assert.equal(await read("projects/haus-b/description.mdoc"), "Body.\n");
   });
 });
