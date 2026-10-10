@@ -1,27 +1,26 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@400&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,300..700&display=swap");
 @import "tailwindcss";
 
-/* Mica design system v1.0 */
+/* Mica design system v1.5: creme neutrals, aubergine brand */
 :root {
-  --mica-white: #fff;
-  --mica-stone-50: #f9f9f8;
-  --mica-stone-100: #f6f6f4;
-  --mica-stone-150: #f2f2f0;
-  --mica-stone-200: #ebebea;
-  --mica-stone-300: #d4d4d2;
-  --mica-stone-400: #ababaa;
-  --mica-stone-500: #8a8a86;
-  --mica-stone-700: #3a3a38;
-  --mica-stone-900: #1c1c1a;
-  --mica-black: #111110;
+  --mica-creme-50: #fffdf8;
+  --mica-creme-100: #fbf5ec;
+  --mica-creme-150: #f6eee2;
+  --mica-creme-200: #ede3d4;
+  --mica-creme-300: #d9cdbd;
+  --mica-creme-400: #a3968e;
+  --mica-creme-500: #716360;
+  --mica-creme-700: #4a3a3c;
+  --mica-creme-900: #2e1c21;
+  --mica-ink: #261419;
 
-  --mica-glimmer-50: #f5f3fa;
-  --mica-glimmer-100: #e8e3f3;
-  --mica-glimmer-200: #d2c8e7;
-  --mica-glimmer-400: #9b8dc9;
-  --mica-glimmer-500: #6b5ca6;
-  --mica-glimmer-700: #4a3d7a;
-  --mica-glimmer-900: #2b2248;
+  --mica-aubergine-50: #f8f1f3;
+  --mica-aubergine-100: #eedfe4;
+  --mica-aubergine-200: #dcc3cb;
+  --mica-aubergine-400: #c9b8bd;
+  --mica-aubergine-500: #7a3d58;
+  --mica-aubergine-700: #3f1f2b;
+  --mica-aubergine-900: #2a141d;
 
   --mica-success: #166534;
   --mica-success-bg: #dcfce7;
@@ -33,21 +32,21 @@
   --mica-info: #1e40af;
   --mica-info-bg: #dbeafe;
 
-  --mica-bg: var(--mica-white);
-  --mica-surface: var(--mica-white);
-  --mica-surface-raised: var(--mica-stone-50);
-  --mica-border: rgb(17 17 16 / 10%);
-  --mica-border-strong: rgb(17 17 16 / 18%);
-  --mica-text: var(--mica-black);
-  --mica-text-muted: var(--mica-stone-500);
-  --mica-text-subtle: var(--mica-stone-400);
-  --mica-accent: var(--mica-glimmer-500);
-  --mica-accent-text: var(--mica-glimmer-500);
-  --mica-accent-bg: var(--mica-glimmer-50);
-  --mica-focus: var(--mica-glimmer-500);
+  --mica-bg: var(--mica-creme-50);
+  --mica-surface: var(--mica-creme-50);
+  --mica-surface-raised: var(--mica-creme-100);
+  --mica-border: rgb(63 31 43 / 12%);
+  --mica-border-strong: rgb(63 31 43 / 22%);
+  --mica-text: var(--mica-ink);
+  --mica-text-muted: var(--mica-creme-500);
+  --mica-text-subtle: var(--mica-creme-400);
+  --mica-accent: var(--mica-aubergine-500);
+  --mica-accent-text: var(--mica-aubergine-500);
+  --mica-accent-bg: var(--mica-aubergine-50);
+  --mica-focus: var(--mica-aubergine-500);
 
   --mica-font-sans: "Inter", "Inter var", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mica-font-display: "Outfit", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mica-font-display: var(--mica-font-sans);
   --mica-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --mica-duration-instant: 80ms;
   --mica-duration-fast: 150ms;
@@ -63,22 +62,20 @@
 }
 
 @theme inline {
-  --color-paper: var(--mica-surface);
-  --color-canvas: var(--mica-stone-100);
-  --color-stone: var(--mica-stone-150);
-  --color-surface: var(--mica-surface-raised);
+  --color-surface: var(--mica-surface);
+  --color-raised: var(--mica-surface-raised);
+  --color-canvas: var(--mica-creme-100);
+  --color-subtle: var(--mica-creme-150);
   --color-line: var(--mica-border);
   --color-line-strong: var(--mica-border-strong);
   --color-ink: var(--mica-text);
-  --color-ink-soft: var(--mica-stone-700);
+  --color-ink-soft: var(--mica-creme-700);
   --color-muted: var(--mica-text-muted);
   --color-faint: var(--mica-text-subtle);
-  --color-brand: var(--mica-accent-text);
-  --color-brand-soft: var(--mica-accent-bg);
-  --color-glimmer: var(--mica-glimmer-400);
-  --color-ember: var(--mica-accent);
-  --color-ember-soft: var(--mica-accent-bg);
-  --color-moss: var(--mica-success);
+  --color-accent: var(--mica-accent-text);
+  --color-accent-soft: var(--mica-accent-bg);
+  --color-aubergine: var(--mica-aubergine-700);
+  --color-creme: var(--mica-creme-100);
   --color-success: var(--mica-success);
   --color-success-soft: var(--mica-success-bg);
   --color-warning: var(--mica-warning);
@@ -99,8 +96,8 @@
   --radius-xl: 6px;
   --radius-2xl: 6px;
 
-  --shadow-sm: 0 1px 3px rgb(17 17 16 / 10%);
-  --shadow-lg: 0 8px 24px -8px rgb(17 17 16 / 18%);
+  --shadow-sm: 0 1px 3px rgb(63 31 43 / 10%);
+  --shadow-lg: 0 8px 24px -8px rgb(63 31 43 / 18%);
 }
 
 @layer base {
@@ -111,7 +108,7 @@
 
   body {
     margin: 0;
-    background: var(--mica-surface);
+    background: var(--mica-bg);
     color: var(--mica-text);
     font-family: var(--mica-font-sans);
     font-size: .875rem;
@@ -179,7 +176,7 @@
 }
 
 @utility display {
-  @apply font-display font-normal tracking-[.02em] text-ink;
+  @apply font-display font-normal tracking-tight text-ink;
 }
 
 @utility lead {
@@ -194,15 +191,15 @@
 }
 
 @utility btn-primary {
-  @apply btn bg-ink text-paper hover:bg-ink-soft;
+  @apply btn bg-ink text-surface hover:bg-ink-soft;
 }
 
 @utility btn-secondary {
-  @apply btn border-line bg-stone text-ink-soft hover:border-line-strong hover:bg-surface;
+  @apply btn border-line bg-subtle text-ink-soft hover:border-line-strong hover:bg-raised;
 }
 
 @utility card {
-  @apply rounded-md border border-line bg-surface;
+  @apply rounded-md border border-line bg-raised;
 }
 
 @utility label-mono {

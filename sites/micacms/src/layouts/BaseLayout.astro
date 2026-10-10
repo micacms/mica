@@ -24,11 +24,13 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
-    <meta name="theme-color" content="#ffffff" />
+    <meta name="theme-color" content="#fbf5ec" />
     <title>{pageTitle}</title>
     <meta name="description" content={metaDescription} />
     <link rel="canonical" href={canonical} />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     {noindex && <meta name="robots" content="noindex, nofollow" />}
     <meta property="og:type" content="website" />
     <meta property="og:title" content={pageTitle} />
@@ -50,7 +52,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
     })} />
   </head>
   <body>
-    <a class="fixed left-4 top-4 z-[100] -translate-y-20 rounded-sm bg-ink px-4 py-2 text-sm font-medium text-paper transition focus:translate-y-0" href="#main">Skip to content</a>
+    <a class="fixed left-4 top-4 z-[100] -translate-y-20 rounded-sm bg-ink px-4 py-2 text-sm font-medium text-surface transition focus:translate-y-0" href="#main">Skip to content</a>
     <DevelopmentBanner />
     <SiteHeader />
     <main id="main"><slot /></main>

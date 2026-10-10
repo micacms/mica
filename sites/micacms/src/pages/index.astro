@@ -9,7 +9,7 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
 ---
 
 <BaseLayout>
-  <section class="border-b border-line bg-paper">
+  <section class="border-b border-line bg-surface">
     <div class="wrap grid items-start gap-14 py-16 md:py-24 lg:grid-cols-[1fr_1fr] lg:gap-16">
       <div class="lg:pt-6">
         <p class="eyebrow">{home.heroEyebrow}</p>
@@ -23,12 +23,12 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
         </div>
         <div class="mt-6 flex max-w-md items-center justify-between gap-3 rounded-lg border border-line bg-canvas py-2 pl-4 pr-2">
           <code class="overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[11px] text-muted sm:text-xs">npm install @micacms/astro @micacms/core</code>
-          <button class="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-faint transition hover:bg-stone hover:text-ink [&.copied]:text-moss" data-copy="npm install @micacms/astro @micacms/core" aria-label="Copy install command">
+          <button class="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-faint transition hover:bg-subtle hover:text-ink [&.copied]:text-success" data-copy="npm install @micacms/astro @micacms/core" aria-label="Copy install command">
             <Icon name="copy" size={15} />
           </button>
         </div>
         <a class="mt-6 inline-flex items-center gap-2 text-sm text-muted transition hover:text-ink" href={site.announcement.href}>
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-ember"></span>{site.announcement.text}<Icon name="arrow" size={14} />
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-accent"></span>{site.announcement.text}<Icon name="arrow" size={14} />
         </a>
       </div>
       <CodeWindow />
@@ -47,7 +47,7 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
     </div>
   </section>
 
-  <section class="section border-b border-line bg-paper">
+  <section class="section border-b border-line bg-surface">
     <div class="wrap grid gap-14 lg:grid-cols-[.85fr_1.15fr] lg:gap-20">
       <div class="lg:sticky lg:top-28 lg:self-start">
         <p class="eyebrow">{home.problemEyebrow}</p>
@@ -67,7 +67,7 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
       </div>
       <div class="mt-12 grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-3">
         {home.workflowSteps.map((step, index) => (
-          <article class="bg-paper p-6 md:p-7">
+          <article class="bg-surface p-6 md:p-7">
             <span class="label-mono">Step {index + 1}</span>
             <h3 class="mt-4 text-lg font-semibold text-ink">{step.title}</h3>
             <p class="mt-2 text-sm leading-relaxed text-muted">{step.text}</p>
@@ -78,7 +78,7 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
     </div>
   </section>
 
-  <section class="section border-b border-line bg-paper">
+  <section class="section border-b border-line bg-surface">
     <div class="wrap">
       <div class="grid items-end gap-8 md:grid-cols-[1fr_auto]">
         <div class="max-w-xl">
@@ -92,7 +92,7 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
       <div class="mt-12"><EditorPreview /></div>
       <div class="mt-6 grid gap-2 text-sm text-muted sm:grid-cols-2 lg:grid-cols-4">
         {["Focused field controls", "Markdoc rich text", "Media and relations", "Conflict protection"].map((item) => (
-          <span class="flex items-center gap-2"><i class="text-moss"><Icon name="check" size={15} /></i>{item}</span>
+          <span class="flex items-center gap-2"><i class="text-success"><Icon name="check" size={15} /></i>{item}</span>
         ))}
       </div>
     </div>
@@ -109,14 +109,14 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
       </div>
       <div class="mt-12 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
         {features.map((feature) => (
-          <a class="group flex flex-col bg-paper p-6 transition hover:bg-surface md:p-7" href={`/features/${feature.id}/`}>
-            <span class="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-canvas text-muted transition group-hover:border-line-strong group-hover:text-ember">
+          <a class="group flex flex-col bg-surface p-6 transition hover:bg-raised md:p-7" href={`/features/${feature.id}/`}>
+            <span class="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-canvas text-muted transition group-hover:border-line-strong group-hover:text-accent">
               <Icon name={feature.data.icon} size={18} />
             </span>
             <p class="label-mono mt-6">{feature.data.eyebrow}</p>
             <h3 class="mt-1.5 text-lg font-semibold text-ink">{feature.data.title}</h3>
             <p class="mt-2 text-sm leading-relaxed text-muted">{feature.data.summary}</p>
-            <span class="mt-auto inline-flex items-center gap-1.5 pt-6 text-sm text-brand">
+            <span class="mt-auto inline-flex items-center gap-1.5 pt-6 text-sm text-accent">
               Read more <i class="transition group-hover:translate-x-0.5"><Icon name="arrow" size={14} /></i>
             </span>
           </a>
@@ -125,7 +125,7 @@ const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatu
     </div>
   </section>
 
-  <section class="section border-b border-line bg-paper">
+  <section class="section border-b border-line bg-surface">
     <div class="wrap">
       <div class="max-w-xl">
         <p class="eyebrow">Built with a point of view</p>

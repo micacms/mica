@@ -24,7 +24,7 @@ const sectionLabels = { start: "Start here", build: "Build", operate: "Operate" 
             <a
               class:list={[
                 "mb-0.5 block rounded-md px-3 py-1.5 text-sm text-muted transition hover:bg-canvas hover:text-ink",
-                doc.id === entry.id && "bg-brand-soft font-medium !text-brand",
+                doc.id === entry.id && "bg-accent-soft font-medium !text-accent",
               ]}
               href={`/docs/${doc.id}/`}
             >{doc.data.title}</a>

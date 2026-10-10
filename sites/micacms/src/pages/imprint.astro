@@ -12,7 +12,7 @@ const imprint = await getImprint();
 >
   <PageHeader eyebrow={imprint.eyebrow} title={imprint.title} lead={imprint.lead} />
 
-  <section class="section bg-paper">
+  <section class="section bg-surface">
     <div class="wrap grid gap-10 md:grid-cols-[190px_1fr] md:gap-14">
       <h2 class="text-lg font-semibold text-ink">Responsible</h2>
       <div class="max-w-2xl">
@@ -23,7 +23,7 @@ const imprint = await getImprint();
           {imprint.country}
         </address>
         <p class="mt-5 text-[15px]">
-          <a class="font-medium text-brand underline decoration-brand/30 underline-offset-4 transition hover:decoration-brand" href={`mailto:${imprint.email}`}>{imprint.email}</a>
+          <a class="font-medium text-accent underline decoration-accent/30 underline-offset-4 transition hover:decoration-accent" href={`mailto:${imprint.email}`}>{imprint.email}</a>
         </p>
 
         {imprint.sections.map((section) => (
