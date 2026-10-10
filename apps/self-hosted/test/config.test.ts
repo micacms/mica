@@ -24,21 +24,29 @@ const base: NodeJS.ProcessEnv = {
   MICA_OIDC_ISSUER: "https://auth.example.com",
   MICA_OIDC_CLIENT_ID: "mica",
   MICA_ADMIT_GROUP: "mica-editors",
+  REPOSITORY: "github",
+  REPOSITORY_PROJECT: "acme/site",
+  REPOSITORY_TOKEN: "secret",
 };
 
 describe("repository configuration", () => {
-  it("defaults to a working tree on this machine", () => {
-    const config = loadConfig({ ...base });
-    assert.equal(config.REPOSITORY, "local");
-  });
-
-  it("does not ask a local repository for a token", () => {
-    assert.doesNotThrow(() => loadConfig({ ...base, REPOSITORY: "local" }));
+  /** Local Git belongs to the local editor; a server publishes through a provider. */
+  it("refuses a working tree, set or by default", () => {
+    const { REPOSITORY: _, ...unset } = base;
+    for (const env of [{ ...base, REPOSITORY: "local" }, unset]) {
+      assert.throws(() => loadConfig(env), (error: unknown) => {
+        assert.ok(error instanceof ConfigError);
+        assert.match(error.message, /github or gitlab/);
+        assert.match(error.message, /npx @micacms\/editor/);
+        return true;
+      });
+    }
   });
 
   for (const provider of ["github", "gitlab"] as const) {
     it(`refuses to start on ${provider} without a project and a token`, () => {
-      assert.throws(() => loadConfig({ ...base, REPOSITORY: provider }), (error: unknown) => {
+      const env = { ...base, REPOSITORY: provider, REPOSITORY_PROJECT: "", REPOSITORY_TOKEN: "" };
+      assert.throws(() => loadConfig(env), (error: unknown) => {
         assert.ok(error instanceof ConfigError);
         assert.match(error.message, /REPOSITORY_PROJECT and REPOSITORY_TOKEN/);
         return true;

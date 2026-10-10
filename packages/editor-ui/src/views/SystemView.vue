@@ -313,8 +313,8 @@ async function copyReport(): Promise<void> {
       <!--
         Two sections rather than one "Storage", because they are not the same
         kind of thing and should not be backed up the same way. The repository
-        is the website. The database is only this server's memory of who is
-        signed in.
+        is the website. The database holds only work that is saved and not
+        yet published.
       -->
 
       <section class="card p-4" aria-labelledby="repository-heading">

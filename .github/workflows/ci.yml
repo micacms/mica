@@ -106,65 +106,20 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Boot it and check health
-        run: |
-          # Configured the way a real deployment is, because that is the thing
-          # worth testing. The image is the self-hosted app, which has no
-          # unauthenticated mode to fall back to: OIDC configuration is
-          # mandatory, so this provides it.
-          #
-          # The issuer never has to answer: discovery is lazy, and happens on
-          # the first sign-in rather than at startup. Nothing here signs in.
-          #
-          # An admission rule is required all the same. Mica refuses to start
-          # without one, because a deployment that admits everybody its issuer
-          # knows is a misconfiguration rather than a default — and this step is
-          # where that refusal would be noticed if it ever stopped working.
-          #
-          # REPOSITORY defaults to `local`, so the container needs a content
-          # directory to point at rather than a provider token. The content
-          # model comes from `.mica/schema.json` inside it — the image ships
-          # without one and refuses to start until it finds one.
-          docker run -d --name cms \
-            -e SESSION_SECRET=ci-session-secret-0000000000000000 \
-            -e MICA_PUBLIC_URL=http://localhost:6422 \
-            -e MICA_OIDC_ISSUER=https://id.example.com \
-            -e MICA_OIDC_CLIENT_ID=mica-ci \
-            -e MICA_ADMIT_GROUP=mica-editors \
-            -e CONTENT_ROOT=/content \
-            -v "$PWD/examples/muster-consulting/content:/content:ro" \
-            -p 6422:6422 micacms/editor:ci
-
-          for i in $(seq 1 30); do
-            curl -fsS http://localhost:6422/health && exit 0
-            sleep 2
-          done
-
-          echo "::error::The container never became healthy."
-          docker logs cms
-          exit 1
-
-      # The OIDC round trip, automated: the image just built, against a real
-      # Dex, driven by fetch — sign-in, admission by email and by domain, a
-      # refusal, CSRF, an edit that reaches the repository, and sign-out. See
-      # tests/oidc/README.md.
+      # The whole deployed shape, automated: the image just built, behind a
+      # real Dex, publishing to a stand-in for the GitHub API. `--wait` is the
+      # health check; the test then signs in, is admitted or refused, edits,
+      # and publishes — see tests/oidc/README.md.
       - uses: actions/setup-node@v4
         with:
           node-version: 24
 
       - name: Start Mica behind Dex
-        run: |
-          docker rm -f cms
-          cp -R examples/muster-consulting/content "$RUNNER_TEMP/content"
-          # The container runs as `node`, not as the runner's user.
-          chmod -R a+rwX "$RUNNER_TEMP/content"
-          echo "MICA_CONTENT_DIR=$RUNNER_TEMP/content" >> "$GITHUB_ENV"
-          MICA_CONTENT_DIR="$RUNNER_TEMP/content" \
-            docker compose -f tests/oidc/compose.yml up -d --no-build --wait
+        run: docker compose -f tests/oidc/compose.yml up -d --no-build --wait
 
-      - name: Sign in through Dex
+      - name: Sign in, edit and publish
         run: node --test tests/oidc/flow.test.mjs
 
-      - name: Logs of the OIDC test stack
+      - name: Logs of the test stack
         if: failure()
         run: docker compose -f tests/oidc/compose.yml logs

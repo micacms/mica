@@ -1,11 +1,13 @@
 # Automated OIDC test
 
-The real Mica image against a real [Dex](https://dexidp.io), driven by a Node
-script with no dependencies. CI runs it on every pull request, in the `docker`
-job of [`ci.yml`](../../.github/workflows/ci.yml).
+The real Mica image against a real [Dex](https://dexidp.io), publishing to the
+[GitHub API stub](../github-stub/README.md), driven by a Node script with no
+dependencies. CI runs it on every pull request, in the `docker` job of
+[`ci.yml`](../../.github/workflows/ci.yml).
 
 It proves what unit tests cannot: a real OpenID Connect round trip — discovery,
-PKCE, `state`, `nonce`, the ID token — through the container as it is deployed.
+PKCE, `state`, `nonce`, the ID token — and a publication through the GitHub
+connector, with the container as it is deployed.
 
 ## What it checks
 
@@ -15,9 +17,13 @@ PKCE, `state`, `nonce`, the ID token — through the container as it is deployed
 | `bob@muster-consulting.example` | `MICA_ADMIT_DOMAIN` | Admitted                 |
 | `mallory@gmail.com`             | none                | Authenticated, refused   |
 
-And, for an admitted session: no admin API without a session, no write
-without the CSRF token, an edit that reaches the content directory, an altered
-session cookie refused, and sign-out clearing both cookies.
+And, for an admitted session:
+
+- no admin API without a session, and no write without the CSRF token;
+- a save is a draft: the repository does not move;
+- Publish makes one commit on top of the old head, by the editor who pressed it;
+- an altered session cookie is refused;
+- sign-out clears both cookies.
 
 All three users have the password `password`. Dex reports every address as
 verified, as Google does.
@@ -25,14 +31,14 @@ verified, as Google does.
 ## Run it
 
 ```bash
-cp -R examples/muster-consulting/content "$TMPDIR/mica-content"
-chmod -R a+rwX "$TMPDIR/mica-content"
-export MICA_CONTENT_DIR="$TMPDIR/mica-content"
-
 docker compose -f tests/oidc/compose.yml up -d --build --wait
 node --test tests/oidc/flow.test.mjs
 docker compose -f tests/oidc/compose.yml down
 ```
+
+The ports are 5556 (Dex), 6422 (Mica) and 8787 (the GitHub stub). The stub
+keeps its repository in memory, so every start begins from the example
+content.
 
 The login rate limit is 10 attempts in 15 minutes. One run uses 7, so restart
 the `mica` service before you run the test again.
@@ -42,9 +48,8 @@ the `mica` service before you run the test again.
 - **Groups.** Dex's built-in users carry no groups claim. The group rule and the
   claim shapes of Keycloak and Entra are covered by unit tests and by the manual
   Keycloak rig in [`tests/e2e/`](../e2e/README.md).
-- **Publish.** The content is a plain directory with `REPOSITORY=local`, and the
-  image has no `git`, so there is no commit to make. Publishing through a
-  provider repository is covered by the connector tests against a stub.
+- **GitHub itself.** The stub answers the calls the connector makes, the way the
+  connector expects. A real repository is still a manual run.
 - **The editor UI.** No browser is involved.
 
 > Deliberately insecure: plain HTTP, a committed client secret, one password

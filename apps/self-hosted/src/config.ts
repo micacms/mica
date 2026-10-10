@@ -30,7 +30,7 @@ const schema = z
     ...runtimeEnv,
     ...authEnv,
 
-    /** Operational state: the database holding sessions and the draft store. */
+    /** Operational state: the database holding the draft store. */
     DATA_DIR: z.string().default("./data"),
     DATABASE_PATH: z.string().optional(),
   })
@@ -54,6 +54,23 @@ export type SelfHostedConfig = RuntimeConfig &
     devSecrets: string[];
   };
 
+/**
+ * A hosted Mica reaches its repository only through a provider API.
+ *
+ * Local Git is the local editor's job: it uses the developer's own `git` and
+ * credentials. A server has neither, so a working tree here could autosave but
+ * never publish — see docs/decisions.md.
+ */
+function requireProviderRepository(repository: string): void {
+  if (repository === "github" || repository === "gitlab") return;
+
+  throw new ConfigError(
+    "A self-hosted Mica publishes through GitHub or GitLab, so REPOSITORY must be\n" +
+      "  github or gitlab, with REPOSITORY_PROJECT and REPOSITORY_TOKEN.\n" +
+      "  To edit a checkout on your own machine, run `npx @micacms/editor` instead.",
+  );
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConfig {
   // Only when reading the ambient environment: tests pass an explicit object
   // and must not pick up whatever `.env` sits in the working directory.
@@ -65,6 +82,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
   const config = parsed.data;
 
   requireAuthConfig(config);
+  requireProviderRepository(config.REPOSITORY);
   requireRepositoryConfig({ ...config, HOST: config.HOST });
 
   // Secrets are mandatory in production. In development an ephemeral one is

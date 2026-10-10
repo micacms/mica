@@ -145,6 +145,11 @@ export async function createHarness(
     MICA_OIDC_ISSUER: ISSUER,
     MICA_OIDC_CLIENT_ID: "mica",
     MICA_ADMIT_GROUP: "mica-editors",
+    // Provider-shaped, as every self-hosted deployment is. The local connector
+    // stands in as "the provider", so the temporary directory is the repository.
+    REPOSITORY: "github",
+    REPOSITORY_PROJECT: "acme/site",
+    REPOSITORY_TOKEN: "unused-by-the-test-connector",
     ...overrides,
   } as NodeJS.ProcessEnv);
 
@@ -153,10 +158,7 @@ export async function createHarness(
   const connector = localConnector({ root: contentRoot });
   const auth = createOidcAuth({ config, logger });
 
-  // Like src/index.ts: which draft workspace follows the connector. Tests
-  // that want the SQLite draft store set REPOSITORY=github and get the local
-  // connector standing in as "the provider".
-  const drafts = config.REPOSITORY === "local" ? undefined : createDraftRepository(db);
+  const drafts = createDraftRepository(db);
 
   const ctx = createRuntimeContext({
     config,

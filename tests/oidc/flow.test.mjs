@@ -6,12 +6,23 @@
  */
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import { describe, it } from "node:test";
 
 const MICA = "http://localhost:6422";
-const CONTENT_DIR = process.env.MICA_CONTENT_DIR;
+const GITHUB = "http://localhost:8787/repos/acme/site";
+
+/** Reads the stand-in GitHub API directly, to see what reached the repository. */
+async function github(path, accept = "application/vnd.github+json") {
+  const response = await fetch(`${GITHUB}/${path}`, {
+    headers: { authorization: "Bearer test", accept },
+  });
+  assert.equal(response.ok, true, `GitHub stub: ${path} answered ${response.status}`);
+  return accept.includes("raw") ? response.text() : response.json();
+}
+
+const headOfMain = async () => (await github("git/ref/heads/main")).object.sha;
+const publishedSite = async () =>
+  JSON.parse(await github("contents/content/site/index.json?ref=main", "application/vnd.github.raw"));
 
 /** One person's browser: a cookie jar and a redirect loop. */
 class Browser {
@@ -122,7 +133,7 @@ describe("signing in through Dex", () => {
 });
 
 describe("an admitted session", () => {
-  it("saves an edit to the repository, and only with the CSRF token", async () => {
+  it("saves an edit as a draft, then publishes it as one commit", async () => {
     const alice = new Browser();
     await alice.signIn("alice@gmail.com");
 
@@ -136,13 +147,25 @@ describe("an admitted session", () => {
     const forged = await alice.api("/api/admin/singletons/site", { method: "PUT", body: edit, csrf: false });
     assert.equal(forged.status, 403);
 
+    const before = await headOfMain();
     const saved = await alice.api("/api/admin/singletons/site", { method: "PUT", body: edit });
     assert.equal(saved.status, 200);
 
-    if (CONTENT_DIR) {
-      const onDisk = JSON.parse(readFileSync(join(CONTENT_DIR, "site", "index.json"), "utf8"));
-      assert.equal(onDisk.tagline, tagline);
-    }
+    // Saved is not published: the repository has not moved.
+    assert.equal(await headOfMain(), before);
+    assert.notEqual((await publishedSite()).tagline, tagline);
+
+    const message = `Publish the tagline (${tagline})`;
+    const published = await alice.api("/api/admin/publish", { method: "POST", body: { message } });
+    assert.equal(published.status, 200, await published.clone().text());
+
+    // One commit on top of the old head, by the person who pressed Publish.
+    const head = await headOfMain();
+    const commit = await github(`git/commits/${head}`);
+    assert.equal(commit.message, message);
+    assert.deepEqual(commit.parents, [{ sha: before }]);
+    assert.equal(commit.author?.email, "alice@gmail.com");
+    assert.equal((await publishedSite()).tagline, tagline);
   });
 
   it("rejects a session cookie that was altered", async () => {
