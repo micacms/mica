@@ -1,0 +1,17 @@
+## Added
+
+**Admit editors by verified email address.** `MICA_ADMIT_EMAILS` lists the addresses that may sign in. Use it for providers that send no groups claim, such as Google.
+
+## Changed
+
+**The v1.5 brand.** The editor shows the lowercase `micacms` wordmark and the new favicon, an aubergine sidebar and creme surfaces, and uses Inter as its only font. The sidebar text and the Publish badge have more contrast.
+
+**The System page no longer shows a session count**, because the database no longer holds sessions.
+
+## Breaking
+
+**Sessions are an encrypted cookie, not a database table.** Migration 3 drops the `sessions` table: the database now holds only unpublished drafts. Set `SESSION_SECRET` in production. A change of `SESSION_SECRET` signs everybody out. Everyone signs in once more after the upgrade. `createOidcAuth` no longer takes a database, the session repository exports are removed, and `OperationalInfo.database` has no `sessions` field.
+
+**A self-hosted Mica requires `REPOSITORY=github` or `gitlab`.** `REPOSITORY=local`, the old default, now stops the start-up. To edit a checkout, use `npx @micacms/editor`.
+
+**A `MICA_ADMIT_DOMAIN` that names a public provider stops the start-up**, for example `gmail.com`, because it would admit every account at that provider. Use `MICA_ADMIT_EMAILS` for single addresses.
