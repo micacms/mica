@@ -548,12 +548,18 @@ Explicitly not built.
   still only `tests/e2e/compose.yml` (Keycloak) and
   `deploy/demo-identity/compose.yml` (ZITADEL), run by hand. A claim whose name
   and shape differ per provider is exactly what a unit test cannot check.
-- **P2** — The provider connectors are tested against a stub, not against a real
-  repository. The request shapes are asserted; the providers' agreement with
-  their own documentation is not. `deploy/demo-identity/compose.yml` is the manual run —
-  point it at a scratch repository on github.com or gitlab.com — but nothing
-  automates it. `REPOSITORY_API_BASE` against GitHub Enterprise Server or a
-  self-managed GitLab has had neither.
+- **P2** — The GitLab connector is tested against a stub only. The
+  `live-connectors` workflow (`packages/connectors/test/live.test.ts`) can
+  commit to a scratch project on gitlab.com, but no token is configured yet, so
+  it skips GitLab. Configure `MICA_LIVE_GITLAB_TOKEN` and
+  `MICA_LIVE_GITLAB_PROJECT` to close this. It also checks whether the
+  documented `write_repository` scope is enough for the REST API.
+- **P2** — The GitHub connector is not yet tested live. The `live-connectors`
+  workflow can commit to the scratch repository `amuedespacher/micacms-scratch`
+  every Monday and on demand, but the secret `MICA_LIVE_GITHUB_TOKEN` is not
+  set yet, so it skips GitHub. When it is set, this becomes P3: pull requests
+  still test against a stub only, because a fork cannot read the secret. `REPOSITORY_API_BASE` against GitHub Enterprise Server or a
+  self-managed GitLab is still untested.
 - **P3** — Entry search filters in the browser over the whole collection. Fine at
   the stated scale (hundreds to low thousands); a repository large enough to
   need an index is a repository large enough to need a different design.

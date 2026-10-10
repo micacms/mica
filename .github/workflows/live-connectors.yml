@@ -1,0 +1,49 @@
+name: Live connectors
+
+# The GitHub and GitLab connectors against real scratch repositories — see
+# packages/connectors/test/live.test.ts. Not on pull requests: a fork cannot
+# read the secrets, and a provider outage must not block a merge.
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: live-connectors
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.rush
+            common/temp/pnpm-store
+          key: rush-${{ runner.os }}-${{ hashFiles('rush.json', 'common/config/rush/pnpm-lock.yaml') }}
+          restore-keys: rush-${{ runner.os }}-
+
+      - run: node common/scripts/install-run-rush.js install --to @micacms/connectors
+      - run: node common/scripts/install-run-rush.js build --to @micacms/connectors
+
+      # A provider whose token or repository is not configured is skipped, and
+      # the skip is visible in the log.
+      - name: Commit to the scratch repositories
+        working-directory: packages/connectors
+        env:
+          MICA_LIVE_GITHUB_TOKEN: ${{ secrets.MICA_LIVE_GITHUB_TOKEN }}
+          MICA_LIVE_GITHUB_REPO: ${{ vars.MICA_LIVE_GITHUB_REPO }}
+          MICA_LIVE_GITLAB_TOKEN: ${{ secrets.MICA_LIVE_GITLAB_TOKEN }}
+          MICA_LIVE_GITLAB_PROJECT: ${{ vars.MICA_LIVE_GITLAB_PROJECT }}
+        run: node --test test/live.test.ts
