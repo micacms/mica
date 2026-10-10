@@ -64,7 +64,7 @@ export const DEFAULT_SITE_ID = "default";
 export interface OperationalInfo {
   /** How this deployment authenticates, in words. */
   auth: string;
-  /** Null where there is no database: wherever saves stage in a working tree. */
+  /** Null where there is no database, which is the local editor's answer. */
   database: {
     path: string;
     version: number;

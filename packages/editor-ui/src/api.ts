@@ -339,8 +339,8 @@ export interface SystemInfo {
     media: MediaUsage;
   };
   /**
-   * The composition's operational state. Null where there is no draft
-   * database: the local editor, and any deployment on a working tree.
+   * The composition's operational state. Null in the local editor, which
+   * keeps no database at all.
    */
   database: {
     path: string;

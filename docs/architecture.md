@@ -321,8 +321,8 @@ No content history, no media library, no revisions, no accounts, no sessions.
 The draft tables hold exactly the current pending change set and are cleared by
 publication; Git stays the history. Losing this database loses work that was
 saved and not yet published, which the self-hosted backup guidance says out
-loud. It signs nobody out. With `REPOSITORY=local` there is no draft store, so
-no database is opened at all. Two rules keep it navigable: SQL is written only by
+loud. It signs nobody out. With `REPOSITORY=local` the file is still opened,
+but nothing in it is in use. Two rules keep it navigable: SQL is written only by
 the stores that own their tables — drafts and migrations in `apps/self-hosted`
 — and only the runtime's `db/driver.ts` knows which SQLite library is in use.
 The local editor opens no database at all.
