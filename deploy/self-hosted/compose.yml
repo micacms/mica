@@ -18,8 +18,8 @@
 # changing the model is a commit plus a restart rather than a rebuild.
 #
 # There is no backup service any more. The content is in a Git repository, which
-# is already replicated, versioned and off-site; the volume below holds browser
-# sessions, and losing it signs everyone out and costs nothing else. There are
+# is already replicated, versioned and off-site; the volume below holds only
+# unpublished drafts, and losing it loses those and nothing else. There are
 # no accounts in it, and no passwords — Mica has neither.
 
 services:
@@ -33,24 +33,20 @@ services:
       NODE_ENV: production
       DATA_DIR: /data
 
-      # OIDC or nothing. `local` disables authentication, and Mica refuses to
-      # start that way with NODE_ENV=production — set MICA_OIDC_ISSUER and
-      # MICA_OIDC_CLIENT_ID in .env, and register
+      # OIDC or nothing: this image has no unauthenticated mode. Set
+      # MICA_OIDC_ISSUER and MICA_OIDC_CLIENT_ID in .env, and register
       # ${MICA_PUBLIC_URL}/api/auth/callback with the provider.
       #
       # Who may then edit is a separate answer, and also required: set
-      # MICA_ADMIT_GROUP, MICA_ADMIT_DOMAIN or MICA_ADMIT_SUBJECTS in .env.
+      # MICA_ADMIT_GROUP, MICA_ADMIT_DOMAIN, MICA_ADMIT_EMAILS or
+      # MICA_ADMIT_SUBJECTS in .env.
 
       # How this deployment reaches its content repository.
       #
-      # `github` or `gitlab` is the normal choice for a container: it commits
-      # through the provider's API, so there is no clone to keep in sync and no
-      # deploy key on disk. Set REPOSITORY_PROJECT and REPOSITORY_TOKEN in .env.
+      # `github` or `gitlab` is required: Mica commits through the provider's
+      # API, so there is no clone to keep in sync and no deploy key on disk.
+      # `local` is refused. Set REPOSITORY_PROJECT and REPOSITORY_TOKEN in .env.
       REPOSITORY: ${REPOSITORY:-github}
-
-      # For REPOSITORY=local instead, mount a checkout at /content and set:
-      #   REPOSITORY: local
-      #   CONTENT_ROOT: /content
 
     ports:
       # Bound to loopback: put a reverse proxy in front for TLS. Change to
@@ -58,14 +54,12 @@ services:
       - "127.0.0.1:6422:6422"
 
     volumes:
-      # Browser sessions. Not the website — that is in the repository, and so
+      # Unpublished drafts. Not the website — that is in the repository, and so
       # is the content model.
       - mica-data:/data
-      # For REPOSITORY=local only — a checkout of the content repository:
-      # - ./content:/content
 
     healthcheck:
-      # Checks both halves: the database that holds sessions, and the content
+      # Checks both halves: the database that holds drafts, and the content
       # repository. A container that is listening but cannot reach its
       # repository cannot save anything, and should not be sent traffic.
       test:

@@ -24,21 +24,29 @@ const base: NodeJS.ProcessEnv = {
   MICA_OIDC_ISSUER: "https://auth.example.com",
   MICA_OIDC_CLIENT_ID: "mica",
   MICA_ADMIT_GROUP: "mica-editors",
+  REPOSITORY: "github",
+  REPOSITORY_PROJECT: "acme/site",
+  REPOSITORY_TOKEN: "secret",
 };
 
 describe("repository configuration", () => {
-  it("defaults to a working tree on this machine", () => {
-    const config = loadConfig({ ...base });
-    assert.equal(config.REPOSITORY, "local");
-  });
-
-  it("does not ask a local repository for a token", () => {
-    assert.doesNotThrow(() => loadConfig({ ...base, REPOSITORY: "local" }));
+  /** Local Git belongs to the local editor; a server publishes through a provider. */
+  it("refuses a working tree, set or by default", () => {
+    const { REPOSITORY: _, ...unset } = base;
+    for (const env of [{ ...base, REPOSITORY: "local" }, unset]) {
+      assert.throws(() => loadConfig(env), (error: unknown) => {
+        assert.ok(error instanceof ConfigError);
+        assert.match(error.message, /github or gitlab/);
+        assert.match(error.message, /npx @micacms\/editor/);
+        return true;
+      });
+    }
   });
 
   for (const provider of ["github", "gitlab"] as const) {
     it(`refuses to start on ${provider} without a project and a token`, () => {
-      assert.throws(() => loadConfig({ ...base, REPOSITORY: provider }), (error: unknown) => {
+      const env = { ...base, REPOSITORY: provider, REPOSITORY_PROJECT: "", REPOSITORY_TOKEN: "" };
+      assert.throws(() => loadConfig(env), (error: unknown) => {
         assert.ok(error instanceof ConfigError);
         assert.match(error.message, /REPOSITORY_PROJECT and REPOSITORY_TOKEN/);
         return true;
@@ -158,6 +166,7 @@ describe("who may edit", () => {
   for (const rule of [
     { MICA_ADMIT_GROUP: "mica-editors" },
     { MICA_ADMIT_DOMAIN: "example.com" },
+    { MICA_ADMIT_EMAILS: "alice@gmail.com" },
     { MICA_ADMIT_SUBJECTS: "https://auth.example.com|a1b2c3" },
   ]) {
     it(`accepts ${Object.keys(rule)[0]} on its own`, () => {
@@ -165,21 +174,43 @@ describe("who may edit", () => {
     });
   }
 
-  it("reads all three as comma-separated lists", () => {
+  it("reads all four as comma-separated lists", () => {
     const config = loadConfig({
       ...base,
       MICA_ADMIT_GROUP: "editors, writers",
       MICA_ADMIT_DOMAIN: "Example.com, @acme.test",
+      MICA_ADMIT_EMAILS: "Alice@Gmail.com, bob@example.com",
       MICA_ADMIT_SUBJECTS: "https://a.test|one, https://b.test|two",
     });
 
     assert.deepEqual(config.admitGroups, ["editors", "writers"]);
     // Lowercased, and an `@` the operator typed out of habit is not part of it.
     assert.deepEqual(config.admitDomains, ["example.com", "acme.test"]);
+    assert.deepEqual(config.admitEmails, ["alice@gmail.com", "bob@example.com"]);
     assert.deepEqual(config.admitSubjects, [
       { issuer: "https://a.test", subject: "one" },
       { issuer: "https://b.test", subject: "two" },
     ]);
+  });
+
+  /** A domain rule for a public provider admits the public. */
+  it("refuses a domain where anybody can register an address", () => {
+    assert.throws(
+      () => loadConfig({ ...withoutRules(), MICA_ADMIT_DOMAIN: "example.com, Gmail.com" }),
+      (error: unknown) => {
+        assert.ok(error instanceof ConfigError);
+        assert.match(error.message, /gmail\.com, where anybody can register/);
+        assert.match(error.message, /MICA_ADMIT_EMAILS/);
+        return true;
+      },
+    );
+  });
+
+  it("refuses an email entry that is not an address", () => {
+    assert.throws(
+      () => loadConfig({ ...withoutRules(), MICA_ADMIT_EMAILS: "alice" }),
+      /not: alice/,
+    );
   });
 
   /**

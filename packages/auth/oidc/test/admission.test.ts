@@ -23,7 +23,13 @@ const person = (overrides: Partial<SessionIdentity> = {}): SessionIdentity => ({
 });
 
 const policy = (rules: Partial<Parameters<typeof createAdmissionPolicy>[0]>) =>
-  createAdmissionPolicy({ admitGroups: [], admitDomains: [], admitSubjects: [], ...rules });
+  createAdmissionPolicy({
+    admitGroups: [],
+    admitDomains: [],
+    admitEmails: [],
+    admitSubjects: [],
+    ...rules,
+  });
 
 describe("admission rules", () => {
   it("admits by group, and accepts a Keycloak path for a bare name", () => {
@@ -54,6 +60,17 @@ describe("admission rules", () => {
     assert.match((unverified as { reason: string }).reason, /verified/);
   });
 
+  it("admits a listed address, case-insensitively, only when verified", () => {
+    const p = policy({ admitEmails: ["alice@gmail.com"] });
+
+    assert.equal(p.admits(person({ email: "Alice@Gmail.com" })).admitted, true);
+    assert.equal(p.admits(person({ email: "mallory@gmail.com" })).admitted, false);
+
+    const unverified = p.admits(person({ email: "alice@gmail.com", emailVerified: false }));
+    assert.equal(unverified.admitted, false);
+    assert.match((unverified as { reason: string }).reason, /admitted address.*verified/);
+  });
+
   it("lets the explicit list in even when the group claim is missing", () => {
     const p = policy({
       admitGroups: ["mica-editors"],
@@ -64,8 +81,14 @@ describe("admission rules", () => {
   });
 
   it("summarises what is in force, for the startup log", () => {
-    const p = policy({ admitGroups: ["mica-editors"], admitDomains: ["example.com"] });
+    const p = policy({
+      admitGroups: ["mica-editors"],
+      admitDomains: ["example.com"],
+      admitEmails: ["alice@gmail.com", "bob@gmail.com"],
+    });
     assert.match(p.summary, /group=mica-editors/);
     assert.match(p.summary, /domain=example.com/);
+    // A count, not the addresses: the startup log is not a place for them.
+    assert.match(p.summary, /emails=2/);
   });
 });

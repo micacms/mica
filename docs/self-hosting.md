@@ -15,8 +15,8 @@ depends on a cloud service.
 └────┬─────┘                        │ push
      │                              ▼
   cms.sqlite                   ┌─────────┐
-  sessions +                   │   CI    │  astro build
-  pending draft                └────┬────┘
+  pending draft                │   CI    │  astro build
+  only                         └────┬────┘
                                     ▼
                               static files → any static host
 ```
@@ -147,7 +147,10 @@ MICA_ADMIT_GROUP=mica-editors
 #     verified the address.
 MICA_ADMIT_DOMAIN=example.com
 
-# C — an explicit list, keyed by issuer and subject.
+# C — these addresses, verified by the provider. The one for Google accounts.
+MICA_ADMIT_EMAILS=alice@gmail.com,bob@example.com
+
+# D — an explicit list, keyed by issuer and subject.
 MICA_ADMIT_SUBJECTS=https://auth.example.com|a1b2c3,https://auth.example.com|d4e5f6
 ```
 
@@ -163,15 +166,22 @@ send `groups`; if yours sends something else, name it:
 MICA_OIDC_GROUPS_CLAIM=roles
 ```
 
-The subject list is the escape hatch for a provider with no groups, and for the
-first sign-in before a group exists. It is keyed by `issuer|subject` and never
-by an email address: providers let people change addresses, and admitting an
-address means admitting whoever holds it next. The subject is in the ID token
-as `sub`, and your provider's console shows it as the user's id.
+Google sends no groups claim. With Google accounts, use the email list, or the
+domain rule for a Google Workspace domain. Mica refuses a domain rule for
+`gmail.com` and other public providers, because it would admit the public.
 
-The domain rule needs `email_verified` from the provider. Without it Mica
-refuses and says so — an unverified address is one the person typed, and where
-self-registration is open that would let anybody claim your domain.
+The email list has one cost: if your organisation gives a former editor's
+address to somebody new, that person gets this site too. Gmail never reuses an
+address. For your own domain, prefer a group, and remove the address here when
+somebody leaves.
+
+The subject list is the strictest rule: a subject never changes and is never
+reassigned. It is keyed by `issuer|subject`. The subject is in the ID token as
+`sub`, and your provider's console shows it as the user's id.
+
+The email and domain rules need `email_verified` from the provider. Without it
+Mica refuses and says so — an unverified address is one the person typed, and
+where self-registration is open that would let anybody claim it.
 
 ### 5. The rest of `.env`
 
@@ -205,8 +215,8 @@ The startup line says which rule is in force, as `admission`. There is nothing
 to bootstrap and nobody to invite: anybody your rule admits signs in and is an
 editor, and the **System** page shows the rule under _Who may edit_.
 
-Mica refuses to start if `REPOSITORY` names a provider without a project and a
-token, or if the repository has no content model. Both are deliberate: a CMS
+Mica refuses to start if `REPOSITORY` is not `github` or `gitlab`, if the
+project or the token is missing, or if the repository has no content model. All three are deliberate: a CMS
 that starts, shows an editor their content and only fails when they press Save
 has already cost them their work.
 
@@ -248,10 +258,14 @@ SESSION_IDLE_HOURS=4                   # and the idle window
 ```
 
 Disabling the account at the provider is the fast path for a departure, and it
-is the provider's to do. Where access must be cut within seconds, restart the
-container after removing the person — every session is in one table, and
-restarting does not clear it, so use `MICA_ADMIT_SUBJECTS` to state exactly who
-remains.
+is the provider's to do. Where access must be cut within seconds, remove the
+person from the `MICA_ADMIT_*` rules and restart the container. The rules are
+re-read on every request, so the person is refused at once.
+
+A session is an encrypted cookie, and Mica keeps no list of them. Sign-out
+clears the cookie in the browser only, and a copied cookie stays valid until it
+expires. To end every session at once, change `SESSION_SECRET` and restart.
+Everybody then signs in again.
 
 ## Build the website
 
@@ -335,7 +349,8 @@ version rather than tracking `latest`, so an upgrade is a decision.
 { "status": "ok", "database": "ok", "repository": "github:acme/website/content@main" }
 ```
 
-It returns 503 if the database is unreadable or the repository is unreachable —
+The endpoint
+returns 503 if the database is unreadable or the repository is unreachable —
 a container that is listening but cannot reach its repository cannot save
 anything, so it should not be sent traffic.
 
@@ -360,13 +375,14 @@ Restoring is a clone. There is nothing to import and no schema to match, and no
 version of Mica has to be running for the files to be readable.
 
 **`cms.sqlite` now holds unpublished work, and that changes what losing it
-costs.** It carries browser sessions *and the pending draft* — everything that
+costs.** It carries the pending draft — everything that
 is Saved and not yet Published, media uploads included. Git is not protecting
 that yet; only publication moves it into the repository. Losing the volume
-therefore signs editors out *and* loses whatever was saved but never
-published. Back up the data volume on a schedule, and take the copy with
-SQLite's own `.backup` (a plain `cp` is unsafe: WAL mode keeps recent writes
-in `cms.sqlite-wal`). Encourage editors to publish rather than to hoard a
+therefore loses whatever was saved but never published. It signs nobody out:
+sessions are cookies.
+Back up the data volume on a schedule, and take the copy with SQLite's own
+`.backup` (a plain `cp` is unsafe: WAL mode keeps recent writes in
+`cms.sqlite-wal`). Encourage editors to publish rather than to hoard a
 large pending set — the draft workspace is a staging area, not an archive.
 
 ## Self-managed Git providers
@@ -388,7 +404,7 @@ That path is not covered by tests against a real instance yet. Other providers
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Exits at startup with `ConfigError` | `REPOSITORY` names a provider without `REPOSITORY_PROJECT` / `REPOSITORY_TOKEN` | Set both |
+| Exits at startup with `ConfigError` | `REPOSITORY` is not `github` or `gitlab` (`local` is refused), or `REPOSITORY_PROJECT` / `REPOSITORY_TOKEN` is missing | Set all three. To edit a checkout, run `npx @micacms/editor` |
 | Exits with "No content model at …" | `.mica/schema.json` was never committed, or is on another branch | Build the Astro project, commit it, push to `REPOSITORY_BRANCH` |
 | Exits with "Could not read the content model" | The repository is unreachable — bad token, wrong project, provider down | Check the token's scope and `REPOSITORY_PROJECT` |
 | Health 503, `repository: unavailable` | Token expired, revoked, or wrong scope | Reissue with contents write / `write_repository` |
@@ -398,8 +414,8 @@ That path is not covered by tests against a real instance yet. Other providers
 | Publishing returns 409 | A push landed on a staged path, or the content model changed since startup | The message says which; refresh and review, or restart after a model change |
 | Publishing returns 422 | Something in the pending set no longer validates | The response names the entries and fields |
 | Editors signed out after a restart | `SESSION_SECRET` unset, so an ephemeral one was generated | Set it |
-| "No access to this site" after signing in | Authenticated, but not admitted | Check the group claim actually arrives — `LOG_LEVEL=debug` names the reason — or add the subject to `MICA_ADMIT_SUBJECTS` |
-| Refuses to start: "nothing says who may edit this site" | No admission rule | Set `MICA_ADMIT_GROUP`, `MICA_ADMIT_DOMAIN` or `MICA_ADMIT_SUBJECTS` |
+| "No access to this site" after signing in | Authenticated, but not admitted | Check the group claim actually arrives — `LOG_LEVEL=debug` names the reason — or add the subject to `MICA_ADMIT_SUBJECTS`, or the address to `MICA_ADMIT_EMAILS` |
+| Refuses to start: "nothing says who may edit this site" | No admission rule | Set `MICA_ADMIT_GROUP`, `MICA_ADMIT_DOMAIN`, `MICA_ADMIT_EMAILS` or `MICA_ADMIT_SUBJECTS` |
 | Sign-in returns to the login page with "expired" | The transaction cookie was lost — usually a `MICA_PUBLIC_URL` that does not match the browser's address | Make them identical |
 | 503, "identity provider could not be reached" | `MICA_OIDC_ISSUER` wrong, or discovery blocked | Check `<issuer>/.well-known/openid-configuration` from the container |
 | Site build succeeds but content is stale | The host built an older commit | Check CI ran on the editorial commit |

@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/auth-oidc",
+      "comment": "Admit verified email addresses with MICA_ADMIT_EMAILS, for providers with no groups claim such as Google. A MICA_ADMIT_DOMAIN that names a public provider such as gmail.com now stops startup.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/auth-oidc"
+}

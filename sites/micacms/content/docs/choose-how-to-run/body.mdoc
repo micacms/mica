@@ -1,0 +1,54 @@
+Mica has two ways to run. They edit the same files in the same Git repository. Pick the one that fits you. You can use both.
+
+> Mica is experimental and pre-1.0. Its API and content format can change.
+
+## Which one do you need?
+
+Answer one question: who will edit the content?
+
+- **I am a developer and I edit on my own machine.** Use the [local editor](/docs/getting-started/).
+- **People who are not developers must edit, and they need a web address.** Use the [self-hosted editor](/docs/self-hosting/).
+- **Both.** Start with the local editor. Add the self-hosted editor when editors join.
+
+## The local editor
+
+Run `npx @micacms/editor` in your Astro project.
+
+- It is for the developer.
+- It edits the files in your checkout. Autosave writes the files, and the Astro dev server reloads them.
+- **Publish** makes a Git commit and pushes it with your own Git credentials.
+- There is no sign-in, no user, and no database.
+- It listens on your machine only, and it refuses to run in production.
+
+## The self-hosted editor
+
+Run the Docker image `ghcr.io/amuedespacher/micacms`, the `@micacms/self-hosted` package, on a server.
+
+- It is for editors who are not developers.
+- Editors sign in through an OpenID Connect provider, for example Google. Mica keeps no passwords and no user list.
+- A save is a draft. Drafts are in one SQLite file, and only editors see them.
+- **Publish** writes all pending drafts as one commit through the GitHub or GitLab API. The server never runs local Git.
+- Whoever your rules admit is an editor. There are no roles.
+
+## Side by side
+
+- **Who:** local, the developer. Self-hosted, editors.
+- **Where it runs:** local, your machine. Self-hosted, a server with a web address and HTTPS.
+- **Sign-in:** local, none. Self-hosted, OpenID Connect.
+- **Saves go to:** local, files in your checkout. Self-hosted, drafts in SQLite.
+- **Publish does:** local, `git` commit and push. Self-hosted, one commit through the GitHub or GitLab API.
+- **Needs a token:** local, no. Self-hosted, yes: a GitHub or GitLab token.
+
+## How they work together
+
+1. The developer builds the website and the content model with the local editor.
+2. The Astro build writes `content/.mica/schema.json`. The developer commits it.
+3. The self-hosted editor reads the model from that file in the repository.
+4. Editors save drafts and press Publish. Each Publish is one commit on the branch.
+5. A push starts your normal site build.
+
+The developer pulls the new commits and continues. The website never calls Mica, and Mica does not know where the website is hosted. They meet in the repository.
+
+## Next
+
+Start with the local editor: [Getting started](/docs/getting-started/). Go to [Self-hosting](/docs/self-hosting/) when editors need access.

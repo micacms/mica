@@ -1,8 +1,8 @@
 /**
  * @micacms/auth-oidc — the server-only OIDC gate around @micacms/runtime.
  *
- * One factory: hand it the finished configuration, an open database and a
- * logger, and it returns the `AuthSurface` the runtime mounts — sign-in
+ * One factory: hand it the finished configuration and a logger, and it
+ * returns the `AuthSurface` the runtime mounts — sign-in
  * routes at `/api/auth`, and the session-plus-CSRF gate in front of the admin
  * API — together with the services the composing app reports on.
  *
@@ -11,7 +11,7 @@
  * boundary that keeps `npx @micacms/editor` free of authentication code.
  */
 
-import type { AuthSurface, Logger, SqlDatabase } from "@micacms/runtime";
+import type { AuthSurface, Logger } from "@micacms/runtime";
 import { createRateLimiter, type RateLimiter } from "@micacms/runtime";
 
 import { createAdmissionPolicy, type AdmissionPolicy } from "./admission.js";
@@ -20,12 +20,9 @@ import { csrfProtection, requireAccess } from "./gate.js";
 import { createOidcService, type OidcService } from "./oidc.js";
 import { authRoutes } from "./routes.js";
 import { createSessionService, type SessionService } from "./session.js";
-import { createSessionRepository, type SessionRepository } from "./sessions-repository.js";
 
 export interface OidcAuthDeps {
   config: AuthConfig;
-  /** The database sessions live in. Owned and opened by the composing app. */
-  db: SqlDatabase;
   logger: Logger;
 }
 
@@ -33,7 +30,6 @@ export interface OidcAuth {
   /** What `createApp` mounts: routes at /api/auth, the gate before /api/admin. */
   surface: AuthSurface;
   sessions: SessionService;
-  sessionsRepo: SessionRepository;
   admission: AdmissionPolicy;
   oidc: OidcService;
   loginLimiter: RateLimiter;
@@ -42,8 +38,7 @@ export interface OidcAuth {
 export function createOidcAuth(deps: OidcAuthDeps): OidcAuth {
   const { config, logger } = deps;
 
-  const sessionsRepo = createSessionRepository(deps.db);
-  const sessions = createSessionService(sessionsRepo, config);
+  const sessions = createSessionService(config);
   const admission = createAdmissionPolicy(config);
   const oidc = createOidcService({ config, logger });
   const loginLimiter = createRateLimiter({
@@ -51,15 +46,14 @@ export function createOidcAuth(deps: OidcAuthDeps): OidcAuth {
     windowMs: config.LOGIN_WINDOW_MS,
   });
 
-  const gate = { sessions, sessionsRepo, admission };
+  const gate = { sessions, admission };
 
   return {
     surface: {
-      routes: authRoutes({ config, sessions, sessionsRepo, oidc, admission, loginLimiter }),
+      routes: authRoutes({ config, sessions, oidc, admission, loginLimiter }),
       gate: [requireAccess(gate), csrfProtection()],
     },
     sessions,
-    sessionsRepo,
     admission,
     oidc,
     loginLimiter,
@@ -81,11 +75,7 @@ export {
   CSRF_COOKIE,
   CSRF_HEADER,
   SESSION_COOKIE,
-  type SessionService,
-} from "./session.js";
-export {
-  createSessionRepository,
   type SessionIdentity,
   type SessionRecord,
-  type SessionRepository,
-} from "./sessions-repository.js";
+  type SessionService,
+} from "./session.js";

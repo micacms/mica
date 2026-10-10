@@ -81,7 +81,7 @@ function report(): string {
     `Repository holds ${data.repository.entries} entries and ` +
       `${data.repository.media.files} media files (${data.repository.media.readable})`,
     data.database
-      ? `Database: ${data.database.sessions} sessions, migration ${data.database.version}, ` +
+      ? `Database: migration ${data.database.version}, ` +
         `${data.database.bytes === null ? "size unknown" : formatBytes(data.database.bytes)}`
       : "Database: none — the local editor keeps no state",
     `Site ${data.deployment.site}`,
@@ -313,8 +313,8 @@ async function copyReport(): Promise<void> {
       <!--
         Two sections rather than one "Storage", because they are not the same
         kind of thing and should not be backed up the same way. The repository
-        is the website. The database is only this server's memory of who is
-        signed in.
+        is the website. The database holds only work that is saved and not
+        yet published.
       -->
 
       <section class="card p-4" aria-labelledby="repository-heading">
@@ -347,15 +347,11 @@ async function copyReport(): Promise<void> {
       <section v-if="info.database" class="card p-4" aria-labelledby="database-heading">
         <h2 id="database-heading" class="text-sm font-semibold">Operational database</h2>
         <p class="mt-1 text-xs text-muted">
-          Sessions, and the pending draft where saves are staged — there are no
-          accounts, and nothing published is only in here.
+          The pending draft where saves are staged — there are no accounts or
+          sessions, and nothing published is only in here.
         </p>
 
         <dl class="spec mt-3">
-          <div>
-            <dt>Sessions</dt>
-            <dd class="tabular-nums">{{ info.database.sessions }}</dd>
-          </div>
           <div>
             <dt>Path</dt>
             <dd class="mono">{{ info.database.path }}</dd>

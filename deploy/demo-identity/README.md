@@ -121,6 +121,6 @@ admission check.
 docker compose -f deploy/demo-identity/compose.yml down -v
 ```
 
-`-v` drops the volumes: ZITADEL's database, Mica's sessions, and
+`-v` drops the volumes: ZITADEL's database, Mica's SQLite file, and
 the generated credentials. Your content repository is untouched — anything an
 editor saved is a commit in it, and stays there.

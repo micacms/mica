@@ -2,6 +2,6 @@
   "title": "Self-hosting",
   "slug": "self-hosting",
   "section": "operate",
-  "summary": "Run one Mica container with OpenID Connect, a repository connection, and one rule that says who can edit.",
-  "readTime": 12
+  "summary": "Run one Mica container for editors: repository token, sign-in, who may edit, sessions, drafts, backups, and upgrades.",
+  "readTime": 15
 }

@@ -49,6 +49,7 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
       - "127.0.0.1:6422:6422"
+      - "127.0.0.1:8787:8787"
 
     healthcheck:
       # The realm's discovery document, which is the thing Mica actually needs
@@ -62,6 +63,21 @@ services:
       retries: 40
       start_period: 15s
 
+  # ---------------------------------------------------------- repository
+  # A stand-in for the GitHub API, seeded with the example content and kept in
+  # memory — see tests/github-stub/README.md. A self-hosted Mica publishes only
+  # through a provider.
+  github:
+    image: node:24-alpine
+    command: ["node", "/stub/server.mjs"]
+    network_mode: "service:keycloak"
+    depends_on:
+      keycloak:
+        condition: service_started
+    volumes:
+      - ../github-stub/server.mjs:/stub/server.mjs:ro
+      - ../../examples/muster-consulting/content:/seed:ro
+
   # ---------------------------------------------------------------- mica
   mica:
     build:
@@ -70,6 +86,8 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
+      github:
+        condition: service_started
 
     # Shares Keycloak's network namespace, so `localhost:8080` means the same
     # thing inside this container as it does in your browser. Without that the
@@ -101,18 +119,17 @@ services:
       # there is nothing to bootstrap and nobody to invite.
       MICA_ADMIT_GROUP: mica-editors
 
-      # A checkout, mounted read-write, so `git diff` on the host shows exactly
-      # what an editor changed. That is the demonstration.
-      REPOSITORY: local
-      CONTENT_ROOT: /content
+      # Publish goes to the stub; read what arrived with
+      #   curl -H 'authorization: Bearer x' -H 'accept: application/vnd.github.raw' \
+      #     'http://localhost:8787/repos/acme/site/contents/content/site/index.json?ref=main'
+      REPOSITORY: github
+      REPOSITORY_PROJECT: acme/site
+      REPOSITORY_TOKEN: stub-token-not-for-production
+      REPOSITORY_API_BASE: http://localhost:8787
 
       SESSION_SECRET: e2e-session-secret-0000000000000000
 
     volumes:
-      # The example project's content, mounted read-write, so `git diff` on the
-      # host shows exactly what an editor changed. The content model comes from
-      # `.mica/schema.json` inside it — there is nothing else to mount.
-      - ../../examples/muster-consulting/content:/content
       - mica-data:/data
 
 volumes:

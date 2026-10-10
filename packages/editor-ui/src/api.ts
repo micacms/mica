@@ -344,7 +344,6 @@ export interface SystemInfo {
    */
   database: {
     path: string;
-    sessions: number;
     version: number;
     bytes: number | null;
   } | null;

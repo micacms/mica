@@ -5,7 +5,7 @@
 #
 # What a self-hosted Mica consists of, and nothing more:
 #
-#   mica        Mica itself: one Node process, one SQLite file of sessions
+#   mica        Mica itself: one Node process, one SQLite file
 #   zitadel     the identity provider, with its database
 #
 # The third part is your content repository on github.com or gitlab.com. It is

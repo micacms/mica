@@ -111,8 +111,9 @@ content is.
 
 **Decided:** who may edit a self-hosted site is decided by configuration, not by
 a table. Either a rule over provider claims (`MICA_ADMIT_GROUP`,
-`MICA_ADMIT_DOMAIN`) or an explicit list keyed by `(issuer, subject)`
-(`MICA_ADMIT_SUBJECTS`). The server refuses to start outside local mode when
+`MICA_ADMIT_DOMAIN`) or an explicit list — of verified addresses
+(`MICA_ADMIT_EMAILS`) or of `(issuer, subject)` pairs (`MICA_ADMIT_SUBJECTS`).
+The server refuses to start outside local mode when
 neither is set: an OIDC deployment that admits everybody its issuer knows is a
 misconfiguration, not a default.
 
@@ -130,7 +131,7 @@ Until then they can still publish.
 
 **What contains it:** session lifetimes measured in hours, not weeks — the
 defaults are 8 hours absolute and 4 idle; the rules re-checked on every request
-against the claims stored on the session row; and `MICA_ADMIT_SUBJECTS` as the
+against the claims sealed in the session cookie; and `MICA_ADMIT_SUBJECTS` as the
 instant answer for a departure that cannot wait.
 
 **What would change it:** re-checking admission against the provider on every
@@ -151,6 +152,53 @@ provider's `email_verified`, because an open self-registration would otherwise
 let anybody claim an admitted domain. And the group claim has no standard name,
 so `MICA_OIDC_GROUPS_CLAIM` names it — a Keycloak path and a bare name are both
 accepted, since an operator writes the name their own console shows them.
+
+### P2 — Admission by email address, not only by subject
+
+**Decided:** `MICA_ADMIT_EMAILS` admits a listed address, compared
+case-insensitively, and only when the provider reports it as verified. A
+domain rule that names a public provider such as `gmail.com` is refused at
+startup.
+
+**Why:** Google sends no groups claim, and its subject is a number nobody can
+read off a console. For a small team on Google accounts the subject list was the
+only safe rule, and it was not usable.
+
+**Consequence:** an address is not a permanent key. An organisation that gives
+a former editor's address to somebody new gives them this site too. Gmail and
+the other public providers never reuse an address, so the risk sits with
+organisations that manage their own domain — and those are the ones with a
+group or domain rule to use instead.
+
+**What would change it:** a provider that lets a person set an address they do
+not own and still reports it verified. `MICA_ADMIT_SUBJECTS` stays the rule
+for that case.
+
+---
+
+### P2 — Sessions are encrypted cookies, not rows
+
+**Decided:** a self-hosted session is the `mica_session` cookie itself:
+AES-256-GCM over the identity, the CSRF token and the expiry, with a key
+derived from `SESSION_SECRET`. There is no session table. Only the groups a
+rule names are kept, because a cookie holds 4 KB and a provider can send
+hundreds.
+
+**Why:** the database should hold unpublished drafts and nothing about
+people. A session table was the last place Mica stored who somebody is.
+
+**Consequence:** one session cannot be revoked on the server. Sign-out clears
+the cookie in the browser; a copy taken before that stays valid until it
+expires — at most `SESSION_TTL_HOURS`, or `SESSION_IDLE_HOURS` unused. A group
+added to the rules counts from the next sign-in.
+
+**What contains it:** the admission rules are still re-read on every request,
+so removing somebody from them takes effect at the next request after a
+restart. Rotating `SESSION_SECRET` ends every session at once.
+
+**What would change it:** a need to end one person's session within seconds
+without signing everybody out. That needs a deny list, which is server state
+again.
 
 ---
 
@@ -214,10 +262,39 @@ pathspec limits both `git add` and `git commit`, so a developer's unrelated
 work — staged or not — never enters an editor's commit; HEAD is verified
 against the base the editor reviewed; a failed push returns
 `committed-pending-push` and a retry pushes rather than committing again. One
-choice the plan left open is now fixed: which workspace a deployment stages in
-follows the *connector* (`REPOSITORY`), not `MICA_MODE` — a self-hosted
-deployment with a checkout beside it stages in that checkout, because shadowing
-a working tree with a draft store would show editors a tree that lies.
+choice the plan left open was fixed then: which workspace a deployment stages
+in follows the *connector* (`REPOSITORY`), not `MICA_MODE`.
+
+**Changed in 0.3.0:** a self-hosted deployment no longer accepts a checkout
+beside it. See "Local Git is the local editor's, never the server's".
+
+---
+
+### P2 — Local Git is the local editor's, never the server's
+
+**Decided:** there are two ways to run Mica, and each reaches the repository
+one way. The local editor works on the developer's checkout and publishes with
+their own `git` and credentials. A self-hosted Mica publishes only through a
+provider API — `REPOSITORY` must be `github` or `gitlab`, and `local`, once the
+default, stops startup.
+
+**Why:** a server has no developer behind it. Local publishing needs the
+`git` binary, credentials, a writable checkout owned by the right user, and
+somebody to resolve a diverged branch by hand. The image has none of these, so
+a working tree there could autosave but never publish. Supplying them would be
+a second credential path next to `REPOSITORY_TOKEN`, and `git` would run the
+hooks and configuration of whatever repository is mounted.
+
+**Consequence:** self-hosted works only with GitHub and GitLab. A team on
+Gitea, Forgejo, Bitbucket or plain SSH cannot self-host Mica yet. Every
+self-hosted deployment has the draft database.
+
+**What would change it:** demand for another Git host. The answer then is a
+connector for its API, not `git` in the image.
+
+**Built in 0.3.0.** `apps/self-hosted/src/config.ts` refuses any other
+`REPOSITORY`. The test stacks publish to a stand-in for the GitHub API
+([`tests/github-stub/`](../tests/github-stub/README.md)).
 
 ---
 
@@ -337,8 +414,8 @@ point of the interface.
 **Trigger:** a driver bug, or a deployment target stuck on older Node.
 
 **Built in Phase A, half of it.** `users`, `oidc_identities`, `memberships`,
-`sites`, `tenants` and `repository_connections` are gone; `sessions` is the only
-table left, and it carries the claims admission is checked against. The
+`sites`, `tenants` and `repository_connections` are gone; `sessions` was the
+only table left then, and it carried the claims admission is checked against. The
 migration chain was reset to a single `initial_schema` rather than extended,
 because a fifth migration would have been three quarters `DROP TABLE` and no
 deployment existed to carry forward. Append-only applies again from here, and a
@@ -355,6 +432,9 @@ self-hosted backup guidance says so. One deviation from the `v3-arch.md`
 beside it, because a second location would make staging a two-phase write and
 the backup a two-file promise — uploads are capped and content trees are
 small, so the rows stay within what SQLite is comfortable holding.
+
+**Sessions left in 0.3.0.** Migration 3 drops `sessions`; the database holds
+the draft store and nothing about people. See "Sessions are encrypted cookies".
 
 ---
 
@@ -459,14 +539,13 @@ Explicitly not built.
 - **P2** — No end-to-end browser test of the admin. The API has good coverage
   and the Vue app typechecks, but no test drives a real browser through "sign
   in, edit, publish". The one place a regression could reach production unseen.
-- **P2** — The OIDC round trip is verified by hand, not by CI. `tests/e2e/compose.yml`
-  runs Mica against a real Keycloak with a real group claim, and
-  `deploy/demo-identity/compose.yml` against a real ZITADEL with a subject list. Nothing re-runs
-  them automatically, so a regression would not be caught until somebody tried.
-  This stops being optional: once local mode carries no auth code at all, the
-  OIDC path has no second user exercising it by accident — and admission now
-  depends on a claim whose name and shape differ per provider, which is exactly
-  the kind of thing a unit test cannot check.
+- **P2** — The group claim is verified by hand, not by CI. CI runs the real
+  image against Dex on every pull request ([`tests/oidc/`](../tests/oidc/README.md)):
+  sign-in, the email and domain rules, a refusal, CSRF and an edit. Dex's
+  built-in users carry no groups, so the group rule against a real provider is
+  still only `tests/e2e/compose.yml` (Keycloak) and
+  `deploy/demo-identity/compose.yml` (ZITADEL), run by hand. A claim whose name
+  and shape differ per provider is exactly what a unit test cannot check.
 - **P2** — The provider connectors are tested against a stub, not against a real
   repository. The request shapes are asserted; the providers' agreement with
   their own documentation is not. `deploy/demo-identity/compose.yml` is the manual run —

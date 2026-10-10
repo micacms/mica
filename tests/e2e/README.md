@@ -1,7 +1,8 @@
 # End-to-end test rig
 
 A complete Mica on your machine: the CMS from its image, a real Keycloak, and
-the example project's `content/` directory mounted read-write.
+the [GitHub API stub](../github-stub/README.md) seeded with the example
+project's content.
 
 This exercises the parts unit tests cannot — a real OpenID Connect round trip,
 and the container as it would actually be deployed.
@@ -12,8 +13,8 @@ docker compose -f tests/e2e/compose.yml up --build
 
 Then open <http://localhost:6422/admin/>.
 
-It is the *fast* rig: no provider connector and no repository server, so it
-starts in under a minute. For the deployed shape — Mica against ZITADEL and a
+It is the *fast* rig: the repository is a stub in memory, so it starts in under
+a minute. [`tests/oidc/`](../oidc/README.md) is the automated version with Dex. For the deployed shape — Mica against ZITADEL and a
 real repository on github.com or gitlab.com — see [deploy/demo-identity/](../../deploy/demo-identity/README.md).
 
 > Deliberately insecure and deliberately local: plain HTTP, a committed client
@@ -56,15 +57,16 @@ on.
 3. **Sign out, sign in as bob.** He gets in without anybody inviting him,
    because Keycloak already puts him in the group.
 
-4. **Edit an entry and save.** Then, on your host:
+4. **Edit the site settings, save, and publish.** Save is a draft: the
+   repository does not move until Publish. Then read what arrived:
 
    ```bash
-   git diff examples/muster-consulting/content/
+   curl -s -H 'authorization: Bearer x' -H 'accept: application/vnd.github.raw' \
+     'http://localhost:8787/repos/acme/site/contents/content/site/index.json?ref=main'
    ```
 
-   One file, one line. That is the whole architecture in one command: the
-   editor pressed Save, and what came out is a reviewable change to a file you
-   own.
+   One commit, by the editor who pressed Publish. The stub keeps it in memory,
+   so a restart starts from the example content again.
 
 5. **Try mallory.** Read the message. Then open the Keycloak console at
    <http://localhost:8080> (`admin` / `admin`), put her in `mica-editors`, and
@@ -129,6 +131,5 @@ admission check against a real group claim.
 ## Cleaning up
 
 ```bash
-docker compose -f tests/e2e/compose.yml down -v      # -v also drops the CMS database
-git checkout sites/                        # discard anything you edited
+docker compose -f tests/e2e/compose.yml down -v      # -v also drops the volumes
 ```

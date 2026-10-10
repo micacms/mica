@@ -13,7 +13,7 @@
     },
     {
       "title": "For operators",
-      "text": "Run one container with SQLite and OpenID Connect. There is no database server, cache, queue, object store, content API, or build webhook."
+      "text": "Run one container with OpenID Connect and, for drafts, SQLite. There is no database server, cache, queue, object store, content API, or build webhook."
     }
   ],
   "stack": [
@@ -25,7 +25,7 @@
     { "name": "@micacms/editor", "role": "The local editor: npx @micacms/editor" },
     { "name": "@micacms/self-hosted", "role": "The Docker image, behind OIDC" },
     { "name": "@micacms/auth-oidc", "role": "OpenID Connect for deployments" },
-    { "name": "SQLite", "role": "Sessions and unpublished drafts only" },
+    { "name": "SQLite", "role": "Unpublished drafts only" },
     { "name": "OpenID Connect", "role": "Authentication in production" }
   ]
 }

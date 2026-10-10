@@ -5,7 +5,7 @@
  */
 
 import assert from "node:assert/strict";
-import { after, before, describe, it } from "node:test";
+import { after, before, describe, it, mock } from "node:test";
 
 import {
   ADMITTED,
@@ -65,13 +65,51 @@ describe("sessions", () => {
     assert.notEqual(first.cookie, second.cookie);
   });
 
-  it("signs out and invalidates the session", async () => {
+  /** The session is the cookie: signing out is clearing it in the browser. */
+  it("signs out by clearing both cookies", async () => {
     const session = await harness.signIn();
     const loggedOut = await harness.request("/api/auth/logout", { method: "POST", session });
     assert.equal(loggedOut.status, 200);
 
-    const after = await harness.request("/api/auth/me", { session });
-    assert.equal(after.status, 401);
+    const cleared = loggedOut.headers.getSetCookie();
+    assert.ok(cleared.some((line) => /^mica_session=;.*Max-Age=0/.test(line)));
+    assert.ok(cleared.some((line) => /^mica_csrf=;.*Max-Age=0/.test(line)));
+  });
+
+  it("rejects a session cookie that was altered", async () => {
+    const session = await harness.signIn();
+    const value = session.cookie.match(/mica_session=([^;]+)/)![1]!;
+    const flipped = value.slice(0, 20) + (value[20] === "A" ? "B" : "A") + value.slice(21);
+
+    const response = await harness.request("/api/auth/me", {
+      session: { ...session, cookie: session.cookie.replace(value, flipped) },
+    });
+    assert.equal(response.status, 401);
+  });
+
+  it("re-issues the session cookie while it is in use", async () => {
+    mock.timers.enable({ apis: ["Date"], now: Date.now() });
+    try {
+      const session = await harness.signIn();
+
+      const fresh = await harness.request("/api/auth/me", { session });
+      assert.ok(!fresh.headers.getSetCookie().some((line) => line.startsWith("mica_session=")));
+
+      mock.timers.tick(6 * 60 * 1000);
+      const later = await harness.request("/api/auth/me", { session });
+      assert.equal(later.status, 200);
+      assert.ok(later.headers.getSetCookie().some((line) => /^mica_session=[^;]+;/.test(line)));
+    } finally {
+      mock.timers.reset();
+    }
+  });
+
+  it("rejects a session sealed with another secret", async () => {
+    const other = await createHarness({ SESSION_SECRET: "1".repeat(32) });
+    const foreign = await other.signIn();
+    await other.close();
+
+    assert.equal((await harness.request("/api/auth/me", { session: foreign })).status, 401);
   });
 });
 
@@ -155,6 +193,23 @@ describe("admission", () => {
     await harness.close();
   });
 
+  it("admits a listed address only when the provider says it is verified", async () => {
+    const harness = await authenticated({ MICA_ADMIT_EMAILS: ADMITTED.email.toUpperCase() });
+
+    const verified = await harness.signIn({ ...ADMITTED, groups: [] });
+    assert.equal((await harness.request("/api/auth/me", { session: verified })).status, 200);
+
+    const unverified = await harness.signIn({
+      ...ADMITTED,
+      subject: "unverified",
+      emailVerified: false,
+      groups: [],
+    });
+    assert.equal((await harness.request("/api/auth/me", { session: unverified })).status, 403);
+
+    await harness.close();
+  });
+
   /**
    * The property the membership table used to give, kept: admission is re-read
    * on every request rather than copied into the session at sign-in.
@@ -185,13 +240,6 @@ describe("admission", () => {
     await harness.close();
   });
 
-  it("refuses a session that carries no identity where one is required", async () => {
-    const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
-    const session = await harness.signIn(null);
-
-    assert.equal((await harness.request("/api/auth/me", { session })).status, 401);
-    await harness.close();
-  });
 });
 
 describe("CSRF protection", () => {
@@ -307,12 +355,12 @@ describe("system information", () => {
     const session = await harness.signIn();
     const response = await harness.request("/api/admin/system", { session });
     const body = (await response.json()) as {
-      database: { sessions: number } | null;
+      database: { version: number } | null;
       deployment: { auth: string; admission: string | null };
     };
 
     assert.ok(body.database);
-    assert.equal(body.database.sessions, 1);
+    assert.equal(body.database.version, 3);
     assert.match(body.deployment.auth, /oidc:/);
     assert.match(body.deployment.admission ?? "", /group=mica-editors/);
   });

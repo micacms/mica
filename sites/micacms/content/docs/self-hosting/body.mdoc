@@ -1,18 +1,46 @@
-Deploy Mica as one container: the published `@micacms/self-hosted` image. It needs a repository connection, an OpenID Connect provider, a rule that says who can edit, and a persistent volume for its small SQLite file.
-
-A save stages a draft in that database, where only editors see it. An editor's Publish writes everything pending to the repository as one commit.
+This page sets up the self-hosted editor for editors who are not developers. It is one Docker container: the image `ghcr.io/amuedespacher/micacms`. If you only edit on your own machine, you do not need this page. Use [Getting started](/docs/getting-started/).
 
 > Mica is pre-1.0. Test upgrades and keep the version fixed in production.
 
-## Repository access
+## What you need
 
-Use the GitHub connector for a fine-grained token with read and write access to repository contents. Use the GitLab connector for a project access token with the `write_repository` scope.
+- A server with Docker and Docker Compose, and a reverse proxy that gives you HTTPS. Example: `https://cms.example.com`.
+- A content repository on GitHub or GitLab. It must contain the content model at `content/.mica/schema.json`. Your Astro build writes that file, and you commit it.
+- An OpenID Connect provider. Mica keeps no passwords. If you have none, use Google: [Sign in with Google](/docs/sign-in-with-google/).
 
-Set `REPOSITORY_ROOT` to the content directory. Mica rejects paths outside this root even when the provider token can write to more of the repository.
+Self-hosted Mica publishes only through GitHub or GitLab. It never runs local Git. `REPOSITORY=local` stops the start-up with an error. To edit a checkout on your machine, use the local editor.
 
-## Identity
+## 1. Get the two files
 
-Mica delegates sign-in to an OpenID Connect provider. It stores no password, and no account.
+You do not clone the Mica repository. The image is published.
+
+```bash
+mkdir -p /srv/mica && cd /srv/mica
+curl -o compose.yml https://raw.githubusercontent.com/amuedespacher/micacms/main/deploy/self-hosted/compose.yml
+curl -o .env https://raw.githubusercontent.com/amuedespacher/micacms/main/deploy/self-hosted/.env.example
+```
+
+## 2. Connect the repository
+
+Mica commits through the provider API. Make a token for that one repository.
+
+For GitHub, make a fine-grained personal access token with **Contents: read and write**. For GitLab, make a project access token with the `write_repository` scope.
+
+```env
+REPOSITORY=github
+REPOSITORY_PROJECT=acme/website
+REPOSITORY_TOKEN=github_pat_...
+REPOSITORY_ROOT=content
+REPOSITORY_BRANCH=main
+```
+
+For GitLab, set `REPOSITORY=gitlab`. `REPOSITORY_PROJECT` is `group/project` or the numeric id.
+
+`REPOSITORY_ROOT` defaults to `content`. `REPOSITORY_BRANCH` defaults to `main`. Mica reads and writes only below the root, even if the token can write more. For GitHub Enterprise Server or a self-managed GitLab, set `REPOSITORY_API_BASE`.
+
+## 3. Connect the sign-in
+
+Mica asks an OpenID Connect provider who a person is.
 
 ```env
 MICA_OIDC_ISSUER=https://auth.example.com
@@ -20,53 +48,110 @@ MICA_OIDC_CLIENT_ID=mica
 MICA_OIDC_CLIENT_SECRET=
 ```
 
-Register one redirect URI with the provider: `https://cms.example.com/api/auth/callback`.
+- `MICA_OIDC_ISSUER` must equal the `issuer` that the provider publishes at `<issuer>/.well-known/openid-configuration`.
+- Omit `MICA_OIDC_CLIENT_SECRET` for a public client that uses PKCE.
+- Register one redirect URI with the provider: `<MICA_PUBLIC_URL>/api/auth/callback`.
+- Mica asks for the scopes `openid profile email`. PKCE, state, and nonce are verified.
 
-## Who can edit
+Step by step: [Sign in with Google](/docs/sign-in-with-google/) or [Other sign-in providers](/docs/other-providers/).
 
-Your provider tells Mica who a person is. It does not tell Mica if that person can edit this website. Set at least one rule; Mica refuses to start without one.
+## 4. Say who may edit
+
+Your provider knows many people. It does not know who may edit this website. Set at least one rule. Mica refuses to start without one.
 
 ```env
 MICA_ADMIT_GROUP=mica-editors
 MICA_ADMIT_DOMAIN=example.com
+MICA_ADMIT_EMAILS=alice@gmail.com,bob@example.com
 MICA_ADMIT_SUBJECTS=https://auth.example.com|a1b2c3
 ```
 
-The group rule is the usual choice. To add an editor, put the person in that group in your identity provider. Mica does not change, and it keeps no list that can become incorrect. If your provider sends the groups with a different claim name, give the name in `MICA_OIDC_GROUPS_CLAIM`.
+Each rule is a comma-separated list. One rule is enough.
 
-The domain rule applies only to an email address that the provider verified. The subject list uses `issuer|subject`, and never an email address: a provider can let a person change an address, and the next holder must not get the permission.
+- **Group:** the usual choice. Put a person in the group at your provider to add an editor. The claim name is `groups`. If your provider uses another name, set `MICA_OIDC_GROUPS_CLAIM`. A Keycloak path such as `/mica-editors` and the bare name both match.
+- **Domain:** every address in a domain, but only addresses that the provider verified. Mica refuses a public domain such as `gmail.com` at start-up.
+- **Emails:** these addresses, if the provider verified them. The comparison ignores case. Use this rule for Google accounts. One cost: if an organisation gives the address of a former editor to a new person, that person gets access. Gmail never reuses an address.
+- **Subjects:** `issuer|subject` pairs. This is the strictest rule. A subject is never reassigned.
 
-There is no user administration in Mica, and no invitation. Each person who the rules admit is an editor of this website.
+Everybody that a rule admits is an editor. There are no roles, no user table, and no invitations.
 
-## Removal of access
+## 5. Set the address and the secret
 
-A change to the rules is immediate, because Mica reads them on each request.
+```env
+MICA_PUBLIC_URL=https://cms.example.com
+TRUST_PROXY=true
+SESSION_SECRET=
+```
 
-A change in your provider is not immediate. Mica uses the data that the provider sent at sign-in, thus a person who leaves the group continues until the session ends. Keep the sessions short, and disable the account in the provider when a person leaves.
+- `MICA_PUBLIC_URL` must be exactly what the browser shows. `https://` turns on Secure cookies. Mica refuses plain-HTTP discovery in production.
+- Set `TRUST_PROXY=true` only behind a proxy that you control.
+- `SESSION_SECRET` must have at least 32 characters. Make one:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+The container listens on `127.0.0.1:6422`. Put TLS in front of it. With Caddy, this is enough:
+
+```text
+cms.example.com {
+    reverse_proxy 127.0.0.1:6422
+}
+```
+
+## 6. Start and check
+
+```bash
+docker compose up -d
+docker compose logs mica
+curl -s https://cms.example.com/health
+```
+
+You should see a start-up line that names the rule in force, and `/health` should answer with `"status": "ok"`. Open `https://cms.example.com/admin/` and sign in.
+
+If the container stops, read the log. Mica stops at start-up when `REPOSITORY` is not `github` or `gitlab`, when the project or the token is missing, when no admission rule is set, or when the repository has no content model at `.mica/schema.json`.
+
+## Drafts and the data volume
+
+A save is a draft. Drafts are in a SQLite file in the `/data` volume. Only editors see them. **Publish** writes all pending drafts as one commit. The push starts your site build, and the website build needs no CMS address and no token.
+
+The volume holds unpublished drafts only. Never the website. If you lose it, unpublished work is gone. Nobody is signed out, and everything published is in the repository.
+
+## Sessions and removal of access
+
+A session is an encrypted cookie. Mica keeps no list of sessions.
 
 ```env
 SESSION_TTL_HOURS=8
 SESSION_IDLE_HOURS=4
 ```
 
-## Start the service
-
-```bash
-curl -o compose.yml https://raw.githubusercontent.com/amuedespacher/micacms/main/deploy/self-hosted/compose.yml
-curl -o .env https://raw.githubusercontent.com/amuedespacher/micacms/main/deploy/self-hosted/.env.example
-$EDITOR .env
-docker compose up -d
-curl -s https://cms.example.com/health
-```
-
-The compose file pulls the published image from `ghcr.io/amuedespacher/micacms`. Nothing is built on the server, and there is no clone of the Mica repository: the content model comes out of your content repository at runtime.
-
-Terminate TLS in a reverse proxy and set `MICA_PUBLIC_URL` to the public HTTPS address. Enable `TRUST_PROXY` only behind a proxy that you control.
-
-## Build the website
-
-The website build needs no CMS URL and no read token. It reads the checked-out files. A normal push trigger is the complete connection between publish and deploy: a publish is a commit on the branch, and the branch already rebuilds on a push.
+- A session ends after 8 hours, or after 4 hours without use. While a session is in use, Mica issues the cookie again every 5 minutes.
+- Sign-out clears the cookie in the browser only.
+- Mica re-reads the rules on each request. The rules live in `.env`, so restart the container after a change. The change then counts at once.
+- A change at your provider, for example removal from a group, counts from the next sign-in.
+- To remove a person at once, take them out of the rules and restart. To end all sessions, change `SESSION_SECRET` and restart.
 
 ## Backups
 
-The content repository is the content backup, with history from every publish. The SQLite file contains sessions and the drafts that nobody has published yet. If you lose it, editors sign in again and unpublished work is gone; everything published is in the repository. One file to back up covers both.
+The repository is the content backup, with the history of every publish. For unpublished work, back up the `/data` volume. Use the SQLite `.backup` command and not a plain copy.
+
+## Upgrades
+
+The image tag in `compose.yml` is the version. Change it, then run:
+
+```bash
+docker compose pull && docker compose up -d
+```
+
+Read the changelog first, and pin a version.
+
+When you change the content model, run the Astro build, commit `.mica/schema.json`, push, and restart:
+
+```bash
+docker compose restart mica
+```
+
+## Next
+
+Sign in with a Google account: [Sign in with Google](/docs/sign-in-with-google/). Use another provider: [Other sign-in providers](/docs/other-providers/).

@@ -11,13 +11,14 @@
  *
  *   MICA_ADMIT_GROUP=mica-editors            a claim the provider sends
  *   MICA_ADMIT_DOMAIN=example.com            every verified address there
+ *   MICA_ADMIT_EMAILS=alice@gmail.com        these verified addresses
  *   MICA_ADMIT_SUBJECTS=https://id.example.com|a1b2c3
  *
  * The group rule is the one to grow into. Adding an editor is then a group
  * change in the identity provider — where the operator already manages
  * joiners and leavers — and Mica is not touched, not restarted, and holds no
- * copy of the list to go stale. The subject list exists for a provider with no
- * groups, and for the first sign-in before a group exists.
+ * copy of the list to go stale. The email list exists for a provider with no
+ * groups, such as Google; the subject list for one that verifies no addresses.
  *
  * What this costs, and it is a real cost: removing somebody from a group at
  * the provider does not take effect until their next sign-in, because the
@@ -28,7 +29,7 @@
  */
 
 import type { AuthConfig } from "./config.js";
-import type { SessionIdentity } from "./sessions-repository.js";
+import type { SessionIdentity } from "./session.js";
 
 export type AdmissionResult = { admitted: true } | { admitted: false; reason: string };
 
@@ -39,13 +40,9 @@ export interface AdmissionPolicy {
 }
 
 /**
- * The subject is the account key, and an email address is never one.
- *
- * Most providers let a person change their address, and some let two people
- * hold one in turn. Keying admission on an address is therefore a standing
- * offer to whoever holds it next, which is a well-trodden route to account
- * takeover. The issuer is part of the key because a subject is only unique
- * within the provider that issued it.
+ * The strictest rule: the subject never changes and is never reassigned. The
+ * issuer is part of the key because a subject is only unique within the
+ * provider that issued it.
  */
 function matchesSubject(
   identity: SessionIdentity,
@@ -54,6 +51,10 @@ function matchesSubject(
   return entries.some(
     (entry) => entry.issuer === identity.issuer && entry.subject === identity.subject,
   );
+}
+
+function matchesEmail(identity: SessionIdentity, emails: readonly string[]): boolean {
+  return emails.includes(identity.email.toLowerCase());
 }
 
 function matchesDomain(identity: SessionIdentity, domains: readonly string[]): boolean {
@@ -75,13 +76,14 @@ function matchesGroup(identity: SessionIdentity, groups: readonly string[]): boo
 }
 
 export function createAdmissionPolicy(
-  config: Pick<AuthConfig, "admitGroups" | "admitDomains" | "admitSubjects">,
+  config: Pick<AuthConfig, "admitGroups" | "admitDomains" | "admitEmails" | "admitSubjects">,
 ): AdmissionPolicy {
-  const { admitGroups, admitDomains, admitSubjects } = config;
+  const { admitGroups, admitDomains, admitEmails, admitSubjects } = config;
 
   const summary = [
     admitGroups.length > 0 ? `group=${admitGroups.join("|")}` : null,
     admitDomains.length > 0 ? `domain=${admitDomains.join("|")}` : null,
+    admitEmails.length > 0 ? `emails=${admitEmails.length}` : null,
     admitSubjects.length > 0 ? `subjects=${admitSubjects.length}` : null,
   ]
     .filter(Boolean)
@@ -97,23 +99,29 @@ export function createAdmissionPolicy(
 
       if (matchesGroup(identity, admitGroups)) return { admitted: true };
 
-      if (admitDomains.length > 0 && matchesDomain(identity, admitDomains)) {
+      const byEmail = matchesEmail(identity, admitEmails);
+      if (byEmail || matchesDomain(identity, admitDomains)) {
         /**
-         * A domain rule trusts the provider to have checked the address.
+         * An email or domain rule trusts the provider to have checked the address.
          *
          * Where a provider allows self-registration, an unverified address is
          * a claim the person typed. Admitting on that would let anybody enter
-         * a domain they do not hold, so the rule refuses and says why — the
+         * an address they do not hold, so the rule refuses and says why — the
          * operator can turn verification on, or use a group or subject rule
          * instead.
+         *
+         * What remains is reassignment: an organisation that gives a former
+         * editor's address to somebody new gives them this site too. Public
+         * providers such as Gmail never reuse an address; the trade is
+         * recorded in docs/decisions.md.
          */
         if (identity.emailVerified) return { admitted: true };
 
         return {
           admitted: false,
           reason:
-            `${identity.email} is in an admitted domain, but the identity provider ` +
-            "does not report the address as verified.",
+            `${identity.email} is ${byEmail ? "an admitted address" : "in an admitted domain"}, ` +
+            "but the identity provider does not report the address as verified.",
         };
       }
 

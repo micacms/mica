@@ -4,8 +4,7 @@
  *
  * The whole composition: the runtime behind the OIDC gate from
  * `@micacms/auth-oidc`, a repository connector built from the environment,
- * and one SQLite database holding sessions and — behind a provider
- * repository — the draft store. It composes `@micacms/runtime`; it does not
+ * and one SQLite database holding the draft store. Sessions are cookies and need no storage. It composes `@micacms/runtime`; it does not
  * fork it.
  */
 
@@ -85,29 +84,14 @@ async function main(): Promise<void> {
   if (config.devSecrets.length > 0) {
     logger.warn("Using generated development secrets", {
       missing: config.devSecrets,
-      note: "Sessions reset on restart. Set these before deploying.",
+      note: "Sessions end on restart. Set these before deploying.",
     });
   }
 
-  const auth = createOidcAuth({ config, db, logger });
+  const auth = createOidcAuth({ config, logger });
 
-  /**
-   * Which draft workspace this deployment stages in follows the connector: a
-   * provider repository stages in the database, a checkout beside the server
-   * stages in the checkout — see decisions.md, "Local publishing spawns the
-   * `git` binary".
-   */
-  const drafts = config.REPOSITORY === "local" ? undefined : createDraftRepository(db);
-
-  // Expired rows would otherwise accumulate until someone happened to log in.
-  const sessionSweep = setInterval(
-    () => {
-      const removed = auth.sessions.purgeExpired();
-      if (removed > 0) logger.debug("Purged expired sessions", { removed });
-    },
-    60 * 60 * 1000,
-  );
-  sessionSweep.unref?.();
+  // Saves stage in the database until Publish commits them through the provider.
+  const drafts = createDraftRepository(db);
 
   const ctx = createRuntimeContext({
     config,
@@ -122,7 +106,6 @@ async function main(): Promise<void> {
       admission: auth.admission.summary,
       database: {
         path: config.databasePath,
-        sessions: auth.sessionsRepo.count(),
         version: databaseVersion(db),
         bytes: databaseBytes(config.databasePath),
       },
@@ -137,7 +120,6 @@ async function main(): Promise<void> {
     },
 
     onShutdown: () => {
-      clearInterval(sessionSweep);
       auth.loginLimiter.stop();
       db.close();
     },
