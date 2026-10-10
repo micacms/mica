@@ -15,8 +15,8 @@ depends on a cloud service.
 └────┬─────┘                        │ push
      │                              ▼
   cms.sqlite                   ┌─────────┐
-  sessions +                   │   CI    │  astro build
-  pending draft                └────┬────┘
+  pending draft                │   CI    │  astro build
+  only                         └────┬────┘
                                     ▼
                               static files → any static host
 ```
@@ -258,10 +258,14 @@ SESSION_IDLE_HOURS=4                   # and the idle window
 ```
 
 Disabling the account at the provider is the fast path for a departure, and it
-is the provider's to do. Where access must be cut within seconds, restart the
-container after removing the person — every session is in one table, and
-restarting does not clear it, so use `MICA_ADMIT_SUBJECTS` to state exactly who
-remains.
+is the provider's to do. Where access must be cut within seconds, remove the
+person from the `MICA_ADMIT_*` rules and restart the container. The rules are
+re-read on every request, so the person is refused at once.
+
+A session is an encrypted cookie, and Mica keeps no list of them. Sign-out
+clears the cookie in the browser only, and a copied cookie stays valid until it
+expires. To end every session at once, change `SESSION_SECRET` and restart.
+Everybody then signs in again.
 
 ## Build the website
 
@@ -370,13 +374,14 @@ Restoring is a clone. There is nothing to import and no schema to match, and no
 version of Mica has to be running for the files to be readable.
 
 **`cms.sqlite` now holds unpublished work, and that changes what losing it
-costs.** It carries browser sessions *and the pending draft* — everything that
+costs.** It carries the pending draft — everything that
 is Saved and not yet Published, media uploads included. Git is not protecting
 that yet; only publication moves it into the repository. Losing the volume
-therefore signs editors out *and* loses whatever was saved but never
-published. Back up the data volume on a schedule, and take the copy with
-SQLite's own `.backup` (a plain `cp` is unsafe: WAL mode keeps recent writes
-in `cms.sqlite-wal`). Encourage editors to publish rather than to hoard a
+therefore loses whatever was saved but never published. It signs nobody out:
+sessions are cookies. With `REPOSITORY=local` the file holds nothing in use.
+Back up the data volume on a schedule, and take the copy with SQLite's own
+`.backup` (a plain `cp` is unsafe: WAL mode keeps recent writes in
+`cms.sqlite-wal`). Encourage editors to publish rather than to hoard a
 large pending set — the draft workspace is a staging area, not an archive.
 
 ## Self-managed Git providers

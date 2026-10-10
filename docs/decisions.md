@@ -131,7 +131,7 @@ Until then they can still publish.
 
 **What contains it:** session lifetimes measured in hours, not weeks — the
 defaults are 8 hours absolute and 4 idle; the rules re-checked on every request
-against the claims stored on the session row; and `MICA_ADMIT_SUBJECTS` as the
+against the claims sealed in the session cookie; and `MICA_ADMIT_SUBJECTS` as the
 instant answer for a departure that cannot wait.
 
 **What would change it:** re-checking admission against the provider on every
@@ -173,6 +173,32 @@ group or domain rule to use instead.
 **What would change it:** a provider that lets a person set an address they do
 not own and still reports it verified. `MICA_ADMIT_SUBJECTS` stays the rule
 for that case.
+
+---
+
+### P2 — Sessions are encrypted cookies, not rows
+
+**Decided:** a self-hosted session is the `mica_session` cookie itself:
+AES-256-GCM over the identity, the CSRF token and the expiry, with a key
+derived from `SESSION_SECRET`. There is no session table. Only the groups a
+rule names are kept, because a cookie holds 4 KB and a provider can send
+hundreds.
+
+**Why:** the database should hold unpublished drafts and nothing about
+people. A session table was the last place Mica stored who somebody is.
+
+**Consequence:** one session cannot be revoked on the server. Sign-out clears
+the cookie in the browser; a copy taken before that stays valid until it
+expires — at most `SESSION_TTL_HOURS`, or `SESSION_IDLE_HOURS` unused. A group
+added to the rules counts from the next sign-in.
+
+**What contains it:** the admission rules are still re-read on every request,
+so removing somebody from them takes effect at the next request after a
+restart. Rotating `SESSION_SECRET` ends every session at once.
+
+**What would change it:** a need to end one person's session within seconds
+without signing everybody out. That needs a deny list, which is server state
+again.
 
 ---
 
@@ -377,6 +403,9 @@ self-hosted backup guidance says so. One deviation from the `v3-arch.md`
 beside it, because a second location would make staging a two-phase write and
 the backup a two-file promise — uploads are capped and content trees are
 small, so the rows stay within what SQLite is comfortable holding.
+
+**Sessions left in 0.3.0.** Migration 3 drops `sessions`; the database holds
+the draft store and nothing about people. See "Sessions are encrypted cookies".
 
 ---
 

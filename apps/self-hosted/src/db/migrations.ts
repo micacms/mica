@@ -13,8 +13,8 @@
  * applies again from here.
  *
  * Note how little is left. Content, media and their history live in the content
- * repository; this database holds sessions, and later the drafts that have not
- * been published yet. A customer's content model can change without a migration
+ * repository, sessions live in cookies, and this database holds the drafts that
+ * have not been published yet. A customer's content model can change without a migration
  * because no table ever described it.
  */
 
@@ -116,6 +116,15 @@ export const migrations: Migration[] = [
       );
     `,
   },
+  {
+    version: 3,
+    name: "drop_sessions",
+    up: `
+      -- Sessions moved into an encrypted cookie, so nothing about people is
+      -- stored here any more. Everybody signed in signs in once more.
+      DROP TABLE sessions;
+    `,
+  },
 ];
 
 const MIGRATIONS_TABLE = `
@@ -159,8 +168,8 @@ export function migrate(db: SqlDatabase, filename?: string): MigrationResult {
       throw new Error(
         `Database is at migration ${version}, which this build does not know about.\n` +
           "  Either this is an older build than the database, or the file predates Mica 0.2.0.\n" +
-          "  This database holds sessions and nothing else — no content, no accounts — so\n" +
-          `  deleting ${filename ?? "it"} signs everyone out and costs nothing more.`,
+          "  This database holds unpublished drafts and nothing else — no content, no\n" +
+          `  accounts — so deleting ${filename ?? "it"} loses only work that was saved and not published.`,
       );
     }
   }

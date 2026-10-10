@@ -1,59 +1,77 @@
 /**
  * Session management.
  *
- * Server-side sessions in SQLite, addressed by an opaque random token held in a
- * Secure/HttpOnly/SameSite cookie. No JWTs: revocation has to be immediate, and
- * a row delete is the simplest way to get it.
+ * The session is the cookie: who the provider said this is, a CSRF token and
+ * an expiry, encrypted with a key derived from SESSION_SECRET. There is no
+ * session table, so Mica stores nothing about people at all.
  *
- * Three layers of defence on the cookie value:
- *   1. the token is 256 bits from `crypto.randomBytes`;
- *   2. it is HMAC-signed with SESSION_SECRET, so forged or truncated cookies
- *      are rejected without touching the database;
- *   3. only its SHA-256 is stored, so a database dump yields no usable session.
+ *   - AES-256-GCM, so the cookie can be neither read nor altered. Encrypted and
+ *     not only signed, because it carries an email address and groups.
+ *   - A fresh random IV per cookie, and a new cookie at every sign-in, so a
+ *     client-supplied value is never adopted (session fixation).
+ *   - The idle window slides: an active session is re-issued every few
+ *     minutes with a later expiry, capped by the absolute lifetime.
  *
- * Session fixation is handled by never adopting a client-supplied identifier —
- * a token is minted at login and the previous one deleted.
+ * What this gives up is server-side revocation of one cookie. Sign-out clears
+ * it in the browser; a copy taken before then stays valid until it expires.
+ * Rotating SESSION_SECRET ends every session at once. The admission rules are
+ * still re-read on every request — see gate.ts and docs/decisions.md.
  */
 
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { createCipheriv, createDecipheriv, hkdfSync, randomBytes, timingSafeEqual } from "node:crypto";
 
 import type { Context } from "hono";
-import { getCookie, setCookie } from "hono/cookie";
+import { setCookie } from "hono/cookie";
 
-import { clientIp, randomToken, type Env } from "@micacms/runtime";
+import { randomToken, type Env } from "@micacms/runtime";
 
 import type { AuthConfig } from "./config.js";
-import type {
-  SessionIdentity,
-  SessionRecord,
-  SessionRepository,
-} from "./sessions-repository.js";
 
 export const SESSION_COOKIE = "mica_session";
 export const CSRF_COOKIE = "mica_csrf";
 export const CSRF_HEADER = "x-csrf-token";
 
-/** Writing `last_seen_at` on every request would be a write per page view. */
-const TOUCH_INTERVAL_MS = 5 * 60 * 1000;
+/** How often an active session is re-issued with a later idle expiry. */
+const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
+
+/** Browsers drop cookies over 4096 bytes; refuse rather than sign in to nothing. */
+const MAX_COOKIE_BYTES = 4000;
+
+const IV_BYTES = 12;
+const TAG_BYTES = 16;
+
+/** What the identity provider stated about the person holding this session. */
+export interface SessionIdentity {
+  issuer: string;
+  /** Opaque and stable at that issuer. */
+  subject: string;
+  email: string;
+  /** The provider's own `email_verified`. Absent counts as false. */
+  emailVerified: boolean;
+  name: string;
+  /** The groups claim, reduced at sign-in to the groups the rules name. */
+  groups: string[];
+}
+
+export interface SessionRecord {
+  identity: SessionIdentity;
+  csrfToken: string;
+  createdAt: string;
+  /** When the session was last issued; drives the sliding idle window. */
+  refreshedAt: string;
+  expiresAt: string;
+}
 
 export interface SessionService {
-  /**
-   * `identity` is null in local mode, where there is no provider and no user:
-   * the row exists to carry a CSRF token and an expiry, and nothing else.
-   */
-  create(input: {
-    identity: SessionIdentity | null;
-    ip?: string | null;
-    userAgent?: string | null;
-  }): { record: SessionRecord; cookie: string; csrfToken: string };
+  /** Seals a new session. Throws when the identity cannot fit in a cookie. */
+  create(identity: SessionIdentity): { record: SessionRecord; cookie: string };
+  /** The live session in a cookie, or null for a missing, forged or expired one. */
   resolve(cookieValue: string | undefined): SessionRecord | null;
-  destroy(cookieValue: string | undefined): void;
-  /** Signs one person out on every device. */
-  destroyAllForIdentity(issuer: string, subject: string): void;
+  /** A later-expiring copy of an active session, or null while it is fresh. */
+  refresh(record: SessionRecord): { record: SessionRecord; cookie: string } | null;
   sessionCookieOptions(): CookieOptions;
   csrfCookieOptions(): CookieOptions;
   clearedCookieOptions(): CookieOptions;
-  purgeExpired(): number;
 }
 
 export interface CookieOptions {
@@ -62,12 +80,6 @@ export interface CookieOptions {
   secure: boolean;
   sameSite: "Lax" | "Strict" | "None";
   maxAge: number;
-}
-
-const sha256 = (value: string): string => createHash("sha256").update(value).digest("hex");
-
-function sign(token: string, secret: string): string {
-  return createHmac("sha256", secret).update(token).digest("base64url");
 }
 
 /** Constant-time string comparison that tolerates differing lengths. */
@@ -82,76 +94,129 @@ export function safeEqual(a: string, b: string): boolean {
   return timingSafeEqual(left, right);
 }
 
-export function createSessionService(
-  sessions: SessionRepository,
-  config: AuthConfig,
-): SessionService {
+/**
+ * Keycloak sends `/mica-editors` where the rule says `mica-editors`; both
+ * spellings are the same group — see admission.ts.
+ */
+const groupName = (group: string): string => group.replace(/^\//, "");
+
+/** Defensive read of a decrypted payload: it was written by us, but checked anyway. */
+function parseRecord(json: string): SessionRecord | null {
+  try {
+    const value = JSON.parse(json) as Partial<SessionRecord>;
+    const identity = value.identity;
+    if (
+      !identity ||
+      typeof identity.issuer !== "string" ||
+      typeof identity.subject !== "string" ||
+      typeof value.csrfToken !== "string" ||
+      typeof value.createdAt !== "string" ||
+      typeof value.refreshedAt !== "string" ||
+      typeof value.expiresAt !== "string"
+    ) {
+      return null;
+    }
+    return {
+      identity: {
+        issuer: identity.issuer,
+        subject: identity.subject,
+        email: typeof identity.email === "string" ? identity.email : "",
+        emailVerified: identity.emailVerified === true,
+        name: typeof identity.name === "string" ? identity.name : "",
+        groups: Array.isArray(identity.groups)
+          ? identity.groups.filter((group): group is string => typeof group === "string")
+          : [],
+      },
+      csrfToken: value.csrfToken,
+      createdAt: value.createdAt,
+      refreshedAt: value.refreshedAt,
+      expiresAt: value.expiresAt,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function createSessionService(config: AuthConfig): SessionService {
   const ttlMs = config.SESSION_TTL_HOURS * 3600_000;
   const idleMs = config.SESSION_IDLE_HOURS * 3600_000;
+
+  const key = Buffer.from(
+    hkdfSync("sha256", config.sessionSecret, "", "mica session cookie v1", 32),
+  );
+
+  // Only the groups a rule names are kept: an Entra token can carry hundreds,
+  // and a cookie holds 4 KB. A group added to the rules later counts from the
+  // next sign-in.
+  const admitted = new Set(config.admitGroups.map(groupName));
 
   /** Expiry is the earlier of the idle window and the absolute lifetime. */
   const nextExpiry = (createdAt: number, now: number): string =>
     new Date(Math.min(now + idleMs, createdAt + ttlMs)).toISOString();
 
-  const unwrap = (cookieValue: string | undefined): string | null => {
-    if (!cookieValue) return null;
-    const separator = cookieValue.lastIndexOf(".");
-    if (separator <= 0) return null;
+  const seal = (record: SessionRecord): string => {
+    const iv = randomBytes(IV_BYTES);
+    const cipher = createCipheriv("aes-256-gcm", key, iv);
+    const body = Buffer.concat([cipher.update(JSON.stringify(record), "utf8"), cipher.final()]);
+    const cookie = Buffer.concat([iv, body, cipher.getAuthTag()]).toString("base64url");
 
-    const token = cookieValue.slice(0, separator);
-    const signature = cookieValue.slice(separator + 1);
-    if (!safeEqual(signature, sign(token, config.sessionSecret))) return null;
+    if (cookie.length > MAX_COOKIE_BYTES) {
+      throw new Error("The session does not fit in a cookie; the identity is too large.");
+    }
+    return cookie;
+  };
 
-    return token;
+  const open = (cookieValue: string): SessionRecord | null => {
+    const raw = Buffer.from(cookieValue, "base64url");
+    if (raw.length <= IV_BYTES + TAG_BYTES) return null;
+
+    try {
+      const decipher = createDecipheriv("aes-256-gcm", key, raw.subarray(0, IV_BYTES));
+      decipher.setAuthTag(raw.subarray(raw.length - TAG_BYTES));
+      const json = Buffer.concat([
+        decipher.update(raw.subarray(IV_BYTES, raw.length - TAG_BYTES)),
+        decipher.final(),
+      ]).toString("utf8");
+      return parseRecord(json);
+    } catch {
+      // Forged, truncated, or sealed with a secret that has since rotated.
+      return null;
+    }
   };
 
   return {
-    create({ identity, ip, userAgent }) {
-      const token = randomToken(32);
-      const csrfToken = randomToken(32);
+    create(identity) {
       const now = Date.now();
-
-      const record = sessions.create({
-        id: sha256(token),
-        identity,
-        csrfToken,
+      const record: SessionRecord = {
+        identity: {
+          ...identity,
+          groups: identity.groups.filter((group) => admitted.has(groupName(group))),
+        },
+        csrfToken: randomToken(32),
+        createdAt: new Date(now).toISOString(),
+        refreshedAt: new Date(now).toISOString(),
         expiresAt: nextExpiry(now, now),
-        ip: ip ?? null,
-        userAgent: userAgent ?? null,
-      });
-
-      return { record, cookie: `${token}.${sign(token, config.sessionSecret)}`, csrfToken };
+      };
+      return { record, cookie: seal(record) };
     },
 
     resolve(cookieValue) {
-      const token = unwrap(cookieValue);
-      if (!token) return null;
-
-      const record = sessions.find(sha256(token));
-      if (!record) return null;
-
-      const now = Date.now();
-      if (Date.parse(record.expiresAt) <= now) {
-        sessions.delete(record.id);
-        return null;
-      }
-
-      if (now - Date.parse(record.lastSeenAt) > TOUCH_INTERVAL_MS) {
-        const expiresAt = nextExpiry(Date.parse(record.createdAt), now);
-        sessions.touch(record.id, new Date(now).toISOString(), expiresAt);
-        return { ...record, lastSeenAt: new Date(now).toISOString(), expiresAt };
-      }
-
+      if (!cookieValue) return null;
+      const record = open(cookieValue);
+      if (!record || Date.parse(record.expiresAt) <= Date.now()) return null;
       return record;
     },
 
-    destroy(cookieValue) {
-      const token = unwrap(cookieValue);
-      if (token) sessions.delete(sha256(token));
-    },
+    refresh(record) {
+      const now = Date.now();
+      if (now - Date.parse(record.refreshedAt) < REFRESH_INTERVAL_MS) return null;
 
-    destroyAllForIdentity(issuer, subject) {
-      sessions.deleteForIdentity(issuer, subject);
+      const next: SessionRecord = {
+        ...record,
+        refreshedAt: new Date(now).toISOString(),
+        expiresAt: nextExpiry(Date.parse(record.createdAt), now),
+      };
+      return { record: next, cookie: seal(next) };
     },
 
     sessionCookieOptions() {
@@ -187,10 +252,6 @@ export function createSessionService(
         maxAge: 0,
       };
     },
-
-    purgeExpired() {
-      return sessions.deleteExpired();
-    },
   };
 }
 
@@ -204,15 +265,8 @@ export function establishSession(
   sessions: SessionService,
   identity: SessionIdentity,
 ): void {
-  // Session fixation: discard whatever identifier the client already holds.
-  sessions.destroy(getCookie(c, SESSION_COOKIE));
-
-  const { cookie, csrfToken } = sessions.create({
-    identity,
-    ip: clientIp(c),
-    userAgent: c.req.header("user-agent") ?? null,
-  });
+  const { record, cookie } = sessions.create(identity);
 
   setCookie(c, SESSION_COOKIE, cookie, sessions.sessionCookieOptions());
-  setCookie(c, CSRF_COOKIE, csrfToken, sessions.csrfCookieOptions());
+  setCookie(c, CSRF_COOKIE, record.csrfToken, sessions.csrfCookieOptions());
 }

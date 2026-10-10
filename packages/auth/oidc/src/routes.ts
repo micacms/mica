@@ -23,9 +23,9 @@ import {
   CSRF_COOKIE,
   establishSession,
   SESSION_COOKIE,
+  type SessionIdentity,
   type SessionService,
 } from "./session.js";
-import type { SessionIdentity, SessionRepository } from "./sessions-repository.js";
 import {
   openTransaction,
   sealTransaction,
@@ -52,7 +52,6 @@ const identityOf = (claims: OidcClaims): SessionIdentity => ({
 export interface AuthRoutesDeps {
   config: AuthConfig;
   sessions: SessionService;
-  sessionsRepo: SessionRepository;
   oidc: OidcService;
   admission: AdmissionPolicy;
   loginLimiter: RateLimiter;
@@ -158,15 +157,19 @@ export function authRoutes(deps: AuthRoutesDeps): Hono<Env> {
       );
     }
 
-    establishSession(c, sessions, identity);
+    try {
+      establishSession(c, sessions, identity);
+    } catch (error) {
+      logger.error("Could not start a session", { subject: identity.subject, error });
+      return refuse("Sign-in could not be completed: your account details are too large.");
+    }
     logger.info("Signed in", { subject: identity.subject, issuer: identity.issuer });
 
     return c.redirect(transaction.returnTo);
   });
 
+  // There is no server-side session to end; clearing the cookies is sign-out.
   app.post("/logout", async (c) => {
-    sessions.destroy(getCookie(c, SESSION_COOKIE));
-
     deleteCookie(c, SESSION_COOKIE, sessions.clearedCookieOptions());
     deleteCookie(c, CSRF_COOKIE, sessions.clearedCookieOptions());
 

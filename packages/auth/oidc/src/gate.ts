@@ -3,19 +3,26 @@
  *
  * Two layers, in order. `requireAccess` turns a session cookie into an
  * `AccessContext` — or a 401 — re-checking admission on every request so a
- * configuration change is immediate. `csrfProtection` is the double-submit
+ * configuration change is immediate, and re-issuing the cookie while the
+ * session is in use. `csrfProtection` is the double-submit
  * token over the Origin check the runtime already applies: cross-origin
  * JavaScript can neither read the cookie nor set the header.
  */
 
-import { getCookie } from "hono/cookie";
+import { getCookie, setCookie } from "hono/cookie";
 import type { Context, MiddlewareHandler } from "hono";
 
 import { ApiError, type Env } from "@micacms/runtime";
 
 import type { AdmissionPolicy } from "./admission.js";
-import { CSRF_COOKIE, CSRF_HEADER, safeEqual, SESSION_COOKIE, type SessionService } from "./session.js";
-import type { SessionRecord, SessionRepository } from "./sessions-repository.js";
+import {
+  CSRF_COOKIE,
+  CSRF_HEADER,
+  safeEqual,
+  SESSION_COOKIE,
+  type SessionRecord,
+  type SessionService,
+} from "./session.js";
 
 /**
  * The session behind the current request. Auth's own context variable —
@@ -30,7 +37,6 @@ export function sessionOf(c: Context<Env>): SessionRecord {
 
 export interface GateDeps {
   sessions: SessionService;
-  sessionsRepo: SessionRepository;
   admission: AdmissionPolicy;
 }
 
@@ -46,20 +52,13 @@ export interface GateDeps {
  */
 export function requireAccess(deps: GateDeps): MiddlewareHandler<Env> {
   return async (c, next) => {
-    const session = deps.sessions.resolve(getCookie(c, SESSION_COOKIE));
+    let session = deps.sessions.resolve(getCookie(c, SESSION_COOKIE));
 
     if (!session) {
       throw new ApiError("unauthenticated", "Your session has expired. Please sign in again.");
     }
 
     const { identity } = session;
-    if (!identity) {
-      // A row from a pre-split local-mode run of the same database. It
-      // authenticates nobody, so it is not a session for an authenticated
-      // deployment.
-      deps.sessionsRepo.delete(session.id);
-      throw new ApiError("unauthenticated", "Please sign in again.");
-    }
 
     const verdict = deps.admission.admits(identity);
     if (!verdict.admitted) {
@@ -70,11 +69,19 @@ export function requireAccess(deps: GateDeps): MiddlewareHandler<Env> {
       throw new ApiError("forbidden", "You no longer have access to this site.");
     }
 
+    const refreshed = deps.sessions.refresh(session);
+    if (refreshed) session = refreshed.record;
+
     c.set(SESSION_VARIABLE as never, session as never);
     c.set("access", {
       identity: { subject: identity.subject, email: identity.email, name: identity.name },
     });
     await next();
+
+    // After the handler, so the cookie lands on whatever response it built.
+    if (refreshed) {
+      setCookie(c, SESSION_COOKIE, refreshed.cookie, deps.sessions.sessionCookieOptions());
+    }
   };
 }
 

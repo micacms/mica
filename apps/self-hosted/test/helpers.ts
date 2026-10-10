@@ -37,6 +37,7 @@ import {
 import { loadConfig, type SelfHostedConfig } from "../src/config.js";
 import { createDraftRepository } from "../src/db/drafts.js";
 import { openTestDatabase } from "../src/db/index.js";
+import { databaseVersion } from "../src/db/migrations.js";
 import type { SqlDatabase } from "@micacms/runtime";
 
 export const TEST_ORIGIN = "http://localhost:6422";
@@ -124,7 +125,7 @@ export interface TestHarness {
    * the admission tests do not need a fake provider to be meaningful: they
    * state the claims a provider would have returned and go from there.
    */
-  signIn(identity?: SessionIdentity | null): Promise<Session>;
+  signIn(identity?: SessionIdentity): Promise<Session>;
   close(): Promise<void>;
 }
 
@@ -150,7 +151,7 @@ export async function createHarness(
   const logger = createLogger({ level: "silent", pretty: false });
   const db = openTestDatabase();
   const connector = localConnector({ root: contentRoot });
-  const auth = createOidcAuth({ config, db, logger });
+  const auth = createOidcAuth({ config, logger });
 
   // Like src/index.ts: which draft workspace follows the connector. Tests
   // that want the SQLite draft store set REPOSITORY=github and get the local
@@ -168,8 +169,7 @@ export async function createHarness(
       admission: auth.admission.summary,
       database: {
         path: config.databasePath,
-        sessions: auth.sessionsRepo.count(),
-        version: 2,
+        version: databaseVersion(db),
         bytes: null,
       },
       dataDir: config.dataDir,
@@ -213,16 +213,12 @@ export async function createHarness(
       return app.request(`${TEST_ORIGIN}${path}`, { ...rest, headers });
     },
 
-    async signIn(identity: SessionIdentity | null = ADMITTED) {
-      const { cookie, csrfToken } = auth.sessions.create({
-        identity,
-        ip: "127.0.0.1",
-        userAgent: "test",
-      });
+    async signIn(identity: SessionIdentity = ADMITTED) {
+      const { record, cookie } = auth.sessions.create(identity);
 
       return {
-        cookie: `mica_session=${cookie}; mica_csrf=${csrfToken}`,
-        csrfToken,
+        cookie: `mica_session=${cookie}; mica_csrf=${record.csrfToken}`,
+        csrfToken: record.csrfToken,
       };
     },
 

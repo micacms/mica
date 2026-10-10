@@ -13,7 +13,8 @@ import { join } from "node:path";
 import { after, describe, it } from "node:test";
 
 import { openDatabase } from "../src/db/index.js";
-import type { Logger } from "@micacms/runtime";
+import { migrations } from "../src/db/migrations.js";
+import { openSqlite, type Logger } from "@micacms/runtime";
 
 /** Records what was said and at which level, rather than writing it anywhere. */
 function recordingLogger() {
@@ -79,5 +80,36 @@ describe("opening the database", () => {
       [],
       "a second start has no migrations to report",
     );
+  });
+});
+
+describe("upgrading a 0.2 database", () => {
+  it("drops the sessions and keeps the drafts", () => {
+    const filename = databasePath();
+
+    // A database exactly as 0.2.x left it: migrations 1 and 2, one session, one draft.
+    const old = openSqlite(filename, {});
+    old.exec("CREATE TABLE _migrations (version INTEGER PRIMARY KEY, name TEXT NOT NULL, applied_at TEXT NOT NULL)");
+    for (const migration of migrations.filter((m) => m.version <= 2)) {
+      old.exec(migration.up);
+      old.run("INSERT INTO _migrations VALUES (?, ?, ?)", [migration.version, migration.name, "2026-01-01"]);
+    }
+    old.run(
+      "INSERT INTO sessions (id, csrf_token, created_at, last_seen_at, expires_at) VALUES ('s', 't', 'x', 'x', 'x')",
+    );
+    old.run(
+      "INSERT INTO drafts (path, kind, contents, version, updated_at) VALUES ('a.json', 'write', '{}', 1, 'x')",
+    );
+    old.close();
+
+    const db = openDatabase(filename);
+    const tables = db
+      .all<{ name: string }>("SELECT name FROM sqlite_master WHERE type = 'table'")
+      .map((row) => row.name);
+
+    assert.ok(!tables.includes("sessions"));
+    assert.equal(db.get<{ count: number }>("SELECT COUNT(*) AS count FROM drafts")?.count, 1);
+    assert.equal(db.get<{ v: number }>("SELECT MAX(version) AS v FROM _migrations")?.v, 3);
+    db.close();
   });
 });

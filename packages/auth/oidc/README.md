@@ -3,7 +3,7 @@
 > **Experimental.** Pre-1.0: the API can still change without notice.
 
 The server-only OIDC gate for Mica: the authorization code flow with PKCE,
-sessions in SQLite, admission rules over provider claims, and the middleware
+sessions in an encrypted cookie, admission rules over provider claims, and the middleware
 gate the runtime mounts in front of the admin API.
 
 It is a dependency of `@micacms/self-hosted` and of nothing else. In

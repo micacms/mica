@@ -32,8 +32,8 @@ They meet in the repository.
 **Content lives in your Git repository, not in Mica's database.** Everything
 that follows from a commit follows for free: history, review, rollback,
 branching, and a website that can be rebuilt from the repository alone. Mica's
-own SQLite file holds browser sessions, and — on a deployment that publishes
-through a provider API — the pending draft between Save and Publish. Nothing
+own SQLite file holds only the pending draft between Save and Publish, on a
+deployment that publishes through a provider API. Nothing
 published is ever only in there.
 
 ---

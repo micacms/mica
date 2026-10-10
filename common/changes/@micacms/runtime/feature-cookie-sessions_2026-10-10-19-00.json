@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "Remove `sessions` from `OperationalInfo.database`: the self-hosted database no longer holds sessions.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/runtime"
+}

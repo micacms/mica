@@ -29,7 +29,7 @@
  */
 
 import type { AuthConfig } from "./config.js";
-import type { SessionIdentity } from "./sessions-repository.js";
+import type { SessionIdentity } from "./session.js";
 
 export type AdmissionResult = { admitted: true } | { admitted: false; reason: string };
 

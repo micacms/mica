@@ -67,7 +67,6 @@ export interface OperationalInfo {
   /** Null where there is no database, which is the local editor's answer. */
   database: {
     path: string;
-    sessions: number;
     version: number;
     bytes: number | null;
   } | null;

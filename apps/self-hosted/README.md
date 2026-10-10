@@ -6,8 +6,8 @@
 The self-hosted Mica composition — what the Docker image runs. It composes
 `@micacms/runtime` and `@micacms/editor-ui` behind the OIDC gate from
 `@micacms/auth-oidc`, reaches the content repository through
-`@micacms/connectors`, and keeps one SQLite database: sessions, and — behind a
-GitHub or GitLab repository — the draft store holding work that is saved and
+`@micacms/connectors`, and keeps one SQLite database: behind a
+GitHub or GitLab repository, the draft store holding work that is saved and
 not yet published.
 
 Deploying it is documented in

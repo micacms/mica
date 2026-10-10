@@ -18,8 +18,8 @@
 # changing the model is a commit plus a restart rather than a rebuild.
 #
 # There is no backup service any more. The content is in a Git repository, which
-# is already replicated, versioned and off-site; the volume below holds browser
-# sessions, and losing it signs everyone out and costs nothing else. There are
+# is already replicated, versioned and off-site; the volume below holds only
+# unpublished drafts, and losing it costs nothing else. There are
 # no accounts in it, and no passwords — Mica has neither.
 
 services:
@@ -58,14 +58,14 @@ services:
       - "127.0.0.1:6422:6422"
 
     volumes:
-      # Browser sessions. Not the website — that is in the repository, and so
+      # Unpublished drafts. Not the website — that is in the repository, and so
       # is the content model.
       - mica-data:/data
       # For REPOSITORY=local only — a checkout of the content repository:
       # - ./content:/content
 
     healthcheck:
-      # Checks both halves: the database that holds sessions, and the content
+      # Checks both halves: the database that holds drafts, and the content
       # repository. A container that is listening but cannot reach its
       # repository cannot save anything, and should not be sent traffic.
       test:

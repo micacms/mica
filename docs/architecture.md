@@ -11,8 +11,9 @@ itself.
 > Losing Mica's database must never mean losing website content.
 
 Everything below follows from that sentence. Content lives in a Git repository;
-Mica's own SQLite file holds browser sessions. Delete it and three editors sign
-in again. Delete the repository and you have lost the
+Mica's own SQLite file holds only the pending draft, and only behind a provider
+repository. A browser session is an encrypted cookie, not a row. Delete the
+repository and you have lost the
 website — which is why the repository is the thing under version control,
 replication and review, and the database is not.
 
@@ -53,7 +54,7 @@ work.
 | `@micacms/astro`          | Content Layer loader, dev integration, Markdoc rendering                              |
 | `@micacms/runtime`        | The single-site Hono API and application services, authentication-neutral             |
 | `@micacms/editor-ui`      | The Vue admin SPA, shipped as built assets                                            |
-| `@micacms/auth-oidc`      | The server-only OIDC gate: sign-in, sessions, admission                               |
+| `@micacms/auth-oidc`      | The server-only OIDC gate: sign-in, cookie sessions, admission                               |
 | `@micacms/editor`         | `apps/local-editor` — the `npx` composition: loopback, no auth, no database           |
 | `@micacms/self-hosted`    | `apps/self-hosted` — the Docker composition: runtime + UI behind OIDC                 |
 | `examples/muster-consulting` | A complete Astro site: a starter to copy, not a dependency                            |
@@ -246,17 +247,19 @@ edit everything.
 
 Four details that matter:
 
-- Sessions are keyed by `(issuer, subject)`. An address may be admitted
+- Identities are keyed by `(issuer, subject)`. An address may be admitted
   (`MICA_ADMIT_EMAILS`), because Google sends no groups — the cost is that an
   organisation that reuses an address passes the access on with it.
 - The email and domain rules require the provider's `email_verified`. Without
   it, an open self-registration would let anybody claim an admitted address. A
   domain rule for a public provider such as `gmail.com` is refused at startup.
-- The rules are re-read on every request, never copied into the session. A
+- The rules are re-read on every request, never decided at sign-in and kept. A
   configuration change takes effect now.
 - A **group** change at the provider does not. Mica sees the claims it was
   given at sign-in, and learns better at the next one, so the session lifetime
-  is the upper bound — hours, not weeks. That trade is recorded as a P1
+  is the upper bound. The cookie keeps only the groups that `MICA_ADMIT_GROUP`
+  names, to stay under the 4 KB cookie limit, so a group added to the rules
+  counts from the next sign-in — hours, not weeks. That trade is recorded as a P1
   decision in [`decisions.md`](decisions.md).
 
 **Multi-site is not here.** One runtime serves one site, named by an explicit
@@ -273,7 +276,7 @@ One runtime, two composition roots. The mode is which app you run.
 |                        | Identity             | Repository                   | Database                    |
 | ---------------------- | -------------------- | ---------------------------- | --------------------------- |
 | `@micacms/editor`      | **None** — see below | A working tree, always       | **None**                    |
-| `@micacms/self-hosted` | OIDC                 | Usually a provider connector | SQLite: sessions and drafts |
+| `@micacms/self-hosted` | OIDC                 | Usually a provider connector | SQLite: drafts only          |
 
 Both compose `@micacms/runtime` — neither forks it — and hand it an
 `AuthSurface`: routes for `/api/auth` plus the gate in front of the admin API.
@@ -310,22 +313,32 @@ Origin check handles cross-site writes as before.
 SQLite, holding:
 
 ```
-sessions                a browser session, and the claims it was opened with
 drafts                  the pending change set, where saves are staged (provider repositories only)
 draft_base              the branch head that pending set began from
 ```
 
-No content history, no media library, no revisions, no accounts — the claims
-are copied onto the session row because the rules are re-checked per request,
-and asking the provider each time is not something a provider would thank us
-for. The draft tables hold exactly the current pending change set and are
-cleared by publication; Git stays the history. Losing this database signs
-everyone out — and, where saves are staged in it, loses work that was saved
-and not yet published, which the self-hosted backup guidance says out loud.
-Two rules keep it navigable: SQL is written only by the stores that own their
-tables — sessions in `@micacms/auth-oidc`, drafts and migrations in
-`apps/self-hosted` — and only the runtime's `db/driver.ts` knows which SQLite
-library is in use. The local editor opens no database at all.
+No content history, no media library, no revisions, no accounts, no sessions.
+The draft tables hold exactly the current pending change set and are cleared by
+publication; Git stays the history. Losing this database loses work that was
+saved and not yet published, which the self-hosted backup guidance says out
+loud. It signs nobody out. With `REPOSITORY=local` the file is still opened,
+but nothing in it is in use. Two rules keep it navigable: SQL is written only by
+the stores that own their tables — drafts and migrations in `apps/self-hosted`
+— and only the runtime's `db/driver.ts` knows which SQLite library is in use.
+The local editor opens no database at all.
+
+### Sessions are cookies
+
+There is no session table. The session is the `mica_session` cookie: JSON that
+holds the identity (issuer, subject, email, `emailVerified`, name, groups), a
+CSRF token and three times, encrypted with AES-256-GCM under a key that HKDF
+derives from `SESSION_SECRET`. The gate re-issues the cookie every five minutes
+while it is in use, so the idle window slides, and `SESSION_TTL_HOURS` caps it.
+
+Sign-out clears the cookies in the browser. Mica cannot revoke one session on
+the server: a copied cookie stays valid until it expires. Rotating
+`SESSION_SECRET` and restarting ends every session at once. Removing somebody
+from the `MICA_ADMIT_*` rules and restarting refuses them on their next request.
 
 Note the startup order this implies. The content model is _in_ the repository,
 so the self-hosted entry point opens the database, builds the connector from
