@@ -143,3 +143,28 @@ jobs:
           echo "::error::The container never became healthy."
           docker logs cms
           exit 1
+
+      # The OIDC round trip, automated: the image just built, against a real
+      # Dex, driven by fetch — sign-in, admission by email and by domain, a
+      # refusal, CSRF, an edit that reaches the repository, and sign-out. See
+      # tests/oidc/README.md.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Start Mica behind Dex
+        run: |
+          docker rm -f cms
+          cp -R examples/muster-consulting/content "$RUNNER_TEMP/content"
+          # The container runs as `node`, not as the runner's user.
+          chmod -R a+rwX "$RUNNER_TEMP/content"
+          echo "MICA_CONTENT_DIR=$RUNNER_TEMP/content" >> "$GITHUB_ENV"
+          MICA_CONTENT_DIR="$RUNNER_TEMP/content" \
+            docker compose -f tests/oidc/compose.yml up -d --no-build --wait
+
+      - name: Sign in through Dex
+        run: node --test tests/oidc/flow.test.mjs
+
+      - name: Logs of the OIDC test stack
+        if: failure()
+        run: docker compose -f tests/oidc/compose.yml logs

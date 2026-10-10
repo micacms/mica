@@ -1,0 +1,75 @@
+# The automated OIDC test: the real Mica image against a real Dex.
+#
+#   cp -R examples/muster-consulting/content "$TMPDIR/mica-content"
+#   chmod -R a+rwX "$TMPDIR/mica-content"
+#   MICA_CONTENT_DIR="$TMPDIR/mica-content" docker compose -f tests/oidc/compose.yml up -d --wait
+#   MICA_CONTENT_DIR="$TMPDIR/mica-content" node --test tests/oidc/flow.test.mjs
+#   docker compose -f tests/oidc/compose.yml down
+#
+# CI runs exactly this — see .github/workflows/ci.yml and README.md.
+
+name: mica-oidc-test
+
+services:
+  dex:
+    image: ghcr.io/dexidp/dex:v2.41.1
+    command: ["dex", "serve", "/etc/dex/config.yaml"]
+    volumes:
+      - ./dex.yaml:/etc/dex/config.yaml:ro
+
+    # Mica shares this network namespace (see below), so both ports are
+    # published here.
+    ports:
+      - "127.0.0.1:5556:5556"
+      - "127.0.0.1:6422:6422"
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5556/dex/.well-known/openid-configuration"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  mica:
+    image: micacms/editor:ci
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    depends_on:
+      dex:
+        condition: service_healthy
+
+    # `localhost:5556` must mean the same issuer to Mica as to the test, or
+    # the ID token's `iss` would not match what discovery returned.
+    network_mode: "service:dex"
+
+    environment:
+      # Plain-HTTP discovery is allowed only outside production, and only for
+      # a provider on localhost. Everything else is production-shaped.
+      NODE_ENV: development
+      LOG_LEVEL: info
+
+      MICA_PUBLIC_URL: http://localhost:6422
+      MICA_OIDC_ISSUER: http://localhost:5556/dex
+      MICA_OIDC_CLIENT_ID: mica
+      MICA_OIDC_CLIENT_SECRET: oidc-test-client-secret-not-for-production
+
+      MICA_ADMIT_EMAILS: alice@gmail.com
+      MICA_ADMIT_DOMAIN: muster-consulting.example
+
+      REPOSITORY: local
+      CONTENT_ROOT: /content
+      SESSION_SECRET: oidc-test-session-secret-00000000000
+
+    volumes:
+      # A throwaway copy, so the test can read back what an edit wrote.
+      - ${MICA_CONTENT_DIR:?set MICA_CONTENT_DIR to a writable copy of the example content}:/content
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:6422/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 2s
+      timeout: 2s
+      retries: 30

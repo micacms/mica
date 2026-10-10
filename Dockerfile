@@ -76,8 +76,8 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 # node:alpine ships an unprivileged `node` user; the volume must be writable by
-# it. The database lives here — sessions, and the draft store behind a provider
-# repository — so the volume is part of the backup story now.
+# it. The draft store lives here behind a provider repository, so the volume is
+# part of the backup story.
 RUN mkdir -p /data && chown -R node:node /data
 
 # The deploy folder mirrors the repository layout. Its node_modules are real
@@ -93,8 +93,8 @@ WORKDIR /app/apps/self-hosted
 VOLUME ["/data"]
 EXPOSE 6422
 
-# Reads from SQLite *and* reaches the content repository, so this detects a
-# broken database or an unreachable repository — not merely a live event loop.
+# Reaches the content repository, and the database where there is one, so this
+# detects a broken store — not merely a live event loop.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||6422)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 

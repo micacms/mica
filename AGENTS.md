@@ -103,3 +103,4 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `deploy/self-hosted`: the reference deployment — the Compose file and its `.env.example`.
 - `deploy/demo-identity`: the demo stack with ZITADEL.
 - `tests/e2e`: manual deployed-shape environment with Keycloak. Do not treat it as an automated browser test suite.
+- `tests/oidc`: automated OIDC round trip — the real image against Dex, run by CI. No browser.

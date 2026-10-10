@@ -1,0 +1,44 @@
+# Dex for the automated OIDC test — see README.md.
+#
+# Three users with one password, "password". Deliberately insecure: plain HTTP,
+# a committed client secret, in-memory storage. A test rig, not a deployment.
+
+issuer: http://localhost:5556/dex
+
+storage:
+  type: memory
+
+web:
+  http: 0.0.0.0:5556
+
+oauth2:
+  # The test signs in without a browser; an approval page would be one more
+  # form to post and proves nothing about Mica.
+  skipApprovalScreen: true
+
+enablePasswordDB: true
+
+staticClients:
+  - id: mica
+    name: Mica
+    secret: oidc-test-client-secret-not-for-production
+    redirectURIs:
+      - http://localhost:6422/api/auth/callback
+
+# Dex reports every address here as verified, as Google does.
+staticPasswords:
+  # Admitted by MICA_ADMIT_EMAILS, the rule for Google accounts.
+  - email: alice@gmail.com
+    username: alice
+    userID: 0b8f6f62-7a7c-4b8e-9d34-2d8e1d1d0a01
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+  # Admitted by MICA_ADMIT_DOMAIN.
+  - email: bob@muster-consulting.example
+    username: bob
+    userID: 0b8f6f62-7a7c-4b8e-9d34-2d8e1d1d0a02
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+  # Authenticates perfectly, and is in no rule: another Gmail address.
+  - email: mallory@gmail.com
+    username: mallory
+    userID: 0b8f6f62-7a7c-4b8e-9d34-2d8e1d1d0a03
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
