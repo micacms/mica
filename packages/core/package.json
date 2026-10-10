@@ -1,6 +1,6 @@
 {
   "name": "@micacms/core",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "type": "module",
   "description": "The Mica core: content model DSL, authoring format, and the port contracts every adapter implements. Single source of truth for types, validation, editor forms, the on-disk format and Astro collection schemas.",
   "license": "MIT",

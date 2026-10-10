@@ -10,6 +10,18 @@ eight published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.2.2] — 2026-10-10
+
+One fix to how pending work is counted. Nothing breaks; upgrade at any time.
+
+### Fixed
+
+- **The Publish badge and the dashboard count edits, not files.** A URL change
+  of a page showed as five pending changes — the deleted and the created files
+  and the order file — while the Publish page showed one. Every count in the
+  editor now uses the same unit as the Publish page: one edit per entry,
+  singleton, collection order or shared media (`@micacms/editor-ui`).
+
 ## [0.2.1] — 2026-10-10
 
 Fixes for changing the URL of an entry. Nothing breaks; upgrade at any time.

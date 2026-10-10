@@ -24,7 +24,7 @@
 
 services:
   mica:
-    image: ghcr.io/amuedespacher/micacms:0.2.1
+    image: ghcr.io/amuedespacher/micacms:0.2.2
     restart: unless-stopped
 
     # Written from .env.example. Everything the deployment needs is in there.

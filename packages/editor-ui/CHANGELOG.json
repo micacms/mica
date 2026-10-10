@@ -2,6 +2,18 @@
   "name": "@micacms/editor-ui",
   "entries": [
     {
+      "version": "0.2.2",
+      "tag": "@micacms/editor-ui_v0.2.2",
+      "date": "Sat, 10 Oct 2026 15:31:13 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Count pending edits, not files, in the Publish badge and on the dashboard: a URL change is one edit."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.2.1",
       "tag": "@micacms/editor-ui_v0.2.1",
       "date": "Sat, 10 Oct 2026 14:58:49 GMT",
