@@ -554,11 +554,11 @@ Explicitly not built.
   it skips GitLab. Configure `MICA_LIVE_GITLAB_TOKEN` and
   `MICA_LIVE_GITLAB_PROJECT` to close this. It also checks whether the
   documented `write_repository` scope is enough for the REST API.
-- **P3** — The GitHub connector meets a real repository only once a week. Pull
-  requests test it against a stub, which asserts the request shapes. The
-  `live-connectors` workflow commits to a scratch repository on github.com
-  every Monday and on demand; not on pull requests, because a fork cannot read
-  its secrets. `REPOSITORY_API_BASE` against GitHub Enterprise Server or a
+- **P2** — The GitHub connector is not yet tested live. The `live-connectors`
+  workflow can commit to the scratch repository `amuedespacher/micacms-scratch`
+  every Monday and on demand, but the secret `MICA_LIVE_GITHUB_TOKEN` is not
+  set yet, so it skips GitHub. When it is set, this becomes P3: pull requests
+  still test against a stub only, because a fork cannot read the secret. `REPOSITORY_API_BASE` against GitHub Enterprise Server or a
   self-managed GitLab is still untested.
 - **P3** — Entry search filters in the browser over the whole collection. Fine at
   the stated scale (hundreds to low thousands); a repository large enough to
