@@ -192,7 +192,7 @@ const folderOf = (path: string): string => {
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6"
+      class="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-6"
       @click.self="emit('close')"
       @keydown="onKeydown"
     >
@@ -222,7 +222,7 @@ const folderOf = (path: string): string => {
 
         <div
           class="min-h-0 flex-1 overflow-y-auto p-5"
-          :class="dragging && 'bg-brand-soft'"
+          :class="dragging && 'bg-accent-soft'"
           @dragover.prevent="dragging = true"
           @dragleave.prevent="dragging = false"
           @drop.prevent="onDrop"
@@ -261,10 +261,10 @@ const folderOf = (path: string): string => {
                 :class="[
                   'group block w-full overflow-hidden rounded-lg border text-left transition',
                   picked.includes(item.path)
-                    ? 'border-brand ring-2 ring-brand/25'
+                    ? 'border-accent ring-2 ring-accent/25'
                     : selected.includes(item.path)
-                      ? 'border-brand/50'
-                      : 'border-line hover:border-brand/40',
+                      ? 'border-accent/50'
+                      : 'border-line hover:border-accent/40',
                 ]"
                 @click="toggle(item)"
               >

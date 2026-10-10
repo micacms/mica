@@ -9,14 +9,14 @@ const steps = [
 ];
 ---
 
-<div class="overflow-hidden rounded-md border border-line bg-surface">
+<div class="overflow-hidden rounded-md border border-line bg-raised">
   <ol>
     {steps.map((step, index) => (
       <li class:list={[
         "relative grid grid-cols-[40px_1fr] items-center gap-4 px-5 py-5 sm:grid-cols-[40px_1fr_auto] sm:px-6",
         index > 0 && "border-t border-line",
       ]}>
-        {step.current && <span class="absolute inset-y-3 left-0 w-0.5 bg-ember" aria-hidden="true"></span>}
+        {step.current && <span class="absolute inset-y-3 left-0 w-0.5 bg-accent" aria-hidden="true"></span>}
         <span class="flex h-10 w-10 items-center justify-center rounded-sm border border-line bg-canvas text-muted">
           <Icon name={step.icon} size={18} />
         </span>
@@ -29,6 +29,6 @@ const steps = [
     ))}
   </ol>
   <p class="flex items-center justify-center gap-2 border-t border-line bg-canvas px-5 py-3.5 text-xs text-muted">
-    <span class="text-moss"><Icon name="check" size={14} /></span> The published website never contacts Mica.
+    <span class="text-success"><Icon name="check" size={14} /></span> The published website never contacts Mica.
   </p>
 </div>

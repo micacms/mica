@@ -4,15 +4,15 @@
     <span class="ml-auto label-mono">TypeScript</span>
   </div>
   <pre class="overflow-x-auto p-5 text-[12px] leading-[1.85] sm:p-6 sm:text-[13px]"><code class="font-mono text-ink-soft"><span class="text-faint">// One model. The editor and the build both read it.</span>
-<span class="text-ember">export const</span> site = <span class="text-brand">defineSite</span>(&#123;
+<span class="text-accent">export const</span> site = <span class="text-accent">defineSite</span>(&#123;
   collections: &#123;
-    projects: <span class="text-brand">collection</span>(&#123;
-      label: <span class="text-moss">"Projects"</span>,
+    projects: <span class="text-accent">collection</span>(&#123;
+      label: <span class="text-success">"Projects"</span>,
       fields: &#123;
-        title: <span class="text-brand">text</span>(&#123; required: <span class="text-ember">true</span> &#125;),
-        slug: <span class="text-brand">slug</span>(&#123; from: <span class="text-moss">"title"</span> &#125;),
-        story: <span class="text-brand">richText</span>(),
-        gallery: <span class="text-brand">media</span>(&#123; multiple: <span class="text-ember">true</span> &#125;),
+        title: <span class="text-accent">text</span>(&#123; required: <span class="text-accent">true</span> &#125;),
+        slug: <span class="text-accent">slug</span>(&#123; from: <span class="text-success">"title"</span> &#125;),
+        story: <span class="text-accent">richText</span>(),
+        gallery: <span class="text-accent">media</span>(&#123; multiple: <span class="text-accent">true</span> &#125;),
       &#125;,
     &#125;),
   &#125;,

@@ -20,13 +20,13 @@ const next = features[(currentIndex + 1) % features.length];
     back={{ label: "All features", href: "/#features" }}
   />
 
-  <section class="section bg-paper">
+  <section class="section bg-surface">
     <div class="wrap grid gap-12 lg:grid-cols-[260px_1fr] lg:gap-20">
       <aside class="self-start rounded-xl border border-line bg-canvas p-5 lg:sticky lg:top-28">
         <span class="label-mono mb-3 block">What you get</span>
         {entry.data.outcomes.map((outcome, index) => (
           <p class:list={["flex items-start gap-2 py-2.5 text-sm text-ink-soft", index > 0 && "border-t border-line"]}>
-            <span class="mt-0.5 shrink-0 text-moss"><Icon name="check" size={15} /></span>{outcome.text}
+            <span class="mt-0.5 shrink-0 text-success"><Icon name="check" size={15} /></span>{outcome.text}
           </p>
         ))}
       </aside>
@@ -35,7 +35,7 @@ const next = features[(currentIndex + 1) % features.length];
   </section>
 
   {next && (
-    <a class="block border-t border-line bg-canvas py-9 transition hover:bg-stone" href={`/features/${next.id}/`}>
+    <a class="block border-t border-line bg-canvas py-9 transition hover:bg-subtle" href={`/features/${next.id}/`}>
       <div class="wrap grid grid-cols-[1fr_auto] items-center gap-2 md:grid-cols-[150px_1fr_auto]">
         <span class="label-mono">Next feature</span>
         <strong class="col-start-1 text-lg font-medium text-ink md:col-start-2">{next.data.title}</strong>

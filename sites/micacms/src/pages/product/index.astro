@@ -23,7 +23,7 @@ const [product, features] = await Promise.all([getProduct(), getFeatures()]);
       </div>
       <div class="mt-12 grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-3">
         {product.audiences.map((audience) => (
-          <article class="bg-paper p-6 md:p-7">
+          <article class="bg-surface p-6 md:p-7">
             <h3 class="text-lg font-semibold text-ink">{audience.title}</h3>
             <p class="mt-2 text-sm leading-relaxed text-muted">{audience.text}</p>
           </article>
@@ -32,7 +32,7 @@ const [product, features] = await Promise.all([getProduct(), getFeatures()]);
     </div>
   </section>
 
-  <section class="section border-b border-line bg-paper">
+  <section class="section border-b border-line bg-surface">
     <div class="wrap">
       <div class="grid items-end gap-8 md:grid-cols-[1fr_auto]">
         <div class="max-w-xl">
@@ -55,20 +55,20 @@ const [product, features] = await Promise.all([getProduct(), getFeatures()]);
       </div>
       <div class="mt-10 border-t border-line">
         {features.map((feature) => (
-          <a class="group grid items-center gap-3 border-b border-line py-5 transition hover:bg-paper sm:grid-cols-[46px_1fr_1.5fr_20px]" href={`/features/${feature.id}/`}>
-            <span class="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-paper text-muted transition group-hover:text-ember">
+          <a class="group grid items-center gap-3 border-b border-line py-5 transition hover:bg-surface sm:grid-cols-[46px_1fr_1.5fr_20px]" href={`/features/${feature.id}/`}>
+            <span class="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-surface text-muted transition group-hover:text-accent">
               <Icon name={feature.data.icon} size={18} />
             </span>
             <h3 class="font-medium text-ink">{feature.data.title}</h3>
             <p class="text-sm text-muted max-sm:col-span-2">{feature.data.summary}</p>
-            <span class="text-faint transition group-hover:translate-x-0.5 group-hover:text-brand max-sm:hidden"><Icon name="arrow" size={17} /></span>
+            <span class="text-faint transition group-hover:translate-x-0.5 group-hover:text-accent max-sm:hidden"><Icon name="arrow" size={17} /></span>
           </a>
         ))}
       </div>
     </div>
   </section>
 
-  <section class="section border-b border-line bg-paper">
+  <section class="section border-b border-line bg-surface">
     <div class="wrap grid gap-12 lg:grid-cols-[.85fr_1.15fr] lg:gap-20">
       <div>
         <p class="eyebrow">What runs where</p>
@@ -92,7 +92,7 @@ const [product, features] = await Promise.all([getProduct(), getFeatures()]);
     <div class="wrap grid items-center gap-6 md:grid-cols-[1fr_auto]">
       <div>
         <p class="flex items-center gap-2 text-xs text-muted">
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-ember"></span> Open source and experimental
+          <span class="inline-block h-1.5 w-1.5 rounded-full bg-accent"></span> Open source and experimental
         </p>
         <h2 class="display mt-2 text-[1.5rem] leading-snug">Inspect every decision before you adopt it.</h2>
       </div>

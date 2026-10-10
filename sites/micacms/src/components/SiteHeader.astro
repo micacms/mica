@@ -7,7 +7,7 @@ const current = Astro.url.pathname;
 const isActive = (href: string) => href !== "/" && current.startsWith(href);
 ---
 
-<header class="sticky top-0 z-50 border-b border-line bg-paper/90 backdrop-blur-md">
+<header class="sticky top-0 z-50 border-b border-line bg-surface/90 backdrop-blur-md">
   <div class="wrap flex h-16 items-center justify-between">
     <Logo />
     <nav class="hidden items-center gap-7 md:flex" aria-label="Main navigation">
@@ -15,7 +15,7 @@ const isActive = (href: string) => href !== "/" && current.startsWith(href);
         <a
           class:list={[
             "relative py-1 text-sm text-muted transition hover:text-ink",
-            isActive(item.href) && "font-medium !text-ink after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:bg-ember",
+            isActive(item.href) && "font-medium !text-ink after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:bg-accent",
           ]}
           href={item.href}
           aria-current={isActive(item.href) ? "page" : undefined}

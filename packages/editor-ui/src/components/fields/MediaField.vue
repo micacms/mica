@@ -131,7 +131,7 @@ function move(index: number, direction: -1 | 1): void {
           <!-- Controls are always in the DOM so they are reachable by keyboard,
                and only fade in visually on hover/focus. -->
           <div
-            class="absolute inset-x-0 top-0 flex justify-end gap-0.5 bg-gradient-to-b from-black/50 to-transparent p-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
+            class="absolute inset-x-0 top-0 flex justify-end gap-0.5 bg-gradient-to-b from-ink/50 to-transparent p-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
           >
             <button
               v-if="field.multiple && index > 0"

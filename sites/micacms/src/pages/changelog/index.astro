@@ -12,7 +12,7 @@ const [releases, site] = await Promise.all([getReleases(), getSite()]);
     title="What changed, and why."
     lead="Mica releases all packages and the CMS together. The project is pre-1.0, so read the note before each upgrade."
   />
-  <section class="section bg-paper">
+  <section class="section bg-surface">
     <div class="wrap">
       {releases.map((release, index) => (
         <article class:list={["grid gap-6 border-t border-line py-12 md:grid-cols-[190px_1fr] md:gap-14", index === 0 && "border-t-0 pt-0"]}>
@@ -21,7 +21,7 @@ const [releases, site] = await Promise.all([getReleases(), getSite()]);
             <time class="text-xs text-muted md:mt-3 md:block" datetime={release.data.publishDate}>{formatDate(release.data.publishDate)}</time>
             {release.data.latest && (
               <b class="flex items-center gap-2 text-[11px] font-normal text-muted md:mt-4">
-                <span class="inline-block h-1.5 w-1.5 rounded-full bg-ember"></span> Current
+                <span class="inline-block h-1.5 w-1.5 rounded-full bg-accent"></span> Current
               </b>
             )}
           </aside>
@@ -34,7 +34,7 @@ const [releases, site] = await Promise.all([getReleases(), getSite()]);
       ))}
       <div class="mt-6 rounded-xl border border-line bg-canvas p-5 text-sm text-muted">
         The complete source changelog is in the repository.
-        <a class="ml-1 font-medium text-brand underline decoration-brand/30 underline-offset-4" href={`${site.githubUrl}/blob/main/CHANGELOG.md`}>Read CHANGELOG.md</a>
+        <a class="ml-1 font-medium text-accent underline decoration-accent/30 underline-offset-4" href={`${site.githubUrl}/blob/main/CHANGELOG.md`}>Read CHANGELOG.md</a>
       </div>
     </div>
   </section>

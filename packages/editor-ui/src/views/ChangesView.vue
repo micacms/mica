@@ -227,7 +227,7 @@ function short(revision: string): string {
       <!-- Publishing unavailable: still an honest, read-only change list. -->
       <div
         v-if="!status.publish.enabled"
-        class="rounded-md border border-line bg-stone p-4 text-sm text-muted"
+        class="rounded-md border border-line bg-subtle p-4 text-sm text-muted"
       >
         <p class="font-medium text-ink">Publishing is not available here</p>
         <p class="mt-1">{{ status.publish.reason }}</p>

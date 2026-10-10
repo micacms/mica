@@ -51,7 +51,7 @@ function toggle(value: string): void {
           type="checkbox"
           :checked="selected.includes(option.value)"
           :disabled="disabled || field.readonly"
-          class="h-4 w-4 rounded-sm border-line text-brand focus:ring-ink/20"
+          class="h-4 w-4 rounded-sm border-line text-accent focus:ring-ink/20"
           @change="toggle(option.value)"
         />
         {{ option.label }}

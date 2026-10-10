@@ -5,7 +5,7 @@ interface Props { eyebrow?: string | null; title: string; lead?: string | null; 
 const { eyebrow, title, lead, back } = Astro.props;
 ---
 
-<section class="border-b border-line bg-paper">
+<section class="border-b border-line bg-surface">
   <div class="wrap py-14 md:py-20">
     {back && <a class="mb-8 inline-flex items-center gap-1.5 text-sm text-muted transition hover:text-ink" href={back.href}><ArrowLeft size={16} aria-hidden="true" /> {back.label}</a>}
     {eyebrow && <p class="eyebrow">{eyebrow}</p>}

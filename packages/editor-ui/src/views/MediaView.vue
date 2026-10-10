@@ -170,8 +170,8 @@ async function copyPath(path: string): Promise<void> {
                 :class="[
                   'block w-full overflow-hidden rounded-lg border text-left transition',
                   selected?.path === item.path
-                    ? 'border-brand ring-2 ring-brand/25'
-                    : 'border-line hover:border-brand/40',
+                    ? 'border-accent ring-2 ring-accent/25'
+                    : 'border-line hover:border-accent/40',
                 ]"
                 @click="selected = selected?.path === item.path ? null : item"
               >
