@@ -63,6 +63,16 @@ Ask the user before you:
 - Record a change file with `rush change` when a change touches a published package; use the bump type `none` when the release notes should not mention it.
 - Use `rush version-bump` to release the pending change files, or `rush release-version --version <version>` to set an explicit version. Do not edit package versions separately. The `/release` skill (`.claude/skills/release/`) walks the whole flow — bump choice, changelog section, verification.
 
+## Subagents
+
+The agents in `.claude/agents/` do recurring work. Use them where they fit:
+
+- `validator` (Haiku): run the gates and report only failures — after a code change.
+- `reviewer` (Opus): read-only review against these rules and the design docs — before a commit or a PR.
+- `docs-keeper` (Sonnet): fix documentation that disagrees with the code.
+- `site-keeper` (Sonnet): update `sites/micacms` and `examples/muster-consulting` after a release or a relevant change. It needs the user's approval, like any change there.
+- `release-prep` (Sonnet): prepare a release in the background. It never commits, tags or pushes; the `/release` skill stays the interactive flow.
+
 ## Git and pull requests
 
 - Do not commit, tag, push, or create a pull request unless the user asks.
