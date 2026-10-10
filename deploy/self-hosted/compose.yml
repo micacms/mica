@@ -39,7 +39,8 @@ services:
       # ${MICA_PUBLIC_URL}/api/auth/callback with the provider.
       #
       # Who may then edit is a separate answer, and also required: set
-      # MICA_ADMIT_GROUP, MICA_ADMIT_DOMAIN or MICA_ADMIT_SUBJECTS in .env.
+      # MICA_ADMIT_GROUP, MICA_ADMIT_DOMAIN, MICA_ADMIT_EMAILS or
+      # MICA_ADMIT_SUBJECTS in .env.
 
       # How this deployment reaches its content repository.
       #
@@ -65,8 +66,8 @@ services:
       # - ./content:/content
 
     healthcheck:
-      # Checks both halves: the database that holds drafts, and the content
-      # repository. A container that is listening but cannot reach its
+      # Checks both halves: the database that holds drafts (only behind a
+      # provider repository), and the content repository. A container that is listening but cannot reach its
       # repository cannot save anything, and should not be sent traffic.
       test:
         - CMD

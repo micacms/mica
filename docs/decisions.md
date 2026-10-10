@@ -385,8 +385,8 @@ point of the interface.
 **Trigger:** a driver bug, or a deployment target stuck on older Node.
 
 **Built in Phase A, half of it.** `users`, `oidc_identities`, `memberships`,
-`sites`, `tenants` and `repository_connections` are gone; `sessions` is the only
-table left, and it carries the claims admission is checked against. The
+`sites`, `tenants` and `repository_connections` are gone; `sessions` was the
+only table left then, and it carried the claims admission is checked against. The
 migration chain was reset to a single `initial_schema` rather than extended,
 because a fifth migration would have been three quarters `DROP TABLE` and no
 deployment existed to carry forward. Append-only applies again from here, and a

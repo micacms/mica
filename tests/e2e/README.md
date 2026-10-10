@@ -129,6 +129,6 @@ admission check against a real group claim.
 ## Cleaning up
 
 ```bash
-docker compose -f tests/e2e/compose.yml down -v      # -v also drops the CMS database
+docker compose -f tests/e2e/compose.yml down -v      # -v also drops the volumes
 git checkout sites/                        # discard anything you edited
 ```

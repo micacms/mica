@@ -349,7 +349,8 @@ version rather than tracking `latest`, so an upgrade is a decision.
 { "status": "ok", "database": "ok", "repository": "github:acme/website/content@main" }
 ```
 
-It returns 503 if the database is unreadable or the repository is unreachable —
+The `database` field appears only where Mica has a database. The endpoint
+returns 503 if the database is unreadable or the repository is unreachable —
 a container that is listening but cannot reach its repository cannot save
 anything, so it should not be sent traffic.
 
@@ -413,8 +414,8 @@ That path is not covered by tests against a real instance yet. Other providers
 | Publishing returns 409 | A push landed on a staged path, or the content model changed since startup | The message says which; refresh and review, or restart after a model change |
 | Publishing returns 422 | Something in the pending set no longer validates | The response names the entries and fields |
 | Editors signed out after a restart | `SESSION_SECRET` unset, so an ephemeral one was generated | Set it |
-| "No access to this site" after signing in | Authenticated, but not admitted | Check the group claim actually arrives — `LOG_LEVEL=debug` names the reason — or add the subject to `MICA_ADMIT_SUBJECTS` |
-| Refuses to start: "nothing says who may edit this site" | No admission rule | Set `MICA_ADMIT_GROUP`, `MICA_ADMIT_DOMAIN` or `MICA_ADMIT_SUBJECTS` |
+| "No access to this site" after signing in | Authenticated, but not admitted | Check the group claim actually arrives — `LOG_LEVEL=debug` names the reason — or add the subject to `MICA_ADMIT_SUBJECTS`, or the address to `MICA_ADMIT_EMAILS` |
+| Refuses to start: "nothing says who may edit this site" | No admission rule | Set `MICA_ADMIT_GROUP`, `MICA_ADMIT_DOMAIN`, `MICA_ADMIT_EMAILS` or `MICA_ADMIT_SUBJECTS` |
 | Sign-in returns to the login page with "expired" | The transaction cookie was lost — usually a `MICA_PUBLIC_URL` that does not match the browser's address | Make them identical |
 | 503, "identity provider could not be reached" | `MICA_OIDC_ISSUER` wrong, or discovery blocked | Check `<issuer>/.well-known/openid-configuration` from the container |
 | Site build succeeds but content is stale | The host built an older commit | Check CI ran on the editorial commit |
