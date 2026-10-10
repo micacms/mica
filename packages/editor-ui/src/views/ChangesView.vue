@@ -25,10 +25,11 @@ import {
   ApiError,
   type Comparison,
   type CompareTarget,
-  type PendingChange,
+  type FileChange,
   type PublishOutcome,
 } from "@/api";
 import ChangeComparison from "@/components/ChangeComparison.vue";
+import type { Edit } from "@/lib/edits";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import { useSchema } from "@/stores/schema";
@@ -43,7 +44,7 @@ const loading = ref(true);
 const publishing = ref(false);
 const pushing = ref(false);
 const message = ref("");
-const discardTarget = ref<Group | null>(null);
+const discardTarget = ref<Edit | null>(null);
 const discarding = ref(false);
 
 /** The half-finished publication, when a local push failed. */
@@ -51,73 +52,8 @@ const pendingPush = ref<PublishOutcome | null>(null);
 
 const status = staging.status;
 
-interface Group {
-  key: string;
-  label: string;
-  link: { name: string; params?: Record<string, string> } | null;
-  changes: PendingChange[];
-  /** What a before/after comparison would compare — null where none applies. */
-  target: CompareTarget | null;
-}
-
-/**
- * One row per thing an editor recognises — an entry, a singleton, the shared
- * media folder — rather than one per file. An entry is several files, and
- * "index.json, body.mdoc, media/photo.jpg" is the repository's view of what
- * the editor knows as one article.
- */
-const groups = computed<Group[]>(() => {
-  const byKey = new Map<string, Group>();
-
-  for (const change of status.value?.changes ?? []) {
-    const owner = change.owner;
-    const key =
-      owner.kind === "entry"
-        ? `entry:${owner.collection}/${owner.slug}`
-        : owner.kind === "singleton"
-          ? `singleton:${owner.name}`
-          : owner.kind === "order"
-            ? `order:${owner.collection}`
-            : owner.kind === "media"
-              ? "media"
-              : `other:${change.path}`;
-
-    let group = byKey.get(key);
-    if (!group) {
-      group = {
-        key,
-        label: owner.label,
-        // A rename's group can start with a deleted file of the old slug.
-        link:
-          owner.kind === "entry" && (change.kind !== "delete" || owner.renamedFrom)
-            ? { name: "entry", params: { collection: owner.collection, slug: owner.slug } }
-            : owner.kind === "singleton"
-              ? { name: "singleton", params: { name: owner.name } }
-              : owner.kind === "media"
-                ? { name: "media" }
-                : null,
-        changes: [],
-        target:
-          owner.kind === "entry"
-            ? {
-                kind: "entry",
-                collection: owner.collection,
-                slug: owner.slug,
-                ...(owner.renamedFrom ? { from: owner.renamedFrom } : {}),
-              }
-            : owner.kind === "singleton"
-              ? { kind: "singleton", name: owner.name }
-              : owner.kind === "order"
-                ? { kind: "order", collection: owner.collection }
-                : null,
-      };
-      byKey.set(key, group);
-    }
-    group.changes.push(change);
-  }
-
-  return [...byKey.values()];
-});
+/** One row per edit, never per file — see `lib/edits.ts`. */
+const edits = staging.edits;
 
 /* ------------------------------------------------- before/after */
 
@@ -136,14 +72,14 @@ function fieldsFor(target: CompareTarget): FieldMap | null {
   return null;
 }
 
-async function loadComparison(group: Group): Promise<void> {
-  if (!group.target) return;
-  comparisons.value[group.key] = { loading: true, error: null, comparison: null };
+async function loadComparison(edit: Edit): Promise<void> {
+  if (!edit.target) return;
+  comparisons.value[edit.key] = { loading: true, error: null, comparison: null };
   try {
-    const comparison = await api.staging.compare(group.target);
-    comparisons.value[group.key] = { loading: false, error: null, comparison };
+    const comparison = await api.staging.compare(edit.target);
+    comparisons.value[edit.key] = { loading: false, error: null, comparison };
   } catch (error) {
-    comparisons.value[group.key] = {
+    comparisons.value[edit.key] = {
       loading: false,
       error: error instanceof ApiError ? error.message : "Could not load the comparison.",
       comparison: null,
@@ -151,11 +87,11 @@ async function loadComparison(group: Group): Promise<void> {
   }
 }
 
-// The comparison is the change list, so it loads with it — every group, as
+// The comparison is the change list, so it loads with it — every edit, as
 // soon as it appears, without anything to click.
-watch(groups, (next) => {
-  for (const group of next) {
-    if (group.target && !comparisons.value[group.key]) void loadComparison(group);
+watch(edits, (next) => {
+  for (const edit of next) {
+    if (edit.target && !comparisons.value[edit.key]) void loadComparison(edit);
   }
 });
 
@@ -185,19 +121,19 @@ const canPublish = computed(
     !publishing.value,
 );
 
-const kindWord: Record<PendingChange["kind"], string> = {
+const kindWord: Record<FileChange["kind"], string> = {
   create: "Added",
   update: "Changed",
   delete: "Removed",
 };
 
 async function refresh(): Promise<void> {
-  // Forget the comparisons first, so the groups watcher reloads every one of
+  // Forget the comparisons first, so the edits watcher reloads every one of
   // them against the refreshed change set instead of showing a stale panel.
   comparisons.value = {};
   await staging.refresh();
-  for (const group of groups.value) {
-    if (group.target && !comparisons.value[group.key]) void loadComparison(group);
+  for (const edit of edits.value) {
+    if (edit.target && !comparisons.value[edit.key]) void loadComparison(edit);
   }
   loading.value = false;
 }
@@ -255,13 +191,13 @@ async function retryPush(): Promise<void> {
 }
 
 async function discard(): Promise<void> {
-  const group = discardTarget.value;
-  if (!group) return;
+  const edit = discardTarget.value;
+  if (!edit) return;
 
   discarding.value = true;
   try {
-    await api.staging.discard(group.changes.map((change) => change.path));
-    toast.success(`Discarded the changes to ${group.label}.`);
+    await api.staging.discard(edit.fileChanges.map((change) => change.path));
+    toast.success(`Discarded the changes to ${edit.label}.`);
     discardTarget.value = null;
     await staging.refresh();
   } catch (error) {
@@ -340,7 +276,7 @@ function short(revision: string): string {
       </div>
 
       <!-- Nothing pending -->
-      <div v-if="groups.length === 0" class="card p-8 text-center">
+      <div v-if="edits.length === 0" class="card p-8 text-center">
         <p class="text-sm font-medium">Nothing waiting to be published</p>
         <p class="mt-1 text-sm text-muted">
           Saved changes collect here until somebody publishes them. Right now the
@@ -353,36 +289,36 @@ function short(revision: string): string {
         <h2 id="changes-heading" class="sr-only">Pending changes</h2>
 
         <ul class="card divide-y divide-line">
-          <li v-for="group in groups" :key="group.key" class="flex items-start gap-3 p-4">
+          <li v-for="edit in edits" :key="edit.key" class="flex items-start gap-3 p-4">
             <div class="min-w-0 flex-1">
               <component
-                :is="group.link ? 'RouterLink' : 'p'"
-                v-bind="group.link ? { to: group.link } : {}"
-                :class="['text-sm font-medium', group.link && 'hover:underline']"
+                :is="edit.link ? 'RouterLink' : 'p'"
+                v-bind="edit.link ? { to: edit.link } : {}"
+                :class="['text-sm font-medium', edit.link && 'hover:underline']"
               >
-                {{ group.label }}
+                {{ edit.label }}
               </component>
 
-              <!-- What the change does. Groups with a document get the
+              <!-- What the change does. Edits with a document get the
                    before/after view and no file paths; media and everything
                    else have only their files to show. -->
-              <template v-if="group.target">
-                <p v-if="comparisons[group.key]?.loading" class="mt-2 text-xs text-muted">
+              <template v-if="edit.target">
+                <p v-if="comparisons[edit.key]?.loading" class="mt-2 text-xs text-muted">
                   Comparing…
                 </p>
-                <p v-else-if="comparisons[group.key]?.error" class="mt-2 text-xs text-danger">
-                  {{ comparisons[group.key]?.error }}
+                <p v-else-if="comparisons[edit.key]?.error" class="mt-2 text-xs text-danger">
+                  {{ comparisons[edit.key]?.error }}
                 </p>
                 <ChangeComparison
-                  v-else-if="comparisons[group.key]?.comparison"
-                  :comparison="comparisons[group.key]!.comparison!"
-                  :fields="fieldsFor(group.target)"
+                  v-else-if="comparisons[edit.key]?.comparison"
+                  :comparison="comparisons[edit.key]!.comparison!"
+                  :fields="fieldsFor(edit.target)"
                 />
               </template>
 
               <ul v-else class="mt-1 space-y-0.5">
                 <li
-                  v-for="change in group.changes"
+                  v-for="change in edit.fileChanges"
                   :key="change.path"
                   class="flex items-baseline gap-2 text-xs text-muted"
                 >
@@ -399,7 +335,7 @@ function short(revision: string): string {
               </ul>
             </div>
 
-            <button type="button" class="btn-ghost shrink-0 text-xs" @click="discardTarget = group">
+            <button type="button" class="btn-ghost shrink-0 text-xs" @click="discardTarget = edit">
               Discard
             </button>
           </li>
@@ -407,9 +343,9 @@ function short(revision: string): string {
       </section>
 
       <!-- Publish -->
-      <section v-if="groups.length > 0 && status.publish.enabled" class="card p-4" aria-labelledby="publish-heading">
+      <section v-if="edits.length > 0 && status.publish.enabled" class="card p-4" aria-labelledby="publish-heading">
         <h2 id="publish-heading" class="text-sm font-semibold">
-          Publish {{ groups.length === 1 ? "this change" : `these ${groups.length} changes` }}
+          Publish {{ edits.length === 1 ? "this edit" : `these ${edits.length} edits` }}
         </h2>
 
         <p class="mt-1 text-xs text-muted">

@@ -97,14 +97,14 @@ onMounted(async () => {
       </section>
 
       <section
-        v-if="staging.pendingCount.value > 0"
+        v-if="staging.editCount.value > 0"
         class="card p-4"
         aria-labelledby="pending-heading"
       >
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 id="pending-heading" class="text-sm font-semibold">
-              {{ staging.pendingCount.value }} change{{ staging.pendingCount.value === 1 ? "" : "s" }}
+              {{ staging.editCount.value }} edit{{ staging.editCount.value === 1 ? "" : "s" }}
               waiting to be published
             </h2>
             <p class="mt-1 text-sm text-muted">

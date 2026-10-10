@@ -100,11 +100,11 @@ async function signOut(): Promise<void> {
             <Send :size="14" aria-hidden="true" />
             <span class="flex-1">Publish</span>
             <span
-              v-if="staging.pendingCount.value > 0"
+              v-if="staging.editCount.value > 0"
               class="rounded-full bg-accent px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none text-white"
-              :aria-label="`${staging.pendingCount.value} pending change${staging.pendingCount.value === 1 ? '' : 's'}`"
+              :aria-label="`${staging.editCount.value} pending edit${staging.editCount.value === 1 ? '' : 's'}`"
             >
-              {{ staging.pendingCount.value }}
+              {{ staging.editCount.value }}
             </span>
           </RouterLink>
         </div>

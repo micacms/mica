@@ -10,14 +10,18 @@
 import { computed, ref } from "vue";
 
 import { api, type StagingStatus } from "@/api";
+import { toEdits } from "@/lib/edits";
 
 const status = ref<StagingStatus | null>(null);
+const edits = computed(() => toEdits(status.value?.changes ?? []));
 let inFlight: Promise<void> | null = null;
 
 export function useStaging() {
   return {
     status: computed(() => status.value),
-    pendingCount: computed(() => status.value?.changes.length ?? 0),
+    /** The pending set as an editor reads it: one edit per entry, singleton, order or media. */
+    edits,
+    editCount: computed(() => edits.value.length),
 
     /** Concurrent callers share one request; failures leave the last answer. */
     async refresh(): Promise<void> {

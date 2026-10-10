@@ -1,0 +1,10 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "Count pending edits, not files, in the Publish badge and on the dashboard: a URL change is one edit.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/editor-ui"
+}
