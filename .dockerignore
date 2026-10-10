@@ -24,7 +24,8 @@ common/deploy
 # A project's content model is read from its repository at runtime, never baked
 # in. Keeping the example project out of the build context makes that
 # structural: no future COPY can put a customer's collections in the image.
-# Rush, though, must see every manifest rush.json lists — the two below are
+# Rush, though, must see every manifest rush.json lists — the three below are
 # manifests only, never content.
 !sites/micacms/package.json
 !examples/muster-consulting/package.json
+!tests/browser/package.json

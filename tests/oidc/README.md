@@ -40,8 +40,8 @@ The ports are 5556 (Dex), 6422 (Mica) and 8787 (the GitHub stub). The stub
 keeps its repository in memory, so every start begins from the example
 content.
 
-The login rate limit is 10 attempts in 15 minutes. One run uses 7, so restart
-the `mica` service before you run the test again.
+The login rate limit is 10 attempts in 15 minutes. One run uses 7, and the
+browser test uses 1, so restart the `mica` service before you run them again.
 
 ## What it does not check
 
@@ -50,7 +50,8 @@ the `mica` service before you run the test again.
   Keycloak rig in [`tests/e2e/`](../e2e/README.md).
 - **GitHub itself.** The stub answers the calls the connector makes, the way the
   connector expects. A real repository is still a manual run.
-- **The editor UI.** No browser is involved.
+- **The editor UI.** No browser is involved here.
+  [`tests/browser/`](../browser/README.md) drives the editor on this stack.
 
 > Deliberately insecure: plain HTTP, a committed client secret, one password
 > for everybody. A test rig, not an example deployment.

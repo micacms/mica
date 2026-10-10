@@ -104,3 +104,4 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `deploy/demo-identity`: the demo stack with ZITADEL.
 - `tests/e2e`: manual deployed-shape environment with Keycloak. Do not treat it as an automated browser test suite.
 - `tests/oidc`: automated OIDC round trip — the real image against Dex, run by CI. No browser.
+- `tests/browser`: automated browser test — Playwright drives the editor UI on the `tests/oidc` stack, run by CI.
