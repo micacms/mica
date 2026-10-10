@@ -204,8 +204,8 @@ export type ChangeOwner =
   | { kind: "media"; label: string }
   | { kind: "other"; label: string };
 
-/** One file in the pending change set. */
-export interface PendingChange {
+/** One path the publication writes or deletes. See `lib/edits.ts` for the unit an editor sees. */
+export interface FileChange {
   path: string;
   kind: "create" | "update" | "delete";
   updatedAt?: string;
@@ -234,7 +234,8 @@ export interface StagingStatus {
   branch: string | null;
   /** Commits created and not yet pushed. Working tree only. */
   ahead: number | null;
-  changes: PendingChange[];
+  /** File changes, not edits: count with `toEdits`, never with `.length`. */
+  changes: FileChange[];
   validation: { ok: boolean; problems: StagingProblem[] };
   updatedAt: string | null;
 }
