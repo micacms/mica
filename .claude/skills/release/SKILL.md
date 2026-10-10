@@ -74,7 +74,7 @@ ghcr.io, so never run it without the user explicitly asking):
 
 ```bash
 git commit -am "Release X.Y.Z"
-git tag vX.Y.Z
+git tag -a vX.Y.Z -m "Release X.Y.Z"
 git push origin main --follow-tags
 ```
 
