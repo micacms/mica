@@ -467,11 +467,6 @@ Explicitly not built.
   OIDC path has no second user exercising it by accident — and admission now
   depends on a claim whose name and shape differ per provider, which is exactly
   the kind of thing a unit test cannot check.
-- **P2** — Nothing yet proves the local package boundary. The rule that
-  `@micacms/editor` installs no OIDC dependency and bundles no auth code is only
-  a rule until CI checks the resolved dependency graph and the built bundle.
-  Phase C adds those checks; without them the boundary will erode the first time
-  somebody shares a helper between the two apps.
 - **P2** — The provider connectors are tested against a stub, not against a real
   repository. The request shapes are asserted; the providers' agreement with
   their own documentation is not. `deploy/demo-identity/compose.yml` is the manual run —
@@ -513,5 +508,11 @@ knowing the reasoning stops someone reintroducing the problem.
   prune. The draft store is not a second history and must never become one: it
   holds exactly the current pending change set, and a successful publication
   clears what it published.
+- **The local editor carries no auth code.** `@micacms/editor` installs no OIDC
+  dependency and bundles no auth code.
+  `apps/local-editor/test/boundary.test.ts` checks the resolved dependency
+  graph, the app's own imports and the built browser bundle, and CI runs it with
+  `rush test`. A helper shared by the two apps belongs in `@micacms/runtime`,
+  never in `@micacms/auth-oidc`.
 - **Nothing hashes a password.** Reintroducing one would mean owning reset, MFA,
   passkeys and breach response, which is the whole reason it is not here.
