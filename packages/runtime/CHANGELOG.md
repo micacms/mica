@@ -1,6 +1,13 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Sat, 10 Oct 2026 15:31:13 GMT and should not be manually modified.
+This log was last generated on Sat, 10 Oct 2026 18:31:39 GMT and should not be manually modified.
+
+## 0.3.0
+Sat, 10 Oct 2026 18:31:39 GMT
+
+### Minor changes
+
+- Remove `sessions` from `OperationalInfo.database`: the self-hosted database no longer holds sessions.
 
 ## 0.2.2
 Sat, 10 Oct 2026 15:31:13 GMT

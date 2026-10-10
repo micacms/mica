@@ -10,6 +10,43 @@ eight published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.3.0] — 2026-10-10
+
+Simpler self-hosting and the v1.5 brand. A self-hosted Mica now keeps sessions
+in a cookie and publishes only through GitHub or GitLab, so read Breaking
+before upgrading. The local editor needs no change.
+
+### Added
+
+- **Admit editors by verified email address.** `MICA_ADMIT_EMAILS` lists the
+  addresses that may sign in, for providers that send no groups claim, such as
+  Google (`@micacms/auth-oidc`).
+
+### Changed
+
+- **The v1.5 brand.** The editor shows the lowercase `micacms` wordmark and the
+  new favicon, an aubergine sidebar and creme surfaces, and uses Inter as its
+  only font. The sidebar text and the Publish badge have more contrast
+  (`@micacms/editor-ui`).
+- **The System page no longer shows a session count**, because the database no
+  longer holds sessions (`@micacms/editor-ui`, `@micacms/runtime`).
+
+### Breaking
+
+- **Sessions are an encrypted cookie, not a database table.** Migration 3 drops
+  the `sessions` table: the database now holds only unpublished drafts. Set
+  `SESSION_SECRET` in production; changing it signs everybody out. Everyone
+  signs in once more after the upgrade. `createOidcAuth` no longer takes a
+  database, the session repository exports are removed, and
+  `OperationalInfo.database` has no `sessions` field
+  (`@micacms/auth-oidc`, `@micacms/runtime`, `@micacms/self-hosted`).
+- **A self-hosted Mica requires `REPOSITORY=github` or `gitlab`.**
+  `REPOSITORY=local`, the old default, now stops startup. To edit a checkout,
+  use `npx @micacms/editor` (`@micacms/self-hosted`).
+- **A `MICA_ADMIT_DOMAIN` that names a public provider stops startup**, for
+  example `gmail.com`, because it would admit every account at that provider.
+  Use `MICA_ADMIT_EMAILS` for single addresses (`@micacms/auth-oidc`).
+
 ## [0.2.2] — 2026-10-10
 
 One fix to how pending work is counted. Nothing breaks; upgrade at any time.

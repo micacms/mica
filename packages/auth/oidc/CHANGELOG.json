@@ -2,6 +2,21 @@
   "name": "@micacms/auth-oidc",
   "entries": [
     {
+      "version": "0.3.0",
+      "tag": "@micacms/auth-oidc_v0.3.0",
+      "date": "Sat, 10 Oct 2026 18:31:39 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Admit verified email addresses with MICA_ADMIT_EMAILS, for providers with no groups claim such as Google. A MICA_ADMIT_DOMAIN that names a public provider such as gmail.com now stops startup."
+          },
+          {
+            "comment": "Keep sessions in an encrypted cookie instead of SQLite. createOidcAuth no longer takes a database, and the session repository exports are removed. Everyone signs in once more after the upgrade."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.2.2",
       "tag": "@micacms/auth-oidc_v0.2.2",
       "date": "Sat, 10 Oct 2026 15:31:13 GMT",

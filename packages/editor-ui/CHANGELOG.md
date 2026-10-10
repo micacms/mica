@@ -1,6 +1,17 @@
 # Change Log - @micacms/editor-ui
 
-This log was last generated on Sat, 10 Oct 2026 15:31:13 GMT and should not be manually modified.
+This log was last generated on Sat, 10 Oct 2026 18:31:39 GMT and should not be manually modified.
+
+## 0.3.0
+Sat, 10 Oct 2026 18:31:39 GMT
+
+### Minor changes
+
+- Apply the v1.5 brand: the micacms wordmark and favicon, aubergine and creme colors, and Inter as the only font.
+
+### Patches
+
+- The System page no longer shows a session count.
 
 ## 0.2.2
 Sat, 10 Oct 2026 15:31:13 GMT

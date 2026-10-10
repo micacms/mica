@@ -1,6 +1,14 @@
 # Change Log - @micacms/auth-oidc
 
-This log was last generated on Sat, 10 Oct 2026 15:31:13 GMT and should not be manually modified.
+This log was last generated on Sat, 10 Oct 2026 18:31:39 GMT and should not be manually modified.
+
+## 0.3.0
+Sat, 10 Oct 2026 18:31:39 GMT
+
+### Minor changes
+
+- Admit verified email addresses with MICA_ADMIT_EMAILS, for providers with no groups claim such as Google. A MICA_ADMIT_DOMAIN that names a public provider such as gmail.com now stops startup.
+- Keep sessions in an encrypted cookie instead of SQLite. createOidcAuth no longer takes a database, and the session repository exports are removed. Everyone signs in once more after the upgrade.
 
 ## 0.2.2
 Sat, 10 Oct 2026 15:31:13 GMT
