@@ -262,10 +262,39 @@ pathspec limits both `git add` and `git commit`, so a developer's unrelated
 work — staged or not — never enters an editor's commit; HEAD is verified
 against the base the editor reviewed; a failed push returns
 `committed-pending-push` and a retry pushes rather than committing again. One
-choice the plan left open is now fixed: which workspace a deployment stages in
-follows the *connector* (`REPOSITORY`), not `MICA_MODE` — a self-hosted
-deployment with a checkout beside it stages in that checkout, because shadowing
-a working tree with a draft store would show editors a tree that lies.
+choice the plan left open was fixed then: which workspace a deployment stages
+in follows the *connector* (`REPOSITORY`), not `MICA_MODE`.
+
+**Changed in 0.3.0:** a self-hosted deployment no longer accepts a checkout
+beside it. See "Local Git is the local editor's, never the server's".
+
+---
+
+### P2 — Local Git is the local editor's, never the server's
+
+**Decided:** there are two ways to run Mica, and each reaches the repository
+one way. The local editor works on the developer's checkout and publishes with
+their own `git` and credentials. A self-hosted Mica publishes only through a
+provider API — `REPOSITORY` must be `github` or `gitlab`, and `local`, once the
+default, stops startup.
+
+**Why:** a server has no developer behind it. Local publishing needs the
+`git` binary, credentials, a writable checkout owned by the right user, and
+somebody to resolve a diverged branch by hand. The image has none of these, so
+a working tree there could autosave but never publish. Supplying them would be
+a second credential path next to `REPOSITORY_TOKEN`, and `git` would run the
+hooks and configuration of whatever repository is mounted.
+
+**Consequence:** self-hosted works only with GitHub and GitLab. A team on
+Gitea, Forgejo, Bitbucket or plain SSH cannot self-host Mica yet. Every
+self-hosted deployment has the draft database.
+
+**What would change it:** demand for another Git host. The answer then is a
+connector for its API, not `git` in the image.
+
+**Built in 0.3.0.** `apps/self-hosted/src/config.ts` refuses any other
+`REPOSITORY`. The test stacks publish to a stand-in for the GitHub API
+([`tests/github-stub/`](../tests/github-stub/README.md)).
 
 ---
 

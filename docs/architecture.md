@@ -151,14 +151,14 @@ work is durable in Mica, and only Published means it is in Git and on its way
 to a deployment.
 
 There is one shared pending change set per site — not one per editor, and no
-approval queue. The draft workspace differs by deployment shape, because the
-two shapes genuinely differ:
+approval queue. The draft workspace differs by app, because the two apps
+genuinely differ:
 
-- **A working tree** (`REPOSITORY=local`): autosave writes the checkout, which
+- **A working tree** (the local editor, `REPOSITORY=local`): autosave writes the checkout, which
   is what lets the Astro dev server hot-reload it. Recent changes is `git
   status` over the content root; Publish commits exactly the reviewed paths
   and pushes with the developer's own Git.
-- **A draft store** (`github` / `gitlab`): writing through a provider API is
+- **A draft store** (self-hosted, `github` / `gitlab` only): writing through a provider API is
   already a commit, so saves accumulate in SQLite behind a connector overlay,
   and Publish sends the whole set as one provider-side commit.
 
@@ -276,7 +276,7 @@ One runtime, two composition roots. The mode is which app you run.
 |                        | Identity             | Repository                   | Database                    |
 | ---------------------- | -------------------- | ---------------------------- | --------------------------- |
 | `@micacms/editor`      | **None** — see below | A working tree, always       | **None**                    |
-| `@micacms/self-hosted` | OIDC                 | Usually a provider connector | SQLite: drafts only          |
+| `@micacms/self-hosted` | OIDC                 | A provider connector, always | SQLite: drafts only         |
 
 Both compose `@micacms/runtime` — neither forks it — and hand it an
 `AuthSurface`: routes for `/api/auth` plus the gate in front of the admin API.
@@ -313,7 +313,7 @@ Origin check handles cross-site writes as before.
 SQLite, holding:
 
 ```
-drafts                  the pending change set, where saves are staged (provider repositories only)
+drafts                  the pending change set, where saves are staged 
 draft_base              the branch head that pending set began from
 ```
 
@@ -321,8 +321,7 @@ No content history, no media library, no revisions, no accounts, no sessions.
 The draft tables hold exactly the current pending change set and are cleared by
 publication; Git stays the history. Losing this database loses work that was
 saved and not yet published, which the self-hosted backup guidance says out
-loud. It signs nobody out. With `REPOSITORY=local` the file is still opened,
-but nothing in it is in use. Two rules keep it navigable: SQL is written only by
+loud. It signs nobody out. Two rules keep it navigable: SQL is written only by
 the stores that own their tables — drafts and migrations in `apps/self-hosted`
 — and only the runtime's `db/driver.ts` knows which SQLite library is in use.
 The local editor opens no database at all.

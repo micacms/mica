@@ -189,7 +189,7 @@ deploy/
 ├── self-hosted/         the reference deployment: compose.yml + .env.example
 └── demo-identity/       the deployed shape on your machine: Mica + ZITADEL
 tests/
-└── e2e/                 a fast sign-in rig: Mica + Keycloak + a checkout
+└── e2e/                 a fast sign-in rig: Mica + Keycloak + a GitHub API stub
 ```
 
 `packages/*` are reusable libraries and `apps/*` are the two things you run;

@@ -215,8 +215,8 @@ The startup line says which rule is in force, as `admission`. There is nothing
 to bootstrap and nobody to invite: anybody your rule admits signs in and is an
 editor, and the **System** page shows the rule under _Who may edit_.
 
-Mica refuses to start if `REPOSITORY` names a provider without a project and a
-token, or if the repository has no content model. Both are deliberate: a CMS
+Mica refuses to start if `REPOSITORY` is not `github` or `gitlab`, if the
+project or the token is missing, or if the repository has no content model. Both are deliberate: a CMS
 that starts, shows an editor their content and only fails when they press Save
 has already cost them their work.
 
@@ -349,7 +349,7 @@ version rather than tracking `latest`, so an upgrade is a decision.
 { "status": "ok", "database": "ok", "repository": "github:acme/website/content@main" }
 ```
 
-The `database` field appears only where Mica has a database. The endpoint
+The endpoint
 returns 503 if the database is unreadable or the repository is unreachable —
 a container that is listening but cannot reach its repository cannot save
 anything, so it should not be sent traffic.
@@ -379,7 +379,7 @@ costs.** It carries the pending draft — everything that
 is Saved and not yet Published, media uploads included. Git is not protecting
 that yet; only publication moves it into the repository. Losing the volume
 therefore loses whatever was saved but never published. It signs nobody out:
-sessions are cookies. With `REPOSITORY=local` the file holds nothing in use.
+sessions are cookies.
 Back up the data volume on a schedule, and take the copy with SQLite's own
 `.backup` (a plain `cp` is unsafe: WAL mode keeps recent writes in
 `cms.sqlite-wal`). Encourage editors to publish rather than to hoard a
@@ -404,7 +404,7 @@ That path is not covered by tests against a real instance yet. Other providers
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| Exits at startup with `ConfigError` | `REPOSITORY` names a provider without `REPOSITORY_PROJECT` / `REPOSITORY_TOKEN` | Set both |
+| Exits at startup with `ConfigError` | `REPOSITORY` is not `github` or `gitlab` (`local` is refused), or `REPOSITORY_PROJECT` / `REPOSITORY_TOKEN` is missing | Set all three. To edit a checkout, run `npx @micacms/editor` |
 | Exits with "No content model at …" | `.mica/schema.json` was never committed, or is on another branch | Build the Astro project, commit it, push to `REPOSITORY_BRANCH` |
 | Exits with "Could not read the content model" | The repository is unreachable — bad token, wrong project, provider down | Check the token's scope and `REPOSITORY_PROJECT` |
 | Health 503, `repository: unavailable` | Token expired, revoked, or wrong scope | Reissue with contents write / `write_repository` |
