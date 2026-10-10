@@ -123,8 +123,13 @@ export function createWorkingTreeStagingService(
     return parseStatus(raw, workspace.prefix);
   };
 
-  const analyse = async (treeChanges: TreeChange[]) => {
-    const { changes, validation } = await analyseChanges(model, connector, treeChanges);
+  const analyse = async (workspace: Workspace, treeChanges: TreeChange[]) => {
+    const { changes, validation } = await analyseChanges(
+      model,
+      connector,
+      treeChanges,
+      headSource(workspace),
+    );
 
     // A merge conflict is a validity problem the field validator cannot see:
     // the file on disk is Git's conflict format, not content.
@@ -196,7 +201,7 @@ export function createWorkingTreeStagingService(
       }
 
       const treeChanges = await listChanges(located);
-      const { changes, validation } = await analyse(treeChanges);
+      const { changes, validation } = await analyse(located, treeChanges);
 
       return {
         workspace: "working-tree",
@@ -247,7 +252,7 @@ export function createWorkingTreeStagingService(
           );
         }
 
-        const { validation } = await analyse(treeChanges);
+        const { validation } = await analyse(workspace, treeChanges);
         if (!validation.ok) {
           throw new ApiError("validation_failed", describeProblems(validation.problems), {
             issues: flattenProblems(validation.problems),

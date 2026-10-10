@@ -299,6 +299,43 @@ describe("before/after comparison with a draft store", () => {
     assert.equal(body.after, null);
   });
 
+  it("a URL change is one renamed entry, compared without the moved files", async () => {
+    // Published by hand, with a colocated image the rename must carry along.
+    const base = join(harness.contentRoot, "projects/scheune");
+    mkdirSync(join(base, "media"), { recursive: true });
+    writeFileSync(join(base, "media/front.png"), pngBytes());
+    writeFileSync(
+      join(base, "index.json"),
+      JSON.stringify({ title: "Scheune", slug: "scheune", year: 2021, cover: "media/front.png" }),
+    );
+
+    const renamed = await harness.request("/api/admin/collections/projects/entries/scheune", {
+      method: "PUT",
+      session,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        data: { title: "Scheune", slug: "alte-scheune", year: 2021, cover: "projects/scheune/media/front.png" },
+      }),
+    });
+    assert.equal(renamed.status, 200);
+
+    const changes = await harness.request("/api/admin/changes", { session });
+    const { changes: list } = (await changes.json()) as {
+      changes: Array<{ path: string; owner: { slug?: string; renamedFrom?: string } }>;
+    };
+    const moved = list.filter((change) => change.path.startsWith("projects/scheune/") || change.path.startsWith("projects/alte-scheune/"));
+    assert.ok(moved.length >= 4, "both folders' files are listed");
+    for (const change of moved) {
+      assert.equal(change.owner.slug, "alte-scheune", change.path);
+      assert.equal(change.owner.renamedFrom, "scheune", change.path);
+    }
+
+    const { body } = await compare("kind=entry&collection=projects&slug=alte-scheune&from=scheune");
+    assert.equal(body.before?.["slug"], "scheune");
+    assert.equal(body.after?.["slug"], "alte-scheune");
+    assert.equal(body.before?.["cover"], body.after?.["cover"]);
+  });
+
   it("refuses a malformed or unknown target", async () => {
     const malformed = await harness.request("/api/admin/changes/compare?kind=entry", { session });
     assert.equal(malformed.status, 400);

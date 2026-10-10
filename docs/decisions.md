@@ -415,6 +415,28 @@ work on a slow mobile connection.
 
 ---
 
+### P3 — A renamed entry is recognised by its content
+
+**Decided:** the Publish page shows a URL change as one renamed entry when a
+deleted and a created entry of one collection agree on at least half of their
+non-empty fields, the slug aside. Otherwise they stay one removal and one
+addition.
+
+**Why:** an entry has no identity but its slug, and the pending change set
+holds only files. Git has no record of a move either: a commit that deletes the
+old folder and adds the new one is a rename because Git compares the contents.
+The Publish page uses the same rule, so it agrees with `git log --follow`.
+
+**Consequence:** a rename that also rewrites most of the entry shows as a
+removal and an addition. A small entry whose title and URL change together can
+fall under the threshold in Git too, and its history then stops at the rename.
+
+**What would change it:** a rename recorded explicitly in the draft workspace.
+The working tree has no place for that record, so both workspaces would need
+one first.
+
+---
+
 ## Deferred scope
 
 Explicitly not built.
