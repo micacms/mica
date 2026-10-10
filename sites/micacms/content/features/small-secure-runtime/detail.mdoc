@@ -1,7 +1,7 @@
 Production sign-in uses your OpenID Connect provider. Mica implements no passwords, reset flow, MFA enrollment, or passkeys. It stores no accounts either.
 
-One setting says who can edit: a group from your provider, a verified email domain, or a list of subjects. Add an editor in the identity provider that you already use for joiners and leavers. Mica has nothing to administer, and no list of its own that can become incorrect.
+One setting says who can edit: a group from your provider, a verified email domain, a list of verified email addresses, or a list of subjects. Add an editor in the identity provider that you already use for joiners and leavers. Mica has nothing to administer, and no list of its own that can become incorrect.
 
 Mica reads the rule on each request, thus a change to the rule is immediate. A change in your provider is not: Mica uses the data that the provider sent at sign-in, and gets new data at the next sign-in. Sessions therefore continue for hours, not weeks.
 
-The operational database contains sessions and unpublished drafts, never the published website. If it is lost, editors sign in again and everything published is still in the repository.
+Sessions are encrypted cookies, thus Mica keeps no session list. The only database holds unpublished drafts, and only behind GitHub or GitLab. It never holds the published website. If it is lost, unpublished drafts are gone and everything published is still in the repository.

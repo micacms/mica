@@ -1,6 +1,6 @@
-Deploy Mica as one container: the published `@micacms/self-hosted` image. It needs a repository connection, an OpenID Connect provider, a rule that says who can edit, and a persistent volume for its small SQLite file.
+Deploy Mica as one container: the published `@micacms/self-hosted` image. It needs a repository connection, an OpenID Connect provider, a rule that says who can edit, and a persistent volume for its small SQLite file when you use GitHub or GitLab.
 
-A save stages a draft in that database, where only editors see it. An editor's Publish writes everything pending to the repository as one commit.
+A save stages a draft in that database, where only editors see it. An editor's Publish writes everything pending to the repository as one commit. With `REPOSITORY=local`, Mica creates no database.
 
 > Mica is pre-1.0. Test upgrades and keep the version fixed in production.
 
@@ -29,12 +29,17 @@ Your provider tells Mica who a person is. It does not tell Mica if that person c
 ```env
 MICA_ADMIT_GROUP=mica-editors
 MICA_ADMIT_DOMAIN=example.com
+MICA_ADMIT_EMAILS=alice@gmail.com,bob@example.com
 MICA_ADMIT_SUBJECTS=https://auth.example.com|a1b2c3
 ```
 
 The group rule is the usual choice. To add an editor, put the person in that group in your identity provider. Mica does not change, and it keeps no list that can become incorrect. If your provider sends the groups with a different claim name, give the name in `MICA_OIDC_GROUPS_CLAIM`.
 
-The domain rule applies only to an email address that the provider verified. The subject list uses `issuer|subject`, and never an email address: a provider can let a person change an address, and the next holder must not get the permission.
+The domain rule and the email list apply only to an email address that the provider verified. Mica does not start if the domain rule names a public email provider, for example `gmail.com`, because it would admit the public.
+
+Google sends no groups claim. For Google accounts, use the email list, or the domain rule for a Google Workspace domain. The email list has one cost: if your organisation gives the address of a former editor to a new person, that person gets access too. Gmail never reuses an address. For your own domain, prefer a group.
+
+The subject list uses `issuer|subject`, and never an email address: a provider can let a person change an address, and the next holder must not get the permission.
 
 There is no user administration in Mica, and no invitation. Each person who the rules admit is an editor of this website.
 
@@ -48,6 +53,8 @@ A change in your provider is not immediate. Mica uses the data that the provider
 SESSION_TTL_HOURS=8
 SESSION_IDLE_HOURS=4
 ```
+
+A session is an encrypted cookie, and Mica keeps no list of sessions. A session ends after `SESSION_IDLE_HOURS` without use. While it is in use, Mica issues the cookie again every 5 minutes, up to `SESSION_TTL_HOURS`. Sign-out clears the cookie in the browser only. To end all sessions, change `SESSION_SECRET` and restart. Everybody then signs in again.
 
 ## Start the service
 
@@ -69,4 +76,4 @@ The website build needs no CMS URL and no read token. It reads the checked-out f
 
 ## Backups
 
-The content repository is the content backup, with history from every publish. The SQLite file contains sessions and the drafts that nobody has published yet. If you lose it, editors sign in again and unpublished work is gone; everything published is in the repository. One file to back up covers both.
+The content repository is the content backup, with history from every publish. The SQLite file contains only the drafts that nobody has published yet, and only behind GitHub or GitLab. If you lose it, unpublished work is gone and nobody is signed out; everything published is in the repository. Back up the data volume if unpublished work is important.
