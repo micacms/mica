@@ -98,6 +98,15 @@
       "packageName": "@micacms/example-muster-consulting",
       "projectFolder": "examples/muster-consulting",
       "tags": ["sites"]
+    },
+
+    // ------------------------------------------------------------- tests
+    // Never published. Runs only against the OIDC test stack, so it has no
+    // `test` script and `rush test` skips it.
+    {
+      "packageName": "@micacms/browser-test",
+      "projectFolder": "tests/browser",
+      "tags": ["tests"]
     }
   ]
 }

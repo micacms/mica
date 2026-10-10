@@ -18,8 +18,9 @@ WORKDIR /app
 
 # Only the manifests, so a dependency install is cached until they change.
 # Every project in rush.json must have one — Rush reads them all at startup,
-# even for a filtered install — which is why the two site manifests are let
-# through .dockerignore's wholesale exclusion of sites/ and examples/.
+# even for a filtered install — which is why the two site manifests and the
+# browser test's are let through .dockerignore's exclusion of sites/, examples/
+# and tests/.
 COPY rush.json ./
 COPY common ./common
 COPY packages/core/package.json packages/core/
@@ -32,6 +33,7 @@ COPY apps/local-editor/package.json apps/local-editor/
 COPY apps/self-hosted/package.json apps/self-hosted/
 COPY sites/micacms/package.json sites/micacms/
 COPY examples/muster-consulting/package.json examples/muster-consulting/
+COPY tests/browser/package.json tests/browser/
 
 # install-run-rush bootstraps the Rush version rush.json pins, then installs
 # only the closure the image needs. `rush install` is frozen by definition: it

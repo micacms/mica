@@ -536,9 +536,11 @@ Explicitly not built.
 
 ## Known gaps to close
 
-- **P2** — No end-to-end browser test of the admin. The API has good coverage
-  and the Vue app typechecks, but no test drives a real browser through "sign
-  in, edit, publish". The one place a regression could reach production unseen.
+- **P3** — The browser test covers one path. CI drives Chromium through "sign
+  in, edit, save, publish, sign out" on one singleton
+  ([`tests/browser/`](../tests/browser/README.md)). Collections, media,
+  discard, conflicts and the local editor are covered by the API tests and by
+  hand. Add a path when a regression reaches the UI unseen.
 - **P2** — The group claim is verified by hand, not by CI. CI runs the real
   image against Dex on every pull request ([`tests/oidc/`](../tests/oidc/README.md)):
   sign-in, the email and domain rules, a refusal, CSRF and an edit. Dex's

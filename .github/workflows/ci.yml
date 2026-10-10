@@ -88,7 +88,7 @@ jobs:
 
   docker:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
 
     steps:
       - uses: actions/checkout@v4
@@ -119,6 +119,25 @@ jobs:
 
       - name: Sign in, edit and publish
         run: node --test tests/oidc/flow.test.mjs
+
+      # The same stack, driven by clicking through the editor UI in Chromium —
+      # see tests/browser/README.md. Only this project's closure is installed.
+      - name: Install the browser test
+        run: |
+          node common/scripts/install-run-rush.js install --to @micacms/browser-test
+          cd tests/browser && ./node_modules/.bin/playwright install --with-deps chromium
+
+      - name: Sign in, edit and publish in a browser
+        working-directory: tests/browser
+        run: ./node_modules/.bin/playwright test
+
+      - name: Browser test report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: tests/browser/playwright-report
+          if-no-files-found: ignore
 
       - name: Logs of the test stack
         if: failure()
