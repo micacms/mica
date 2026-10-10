@@ -2,6 +2,12 @@
   "name": "@micacms/auth-oidc",
   "entries": [
     {
+      "version": "0.2.1",
+      "tag": "@micacms/auth-oidc_v0.2.1",
+      "date": "Sat, 10 Oct 2026 14:58:49 GMT",
+      "comments": {}
+    },
+    {
       "version": "0.2.0",
       "tag": "@micacms/auth-oidc_v0.2.0",
       "date": "Mon, 31 Aug 2026 06:07:50 GMT",

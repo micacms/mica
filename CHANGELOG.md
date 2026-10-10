@@ -10,6 +10,30 @@ eight published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.2.1] — 2026-10-10
+
+Fixes for changing the URL of an entry. Nothing breaks; upgrade at any time.
+
+### Changed
+
+- **The Publish page shows a URL change as one renamed entry.** It used to
+  show one removed and one added entry, with every field marked as changed.
+  Now the comparison lists only the fields that changed — usually only the
+  URL. A rename is recognised by its content, as Git recognises one: the old
+  and the new version must agree on at least half of their non-empty fields,
+  the URL aside. "Discard" on the row puts the entry back at its old URL
+  (`@micacms/runtime`, `@micacms/editor-ui`).
+
+### Fixed
+
+- **A URL change no longer breaks the entry's own images.** The rename moved
+  the files in the entry's `media/` folder to the new folder, but the media
+  fields still pointed into the old folder, which the rename deleted. The
+  references now move with the files (`@micacms/connectors`).
+- **A renamed entry keeps its place in a manually ordered collection.** The
+  rename did not update `_order.json`, so the entry dropped to the end of the
+  list. The new slug now takes the old slug's place (`@micacms/connectors`).
+
 ## [0.2.0] — 2026-08-31
 
 A larger refactor: publishing became explicit, and the CMS became packages you

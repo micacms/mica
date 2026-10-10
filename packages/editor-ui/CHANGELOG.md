@@ -1,6 +1,17 @@
 # Change Log - @micacms/editor-ui
 
-This log was last generated on Mon, 31 Aug 2026 06:07:50 GMT and should not be manually modified.
+This log was last generated on Sat, 10 Oct 2026 14:58:49 GMT and should not be manually modified.
+
+## 0.2.1
+Sat, 10 Oct 2026 14:58:49 GMT
+
+### Patches
+
+- Show a URL change on the Publish page as one renamed entry, with only the changed fields.
+
+### Updates
+
+- Preserve fenced code blocks when rich-text content opens in the editor.
 
 ## 0.2.0
 Mon, 31 Aug 2026 06:07:50 GMT
