@@ -82,12 +82,12 @@ async function signOut(): Promise<void> {
     <aside
       id="main-navigation"
       :class="[
-        'fixed inset-y-0 left-0 z-30 flex w-[220px] shrink-0 flex-col border-r border-white/10 bg-[#111110] text-white transition-transform lg:static lg:translate-x-0',
+        'fixed inset-y-0 left-0 z-30 flex w-[220px] shrink-0 flex-col border-r border-white/10 bg-[var(--mica-aubergine-700)] text-[var(--mica-creme-100)] transition-transform lg:static lg:translate-x-0',
         menuOpen ? 'translate-x-0' : '-translate-x-full',
       ]"
     >
       <div class="flex h-14 items-center border-b border-white/10 px-3">
-        <img src="/brand/mica-logo-glimmer-light.svg" alt="Mica" class="h-7 w-auto" />
+        <img src="/brand/micacms-wordmark-light.svg" alt="micacms" class="h-5 w-auto" />
       </div>
 
       <nav class="flex-1 space-y-5 overflow-y-auto px-2 py-3" aria-label="Main">
@@ -173,7 +173,7 @@ async function signOut(): Promise<void> {
 
     <div class="flex min-w-0 flex-1 flex-col">
       <header
-        class="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-line bg-white/90 px-4 backdrop-blur lg:hidden"
+        class="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur lg:hidden"
       >
         <button
           type="button"
@@ -185,7 +185,7 @@ async function signOut(): Promise<void> {
           <Menu :size="20" aria-hidden="true" />
           <span class="sr-only">Toggle navigation</span>
         </button>
-        <img src="/brand/mica-logo-glimmer.svg" alt="Mica" class="h-7 w-auto" />
+        <img src="/brand/micacms-wordmark.svg" alt="micacms" class="h-5 w-auto" />
       </header>
 
       <main class="min-w-0 flex-1 bg-surface">
@@ -210,8 +210,8 @@ async function signOut(): Promise<void> {
 }
 
 .nav-link.router-link-active {
-  background: rgb(107 92 166 / 20%);
-  color: var(--mica-glimmer-400);
+  background: rgb(251 245 236 / 12%);
+  color: var(--mica-creme-100);
 }
 
 .sidebar-signout {
