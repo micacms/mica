@@ -229,6 +229,7 @@ provider says who you are        MICA_OIDC_*
         ▼
 rules say whether you are in     MICA_ADMIT_GROUP
         │                        MICA_ADMIT_DOMAIN
+        │                        MICA_ADMIT_EMAILS
         ▼                        MICA_ADMIT_SUBJECTS
 everybody admitted is an editor of this site
 ```
@@ -245,11 +246,12 @@ edit everything.
 
 Four details that matter:
 
-- Identities are keyed by `(issuer, subject)`, never by email. An email is a
-  display attribute a provider may let someone change; admitting an address
-  means admitting whoever holds it next.
-- The domain rule requires the provider's `email_verified`. Without it, an open
-  self-registration would let anybody claim an admitted domain.
+- Sessions are keyed by `(issuer, subject)`. An address may be admitted
+  (`MICA_ADMIT_EMAILS`), because Google sends no groups — the cost is that an
+  organisation that reuses an address passes the access on with it.
+- The email and domain rules require the provider's `email_verified`. Without
+  it, an open self-registration would let anybody claim an admitted address. A
+  domain rule for a public provider such as `gmail.com` is refused at startup.
 - The rules are re-read on every request, never copied into the session. A
   configuration change takes effect now.
 - A **group** change at the provider does not. Mica sees the claims it was

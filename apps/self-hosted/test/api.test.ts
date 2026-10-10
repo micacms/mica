@@ -155,6 +155,23 @@ describe("admission", () => {
     await harness.close();
   });
 
+  it("admits a listed address only when the provider says it is verified", async () => {
+    const harness = await authenticated({ MICA_ADMIT_EMAILS: ADMITTED.email.toUpperCase() });
+
+    const verified = await harness.signIn({ ...ADMITTED, groups: [] });
+    assert.equal((await harness.request("/api/auth/me", { session: verified })).status, 200);
+
+    const unverified = await harness.signIn({
+      ...ADMITTED,
+      subject: "unverified",
+      emailVerified: false,
+      groups: [],
+    });
+    assert.equal((await harness.request("/api/auth/me", { session: unverified })).status, 403);
+
+    await harness.close();
+  });
+
   /**
    * The property the membership table used to give, kept: admission is re-read
    * on every request rather than copied into the session at sign-in.

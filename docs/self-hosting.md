@@ -147,7 +147,10 @@ MICA_ADMIT_GROUP=mica-editors
 #     verified the address.
 MICA_ADMIT_DOMAIN=example.com
 
-# C — an explicit list, keyed by issuer and subject.
+# C — these addresses, verified by the provider. The one for Google accounts.
+MICA_ADMIT_EMAILS=alice@gmail.com,bob@example.com
+
+# D — an explicit list, keyed by issuer and subject.
 MICA_ADMIT_SUBJECTS=https://auth.example.com|a1b2c3,https://auth.example.com|d4e5f6
 ```
 
@@ -163,15 +166,22 @@ send `groups`; if yours sends something else, name it:
 MICA_OIDC_GROUPS_CLAIM=roles
 ```
 
-The subject list is the escape hatch for a provider with no groups, and for the
-first sign-in before a group exists. It is keyed by `issuer|subject` and never
-by an email address: providers let people change addresses, and admitting an
-address means admitting whoever holds it next. The subject is in the ID token
-as `sub`, and your provider's console shows it as the user's id.
+Google sends no groups claim. With Google accounts, use the email list, or the
+domain rule for a Google Workspace domain. Mica refuses a domain rule for
+`gmail.com` and other public providers, because it would admit the public.
 
-The domain rule needs `email_verified` from the provider. Without it Mica
-refuses and says so — an unverified address is one the person typed, and where
-self-registration is open that would let anybody claim your domain.
+The email list has one cost: if your organisation gives a former editor's
+address to somebody new, that person gets this site too. Gmail never reuses an
+address. For your own domain, prefer a group, and remove the address here when
+somebody leaves.
+
+The subject list is the strictest rule: a subject never changes and is never
+reassigned. It is keyed by `issuer|subject`. The subject is in the ID token as
+`sub`, and your provider's console shows it as the user's id.
+
+The email and domain rules need `email_verified` from the provider. Without it
+Mica refuses and says so — an unverified address is one the person typed, and
+where self-registration is open that would let anybody claim it.
 
 ### 5. The rest of `.env`
 

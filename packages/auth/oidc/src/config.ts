@@ -33,11 +33,13 @@ export const authEnv = {
   /**
    * Who may edit this site. Authentication says who somebody is; these say
    * whether that person gets in. At least one is required — the composition
-   * refuses to start without one. Comma-separated, all three.
+   * refuses to start without one. Comma-separated, all four.
    */
   MICA_ADMIT_GROUP: z.string().optional(),
   MICA_ADMIT_DOMAIN: z.string().optional(),
-  /** `issuer|subject` pairs. Never an email — see admission.ts. */
+  /** Verified addresses — the list for a provider with no groups, such as Google. */
+  MICA_ADMIT_EMAILS: z.string().optional(),
+  /** `issuer|subject` pairs — see admission.ts. */
   MICA_ADMIT_SUBJECTS: z.string().optional(),
 
   /** Signs session cookies. Rotating it invalidates every session. */
@@ -81,6 +83,7 @@ export function deriveAuth<T extends AuthEnv & { NODE_ENV: string; MICA_PUBLIC_U
     admitDomains: list(env.MICA_ADMIT_DOMAIN).map((domain) =>
       domain.toLowerCase().replace(/^@/, ""),
     ),
+    admitEmails: list(env.MICA_ADMIT_EMAILS).map((email) => email.toLowerCase()),
     admitSubjects: list(env.MICA_ADMIT_SUBJECTS).map((entry) => {
       const separator = entry.indexOf("|");
       return {
@@ -106,6 +109,7 @@ export interface AuthConfig {
   oidcAllowInsecure: boolean;
   admitGroups: string[];
   admitDomains: string[];
+  admitEmails: string[];
   admitSubjects: Array<{ issuer: string; subject: string }>;
   /** Resolved by the app: mandatory in production, ephemeral in development. */
   sessionSecret: string;
@@ -115,6 +119,30 @@ export interface AuthConfig {
   LOGIN_MAX_ATTEMPTS: number;
   LOGIN_WINDOW_MS: number;
 }
+
+/**
+ * Domains where anybody can register an address. A domain rule naming one
+ * admits the public, so it is refused; name the addresses instead.
+ */
+const PUBLIC_EMAIL_DOMAINS = new Set([
+  "gmail.com",
+  "googlemail.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "msn.com",
+  "yahoo.com",
+  "icloud.com",
+  "me.com",
+  "aol.com",
+  "proton.me",
+  "protonmail.com",
+  "gmx.com",
+  "gmx.net",
+  "gmx.de",
+  "gmx.ch",
+  "web.de",
+]);
 
 /**
  * The refusals that make a deployment honest before it serves a request.
@@ -128,6 +156,7 @@ export function requireAuthConfig(config: {
   MICA_OIDC_CLIENT_ID?: string | undefined;
   admitGroups: string[];
   admitDomains: string[];
+  admitEmails: string[];
   admitSubjects: Array<{ issuer: string; subject: string }>;
 }): void {
   const needed = (["MICA_OIDC_ISSUER", "MICA_OIDC_CLIENT_ID"] as const).filter(
@@ -147,6 +176,7 @@ export function requireAuthConfig(config: {
   if (
     config.admitGroups.length === 0 &&
     config.admitDomains.length === 0 &&
+    config.admitEmails.length === 0 &&
     config.admitSubjects.length === 0
   ) {
     throw new ConfigError(
@@ -155,9 +185,26 @@ export function requireAuthConfig(config: {
         "  everybody it knows. Set at least one of these:\n\n" +
         "    MICA_ADMIT_GROUP=mica-editors            a claim your provider sends\n" +
         "    MICA_ADMIT_DOMAIN=example.com            every verified address there\n" +
+        "    MICA_ADMIT_EMAILS=alice@gmail.com        these verified addresses\n" +
         "    MICA_ADMIT_SUBJECTS=https://id.example.com|a1b2c3\n\n" +
         "  The group rule is the one to grow into: adding an editor is then a\n" +
         "  change in the identity provider, and Mica is not touched.",
+    );
+  }
+
+  const open = config.admitDomains.filter((domain) => PUBLIC_EMAIL_DOMAINS.has(domain));
+  if (open.length > 0) {
+    throw new ConfigError(
+      `MICA_ADMIT_DOMAIN names ${open.join(", ")}, where anybody can register an address.\n` +
+        "  That rule would let the public edit this site. Name the people instead:\n" +
+        "    MICA_ADMIT_EMAILS=alice@gmail.com,bob@gmail.com",
+    );
+  }
+
+  const malformed = config.admitEmails.filter((email) => !/^[^@\s]+@[^@\s]+$/.test(email));
+  if (malformed.length > 0) {
+    throw new ConfigError(
+      `MICA_ADMIT_EMAILS entries are email addresses, and these are not: ${malformed.join(", ")}`,
     );
   }
 
@@ -167,8 +214,7 @@ export function requireAuthConfig(config: {
       "MICA_ADMIT_SUBJECTS entries are `issuer|subject` pairs, and one is not:\n" +
         `    ${wrong.map((entry) => entry.subject || "(empty)").join(", ")}\n\n` +
         "  The issuer is part of the key because a subject is only unique within\n" +
-        "  the provider that issued it. It is never an email address: providers\n" +
-        "  let people change those, and two people can hold one in turn.\n" +
+        "  the provider that issued it. To admit an address, use MICA_ADMIT_EMAILS.\n" +
         `    MICA_ADMIT_SUBJECTS=${config.MICA_OIDC_ISSUER ?? "https://id.example.com"}|a1b2c3`,
     );
   }

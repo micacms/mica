@@ -111,8 +111,9 @@ content is.
 
 **Decided:** who may edit a self-hosted site is decided by configuration, not by
 a table. Either a rule over provider claims (`MICA_ADMIT_GROUP`,
-`MICA_ADMIT_DOMAIN`) or an explicit list keyed by `(issuer, subject)`
-(`MICA_ADMIT_SUBJECTS`). The server refuses to start outside local mode when
+`MICA_ADMIT_DOMAIN`) or an explicit list — of verified addresses
+(`MICA_ADMIT_EMAILS`) or of `(issuer, subject)` pairs (`MICA_ADMIT_SUBJECTS`).
+The server refuses to start outside local mode when
 neither is set: an OIDC deployment that admits everybody its issuer knows is a
 misconfiguration, not a default.
 
@@ -151,6 +152,27 @@ provider's `email_verified`, because an open self-registration would otherwise
 let anybody claim an admitted domain. And the group claim has no standard name,
 so `MICA_OIDC_GROUPS_CLAIM` names it — a Keycloak path and a bare name are both
 accepted, since an operator writes the name their own console shows them.
+
+### P2 — Admission by email address, not only by subject
+
+**Decided:** `MICA_ADMIT_EMAILS` admits a listed address, compared
+case-insensitively, and only when the provider reports it as verified. A
+domain rule that names a public provider such as `gmail.com` is refused at
+startup.
+
+**Why:** Google sends no groups claim, and its subject is a number nobody can
+read off a console. For a small team on Google accounts the subject list was the
+only safe rule, and it was not usable.
+
+**Consequence:** an address is not a permanent key. An organisation that gives
+a former editor's address to somebody new gives them this site too. Gmail and
+the other public providers never reuse an address, so the risk sits with
+organisations that manage their own domain — and those are the ones with a
+group or domain rule to use instead.
+
+**What would change it:** a provider that lets a person set an address they do
+not own and still reports it verified. `MICA_ADMIT_SUBJECTS` stays the rule
+for that case.
 
 ---
 

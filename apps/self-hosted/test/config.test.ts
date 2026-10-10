@@ -158,6 +158,7 @@ describe("who may edit", () => {
   for (const rule of [
     { MICA_ADMIT_GROUP: "mica-editors" },
     { MICA_ADMIT_DOMAIN: "example.com" },
+    { MICA_ADMIT_EMAILS: "alice@gmail.com" },
     { MICA_ADMIT_SUBJECTS: "https://auth.example.com|a1b2c3" },
   ]) {
     it(`accepts ${Object.keys(rule)[0]} on its own`, () => {
@@ -165,21 +166,43 @@ describe("who may edit", () => {
     });
   }
 
-  it("reads all three as comma-separated lists", () => {
+  it("reads all four as comma-separated lists", () => {
     const config = loadConfig({
       ...base,
       MICA_ADMIT_GROUP: "editors, writers",
       MICA_ADMIT_DOMAIN: "Example.com, @acme.test",
+      MICA_ADMIT_EMAILS: "Alice@Gmail.com, bob@example.com",
       MICA_ADMIT_SUBJECTS: "https://a.test|one, https://b.test|two",
     });
 
     assert.deepEqual(config.admitGroups, ["editors", "writers"]);
     // Lowercased, and an `@` the operator typed out of habit is not part of it.
     assert.deepEqual(config.admitDomains, ["example.com", "acme.test"]);
+    assert.deepEqual(config.admitEmails, ["alice@gmail.com", "bob@example.com"]);
     assert.deepEqual(config.admitSubjects, [
       { issuer: "https://a.test", subject: "one" },
       { issuer: "https://b.test", subject: "two" },
     ]);
+  });
+
+  /** A domain rule for a public provider admits the public. */
+  it("refuses a domain where anybody can register an address", () => {
+    assert.throws(
+      () => loadConfig({ ...withoutRules(), MICA_ADMIT_DOMAIN: "example.com, Gmail.com" }),
+      (error: unknown) => {
+        assert.ok(error instanceof ConfigError);
+        assert.match(error.message, /gmail\.com, where anybody can register/);
+        assert.match(error.message, /MICA_ADMIT_EMAILS/);
+        return true;
+      },
+    );
+  });
+
+  it("refuses an email entry that is not an address", () => {
+    assert.throws(
+      () => loadConfig({ ...withoutRules(), MICA_ADMIT_EMAILS: "alice" }),
+      /not: alice/,
+    );
   });
 
   /**
