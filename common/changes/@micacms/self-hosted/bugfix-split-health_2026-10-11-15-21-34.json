@@ -1,7 +1,7 @@
 {
   "changes": [
     {
-      "comment": "Security: replace /health with /health/live (no I/O) and /health/ready (cached for 30 s); neither shows the repository or the uptime",
+      "comment": "Security: add /health/live (no I/O) and /health/ready (cached for 30 s); /health stays as readiness, and no health answer shows the repository or the uptime",
       "type": "none",
       "packageName": "@micacms/self-hosted"
     }

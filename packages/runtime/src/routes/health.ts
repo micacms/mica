@@ -6,6 +6,7 @@
  *   /health/ready  the database, where the composition has one, and the
  *                  content repository. Cached, because each probe spends one
  *                  call of the repository token's quota and anybody can ask.
+ *   /health        the same as /health/ready, so existing checks keep working.
  *
  * Neither answer names the repository or the uptime: the endpoints are public,
  * and the System view shows both to editors (#79).
@@ -39,13 +40,15 @@ export function healthRoutes(options: HealthOptions = {}): Hono<Env> {
 
   app.get("/live", (c) => c.json({ status: "ok" }));
 
-  app.get("/ready", async (c) => {
+  const ready = async (c: Context<Env>) => {
     if (!cached || now() - cached.at >= cacheMs) {
       cached = { at: now(), result: probe(c) };
     }
     const result = await cached.result;
     return c.json(result, result.status === "ok" ? 200 : 503);
-  });
+  };
+  app.get("/ready", ready);
+  app.get("/", ready);
 
   return app;
 }

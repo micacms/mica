@@ -41,8 +41,10 @@ describe("health", () => {
     assert.deepEqual(await response.json(), { status: "ok", repository: "ok" });
   });
 
-  it("has no bare /health any more", async () => {
-    assert.equal((await harness.request("/health")).status, 404);
+  it("keeps /health as readiness, so existing checks keep working", async () => {
+    const response = await harness.request("/health");
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { status: "ok", repository: "ok" });
   });
 });
 

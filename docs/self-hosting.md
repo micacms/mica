@@ -359,7 +359,8 @@ System view shows both to editors):
   It answers 503, with `"unavailable"` for the failed check, when the database
   is unreadable or the repository is unreachable. Point a load balancer or an
   uptime monitor at it. The result is cached for 30 seconds, so a caller cannot
-  spend the repository token's API quota.
+  spend the repository token's API quota. `GET /health` is the same check, so
+  an existing monitor or compose file keeps working.
 
 It does not check the identity provider. A provider that is briefly unreachable
 should stop new sign-ins, not take a container out of rotation and sign out
