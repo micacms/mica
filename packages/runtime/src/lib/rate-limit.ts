@@ -3,8 +3,8 @@
  *
  * The CMS is a single process by design, so an in-memory counter is
  * sufficient and avoids a Redis dependency. The trade-off is deliberate:
- * counters reset on restart. Login is additionally protected by scrypt's cost,
- * so a restart-and-retry loop gains an attacker very little.
+ * counters reset on restart. Mica checks no passwords; the identity provider
+ * does, with its own limits, so a restart-and-retry loop gains little.
  */
 
 export interface RateLimitResult {
