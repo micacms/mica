@@ -1055,6 +1055,31 @@ field, which is after 1.0.
 
 ---
 
+### P2 — SVG cannot be uploaded; an SVG in the repository is served sandboxed
+
+**Decided:** in 1.0, the media upload refuses SVG with a message that says to
+add the file through Git. An SVG that is already in the repository is listed
+and shown, and the admin media route always serves it with
+`Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'`
+and `X-Content-Type-Options: nosniff`. Files that are not images are sent as
+`Content-Disposition: attachment`. Both editors behave the same.
+
+**Why:** an SVG can carry a script, and on the admin origin that script runs
+with the editor's session, Publish included. The sandbox closes that whatever
+the upload rule is. Refusing uploads also keeps an editor's SVG off the
+website, where a site that inlines it would run its script. Sanitizing would
+need a large new dependency and would make its correctness a security promise.
+SVGs such as logos and icons usually come from a developer through Git anyway.
+
+**Consequence:** an editor cannot add an icon or a logo; a developer must.
+
+**What would change it:** editors who need to upload vector graphics; then a
+field opt-in with server-side sanitizing, in a 1.x minor.
+
+**1.0 status:** blocker; the headers and the refusal are in #86.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
