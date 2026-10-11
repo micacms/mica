@@ -203,7 +203,10 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 `TRUST_PROXY` makes Mica read the client address from `X-Forwarded-For` —
 enable it **only** behind a proxy you control, or clients can spoof their
-address and walk past the login rate limit.
+address and walk past the login rate limit. Mica takes the right-most entry,
+which is the address that the proxy in front of it saw. That is correct for one
+proxy, such as Caddy or nginx. Behind a CDN *and* a proxy, every client looks
+like the CDN.
 
 ### 6. Start it
 

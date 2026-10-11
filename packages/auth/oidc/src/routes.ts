@@ -71,8 +71,8 @@ export function authRoutes(deps: AuthRoutesDeps): Hono<Env> {
   app.get("/login", async (c) => {
     const returnTo = safeReturnTo(c.req.query("returnTo"), config.MICA_PUBLIC_URL);
 
-    // Rate limited on the way out as well as the way back: starting a flow is
-    // cheap for a client and costs Mica a discovery request.
+    // Rate limited on the way out and on the way back (in /callback): starting a
+    // flow is cheap for a client and costs Mica a discovery request.
     const limit = deps.loginLimiter.check(`oidc:${clientIp(c)}`);
     if (!limit.allowed) {
       throw new ApiError(
@@ -110,6 +110,12 @@ export function authRoutes(deps: AuthRoutesDeps): Hono<Env> {
 
     const refuse = (message: string) =>
       c.redirect(`/admin/login?error=${encodeURIComponent(message)}`);
+
+    // A replayed transaction cookie would call the token endpoint each time.
+    // Its own key, so that one sign-in does not count twice against the start.
+    if (!deps.loginLimiter.check(`oidc-callback:${clientIp(c)}`).allowed) {
+      return refuse("Too many sign-in attempts. Wait a few minutes, then sign in again.");
+    }
 
     const sealed = getCookie(c, sessions.names.transaction);
     deleteCookie(c, sessions.names.transaction, { path: "/api/auth", secure: config.cookieSecure });

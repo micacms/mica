@@ -7,7 +7,7 @@ import { after, before, describe, it } from "node:test";
 import { collection, defineSite, number, slug, text } from "@micacms/core";
 import { Hono } from "hono";
 
-import type { Env } from "../src/http.js";
+import { clientIp, type Env } from "../src/http.js";
 import { createLogger } from "../src/lib/logger.js";
 import {
   CONTENT_SECURITY_POLICY,
@@ -124,6 +124,30 @@ describe("security headers", () => {
 
     const response = await app.request("/sandboxed");
     assert.equal(response.headers.get("content-security-policy"), "sandbox");
+  });
+});
+
+describe("client address", () => {
+  function app(trustProxy: boolean) {
+    const app = new Hono<Env>();
+    app.use("*", async (c, next) => {
+      c.set("ctx", { config: { TRUST_PROXY: trustProxy } } as unknown as Env["Variables"]["ctx"]);
+      await next();
+    });
+    app.get("/ip", (c) => c.text(clientIp(c)));
+    return app;
+  }
+  const ip = async (trustProxy: boolean, forwarded: string) =>
+    (await app(trustProxy).request("/ip", { headers: { "x-forwarded-for": forwarded } })).text();
+
+  it("takes the right-most X-Forwarded-For entry, the one the proxy added", async () => {
+    // The client sent "6.6.6.6"; the proxy appended the address it saw.
+    assert.equal(await ip(true, "6.6.6.6, 203.0.113.7"), "203.0.113.7");
+    assert.equal(await ip(true, "203.0.113.7"), "203.0.113.7");
+  });
+
+  it("ignores X-Forwarded-For without TRUST_PROXY", async () => {
+    assert.notEqual(await ip(false, "203.0.113.7"), "203.0.113.7");
   });
 });
 

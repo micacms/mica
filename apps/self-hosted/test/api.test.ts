@@ -68,6 +68,25 @@ describe("over https", () => {
   });
 });
 
+describe("sign-in callback", () => {
+  let harness: TestHarness;
+  before(async () => {
+    harness = await createHarness({ LOGIN_MAX_ATTEMPTS: "2" });
+  });
+  after(() => harness.close());
+
+  it("is rate limited, so a replayed transaction cannot call the provider without end", async () => {
+    const locations: string[] = [];
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const response = await harness.request("/api/auth/callback?code=x&state=y");
+      assert.equal(response.status, 302);
+      locations.push(decodeURIComponent(response.headers.get("location") ?? ""));
+    }
+    assert.doesNotMatch(locations[0]!, /Too many/);
+    assert.match(locations[2]!, /Too many sign-in attempts/);
+  });
+});
+
 describe("sessions", () => {
   let harness: TestHarness;
   before(async () => {

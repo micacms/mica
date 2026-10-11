@@ -41,6 +41,10 @@ release note before upgrading.
 - An oversized request is refused before it is read into memory: at most
   2 MiB for JSON, and at most 10 files of `MAX_UPLOAD_BYTES` per upload. The
   editor uploads a larger selection in batches (#148).
+- With `TRUST_PROXY=true`, Mica takes the client address from the right-most
+  `X-Forwarded-For` entry, so a client can no longer choose its own address to
+  avoid the sign-in rate limit. The sign-in callback is rate limited too
+  (#149).
 
 ### Changed
 
