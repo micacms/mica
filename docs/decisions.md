@@ -544,6 +544,32 @@ add aliases with a warning for one minor.
 
 ---
 
+### P2 — The admin HTTP API is internal and unversioned
+
+**Decided:** `/api/admin/*` and `/api/auth/*` are not part of the semver
+contract and carry no version in the path. The admin SPA is their only
+supported client.
+
+**Why:** the SPA and the runtime ship together in one image and one
+`@micacms/editor`, at one lockstep version, so they can never disagree after a
+reload: `index.html` is served `no-cache`, and the hashed assets are immutable.
+A versioned API would freeze the editor's internals for a client that does not
+exist, and it would come close to the content API that this project removed.
+
+**Consequence:** a script that calls the admin API can break in any release.
+An editor tab that stays open during an upgrade runs the old SPA against the
+new API until it reloads.
+
+**What would change it:** a real need for a second client, for example a
+command-line publish. That client would get a small, separate, versioned
+surface, not the admin API.
+
+**Trigger:** the first request for automation against a running Mica.
+
+**1.0 status:** accepted for 1.0; #54 lists it as internal.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
