@@ -49,6 +49,9 @@ release note before upgrading.
   login page gets a code and shows the message. A client's `x-request-id` is
   kept only when it is short and plain, and text media are sent as UTF-8
   (#150).
+- In production, the self-hosted Mica refuses to start without
+  `MICA_PUBLIC_URL`, whose default is a localhost address. At startup it warns
+  about `MICA_*` and `REPOSITORY_*` variables that it does not read (#90).
 
 ### Changed
 

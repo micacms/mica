@@ -26,15 +26,20 @@ import {
   type RuntimeConfig,
 } from "@micacms/runtime";
 
-const schema = z
-  .object({
-    ...runtimeEnv,
-    ...authEnv,
+const fields = {
+  ...runtimeEnv,
+  ...authEnv,
 
-    /** Operational state: the database holding the draft store. */
-    DATA_DIR: z.string().default("./data"),
-    DATABASE_PATH: z.string().optional(),
-  })
+  /** Operational state: the database holding the draft store. */
+  DATA_DIR: z.string().default("./data"),
+  DATABASE_PATH: z.string().optional(),
+};
+
+/** Every variable this server reads, from the same object as the schema, so they cannot drift. */
+const KNOWN = new Set(Object.keys(fields));
+
+const schema = z
+  .object(fields)
   .transform((env) => {
     const dataDir = path.resolve(env.DATA_DIR);
     return {
@@ -53,6 +58,8 @@ export type SelfHostedConfig = RuntimeConfig &
     SESSION_SECRET?: string | undefined;
     /** Names of the secrets this process generated for itself. */
     devSecrets: string[];
+    /** `MICA_*` and `REPOSITORY_*` names in the environment that nothing reads: likely typos. */
+    unknownVariables: string[];
   };
 
 /**
@@ -76,7 +83,16 @@ function requireProviderRepository(repository: string): void {
  * Over plain HTTP the session cookie is not Secure and travels in clear text,
  * so production refuses it. Loopback stays allowed, for a trial on one machine.
  */
-function requireHttps(config: { isProduction: boolean; MICA_PUBLIC_URL: string }): void {
+function requireHttps(
+  config: { isProduction: boolean; MICA_PUBLIC_URL: string },
+  env: NodeJS.ProcessEnv,
+): void {
+  // The default is a localhost address, which would pass the loopback rule below.
+  if (config.isProduction && !env["MICA_PUBLIC_URL"]) {
+    throw new ConfigError(
+      "MICA_PUBLIC_URL is not set. In production it must be the https:// address the browser shows.",
+    );
+  }
   const url = new URL(config.MICA_PUBLIC_URL);
   if (!config.isProduction || url.protocol === "https:" || LOOPBACK.has(url.hostname)) return;
 
@@ -97,7 +113,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
   const config = parsed.data;
 
   requireAuthConfig(config);
-  requireHttps(config);
+  requireHttps(config, withoutBlanks(env));
   requireProviderRepository(config.REPOSITORY);
   requireRepositoryConfig({ ...config, HOST: config.HOST });
 
@@ -118,5 +134,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
     ...config,
     sessionSecret: config.SESSION_SECRET ?? randomBytes(32).toString("hex"),
     devSecrets: missing,
+    unknownVariables: Object.keys(env)
+      .filter((name) => /^(MICA_|REPOSITORY_)/.test(name) && !KNOWN.has(name))
+      .sort(),
   };
 }

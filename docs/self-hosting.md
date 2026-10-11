@@ -194,8 +194,10 @@ SESSION_SECRET=…
 `MICA_PUBLIC_URL` must be exactly what the browser shows. It decides the cookie
 scope, the Origin check and the redirect URI. `https://` is what turns on
 `Secure` cookies with `__Host-` names and the `Strict-Transport-Security`
-header, and in production Mica refuses to start with an `http://` address,
-except on localhost. Generate the secret:
+header, and in production Mica refuses to start without it, or with an
+`http://` address other than localhost. At startup, Mica warns about any
+`MICA_*` or `REPOSITORY_*` variable that it does not read, which is usually a
+typo. Generate the secret:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"

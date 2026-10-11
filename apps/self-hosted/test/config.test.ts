@@ -49,8 +49,29 @@ describe("public URL", () => {
     }
   });
 
+  it("refuses a missing public URL in production, whose default is localhost", () => {
+    assert.throws(() => loadConfig({ ...production }), (error: unknown) => {
+      assert.ok(error instanceof ConfigError);
+      assert.match(error.message, /MICA_PUBLIC_URL is not set/);
+      return true;
+    });
+  });
+
   it("allows plain HTTP outside production", () => {
     assert.equal(loadConfig({ ...base, MICA_PUBLIC_URL: "http://cms.example.com" }).MICA_PUBLIC_URL, "http://cms.example.com");
+  });
+});
+
+describe("unknown variables", () => {
+  it("names MICA_ and REPOSITORY_ variables that nothing reads, and only those", () => {
+    const config = loadConfig({
+      ...base,
+      MICA_ADMIT_GROUPS: "typo-for-group",
+      REPOSITORY_BRANCHES: "main",
+      MICA_OIDC_ISSUER: "https://auth.example.com",
+      UNRELATED_VARIABLE: "x",
+    });
+    assert.deepEqual(config.unknownVariables, ["MICA_ADMIT_GROUPS", "REPOSITORY_BRANCHES"]);
   });
 });
 
