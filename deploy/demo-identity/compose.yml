@@ -121,7 +121,7 @@ services:
       context: ../..
       dockerfile: Dockerfile
     # Swap the build block for the published image to run a release instead:
-    # image: ghcr.io/amuedespacher/micacms:latest
+    # image: ghcr.io/micacms/mica:latest
 
     depends_on:
       seed-identity:

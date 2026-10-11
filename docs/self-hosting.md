@@ -51,8 +51,8 @@ comes out of your content repository at runtime.
 
 ```bash
 mkdir -p /srv/mica && cd /srv/mica
-curl -o compose.yml https://raw.githubusercontent.com/amuedespacher/micacms/main/deploy/self-hosted/compose.yml
-curl -o .env https://raw.githubusercontent.com/amuedespacher/micacms/main/deploy/self-hosted/.env.example
+curl -o compose.yml https://raw.githubusercontent.com/micacms/mica/main/deploy/self-hosted/compose.yml
+curl -o .env https://raw.githubusercontent.com/micacms/mica/main/deploy/self-hosted/.env.example
 ```
 
 ### 2. A repository token

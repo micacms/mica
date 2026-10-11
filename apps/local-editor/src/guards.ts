@@ -37,7 +37,7 @@ export function hostGuard(): MiddlewareHandler<Env> {
         "This is a local Mica editor. It answers only to this machine —\n" +
           `"${host}" is not it.\n\n` +
           "To let other people edit, deploy @micacms/self-hosted with an identity\n" +
-          "provider: https://github.com/amuedespacher/micacms/blob/main/docs/self-hosting.md\n",
+          "provider: https://github.com/micacms/mica/blob/main/docs/self-hosting.md\n",
         403,
       );
     }

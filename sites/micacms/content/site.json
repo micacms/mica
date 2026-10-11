@@ -3,7 +3,7 @@
   "tagline": "The Git-native content editor for Astro",
   "description": "Give editors a clear CMS. Keep content as reviewable files in Git. Build a fast, static Astro website with no runtime CMS dependency.",
   "currentVersion": "0.3.0",
-  "githubUrl": "https://github.com/amuedespacher/micacms",
+  "githubUrl": "https://github.com/micacms/mica",
   "npmUrl": "https://www.npmjs.com/package/@micacms/editor",
   "announcement": {
     "text": "Mica 0.3.0 is available",
