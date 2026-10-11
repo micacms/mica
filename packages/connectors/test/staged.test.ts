@@ -110,6 +110,17 @@ describe("reading through the overlay", () => {
   });
 });
 
+describe("paths", () => {
+  it("refuses a path that leaves the content root, for reads and for staging", async () => {
+    await assert.rejects(() => staged.read("../secret.json"), { name: "ContentPathError" });
+    await assert.rejects(
+      () => staged.commit({ message: "Escape", changes: [{ type: "write", path: "a/../../x.json", contents: "{}" }] }),
+      { name: "ContentPathError" },
+    );
+    assert.deepEqual(await drafts.list(), []);
+  });
+});
+
 describe("staging", () => {
   it("records the repository revision the path had when first staged", async () => {
     const repoRevision = await base.revision("theme.json");

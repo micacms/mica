@@ -13,7 +13,7 @@
  * content directory means.
  */
 
-import type { ContentSource } from "./source.js";
+import { contentPath, type ContentSource } from "./source.js";
 
 export class ConnectorError extends Error {
   override name = "ConnectorError";
@@ -109,4 +109,14 @@ export interface RepositoryConnector extends ContentSource {
    * Throws `ConflictError` when any `expect` no longer holds.
    */
   commit(input: CommitInput): Promise<CommitResult>;
+}
+
+/**
+ * Refuses a commit whose changes or expectations name a path outside the
+ * content root, or the root itself. Called first in every connector's
+ * `commit`, so a bad path fails before anything is written.
+ */
+export function checkCommitPaths(input: CommitInput): void {
+  for (const change of input.changes) contentPath(change.path);
+  for (const path of Object.keys(input.expect ?? {})) contentPath(path);
 }

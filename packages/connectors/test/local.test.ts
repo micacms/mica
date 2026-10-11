@@ -66,6 +66,16 @@ describe("reading", () => {
     }));
     await missing("../escaped.json");
   });
+
+  it("never deletes the content root, however the path names it", async () => {
+    for (const path of ["", "projects/..", "projects/haus-a/../.."]) {
+      await assert.rejects(
+        () => connector.commit({ message: "Everything", changes: [{ type: "deleteTree", path }] }),
+        { name: "ContentPathError" },
+      );
+    }
+    assert.equal(await read("theme.json"), '{ "primaryColor": "#123456" }');
+  });
 });
 
 describe("revisions", () => {

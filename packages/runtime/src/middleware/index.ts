@@ -10,10 +10,11 @@
  * keeps this package authentication-neutral.
  */
 
+import { ContentPathError } from "@micacms/core";
 import type { ErrorHandler, MiddlewareHandler } from "hono";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-import { ApiError } from "../lib/errors.js";
+import { ApiError, badRequest } from "../lib/errors.js";
 import { clientIp, type Env } from "../http.js";
 import { randomToken } from "../lib/id.js";
 
@@ -99,6 +100,13 @@ export function errorHandler(): ErrorHandler<Env> {
     if (error instanceof ApiError) {
       logger.debug("Handled error", { code: error.code, message: error.message });
       return c.json(error.toBody(), error.status as ContentfulStatusCode, error.headers);
+    }
+
+    // A path that could leave the content root is the client's mistake, not a bug.
+    if (error instanceof ContentPathError) {
+      logger.warn("Refused content path", { message: error.message });
+      const refused = badRequest(error.message);
+      return c.json(refused.toBody(), refused.status as ContentfulStatusCode);
     }
 
     logger.error("Unhandled error", {

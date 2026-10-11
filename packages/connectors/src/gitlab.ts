@@ -14,6 +14,8 @@
  */
 
 import {
+  checkCommitPaths,
+  contentPath,
   ConflictError,
   ConnectorError,
   type Author,
@@ -83,7 +85,7 @@ export function gitlabConnector(options: GitLabConnectorOptions): RepositoryConn
   });
 
   const inRepo = (path: string): string => {
-    const clean = path.replace(/^\/+|\/+$/g, "");
+    const clean = contentPath(path, { allowRoot: true });
     if (!root) return clean;
     return clean === "" ? root : `${root}/${clean}`;
   };
@@ -167,6 +169,7 @@ export function gitlabConnector(options: GitLabConnectorOptions): RepositoryConn
     },
 
     async commit(input: CommitInput): Promise<CommitResult> {
+      checkCommitPaths(input);
       if (input.changes.length === 0) {
         throw new ConnectorError("A commit needs at least one change.");
       }

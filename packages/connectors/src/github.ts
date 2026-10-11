@@ -18,8 +18,10 @@
  */
 
 import {
+  checkCommitPaths,
   ConflictError,
   ConnectorError,
+  contentPath,
   type Author,
   type CommitInput,
   type CommitResult,
@@ -93,8 +95,8 @@ export function githubConnector(options: GitHubConnectorOptions): RepositoryConn
     },
   });
 
-  /** A content path with no leading or trailing slash — how Mica names files. */
-  const clean = (path: string): string => path.replace(/^\/+|\/+$/g, "");
+  /** A content path with no leading or trailing slash, refused if it could leave the content root. */
+  const clean = (path: string): string => contentPath(path, { allowRoot: true });
 
   /** The same path as GitHub sees it: below the configured content root. */
   const inRepo = (path: string): string => {
@@ -215,6 +217,7 @@ export function githubConnector(options: GitHubConnectorOptions): RepositoryConn
     },
 
     async commit(input: CommitInput): Promise<CommitResult> {
+      checkCommitPaths(input);
       if (input.changes.length === 0) {
         throw new ConnectorError("A commit needs at least one change.");
       }

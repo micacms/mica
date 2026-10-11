@@ -16,7 +16,7 @@
 
 import path from "node:path";
 
-import { slugify } from "@micacms/core";
+import { contentPath, ContentPathError, MEDIA_DIR, slugify } from "@micacms/core";
 import type { RepositoryConnector } from "@micacms/connectors";
 import { imageSize } from "image-size";
 
@@ -81,7 +81,7 @@ export function createMediaService(deps: MediaServiceDeps) {
       accept?: "image" | "document" | "any";
     }): Promise<{ file: MediaFile; contents: Uint8Array }> {
       const { file } = input;
-      const directory = input.directory ?? SHARED_MEDIA_DIR;
+      const directory = uploadDirectory(input.directory ?? SHARED_MEDIA_DIR);
 
       if (file.size === 0) throw badRequest("The file is empty.");
       if (file.size > maxBytes) {
@@ -162,7 +162,7 @@ export function createMediaService(deps: MediaServiceDeps) {
     },
 
     async read(mediaPath: string): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
-      const bytes = await connector.readBinary(mediaPath);
+      const bytes = await connector.readBinary(contentPath(mediaPath));
       if (!bytes) return null;
 
       return { bytes, mimeType: detectFileType(bytes)?.mimeType ?? mimeFromName(mediaPath) };
@@ -171,6 +171,21 @@ export function createMediaService(deps: MediaServiceDeps) {
 }
 
 export type MediaService = ReturnType<typeof createMediaService>;
+
+/** An upload goes into a `media/` folder inside the content root, and nowhere else. */
+function uploadDirectory(directory: string): string {
+  let clean: string;
+  try {
+    clean = contentPath(directory);
+  } catch (error) {
+    if (error instanceof ContentPathError) throw badRequest(error.message);
+    throw error;
+  }
+  if (clean.split("/").at(-1) !== MEDIA_DIR) {
+    throw badRequest(`Uploads go into a "${MEDIA_DIR}" folder, not "${directory}".`);
+  }
+  return clean;
+}
 
 /* ------------------------------------------------------------------ */
 

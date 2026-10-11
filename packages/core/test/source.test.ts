@@ -12,8 +12,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { ContentSourceError, memorySource, type ContentSource } from "../dist/index.js";
-import { fileSystemSource } from "../dist/node.js";
+import { contentPath, ContentPathError, ContentSourceError, memorySource, type ContentSource } from "../dist/index.js";
+import { fileSystemSource, within } from "../dist/node.js";
 
 const fixture: Record<string, string> = {
   "projects/haus-a/index.json": '{ "title": "Haus A" }',
@@ -101,5 +101,42 @@ describe("fileSystemSource", () => {
       () => fileSystemSource(join(root, "content")).read("../content-old/theme.json"),
       ContentSourceError,
     );
+  });
+});
+
+describe("contentPath", () => {
+  it("keeps a normal path, and drops a leading or trailing slash", () => {
+    assert.equal(contentPath("projects/haus-a/index.json"), "projects/haus-a/index.json");
+    assert.equal(contentPath("/media/photo.jpg"), "media/photo.jpg");
+    assert.equal(contentPath("projects/"), "projects");
+    assert.equal(contentPath("Häuser/Ü 1.json"), "Häuser/Ü 1.json");
+  });
+
+  it("refuses every form that could leave the content root", () => {
+    for (const path of ["..", "../x", "a/../../x", "a/./b", "a//b", "a\\b", "..\\x", "a/\u0000b", "a\nb", "C:/x", "c:"]) {
+      assert.throws(() => contentPath(path), ContentPathError, path);
+    }
+  });
+
+  it("names the root only where it is allowed", () => {
+    assert.throws(() => contentPath(""), ContentPathError);
+    assert.throws(() => contentPath("/"), ContentPathError);
+    assert.equal(contentPath("", { allowRoot: true }), "");
+    assert.equal(contentPath("/", { allowRoot: true }), "");
+  });
+
+  it("is a ContentSourceError, so existing handlers still catch it", () => {
+    assert.throws(() => contentPath(".."), ContentSourceError);
+  });
+});
+
+describe("within", () => {
+  it("refuses the root itself unless asked, however the path names it", () => {
+    const base = "/srv/content";
+    for (const path of ["", "x/..", "a/b/../.."]) {
+      assert.throws(() => within(base, path), ContentPathError, path);
+    }
+    assert.equal(within(base, "", { allowRoot: true }), base);
+    assert.equal(within(base, "theme.json"), "/srv/content/theme.json");
   });
 });
