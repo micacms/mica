@@ -34,6 +34,10 @@ release note before upgrading.
   parsed like a browser does and must be a page of the editor (#87).
 - Anonymous health checks can no longer spend the repository token's API quota,
   and they no longer show the repository or the uptime (#79).
+- Over https, the session and CSRF cookies have a `__Host-` name, and every
+  response carries `Strict-Transport-Security`. In production, the self-hosted
+  Mica refuses to start with an `http://` public address, except on loopback
+  (#147).
 
 ### Changed
 
@@ -42,6 +46,8 @@ release note before upgrading.
   the database and the repository, cached for 30 seconds. Point a monitor that
   must notice a repository outage at `/ready`. Neither answer shows the
   repository's origin or the uptime any more; the System view shows both (#79).
+- The cookie names change over https, so every editor signs in once more after
+  the upgrade (#147).
 
 ## [0.3.0] — 2026-10-10
 

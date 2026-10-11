@@ -21,16 +21,13 @@ import type { AuthConfig } from "./config.js";
 import { requireAccess, sessionOf, type GateDeps } from "./gate.js";
 import { safeReturnTo } from "./return-to.js";
 import {
-  CSRF_COOKIE,
   establishSession,
-  SESSION_COOKIE,
   type SessionIdentity,
   type SessionService,
 } from "./session.js";
 import {
   openTransaction,
   sealTransaction,
-  TRANSACTION_COOKIE,
   type OidcClaims,
   type OidcService,
 } from "./oidc.js";
@@ -87,7 +84,7 @@ export function authRoutes(deps: AuthRoutesDeps): Hono<Env> {
 
     const { url, transaction } = await oidc.begin(returnTo);
 
-    setCookie(c, TRANSACTION_COOKIE, sealTransaction(transaction, config.sessionSecret), {
+    setCookie(c, sessions.names.transaction, sealTransaction(transaction, config.sessionSecret), {
       path: "/api/auth",
       httpOnly: true,
       secure: config.cookieSecure,
@@ -114,8 +111,8 @@ export function authRoutes(deps: AuthRoutesDeps): Hono<Env> {
     const refuse = (message: string) =>
       c.redirect(`/admin/login?error=${encodeURIComponent(message)}`);
 
-    const sealed = getCookie(c, TRANSACTION_COOKIE);
-    deleteCookie(c, TRANSACTION_COOKIE, { path: "/api/auth" });
+    const sealed = getCookie(c, sessions.names.transaction);
+    deleteCookie(c, sessions.names.transaction, { path: "/api/auth", secure: config.cookieSecure });
 
     const transaction = sealed ? openTransaction(sealed, config.sessionSecret) : null;
     if (!transaction) {
@@ -165,8 +162,8 @@ export function authRoutes(deps: AuthRoutesDeps): Hono<Env> {
 
   // There is no server-side session to end; clearing the cookies is sign-out.
   app.post("/logout", async (c) => {
-    deleteCookie(c, SESSION_COOKIE, sessions.clearedCookieOptions());
-    deleteCookie(c, CSRF_COOKIE, sessions.clearedCookieOptions());
+    deleteCookie(c, sessions.names.session, sessions.clearedCookieOptions());
+    deleteCookie(c, sessions.names.csrf, sessions.clearedCookieOptions());
 
     // Offered, not followed: ending the provider's session is the provider's
     // decision to make, and the SPA sends the browser there if it is there.

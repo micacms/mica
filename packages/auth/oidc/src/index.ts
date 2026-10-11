@@ -51,7 +51,7 @@ export function createOidcAuth(deps: OidcAuthDeps): OidcAuth {
   return {
     surface: {
       routes: authRoutes({ config, sessions, oidc, admission, loginLimiter }),
-      gate: [requireAccess(gate), csrfProtection()],
+      gate: [requireAccess(gate), csrfProtection(gate)],
     },
     sessions,
     admission,
@@ -71,6 +71,7 @@ export {
 export { csrfProtection, requireAccess, sessionOf } from "./gate.js";
 export { createOidcService, type OidcService } from "./oidc.js";
 export {
+  cookieNames,
   createSessionService,
   CSRF_COOKIE,
   CSRF_HEADER,

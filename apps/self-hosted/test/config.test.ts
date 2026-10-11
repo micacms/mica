@@ -29,6 +29,31 @@ const base: NodeJS.ProcessEnv = {
   REPOSITORY_TOKEN: "secret",
 };
 
+describe("public URL", () => {
+  const production = { ...base, NODE_ENV: "production" };
+
+  it("refuses plain HTTP in production", () => {
+    assert.throws(
+      () => loadConfig({ ...production, MICA_PUBLIC_URL: "http://cms.example.com" }),
+      (error: unknown) => {
+        assert.ok(error instanceof ConfigError);
+        assert.match(error.message, /https:\/\//);
+        return true;
+      },
+    );
+  });
+
+  it("accepts https, and plain HTTP on loopback for a trial on one machine", () => {
+    for (const url of ["https://cms.example.com", "http://localhost:6422", "http://127.0.0.1:6422"]) {
+      assert.equal(loadConfig({ ...production, MICA_PUBLIC_URL: url }).MICA_PUBLIC_URL, url);
+    }
+  });
+
+  it("allows plain HTTP outside production", () => {
+    assert.equal(loadConfig({ ...base, MICA_PUBLIC_URL: "http://cms.example.com" }).MICA_PUBLIC_URL, "http://cms.example.com");
+  });
+});
+
 describe("repository configuration", () => {
   /** Local Git belongs to the local editor; a server publishes through a provider. */
   it("refuses a working tree, set or by default", () => {

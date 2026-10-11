@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Security: over https, prefix the session and CSRF cookies with __Host- and send Strict-Transport-Security; in production, refuse an http:// public URL except on loopback",
+      "type": "none",
+      "packageName": "@micacms/runtime"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

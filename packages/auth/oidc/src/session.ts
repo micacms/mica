@@ -30,6 +30,30 @@ import type { AuthConfig } from "./config.js";
 export const SESSION_COOKIE = "mica_session";
 export const CSRF_COOKIE = "mica_csrf";
 export const CSRF_HEADER = "x-csrf-token";
+export const TRANSACTION_COOKIE = "mica_oidc";
+
+export interface CookieNames {
+  session: string;
+  csrf: string;
+  transaction: string;
+}
+
+/**
+ * With https, the names carry a prefix the browser enforces: `__Host-` means
+ * Secure, path `/` and no Domain, so a sibling subdomain cannot plant or
+ * overwrite the cookie. The transaction cookie is scoped to `/api/auth`, so it
+ * can only be `__Secure-`. Over plain HTTP the cookies are not Secure, and a
+ * browser would refuse a prefixed name.
+ */
+export function cookieNames(secure: boolean): CookieNames {
+  return secure
+    ? {
+        session: `__Host-${SESSION_COOKIE}`,
+        csrf: `__Host-${CSRF_COOKIE}`,
+        transaction: `__Secure-${TRANSACTION_COOKIE}`,
+      }
+    : { session: SESSION_COOKIE, csrf: CSRF_COOKIE, transaction: TRANSACTION_COOKIE };
+}
 
 /** How often an active session is re-issued with a later idle expiry. */
 const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
@@ -63,6 +87,8 @@ export interface SessionRecord {
 }
 
 export interface SessionService {
+  /** The cookie names, which depend on whether the cookies are Secure. */
+  readonly names: CookieNames;
   /** Seals a new session. Throws when the identity cannot fit in a cookie. */
   create(identity: SessionIdentity): { record: SessionRecord; cookie: string };
   /** The live session in a cookie, or null for a missing, forged or expired one. */
@@ -185,6 +211,8 @@ export function createSessionService(config: AuthConfig): SessionService {
   };
 
   return {
+    names: cookieNames(config.cookieSecure),
+
     create(identity) {
       const now = Date.now();
       const record: SessionRecord = {
@@ -267,6 +295,6 @@ export function establishSession(
 ): void {
   const { record, cookie } = sessions.create(identity);
 
-  setCookie(c, SESSION_COOKIE, cookie, sessions.sessionCookieOptions());
-  setCookie(c, CSRF_COOKIE, record.csrfToken, sessions.csrfCookieOptions());
+  setCookie(c, sessions.names.session, cookie, sessions.sessionCookieOptions());
+  setCookie(c, sessions.names.csrf, record.csrfToken, sessions.csrfCookieOptions());
 }

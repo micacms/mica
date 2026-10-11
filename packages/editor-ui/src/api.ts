@@ -29,9 +29,9 @@ export class ApiError extends Error {
   }
 }
 
-/** The CSRF cookie is readable by design — it is echoed back as a header. */
+/** The CSRF cookie is readable by design — it is echoed back as a header. `__Host-` over https. */
 function csrfToken(): string {
-  const match = /(?:^|;\s*)mica_csrf=([^;]*)/.exec(document.cookie);
+  const match = /(?:^|;\s*)(?:__Host-)?mica_csrf=([^;]*)/.exec(document.cookie);
   return match?.[1] ? decodeURIComponent(match[1]) : "";
 }
 
