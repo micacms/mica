@@ -1,0 +1,8 @@
+{
+  "title": "The image for 0.4",
+  "slug": "0-4-1",
+  "version": "0.4.1",
+  "publishDate": "2026-10-11",
+  "summary": "Publishes the signed image that 0.4.0 is missing. The packages are the same as in 0.4.0.",
+  "latest": true
+}
