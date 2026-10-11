@@ -23,7 +23,7 @@ therefore costs in practice.
 
 ## Accepted trade-offs
 
-### P1 — Publishing commits straight to a branch, with no review step
+### P2 — Publishing commits straight to a branch, with no review step
 
 **Decided:** Mica does not open a pull request and has no concept of one. The
 branch an editor publishes to is the branch CI builds.
@@ -48,9 +48,12 @@ an explicit Publish writes the accumulated set as one commit. What did not
 change is the sentence above: publishing writes to the branch, and nothing
 reviews it.
 
+**1.0 status:** accepted for 1.0. Approval workflows are out of 1.0; a staging
+branch is the review step.
+
 ---
 
-### P1 — Local mode has no authentication, and no user either
+### P2 — Local mode has no authentication, and no user either
 
 **Decided:** the local editor has no identity provider, no credential, and no
 user. Not a signed-in developer — *nobody*. There is no login screen, no name,
@@ -105,9 +108,12 @@ process on the developer's own machine can call the local API. A process on
 that machine can already edit the working tree directly, which is where the
 content is.
 
+**1.0 status:** accepted for 1.0. The accepted risk goes in the security docs
+(#84).
+
 ---
 
-### P1 — Access removed at the provider is revoked at the next sign-in
+### P2 — Access removed at the provider is revoked at the next sign-in
 
 **Decided:** who may edit a self-hosted site is decided by configuration, not by
 a table. Either a rule over provider claims (`MICA_ADMIT_GROUP`,
@@ -153,6 +159,11 @@ let anybody claim an admitted domain. And the group claim has no standard name,
 so `MICA_OIDC_GROUPS_CLAIM` names it — a Keycloak path and a bare name are both
 accepted, since an operator writes the name their own console shows them.
 
+**1.0 status:** accepted for 1.0. The accepted risk goes in the security docs
+(#84).
+
+---
+
 ### P2 — Admission by email address, not only by subject
 
 **Decided:** `MICA_ADMIT_EMAILS` admits a listed address, compared
@@ -173,6 +184,8 @@ group or domain rule to use instead.
 **What would change it:** a provider that lets a person set an address they do
 not own and still reports it verified. `MICA_ADMIT_SUBJECTS` stays the rule
 for that case.
+
+**1.0 status:** accepted for 1.0.
 
 ---
 
@@ -199,6 +212,9 @@ restart. Rotating `SESSION_SECRET` ends every session at once.
 **What would change it:** a need to end one person's session within seconds
 without signing everybody out. That needs a deny list, which is server state
 again.
+
+**1.0 status:** accepted for 1.0. "No server-side revocation" goes in the
+security docs (#84).
 
 ---
 
@@ -228,6 +244,8 @@ collide, or a customer who asks who published what.
 concurrent sessions still check per-document revisions against the *draft*, so
 one browser cannot silently overwrite a colleague's newer autosave; publishing
 takes the whole set, whoever presses the button.
+
+**1.0 status:** accepted for 1.0. Selective publish (#98) lowers the cost.
 
 ---
 
@@ -268,6 +286,8 @@ in follows the *connector* (`REPOSITORY`), not `MICA_MODE`.
 **Changed in 0.3.0:** a self-hosted deployment no longer accepts a checkout
 beside it. See "Local Git is the local editor's, never the server's".
 
+**1.0 status:** accepted for 1.0. The Windows CI job tests it.
+
 ---
 
 ### P2 — Local Git is the local editor's, never the server's
@@ -295,6 +315,8 @@ connector for its API, not `git` in the image.
 **Built in 0.3.0.** `apps/self-hosted/src/config.ts` refuses any other
 `REPOSITORY`. The test stacks publish to a stand-in for the GitHub API
 ([`tests/github-stub/`](../tests/github-stub/README.md)).
+
+**1.0 status:** accepted for 1.0.
 
 ---
 
@@ -330,6 +352,8 @@ immediately before publishing and answer 409 with a message that names the
 restart. Nothing is discarded: the draft survives, and after the restart it is
 re-validated against the new model like any other pending set.
 
+**1.0 status:** accepted for 1.0.
+
 ---
 
 ### P2 — Rate limiting is in-process and resets on restart
@@ -351,6 +375,8 @@ defences and is far better placed to run them.
 assumes exactly one.
 
 **Trigger:** horizontal scaling.
+
+**1.0 status:** accepted for 1.0.
 
 ---
 
@@ -377,6 +403,9 @@ paid once per publication instead of once per edit. The ceiling is unchanged.
 A save still costs one provider read per newly staged path — the revision the
 publish gate will expect — which is far cheaper than the commit it replaced.
 
+**1.0 status:** accepted for 1.0, while the budget tests at the scale target
+pass (#72).
+
 ---
 
 ### P2 — No map widget in the admin
@@ -394,6 +423,8 @@ which is where it lives.
 chafe. MapLibre + their own tile key, behind an optional `MAP_STYLE_URL`.
 
 **Trigger:** editor feedback, or a project with more than ~20 located entries.
+
+**1.0 status:** accepted for 1.0.
 
 ---
 
@@ -436,6 +467,730 @@ small, so the rows stay within what SQLite is comfortable holding.
 **Sessions left in 0.3.0.** Migration 3 drops `sessions`; the database holds
 the draft store and nothing about people. See "Sessions are encrypted cookies".
 
+**1.0 status:** accepted for 1.0. #130 keeps the driver out of the local editor.
+
+---
+
+### P2 — Semver covers the public surface, not every published package
+
+**Decided:** from 1.0, semver covers `@micacms/core`, `@micacms/astro`, the
+`@micacms/editor` CLI, the self-hosted image contract (environment variables,
+port, volume, `/health`), the content format and the manifest protocol.
+`@micacms/runtime`, `@micacms/auth-oidc`, `@micacms/editor-ui` and
+`@micacms/connectors` are internal: published only because the apps install
+them, pinned exactly by the apps, and free to break in a minor.
+
+**Why:** all packages share one lockstep version, so a public `runtime` would
+turn every refactor of its helpers into a major for every package, `core`
+included. Adopters lose data when the format or the image contract breaks, not
+when `classifyPath` changes; a small surface puts the stability work there, and
+it is what one maintainer can keep.
+
+**Consequence:** npm has no "internal" flag. An internal package at 1.4.0 looks
+semver-stable, and anyone who depends on it can break in a minor. The
+authentication-neutral runtime cannot be reused under another gate with any
+promise. The line holds only while public packages do not re-export internal
+symbols (#55).
+
+**How to release under it:** in `rush change`, a breaking change to an internal
+package is `minor`, never `major`. `major` is only for a break of the public
+surface above. Rush already publishes `workspace:*` as an exact version, so no
+Rush configuration changes.
+
+**What would change it:** bundle the internal packages into the apps and stop
+publishing them, which removes the npm confusion. Or promote a small, named
+subset of the runtime to public.
+
+**Trigger:** the first external project that depends on an internal package.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
+### P2 — zod 4 is part of the public contract
+
+**Decided:** zod 4 is a peer dependency of `@micacms/core` and `@micacms/astro`
+(`^4.3.6`), and a development dependency for their build. The internal packages
+and the apps keep it as a regular dependency. The core boundary test allows
+this one peer.
+
+**Why:** zod is already in the public types. `@micacms/astro` hands Astro a
+`z.ZodType<T>`, because Astro derives `CollectionEntry<...>["data"]` from
+`z.infer`, and `core` exports `fieldsSchema()` and `toIssues(z.ZodError)`. As a
+regular dependency, the site gets a second copy as soon as Astro and Mica move
+to different zod majors; the types then stop matching and `instanceof ZodError`
+fails. A peer gives the site one copy, shared with Astro.
+
+**Consequence:** a move to zod 5 is a Mica major. A site must have a zod that
+satisfies both Astro and Mica; npm 7+ and pnpm install it automatically.
+
+**What would change it:** hide zod behind Standard Schema in `core`. `astro`
+still has to give Astro a zod type, so this removes zod from only half the
+surface.
+
+**Trigger:** an Astro major that moves to a zod major Mica does not support.
+
+**1.0 status:** accepted for 1.0; the manifest change is in #129.
+
+---
+
+### P2 — Every Mica configuration name starts with `MICA_`
+
+**Decided:** before the first release candidate, every Mica-specific variable
+gets the `MICA_` prefix, and the names are then frozen for 1.x. `NODE_ENV`,
+`PORT` and `HOST` keep their names, because they are conventions that Node
+libraries and hosting platforms already use. The old names are removed at 1.0
+with no aliases: startup refuses a known old name and names the new one. The
+local editor reads no `.env` file; it reads the process environment, and its
+flags win over it.
+
+| Old | New |
+| --- | --- |
+| `LOG_LEVEL` | `MICA_LOG_LEVEL` |
+| `CONTENT_ROOT` | `MICA_CONTENT_ROOT` |
+| `REPOSITORY`, `REPOSITORY_*` | `MICA_REPOSITORY`, `MICA_REPOSITORY_*` |
+| `SESSION_SECRET`, `SESSION_*_HOURS` | `MICA_SESSION_SECRET`, `MICA_SESSION_*_HOURS` |
+| `LOGIN_MAX_ATTEMPTS`, `LOGIN_WINDOW_MS` | `MICA_SIGNIN_MAX_ATTEMPTS`, `MICA_SIGNIN_WINDOW_MS` |
+| `MAX_UPLOAD_BYTES` | `MICA_MAX_UPLOAD_BYTES` |
+| `TRUST_PROXY` | `MICA_TRUST_PROXY` |
+| `ADMIN_ORIGINS`, `ADMIN_DIR` | `MICA_ADMIN_ORIGINS`, `MICA_ADMIN_DIR` |
+| `DATA_DIR`, `DATABASE_PATH` | `MICA_DATA_DIR`, `MICA_DATABASE_PATH` |
+| `MICA_ADMIT_GROUP`, `MICA_ADMIT_DOMAIN` | `MICA_ADMIT_GROUPS`, `MICA_ADMIT_DOMAINS` |
+
+**Why:** an unprefixed name such as `REPOSITORY_TOKEN` or `SESSION_SECRET`
+collides with other software in the same environment, and an operator cannot
+tell which variables are Mica's. All four `MICA_ADMIT_*` take lists, so all
+four are plural. `LOGIN_*` limits the start of an OIDC sign-in; Mica has no
+password login. No aliases, because 0.x allows the break and no known
+deployment depends on the old names; an alias table would be code to carry
+through all of 1.x. Reading the site's `.env` gave the editor the site's
+`NODE_ENV` and secrets, and a site with `NODE_ENV=production` stopped it.
+
+**Consequence:** every 0.x deployment must rename its variables to upgrade to
+1.0. The refusal at startup makes this loud, not silent. A local-editor user
+who kept settings in `.env` must pass them as flags or export them.
+
+**What would change it:** an adopter on 0.x who cannot rename in one step; then
+add aliases with a warning for one minor.
+
+**1.0 status:** blocker; the rename is in #57, the `.env` change in #113.
+
+---
+
+### P2 — The admin HTTP API is internal and unversioned
+
+**Decided:** `/api/admin/*` and `/api/auth/*` are not part of the semver
+contract and carry no version in the path. The admin SPA is their only
+supported client.
+
+**Why:** the SPA and the runtime ship together in one image and one
+`@micacms/editor`, at one lockstep version, so they can never disagree after a
+reload: `index.html` is served `no-cache`, and the hashed assets are immutable.
+A versioned API would freeze the editor's internals for a client that does not
+exist, and it would come close to the content API that this project removed.
+
+**Consequence:** a script that calls the admin API can break in any release.
+An editor tab that stays open during an upgrade runs the old SPA against the
+new API until it reloads.
+
+**What would change it:** a real need for a second client, for example a
+command-line publish. That client would get a small, separate, versioned
+surface, not the admin API.
+
+**Trigger:** the first request for automation against a running Mica.
+
+**1.0 status:** accepted for 1.0; #54 lists it as internal.
+
+---
+
+### P2 — The project lives in the `micacms` organization
+
+**Decided:** the repository moves to `micacms/mica` and the image to
+`ghcr.io/micacms/mica`, before the repository becomes public. The product name
+follows the organization, as in `payloadcms/payload`; `cms` alone is too generic
+for a clone directory or a compose file.
+
+**Why:** a public image name cannot move later. GitHub redirects repository
+URLs after a transfer, but not GHCR image names, so a later move breaks every
+`docker pull` and compose file that adopters have. While the repository is
+private, nobody outside depends on the old names. The organization matches the
+npm scope `@micacms` and the domain `micacms.com`, and it can take a second
+maintainer without moving again.
+
+**Consequence:** a one-time move: transfer the repository, add the Actions
+secrets again, let the first release create the GHCR package under the
+organization and make it public, and replace every `amuedespacher` reference.
+The old `ghcr.io/amuedespacher/micacms` tags stay private and are not
+continued.
+
+**What would change it:** nothing short of a rename of the project.
+
+**1.0 status:** blocker; the move is in #51.
+
+---
+
+### P2 — Node.js 24 or later, and Astro 7
+
+**Decided:** 1.0 supports Node `>=24` and Astro 7 (peer range `^7.0.0`). The
+`engines` fields, `rush.json` and the CI matrix say the same. Mica removes a
+Node line in a minor after its upstream end of life, announced in the changelog
+one minor before. A new Astro major is added in a minor once CI covers it;
+removing an Astro major is a Mica major.
+
+**Why:** the image and CI already run Node 24, and only what CI tests is
+supported. Node 22 reaches its end of life on 2027-04-30, close to 1.0, and
+its `node:sqlite` starts only from 22.13 and with an ExperimentalWarning
+(#130). Astro 6 is in the peer range today but no test covers it. Removing an
+end-of-life Node in a minor is common FOSS practice, and the alternative keeps
+an unmaintained runtime in the matrix for all of 1.x.
+
+**Consequence:** a site on Node 22 cannot run `npx @micacms/editor` or
+`@micacms/astro` until it upgrades. A site on Astro 6 stays on Mica 0.x.
+
+**What would change it:** an adopter that cannot leave Node 22 or Astro 6
+before 1.0; then add that line to the CI matrix rather than promise it untested.
+
+**1.0 status:** blocker; the floor is in #130, the matrix in #131.
+
+---
+
+### P2 — The local editor runs on Linux, macOS and Windows; the image on amd64 and arm64
+
+**Decided:** the local editor supports Linux, macOS and native Windows, and CI
+runs the core, connectors and local-editor tests on all three. The self-hosted
+image is a multi-architecture image for `linux/amd64` and `linux/arm64`.
+
+**Why:** the people who edit content, and many agencies, work on Windows, and
+the local editor runs `git` and handles file paths, which is where Windows
+differs. Only a CI job keeps that working. Cheap arm64 servers are common at
+the hosts that the self-hosting guide suggests, and Apple Silicon runs an
+amd64 image only under emulation. A public repository gets Windows, macOS and
+native arm64 runners for free, so neither costs QEMU or money.
+
+**Consequence:** the first Windows run will find path defects to fix before
+1.0. Each release builds the image twice.
+
+**What would change it:** a Windows defect class that costs more than it
+serves; then document WSL instead of native Windows.
+
+**1.0 status:** blocker; the matrix is in #131, the image build in #132.
+
+---
+
+### P2 — github.com and gitlab.com are supported; self-managed providers are experimental
+
+**Decided:** the supported providers of the self-hosted Mica are github.com and
+gitlab.com. GitHub Enterprise Server and self-managed GitLab are
+"experimental": they work through `MICA_REPOSITORY_API_BASE`, and they carry no
+promise. The local editor publishes with the `git` binary, so it works with any
+remote, and this entry does not limit it.
+
+**Why:** supported means live-tested. The weekly `live-connectors` workflow
+covers the two hosted providers once its tokens exist (#38). GHES cannot run in
+CI without a licence, and a GitLab CE container is a heavy weekly job for one
+maintainer.
+
+**Consequence:** a defect that appears only on a self-managed instance is fixed
+when someone reports it, not found by CI. github.com and gitlab.com count as
+supported only when the live suites pass without skipping.
+
+**What would change it:** an adopter on a self-managed instance who can give
+the live suite a scratch project there.
+
+**1.0 status:** blocker until #38 runs live; the labels go in the support
+matrix (#131), the journeys in #83.
+
+---
+
+### P2 — The 1.0 scale target: 1,000 entries, 5,000 files, 5 editors
+
+**Decided:** Mica 1.0 commits to 1,000 entries per collection, 5,000 files in
+the content tree and 5 editors at the same time. The budget tests (#72) use a
+fixture of that size and fail when a view exceeds its call or time budget.
+Above these numbers, Mica can work, but it makes no promise.
+
+**Why:** this covers brochure and agency sites with a blog or news archive,
+which is who Mica is for. The limit that matters first is the provider's rate
+limit, not the entry count: 5 active editors at about 5 calls per view can pass
+GitHub's 5,000 calls per hour per token without the warm-cache budgets of #73
+to #76. Search filters in the browser, which is fine at 1,000 entries. A larger
+target needs server-side search and paged tree reads.
+
+**Consequence:** a site with a larger archive must split it into more
+collections or accept unmeasured performance.
+
+**What would change it:** an adopter above the target; then measure their
+shape first, and raise the numbers only with the budget tests.
+
+**1.0 status:** blocker; the budget tests are in #72.
+
+---
+
+### P2 — Only the latest 1.x minor gets fixes; 0.x ends at 1.0
+
+**Decided:** fixes, security fixes included, go into the next release of the
+latest 1.x minor. An earlier minor gets none: the upgrade within 1.x is the
+fix. 0.x reaches its end of life when 1.0 ships, with no backports. The window
+for 1.x after a 2.0 is decided at 2.0.
+
+**Why:** one maintainer, one lockstep version and one branch, `main`. Each
+extra supported line needs a release branch, backports and a release flow that
+works from it. A minor in 1.x has no breaking change by definition, so moving
+to the latest minor is safe. No known deployment depends on 0.x.
+
+**Consequence:** an adopter who cannot take a minor gets no security fix.
+A 0.x deployment must take the breaking upgrade to 1.0 to get any fix. Agencies
+cannot plan a 2.0 upgrade window yet.
+
+**What would change it:** a second maintainer, or adopters who need a fixed
+window; then add security fixes for the previous minor or major with a release
+branch.
+
+**1.0 status:** accepted for 1.0; #54 publishes it.
+
+---
+
+### P2 — 1.0 ships after two weeks of release candidates on real websites
+
+**Decided:** `1.0.0-rc.N` is published under the `next` dist-tag. 1.0.0 ships
+when one or two real websites, ideally of different kinds, have run on the
+release candidates for at least two weeks, and at least one of them through the
+self-hosted image. The maintainer's own websites count; the example and
+`sites/micacms` alone do not. A fix gives a new `rc.N` and keeps the clock; a
+breaking change to a public surface restarts the two weeks.
+
+**Why:** a real site finds what CI cannot: a provider, an identity provider and
+a host in combination. Requiring an outside team would make the release date
+depend on a volunteer. Two kinds of site exercise more of the content model
+than two copies of one. A fix does not invalidate the evidence; a break does.
+
+**Consequence:** the evidence comes from a maintainer who knows the system, so
+gaps in the docs and the onboarding stay less visible. The clean-machine runs
+of #53 must cover that.
+
+**What would change it:** an external team that offers to run a candidate;
+take it, and keep the two-week rule.
+
+**1.0 status:** blocker; the phase is in #53, the dist-tag in #127.
+
+---
+
+### P2 — The self-hosted server ships only as the image
+
+**Decided:** `@micacms/self-hosted` is no longer published to npm. It keeps the
+lockstep version, because the image tag is derived from it. The versions
+already on npm are deprecated with a pointer to the image.
+
+**Why:** the package has no `main`, `bin` or `exports`, so nobody can use it as
+published, and the image builds from source, not from npm. A real `bin` would
+add a second server product, with its own CLI, docs and CI, to keep stable
+through 1.x.
+
+**Consequence:** the self-hosted Mica runs only as a container. A Node host
+without Docker is not supported.
+
+**What would change it:** a real demand for a Docker-free server, for example
+on a Node PaaS; then add a `bin` and put it under semver.
+
+**1.0 status:** blocker; the publish change is in #129.
+
+---
+
+### P2 — No native multilingual content in 1.0
+
+**Decided:** the content model has no locale concept in 1.0. The docs describe
+two patterns: an object per field (`title: object({ de, fr, en })`) for pages
+and singletons, and one collection per locale for streams that differ per
+locale, such as news. The content-format specification commits a later
+`localized` option to the object-per-locale layout, so it stores exactly what
+the first pattern stores today, `body.de.mdoc` included.
+
+**Why:** both patterns work with the current model and need no code. Keeping
+the translations of a page in one entry stops them drifting; separate
+collections fit content that exists in one language only. Fixing the future
+layout now means a site that follows the documented pattern upgrades to native
+i18n with no file change.
+
+**Consequence:** no locale switcher in the editor, and long forms with the
+object pattern. Localized URLs need a slug field per locale, or the collection
+pattern. A future `localized` cannot pick a different layout without a
+migration.
+
+**What would change it:** the first site where the forms become unusable, or
+where translators need to see only their language.
+
+**1.0 status:** accepted for 1.0; the pattern is in #125, the layout rule in
+the format specification (#58).
+
+---
+
+### P2 — A layout change is migrated by a command, not by a lenient reader
+
+**Decided:** `npx @micacms/editor migrate-layout` rewrites every entry whose
+layout no longer matches the model, in the working tree, and the developer
+commits the result with the model change. The reader stays strict: an entry in
+the other layout is an error (#64). The manifest records each collection's
+layout, so a change shows in the diff of `.mica/schema.json`. The command
+removes a sidecar only when no field still refers to it, and lists each file it
+removes.
+
+**Why:** a model change is always a developer's change in the site repository,
+so the developer is there to run a command. A reader that accepts both layouts
+would make both shapes part of the content format for all of 1.x, in `core` and
+in the Astro loader, and entries that nobody edits would keep the old layout
+forever.
+
+**Consequence:** a developer who changes the model and forgets the command gets
+a failing build and editor, not silent data loss. The command is part of the
+semver-covered CLI.
+
+**What would change it:** model changes made where nobody can run a command,
+for example from the editor itself.
+
+**1.0 status:** blocker; the command is in #65.
+
+---
+
+### P2 — A text `pattern` is a full match, with the `u` flag
+
+**Decided:** `text({ pattern })` must match the whole value: Mica compiles it as
+`new RegExp("^(?:" + pattern + ")$", "u")`. An invalid pattern fails when the
+model loads, not at the first save.
+
+**Why:** a pattern on a text field almost always describes a whole value, such
+as a code or an ID, and the HTML `pattern` attribute is a full match too. The
+code applied it unanchored while the JSDoc said anchored, so one of them had to
+change, and after 1.0 either change is breaking. The `u` flag counts code
+points, not UTF-16 halves, so an emoji is one character; its stricter syntax is
+a break of the same kind, so both are taken at once.
+
+**Consequence:** a "contains" rule needs `.*x.*`. A pattern with a loose escape,
+such as `\-` outside a class, stops the model from loading. Both are breaking
+changes before 1.0, with a changelog entry.
+
+**What would change it:** nothing in 1.x; the rule is part of the content
+format.
+
+**1.0 status:** blocker; the fix is in #59.
+
+---
+
+### P2 — An unknown field kind makes its collection read-only
+
+**Decided:** when the manifest uses a field kind that this build of Mica does
+not know, Mica still starts. The collection or singleton that contains the
+kind opens read-only, with a warning that names the upgrade; every other
+collection stays editable. A manifest with a newer `protocolVersion` is still
+refused, because that is the signal for a change that cannot degrade. Mica
+reads each collection's layout from the manifest (see the layout entry), not
+from fields it cannot interpret.
+
+**Why:** a developer upgrades `@micacms/astro` with the site, and the operator
+upgrades the image on another schedule. Refusing to start locks out every
+editor over one field. Locking only the field would need saves to round-trip a
+value and sidecars that Mica does not understand; locking the collection means
+Mica never writes what it cannot interpret.
+
+**Consequence:** an editor cannot change anything in that collection until the
+image is upgraded. The versioning policy says: upgrade the image first, or at
+the same time.
+
+**What would change it:** editors who are often blocked by this; then lock
+only the field, with a tested round trip of unknown values.
+
+**1.0 status:** blocker; the behaviour is in #60, the rule in #54.
+
+---
+
+### P2 — Alt text is an opt-in on the media field
+
+**Decided:** `media({ alt: "required" | "optional" })` stores `{ path, alt }`
+and shows an alt-text input beside the preview. A `media()` without the option
+still stores a plain path string, so existing content stays valid. The
+getting-started guide and the example use `alt: "required"`. A multilingual
+site keeps `media()` and puts a localized `alt` object beside it, because
+`{ path, alt }` holds one language.
+
+**Why:** with only a path, the default leads adopters to images with `alt=""`,
+which fails WCAG 1.1.1. An input beside the preview is where an editor sees
+it. Opt-in keeps the change additive and the stored shape of every existing
+field the same.
+
+**Consequence:** a media value has two shapes, chosen by the model, and the
+format specification and the Astro types carry both. The multilingual form
+places the alt text away from the preview.
+
+**What would change it:** native i18n (see "No native multilingual content");
+a localized `alt` then belongs in the media value.
+
+**1.0 status:** blocker; the field is in #61, the Astro helper in #109.
+
+---
+
+### P2 — An upload from an entry goes into that entry's folder
+
+**Decided:** a file uploaded from an entry's form goes into that entry's
+`media/` folder and is stored as `media/x.jpg`. A file uploaded from the Media
+view goes into the shared `media/` folder at the content root and is stored as
+`/media/x.jpg`. The picker offers the entry's own files and the shared ones,
+never another entry's. An upload in a new entry is staged under the slug, and
+moves with it if the slug changes before the first save.
+
+**Why:** this is what the docs say and what the layout rule assumes: a `media()`
+field forces the directory layout because its files sit beside the entry. An
+entry's files then go with it on a delete or a rename, and `media/x.jpg` stays
+valid after a slug change. Site-wide files, such as a logo, still have one
+place.
+
+**Consequence:** the same image used by two entries is either shared, through
+the Media view, or stored twice. Deleting an entry deletes its files.
+
+**What would change it:** editors who mostly reuse images across entries; then
+default the picker's upload to the shared folder, which the layout rule would
+no longer justify.
+
+**1.0 status:** should for 1.0; the fix is in #102, the path forms in #58.
+
+---
+
+### P2 — Media reach Astro as paths, with a supported helper
+
+**Decided:** a media value stays a path string in Astro (or `{ path, alt }`
+with the alt option). `@micacms/astro` ships `resolveMedia(path)` and a
+`<MicaImage>` component from an uncompiled `.astro` subpath. They resolve both
+path forms, use the alt text when there is one, and warn in development, or
+fail the build if the site asks, when a file is missing. The integration
+generates the `import.meta.glob` for the configured content root.
+
+**Why:** a `media()` field can hold a PDF as well as an image, and Astro's
+`image()` handles images only. `image()` resolves paths relative to the entry
+file, so the shared `/media/` form would need special handling, and switching
+to `ImageMetadata` would change the value type for every site. Today each site
+copies the example's glob map, which hard-codes `/content/` and renders nothing
+for a missing file.
+
+**Consequence:** a site that wants Astro's image optimization goes through the
+helper, not `image()` in the schema. A missing file is a warning unless the
+site turns on the build failure.
+
+**What would change it:** Astro's `image()` resolving arbitrary roots and
+non-image files; then offer `ImageMetadata` as an opt-in.
+
+**1.0 status:** should for 1.0; the helper is in #109.
+
+---
+
+### P2 — No draft preview in 1.0; a link to the published page
+
+**Decided:** 1.0 has no preview of unpublished changes in the self-hosted Mica.
+An optional model option, such as `url: "/news/{slug}"`, together with
+`MICA_SITE_URL`, shows "Open on website" in the entry header and after a
+publish. It is only a link. A docs page describes the staging-branch setup and
+the deploy previews of the common hosts. A live draft preview comes after 1.0.
+
+**Why:** drafts live in the draft store, not in Git, so a host's deploy preview
+cannot see them, and Mica must not call the website or trigger a build. A link
+couples nothing. A staging branch with a second Mica already gives a reviewed
+preview with no code.
+
+**Consequence:** a self-hosted editor sees a change on the website only after
+publishing it, or on a staging site. The local editor keeps `astro dev` beside
+it.
+
+**What would change it:** editors who publish to check their work. The next
+step is a "Preview" action that force-pushes the pending change set to a branch
+such as `mica/preview` for the host to build: Git only, no webhook, at the
+cost of build minutes and a second branch that Mica writes.
+
+**1.0 status:** should for 1.0; the link and the docs are in #103. The live
+preview is after 1.0.
+
+---
+
+### P2 — Publish a selection; `required` is checked at Publish, not at Save
+
+**Decided:** the Publish page lets an editor select groups of pending changes.
+Only the selected groups are validated and committed; the rest stays pending
+in the one shared change set. A group keeps together what must not be split:
+an entry, its media and its collection's `_order.json`, both halves of a URL
+change, and any pending shared upload that a selected entry refers to. Save
+checks types and formats, `pattern` and lengths included, but not `required`;
+an entry with a missing required value is saved and marked "incomplete".
+Publish refuses a selected group that is incomplete.
+
+**Why:** with all-or-nothing, a typo fix waits for, or carries, a colleague's
+unfinished article. With `required` at Save, a half-written article cannot be
+saved at all, and closing the tab loses it. The two belong together: a lenient
+Save puts incomplete documents in the change set, and selection is how the
+complete ones get published around them. Selection inside the one change set
+keeps the decision against per-editor drafts.
+
+**Consequence:** the change set can hold documents the site's schema rejects.
+In the local editor, the working tree is the draft workspace, so `astro dev`
+and a local build see an incomplete entry until it is finished. Publish still
+never commits one.
+
+**What would change it:** groups that editors find too coarse, or too
+surprising when a shared upload comes along.
+
+**1.0 status:** should for 1.0; both are in #98. The "One shared pending change
+set" entry gets a note when #98 lands.
+
+---
+
+### P2 — Images in rich text are kept as blocks; inserting them comes after 1.0
+
+**Decided:** in 1.0, an image or a table in rich text opens as an atomic block:
+an image shows a thumbnail and its alt text, and a table a read-only notice.
+The text around them stays editable, and an unchanged block is written back
+byte for byte. Editors cannot insert or edit an image in rich text in 1.0; a
+toolbar option `"image"` adds that in a 1.x minor.
+
+**Why:** losing an image when a field opens is data loss, and #62 fixes that in
+any case. Blocks make such fields editable again with little code. Inserting
+images needs the picker, an alt-text dialog, and every media-reference check to
+scan rich text as well: the "not used" hint, the shared uploads that a
+selective publish brings along, and the Astro rendering. That is additive, so
+it can wait for a minor.
+
+**Consequence:** an editor who wants an image inside the body text asks a
+developer, or uses a `media()` field beside it.
+
+**What would change it:** the first editor who needs an image in body text more
+than once a month.
+
+**1.0 status:** blocks are should for 1.0 (#63); no data loss is a blocker
+(#62). Inserting images is after 1.0.
+
+---
+
+### P2 — "Keep mine" at a conflict, after a comparison, traced in Git
+
+**Decided:** when the repository changed a document after a draft was based on
+it, the editor sees both versions side by side, field by field, and chooses.
+"Use current" discards the draft. "Keep mine" moves the draft's base to the
+current revision. The server logs that choice with the subject, and the publish
+commit message names the revision it replaced.
+
+**Why:** discard as the only answer makes the editor pay for someone else's
+change. The comparison makes the overwrite a choice, not an accident. Git is
+the history, so the trace belongs in the commit, where a developer finds it
+next to the change that was replaced; a server log is visible only to the
+operator.
+
+**Consequence:** an editor can replace a developer's fix with an older text.
+The fix stays in Git and is one revert away, and the commit says which one.
+
+**What would change it:** frequent conflicts on the same fields; then merge per
+field, which is after 1.0.
+
+**1.0 status:** should for 1.0; the actions are in #97.
+
+---
+
+### P2 — SVG cannot be uploaded; an SVG in the repository is served sandboxed
+
+**Decided:** in 1.0, the media upload refuses SVG with a message that says to
+add the file through Git. An SVG that is already in the repository is listed
+and shown, and the admin media route always serves it with
+`Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'`
+and `X-Content-Type-Options: nosniff`. Files that are not images are sent as
+`Content-Disposition: attachment`. Both editors behave the same.
+
+**Why:** an SVG can carry a script, and on the admin origin that script runs
+with the editor's session, Publish included. The sandbox closes that whatever
+the upload rule is. Refusing uploads also keeps an editor's SVG off the
+website, where a site that inlines it would run its script. Sanitizing would
+need a large new dependency and would make its correctness a security promise.
+SVGs such as logos and icons usually come from a developer through Git anyway.
+
+**Consequence:** an editor cannot add an icon or a logo; a developer must.
+
+**What would change it:** editors who need to upload vector graphics; then a
+field opt-in with server-side sanitizing, in a 1.x minor.
+
+**1.0 status:** blocker; the headers and the refusal are in #86.
+
+---
+
+### P2 — The website is the one source of user documentation
+
+**Decided:** the user guides live in `sites/micacms/content/docs` as Mica
+content and are published on micacms.com: getting started, the content model,
+self-hosting, and the new configuration, versioning, support and
+content-format pages. `docs/` keeps the documents for contributors:
+architecture, decisions and the historical plans. READMEs, CLI messages and
+server messages link to the website. Changes in `sites/micacms` need no
+approval, so a code change updates the docs in the same pull request.
+
+**Why:** two hand-kept sets drifted (54 lines against 218 for one page) and the
+website made claims the code does not keep. The website is a Mica site, so
+writing the docs in Mica is the daily test of the editor. Links to micacms.com
+are stable for npm users, who have no repository paths.
+
+**Consequence:** the guides are Mica content, not plain Markdown files beside
+the code, and they follow the website's content model. Tests that check the
+docs against the code, such as the configuration list (#57), read that
+content. A reader on GitHub follows a link to the website.
+
+**What would change it:** docs that need a version per release, which a single
+website does not give.
+
+**1.0 status:** blocker; the move and the corrections are in #117.
+
+---
+
+### P2 — Mica is a hobby project, and says so
+
+**Decided:** `GOVERNANCE.md` states that Mica is a hobby project of one
+maintainer, built largely with AI-assisted ("vibe") coding, and maintained on a
+best-effort basis. It promises no response times and no co-maintainer. 1.0 does
+not wait for a second maintainer or a second account owner.
+
+**Why:** an honest statement lets an adopter weigh the risk; a promise one
+person cannot keep is worse than none. A co-maintainer, like an outside
+adopter, is not in the maintainer's control, so it cannot gate a release.
+Saying how the code is written lets a reader judge it by its tests and reviews.
+
+**Consequence:** an agency that needs a response time or continuity must plan
+for it itself, for example by being able to fork. One account owns the GitHub
+organization, the npm scope, the domain and the release secrets; losing it
+stops releases.
+
+**What would change it:** a second person who wants to maintain Mica, or
+adopters who depend on it commercially; then add a second owner of the
+accounts first, and a co-maintainer second.
+
+**1.0 status:** accepted for 1.0; the statement is in #52.
+
+---
+
+### P2 — No independent security review before 1.0
+
+**Decided:** nobody outside the project reviews the OIDC and session code
+before 1.0, and `SECURITY.md` says that Mica is not independently audited.
+Instead, CodeQL and a dependency audit run in CI, and the maintainer reviews
+the authentication, session, CSRF and admission code against the OWASP ASVS
+level 1 checklist and commits the result. Once the repository is public, the
+project asks the community for a review. `SECURITY.md` answers reports on a
+best-effort basis, with no response times.
+
+**Why:** a paid review does not fit a hobby project, and a volunteer review is
+not in the maintainer's control, so neither can gate 1.0. The protocol itself
+is `openid-client`, which is widely reviewed; Mica's own part is the admission
+rules, the encrypted cookies, CSRF and rate limiting. A committed checklist
+makes the self-review checkable by anyone.
+
+**Consequence:** an adopter who needs an audit must commission one. The
+self-review finds what its author can see, which is less than an outsider
+would.
+
+**What would change it:** an outside reviewer who offers, or an adopter who
+funds a review; take it, and publish the result.
+
+**1.0 status:** blocker for the CodeQL job and the checklist (#84); the outside
+review is after 1.0.
+
 ---
 
 ### P3 — A generated file is committed to the content repository
@@ -457,6 +1212,8 @@ using Mica should copy.
 plane, a `mica push` sending the same bytes over HTTP would be the alternative,
 and the file format is already that payload.
 
+**1.0 status:** accepted for 1.0.
+
 ---
 
 ### P3 — The editor cannot represent a Markdoc tag
@@ -477,6 +1234,10 @@ yet.
 
 **Trigger:** the first project that wants callouts or embeds inside rich text.
 
+**1.0 status:** blocker. #62 replaces this trade-off: an unknown node, a tag
+included, opens as a read-only block and is written back unchanged, never
+unwrapped. Rewrite this entry when #62 lands.
+
 ---
 
 ### P3 — Rich-text bundle is ~130 kB gzip
@@ -492,6 +1253,8 @@ the dashboard do not load it.
 
 **What would change it:** nothing at this size. Revisit only if the admin has to
 work on a slow mobile connection.
+
+**1.0 status:** accepted for 1.0.
 
 ---
 
@@ -515,11 +1278,13 @@ fall under the threshold in Git too, and its history then stops at the rename.
 The working tree has no place for that record, so both workspaces would need
 one first.
 
+**1.0 status:** accepted for 1.0.
+
 ---
 
 ## Deferred scope
 
-Explicitly not built.
+Explicitly not built. Everything in this section is after 1.0.
 
 - **Multi-site, tenants, memberships and roles.** One Mica process manages one
   site. Running several sites means running several instances, which is a
@@ -534,6 +1299,30 @@ Explicitly not built.
   set at a time.
 - **P3** — Scheduled publishing.
 
+**Out of 1.0.** These are not built for 1.0, and the "Scope and non-goals" page
+(#124) lists them with how to work without them. Each can come in a 1.x minor
+without a break.
+
+- **Roles.** Every admitted editor can do everything, Publish included.
+  Trigger: a site whose editors must not all publish.
+- **Approval workflows and scheduled publishing.** A publish is immediate. A
+  staging branch with a second Mica is the review step. Trigger: a customer who
+  needs a sign-off or a timed release.
+- **History and revert UI.** Git is the history; the docs show how to revert a
+  publish with Git. Trigger: editors who ask a developer to revert more than
+  rarely.
+- **A blocks field.** A repeater has one item shape; there is no page builder
+  with differently shaped items. It would be a new field kind. Trigger: a site
+  whose pages are composed of sections of different kinds.
+- **Media delete.** A published shared file cannot be deleted from the editor,
+  because a delete needs a scan of all content, rich text included, for
+  references. An entry's own files go with the entry, and a pending upload can
+  be discarded. Trigger: shared media folders that editors cannot keep tidy.
+- **A branch switcher.** One Mica serves one branch. Trigger: a team that needs
+  to edit more than one branch from one deployment.
+- Decided elsewhere in this file: native multilingual content, a draft preview,
+  and inserting images in rich text.
+
 ## Known gaps to close
 
 - **P3** — The browser test covers one path. CI drives Chromium through "sign
@@ -541,6 +1330,7 @@ Explicitly not built.
   ([`tests/browser/`](../tests/browser/README.md)). Collections, media,
   discard, conflicts and the local editor are covered by the API tests and by
   hand. Add a path when a regression reaches the UI unseen.
+  **1.0 status:** after 1.0; #108 adds accessibility checks on every view.
 - **P2** — The group claim is verified by hand, not by CI. CI runs the real
   image against Dex on every pull request ([`tests/oidc/`](../tests/oidc/README.md)):
   sign-in, the email and domain rules, a refusal, CSRF and an edit. Dex's
@@ -548,21 +1338,25 @@ Explicitly not built.
   still only `tests/e2e/compose.yml` (Keycloak) and
   `deploy/demo-identity/compose.yml` (ZITADEL), run by hand. A claim whose name
   and shape differ per provider is exactly what a unit test cannot check.
+  **1.0 status:** accepted for 1.0.
 - **P2** — The GitLab connector is tested against a stub only. The
   `live-connectors` workflow (`packages/connectors/test/live.test.ts`) can
   commit to a scratch project on gitlab.com, but no token is configured yet, so
   it skips GitLab. Configure `MICA_LIVE_GITLAB_TOKEN` and
   `MICA_LIVE_GITLAB_PROJECT` to close this. It also checks whether the
   documented `write_repository` scope is enough for the REST API.
+  **1.0 status:** blocker (#38).
 - **P2** — The GitHub connector is not yet tested live. The `live-connectors`
   workflow can commit to the scratch repository `amuedespacher/micacms-scratch`
   every Monday and on demand, but the secret `MICA_LIVE_GITHUB_TOKEN` is not
   set yet, so it skips GitHub. When it is set, this becomes P3: pull requests
   still test against a stub only, because a fork cannot read the secret. `REPOSITORY_API_BASE` against GitHub Enterprise Server or a
   self-managed GitLab is still untested.
+  **1.0 status:** blocker (#38).
 - **P3** — Entry search filters in the browser over the whole collection. Fine at
   the stated scale (hundreds to low thousands); a repository large enough to
   need an index is a repository large enough to need a different design.
+  **1.0 status:** accepted for 1.0, at the scale target.
 
 ---
 
