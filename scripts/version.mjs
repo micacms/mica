@@ -24,8 +24,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const VERSION_FIELD = /^(\s*"version":\s*")([^"]+)(")/m;
 
 /** The image tag in the reference deployment, which carries the same version. */
-// Both names, until the first release from micacms/mica publishes the new image (#51).
-const IMAGE_TAG = /^(\s*image:\s*ghcr\.io\/(?:amuedespacher\/micacms|micacms\/mica):)(\S+)(\s*)$/m;
+const IMAGE_TAG = /^(\s*image:\s*ghcr\.io\/micacms\/mica:)(\S+)(\s*)$/m;
 
 /**
  * Every file that carries the release version, and the pattern that finds it.
