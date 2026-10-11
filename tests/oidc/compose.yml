@@ -65,6 +65,17 @@ services:
     # the ID token's `iss` would not match what discovery returned.
     network_mode: "service:dex"
 
+    # Hardened like deploy/self-hosted/compose.yml, so that CI proves the image
+    # runs this way. /data is the anonymous volume that the image declares.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+
     environment:
       # Plain-HTTP discovery is allowed only outside production, and only for
       # a provider on localhost. Everything else is production-shaped.

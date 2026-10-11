@@ -55,6 +55,10 @@ release note before upgrading.
 - The sign-in transaction cookie is signed with a key derived from
   `SESSION_SECRET`, not with the secret itself. An email address counts as
   verified only when the flag came with that same address (#91).
+- The image is signed with a keyless cosign signature and carries an SBOM and
+  build provenance. CI scans it for critical vulnerabilities. The compose file
+  runs it with a read-only root file system, no capabilities and a memory
+  limit (#133).
 
 ### Changed
 

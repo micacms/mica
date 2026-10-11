@@ -111,6 +111,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # Fails on a critical vulnerability that has a fix. One without a fix is
+      # listed, not fatal: it would block every pull request until upstream acts.
+      - name: Scan the CMS image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: micacms/editor:ci
+          scanners: vuln
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
       # The whole deployed shape, automated: the image just built, behind a
       # real Dex, publishing to a stand-in for the GitHub API. `--wait` is the
       # health check; the test then signs in, is admitted or refused, edits,

@@ -58,6 +58,15 @@ services:
       # is the content model.
       - mica-data:/data
 
+    # Nothing but /data and /tmp is writable, and no capability is left. With
+    # no-new-privileges below, the unprivileged `node` user stays that (#133).
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    mem_limit: 512m
+
     healthcheck:
       # Liveness only: a provider outage must not restart the container.
       # /ready checks the database and the repository, for a monitor.
