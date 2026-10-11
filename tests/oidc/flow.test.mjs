@@ -126,7 +126,9 @@ describe("signing in through Dex", () => {
     const landed = await mallory.signIn("mallory@gmail.com");
 
     assert.equal(landed.pathname, "/admin/login");
-    assert.match(landed.searchParams.get("error") ?? "", /no access to this site/);
+    assert.equal(landed.searchParams.get("error"), "not_admitted");
+    // The refusal names no address: the URL lands in history and proxy logs.
+    assert.doesNotMatch(landed.href, /mallory/);
     assert.equal(mallory.cookies.has("mica_session"), false);
     assert.equal((await mallory.api("/api/auth/me")).status, 401);
   });

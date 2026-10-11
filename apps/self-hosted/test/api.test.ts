@@ -82,8 +82,8 @@ describe("sign-in callback", () => {
       assert.equal(response.status, 302);
       locations.push(decodeURIComponent(response.headers.get("location") ?? ""));
     }
-    assert.doesNotMatch(locations[0]!, /Too many/);
-    assert.match(locations[2]!, /Too many sign-in attempts/);
+    assert.doesNotMatch(locations[0]!, /rate_limited/);
+    assert.match(locations[2]!, /error=rate_limited$/);
   });
 });
 

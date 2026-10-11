@@ -99,7 +99,8 @@ export function adminMediaRoutes(): Hono<Env> {
     if (!found) throw notFound("No such file.");
 
     return c.body(found.bytes as unknown as ArrayBuffer, 200, {
-      "content-type": found.mimeType,
+      // Text without a charset is decoded by guessing; the repository's text is UTF-8.
+      "content-type": found.mimeType.startsWith("text/") ? `${found.mimeType}; charset=utf-8` : found.mimeType,
       "cache-control": "private, max-age=60",
       // A file opened directly runs nothing and reaches nothing on this origin.
       "content-security-policy": "sandbox; default-src 'none'",
