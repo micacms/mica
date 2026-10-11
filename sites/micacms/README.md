@@ -59,9 +59,12 @@ A push to `main` builds and deploys; a pull request gets a preview URL. There is
 no workflow and no token: the GitHub repository is connected to the Vercel
 project, and `vercel.json` is the whole configuration.
 
-The `ignoreCommand` skips the build for commits that touch neither this site, the
-packages, the lockfile, nor the Vercel config, so unrelated work on the CMS does
-not redeploy the website.
+The `ignoreCommand` skips the build when nothing in this site, the packages, the
+lockfile or the Vercel config changed since the last successful deployment
+(`VERCEL_GIT_PREVIOUS_SHA`), so unrelated work on the CMS does not redeploy the
+website. It compares with that deployment, not with the previous commit, so a
+site change followed by unrelated commits still deploys. If that commit is not
+in the clone, the diff fails and the build runs.
 
 Nothing here gates the deployment on CI. Protect `main` and require the `CI`
 check to pass before merge, and every commit that reaches `main` — and so every
