@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Security: in production, refuse to start without MICA_PUBLIC_URL; warn about MICA_* and REPOSITORY_* variables that nothing reads",
+      "type": "patch",
+      "packageName": "@micacms/self-hosted"
+    }
+  ],
+  "packageName": "@micacms/self-hosted",
+  "email": "alexander@muedespacher.ch"
+}

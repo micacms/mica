@@ -88,6 +88,13 @@ async function main(): Promise<void> {
     });
   }
 
+  if (config.unknownVariables.length > 0) {
+    logger.warn("Unknown configuration variables", {
+      names: config.unknownVariables,
+      note: "Nothing reads these. Check the spelling against deploy/self-hosted/.env.example.",
+    });
+  }
+
   const auth = createOidcAuth({ config, logger });
 
   // Saves stage in the database until Publish commits them through the provider.
