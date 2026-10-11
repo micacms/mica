@@ -5,7 +5,7 @@
   "buildCommand": "node common/scripts/install-run-rush.js build --to @micacms/site",
   "outputDirectory": "sites/micacms/dist",
   "trailingSlash": true,
-  "ignoreCommand": "git diff --quiet ${VERCEL_GIT_PREVIOUS_SHA:-HEAD^} HEAD -- sites/micacms packages rush.json common/config/rush vercel.json",
+  "ignoreCommand": "base=\"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\"; git cat-file -e \"$base^{commit}\" 2>/dev/null && git diff --quiet \"$base\" HEAD -- sites/micacms packages rush.json common/config/rush vercel.json && exit 0; exit 1",
   "redirects": [
     {
       "source": "/(.*)",
