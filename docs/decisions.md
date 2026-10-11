@@ -742,6 +742,27 @@ take it, and keep the two-week rule.
 
 ---
 
+### P2 — The self-hosted server ships only as the image
+
+**Decided:** `@micacms/self-hosted` is no longer published to npm. It keeps the
+lockstep version, because the image tag is derived from it. The versions
+already on npm are deprecated with a pointer to the image.
+
+**Why:** the package has no `main`, `bin` or `exports`, so nobody can use it as
+published, and the image builds from source, not from npm. A real `bin` would
+add a second server product, with its own CLI, docs and CI, to keep stable
+through 1.x.
+
+**Consequence:** the self-hosted Mica runs only as a container. A Node host
+without Docker is not supported.
+
+**What would change it:** a real demand for a Docker-free server, for example
+on a Node PaaS; then add a `bin` and put it under semver.
+
+**1.0 status:** blocker; the publish change is in #129.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
