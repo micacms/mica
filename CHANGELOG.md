@@ -52,6 +52,9 @@ release note before upgrading.
 - In production, the self-hosted Mica refuses to start without
   `MICA_PUBLIC_URL`, whose default is a localhost address. At startup it warns
   about `MICA_*` and `REPOSITORY_*` variables that it does not read (#90).
+- The sign-in transaction cookie is signed with a key derived from
+  `SESSION_SECRET`, not with the secret itself. An email address counts as
+  verified only when the flag came with that same address (#91).
 
 ### Changed
 
