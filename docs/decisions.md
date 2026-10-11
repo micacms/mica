@@ -763,6 +763,34 @@ on a Node PaaS; then add a `bin` and put it under semver.
 
 ---
 
+### P2 — No native multilingual content in 1.0
+
+**Decided:** the content model has no locale concept in 1.0. The docs describe
+two patterns: an object per field (`title: object({ de, fr, en })`) for pages
+and singletons, and one collection per locale for streams that differ per
+locale, such as news. The content-format specification commits a later
+`localized` option to the object-per-locale layout, so it stores exactly what
+the first pattern stores today, `body.de.mdoc` included.
+
+**Why:** both patterns work with the current model and need no code. Keeping
+the translations of a page in one entry stops them drifting; separate
+collections fit content that exists in one language only. Fixing the future
+layout now means a site that follows the documented pattern upgrades to native
+i18n with no file change.
+
+**Consequence:** no locale switcher in the editor, and long forms with the
+object pattern. Localized URLs need a slug field per locale, or the collection
+pattern. A future `localized` cannot pick a different layout without a
+migration.
+
+**What would change it:** the first site where the forms become unusable, or
+where translators need to see only their language.
+
+**1.0 status:** accepted for 1.0; the pattern is in #125, the layout rule in
+the format specification (#58).
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
