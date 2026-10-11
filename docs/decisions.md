@@ -570,6 +570,30 @@ surface, not the admin API.
 
 ---
 
+### P2 — The project lives in the `micacms` organization
+
+**Decided:** the repository moves to `micacms/micacms` and the image to
+`ghcr.io/micacms/micacms`, before the repository becomes public.
+
+**Why:** a public image name cannot move later. GitHub redirects repository
+URLs after a transfer, but not GHCR image names, so a later move breaks every
+`docker pull` and compose file that adopters have. While the repository is
+private, nobody outside depends on the old names. The organization matches the
+npm scope `@micacms` and the domain `micacms.com`, and it can take a second
+maintainer without moving again.
+
+**Consequence:** a one-time move: transfer the repository, add the Actions
+secrets again, let the first release create the GHCR package under the
+organization and make it public, and replace every `amuedespacher` reference.
+The old `ghcr.io/amuedespacher/micacms` tags stay private and are not
+continued.
+
+**What would change it:** nothing short of a rename of the project.
+
+**1.0 status:** blocker; the move is in #51.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
