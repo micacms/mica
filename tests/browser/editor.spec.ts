@@ -31,7 +31,22 @@ async function publishedTagline(request: APIRequestContext): Promise<string> {
   return site.tagline;
 }
 
-test("an editor signs in, edits, saves and publishes", async ({ page, request }) => {
+test("an editor signs in, edits, saves and publishes", async ({ page, request, baseURL }) => {
+  // Mica's pages load nothing from another origin and break no CSP rule (#88).
+  // The sign-in itself navigates to Dex, which is not a Mica page.
+  const mica = new URL(baseURL ?? "").origin;
+  const external: string[] = [];
+  const violations: string[] = [];
+  page.on("request", (request) => {
+    const from = request.frame().url();
+    if (from.startsWith(mica) && !request.isNavigationRequest() && new URL(request.url()).origin !== mica) {
+      external.push(request.url());
+    }
+  });
+  page.on("console", (message) => {
+    if (/Content Security Policy/i.test(message.text())) violations.push(message.text());
+  });
+
   // Sign in: Mica's login view, then Dex's form, then back into the editor.
   await page.goto("/admin/");
   await expect(page.getByRole("heading", { name: "Sign in to Mica" })).toBeVisible();
@@ -84,4 +99,7 @@ test("an editor signs in, edits, saves and publishes", async ({ page, request })
   await sidebar.getByRole("button", { name: "Sign out" }).click();
   await expect(page.getByRole("heading", { name: "Sign in to Mica" })).toBeVisible();
   expect((await page.request.get("/api/auth/me")).status()).toBe(401);
+
+  expect(external, "requests to another origin").toEqual([]);
+  expect(violations, "Content-Security-Policy violations").toEqual([]);
 });

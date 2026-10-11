@@ -55,9 +55,25 @@ export function requestContext(ctx: Env["Variables"]["ctx"]): MiddlewareHandler<
   };
 }
 
+/**
+ * Same-origin only. `blob:` and `data:` images cover previews; a route that
+ * needs a stricter policy, such as the sandbox for SVG, sets its own.
+ */
+export const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "img-src 'self' blob: data:",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "frame-ancestors 'none'",
+].join("; ");
+
 export function securityHeaders(): MiddlewareHandler<Env> {
   return async (c, next) => {
     await next();
+
+    if (!c.res.headers.has("content-security-policy")) {
+      c.header("content-security-policy", CONTENT_SECURITY_POLICY);
+    }
 
     c.header("x-content-type-options", "nosniff");
     c.header("referrer-policy", "same-origin");

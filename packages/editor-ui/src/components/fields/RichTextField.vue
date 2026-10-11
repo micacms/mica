@@ -44,6 +44,8 @@ const enabled = (feature: RichTextFeature) => toolbar.value.includes(feature);
 const editor = useEditor({
   content: fromMarkdoc(typeof props.modelValue === "string" ? props.modelValue : ""),
   editable: !(props.disabled || field.value.readonly),
+  // The base styles are in style.css; an injected <style> tag would break the CSP.
+  injectCSS: false,
 
   extensions: createRichTextExtensions(toolbar.value),
 

@@ -45,7 +45,6 @@ export default defineConfig({
     // ADMIN_ORIGINS=http://localhost:5173 for its Origin check.
     proxy: {
       "/api": { target: API_TARGET, changeOrigin: false },
-      "/media": { target: API_TARGET, changeOrigin: false },
     },
   },
 });
