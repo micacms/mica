@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Security: /health checks only the process; the new /ready checks the database and the repository, cached for 30 s; neither shows the repository or the uptime",
+      "type": "none",
+      "packageName": "@micacms/runtime"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

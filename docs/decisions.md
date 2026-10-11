@@ -101,7 +101,7 @@ with no cookie involved. What the cookie *was* quietly also doing — blocking a
 DNS-rebinding read, because a rebound name never received a cookie scoped to
 `localhost` — is now a **Host allowlist**: the local app answers to
 `localhost`, `127.0.0.1` and `[::1]` and refuses any other `Host`, in front of
-everything including `/health`.
+everything including the health endpoints.
 
 **Accepted with it:** a request without a cookie stops being a 401, so any
 process on the developer's own machine can call the local API. A process on
@@ -475,7 +475,8 @@ the draft store and nothing about people. See "Sessions are encrypted cookies".
 
 **Decided:** from 1.0, semver covers `@micacms/core`, `@micacms/astro`, the
 `@micacms/editor` CLI, the self-hosted image contract (environment variables,
-port, volume, `/health`), the content format and the manifest protocol.
+port, volume, `/health` and `/ready`), the content format and the manifest
+protocol.
 `@micacms/runtime`, `@micacms/auth-oidc`, `@micacms/editor-ui` and
 `@micacms/connectors` are internal: published only because the apps install
 them, pinned exactly by the apps, and free to break in a minor.

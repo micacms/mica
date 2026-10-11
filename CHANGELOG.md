@@ -32,6 +32,16 @@ release note before upgrading.
 - The sign-in can no longer send a browser to another site afterwards. Before,
   a return path such as `/\evil.example` passed the check; now the path is
   parsed like a browser does and must be a page of the editor (#87).
+- Anonymous health checks can no longer spend the repository token's API quota,
+  and they no longer show the repository or the uptime (#79).
+
+### Changed
+
+- `/health` now checks only that the process answers, with no I/O, so a
+  provider outage no longer restarts the container. The new `/ready` checks
+  the database and the repository, cached for 30 seconds. Point a monitor that
+  must notice a repository outage at `/ready`. Neither answer shows the
+  repository's origin or the uptime any more; the System view shows both (#79).
 
 ## [0.3.0] — 2026-10-10
 
