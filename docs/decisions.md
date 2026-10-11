@@ -1176,6 +1176,30 @@ Explicitly not built.
   set at a time.
 - **P3** — Scheduled publishing.
 
+**Out of 1.0.** These are not built for 1.0, and the "Scope and non-goals" page
+(#124) lists them with how to work without them. Each can come in a 1.x minor
+without a break.
+
+- **Roles.** Every admitted editor can do everything, Publish included.
+  Trigger: a site whose editors must not all publish.
+- **Approval workflows and scheduled publishing.** A publish is immediate. A
+  staging branch with a second Mica is the review step. Trigger: a customer who
+  needs a sign-off or a timed release.
+- **History and revert UI.** Git is the history; the docs show how to revert a
+  publish with Git. Trigger: editors who ask a developer to revert more than
+  rarely.
+- **A blocks field.** A repeater has one item shape; there is no page builder
+  with differently shaped items. It would be a new field kind. Trigger: a site
+  whose pages are composed of sections of different kinds.
+- **Media delete.** A published shared file cannot be deleted from the editor,
+  because a delete needs a scan of all content, rich text included, for
+  references. An entry's own files go with the entry, and a pending upload can
+  be discarded. Trigger: shared media folders that editors cannot keep tidy.
+- **A branch switcher.** One Mica serves one branch. Trigger: a team that needs
+  to edit more than one branch from one deployment.
+- Decided elsewhere in this file: native multilingual content, a draft preview,
+  and inserting images in rich text.
+
 ## Known gaps to close
 
 - **P3** — The browser test covers one path. CI drives Chromium through "sign
