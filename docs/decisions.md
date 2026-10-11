@@ -474,6 +474,33 @@ subset of the runtime to public.
 
 ---
 
+### P2 — zod 4 is part of the public contract
+
+**Decided:** zod 4 is a peer dependency of `@micacms/core` and `@micacms/astro`
+(`^4.3.6`), and a development dependency for their build. The internal packages
+and the apps keep it as a regular dependency. The core boundary test allows
+this one peer.
+
+**Why:** zod is already in the public types. `@micacms/astro` hands Astro a
+`z.ZodType<T>`, because Astro derives `CollectionEntry<...>["data"]` from
+`z.infer`, and `core` exports `fieldsSchema()` and `toIssues(z.ZodError)`. As a
+regular dependency, the site gets a second copy as soon as Astro and Mica move
+to different zod majors; the types then stop matching and `instanceof ZodError`
+fails. A peer gives the site one copy, shared with Astro.
+
+**Consequence:** a move to zod 5 is a Mica major. A site must have a zod that
+satisfies both Astro and Mica; npm 7+ and pnpm install it automatically.
+
+**What would change it:** hide zod behind Standard Schema in `core`. `astro`
+still has to give Astro a zod type, so this removes zod from only half the
+surface.
+
+**Trigger:** an Astro major that moves to a zod major Mica does not support.
+
+**1.0 status:** accepted for 1.0; the manifest change is in #129.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
