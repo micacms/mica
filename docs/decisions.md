@@ -818,6 +818,30 @@ for example from the editor itself.
 
 ---
 
+### P2 — A text `pattern` is a full match, with the `u` flag
+
+**Decided:** `text({ pattern })` must match the whole value: Mica compiles it as
+`new RegExp("^(?:" + pattern + ")$", "u")`. An invalid pattern fails when the
+model loads, not at the first save.
+
+**Why:** a pattern on a text field almost always describes a whole value, such
+as a code or an ID, and the HTML `pattern` attribute is a full match too. The
+code applied it unanchored while the JSDoc said anchored, so one of them had to
+change, and after 1.0 either change is breaking. The `u` flag counts code
+points, not UTF-16 halves, so an emoji is one character; its stricter syntax is
+a break of the same kind, so both are taken at once.
+
+**Consequence:** a "contains" rule needs `.*x.*`. A pattern with a loose escape,
+such as `\-` outside a class, stops the model from loading. Both are breaking
+changes before 1.0, with a changelog entry.
+
+**What would change it:** nothing in 1.x; the rule is part of the content
+format.
+
+**1.0 status:** blocker; the fix is in #59.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
