@@ -1031,6 +1031,30 @@ than once a month.
 
 ---
 
+### P2 — "Keep mine" at a conflict, after a comparison, traced in Git
+
+**Decided:** when the repository changed a document after a draft was based on
+it, the editor sees both versions side by side, field by field, and chooses.
+"Use current" discards the draft. "Keep mine" moves the draft's base to the
+current revision. The server logs that choice with the subject, and the publish
+commit message names the revision it replaced.
+
+**Why:** discard as the only answer makes the editor pay for someone else's
+change. The comparison makes the overwrite a choice, not an accident. Git is
+the history, so the trace belongs in the commit, where a developer finds it
+next to the change that was replaced; a server log is visible only to the
+operator.
+
+**Consequence:** an editor can replace a developer's fix with an older text.
+The fix stays in Git and is one revert away, and the commit says which one.
+
+**What would change it:** frequent conflicts on the same fields; then merge per
+field, which is after 1.0.
+
+**1.0 status:** should for 1.0; the actions are in #97.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
