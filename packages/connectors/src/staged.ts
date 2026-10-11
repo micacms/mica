@@ -22,8 +22,10 @@
 import { createHash } from "node:crypto";
 
 import {
+  checkCommitPaths,
   ConflictError,
   ConnectorError,
+  contentPath,
   type CommitInput,
   type CommitResult,
   type DirectoryEntry,
@@ -32,8 +34,8 @@ import {
   type StageInput,
 } from "@micacms/core";
 
-/** A content path with no leading or trailing slash — how the store keys it. */
-const clean = (path: string): string => path.replace(/^\/+|\/+$/g, "");
+/** A content path with no leading or trailing slash — how the store keys it. Refused if it could leave the root. */
+const clean = (path: string): string => contentPath(path, { allowRoot: true });
 
 const toBytes = (contents: string | Uint8Array): Uint8Array =>
   typeof contents === "string" ? new TextEncoder().encode(contents) : contents;
@@ -123,6 +125,7 @@ export function stagedConnector(
     head: () => base.head(),
 
     async commit(input: CommitInput): Promise<CommitResult> {
+      checkCommitPaths(input);
       if (input.changes.length === 0) {
         throw new ConnectorError("A commit needs at least one change.");
       }

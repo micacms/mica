@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
@@ -183,6 +183,21 @@ describe("content", () => {
     assert.equal(response.status, 200);
     assert.throws(() => file("projects/doomed/index.json"));
     assert.throws(() => file("projects/doomed/summary.mdoc"));
+  });
+
+  it("refuses a delete whose slug is not one entry", async () => {
+    await create({ title: "Kept", summary: "Text." });
+    const tree = () => readdirSync(harness.contentRoot, { recursive: true }).map(String).sort();
+    const before = tree();
+
+    for (const slug of ["..%2Fteam", "kept%2Fsummary.mdoc", "%2E%2E"]) {
+      const response = await harness.request(`/api/admin/collections/projects/entries/${slug}`, {
+        method: "DELETE",
+        session,
+      });
+      assert.ok(response.status === 400 || response.status === 404, `${slug}: ${response.status}`);
+    }
+    assert.deepEqual(tree(), before);
   });
 
   it("reports what points at an entry, so a delete can be warned about", async () => {
@@ -398,8 +413,34 @@ describe("media", () => {
     const form = multipart([{ name: "escape.png", bytes: pngBytes(), type: "image/png" }]);
     form.set("directory", "../../escaped");
 
-    assert.equal((await upload(form)).status, 500);
+    assert.equal((await upload(form)).status, 400);
     assert.equal(existsSync(join(harness.contentRoot, "../../escaped")), false);
+  });
+
+  it("refuses an upload directory that is not a media folder", async () => {
+    for (const directory of ["projects/haus-a", "", "media/../projects"]) {
+      const form = multipart([{ name: "stray.png", bytes: pngBytes(), type: "image/png" }]);
+      form.set("directory", directory);
+      assert.equal((await upload(form)).status, 400, directory);
+    }
+  });
+
+  it("serves no file outside the content root, however the path is encoded", async () => {
+    const outside = join(harness.contentRoot, "..", `outside-${process.pid}.txt`);
+    writeFileSync(outside, "secret");
+    try {
+      const name = `outside-${process.pid}.txt`;
+      for (const path of [`..%2F${name}`, `media%2F..%2F..%2F${name}`, `%2e%2e/${name}`, `..%5C${name}`, "%E0%A4%A"]) {
+        const response = await harness.request(`/api/admin/media/file/${path}`, { session });
+        assert.notEqual(response.status, 200, path);
+        assert.doesNotMatch(await response.text(), /secret/, path);
+      }
+
+      const encoded = await harness.request(`/api/admin/media/file/..%2F${name}`, { session });
+      assert.equal(encoded.status, 400);
+    } finally {
+      rmSync(outside, { force: true });
+    }
   });
 
   it("lists what the repository holds", async () => {

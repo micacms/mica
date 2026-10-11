@@ -21,6 +21,7 @@ import { dirname, resolve } from "node:path";
 import { isMissing, within } from "@micacms/core/node";
 
 import {
+  checkCommitPaths,
   ConflictError,
   ConnectorError,
   type CommitInput,
@@ -35,7 +36,7 @@ export interface LocalConnectorOptions {
 
 export function localConnector(options: LocalConnectorOptions): RepositoryConnector {
   const base = resolve(options.root);
-  const full = (path: string) => within(base, path);
+  const full = (path: string, allowRoot = false) => within(base, path, { allowRoot });
 
   const readBytes = async (path: string): Promise<Uint8Array | null> => {
     try {
@@ -59,7 +60,7 @@ export function localConnector(options: LocalConnectorOptions): RepositoryConnec
     async list(path) {
       let items;
       try {
-        items = await readdir(full(path), { withFileTypes: true });
+        items = await readdir(full(path, true), { withFileTypes: true });
       } catch (error) {
         if (isMissing(error)) return [];
         throw error;
@@ -91,6 +92,7 @@ export function localConnector(options: LocalConnectorOptions): RepositoryConnec
     },
 
     async commit(input: CommitInput): Promise<CommitResult> {
+      checkCommitPaths(input);
       await assertExpected(this, input);
 
       // Everything the change set will overwrite or remove, kept so that a

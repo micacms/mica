@@ -241,6 +241,35 @@ function contract(harness: Harness): void {
       await assert.rejects(connector.commit({ message: "Nothing", changes: [] }));
     });
 
+    it("refuses a path that leaves the content root, before any request", async () => {
+      const { connector, calls } = harness.make();
+      const refused = { name: "ContentPathError" };
+
+      await assert.rejects(connector.read("../secret.json"), refused);
+      await assert.rejects(connector.readBinary("pages/../../../user"), refused);
+      await assert.rejects(connector.list(".."), refused);
+      await assert.rejects(connector.revision("pages//index.json"), refused);
+      await assert.rejects(connector.read("pages\\..\\x"), refused);
+      await assert.rejects(
+        connector.commit({ message: "Escape", changes: [{ type: "write", path: "../x.json", contents: "{}" }] }),
+        refused,
+      );
+      await assert.rejects(
+        connector.commit({ message: "Everything", changes: [{ type: "deleteTree", path: "" }] }),
+        refused,
+      );
+      await assert.rejects(
+        connector.commit({
+          message: "Expect",
+          changes: [{ type: "write", path: "theme.json", contents: "{}" }],
+          expect: { "../theme.json": null },
+        }),
+        refused,
+      );
+
+      assert.deepEqual(calls, []);
+    });
+
     it("skips deleting a file that is already gone", async () => {
       const { connector } = harness.make();
 

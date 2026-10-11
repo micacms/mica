@@ -44,8 +44,7 @@ export function adminMediaRoutes(): Hono<Env> {
 
     const accept = form.get("accept");
     // Where the editor wants the file: an entry's own `media/` directory, or
-    // the shared one. Validated by the connector, which refuses any path that
-    // leaves the content root.
+    // the shared one. The media service refuses anything else.
     const directory = typeof form.get("directory") === "string" ? String(form.get("directory")) : undefined;
 
     const prepared = await Promise.all(
@@ -84,7 +83,14 @@ export function adminMediaRoutes(): Hono<Env> {
     const { media } = c.get("ctx").services;
     const mediaPath = c.req.path.replace(/^.*\/file\//, "");
 
-    const found = await media.read(decodeURIComponent(mediaPath));
+    let decoded: string;
+    try {
+      decoded = decodeURIComponent(mediaPath);
+    } catch {
+      throw badRequest("The file path is not valid.");
+    }
+
+    const found = await media.read(decoded);
     if (!found) throw notFound("No such file.");
 
     return c.body(found.bytes as unknown as ArrayBuffer, 200, {

@@ -28,6 +28,39 @@ export class ContentSourceError extends Error {
   override name = "ContentSourceError";
 }
 
+/** A content path that could leave the content root, or name it where a file is needed. */
+export class ContentPathError extends ContentSourceError {
+  override name = "ContentPathError";
+}
+
+// NUL, C0 and DEL: no provider or filesystem gives them a meaning Mica wants.
+const CONTROL = /[\u0000-\u001f\u007f]/;
+
+/**
+ * The one check every connector applies before a path reaches a filesystem or a
+ * provider URL. A leading or trailing `/` is dropped, as connectors always did;
+ * `.`, `..`, empty segments, `\`, control characters and a drive letter are
+ * refused. The root itself (`""`) is only a path for reading and listing.
+ */
+export function contentPath(path: string, options: { allowRoot?: boolean } = {}): string {
+  const clean = path.replace(/^\/+|\/+$/g, "");
+  const refuse = (why: string): never => {
+    throw new ContentPathError(`Content path "${path}" ${why}.`);
+  };
+
+  if (clean === "") return options.allowRoot ? "" : refuse("names the content root");
+  if (path.includes("\\")) refuse("contains a backslash");
+  if (CONTROL.test(path)) refuse("contains a control character");
+
+  const segments = clean.split("/");
+  if (/^[A-Za-z]:$/.test(segments[0]!)) refuse("starts with a drive letter");
+  for (const segment of segments) {
+    if (segment === "") refuse("contains an empty segment");
+    if (segment === "." || segment === "..") refuse("contains a relative segment");
+  }
+  return clean;
+}
+
 /**
  * A source built from a flat path-to-contents map, for tests and fixtures.
  *

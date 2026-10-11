@@ -10,6 +10,22 @@ eight published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [Unreleased]
+
+### Security
+
+- A content path can no longer leave the content root. Before, a signed-in
+  editor of a GitHub- or GitLab-backed Mica could read any file in the
+  repository, and call other GitHub API read endpoints with the server's token,
+  through the media file route. Every connector now refuses `..`, `.`, empty
+  segments, backslashes and control characters, an upload goes only into a
+  `media/` folder, and no write or delete can name the content root itself
+  (#85).
+- A crafted JXL, HEIF or ICNS upload can no longer block the server in an
+  infinite loop: `image-size` 2.0.3 (#145).
+- Every response carries a same-origin Content-Security-Policy, and the editor
+  loads its font from Mica instead of Google Fonts (#146).
+
 ## [0.3.0] — 2026-10-10
 
 Simpler self-hosting and the v1.5 brand. A self-hosted Mica now keeps sessions

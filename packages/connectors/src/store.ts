@@ -19,6 +19,7 @@
  */
 
 import {
+  ContentPathError,
   DOCUMENT_EXTENSION,
   INDEX_FILE,
   ORDER_FILE,
@@ -305,6 +306,10 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
       options: { expectedRevision?: string | null; author?: Author } = {},
     ): Promise<void> {
       const def = requireCollection(collectionName);
+      // One path segment: an empty slug or `a/b` would delete more than one entry.
+      if (slug === "" || slug.includes("/") || slug === "." || slug === "..") {
+        throw new ContentPathError(`"${slug}" is not an entry of "${collectionName}".`);
+      }
       const base = collectionEntryPath(def.fields, collectionName, slug);
 
       await connector.commit({

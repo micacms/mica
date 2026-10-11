@@ -10,7 +10,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import { isAbsolute, resolve, sep } from "node:path";
 
-import { ContentSourceError, type ContentSource, type DirectoryEntry } from "./source.js";
+import { contentPath, ContentPathError, type ContentSource, type DirectoryEntry } from "./source.js";
 
 /**
  * Reads a content directory in a checked-out repository.
@@ -29,7 +29,7 @@ export function fileSystemSource(root: string): ContentSource {
 
     async read(path) {
       try {
-        return await readFile(within(base, path), "utf8");
+        return await readFile(within(base, path, { allowRoot: true }), "utf8");
       } catch (error) {
         if (isMissing(error)) return null;
         throw error;
@@ -39,7 +39,7 @@ export function fileSystemSource(root: string): ContentSource {
     async list(path) {
       let items;
       try {
-        items = await readdir(within(base, path), { withFileTypes: true });
+        items = await readdir(within(base, path, { allowRoot: true }), { withFileTypes: true });
       } catch (error) {
         if (isMissing(error)) return [];
         throw error;
@@ -60,17 +60,20 @@ export function fileSystemSource(root: string): ContentSource {
  *
  * Exported because every filesystem-backed implementation needs exactly this
  * check, and it is the boundary where a traversal would become a real read or
- * a real write.
+ * a real write. The root itself is refused unless `allowRoot` is set, so that a
+ * write or a delete can never name the whole content root.
  */
-export function within(base: string, path: string): string {
+export function within(base: string, path: string, options: { allowRoot?: boolean } = {}): string {
+  // Before `contentPath` drops the leading slash: on disk, `/etc/passwd` is a real place.
   if (isAbsolute(path)) {
-    throw new ContentSourceError(`Content path "${path}" must be relative to the content root.`);
+    throw new ContentPathError(`Content path "${path}" must be relative to the content root.`);
   }
+  const relative = contentPath(path, options);
 
-  const full = resolve(base, path);
-  // `startsWith(base)` alone would accept a sibling called `content-old`.
+  const full = resolve(base, relative);
+  // A second check after resolving: `startsWith(base)` alone would accept a sibling called `content-old`.
   if (full !== base && !full.startsWith(base + sep)) {
-    throw new ContentSourceError(`Content path "${path}" escapes the content root.`);
+    throw new ContentPathError(`Content path "${path}" escapes the content root.`);
   }
   return full;
 }
