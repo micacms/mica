@@ -113,6 +113,18 @@ describe("security headers", () => {
     assert.equal(response.headers.get("strict-transport-security"), null);
   });
 
+  it("keeps a plain request id, and replaces any other", async () => {
+    const id = (value: string) =>
+      harness.request("/health", { headers: { "x-request-id": value } }).then((r) => r.headers.get("x-request-id"));
+
+    assert.equal(await id("trace-42_A"), "trace-42_A");
+    for (const bad of ["x".repeat(65), "a b", "a\u0007b", "<script>"]) {
+      const answer = await id(bad);
+      assert.notEqual(answer, bad);
+      assert.match(answer ?? "", /^[A-Za-z0-9_-]{1,64}$/);
+    }
+  });
+
   it("keeps a stricter policy that a route sets itself", async () => {
     const app = new Hono<Env>();
     app.use("*", async (c, next) => {
@@ -591,6 +603,10 @@ describe("media", () => {
     assert.equal(document.status, 200);
     assert.equal(document.headers.get("content-security-policy"), "sandbox; default-src 'none'");
     assert.equal(document.headers.get("content-disposition"), "attachment");
+
+    writeFileSync(join(harness.contentRoot, "media/notes.txt"), "Grüezi");
+    const text = await harness.request("/api/admin/media/file/media/notes.txt", { session });
+    assert.equal(text.headers.get("content-type"), "text/plain; charset=utf-8");
   });
 
   it("serves no file outside the content root, however the path is encoded", async () => {

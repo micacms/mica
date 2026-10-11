@@ -45,6 +45,10 @@ release note before upgrading.
   `X-Forwarded-For` entry, so a client can no longer choose its own address to
   avoid the sign-in rate limit. The sign-in callback is rate limited too
   (#149).
+- A refused sign-in no longer puts the person's email address in the URL: the
+  login page gets a code and shows the message. A client's `x-request-id` is
+  kept only when it is short and plain, and text media are sent as UTF-8
+  (#150).
 
 ### Changed
 

@@ -41,6 +41,9 @@ const identityOf = (claims: OidcClaims): SessionIdentity => ({
   groups: claims.groups,
 });
 
+/** Why a sign-in came back to the login view. The SPA has the words for each. */
+export type SignInRefusal = "rate_limited" | "expired" | "failed" | "not_admitted" | "too_large";
+
 export interface AuthRoutesDeps {
   config: AuthConfig;
   sessions: SessionService;
@@ -108,13 +111,14 @@ export function authRoutes(deps: AuthRoutesDeps): Hono<Env> {
   app.get("/callback", async (c) => {
     const logger = c.get("logger");
 
-    const refuse = (message: string) =>
-      c.redirect(`/admin/login?error=${encodeURIComponent(message)}`);
+    // A code, not a sentence: the URL lands in browser history and proxy logs,
+    // so it must not carry the person's address (#150). The login view words it.
+    const refuse = (code: SignInRefusal) => c.redirect(`/admin/login?error=${code}`);
 
     // A replayed transaction cookie would call the token endpoint each time.
     // Its own key, so that one sign-in does not count twice against the start.
     if (!deps.loginLimiter.check(`oidc-callback:${clientIp(c)}`).allowed) {
-      return refuse("Too many sign-in attempts. Wait a few minutes, then sign in again.");
+      return refuse("rate_limited");
     }
 
     const sealed = getCookie(c, sessions.names.transaction);
@@ -123,14 +127,17 @@ export function authRoutes(deps: AuthRoutesDeps): Hono<Env> {
     const transaction = sealed ? openTransaction(sealed, config.sessionSecret) : null;
     if (!transaction) {
       // Expired, tampered with, or a callback nobody asked for.
-      return refuse("That sign-in attempt expired or was not started here. Please try again.");
+      return refuse("expired");
     }
 
     let claims: OidcClaims;
     try {
       claims = await oidc.complete(new URL(c.req.url), transaction);
     } catch (error) {
-      return refuse(error instanceof ApiError ? error.message : "Sign-in could not be completed.");
+      logger.warn("Sign-in could not be completed", {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return refuse("failed");
     }
 
     const identity = identityOf(claims);
@@ -149,17 +156,14 @@ export function authRoutes(deps: AuthRoutesDeps): Hono<Env> {
         subject: identity.subject,
         reason: verdict.reason,
       });
-      return refuse(
-        `You are signed in as ${claims.email}, but that account has no access to ` +
-          "this site. Ask whoever runs it to add you.",
-      );
+      return refuse("not_admitted");
     }
 
     try {
       establishSession(c, sessions, identity);
     } catch (error) {
       logger.error("Could not start a session", { subject: identity.subject, error });
-      return refuse("Sign-in could not be completed: your account details are too large.");
+      return refuse("too_large");
     }
     logger.info("Signed in", { subject: identity.subject, issuer: identity.issuer });
 
