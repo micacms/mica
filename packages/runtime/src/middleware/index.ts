@@ -75,6 +75,11 @@ export function securityHeaders(): MiddlewareHandler<Env> {
     if (!c.res.headers.has("content-security-policy")) {
       c.header("content-security-policy", CONTENT_SECURITY_POLICY);
     }
+    // Only for an https public URL: HSTS over plain HTTP is ignored, and on
+    // localhost it would pin a developer's other projects to https.
+    if (c.get("ctx").config.MICA_PUBLIC_URL.startsWith("https://")) {
+      c.header("strict-transport-security", "max-age=31536000");
+    }
 
     c.header("x-content-type-options", "nosniff");
     c.header("referrer-policy", "same-origin");

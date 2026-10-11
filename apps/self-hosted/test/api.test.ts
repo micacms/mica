@@ -31,6 +31,43 @@ describe("health", () => {
   });
 });
 
+describe("over https", () => {
+  const PUBLIC = "https://cms.example.com";
+  let harness: TestHarness;
+  before(async () => {
+    harness = await createHarness({ MICA_PUBLIC_URL: PUBLIC });
+  });
+  after(() => harness.close());
+
+  it("names the cookies with a __Host- prefix, and accepts only those", async () => {
+    const session = await harness.signIn();
+    assert.match(session.cookie, /^__Host-mica_session=[^;]+; __Host-mica_csrf=/);
+    assert.equal((await harness.request("/api/auth/me", { session })).status, 200);
+
+    const unprefixed = { ...session, cookie: session.cookie.replaceAll("__Host-", "") };
+    assert.equal((await harness.request("/api/auth/me", { session: unprefixed })).status, 401);
+  });
+
+  it("clears the prefixed cookies at sign-out", async () => {
+    const session = await harness.signIn();
+    const response = await harness.request("/api/auth/logout", {
+      method: "POST",
+      session,
+      headers: { origin: PUBLIC },
+    });
+    assert.equal(response.status, 200);
+
+    const cleared = response.headers.getSetCookie();
+    assert.ok(cleared.some((line) => /^__Host-mica_session=;.*Max-Age=0.*Secure/.test(line)));
+    assert.ok(cleared.some((line) => /^__Host-mica_csrf=;.*Max-Age=0.*Secure/.test(line)));
+  });
+
+  it("sends Strict-Transport-Security", async () => {
+    const response = await harness.request("/health");
+    assert.equal(response.headers.get("strict-transport-security"), "max-age=31536000");
+  });
+});
+
 describe("sessions", () => {
   let harness: TestHarness;
   before(async () => {

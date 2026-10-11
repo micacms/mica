@@ -104,10 +104,16 @@ describe("security headers", () => {
     assert.match(policy, /default-src 'self'/);
     assert.match(policy, /frame-ancestors 'none'/);
     assert.equal(response.headers.get("x-frame-options"), "DENY");
+    // HSTS only for an https public URL; the harness runs on plain HTTP.
+    assert.equal(response.headers.get("strict-transport-security"), null);
   });
 
   it("keeps a stricter policy that a route sets itself", async () => {
     const app = new Hono<Env>();
+    app.use("*", async (c, next) => {
+      c.set("ctx", { config: { MICA_PUBLIC_URL: "http://localhost" } } as unknown as Env["Variables"]["ctx"]);
+      await next();
+    });
     app.use("*", securityHeaders());
     app.get("/sandboxed", (c) => c.body("x", 200, { "content-security-policy": "sandbox" }));
 

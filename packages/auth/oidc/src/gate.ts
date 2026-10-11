@@ -16,10 +16,8 @@ import { ApiError, type Env } from "@micacms/runtime";
 
 import type { AdmissionPolicy } from "./admission.js";
 import {
-  CSRF_COOKIE,
   CSRF_HEADER,
   safeEqual,
-  SESSION_COOKIE,
   type SessionRecord,
   type SessionService,
 } from "./session.js";
@@ -52,7 +50,7 @@ export interface GateDeps {
  */
 export function requireAccess(deps: GateDeps): MiddlewareHandler<Env> {
   return async (c, next) => {
-    let session = deps.sessions.resolve(getCookie(c, SESSION_COOKIE));
+    let session = deps.sessions.resolve(getCookie(c, deps.sessions.names.session));
 
     if (!session) {
       throw new ApiError("unauthenticated", "Your session has expired. Please sign in again.");
@@ -80,7 +78,7 @@ export function requireAccess(deps: GateDeps): MiddlewareHandler<Env> {
 
     // After the handler, so the cookie lands on whatever response it built.
     if (refreshed) {
-      setCookie(c, SESSION_COOKIE, refreshed.cookie, deps.sessions.sessionCookieOptions());
+      setCookie(c, deps.sessions.names.session, refreshed.cookie, deps.sessions.sessionCookieOptions());
     }
   };
 }
@@ -94,7 +92,7 @@ const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
  * Runs after `requireAccess`, and complements the session cookie's
  * `SameSite=Lax`, which already blocks the classic cross-site form post.
  */
-export function csrfProtection(): MiddlewareHandler<Env> {
+export function csrfProtection(deps: GateDeps): MiddlewareHandler<Env> {
   return async (c, next) => {
     if (SAFE_METHODS.has(c.req.method)) {
       await next();
@@ -103,7 +101,7 @@ export function csrfProtection(): MiddlewareHandler<Env> {
 
     const session = sessionOf(c);
     const header = c.req.header(CSRF_HEADER);
-    const cookie = getCookie(c, CSRF_COOKIE);
+    const cookie = getCookie(c, deps.sessions.names.csrf);
 
     if (!header || !cookie || !safeEqual(header, cookie) || !safeEqual(header, session.csrfToken)) {
       throw new ApiError("forbidden", "Invalid or missing CSRF token. Reload the page and retry.");

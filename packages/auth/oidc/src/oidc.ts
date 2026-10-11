@@ -33,9 +33,6 @@ import { ApiError, type Logger } from "@micacms/runtime";
 
 import type { AuthConfig } from "./config.js";
 
-/** Carries state, PKCE verifier and nonce across the redirect to the provider. */
-export const TRANSACTION_COOKIE = "mica_oidc";
-
 /**
  * How long a sign-in may take.
  *

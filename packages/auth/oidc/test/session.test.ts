@@ -8,7 +8,7 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it, mock } from "node:test";
 
-import { createSessionService } from "../dist/index.js";
+import { cookieNames, createSessionService } from "../dist/index.js";
 import type { AuthConfig, SessionIdentity } from "../dist/index.js";
 
 const HOUR = 3600_000;
@@ -85,5 +85,21 @@ describe("cookie sessions", () => {
     assert.equal(record.expiresAt, "2026-10-10T16:00:00.000Z");
     mock.timers.tick(HOUR);
     assert.equal(sessions.resolve(cookie), null);
+  });
+});
+
+describe("cookieNames", () => {
+  it("uses browser-enforced prefixes only for Secure cookies", () => {
+    assert.deepEqual(cookieNames(true), {
+      session: "__Host-mica_session",
+      csrf: "__Host-mica_csrf",
+      // Scoped to /api/auth, so it cannot be __Host-.
+      transaction: "__Secure-mica_oidc",
+    });
+    assert.deepEqual(cookieNames(false), {
+      session: "mica_session",
+      csrf: "mica_csrf",
+      transaction: "mica_oidc",
+    });
   });
 });

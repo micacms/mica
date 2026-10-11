@@ -219,7 +219,7 @@ export async function createHarness(
       const { record, cookie } = auth.sessions.create(identity);
 
       return {
-        cookie: `mica_session=${cookie}; mica_csrf=${record.csrfToken}`,
+        cookie: `${auth.sessions.names.session}=${cookie}; ${auth.sessions.names.csrf}=${record.csrfToken}`,
         csrfToken: record.csrfToken,
       };
     },

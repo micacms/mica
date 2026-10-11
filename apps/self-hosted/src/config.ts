@@ -19,6 +19,7 @@ import {
   deriveRuntime,
   describeConfigIssues,
   loadEnvFile,
+  LOOPBACK,
   requireRepositoryConfig,
   runtimeEnv,
   withoutBlanks,
@@ -71,6 +72,20 @@ function requireProviderRepository(repository: string): void {
   );
 }
 
+/**
+ * Over plain HTTP the session cookie is not Secure and travels in clear text,
+ * so production refuses it. Loopback stays allowed, for a trial on one machine.
+ */
+function requireHttps(config: { isProduction: boolean; MICA_PUBLIC_URL: string }): void {
+  const url = new URL(config.MICA_PUBLIC_URL);
+  if (!config.isProduction || url.protocol === "https:" || LOOPBACK.has(url.hostname)) return;
+
+  throw new ConfigError(
+    `MICA_PUBLIC_URL is ${config.MICA_PUBLIC_URL}, but production needs an https:// address.\n` +
+      "  Put Mica behind a reverse proxy that terminates TLS, and set MICA_PUBLIC_URL to its https:// address.",
+  );
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConfig {
   // Only when reading the ambient environment: tests pass an explicit object
   // and must not pick up whatever `.env` sits in the working directory.
@@ -82,6 +97,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
   const config = parsed.data;
 
   requireAuthConfig(config);
+  requireHttps(config);
   requireProviderRepository(config.REPOSITORY);
   requireRepositoryConfig({ ...config, HOST: config.HOST });
 
