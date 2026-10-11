@@ -1132,6 +1132,34 @@ accounts first, and a co-maintainer second.
 
 ---
 
+### P2 — No independent security review before 1.0
+
+**Decided:** nobody outside the project reviews the OIDC and session code
+before 1.0, and `SECURITY.md` says that Mica is not independently audited.
+Instead, CodeQL and a dependency audit run in CI, and the maintainer reviews
+the authentication, session, CSRF and admission code against the OWASP ASVS
+level 1 checklist and commits the result. Once the repository is public, the
+project asks the community for a review. `SECURITY.md` answers reports on a
+best-effort basis, with no response times.
+
+**Why:** a paid review does not fit a hobby project, and a volunteer review is
+not in the maintainer's control, so neither can gate 1.0. The protocol itself
+is `openid-client`, which is widely reviewed; Mica's own part is the admission
+rules, the encrypted cookies, CSRF and rate limiting. A committed checklist
+makes the self-review checkable by anyone.
+
+**Consequence:** an adopter who needs an audit must commission one. The
+self-review finds what its author can see, which is less than an outsider
+would.
+
+**What would change it:** an outside reviewer who offers, or an adopter who
+funds a review; take it, and publish the result.
+
+**1.0 status:** blocker for the CodeQL job and the checklist (#84); the outside
+review is after 1.0.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
