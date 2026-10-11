@@ -23,7 +23,7 @@ therefore costs in practice.
 
 ## Accepted trade-offs
 
-### P1 — Publishing commits straight to a branch, with no review step
+### P2 — Publishing commits straight to a branch, with no review step
 
 **Decided:** Mica does not open a pull request and has no concept of one. The
 branch an editor publishes to is the branch CI builds.
@@ -48,9 +48,12 @@ an explicit Publish writes the accumulated set as one commit. What did not
 change is the sentence above: publishing writes to the branch, and nothing
 reviews it.
 
+**1.0 status:** accepted for 1.0. Approval workflows are out of 1.0; a staging
+branch is the review step.
+
 ---
 
-### P1 — Local mode has no authentication, and no user either
+### P2 — Local mode has no authentication, and no user either
 
 **Decided:** the local editor has no identity provider, no credential, and no
 user. Not a signed-in developer — *nobody*. There is no login screen, no name,
@@ -105,9 +108,12 @@ process on the developer's own machine can call the local API. A process on
 that machine can already edit the working tree directly, which is where the
 content is.
 
+**1.0 status:** accepted for 1.0. The accepted risk goes in the security docs
+(#84).
+
 ---
 
-### P1 — Access removed at the provider is revoked at the next sign-in
+### P2 — Access removed at the provider is revoked at the next sign-in
 
 **Decided:** who may edit a self-hosted site is decided by configuration, not by
 a table. Either a rule over provider claims (`MICA_ADMIT_GROUP`,
@@ -153,6 +159,11 @@ let anybody claim an admitted domain. And the group claim has no standard name,
 so `MICA_OIDC_GROUPS_CLAIM` names it — a Keycloak path and a bare name are both
 accepted, since an operator writes the name their own console shows them.
 
+**1.0 status:** accepted for 1.0. The accepted risk goes in the security docs
+(#84).
+
+---
+
 ### P2 — Admission by email address, not only by subject
 
 **Decided:** `MICA_ADMIT_EMAILS` admits a listed address, compared
@@ -173,6 +184,8 @@ group or domain rule to use instead.
 **What would change it:** a provider that lets a person set an address they do
 not own and still reports it verified. `MICA_ADMIT_SUBJECTS` stays the rule
 for that case.
+
+**1.0 status:** accepted for 1.0.
 
 ---
 
@@ -199,6 +212,9 @@ restart. Rotating `SESSION_SECRET` ends every session at once.
 **What would change it:** a need to end one person's session within seconds
 without signing everybody out. That needs a deny list, which is server state
 again.
+
+**1.0 status:** accepted for 1.0. "No server-side revocation" goes in the
+security docs (#84).
 
 ---
 
@@ -228,6 +244,8 @@ collide, or a customer who asks who published what.
 concurrent sessions still check per-document revisions against the *draft*, so
 one browser cannot silently overwrite a colleague's newer autosave; publishing
 takes the whole set, whoever presses the button.
+
+**1.0 status:** accepted for 1.0. Selective publish (#98) lowers the cost.
 
 ---
 
@@ -268,6 +286,8 @@ in follows the *connector* (`REPOSITORY`), not `MICA_MODE`.
 **Changed in 0.3.0:** a self-hosted deployment no longer accepts a checkout
 beside it. See "Local Git is the local editor's, never the server's".
 
+**1.0 status:** accepted for 1.0. The Windows CI job tests it.
+
 ---
 
 ### P2 — Local Git is the local editor's, never the server's
@@ -295,6 +315,8 @@ connector for its API, not `git` in the image.
 **Built in 0.3.0.** `apps/self-hosted/src/config.ts` refuses any other
 `REPOSITORY`. The test stacks publish to a stand-in for the GitHub API
 ([`tests/github-stub/`](../tests/github-stub/README.md)).
+
+**1.0 status:** accepted for 1.0.
 
 ---
 
@@ -330,6 +352,8 @@ immediately before publishing and answer 409 with a message that names the
 restart. Nothing is discarded: the draft survives, and after the restart it is
 re-validated against the new model like any other pending set.
 
+**1.0 status:** accepted for 1.0.
+
 ---
 
 ### P2 — Rate limiting is in-process and resets on restart
@@ -351,6 +375,8 @@ defences and is far better placed to run them.
 assumes exactly one.
 
 **Trigger:** horizontal scaling.
+
+**1.0 status:** accepted for 1.0.
 
 ---
 
@@ -377,6 +403,9 @@ paid once per publication instead of once per edit. The ceiling is unchanged.
 A save still costs one provider read per newly staged path — the revision the
 publish gate will expect — which is far cheaper than the commit it replaced.
 
+**1.0 status:** accepted for 1.0, while the budget tests at the scale target
+pass (#72).
+
 ---
 
 ### P2 — No map widget in the admin
@@ -394,6 +423,8 @@ which is where it lives.
 chafe. MapLibre + their own tile key, behind an optional `MAP_STYLE_URL`.
 
 **Trigger:** editor feedback, or a project with more than ~20 located entries.
+
+**1.0 status:** accepted for 1.0.
 
 ---
 
@@ -435,6 +466,8 @@ small, so the rows stay within what SQLite is comfortable holding.
 
 **Sessions left in 0.3.0.** Migration 3 drops `sessions`; the database holds
 the draft store and nothing about people. See "Sessions are encrypted cookies".
+
+**1.0 status:** accepted for 1.0. #130 keeps the driver out of the local editor.
 
 ---
 
@@ -1179,6 +1212,8 @@ using Mica should copy.
 plane, a `mica push` sending the same bytes over HTTP would be the alternative,
 and the file format is already that payload.
 
+**1.0 status:** accepted for 1.0.
+
 ---
 
 ### P3 — The editor cannot represent a Markdoc tag
@@ -1199,6 +1234,10 @@ yet.
 
 **Trigger:** the first project that wants callouts or embeds inside rich text.
 
+**1.0 status:** blocker. #62 replaces this trade-off: an unknown node, a tag
+included, opens as a read-only block and is written back unchanged, never
+unwrapped. Rewrite this entry when #62 lands.
+
 ---
 
 ### P3 — Rich-text bundle is ~130 kB gzip
@@ -1214,6 +1253,8 @@ the dashboard do not load it.
 
 **What would change it:** nothing at this size. Revisit only if the admin has to
 work on a slow mobile connection.
+
+**1.0 status:** accepted for 1.0.
 
 ---
 
@@ -1237,11 +1278,13 @@ fall under the threshold in Git too, and its history then stops at the rename.
 The working tree has no place for that record, so both workspaces would need
 one first.
 
+**1.0 status:** accepted for 1.0.
+
 ---
 
 ## Deferred scope
 
-Explicitly not built.
+Explicitly not built. Everything in this section is after 1.0.
 
 - **Multi-site, tenants, memberships and roles.** One Mica process manages one
   site. Running several sites means running several instances, which is a
@@ -1287,6 +1330,7 @@ without a break.
   ([`tests/browser/`](../tests/browser/README.md)). Collections, media,
   discard, conflicts and the local editor are covered by the API tests and by
   hand. Add a path when a regression reaches the UI unseen.
+  **1.0 status:** after 1.0; #108 adds accessibility checks on every view.
 - **P2** — The group claim is verified by hand, not by CI. CI runs the real
   image against Dex on every pull request ([`tests/oidc/`](../tests/oidc/README.md)):
   sign-in, the email and domain rules, a refusal, CSRF and an edit. Dex's
@@ -1294,21 +1338,25 @@ without a break.
   still only `tests/e2e/compose.yml` (Keycloak) and
   `deploy/demo-identity/compose.yml` (ZITADEL), run by hand. A claim whose name
   and shape differ per provider is exactly what a unit test cannot check.
+  **1.0 status:** accepted for 1.0.
 - **P2** — The GitLab connector is tested against a stub only. The
   `live-connectors` workflow (`packages/connectors/test/live.test.ts`) can
   commit to a scratch project on gitlab.com, but no token is configured yet, so
   it skips GitLab. Configure `MICA_LIVE_GITLAB_TOKEN` and
   `MICA_LIVE_GITLAB_PROJECT` to close this. It also checks whether the
   documented `write_repository` scope is enough for the REST API.
+  **1.0 status:** blocker (#38).
 - **P2** — The GitHub connector is not yet tested live. The `live-connectors`
   workflow can commit to the scratch repository `amuedespacher/micacms-scratch`
   every Monday and on demand, but the secret `MICA_LIVE_GITHUB_TOKEN` is not
   set yet, so it skips GitHub. When it is set, this becomes P3: pull requests
   still test against a stub only, because a fork cannot read the secret. `REPOSITORY_API_BASE` against GitHub Enterprise Server or a
   self-managed GitLab is still untested.
+  **1.0 status:** blocker (#38).
 - **P3** — Entry search filters in the browser over the whole collection. Fine at
   the stated scale (hundreds to low thousands); a repository large enough to
   need an index is a repository large enough to need a different design.
+  **1.0 status:** accepted for 1.0, at the scale target.
 
 ---
 
