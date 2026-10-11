@@ -920,6 +920,33 @@ no longer justify.
 
 ---
 
+### P2 — Media reach Astro as paths, with a supported helper
+
+**Decided:** a media value stays a path string in Astro (or `{ path, alt }`
+with the alt option). `@micacms/astro` ships `resolveMedia(path)` and a
+`<MicaImage>` component from an uncompiled `.astro` subpath. They resolve both
+path forms, use the alt text when there is one, and warn in development, or
+fail the build if the site asks, when a file is missing. The integration
+generates the `import.meta.glob` for the configured content root.
+
+**Why:** a `media()` field can hold a PDF as well as an image, and Astro's
+`image()` handles images only. `image()` resolves paths relative to the entry
+file, so the shared `/media/` form would need special handling, and switching
+to `ImageMetadata` would change the value type for every site. Today each site
+copies the example's glob map, which hard-codes `/content/` and renders nothing
+for a missing file.
+
+**Consequence:** a site that wants Astro's image optimization goes through the
+helper, not `image()` in the schema. A missing file is a warning unless the
+site turns on the build failure.
+
+**What would change it:** Astro's `image()` resolving arbitrary roots and
+non-image files; then offer `ImageMetadata` as an opt-in.
+
+**1.0 status:** should for 1.0; the helper is in #109.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
