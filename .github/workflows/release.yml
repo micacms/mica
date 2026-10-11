@@ -26,20 +26,22 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    # For an approval step before anything is published, add `environment:
-    # release` here and give that environment a required reviewer. Left off so
-    # that a first release cannot fail on a setting rather than on the code.
+    # The approval step before anything is published (#135). Without a rule,
+    # GitHub creates the environment on the first run and it gates nothing, so a
+    # release cannot fail on a missing setting. Give it a required reviewer in
+    # the repository settings; a private repository on the free plan cannot.
+    environment: release
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 24
 
       # Rush installs its own pinned copy of itself and of pnpm; rush.json is
       # the only place versions live. Publishing authenticates through
       # common/config/rush/.npmrc-publish, not setup-node's registry file.
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
           path: |
             ~/.rush
@@ -127,9 +129,9 @@ jobs:
     timeout-minutes: 20
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
-      - uses: docker/login-action@v3
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -141,7 +143,7 @@ jobs:
         id: version
         run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
 
-      - uses: docker/build-push-action@v6
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         id: build
         with:
           context: .
