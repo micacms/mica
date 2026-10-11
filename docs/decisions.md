@@ -1088,29 +1088,32 @@ field, which is after 1.0.
 
 ---
 
-### P2 — SVG cannot be uploaded; an SVG in the repository is served sandboxed
+### P2 — Mica neither stores nor shows SVG
 
-**Decided:** in 1.0, the media upload refuses SVG with a message that says to
-add the file through Git. An SVG that is already in the repository is listed
-and shown, and the admin media route always serves it with
-`Content-Security-Policy: sandbox; default-src 'none'; style-src 'unsafe-inline'`
-and `X-Content-Type-Options: nosniff`. Files that are not images are sent as
-`Content-Disposition: attachment`. Both editors behave the same.
+**Decided:** the media upload refuses SVG with a message that says why. An SVG
+that is already in the repository is not listed in the editor, and the admin
+media route refuses to serve it. A file counts as SVG by its bytes or by its
+`.svg` name, so a leading comment cannot hide one. Every file the media route
+serves carries `Content-Security-Policy: sandbox; default-src 'none'`, and a
+file that is not an image is sent as `Content-Disposition: attachment`. Both
+editors behave the same. The website build is not affected: it reads SVGs from
+the repository as before.
 
 **Why:** an SVG can carry a script, and on the admin origin that script runs
-with the editor's session, Publish included. The sandbox closes that whatever
-the upload rule is. Refusing uploads also keeps an editor's SVG off the
-website, where a site that inlines it would run its script. Sanitizing would
-need a large new dependency and would make its correctness a security promise.
-SVGs such as logos and icons usually come from a developer through Git anyway.
+with the editor's session, Publish included. Showing repository SVGs in a
+sandbox was the first plan; refusing them is simpler and closes the case
+completely, and no deployment depends on the old behaviour yet. Sanitizing
+would need a large new dependency and would make its correctness a security
+promise. SVGs such as logos and icons come from a developer through Git.
 
-**Consequence:** an editor cannot add an icon or a logo; a developer must.
+**Consequence:** an editor cannot add an icon or a logo; a developer must. A
+media field that points at an SVG shows no preview in the editor.
 
-**What would change it:** editors who need to upload vector graphics; then a
-field opt-in with server-side sanitizing, in a 1.x minor.
+**What would change it:** editors who need to see or upload vector graphics;
+then show SVGs as sandboxed previews first, and an upload opt-in with
+server-side sanitizing after that, in a 1.x minor.
 
-**1.0 status:** blocker; the headers and the refusal are in #86.
-
+**1.0 status:** blocker; done in #86.
 ---
 
 ### P2 — The website is the one source of user documentation

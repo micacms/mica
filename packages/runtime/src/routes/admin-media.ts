@@ -17,6 +17,7 @@
 import { Hono } from "hono";
 
 import { badRequest, notFound } from "../lib/errors.js";
+import { isImageType } from "../lib/file-type.js";
 import { actorOf, type Env } from "../http.js";
 
 export function adminMediaRoutes(): Hono<Env> {
@@ -96,6 +97,10 @@ export function adminMediaRoutes(): Hono<Env> {
     return c.body(found.bytes as unknown as ArrayBuffer, 200, {
       "content-type": found.mimeType,
       "cache-control": "private, max-age=60",
+      // A file opened directly runs nothing and reaches nothing on this origin.
+      "content-security-policy": "sandbox; default-src 'none'",
+      // An image is shown as a preview; anything else is downloaded, never rendered here.
+      ...(isImageType(found.mimeType) ? {} : { "content-disposition": "attachment" }),
     });
   });
 

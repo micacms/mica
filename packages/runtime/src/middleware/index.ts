@@ -58,7 +58,7 @@ export function requestContext(ctx: Env["Variables"]["ctx"]): MiddlewareHandler<
 
 /**
  * Same-origin only. `blob:` and `data:` images cover previews; a route that
- * needs a stricter policy, such as the sandbox for SVG, sets its own.
+ * needs a stricter policy, such as the sandbox on media files, sets its own.
  */
 export const CONTENT_SECURITY_POLICY = [
   "default-src 'self'",

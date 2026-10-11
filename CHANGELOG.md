@@ -25,6 +25,10 @@ release note before upgrading.
   infinite loop: `image-size` 2.0.3 (#145).
 - Every response carries a same-origin Content-Security-Policy, and the editor
   loads its font from Mica instead of Google Fonts (#146).
+- Mica neither stores nor shows SVG files any more. Before, an SVG served from
+  the admin origin could run a script with the editor's session. Every media
+  file is now served in a sandbox, and a file that is not an image is sent as a
+  download (#86).
 
 ## [0.3.0] — 2026-10-10
 

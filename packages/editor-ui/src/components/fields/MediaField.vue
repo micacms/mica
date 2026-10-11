@@ -39,7 +39,7 @@ const items = computed(() =>
     url: api.media.url(path),
     // From the extension: the picker knows the real type, but a field rendering
     // a saved path has only the path.
-    isImage: /\.(jpe?g|png|webp|avif|gif|svg)$/i.test(path),
+    isImage: /\.(jpe?g|png|webp|avif|gif)$/i.test(path),
   })),
 );
 

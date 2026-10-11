@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
@@ -423,6 +423,48 @@ describe("media", () => {
       form.set("directory", directory);
       assert.equal((await upload(form)).status, 400, directory);
     }
+  });
+
+  it("refuses an SVG upload, and says why", async () => {
+    const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
+    const response = await upload(multipart([{ name: "logo.svg", bytes: svg, type: "image/svg+xml" }]));
+
+    assert.equal(response.status, 415);
+    assert.match(((await response.json()) as { error: { message: string } }).error.message, /SVG/);
+    assert.equal(existsSync(join(harness.contentRoot, "media/logo.svg")), false);
+  });
+
+  it("neither lists nor serves an SVG that is already in the repository", async () => {
+    mkdirSync(join(harness.contentRoot, "media"), { recursive: true });
+    writeFileSync(join(harness.contentRoot, "media/repo.svg"), '<svg xmlns="http://www.w3.org/2000/svg"/>');
+    // A leading comment hides the markup from the sniffer; the name still counts.
+    writeFileSync(join(harness.contentRoot, "media/commented.svg"), "<!-- x --><svg/>");
+
+    const list = (await (await harness.request("/api/admin/media", { session })).json()) as {
+      items: Array<{ path: string }>;
+    };
+    assert.equal(list.items.some((item) => item.path.endsWith(".svg")), false);
+
+    for (const name of ["repo.svg", "commented.svg"]) {
+      const response = await harness.request(`/api/admin/media/file/media/${name}`, { session });
+      assert.equal(response.status, 415, name);
+    }
+  });
+
+  it("serves a file sandboxed, and anything but an image as a download", async () => {
+    await upload(multipart([{ name: "shown.png", bytes: pngBytes(), type: "image/png" }]));
+    const image = await harness.request("/api/admin/media/file/media/shown.png", { session });
+    assert.equal(image.status, 200);
+    assert.equal(image.headers.get("content-security-policy"), "sandbox; default-src 'none'");
+    assert.equal(image.headers.get("x-content-type-options"), "nosniff");
+    assert.equal(image.headers.get("content-disposition"), null);
+
+    mkdirSync(join(harness.contentRoot, "media"), { recursive: true });
+    writeFileSync(join(harness.contentRoot, "media/report.pdf"), "%PDF-1.7\n");
+    const document = await harness.request("/api/admin/media/file/media/report.pdf", { session });
+    assert.equal(document.status, 200);
+    assert.equal(document.headers.get("content-security-policy"), "sandbox; default-src 'none'");
+    assert.equal(document.headers.get("content-disposition"), "attachment");
   });
 
   it("serves no file outside the content root, however the path is encoded", async () => {
