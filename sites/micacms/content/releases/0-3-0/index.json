@@ -4,5 +4,5 @@
   "version": "0.3.0",
   "publishDate": "2026-10-10",
   "summary": "A self-hosted Mica keeps sessions in a cookie and publishes only through GitHub or GitLab. Editors can be admitted by email address. The editor has the v1.5 brand.",
-  "latest": true
+  "latest": false
 }
