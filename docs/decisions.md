@@ -894,6 +894,32 @@ a localized `alt` then belongs in the media value.
 
 ---
 
+### P2 — An upload from an entry goes into that entry's folder
+
+**Decided:** a file uploaded from an entry's form goes into that entry's
+`media/` folder and is stored as `media/x.jpg`. A file uploaded from the Media
+view goes into the shared `media/` folder at the content root and is stored as
+`/media/x.jpg`. The picker offers the entry's own files and the shared ones,
+never another entry's. An upload in a new entry is staged under the slug, and
+moves with it if the slug changes before the first save.
+
+**Why:** this is what the docs say and what the layout rule assumes: a `media()`
+field forces the directory layout because its files sit beside the entry. An
+entry's files then go with it on a delete or a rename, and `media/x.jpg` stays
+valid after a slug change. Site-wide files, such as a logo, still have one
+place.
+
+**Consequence:** the same image used by two entries is either shared, through
+the Media view, or stored twice. Deleting an entry deletes its files.
+
+**What would change it:** editors who mostly reuse images across entries; then
+default the picker's upload to the shared folder, which the layout rule would
+no longer justify.
+
+**1.0 status:** should for 1.0; the fix is in #102, the path forms in #58.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
