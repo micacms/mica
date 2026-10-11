@@ -791,6 +791,33 @@ the format specification (#58).
 
 ---
 
+### P2 — A layout change is migrated by a command, not by a lenient reader
+
+**Decided:** `npx @micacms/editor migrate-layout` rewrites every entry whose
+layout no longer matches the model, in the working tree, and the developer
+commits the result with the model change. The reader stays strict: an entry in
+the other layout is an error (#64). The manifest records each collection's
+layout, so a change shows in the diff of `.mica/schema.json`. The command
+removes a sidecar only when no field still refers to it, and lists each file it
+removes.
+
+**Why:** a model change is always a developer's change in the site repository,
+so the developer is there to run a command. A reader that accepts both layouts
+would make both shapes part of the content format for all of 1.x, in `core` and
+in the Astro loader, and entries that nobody edits would keep the old layout
+forever.
+
+**Consequence:** a developer who changes the model and forgets the command gets
+a failing build and editor, not silent data loss. The command is part of the
+semver-covered CLI.
+
+**What would change it:** model changes made where nobody can run a command,
+for example from the editor itself.
+
+**1.0 status:** blocker; the command is in #65.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
