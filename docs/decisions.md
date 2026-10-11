@@ -947,6 +947,33 @@ non-image files; then offer `ImageMetadata` as an opt-in.
 
 ---
 
+### P2 — No draft preview in 1.0; a link to the published page
+
+**Decided:** 1.0 has no preview of unpublished changes in the self-hosted Mica.
+An optional model option, such as `url: "/news/{slug}"`, together with
+`MICA_SITE_URL`, shows "Open on website" in the entry header and after a
+publish. It is only a link. A docs page describes the staging-branch setup and
+the deploy previews of the common hosts. A live draft preview comes after 1.0.
+
+**Why:** drafts live in the draft store, not in Git, so a host's deploy preview
+cannot see them, and Mica must not call the website or trigger a build. A link
+couples nothing. A staging branch with a second Mica already gives a reviewed
+preview with no code.
+
+**Consequence:** a self-hosted editor sees a change on the website only after
+publishing it, or on a staging site. The local editor keeps `astro dev` beside
+it.
+
+**What would change it:** editors who publish to check their work. The next
+step is a "Preview" action that force-pushes the pending change set to a branch
+such as `mica/preview` for the host to build: Git only, no webhook, at the
+cost of build minutes and a second branch that Mica writes.
+
+**1.0 status:** should for 1.0; the link and the docs are in #103. The live
+preview is after 1.0.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
