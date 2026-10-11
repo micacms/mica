@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Security: with TRUST_PROXY, take the client address from the right-most X-Forwarded-For entry, and rate limit the sign-in callback",
+      "type": "none",
+      "packageName": "@micacms/auth-oidc"
+    }
+  ],
+  "packageName": "@micacms/auth-oidc",
+  "email": "alexander@muedespacher.ch"
+}

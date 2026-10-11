@@ -27,15 +27,16 @@ export interface Env {
 /**
  * Client IP. `X-Forwarded-For` is only consulted when TRUST_PROXY is set —
  * otherwise a client could spoof its own address and bypass rate limiting.
+ * Behind one proxy, the right-most entry is the address that proxy saw; the
+ * entries to its left are whatever the client sent (#149).
  */
 export function clientIp(c: Context<Env>): string {
   const { config } = c.get("ctx");
 
   if (config.TRUST_PROXY) {
     const forwarded = c.req.header("x-forwarded-for");
-    // The left-most entry is the original client; the rest are proxies.
-    const first = forwarded?.split(",")[0]?.trim();
-    if (first) return first;
+    const last = forwarded?.split(",").at(-1)?.trim();
+    if (last) return last;
   }
 
   const info = c.env as { incoming?: { socket?: { remoteAddress?: string } } } | undefined;

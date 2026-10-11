@@ -22,7 +22,9 @@ import { randomToken } from "../lib/id.js";
 /** Attaches the container, a request id and a scoped logger; logs the result. */
 export function requestContext(ctx: Env["Variables"]["ctx"]): MiddlewareHandler<Env> {
   return async (c, next) => {
-    const requestId = c.req.header("x-request-id") ?? randomToken(8);
+    // A client's id is logged and echoed, so only a short, plain one is kept (#150).
+    const offered = c.req.header("x-request-id");
+    const requestId = offered && /^[A-Za-z0-9_-]{1,64}$/.test(offered) ? offered : randomToken(8);
     const logger = ctx.logger.child({ requestId });
 
     c.set("ctx", ctx);

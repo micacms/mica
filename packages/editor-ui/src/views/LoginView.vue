@@ -42,9 +42,18 @@ const returnTo = computed(() => {
     : "/admin/";
 });
 
+/** The callback sends a code, never a sentence, so the URL carries no address (#150). */
+const REFUSALS: Record<string, string> = {
+  rate_limited: "Too many sign-in attempts. Wait a few minutes, then sign in again.",
+  expired: "That sign-in attempt expired or was not started here. Please try again.",
+  failed: "Sign-in could not be completed. Please try again.",
+  not_admitted: "You are signed in at your provider, but that account has no access to this site. Ask whoever runs it to add you.",
+  too_large: "Sign-in could not be completed: your account details are too large.",
+};
+
 onMounted(() => {
   const reason = route.query["error"];
-  if (typeof reason === "string") error.value = reason;
+  if (typeof reason === "string") error.value = REFUSALS[reason] ?? "Sign-in could not be completed.";
 
   // No provider, no question to ask. Straight to the editor.
   if (authDisabled.value && !error.value) signIn();

@@ -7,7 +7,7 @@ import { after, before, describe, it } from "node:test";
 import { collection, defineSite, number, slug, text } from "@micacms/core";
 import { Hono } from "hono";
 
-import type { Env } from "../src/http.js";
+import { clientIp, type Env } from "../src/http.js";
 import { createLogger } from "../src/lib/logger.js";
 import {
   CONTENT_SECURITY_POLICY,
@@ -113,6 +113,18 @@ describe("security headers", () => {
     assert.equal(response.headers.get("strict-transport-security"), null);
   });
 
+  it("keeps a plain request id, and replaces any other", async () => {
+    const id = (value: string) =>
+      harness.request("/health", { headers: { "x-request-id": value } }).then((r) => r.headers.get("x-request-id"));
+
+    assert.equal(await id("trace-42_A"), "trace-42_A");
+    for (const bad of ["x".repeat(65), "a b", "a\u0007b", "<script>"]) {
+      const answer = await id(bad);
+      assert.notEqual(answer, bad);
+      assert.match(answer ?? "", /^[A-Za-z0-9_-]{1,64}$/);
+    }
+  });
+
   it("keeps a stricter policy that a route sets itself", async () => {
     const app = new Hono<Env>();
     app.use("*", async (c, next) => {
@@ -124,6 +136,30 @@ describe("security headers", () => {
 
     const response = await app.request("/sandboxed");
     assert.equal(response.headers.get("content-security-policy"), "sandbox");
+  });
+});
+
+describe("client address", () => {
+  function app(trustProxy: boolean) {
+    const app = new Hono<Env>();
+    app.use("*", async (c, next) => {
+      c.set("ctx", { config: { TRUST_PROXY: trustProxy } } as unknown as Env["Variables"]["ctx"]);
+      await next();
+    });
+    app.get("/ip", (c) => c.text(clientIp(c)));
+    return app;
+  }
+  const ip = async (trustProxy: boolean, forwarded: string) =>
+    (await app(trustProxy).request("/ip", { headers: { "x-forwarded-for": forwarded } })).text();
+
+  it("takes the right-most X-Forwarded-For entry, the one the proxy added", async () => {
+    // The client sent "6.6.6.6"; the proxy appended the address it saw.
+    assert.equal(await ip(true, "6.6.6.6, 203.0.113.7"), "203.0.113.7");
+    assert.equal(await ip(true, "203.0.113.7"), "203.0.113.7");
+  });
+
+  it("ignores X-Forwarded-For without TRUST_PROXY", async () => {
+    assert.notEqual(await ip(false, "203.0.113.7"), "203.0.113.7");
   });
 });
 
@@ -567,6 +603,10 @@ describe("media", () => {
     assert.equal(document.status, 200);
     assert.equal(document.headers.get("content-security-policy"), "sandbox; default-src 'none'");
     assert.equal(document.headers.get("content-disposition"), "attachment");
+
+    writeFileSync(join(harness.contentRoot, "media/notes.txt"), "Grüezi");
+    const text = await harness.request("/api/admin/media/file/media/notes.txt", { session });
+    assert.equal(text.headers.get("content-type"), "text/plain; charset=utf-8");
   });
 
   it("serves no file outside the content root, however the path is encoded", async () => {
