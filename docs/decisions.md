@@ -842,6 +842,33 @@ format.
 
 ---
 
+### P2 — An unknown field kind makes its collection read-only
+
+**Decided:** when the manifest uses a field kind that this build of Mica does
+not know, Mica still starts. The collection or singleton that contains the
+kind opens read-only, with a warning that names the upgrade; every other
+collection stays editable. A manifest with a newer `protocolVersion` is still
+refused, because that is the signal for a change that cannot degrade. Mica
+reads each collection's layout from the manifest (see the layout entry), not
+from fields it cannot interpret.
+
+**Why:** a developer upgrades `@micacms/astro` with the site, and the operator
+upgrades the image on another schedule. Refusing to start locks out every
+editor over one field. Locking only the field would need saves to round-trip a
+value and sidecars that Mica does not understand; locking the collection means
+Mica never writes what it cannot interpret.
+
+**Consequence:** an editor cannot change anything in that collection until the
+image is upgraded. The versioning policy says: upgrade the image first, or at
+the same time.
+
+**What would change it:** editors who are often blocked by this; then lock
+only the field, with a tested round trip of unknown values.
+
+**1.0 status:** blocker; the behaviour is in #60, the rule in #54.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
