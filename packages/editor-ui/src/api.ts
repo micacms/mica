@@ -29,6 +29,9 @@ export class ApiError extends Error {
   }
 }
 
+/** Files per upload request; matches `MAX_FILES_PER_UPLOAD` in the runtime. */
+const UPLOAD_BATCH = 10;
+
 /** The CSRF cookie is readable by design — it is echoed back as a header. `__Host-` over https. */
 function csrfToken(): string {
   const match = /(?:^|;\s*)(?:__Host-)?mica_csrf=([^;]*)/.exec(document.cookie);
@@ -465,14 +468,20 @@ export const api = {
 
   media: {
     list: () => request<{ items: MediaItem[] }>("/admin/media"),
-    upload: (files: File[], options: { accept?: string; directory?: string } = {}) => {
-      const form = new FormData();
-      for (const file of files) form.append("file", file);
-      if (options.accept) form.append("accept", options.accept);
-      // Where the file goes in the repository. An entry's own `media/`
-      // directory keeps the entry self-contained and its rename cheap.
-      if (options.directory) form.append("directory", options.directory);
-      return request<{ items: MediaItem[] }>("/admin/media", { method: "POST", body: form });
+    upload: async (files: File[], options: { accept?: string; directory?: string } = {}) => {
+      const items: MediaItem[] = [];
+      // In batches: the server takes at most 10 files per request (#148).
+      for (let start = 0; start < files.length; start += UPLOAD_BATCH) {
+        const form = new FormData();
+        for (const file of files.slice(start, start + UPLOAD_BATCH)) form.append("file", file);
+        if (options.accept) form.append("accept", options.accept);
+        // Where the file goes in the repository. An entry's own `media/`
+        // directory keeps the entry self-contained and its rename cheap.
+        if (options.directory) form.append("directory", options.directory);
+        const result = await request<{ items: MediaItem[] }>("/admin/media", { method: "POST", body: form });
+        items.push(...result.items);
+      }
+      return { items };
     },
     /** Absolute URL for previewing a repository file inside the admin. */
     url: (path: string) =>

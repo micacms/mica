@@ -12,6 +12,7 @@
 
 import { ContentPathError } from "@micacms/core";
 import type { ErrorHandler, MiddlewareHandler } from "hono";
+import { bodyLimit } from "hono/body-limit";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
 import { ApiError, badRequest } from "../lib/errors.js";
@@ -86,6 +87,40 @@ export function securityHeaders(): MiddlewareHandler<Env> {
     c.header("x-frame-options", "DENY");
     // The admin is a first-party SPA; nothing here needs to be embedded.
     c.header("permissions-policy", "geolocation=(), microphone=(), camera=()");
+  };
+}
+
+/** Files in one upload request; the Media view sends a selection in one request. */
+export const MAX_FILES_PER_UPLOAD = 10;
+
+/** Far more than any entry's JSON, and small enough to refuse a flood early. */
+export const MAX_JSON_BYTES = 2 * 1024 * 1024;
+
+/**
+ * Refuses an oversized body before a handler reads it into memory (#148). An
+ * upload may carry `MAX_FILES_PER_UPLOAD` files of `MAX_UPLOAD_BYTES`, plus
+ * room for the multipart framing; every other request gets `MAX_JSON_BYTES`.
+ */
+export function requestSizeLimit(): MiddlewareHandler<Env> {
+  return async (c, next) => {
+    const { config } = c.get("ctx");
+    const upload = c.req.method === "POST" && c.req.path === "/api/admin/media";
+    const maxSize = upload
+      ? config.MAX_UPLOAD_BYTES * MAX_FILES_PER_UPLOAD + 1024 * 1024
+      : MAX_JSON_BYTES;
+
+    return bodyLimit({
+      maxSize,
+      onError: (ctx) => {
+        const refused = new ApiError(
+          "payload_too_large",
+          upload
+            ? "The upload is too large. Upload fewer or smaller files at a time."
+            : "The request is too large.",
+        );
+        return ctx.json(refused.toBody(), 413);
+      },
+    })(c, next);
   };
 }
 

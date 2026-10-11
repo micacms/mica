@@ -9,7 +9,12 @@ import { Hono } from "hono";
 
 import type { Env } from "../src/http.js";
 import { createLogger } from "../src/lib/logger.js";
-import { CONTENT_SECURITY_POLICY, securityHeaders } from "../src/middleware/index.js";
+import {
+  CONTENT_SECURITY_POLICY,
+  MAX_FILES_PER_UPLOAD,
+  MAX_JSON_BYTES,
+  securityHeaders,
+} from "../src/middleware/index.js";
 import { healthRoutes } from "../src/routes/health.js";
 
 import {
@@ -119,6 +124,47 @@ describe("security headers", () => {
 
     const response = await app.request("/sandboxed");
     assert.equal(response.headers.get("content-security-policy"), "sandbox");
+  });
+});
+
+describe("request size", () => {
+  let harness: TestHarness;
+  let session: Session;
+  before(async () => {
+    // Small, so that an oversized upload is cheap to build: 10 × 1 kB + 1 MiB.
+    harness = await createHarness({ MAX_UPLOAD_BYTES: 1024 });
+    session = await harness.signIn();
+  });
+  after(() => harness.close());
+
+  it("refuses a JSON body above the limit before reading it", async () => {
+    const response = await harness.request("/api/admin/collections/projects/entries", {
+      method: "POST",
+      session,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ data: { title: "x".repeat(MAX_JSON_BYTES) } }),
+    });
+    assert.equal(response.status, 413);
+  });
+
+  it("refuses an upload above the limit", async () => {
+    const big = new Uint8Array(10 * 1024 + 1024 * 1024 + 1);
+    const response = await harness.request("/api/admin/media", {
+      method: "POST",
+      session,
+      body: multipart([{ name: "big.png", bytes: big, type: "image/png" }]),
+    });
+    assert.equal(response.status, 413);
+  });
+
+  it("refuses more files than one upload may carry", async () => {
+    const files = Array.from({ length: MAX_FILES_PER_UPLOAD + 1 }, (_, i) => ({
+      name: `f${i}.png`,
+      bytes: pngBytes(),
+      type: "image/png",
+    }));
+    const response = await harness.request("/api/admin/media", { method: "POST", session, body: multipart(files) });
+    assert.equal(response.status, 400);
   });
 });
 
