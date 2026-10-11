@@ -59,6 +59,9 @@ release note before upgrading.
   build provenance. CI scans it for critical vulnerabilities. The compose file
   runs it with a read-only root file system, no capabilities and a memory
   limit (#133).
+- Every workflow has read-only default permissions, every action is pinned by
+  commit SHA, and the release runs in a `release` environment that can require
+  an approval (#135).
 
 ### Changed
 
