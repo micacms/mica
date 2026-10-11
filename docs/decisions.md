@@ -717,6 +717,31 @@ branch.
 
 ---
 
+### P2 — 1.0 ships after two weeks of release candidates on real websites
+
+**Decided:** `1.0.0-rc.N` is published under the `next` dist-tag. 1.0.0 ships
+when one or two real websites, ideally of different kinds, have run on the
+release candidates for at least two weeks, and at least one of them through the
+self-hosted image. The maintainer's own websites count; the example and
+`sites/micacms` alone do not. A fix gives a new `rc.N` and keeps the clock; a
+breaking change to a public surface restarts the two weeks.
+
+**Why:** a real site finds what CI cannot: a provider, an identity provider and
+a host in combination. Requiring an outside team would make the release date
+depend on a volunteer. Two kinds of site exercise more of the content model
+than two copies of one. A fix does not invalidate the evidence; a break does.
+
+**Consequence:** the evidence comes from a maintainer who knows the system, so
+gaps in the docs and the onboarding stay less visible. The clean-machine runs
+of #53 must cover that.
+
+**What would change it:** an external team that offers to run a candidate;
+take it, and keep the two-week rule.
+
+**1.0 status:** blocker; the phase is in #53, the dist-tag in #127.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
