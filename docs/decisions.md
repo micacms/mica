@@ -869,6 +869,31 @@ only the field, with a tested round trip of unknown values.
 
 ---
 
+### P2 — Alt text is an opt-in on the media field
+
+**Decided:** `media({ alt: "required" | "optional" })` stores `{ path, alt }`
+and shows an alt-text input beside the preview. A `media()` without the option
+still stores a plain path string, so existing content stays valid. The
+getting-started guide and the example use `alt: "required"`. A multilingual
+site keeps `media()` and puts a localized `alt` object beside it, because
+`{ path, alt }` holds one language.
+
+**Why:** with only a path, the default leads adopters to images with `alt=""`,
+which fails WCAG 1.1.1. An input beside the preview is where an editor sees
+it. Opt-in keeps the change additive and the stored shape of every existing
+field the same.
+
+**Consequence:** a media value has two shapes, chosen by the model, and the
+format specification and the Astro types carry both. The multilingual form
+places the alt text away from the preview.
+
+**What would change it:** native i18n (see "No native multilingual content");
+a localized `alt` then belongs in the media value.
+
+**1.0 status:** blocker; the field is in #61, the Astro helper in #109.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
