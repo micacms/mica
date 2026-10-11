@@ -24,9 +24,9 @@
     {
       "title": "Open source",
       "links": [
-        { "label": "GitHub", "href": "https://github.com/amuedespacher/micacms" },
+        { "label": "GitHub", "href": "https://github.com/micacms/mica" },
         { "label": "npm", "href": "https://www.npmjs.com/package/@micacms/editor" },
-        { "label": "MIT licence", "href": "https://github.com/amuedespacher/micacms/blob/main/LICENSE" }
+        { "label": "MIT licence", "href": "https://github.com/micacms/mica/blob/main/LICENSE" }
       ]
     }
   ],

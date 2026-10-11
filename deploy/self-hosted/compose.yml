@@ -1,7 +1,7 @@
 # Reference deployment.
 #
-#   curl -o compose.yml https://raw.githubusercontent.com/amuedespacher/micacms/main/deploy/self-hosted/compose.yml
-#   curl -o .env https://raw.githubusercontent.com/amuedespacher/micacms/main/deploy/self-hosted/.env.example
+#   curl -o compose.yml https://raw.githubusercontent.com/micacms/mica/main/deploy/self-hosted/compose.yml
+#   curl -o .env https://raw.githubusercontent.com/micacms/mica/main/deploy/self-hosted/.env.example
 #   $EDITOR .env                           # the repository, the provider, one secret
 #   docker compose up -d
 #
