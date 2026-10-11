@@ -21,7 +21,7 @@ import type { RepositoryConnector } from "@micacms/connectors";
 import { imageSize } from "image-size";
 
 import { ApiError, badRequest } from "../lib/errors.js";
-import { detectFileType, isAccepted, isImageType } from "../lib/file-type.js";
+import { detectFileType, isAccepted, isImageType, SVG_TYPE } from "../lib/file-type.js";
 
 /** Where uploads go when they are not attached to a particular entry. */
 export const SHARED_MEDIA_DIR = "media";
@@ -98,6 +98,7 @@ export function createMediaService(deps: MediaServiceDeps) {
       if (!detected) {
         throw new ApiError("unsupported_media_type", "This file type is not supported.");
       }
+      if (detected.mimeType === SVG_TYPE) throw refuseSvg();
       if (!isAccepted(detected.mimeType, input.accept ?? "any")) {
         throw new ApiError(
           "unsupported_media_type",
@@ -143,9 +144,8 @@ export function createMediaService(deps: MediaServiceDeps) {
           const bytes = await connector.readBinary(child);
           if (!bytes) continue;
 
-          // The bytes are authoritative; the extension is the fallback for the
-          // formats the sniffer does not cover, such as SVG.
-          const mimeType = detectFileType(bytes)?.mimeType ?? mimeFromName(item.name);
+          const mimeType = typeOf(bytes, item.name);
+          if (mimeType === SVG_TYPE) continue;
 
           found.push({
             path: child,
@@ -165,7 +165,9 @@ export function createMediaService(deps: MediaServiceDeps) {
       const bytes = await connector.readBinary(contentPath(mediaPath));
       if (!bytes) return null;
 
-      return { bytes, mimeType: detectFileType(bytes)?.mimeType ?? mimeFromName(mediaPath) };
+      const mimeType = typeOf(bytes, mediaPath);
+      if (mimeType === SVG_TYPE) throw refuseSvg();
+      return { bytes, mimeType };
     },
   };
 }
@@ -218,6 +220,23 @@ const BY_EXTENSION: Record<string, string> = {
   xlsx: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 };
 
+/**
+ * The bytes are authoritative; the extension is the fallback for formats the
+ * sniffer does not cover. An SVG name counts even when its bytes do not look
+ * like one, so that a leading comment cannot slip one past the refusal.
+ */
+function typeOf(bytes: Uint8Array, name: string): string {
+  const byName = mimeFromName(name);
+  if (byName === SVG_TYPE) return SVG_TYPE;
+  return detectFileType(bytes)?.mimeType ?? byName;
+}
+
+const refuseSvg = () =>
+  new ApiError(
+    "unsupported_media_type",
+    "Mica does not accept SVG files, because they can contain scripts. Use PNG or WebP instead.",
+  );
+
 function mimeFromName(name: string): string {
   const extension = path.extname(name).slice(1).toLowerCase();
   return BY_EXTENSION[extension] ?? "application/octet-stream";
@@ -225,14 +244,14 @@ function mimeFromName(name: string): string {
 
 /** Files a `media()` field could plausibly point at. */
 function isMediaName(name: string): boolean {
-  return /\.(jpe?g|png|webp|avif|gif|tiff?|svg|pdf|docx?|xlsx?|txt|csv)$/i.test(name);
+  return /\.(jpe?g|png|webp|avif|gif|tiff?|pdf|docx?|xlsx?|txt|csv)$/i.test(name);
 }
 
 function dimensions(
   bytes: Uint8Array,
   mimeType: string,
 ): { width: number | null; height: number | null } {
-  if (bytes.byteLength === 0 || !isImageType(mimeType) || mimeType === "image/svg+xml") {
+  if (bytes.byteLength === 0 || !isImageType(mimeType)) {
     return { width: null, height: null };
   }
   try {

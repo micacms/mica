@@ -84,7 +84,6 @@ const IMAGE_TYPES = new Set([
   "image/webp",
   "image/avif",
   "image/heic",
-  "image/svg+xml",
 ]);
 
 const DOCUMENT_TYPES = new Set(["application/pdf"]);
@@ -103,7 +102,7 @@ export function isAccepted(mimeType: string, accept: "image" | "document" | "any
 }
 
 /**
- * SVG can carry scripts, so it is served under a sandbox CSP. Callers use this
- * to decide whether the extra header is needed.
+ * SVG can carry scripts, so Mica neither stores nor shows it (#86). It is still
+ * detected, so that the refusal can say why.
  */
-export const isScriptable = (mimeType: string): boolean => mimeType === "image/svg+xml";
+export const SVG_TYPE = "image/svg+xml";
