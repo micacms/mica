@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Security: replace /health with /health/live (no I/O) and /health/ready (cached for 30 s); neither shows the repository or the uptime",
+      "type": "none",
+      "packageName": "@micacms/runtime"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}
