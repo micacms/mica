@@ -669,6 +669,30 @@ matrix (#131), the journeys in #83.
 
 ---
 
+### P2 — The 1.0 scale target: 1,000 entries, 5,000 files, 5 editors
+
+**Decided:** Mica 1.0 commits to 1,000 entries per collection, 5,000 files in
+the content tree and 5 editors at the same time. The budget tests (#72) use a
+fixture of that size and fail when a view exceeds its call or time budget.
+Above these numbers, Mica can work, but it makes no promise.
+
+**Why:** this covers brochure and agency sites with a blog or news archive,
+which is who Mica is for. The limit that matters first is the provider's rate
+limit, not the entry count: 5 active editors at about 5 calls per view can pass
+GitHub's 5,000 calls per hour per token without the warm-cache budgets of #73
+to #76. Search filters in the browser, which is fine at 1,000 entries. A larger
+target needs server-side search and paged tree reads.
+
+**Consequence:** a site with a larger archive must split it into more
+collections or accept unmeasured performance.
+
+**What would change it:** an adopter above the target; then measure their
+shape first, and raise the numbers only with the budget tests.
+
+**1.0 status:** blocker; the budget tests are in #72.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
