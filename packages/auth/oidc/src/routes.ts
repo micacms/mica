@@ -19,6 +19,7 @@ import { ApiError, clientIp, type Env, type RateLimiter } from "@micacms/runtime
 import type { AdmissionPolicy } from "./admission.js";
 import type { AuthConfig } from "./config.js";
 import { requireAccess, sessionOf, type GateDeps } from "./gate.js";
+import { safeReturnTo } from "./return-to.js";
 import {
   CSRF_COOKIE,
   establishSession,
@@ -33,12 +34,6 @@ import {
   type OidcClaims,
   type OidcService,
 } from "./oidc.js";
-
-/** Only ever a path on this server, so the callback cannot be an open redirect. */
-function safeReturnTo(raw: string | undefined): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/admin/";
-  return raw;
-}
 
 const identityOf = (claims: OidcClaims): SessionIdentity => ({
   issuer: claims.issuer,
@@ -77,7 +72,7 @@ export function authRoutes(deps: AuthRoutesDeps): Hono<Env> {
 
   /** Starts the flow. A redirect, not a form post. */
   app.get("/login", async (c) => {
-    const returnTo = safeReturnTo(c.req.query("returnTo"));
+    const returnTo = safeReturnTo(c.req.query("returnTo"), config.MICA_PUBLIC_URL);
 
     // Rate limited on the way out as well as the way back: starting a flow is
     // cheap for a client and costs Mica a discovery request.

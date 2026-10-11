@@ -29,6 +29,9 @@ release note before upgrading.
   the admin origin could run a script with the editor's session. Every media
   file is now served in a sandbox, and a file that is not an image is sent as a
   download (#86).
+- The sign-in can no longer send a browser to another site afterwards. Before,
+  a return path such as `/\evil.example` passed the check; now the path is
+  parsed like a browser does and must be a page of the editor (#87).
 
 ## [0.3.0] — 2026-10-10
 
