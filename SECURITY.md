@@ -17,7 +17,8 @@ can.
 
 Mica is **not independently audited**. Its authentication, session, CSRF and
 admission code is reviewed by the maintainer against the OWASP ASVS level 1
-checklist, and CI runs a dependency audit.
+checklist ([docs/security-review.md](docs/security-review.md)), and CI runs a
+dependency audit.
 
 ## Supported versions
 
