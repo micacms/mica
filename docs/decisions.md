@@ -644,6 +644,31 @@ serves; then document WSL instead of native Windows.
 
 ---
 
+### P2 — github.com and gitlab.com are supported; self-managed providers are experimental
+
+**Decided:** the supported providers of the self-hosted Mica are github.com and
+gitlab.com. GitHub Enterprise Server and self-managed GitLab are
+"experimental": they work through `MICA_REPOSITORY_API_BASE`, and they carry no
+promise. The local editor publishes with the `git` binary, so it works with any
+remote, and this entry does not limit it.
+
+**Why:** supported means live-tested. The weekly `live-connectors` workflow
+covers the two hosted providers once its tokens exist (#38). GHES cannot run in
+CI without a licence, and a GitLab CE container is a heavy weekly job for one
+maintainer.
+
+**Consequence:** a defect that appears only on a self-managed instance is fixed
+when someone reports it, not found by CI. github.com and gitlab.com count as
+supported only when the live suites pass without skipping.
+
+**What would change it:** an adopter on a self-managed instance who can give
+the live suite a scratch project there.
+
+**1.0 status:** blocker until #38 runs live; the labels go in the support
+matrix (#131), the journeys in #83.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
