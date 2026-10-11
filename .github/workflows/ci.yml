@@ -45,6 +45,11 @@ jobs:
       - name: Check for a change file
         run: node common/scripts/install-run-rush.js change --verify
 
+      # Fails on a high or critical advisory in what Mica ships; the websites'
+      # findings are listed but do not fail. See scripts/audit.mjs.
+      - name: Audit the shipped dependencies
+        run: node scripts/audit.mjs
+
       - name: Build packages
         run: node common/scripts/install-run-rush.js build --to tag:packages
 
