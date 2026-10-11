@@ -10,7 +10,38 @@ eight published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
-## [Unreleased]
+## [0.4.0] — 2026-10-11
+
+Security hardening, after a review of the whole self-hosted surface and an
+OWASP ASVS level 1 self-review (`docs/security-review.md`). The project moved
+to the `micacms` organization, and so did the image. A self-hosted Mica needs
+changes to its compose file and `.env`, so read Breaking before upgrading. The
+local editor needs no change.
+
+### Breaking
+
+- **The image is `ghcr.io/micacms/mica`.** The repository moved to
+  `micacms/mica`. Change `image:` in your compose file;
+  `ghcr.io/amuedespacher/micacms` gets no new versions (`@micacms/self-hosted`).
+- **Production needs an `https://` `MICA_PUBLIC_URL`.** With
+  `NODE_ENV=production`, the self-hosted Mica refuses to start when
+  `MICA_PUBLIC_URL` is missing, or when it is `http://` on anything but
+  loopback. Put Mica behind a proxy that terminates TLS
+  (`@micacms/self-hosted`).
+- **Editors sign in once more.** Over https, the session and CSRF cookies are
+  now named `__Host-mica_session` and `__Host-mica_csrf`
+  (`@micacms/auth-oidc`).
+- **`/health` checks only the process.** It does no I/O any more, so a
+  provider outage no longer restarts the container. The new `/ready` checks
+  the database and the repository, cached for 30 seconds: point a monitor that
+  must notice a repository outage at it. Neither answer shows the repository's
+  origin or the uptime; the System view shows both (`@micacms/runtime`).
+- **SVG is refused.** Mica does not accept SVG uploads, and does not list or
+  show SVG files that are in the repository, because an SVG can carry a
+  script. The website build is not affected. Use PNG or WebP in the editor
+  (`@micacms/runtime`, `@micacms/editor-ui`).
+- **`within()` from `@micacms/core/node` refuses the content root** unless it
+  is called with `{ allowRoot: true }` (`@micacms/core`).
 
 ### Security
 
@@ -62,16 +93,6 @@ release note before upgrading.
 - Every workflow has read-only default permissions, every action is pinned by
   commit SHA, and the release runs in a `release` environment that can require
   an approval (#135).
-
-### Changed
-
-- `/health` now checks only that the process answers, with no I/O, so a
-  provider outage no longer restarts the container. The new `/ready` checks
-  the database and the repository, cached for 30 seconds. Point a monitor that
-  must notice a repository outage at `/ready`. Neither answer shows the
-  repository's origin or the uptime any more; the System view shows both (#79).
-- The cookie names change over https, so every editor signs in once more after
-  the upgrade (#147).
 
 ## [0.3.0] — 2026-10-10
 

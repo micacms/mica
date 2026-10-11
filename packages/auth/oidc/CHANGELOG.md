@@ -1,6 +1,21 @@
 # Change Log - @micacms/auth-oidc
 
-This log was last generated on Sat, 10 Oct 2026 18:31:39 GMT and should not be manually modified.
+This log was last generated on Sun, 11 Oct 2026 15:57:57 GMT and should not be manually modified.
+
+## 0.4.0
+Sun, 11 Oct 2026 15:57:57 GMT
+
+### Patches
+
+- Security: sign the transaction cookie with an HKDF-derived key, and take an email address and its email_verified flag from the same answer
+- Security: a refused sign-in redirects with a code instead of a message, so the URL carries no email address
+
+### Updates
+
+- Security: with TRUST_PROXY, take the client address from the right-most X-Forwarded-For entry, and rate limit the sign-in callback
+- Security: after sign-in, return only to a page of the editor on this origin; a return path such as /\evil.example no longer leaves the site
+- Security: over https, prefix the session and CSRF cookies with __Host- and send Strict-Transport-Security; in production, refuse an http:// public URL except on loopback
+- Require hono 4.13.7 and image-size 2.0.3, which fix published security advisories
 
 ## 0.3.0
 Sat, 10 Oct 2026 18:31:39 GMT

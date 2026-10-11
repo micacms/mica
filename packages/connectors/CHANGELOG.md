@@ -1,6 +1,14 @@
 # Change Log - @micacms/connectors
 
-This log was last generated on Sat, 10 Oct 2026 18:31:39 GMT and should not be manually modified.
+This log was last generated on Sun, 11 Oct 2026 15:57:57 GMT and should not be manually modified.
+
+## 0.4.0
+Sun, 11 Oct 2026 15:57:57 GMT
+
+### Updates
+
+- Security: refuse every content path that could leave the content root, in every connector and in the media routes; no write or delete can name the root itself
+- Test the GitHub connector against a real scratch repository every week; GitLab follows when a token is configured.
 
 ## 0.3.0
 Sat, 10 Oct 2026 18:31:39 GMT

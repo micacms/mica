@@ -1,6 +1,21 @@
 # Change Log - @micacms/self-hosted
 
-This log was last generated on Sat, 10 Oct 2026 18:31:39 GMT and should not be manually modified.
+This log was last generated on Sun, 11 Oct 2026 15:57:57 GMT and should not be manually modified.
+
+## 0.4.0
+Sun, 11 Oct 2026 15:57:57 GMT
+
+### Patches
+
+- Security: in production, refuse to start without MICA_PUBLIC_URL; warn about MICA_* and REPOSITORY_* variables that nothing reads
+
+### Updates
+
+- Test that the sign-in callback is rate limited
+- Test the sign-in refusal codes
+- Security: /health checks only the process; the new /ready checks the database and the repository, cached for 30 s; neither shows the repository or the uptime
+- Security: over https, prefix the session and CSRF cookies with __Host- and send Strict-Transport-Security; in production, refuse an http:// public URL except on loopback
+- Require hono 4.13.7 and image-size 2.0.3, which fix published security advisories
 
 ## 0.3.0
 Sat, 10 Oct 2026 18:31:39 GMT

@@ -1,6 +1,20 @@
 # Change Log - @micacms/editor-ui
 
-This log was last generated on Sat, 10 Oct 2026 18:31:39 GMT and should not be manually modified.
+This log was last generated on Sun, 11 Oct 2026 15:57:57 GMT and should not be manually modified.
+
+## 0.4.0
+Sun, 11 Oct 2026 15:57:57 GMT
+
+### Patches
+
+- Show the sign-in refusal message for the code that the callback sends
+
+### Updates
+
+- Security: refuse an oversized request before reading it: 2 MiB for JSON, and at most 10 files of MAX_UPLOAD_BYTES per upload; the editor uploads in batches
+- Add a Content-Security-Policy to every response, and serve the editor font from the admin instead of Google Fonts
+- Security: refuse SVG uploads, do not list or serve SVG files, and serve every media file in a sandbox, as a download unless it is an image
+- Security: over https, prefix the session and CSRF cookies with __Host- and send Strict-Transport-Security; in production, refuse an http:// public URL except on loopback
 
 ## 0.3.0
 Sat, 10 Oct 2026 18:31:39 GMT

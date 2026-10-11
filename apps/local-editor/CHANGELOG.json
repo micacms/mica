@@ -2,6 +2,24 @@
   "name": "@micacms/editor",
   "entries": [
     {
+      "version": "0.4.0",
+      "tag": "@micacms/editor_v0.4.0",
+      "date": "Sun, 11 Oct 2026 15:57:57 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "Security: /health checks only the process; the new /ready checks the database and the repository, cached for 30 s; neither shows the repository or the uptime"
+          },
+          {
+            "comment": "Point the Host-check message to the repository at micacms/mica"
+          },
+          {
+            "comment": "Require hono 4.13.7 and image-size 2.0.3, which fix published security advisories"
+          }
+        ]
+      }
+    },
+    {
       "version": "0.3.0",
       "tag": "@micacms/editor_v0.3.0",
       "date": "Sat, 10 Oct 2026 18:31:39 GMT",

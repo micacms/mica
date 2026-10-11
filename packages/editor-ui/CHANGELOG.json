@@ -2,6 +2,32 @@
   "name": "@micacms/editor-ui",
   "entries": [
     {
+      "version": "0.4.0",
+      "tag": "@micacms/editor-ui_v0.4.0",
+      "date": "Sun, 11 Oct 2026 15:57:57 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "Security: refuse an oversized request before reading it: 2 MiB for JSON, and at most 10 files of MAX_UPLOAD_BYTES per upload; the editor uploads in batches"
+          },
+          {
+            "comment": "Add a Content-Security-Policy to every response, and serve the editor font from the admin instead of Google Fonts"
+          },
+          {
+            "comment": "Security: refuse SVG uploads, do not list or serve SVG files, and serve every media file in a sandbox, as a download unless it is an image"
+          },
+          {
+            "comment": "Security: over https, prefix the session and CSRF cookies with __Host- and send Strict-Transport-Security; in production, refuse an http:// public URL except on loopback"
+          }
+        ],
+        "patch": [
+          {
+            "comment": "Show the sign-in refusal message for the code that the callback sends"
+          }
+        ]
+      }
+    },
+    {
       "version": "0.3.0",
       "tag": "@micacms/editor-ui_v0.3.0",
       "date": "Sat, 10 Oct 2026 18:31:39 GMT",

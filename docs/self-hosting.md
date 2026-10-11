@@ -350,7 +350,7 @@ version rather than tracking `latest`, so an upgrade is a decision.
 
 ## Verifying the image
 
-From the release after 0.3.0, every image is signed with a keyless
+From 0.4.0, every image is signed with a keyless
 [cosign](https://docs.sigstore.dev/) signature from this repository's release
 workflow, and carries an SBOM and build provenance. To check an image before
 you run it:

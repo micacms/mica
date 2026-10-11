@@ -1,6 +1,25 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Sat, 10 Oct 2026 18:31:39 GMT and should not be manually modified.
+This log was last generated on Sun, 11 Oct 2026 15:57:57 GMT and should not be manually modified.
+
+## 0.4.0
+Sun, 11 Oct 2026 15:57:57 GMT
+
+### Patches
+
+- Security: keep a client's x-request-id only when it is short and plain, and send text media as UTF-8
+
+### Updates
+
+- Security: refuse an oversized request before reading it: 2 MiB for JSON, and at most 10 files of MAX_UPLOAD_BYTES per upload; the editor uploads in batches
+- Security: with TRUST_PROXY, take the client address from the right-most X-Forwarded-For entry, and rate limit the sign-in callback
+- Security: refuse every content path that could leave the content root, in every connector and in the media routes; no write or delete can name the root itself
+- Add a Content-Security-Policy to every response, and serve the editor font from the admin instead of Google Fonts
+- Security: refuse SVG uploads, do not list or serve SVG files, and serve every media file in a sandbox, as a download unless it is an image
+- Security: /health checks only the process; the new /ready checks the database and the repository, cached for 30 s; neither shows the repository or the uptime
+- Security: over https, prefix the session and CSRF cookies with __Host- and send Strict-Transport-Security; in production, refuse an http:// public URL except on loopback
+- Require hono 4.13.7 and image-size 2.0.3, which fix published security advisories
+- Correct a comment about sign-in rate limiting
 
 ## 0.3.0
 Sat, 10 Oct 2026 18:31:39 GMT
