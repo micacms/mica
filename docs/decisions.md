@@ -1000,8 +1000,34 @@ never commits one.
 **What would change it:** groups that editors find too coarse, or too
 surprising when a shared upload comes along.
 
-**1.0 status:** should for 1.0; both are in #98. The "One shared pending change set"
-entry gets a note when #98 lands.
+**1.0 status:** should for 1.0; both are in #98. The "One shared pending change
+set" entry gets a note when #98 lands.
+
+---
+
+### P2 — Images in rich text are kept as blocks; inserting them comes after 1.0
+
+**Decided:** in 1.0, an image or a table in rich text opens as an atomic block:
+an image shows a thumbnail and its alt text, and a table a read-only notice.
+The text around them stays editable, and an unchanged block is written back
+byte for byte. Editors cannot insert or edit an image in rich text in 1.0; a
+toolbar option `"image"` adds that in a 1.x minor.
+
+**Why:** losing an image when a field opens is data loss, and #62 fixes that in
+any case. Blocks make such fields editable again with little code. Inserting
+images needs the picker, an alt-text dialog, and every media-reference check to
+scan rich text as well: the "not used" hint, the shared uploads that a
+selective publish brings along, and the Astro rendering. That is additive, so
+it can wait for a minor.
+
+**Consequence:** an editor who wants an image inside the body text asks a
+developer, or uses a `media()` field beside it.
+
+**What would change it:** the first editor who needs an image in body text more
+than once a month.
+
+**1.0 status:** blocks are should for 1.0 (#63); no data loss is a blocker
+(#62). Inserting images is after 1.0.
 
 ---
 
