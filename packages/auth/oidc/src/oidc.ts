@@ -25,7 +25,7 @@
  * garbage to collect.
  */
 
-import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, hkdfSync, randomBytes, timingSafeEqual } from "node:crypto";
 
 import * as client from "openid-client";
 
@@ -66,8 +66,12 @@ export interface OidcClaims {
  * The transaction cookie
  * ------------------------------------------------------------------ */
 
+// Its own key, derived like the session's: one secret, never used directly for two purposes (#91).
+const transactionKey = (secret: string): Buffer =>
+  Buffer.from(hkdfSync("sha256", secret, "", "mica oidc transaction v1", 32));
+
 function sign(value: string, secret: string): string {
-  return createHmac("sha256", secret).update(value).digest("base64url");
+  return createHmac("sha256", transactionKey(secret)).update(value).digest("base64url");
 }
 
 function safeEqual(a: string, b: string): boolean {
@@ -99,6 +103,26 @@ export function openTransaction(cookie: string, secret: string): OidcTransaction
   } catch {
     return null;
   }
+}
+
+/**
+ * The address and its `email_verified` flag, always from the same answer, so
+ * that a flag cannot vouch for an address it was not sent with (#91). Userinfo
+ * fills in an address the ID token lacks, or confirms the token's own address.
+ */
+export function emailFrom(
+  claims: Record<string, unknown>,
+  info?: Record<string, unknown>,
+): { email: string; emailVerified: boolean } {
+  const tokenEmail = typeof claims["email"] === "string" ? claims["email"] : "";
+  const infoEmail = typeof info?.["email"] === "string" ? info["email"] : "";
+  const infoVerified = info?.["email_verified"] === true;
+
+  if (tokenEmail) {
+    const confirmed = infoEmail === tokenEmail && infoVerified;
+    return { email: tokenEmail, emailVerified: claims["email_verified"] === true || confirmed };
+  }
+  return { email: infoEmail, emailVerified: Boolean(infoEmail) && infoVerified };
 }
 
 /* ------------------------------------------------------------------ *
@@ -211,17 +235,15 @@ export function createOidcService(deps: OidcServiceDeps) {
       // there. Ask only when something is missing.
       const groupsClaim = config.MICA_OIDC_GROUPS_CLAIM;
 
-      let email = typeof claims["email"] === "string" ? claims["email"] : "";
+      let { email, emailVerified } = emailFrom(claims);
       let name = typeof claims["name"] === "string" ? claims["name"] : "";
-      let emailVerified = claims["email_verified"] === true;
       let groups = readGroups(claims[groupsClaim]);
 
-      if (!email || !name || groups.length === 0) {
+      if (!email || !emailVerified || !name || groups.length === 0) {
         try {
           const info = await client.fetchUserInfo(as, tokens.access_token, claims.sub);
-          email ||= typeof info.email === "string" ? info.email : "";
+          ({ email, emailVerified } = emailFrom(claims, info));
           name ||= typeof info.name === "string" ? info.name : "";
-          emailVerified ||= info["email_verified"] === true;
           if (groups.length === 0) groups = readGroups(info[groupsClaim]);
         } catch (error) {
           logger.debug("OIDC userinfo unavailable", { error: String(error) });
