@@ -693,6 +693,30 @@ shape first, and raise the numbers only with the budget tests.
 
 ---
 
+### P2 — Only the latest 1.x minor gets fixes; 0.x ends at 1.0
+
+**Decided:** fixes, security fixes included, go into the next release of the
+latest 1.x minor. An earlier minor gets none: the upgrade within 1.x is the
+fix. 0.x reaches its end of life when 1.0 ships, with no backports. The window
+for 1.x after a 2.0 is decided at 2.0.
+
+**Why:** one maintainer, one lockstep version and one branch, `main`. Each
+extra supported line needs a release branch, backports and a release flow that
+works from it. A minor in 1.x has no breaking change by definition, so moving
+to the latest minor is safe. No known deployment depends on 0.x.
+
+**Consequence:** an adopter who cannot take a minor gets no security fix.
+A 0.x deployment must take the breaking upgrade to 1.0 to get any fix. Agencies
+cannot plan a 2.0 upgrade window yet.
+
+**What would change it:** a second maintainer, or adopters who need a fixed
+window; then add security fixes for the previous minor or major with a release
+branch.
+
+**1.0 status:** accepted for 1.0; #54 publishes it.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
