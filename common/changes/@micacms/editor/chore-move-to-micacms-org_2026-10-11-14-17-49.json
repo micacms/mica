@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Point the Host-check message to the repository at micacms/mica",
+      "type": "none",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}
