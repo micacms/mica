@@ -594,6 +594,31 @@ continued.
 
 ---
 
+### P2 — Node.js 24 or later, and Astro 7
+
+**Decided:** 1.0 supports Node `>=24` and Astro 7 (peer range `^7.0.0`). The
+`engines` fields, `rush.json` and the CI matrix say the same. Mica removes a
+Node line in a minor after its upstream end of life, announced in the changelog
+one minor before. A new Astro major is added in a minor once CI covers it;
+removing an Astro major is a Mica major.
+
+**Why:** the image and CI already run Node 24, and only what CI tests is
+supported. Node 22 reaches its end of life on 2027-04-30, close to 1.0, and
+its `node:sqlite` starts only from 22.13 and with an ExperimentalWarning
+(#130). Astro 6 is in the peer range today but no test covers it. Removing an
+end-of-life Node in a minor is common FOSS practice, and the alternative keeps
+an unmaintained runtime in the matrix for all of 1.x.
+
+**Consequence:** a site on Node 22 cannot run `npx @micacms/editor` or
+`@micacms/astro` until it upgrades. A site on Astro 6 stays on Mica 0.x.
+
+**What would change it:** an adopter that cannot leave Node 22 or Astro 6
+before 1.0; then add that line to the CI matrix rather than promise it untested.
+
+**1.0 status:** blocker; the floor is in #130, the matrix in #131.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
