@@ -1107,6 +1107,31 @@ website does not give.
 
 ---
 
+### P2 — Mica is a hobby project, and says so
+
+**Decided:** `GOVERNANCE.md` states that Mica is a hobby project of one
+maintainer, built largely with AI-assisted ("vibe") coding, and maintained on a
+best-effort basis. It promises no response times and no co-maintainer. 1.0 does
+not wait for a second maintainer or a second account owner.
+
+**Why:** an honest statement lets an adopter weigh the risk; a promise one
+person cannot keep is worse than none. A co-maintainer, like an outside
+adopter, is not in the maintainer's control, so it cannot gate a release.
+Saying how the code is written lets a reader judge it by its tests and reviews.
+
+**Consequence:** an agency that needs a response time or continuity must plan
+for it itself, for example by being able to fork. One account owns the GitHub
+organization, the npm scope, the domain and the release secrets; losing it
+stops releases.
+
+**What would change it:** a second person who wants to maintain Mica, or
+adopters who depend on it commercially; then add a second owner of the
+accounts first, and a co-maintainer second.
+
+**1.0 status:** accepted for 1.0; the statement is in #52.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
