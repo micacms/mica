@@ -501,6 +501,49 @@ surface.
 
 ---
 
+### P2 — Every Mica configuration name starts with `MICA_`
+
+**Decided:** before the first release candidate, every Mica-specific variable
+gets the `MICA_` prefix, and the names are then frozen for 1.x. `NODE_ENV`,
+`PORT` and `HOST` keep their names, because they are conventions that Node
+libraries and hosting platforms already use. The old names are removed at 1.0
+with no aliases: startup refuses a known old name and names the new one. The
+local editor reads no `.env` file; it reads the process environment, and its
+flags win over it.
+
+| Old | New |
+| --- | --- |
+| `LOG_LEVEL` | `MICA_LOG_LEVEL` |
+| `CONTENT_ROOT` | `MICA_CONTENT_ROOT` |
+| `REPOSITORY`, `REPOSITORY_*` | `MICA_REPOSITORY`, `MICA_REPOSITORY_*` |
+| `SESSION_SECRET`, `SESSION_*_HOURS` | `MICA_SESSION_SECRET`, `MICA_SESSION_*_HOURS` |
+| `LOGIN_MAX_ATTEMPTS`, `LOGIN_WINDOW_MS` | `MICA_SIGNIN_MAX_ATTEMPTS`, `MICA_SIGNIN_WINDOW_MS` |
+| `MAX_UPLOAD_BYTES` | `MICA_MAX_UPLOAD_BYTES` |
+| `TRUST_PROXY` | `MICA_TRUST_PROXY` |
+| `ADMIN_ORIGINS`, `ADMIN_DIR` | `MICA_ADMIN_ORIGINS`, `MICA_ADMIN_DIR` |
+| `DATA_DIR`, `DATABASE_PATH` | `MICA_DATA_DIR`, `MICA_DATABASE_PATH` |
+| `MICA_ADMIT_GROUP`, `MICA_ADMIT_DOMAIN` | `MICA_ADMIT_GROUPS`, `MICA_ADMIT_DOMAINS` |
+
+**Why:** an unprefixed name such as `REPOSITORY_TOKEN` or `SESSION_SECRET`
+collides with other software in the same environment, and an operator cannot
+tell which variables are Mica's. All four `MICA_ADMIT_*` take lists, so all
+four are plural. `LOGIN_*` limits the start of an OIDC sign-in; Mica has no
+password login. No aliases, because 0.x allows the break and no known
+deployment depends on the old names; an alias table would be code to carry
+through all of 1.x. Reading the site's `.env` gave the editor the site's
+`NODE_ENV` and secrets, and a site with `NODE_ENV=production` stopped it.
+
+**Consequence:** every 0.x deployment must rename its variables to upgrade to
+1.0. The refusal at startup makes this loud, not silent. A local-editor user
+who kept settings in `.env` must pass them as flags or export them.
+
+**What would change it:** an adopter on 0.x who cannot rename in one step; then
+add aliases with a warning for one minor.
+
+**1.0 status:** blocker; the rename is in #57, the `.env` change in #113.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
