@@ -5,6 +5,10 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
 import { collection, defineSite, number, slug, text } from "@micacms/core";
+import { Hono } from "hono";
+
+import type { Env } from "../src/http.js";
+import { CONTENT_SECURITY_POLICY, securityHeaders } from "../src/middleware/index.js";
 
 import {
   createHarness,
@@ -33,6 +37,32 @@ describe("health", () => {
       // cannot tell a misconfigured content root from a healthy one.
       repository: harness.contentRoot,
     });
+  });
+});
+
+describe("security headers", () => {
+  let harness: TestHarness;
+  before(async () => {
+    harness = await createHarness();
+  });
+  after(() => harness.close());
+
+  it("sends a same-origin Content-Security-Policy on every response", async () => {
+    const response = await harness.request("/health");
+    const policy = response.headers.get("content-security-policy") ?? "";
+    assert.equal(policy, CONTENT_SECURITY_POLICY);
+    assert.match(policy, /default-src 'self'/);
+    assert.match(policy, /frame-ancestors 'none'/);
+    assert.equal(response.headers.get("x-frame-options"), "DENY");
+  });
+
+  it("keeps a stricter policy that a route sets itself", async () => {
+    const app = new Hono<Env>();
+    app.use("*", securityHeaders());
+    app.get("/sandboxed", (c) => c.body("x", 200, { "content-security-policy": "sandbox" }));
+
+    const response = await app.request("/sandboxed");
+    assert.equal(response.headers.get("content-security-policy"), "sandbox");
   });
 });
 
