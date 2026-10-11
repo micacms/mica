@@ -22,7 +22,7 @@ Ask the user before you:
 - Add or replace a production or development dependency.
 - Create or apply a database migration.
 - Make a breaking change to a public API, CLI, content format, database schema, or repository protocol.
-- Change `examples/muster-consulting`, `sites/micacms` or its contents.
+- Change `examples/muster-consulting` or its contents.
 - Take another action that can break compatibility or cause data loss.
 
 ## Architecture rules
@@ -70,7 +70,7 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `validator` (Haiku): run the gates and report only failures — after a code change.
 - `reviewer` (Opus): read-only review against these rules and the design docs — before a commit or a PR.
 - `docs-keeper` (Sonnet): fix documentation that disagrees with the code.
-- `site-keeper` (Sonnet): update `sites/micacms` and `examples/muster-consulting` after a release or a relevant change. It needs the user's approval, like any change there.
+- `site-keeper` (Sonnet): update `sites/micacms` and `examples/muster-consulting` after a release or a relevant change. A change in `examples/muster-consulting` needs the user's approval.
 - `release-prep` (Sonnet): prepare a release in the background. It never commits, tags or pushes; the `/release` skill stays the interactive flow.
 
 ## Git and pull requests
@@ -97,9 +97,9 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `packages/auth/oidc`: the server-only OIDC gate (`@micacms/auth-oidc`). Never a dependency of the local editor.
 - `apps/local-editor`: the `npx @micacms/editor` composition — loopback, no auth, no database.
 - `apps/self-hosted`: the Docker composition — runtime and UI behind OIDC, with SQLite.
-- `sites/micacms`: public Mica website.
+- `sites/micacms`: public Mica website, and the canonical user documentation (`content/docs`).
 - `examples/muster-consulting`: example website and evolving reference project.
-- `docs`: product, architecture, setup, and decision documentation.
+- `docs`: architecture and decision documentation for contributors. The user guides move to `sites/micacms` (#117).
 - `deploy/self-hosted`: the reference deployment — the Compose file and its `.env.example`.
 - `deploy/demo-identity`: the demo stack with ZITADEL.
 - `tests/e2e`: manual deployed-shape environment with Keycloak. Do not treat it as an automated browser test suite.

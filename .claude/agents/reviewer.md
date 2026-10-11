@@ -22,7 +22,7 @@ Without other instructions, review `git diff main...HEAD` plus the uncommitted c
 - No content API, public media route, media server or build webhook.
 - `@micacms/core` imports no framework. Node-only code is only in `@micacms/core/node`, never in a browser bundle.
 - `@micacms/editor` (apps/local-editor) has no path to `@micacms/auth-oidc`.
-- These need the user's approval: a new or replaced dependency, a database migration, a breaking change to a public API, CLI, content format, schema or repository protocol, and any change in `examples/muster-consulting` or `sites/micacms`. Report each one you find, and say whether the conversation shows the approval.
+- These need the user's approval: a new or replaced dependency, a database migration, a breaking change to a public API, CLI, content format, schema or repository protocol, and any change in `examples/muster-consulting`. Report each one you find, and say whether the conversation shows the approval.
 - A change to a published package has a change file in `common/changes/`. The bump type matches the change, and it is `none` only when the release notes must not mention it.
 - Changed behavior has tests. A fixed defect has a test that fails without the fix.
 - Docs, READMEs and examples still agree with the behavior.

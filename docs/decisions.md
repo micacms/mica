@@ -1080,6 +1080,33 @@ field opt-in with server-side sanitizing, in a 1.x minor.
 
 ---
 
+### P2 — The website is the one source of user documentation
+
+**Decided:** the user guides live in `sites/micacms/content/docs` as Mica
+content and are published on micacms.com: getting started, the content model,
+self-hosting, and the new configuration, versioning, support and
+content-format pages. `docs/` keeps the documents for contributors:
+architecture, decisions and the historical plans. READMEs, CLI messages and
+server messages link to the website. Changes in `sites/micacms` need no
+approval, so a code change updates the docs in the same pull request.
+
+**Why:** two hand-kept sets drifted (54 lines against 218 for one page) and the
+website made claims the code does not keep. The website is a Mica site, so
+writing the docs in Mica is the daily test of the editor. Links to micacms.com
+are stable for npm users, who have no repository paths.
+
+**Consequence:** the guides are Mica content, not plain Markdown files beside
+the code, and they follow the website's content model. Tests that check the
+docs against the code, such as the configuration list (#57), read that
+content. A reader on GitHub follows a link to the website.
+
+**What would change it:** docs that need a version per release, which a single
+website does not give.
+
+**1.0 status:** blocker; the move and the corrections are in #117.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
