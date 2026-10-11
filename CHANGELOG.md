@@ -10,6 +10,19 @@ eight published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.4.1] — 2026-10-11
+
+Publishes the image that 0.4.0 is missing. The packages are the same as in
+0.4.0.
+
+### Fixed
+
+- **0.4.0 has no image.** Its release published the npm packages, but the
+  image build stopped, so `ghcr.io/micacms/mica:0.4.0` does not exist. Use
+  `ghcr.io/micacms/mica:0.4.1`, the first signed image with an SBOM and build
+  provenance. Read the Breaking section of 0.4.0 before upgrading from 0.3.0
+  (#165).
+
 ## [0.4.0] — 2026-10-11
 
 Security hardening, after a review of the whole self-hosted surface and an
