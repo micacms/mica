@@ -29,6 +29,10 @@ this is the only moment to read them. Note each entry's `type` and `comment`.
 - Suggested bump: the largest type present (`major` > `minor` > `patch`);
   `none` entries never bump anything. While the major version is 0, that
   suggestion is usually right as-is — do not promote to major on your own.
+- From 1.0, a `major` entry on an internal package (`runtime`, `auth-oidc`,
+  `editor-ui`, `connectors`) is a mistake: internal breaks are `minor`. Point
+  it out and suggest `minor`, unless the comment also breaks the public
+  surface — see "Semver covers the public surface" in `docs/decisions.md`.
 - Current version: `version` in `common/config/rush/version-policies.json`.
   Compute the target version from it and the bump.
 - Ask the user with AskUserQuestion, suggested bump first, showing the

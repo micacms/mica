@@ -438,6 +438,42 @@ the draft store and nothing about people. See "Sessions are encrypted cookies".
 
 ---
 
+### P2 — Semver covers the public surface, not every published package
+
+**Decided:** from 1.0, semver covers `@micacms/core`, `@micacms/astro`, the
+`@micacms/editor` CLI, the self-hosted image contract (environment variables,
+port, volume, `/health`), the content format and the manifest protocol.
+`@micacms/runtime`, `@micacms/auth-oidc`, `@micacms/editor-ui` and
+`@micacms/connectors` are internal: published only because the apps install
+them, pinned exactly by the apps, and free to break in a minor.
+
+**Why:** all packages share one lockstep version, so a public `runtime` would
+turn every refactor of its helpers into a major for every package, `core`
+included. Adopters lose data when the format or the image contract breaks, not
+when `classifyPath` changes; a small surface puts the stability work there, and
+it is what one maintainer can keep.
+
+**Consequence:** npm has no "internal" flag. An internal package at 1.4.0 looks
+semver-stable, and anyone who depends on it can break in a minor. The
+authentication-neutral runtime cannot be reused under another gate with any
+promise. The line holds only while public packages do not re-export internal
+symbols (#55).
+
+**How to release under it:** in `rush change`, a breaking change to an internal
+package is `minor`, never `major`. `major` is only for a break of the public
+surface above. Rush already publishes `workspace:*` as an exact version, so no
+Rush configuration changes.
+
+**What would change it:** bundle the internal packages into the apps and stop
+publishing them, which removes the npm confusion. Or promote a small, named
+subset of the runtime to public.
+
+**Trigger:** the first external project that depends on an internal package.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
