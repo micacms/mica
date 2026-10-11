@@ -8,7 +8,9 @@ import { collection, defineSite, number, slug, text } from "@micacms/core";
 import { Hono } from "hono";
 
 import type { Env } from "../src/http.js";
+import { createLogger } from "../src/lib/logger.js";
 import { CONTENT_SECURITY_POLICY, securityHeaders } from "../src/middleware/index.js";
+import { healthRoutes } from "../src/routes/health.js";
 
 import {
   createHarness,
@@ -27,16 +29,68 @@ describe("health", () => {
   });
   after(() => harness.close());
 
-  it("reports ok, and touches the repository — there is no database to touch", async () => {
-    const response = await harness.request("/health");
+  it("answers liveness with no detail", async () => {
+    const response = await harness.request("/health/live");
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), {
-      status: "ok",
-      uptimeSeconds: 0,
-      // Named, because a check that does not say which repository it reached
-      // cannot tell a misconfigured content root from a healthy one.
-      repository: harness.contentRoot,
+    assert.deepEqual(await response.json(), { status: "ok" });
+  });
+
+  it("reports readiness without naming the repository — there is no database to touch", async () => {
+    const response = await harness.request("/health/ready");
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { status: "ok", repository: "ok" });
+  });
+
+  it("has no bare /health any more", async () => {
+    assert.equal((await harness.request("/health")).status, 404);
+  });
+});
+
+describe("readiness cache", () => {
+  /** The health routes over a repository that counts its calls, and a clock the test moves. */
+  function probeApp(list: () => Promise<unknown>) {
+    let clock = 0;
+    let calls = 0;
+    const app = new Hono<Env>();
+    app.use("*", async (c, next) => {
+      c.set("ctx", {
+        health: {},
+        site: { contentRepository: { list: () => (calls++, list()) } },
+      } as unknown as Env["Variables"]["ctx"]);
+      c.set("logger", createLogger({ level: "silent", pretty: false }));
+      await next();
     });
+    app.route("/health", healthRoutes({ cacheMs: 30_000, now: () => clock }));
+    return {
+      ready: () => app.request("/health/ready"),
+      advance: (ms: number) => (clock += ms),
+      calls: () => calls,
+    };
+  }
+
+  it("makes at most one repository call in each cache period", async () => {
+    const health = probeApp(async () => []);
+
+    await Promise.all(Array.from({ length: 20 }, () => health.ready()));
+    health.advance(29_999);
+    assert.equal((await health.ready()).status, 200);
+    assert.equal(health.calls(), 1);
+
+    health.advance(1);
+    await health.ready();
+    assert.equal(health.calls(), 2);
+  });
+
+  it("reports an unreachable repository as 503, and caches that too", async () => {
+    const health = probeApp(async () => {
+      throw new Error("provider down");
+    });
+
+    const first = await health.ready();
+    assert.equal(first.status, 503);
+    assert.deepEqual(await first.json(), { status: "error", repository: "unavailable" });
+    assert.equal((await health.ready()).status, 503);
+    assert.equal(health.calls(), 1);
   });
 });
 
@@ -48,7 +102,7 @@ describe("security headers", () => {
   after(() => harness.close());
 
   it("sends a same-origin Content-Security-Policy on every response", async () => {
-    const response = await harness.request("/health");
+    const response = await harness.request("/health/live");
     const policy = response.headers.get("content-security-policy") ?? "";
     assert.equal(policy, CONTENT_SECURITY_POLICY);
     assert.match(policy, /default-src 'self'/);

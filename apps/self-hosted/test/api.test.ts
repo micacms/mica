@@ -23,17 +23,11 @@ describe("health", () => {
   });
   after(() => harness.close());
 
-  it("reports ok, and actually touches both stores", async () => {
-    const response = await harness.request("/health");
+  it("reports readiness, and actually touches both stores", async () => {
+    const response = await harness.request("/health/ready");
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), {
-      status: "ok",
-      uptimeSeconds: 0,
-      database: "ok",
-      // Named, because a check that does not say which repository it reached
-      // cannot tell a misconfigured content root from a healthy one.
-      repository: harness.contentRoot,
-    });
+    // No origin and no uptime: the endpoint is public (#79).
+    assert.deepEqual(await response.json(), { status: "ok", database: "ok", repository: "ok" });
   });
 });
 

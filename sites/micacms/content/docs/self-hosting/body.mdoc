@@ -104,10 +104,10 @@ cms.example.com {
 ```bash
 docker compose up -d
 docker compose logs mica
-curl -s https://cms.example.com/health
+curl -s https://cms.example.com/health/ready
 ```
 
-You should see a start-up line that names the rule in force, and `/health` should answer with `"status": "ok"`. Open `https://cms.example.com/admin/` and sign in.
+You should see a start-up line that names the rule in force, and `/health/ready` should answer with `"status": "ok"`. Open `https://cms.example.com/admin/` and sign in.
 
 If the container stops, read the log. Mica stops at start-up when `REPOSITORY` is not `github` or `gitlab`, when the project or the token is missing, when no admission rule is set, or when the repository has no content model at `.mica/schema.json`.
 

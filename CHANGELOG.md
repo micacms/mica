@@ -32,6 +32,16 @@ release note before upgrading.
 - The sign-in can no longer send a browser to another site afterwards. Before,
   a return path such as `/\evil.example` passed the check; now the path is
   parsed like a browser does and must be a page of the editor (#87).
+- Anonymous health checks can no longer spend the repository token's API quota,
+  and they no longer show the repository or the uptime (#79).
+
+### Breaking
+
+- `/health` is replaced by `/health/live` (the process only, no I/O) and
+  `/health/ready` (the database and the repository, cached for 30 seconds).
+  The image's `HEALTHCHECK` and `deploy/self-hosted/compose.yml` use
+  `/health/live`. A compose file or a monitor that calls `/health` must change
+  (#79).
 
 ## [0.3.0] — 2026-10-10
 

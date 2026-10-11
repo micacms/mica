@@ -59,14 +59,13 @@ services:
       - mica-data:/data
 
     healthcheck:
-      # Checks both halves: the database that holds drafts, and the content
-      # repository. A container that is listening but cannot reach its
-      # repository cannot save anything, and should not be sent traffic.
+      # Liveness only: a provider outage must not restart the container.
+      # /health/ready checks the database and the repository, for a monitor.
       test:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:6422/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        - "fetch('http://127.0.0.1:6422/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       interval: 30s
       timeout: 5s
       retries: 3

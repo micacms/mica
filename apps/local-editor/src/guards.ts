@@ -10,7 +10,7 @@
  * to names that are this machine.
  *
  * Smaller than what it replaces, standard for exactly this, and applied in
- * front of everything, /health included.
+ * front of everything, the health endpoints included.
  */
 
 import type { MiddlewareHandler } from "hono";

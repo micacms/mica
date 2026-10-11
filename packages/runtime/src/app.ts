@@ -7,7 +7,7 @@
  *         Hono
  *   ┌──────┴───┬──────────┐
  *   │          │          │
- * /api/*    /admin/*   /health
+ * /api/*    /admin/*   /health/live, /health/ready
  *   │          │
  * connector  Vue SPA
  *   │
@@ -84,7 +84,7 @@ export interface CreateAppOptions {
   auth?: AuthSurface;
   /**
    * Extra middleware in front of everything — the local editor's Host
-   * allowlist goes here, so even /health answers only to this machine.
+   * allowlist goes here, so even the health endpoints answer only to this machine.
    */
   guards?: MiddlewareHandler<Env>[];
   /** Where the built admin SPA is served from. */
