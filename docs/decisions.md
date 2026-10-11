@@ -572,8 +572,10 @@ surface, not the admin API.
 
 ### P2 — The project lives in the `micacms` organization
 
-**Decided:** the repository moves to `micacms/micacms` and the image to
-`ghcr.io/micacms/micacms`, before the repository becomes public.
+**Decided:** the repository moves to `micacms/mica` and the image to
+`ghcr.io/micacms/mica`, before the repository becomes public. The product name
+follows the organization, as in `payloadcms/payload`; `cms` alone is too generic
+for a clone directory or a compose file.
 
 **Why:** a public image name cannot move later. GitHub redirects repository
 URLs after a transfer, but not GHCR image names, so a later move breaks every
