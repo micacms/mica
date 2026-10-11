@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Security: refuse an oversized request before reading it: 2 MiB for JSON, and at most 10 files of MAX_UPLOAD_BYTES per upload; the editor uploads in batches",
+      "type": "none",
+      "packageName": "@micacms/runtime"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

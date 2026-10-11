@@ -35,6 +35,7 @@ import {
   allowedOrigins,
   errorHandler,
   originGuard,
+  requestSizeLimit,
   rateLimit,
   requestContext,
   securityHeaders,
@@ -125,6 +126,7 @@ export function createApp(ctx: RuntimeContext, options: CreateAppOptions = {}): 
 
   app.use("/api/*", rateLimit());
   app.use("/api/*", originGuard());
+  app.use("/api/*", requestSizeLimit());
 
   app.route("/api/auth", auth.routes);
 

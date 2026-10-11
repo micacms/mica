@@ -38,6 +38,9 @@ release note before upgrading.
   response carries `Strict-Transport-Security`. In production, the self-hosted
   Mica refuses to start with an `http://` public address, except on loopback
   (#147).
+- An oversized request is refused before it is read into memory: at most
+  2 MiB for JSON, and at most 10 files of `MAX_UPLOAD_BYTES` per upload. The
+  editor uploads a larger selection in batches (#148).
 
 ### Changed
 

@@ -18,6 +18,7 @@ import { Hono } from "hono";
 
 import { badRequest, notFound } from "../lib/errors.js";
 import { isImageType } from "../lib/file-type.js";
+import { MAX_FILES_PER_UPLOAD } from "../middleware/index.js";
 import { actorOf, type Env } from "../http.js";
 
 export function adminMediaRoutes(): Hono<Env> {
@@ -42,6 +43,9 @@ export function adminMediaRoutes(): Hono<Env> {
       .filter((value) => typeof value !== "string") as unknown as File[];
 
     if (files.length === 0) throw badRequest("No file was uploaded.");
+    if (files.length > MAX_FILES_PER_UPLOAD) {
+      throw badRequest(`Upload at most ${MAX_FILES_PER_UPLOAD} files at a time.`);
+    }
 
     const accept = form.get("accept");
     // Where the editor wants the file: an entry's own `media/` directory, or
