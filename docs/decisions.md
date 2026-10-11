@@ -974,6 +974,37 @@ preview is after 1.0.
 
 ---
 
+### P2 — Publish a selection; `required` is checked at Publish, not at Save
+
+**Decided:** the Publish page lets an editor select groups of pending changes.
+Only the selected groups are validated and committed; the rest stays pending
+in the one shared change set. A group keeps together what must not be split:
+an entry, its media and its collection's `_order.json`, both halves of a URL
+change, and any pending shared upload that a selected entry refers to. Save
+checks types and formats, `pattern` and lengths included, but not `required`;
+an entry with a missing required value is saved and marked "incomplete".
+Publish refuses a selected group that is incomplete.
+
+**Why:** with all-or-nothing, a typo fix waits for, or carries, a colleague's
+unfinished article. With `required` at Save, a half-written article cannot be
+saved at all, and closing the tab loses it. The two belong together: a lenient
+Save puts incomplete documents in the change set, and selection is how the
+complete ones get published around them. Selection inside the one change set
+keeps the decision against per-editor drafts.
+
+**Consequence:** the change set can hold documents the site's schema rejects.
+In the local editor, the working tree is the draft workspace, so `astro dev`
+and a local build see an incomplete entry until it is finished. Publish still
+never commits one.
+
+**What would change it:** groups that editors find too coarse, or too
+surprising when a shared upload comes along.
+
+**1.0 status:** should for 1.0; both are in #98. The "One shared pending change set"
+entry gets a note when #98 lands.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
