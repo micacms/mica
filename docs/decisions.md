@@ -621,6 +621,29 @@ before 1.0; then add that line to the CI matrix rather than promise it untested.
 
 ---
 
+### P2 — The local editor runs on Linux, macOS and Windows; the image on amd64 and arm64
+
+**Decided:** the local editor supports Linux, macOS and native Windows, and CI
+runs the core, connectors and local-editor tests on all three. The self-hosted
+image is a multi-architecture image for `linux/amd64` and `linux/arm64`.
+
+**Why:** the people who edit content, and many agencies, work on Windows, and
+the local editor runs `git` and handles file paths, which is where Windows
+differs. Only a CI job keeps that working. Cheap arm64 servers are common at
+the hosts that the self-hosting guide suggests, and Apple Silicon runs an
+amd64 image only under emulation. A public repository gets Windows, macOS and
+native arm64 runners for free, so neither costs QEMU or money.
+
+**Consequence:** the first Windows run will find path defects to fix before
+1.0. Each release builds the image twice.
+
+**What would change it:** a Windows defect class that costs more than it
+serves; then document WSL instead of native Windows.
+
+**1.0 status:** blocker; the matrix is in #131, the image build in #132.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
