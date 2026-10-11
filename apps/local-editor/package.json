@@ -32,7 +32,7 @@
     "@micacms/core": "workspace:*",
     "@micacms/editor-ui": "workspace:*",
     "@micacms/runtime": "workspace:*",
-    "hono": "^4.6.20",
+    "hono": "^4.13.7",
     "zod": "^4.3.6"
   },
   "devDependencies": {

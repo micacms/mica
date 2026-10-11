@@ -25,8 +25,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/runtime
       hono:
-        specifier: ^4.6.20
-        version: 4.13.5
+        specifier: ^4.13.7
+        version: 4.13.13
       zod:
         specifier: ^4.3.6
         version: 4.5.2
@@ -59,8 +59,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/runtime
       hono:
-        specifier: ^4.6.20
-        version: 4.13.5
+        specifier: ^4.13.7
+        version: 4.13.13
       zod:
         specifier: ^4.3.6
         version: 4.5.2
@@ -143,8 +143,8 @@ importers:
         specifier: workspace:*
         version: link:../../runtime
       hono:
-        specifier: ^4.6.20
-        version: 4.13.5
+        specifier: ^4.13.7
+        version: 4.13.13
       openid-client:
         specifier: ^6.8.5
         version: 6.8.7
@@ -246,7 +246,7 @@ importers:
     dependencies:
       '@hono/node-server':
         specifier: ^1.13.8
-        version: 1.19.17(hono@4.13.5)
+        version: 1.19.17(hono@4.13.13)
       '@micacms/connectors':
         specifier: workspace:*
         version: link:../connectors
@@ -254,11 +254,11 @@ importers:
         specifier: workspace:*
         version: link:../core
       hono:
-        specifier: ^4.6.20
-        version: 4.13.5
+        specifier: ^4.13.7
+        version: 4.13.13
       image-size:
-        specifier: ^1.2.0
-        version: 1.2.1
+        specifier: ^2.0.3
+        version: 2.0.4
       zod:
         specifier: ^4.3.6
         version: 4.5.2
@@ -2211,8 +2211,8 @@ packages:
     resolution: {integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==}
     hasBin: true
 
-  hono@4.13.5:
-    resolution: {integrity: sha512-O6+/eCYRkzzzy0rPWwKLiGBR1nFuUPZynnwjxN1MBA62NNqbT0wQEzQyK2gSO5yDIDB336sXQleAhOHrzlYyKw==}
+  hono@4.13.13:
+    resolution: {integrity: sha512-CQ46U0ZkAGmbT/4UxdzzGJpacP2IeKgY4a5/tOI9AABbpOMfK739wfDXmv1usCk+3RkKj1hQy4/fjhiwa2xlrA==}
     engines: {node: '>=16.9.0'}
 
   html-escaper@3.0.3:
@@ -2224,13 +2224,10 @@ packages:
   http-cache-semantics@4.2.0:
     resolution: {integrity: sha512-dTxcvPXqPvXBQpq5dUr6mEMJX4oIEFv6bwom3FDwKRDsuIjjJGANqhBuoAn9c1RQJIdAKav33ED65E2ys+87QQ==}
 
-  image-size@1.2.1:
-    resolution: {integrity: sha512-rH+46sQJ2dlwfjfhCyNx5thzrv+dtmBIhPHk0zgRUukHzZ/kRueTJXoYYsclBaKcSMBWuGbOFXtioLpzTb5euw==}
-    engines: {node: '>=16.x'}
+  image-size@2.0.4:
+    resolution: {integrity: sha512-QRUkFFsRV/6fuESxb9Vkq+a0LkSrgKXuc2NEqfikiXxxN/G3tjWt5EVUlMaImRBZRZK/jRBEbYvpPYZL8t08Zw==}
+    engines: {node: '>=18'}
     hasBin: true
-
-  inherits@2.0.4:
-    resolution: {integrity: sha512-k/vGaX4/Yla3WzyMCvTQOXYeIHvqOKtnqBduzTHpzpQZzAskKMhZ2K+EnBiSM9zGSoIFeMpXKxa4dYeZIQqewQ==}
 
   iron-webcrypto@1.2.1:
     resolution: {integrity: sha512-feOM6FaSr6rEABp/eDfVseKyTMDt+KGpeB35SkVn9Tyn0CqvVsY3EwI0v5i8nMHyJnzCIQf7nsy3p41TPkJZhg==}
@@ -2680,9 +2677,6 @@ packages:
   punycode.js@2.3.1:
     resolution: {integrity: sha512-uxFIHU0YlHYhDQtV4R9J6a52SLx28BCjT+4ieh7IGbgwVJWO+km431c4yRlREUAsAmt/uMjQUyQHNEPf0M39CA==}
     engines: {node: '>=6'}
-
-  queue@6.0.2:
-    resolution: {integrity: sha512-iHZWu+q3IdFZFX36ro/lKBkSvfkztY5Y7HMiPlOUjhupPcG2JMfst2KKEpu5XndviX/3UhFbRngUPNKtgvtZiA==}
 
   quickselect@3.0.0:
     resolution: {integrity: sha512-XdjUArbK4Bm5fLLvlm5KpTFOiOThgfWWI4axAZDWg4E/0mKdZyI9tNEfds27qCi1ze/vwTR16kvmmGhRra3c2g==}
@@ -3608,9 +3602,9 @@ snapshots:
   '@esbuild/win32-x64@0.28.2':
     optional: true
 
-  '@hono/node-server@1.19.17(hono@4.13.5)':
+  '@hono/node-server@1.19.17(hono@4.13.13)':
     dependencies:
-      hono: 4.13.5
+      hono: 4.13.13
 
   '@img/colour@1.1.0': {}
 
@@ -4907,7 +4901,7 @@ snapshots:
 
   he@1.2.0: {}
 
-  hono@4.13.5: {}
+  hono@4.13.13: {}
 
   html-escaper@3.0.3: {}
 
@@ -4915,11 +4909,7 @@ snapshots:
 
   http-cache-semantics@4.2.0: {}
 
-  image-size@1.2.1:
-    dependencies:
-      queue: 6.0.2
-
-  inherits@2.0.4: {}
+  image-size@2.0.4: {}
 
   iron-webcrypto@1.2.1: {}
 
@@ -5349,10 +5339,6 @@ snapshots:
   protocol-buffers-schema@3.6.1: {}
 
   punycode.js@2.3.1: {}
-
-  queue@6.0.2:
-    dependencies:
-      inherits: 2.0.4
 
   quickselect@3.0.0: {}
 
