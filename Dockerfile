@@ -95,9 +95,9 @@ VOLUME ["/data"]
 EXPOSE 6422
 
 # Liveness only: a provider outage must not restart a container that would not
-# be any better for it. /health/ready is for a load balancer or a monitor.
+# be any better for it. /ready is for a load balancer or a monitor.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||6422)+'/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+  CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||6422)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
 ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "dist/index.js"]

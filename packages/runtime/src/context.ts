@@ -93,7 +93,7 @@ export interface RuntimeContext {
   };
   /** App-supplied: what the System page says about the composition. */
   operational(): OperationalInfo;
-  /** App-supplied active probes for /health/ready. Absent means nothing to probe. */
+  /** App-supplied active probes for /ready. Absent means nothing to probe. */
   health: {
     database?: () => void;
   };

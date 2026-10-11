@@ -12,7 +12,7 @@ Host allowlist are what make that safe.
 localhost:6422
        │
        ▼
-      Hono ── /api/*   /admin/*   /health/*
+      Hono ── /api/*   /admin/*   /health   /ready
        │                  │
    connector           Vue SPA (from @micacms/editor-ui)
        │

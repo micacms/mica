@@ -37,12 +37,11 @@ release note before upgrading.
 
 ### Changed
 
-- New `/health/live` (the process only, no I/O) and `/health/ready` (the
-  database and the repository, cached for 30 seconds). `/health` stays, as the
-  same check as `/health/ready`. The image's `HEALTHCHECK` and
-  `deploy/self-hosted/compose.yml` use `/health/live`. The health answer now
-  says `"repository": "ok"` instead of the repository's origin, and has no
-  `uptimeSeconds`; the System view shows both (#79).
+- `/health` now checks only that the process answers, with no I/O, so a
+  provider outage no longer restarts the container. The new `/ready` checks
+  the database and the repository, cached for 30 seconds. Point a monitor that
+  must notice a repository outage at `/ready`. Neither answer shows the
+  repository's origin or the uptime any more; the System view shows both (#79).
 
 ## [0.3.0] — 2026-10-10
 

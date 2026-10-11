@@ -60,12 +60,12 @@ services:
 
     healthcheck:
       # Liveness only: a provider outage must not restart the container.
-      # /health/ready checks the database and the repository, for a monitor.
+      # /ready checks the database and the repository, for a monitor.
       test:
         - CMD
         - node
         - -e
-        - "fetch('http://127.0.0.1:6422/health/live').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+        - "fetch('http://127.0.0.1:6422/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
       interval: 30s
       timeout: 5s
       retries: 3

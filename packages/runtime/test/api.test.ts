@@ -30,19 +30,13 @@ describe("health", () => {
   after(() => harness.close());
 
   it("answers liveness with no detail", async () => {
-    const response = await harness.request("/health/live");
+    const response = await harness.request("/health");
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { status: "ok" });
   });
 
   it("reports readiness without naming the repository — there is no database to touch", async () => {
-    const response = await harness.request("/health/ready");
-    assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { status: "ok", repository: "ok" });
-  });
-
-  it("keeps /health as readiness, so existing checks keep working", async () => {
-    const response = await harness.request("/health");
+    const response = await harness.request("/ready");
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), { status: "ok", repository: "ok" });
   });
@@ -62,9 +56,9 @@ describe("readiness cache", () => {
       c.set("logger", createLogger({ level: "silent", pretty: false }));
       await next();
     });
-    app.route("/health", healthRoutes({ cacheMs: 30_000, now: () => clock }));
+    app.route("/", healthRoutes({ cacheMs: 30_000, now: () => clock }));
     return {
-      ready: () => app.request("/health/ready"),
+      ready: () => app.request("/ready"),
       advance: (ms: number) => (clock += ms),
       calls: () => calls,
     };
@@ -104,7 +98,7 @@ describe("security headers", () => {
   after(() => harness.close());
 
   it("sends a same-origin Content-Security-Policy on every response", async () => {
-    const response = await harness.request("/health/live");
+    const response = await harness.request("/health");
     const policy = response.headers.get("content-security-policy") ?? "";
     assert.equal(policy, CONTENT_SECURITY_POLICY);
     assert.match(policy, /default-src 'self'/);

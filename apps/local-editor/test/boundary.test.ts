@@ -138,7 +138,7 @@ describe("the running composition", () => {
 
   it("refuses any Host that is not this machine", async () => {
     for (const host of ["evil.example", "evil.example:6422", "192.168.1.20:6422"]) {
-      const response = await request("/health/live", { headers: { host } });
+      const response = await request("/health", { headers: { host } });
       assert.equal(response.status, 403, host);
 
       const body = await response.text();
@@ -149,7 +149,7 @@ describe("the running composition", () => {
 
   it("answers the names that are this machine", async () => {
     for (const host of ["localhost:6422", "127.0.0.1:6422", "[::1]:6422", "localhost"]) {
-      const response = await request("/health/live", { headers: { host } });
+      const response = await request("/health", { headers: { host } });
       assert.equal(response.status, 200, host);
     }
   });

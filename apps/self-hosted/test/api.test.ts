@@ -24,7 +24,7 @@ describe("health", () => {
   after(() => harness.close());
 
   it("reports readiness, and actually touches both stores", async () => {
-    const response = await harness.request("/health/ready");
+    const response = await harness.request("/ready");
     assert.equal(response.status, 200);
     // No origin and no uptime: the endpoint is public (#79).
     assert.deepEqual(await response.json(), { status: "ok", database: "ok", repository: "ok" });

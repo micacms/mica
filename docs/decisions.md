@@ -475,8 +475,8 @@ the draft store and nothing about people. See "Sessions are encrypted cookies".
 
 **Decided:** from 1.0, semver covers `@micacms/core`, `@micacms/astro`, the
 `@micacms/editor` CLI, the self-hosted image contract (environment variables,
-port, volume, `/health`, `/health/live` and `/health/ready`), the content format
-and the manifest protocol.
+port, volume, `/health` and `/ready`), the content format and the manifest
+protocol.
 `@micacms/runtime`, `@micacms/auth-oidc`, `@micacms/editor-ui` and
 `@micacms/connectors` are internal: published only because the apps install
 them, pinned exactly by the apps, and free to break in a minor.

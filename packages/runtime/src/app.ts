@@ -7,7 +7,7 @@
  *         Hono
  *   ┌──────┴───┬──────────┐
  *   │          │          │
- * /api/*    /admin/*   /health/live, /health/ready
+ * /api/*    /admin/*   /health   /ready
  *   │          │
  * connector  Vue SPA
  *   │
@@ -104,7 +104,7 @@ export function createApp(ctx: RuntimeContext, options: CreateAppOptions = {}): 
 
   /* ------------------------------------------------------------ health */
 
-  app.route("/health", healthRoutes());
+  app.route("/", healthRoutes());
 
   /* --------------------------------------------------------------- API */
 

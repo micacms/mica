@@ -208,7 +208,7 @@ address and walk past the login rate limit.
 ```bash
 docker compose up -d
 docker compose logs -f mica
-curl -s https://cms.example.com/health/ready
+curl -s https://cms.example.com/ready
 ```
 
 The startup line says which rule is in force, as `admission`. There is nothing
@@ -346,11 +346,11 @@ version rather than tracking `latest`, so an upgrade is a decision.
 Two public endpoints, and neither names the repository or the uptime (the
 System view shows both to editors):
 
-- `GET /health/live` answers `{ "status": "ok" }` while the process runs. It
+- `GET /health` answers `{ "status": "ok" }` while the process runs. It
   does no I/O. The image's `HEALTHCHECK` and the compose file use it, so that a
   provider outage does not restart a container that would not be any better
   for it.
-- `GET /health/ready` checks the database and the content repository:
+- `GET /ready` checks the database and the content repository:
 
   ```json
   { "status": "ok", "database": "ok", "repository": "ok" }
@@ -359,8 +359,7 @@ System view shows both to editors):
   It answers 503, with `"unavailable"` for the failed check, when the database
   is unreadable or the repository is unreachable. Point a load balancer or an
   uptime monitor at it. The result is cached for 30 seconds, so a caller cannot
-  spend the repository token's API quota. `GET /health` is the same check, so
-  an existing monitor or compose file keeps working.
+  spend the repository token's API quota.
 
 It does not check the identity provider. A provider that is briefly unreachable
 should stop new sign-ins, not take a container out of rotation and sign out
