@@ -263,16 +263,23 @@ Authentication, network, 403 and not-found failures exit with 128 and print
 **no** porcelain line (spike S1, S2). Mica takes their class from stderr, with
 `LC_ALL=C`:
 
+The patterns are checked **in this order**. A 403 from GitHub and GitLab also
+contains `unable to access`, so the network pattern must come last.
+
 | stderr | Class |
 | --- | --- |
-| `Authentication failed`, `Invalid username or token`, HTTP 401 | auth |
+| `403`, `remote: Forbidden`, `not allowed to upload code` | `write_forbidden` |
+| `Authentication failed`, `Invalid username or token`, `HTTP Basic: Access denied`, HTTP 401 | auth |
+| `Repository not found`, `repository '…' not found`, `could not be found or you don't have permission` | `repo_not_found`: the repository does not exist, or the token cannot see it (GitHub and GitLab give the same text for both). No retry at start; a message for the operator. A `read_repository` GitLab token gets a 403 here instead, because GitLab checks the scope first. |
 | `unable to access`, `Could not resolve host` | network |
-| `403`, `remote: Forbidden` | `write_forbidden` |
-| `Repository not found`, `repository '…' not found` | `repo_not_found`: the repository does not exist, or the token cannot see it (GitHub gives the same text for both). No retry at start; a message for the operator. |
+
+A protected-branch refusal is different: it exits with **1** and prints a
+porcelain line, `[remote rejected] (pre-receive hook declined)`.
 
 For `[remote rejected]`, Mica keeps the reason from the porcelain line **and**
-the `remote:` lines: GitHub puts the reason only in the porcelain line, Forgejo
-only in the `remote:` lines. A known GitHub reason: an OAuth token without the
+the `remote:` lines: GitHub puts the reason only in the porcelain line;
+Forgejo and GitLab only in the `remote:` lines (GitLab prefixes it with
+`GitLab: `, which Mica strips). A known GitHub reason: an OAuth token without the
 `workflow` scope cannot push a commit that touches `.github/workflows/`. A new file must be added with `git add -- <paths>` before
 `git commit -- <paths>`; the commit alone refuses untracked files.
 
@@ -290,9 +297,10 @@ waits for "Retry push".
 
 - `MICA_REPOSITORY_TOKEN` is the password. `MICA_REPOSITORY_USERNAME` is
   optional; its default follows the host in the URL (from spike S1):
-  `x-access-token` for GitHub. GitHub and Forgejo accept any non-empty
-  username with a token; GitLab and Bitbucket are still to be checked.
-  Startup refuses an empty username: both hosts reject it.
+  `x-access-token` for GitHub, `oauth2` for GitLab, `mica` elsewhere.
+  GitHub, GitLab and Forgejo accept any non-empty username with a token;
+  Bitbucket is not checked. Startup refuses an empty username: GitHub and
+  GitLab reject it.
 - Git gets the credential helper through `GIT_CONFIG_*` environment
   variables: first an empty `credential.helper=` (it clears every other
   helper), then `credential.https://<host>[:<port>].helper` scoped to the
@@ -313,9 +321,13 @@ waits for "Retry push".
 - One function removes credentials from every URL in logs and errors. A test
   checks it.
 
-**Why:** Git over HTTPS needs only `read_repository` + `write_repository` on
-GitLab and "Contents: read and write" on GitHub. That is narrower than the
-`api` scope that the REST connector needs (#169).
+**Why:** Git over HTTPS should need only `read_repository` +
+`write_repository` on GitLab and "Contents: read and write" on GitHub, which is
+narrower than the `api` scope that the REST connector needs (#169). The spike
+confirmed that `api` alone pushes over HTTPS and that `read_repository` alone
+cannot push; a `write_repository` token is still to be checked. GitLab also
+needs a role that may push to the branch: a Developer token cannot push to a
+`main` that is protected for Maintainers (spike S2).
 
 **Known gaps** (section 11): a token rotates only with a restart, so
 short-lived tokens such as GitHub App installation tokens do not fit yet. A
@@ -908,6 +920,18 @@ Forgejo 15.0.9. Scripts and raw results: in the session scratchpad
 | S5 image | **PASS.** git 2.54.0 on Alpine 3.24.2, arm64 and amd64; +13.0 MiB (arm64), +12.4 MiB (amd64). Trivy: 0 CRITICAL; the 8 HIGH findings are the same with and without git (Node's bundled npm). Clone, commit, push and maintenance work in the hardened shape (read-only, `cap_drop: ALL`, non-root); nothing written outside `/data` and `/tmp`. | Without `safe.directory`, Git refuses a repository with another owner; the `GIT_CONFIG_*` form works → set it always (D7). |
 | S7 scale | **PASS, recorded.** 5,000 files, 1.98 GiB of media. Blobless clone 18 s over HTTP; `.git` 2.0 GiB and working tree 2.0 GiB; the clone works with a memory limit down to 64 MB (62 s; 21 s with no limit). `git status` 0.48 s cold, 0.03 s warm. Small sync: fetch 0.21 s, prefetch 0.18 s, conflict check 50 ms, fast-forward 0.03 s. A 207 MiB media sync: prefetch 2.39 s. Publish: commit 0.04 s, push 0.22 s. Reading 1,500 JSON files with Node: 111–156 ms in series, 32–35 ms in parallel. | `.git` grows with every upstream media change → the disk note in D8. `mem_limit: 512m` is enough for Git. Sparse checkout is not needed. |
 
+### Spike results, gitlab.com (12 October 2026)
+
+Run against the private scratch project `alexander.muedespacher/micacms-scratch`
+with two Developer-role project access tokens from the maintainer (`api`, and
+`read_repository`). Four `spike/` branches were created and deleted; nothing
+landed on `main`.
+
+| Item | Result | Change it made |
+| --- | --- | --- |
+| S1 | **PASS.** Blobless single-branch clone, fetch, commit and push with the `api` token. Usernames `oauth2`, `x-access-token`, the login and `anything` all work; an empty one fails. No credential in `.git/config`. The helper answers for `gitlab.com`, `gitlab.com:443` and `GitLab.com`, and gives nothing to `gitlab.com:8443`, `www.gitlab.com` or `github.com`. The `read_repository` token clones and fetches. | D6: default `oauth2`. |
+| S2 | **PASS, recorded.** `read_repository`: the dry run and the push both fail with 128, `remote: You are not allowed to upload code.` and `…returned error: 403`. `api`: the dry run and the push pass. **A Developer token on the protected `main`:** the dry run passes; the real push exits 1 with `[remote rejected] (pre-receive hook declined)` and `remote: GitLab: You are not allowed to push code to protected branches on this project.` | D5: pattern order (403 before network), more patterns, exit 1 with a porcelain line for a protected branch. D6 "Why". D14 confirmed. The self-hosting docs must say: Maintainer role, or allow Developers to push, or an unprotected branch. |
+
 ### Spike results, github.com (12 October 2026)
 
 Run against the private scratch repository `amuedespacher/micacms-scratch`,
@@ -922,10 +946,10 @@ afterwards; no setting was changed.
 
 **Still open:**
 
-- **GitLab and Bitbucket:** S1 and S2 need tokens from the maintainer: one
-  with write access and one read-only, on a scratch project. Record the
-  usernames, the protected-branch behaviour (GitLab Developer role) and the
-  403 texts.
+- **GitLab:** a token with `write_repository` (without `api`), to confirm the
+  narrow scope.
+- **Bitbucket:** skipped by the maintainer; stays "expected to work, not
+  tested" (D15).
 - **GitHub:** the protected-branch case (needs a public scratch repository
   or GitHub Pro), a fine-grained PAT, and a read-only token (cannot be
   created through the API).
