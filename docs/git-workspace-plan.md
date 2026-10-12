@@ -259,9 +259,21 @@ memory, so a restart does not lose it: Mica proceeds only when
 | `write_forbidden`: HTTP 403 (stderr `403`, `remote: Forbidden`), the token can read but not write | `git reset --soft HEAD^`: the commit becomes drafts again. No automatic retry. | "The repository refused this publication. Tell the person who runs Mica." The operator sees "the token cannot write" with the host's message. |
 | `[remote rejected]` (protected branch, server hook, signed commits) | `git reset --soft HEAD^`: the commit becomes drafts again. No automatic retry. The porcelain line says only "(pre-receive hook declined)"; the host's reason is in the `remote:` lines on stderr, so Mica keeps those (trimmed, without credentials). | "The repository refused this publication. Tell the person who runs Mica." The operator sees the host's reason on the System page and in the log. |
 
-Authentication, network and 403 failures exit with 128 and print **no**
-porcelain line (spike S1, S2). Mica takes their class from stderr, with
-`LC_ALL=C`. A new file must be added with `git add -- <paths>` before
+Authentication, network, 403 and not-found failures exit with 128 and print
+**no** porcelain line (spike S1, S2). Mica takes their class from stderr, with
+`LC_ALL=C`:
+
+| stderr | Class |
+| --- | --- |
+| `Authentication failed`, `Invalid username or token`, HTTP 401 | auth |
+| `unable to access`, `Could not resolve host` | network |
+| `403`, `remote: Forbidden` | `write_forbidden` |
+| `Repository not found`, `repository '…' not found` | `repo_not_found`: the repository does not exist, or the token cannot see it (GitHub gives the same text for both). No retry at start; a message for the operator. |
+
+For `[remote rejected]`, Mica keeps the reason from the porcelain line **and**
+the `remote:` lines: GitHub puts the reason only in the porcelain line, Forgejo
+only in the `remote:` lines. A known GitHub reason: an OAuth token without the
+`workflow` scope cannot push a commit that touches `.github/workflows/`. A new file must be added with `git add -- <paths>` before
 `git commit -- <paths>`; the commit alone refuses untracked files.
 
 The managed commit author is the signed-in editor (the OIDC name and email).
@@ -277,14 +289,16 @@ waits for "Retry push".
 **Decided:**
 
 - `MICA_REPOSITORY_TOKEN` is the password. `MICA_REPOSITORY_USERNAME` is
-  optional; its default follows the host in the URL (from spike S1). Forgejo
-  accepts any non-empty username with a token; GitHub, GitLab and Bitbucket
-  are still to be checked.
+  optional; its default follows the host in the URL (from spike S1):
+  `x-access-token` for GitHub. GitHub and Forgejo accept any non-empty
+  username with a token; GitLab and Bitbucket are still to be checked.
+  Startup refuses an empty username: both hosts reject it.
 - Git gets the credential helper through `GIT_CONFIG_*` environment
   variables: first an empty `credential.helper=` (it clears every other
   helper), then `credential.https://<host>[:<port>].helper` scoped to the
   configured host. The key must include a non-default port, or the helper
-  does not answer. The helper answers `get` only, and it reads the token from the
+  does not answer. Git treats the default port as no port, and host names as
+  case-insensitive (spike S1, GitHub). The helper answers `get` only, and it reads the token from the
   process environment. The architecture review showed that an unscoped helper
   gives the token to any host.
 - The `git` process gets an **allowlisted environment**: `PATH`, `HOME`,
@@ -502,8 +516,10 @@ in the codebase to run once.
   fast-forward, so a restart applies a waiting model change.
 - **Access check:** the first fetch proves read access.
   `git push --dry-run --porcelain origin HEAD:refs/heads/<branch>` checks
-  write access. A dry run does not run protected-branch rules, so the docs
-  and the first real refusal (D5) name the GitLab role and branch protection.
+  write access. A dry run proves only authentication and push rights. It does
+  not run protected-branch rules, server hooks or GitHub's `workflow`-scope
+  check, so the docs and the first real refusal (D5) name the GitLab role and
+  branch protection.
 - **Refusal versus degraded start:** startup refuses only when no clone
   exists and cloning fails. With a clone in place, a network failure or an
   authentication failure starts Mica in a degraded state: editing works, the
@@ -892,12 +908,27 @@ Forgejo 15.0.9. Scripts and raw results: in the session scratchpad
 | S5 image | **PASS.** git 2.54.0 on Alpine 3.24.2, arm64 and amd64; +13.0 MiB (arm64), +12.4 MiB (amd64). Trivy: 0 CRITICAL; the 8 HIGH findings are the same with and without git (Node's bundled npm). Clone, commit, push and maintenance work in the hardened shape (read-only, `cap_drop: ALL`, non-root); nothing written outside `/data` and `/tmp`. | Without `safe.directory`, Git refuses a repository with another owner; the `GIT_CONFIG_*` form works → set it always (D7). |
 | S7 scale | **PASS, recorded.** 5,000 files, 1.98 GiB of media. Blobless clone 18 s over HTTP; `.git` 2.0 GiB and working tree 2.0 GiB; the clone works with a memory limit down to 64 MB (62 s; 21 s with no limit). `git status` 0.48 s cold, 0.03 s warm. Small sync: fetch 0.21 s, prefetch 0.18 s, conflict check 50 ms, fast-forward 0.03 s. A 207 MiB media sync: prefetch 2.39 s. Publish: commit 0.04 s, push 0.22 s. Reading 1,500 JSON files with Node: 111–156 ms in series, 32–35 ms in parallel. | `.git` grows with every upstream media change → the disk note in D8. `mem_limit: 512m` is enough for Git. Sparse checkout is not needed. |
 
-**Still open before commit 3 starts:**
+### Spike results, github.com (12 October 2026)
 
-- S1 and S2 on **github.com, gitlab.com and Bitbucket**: they need tokens
-  from the maintainer, one with write access and one read-only for each
-  host, on scratch repositories. Record the usernames, the protected-branch
-  behaviour (GitLab Developer role) and the 403 texts.
+Run against the private scratch repository `amuedespacher/micacms-scratch`,
+`spike/*` branches only, with the `gh` OAuth token (`gho_`, scopes `repo`,
+`read:org`, `gist`), not a fine-grained PAT. All branches were deleted
+afterwards; no setting was changed.
+
+| Item | Result | Change it made |
+| --- | --- | --- |
+| S1 | **PASS.** Blobless single-branch clone, fetch, commit and push over HTTPS with the scoped helper. Usernames `x-access-token`, `oauth2`, the login and `anything` all work; an empty one fails. No credential in `.git/config`. The helper answered nothing for `api.github.com` or for a key of another host. | D6: default username, empty refused, default port. |
+| S2 | **Partly.** The dry run passes to a new branch and finds a non-fast-forward. **Branch protection could not be set:** GitHub needs Pro or a public repository for it. As a stand-in, a push that GitHub refuses (a workflow file without the `workflow` scope) passed the dry run and gave `[remote rejected] (refusing to allow an OAuth App to create or update workflow …)`, with the reason in the porcelain line and no `remote:` lines. | D5: reason from both places, the `repo_not_found` class, the auth patterns. D14: what a dry run proves. |
+
+**Still open:**
+
+- **GitLab and Bitbucket:** S1 and S2 need tokens from the maintainer: one
+  with write access and one read-only, on a scratch project. Record the
+  usernames, the protected-branch behaviour (GitLab Developer role) and the
+  403 texts.
+- **GitHub:** the protected-branch case (needs a public scratch repository
+  or GitHub Pro), a fine-grained PAT, and a read-only token (cannot be
+  created through the API).
 - S3, S6 and D10 in the hardened container, and one hardened run on amd64.
   This is low risk; it can run in CI with commit 3.
 
