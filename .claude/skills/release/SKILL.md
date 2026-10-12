@@ -1,7 +1,7 @@
 ---
 name: release
 description: Cut a Mica release end to end — suggest the bump from the pending change files, write the CHANGELOG section, run the version bump, verify every manifest agrees, and hand over the commit/tag/push that publishes. Use when the user wants to release, bump the version, or run version-bump.
-argument-hint: "[patch|minor|major]"
+argument-hint: "[patch|minor|major|X.Y.Z-rc.N]"
 ---
 
 Cut one Mica release. Everything publishes in lockstep — eight npm packages
@@ -85,3 +85,21 @@ git push origin main --follow-tags
 The release workflow re-runs the full CI gate before publishing, checks the
 tag against every manifest, and builds the GitHub release notes from the
 CHANGELOG section written in step 2.
+
+## A release candidate (`X.Y.Z-rc.N`)
+
+A version with a `-` is a pre-release. The release workflow publishes it to
+npm under `next`, pushes the image without `:latest`, and marks the GitHub
+release as a pre-release.
+
+- Do not run step 3. Set the version with
+  `rush release-version --version X.Y.Z-rc.N`: it consumes no change files,
+  so they stay for the final `X.Y.Z`.
+- Step 2 writes a `## [X.Y.Z-rc.N] — YYYY-MM-DD` section. The final release
+  gets its own `## [X.Y.Z]` section with the full notes.
+- `deploy/self-hosted/compose.yml` then pins the candidate until the final
+  release. Say so to the user.
+- After the candidate: run it on a real website (see "1.0 ships after two
+  weeks of release candidates" in `docs/decisions.md`). A fix gives `rc.N+1`.
+- The final release is a normal release: `rush version-bump` bumps
+  `X.Y.Z-rc.N` to `X.Y.Z` and consumes the change files.

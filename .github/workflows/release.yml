@@ -87,6 +87,8 @@ jobs:
       # `shouldPublish` in rush.json, rewriting `workspace:*` ranges to the
       # real versions as pnpm used to. npm reads provenance from the
       # environment, so the flag survives Rush standing between us and it.
+      # A pre-release (`v0.5.0-rc.1`) goes under `next`, so `npm install`
+      # keeps getting the last release.
       - name: Publish to npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -97,7 +99,8 @@ jobs:
           else
             echo "::notice::Private repository — publishing without provenance."
           fi
-          node common/scripts/install-run-rush.js publish --include-all --publish --set-access-level public
+          case "$GITHUB_REF_NAME" in *-*) tag=next ;; *) tag=latest ;; esac
+          node common/scripts/install-run-rush.js publish --include-all --publish --set-access-level public --tag "$tag"
 
       - name: Release notes from the changelog
         id: notes
@@ -114,7 +117,9 @@ jobs:
       - name: GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md
+        run: |
+          case "$GITHUB_REF_NAME" in *-*) prerelease=--prerelease ;; *) prerelease= ;; esac
+          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md $prerelease
 
   # The image carries the same version. Separate job so a registry outage cannot
   # un-publish npm.
@@ -142,10 +147,13 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # Without the `v`: the tag is `v0.2.0`, the image is `:0.2.0`, and
-      # deploy/self-hosted/compose.yml pins that number.
+      # deploy/self-hosted/compose.yml pins that number. A pre-release does not
+      # move `:latest`.
       - name: The version, without the tag's `v`
         id: version
-        run: echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          case "$GITHUB_REF_NAME" in *-*) echo "latest=" ;; *) echo "latest=ghcr.io/${GITHUB_REPOSITORY}:latest" ;; esac >> "$GITHUB_OUTPUT"
 
       - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         id: build
@@ -157,7 +165,7 @@ jobs:
           provenance: mode=max
           tags: |
             ghcr.io/${{ github.repository }}:${{ steps.version.outputs.value }}
-            ghcr.io/${{ github.repository }}:latest
+            ${{ steps.version.outputs.latest }}
 
       # Keyless: the signature names this workflow and this repository, through
       # GitHub's OIDC token, and is recorded in the public Rekor log.
