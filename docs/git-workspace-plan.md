@@ -325,7 +325,8 @@ waits for "Retry push".
 `write_repository` on GitLab and "Contents: read and write" on GitHub, which is
 narrower than the `api` scope that the REST connector needs (#169). The spike
 confirmed that `api` alone pushes over HTTPS and that `read_repository` alone
-cannot push; a `write_repository` token is still to be checked. GitLab also
+cannot push. A `read_repository` + `write_repository` token clones, fetches and
+pushes, and gets 403 from the REST API: it is enough, and narrower. GitLab also
 needs a role that may push to the branch: a Developer token cannot push to a
 `main` that is protected for Maintainers (spike S2).
 
@@ -946,8 +947,9 @@ afterwards; no setting was changed.
 
 **Still open:**
 
-- **GitLab:** a token with `write_repository` (without `api`), to confirm the
-  narrow scope.
+- ~~GitLab: a token with `write_repository`~~ — done: `read_repository` +
+  `write_repository` clones, fetches, passes the dry run and pushes; the REST
+  API answers 403 `insufficient_scope`.
 - **Bitbucket:** skipped by the maintainer; stays "expected to work, not
   tested" (D15).
 - **GitHub:** the protected-branch case (needs a public scratch repository
