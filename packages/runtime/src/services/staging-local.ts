@@ -160,6 +160,7 @@ export function createWorkingTreeStagingService(
       if (!message) throw badRequest("A publication needs a commit message.");
 
       const tree = await publishable();
+      await policy.prepare(tree);
 
       const revision = await locks.tree.write(async () => {
         const treeChanges = await listTreeChanges(tree);
@@ -197,7 +198,12 @@ export function createWorkingTreeStagingService(
         }
 
         try {
-          const revision = await commitPaths(tree, treeChanges.map((change) => change.path), message);
+          const revision = await commitPaths(
+            tree,
+            treeChanges.map((change) => change.path),
+            message,
+            policy.commitAuthor(input.author),
+          );
           logger.info("Published from the working tree", { revision, files: treeChanges.length });
           return revision;
         } catch (error) {

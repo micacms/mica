@@ -9,13 +9,18 @@
  *
  * Every operation is limited to paths under the content root. Mica never runs
  * `git add -A` over the repository, so unrelated work in the same checkout is
- * never swept into an editor's commit.
+ * never swept into an editor's commit. Paths are passed with
+ * `--literal-pathspecs`: a file called `tour[1].json` is not a pattern that
+ * also matches `tour1.json`.
  */
+
+/** Git's global option that makes every path argument a literal path. */
+export const LITERAL = "--literal-pathspecs";
 
 import { realpath, rm } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
-import type { ContentChange, ContentSource, DirectoryEntry } from "@micacms/core";
+import type { Author, ContentChange, ContentSource, DirectoryEntry } from "@micacms/core";
 import { within } from "@micacms/core/node";
 
 import { GitError, gitRunner, type GitRunner, type GitRunnerOptions } from "./git.js";
@@ -73,6 +78,7 @@ export async function listTreeChanges(tree: GitTree): Promise<TreeChange[]> {
   // `-uall` because Git collapses a fully-untracked directory to one line,
   // and a brand-new entry is exactly that. The change list must name files.
   const raw = await tree.git.run([
+    LITERAL,
     "status",
     "--porcelain=v1",
     "-z",
@@ -86,15 +92,39 @@ export async function listTreeChanges(tree: GitTree): Promise<TreeChange[]> {
 /**
  * Stages and commits exactly `paths` (content-root relative) and returns the
  * new HEAD. The pathspec limits both operations, so anything else in the
- * index or the tree — staged or not — stays where it was.
+ * index or the tree — staged or not — stays where it was. Without an
+ * `author`, Git's configured identity writes the commit.
  */
-export async function commitPaths(tree: GitTree, paths: string[], message: string): Promise<string> {
+export async function commitPaths(
+  tree: GitTree,
+  paths: string[],
+  message: string,
+  author?: Author,
+): Promise<string> {
+  const inRepository = await stagePaths(tree, paths);
+  const as = author ? [`--author=${author.name} <${author.email}>`] : [];
+  await tree.git.run([LITERAL, "commit", "-m", message, ...as, "--", ...inRepository]);
+  return tree.git.run(["rev-parse", "HEAD"]);
+}
+
+/**
+ * Commits `paths` again with the message, author and author date of
+ * `original` — a publication re-made on a newer base after its push was
+ * rejected. Returns the new HEAD.
+ */
+export async function recommitPaths(tree: GitTree, paths: string[], original: string): Promise<string> {
+  const inRepository = await stagePaths(tree, paths);
+  await tree.git.run([LITERAL, "commit", "-C", original, "--", ...inRepository]);
+  return tree.git.run(["rev-parse", "HEAD"]);
+}
+
+/** `git add` first: `git commit -- <paths>` alone refuses a file Git has never seen. */
+async function stagePaths(tree: GitTree, paths: string[]): Promise<string[]> {
   const inRepository = paths.map((path) => inRepo(tree.prefix, path));
   for (const batch of chunked(inRepository, 500)) {
-    await tree.git.run(["add", "-A", "--", ...batch]);
+    await tree.git.run([LITERAL, "add", "-A", "--", ...batch]);
   }
-  await tree.git.run(["commit", "-m", message, "--", ...inRepository]);
-  return tree.git.run(["rev-parse", "HEAD"]);
+  return inRepository;
 }
 
 /** Puts one changed file back to its HEAD version, or removes it if HEAD has none. */
@@ -104,12 +134,13 @@ export async function discardChange(tree: GitTree, change: TreeChange): Promise<
     // already staged is unstaged first, so the index does not keep pointing
     // at a file that is gone.
     if (!change.untracked) {
-      await tree.git.tryRun(["rm", "--cached", "--force", "--", inRepo(tree.prefix, change.path)]);
+      await tree.git.tryRun([LITERAL, "rm", "--cached", "--force", "--", inRepo(tree.prefix, change.path)]);
     }
     await rm(within(tree.contentRoot, change.path), { force: true });
     return;
   }
   await tree.git.run([
+    LITERAL,
     "restore",
     "--source=HEAD",
     "--staged",
@@ -257,7 +288,7 @@ function relativeToContent(repoPath: string, prefix: string): string | null {
 }
 
 /** A content-root-relative path as Git sees it, from the repository root. */
-function inRepo(prefix: string, path: string): string {
+export function inRepo(prefix: string, path: string): string {
   return prefix === "" ? path : join(prefix, path).split(sep).join("/");
 }
 

@@ -21,16 +21,26 @@ export class GitError extends Error {
     message: string,
     readonly stderr: string,
     readonly exitCode: number | null,
+    /** What Git printed before it failed. A rejected push puts its porcelain lines here. */
+    readonly stdout = "",
   ) {
     super(message);
   }
 }
 
+/** Per-call additions to a runner. */
+export interface GitCallOptions {
+  /** Written to Git's stdin, for `--pathspec-from-file=-` and similar. */
+  input?: string;
+  /** Added to the runner's environment for this call only. */
+  env?: NodeJS.ProcessEnv;
+}
+
 export interface GitRunner {
   /** Runs `git` in the runner's directory. Trimmed stdout, or a `GitError`. */
-  run(args: string[]): Promise<string>;
+  run(args: string[], call?: GitCallOptions): Promise<string>;
   /** Like `run`, but null instead of a throw — for questions Git may say no to. */
-  tryRun(args: string[]): Promise<string | null>;
+  tryRun(args: string[], call?: GitCallOptions): Promise<string | null>;
 }
 
 export interface GitRunnerOptions {
@@ -47,14 +57,14 @@ export function developerEnvironment(): NodeJS.ProcessEnv {
 
 export function gitRunner(cwd: string, options: GitRunnerOptions = {}): GitRunner {
   const env = options.env ?? developerEnvironment();
-  const run = (args: string[]): Promise<string> =>
+  const run = (args: string[], call: GitCallOptions = {}): Promise<string> =>
     new Promise((resolve, reject) => {
-      execFile(
+      const child = execFile(
         "git",
         args,
         {
           cwd,
-          env,
+          env: call.env ? { ...env, ...call.env } : env,
           timeout: options.timeoutMs ?? 60_000,
           maxBuffer: options.maxBuffer ?? 10 * 1024 * 1024,
         },
@@ -68,6 +78,7 @@ export function gitRunner(cwd: string, options: GitRunnerOptions = {}): GitRunne
                   : firstLine(stderr) || error.message,
                 stderr,
                 missing ? null : ((error as { code?: number }).code ?? null),
+                stdout,
               ),
             );
             return;
@@ -75,13 +86,14 @@ export function gitRunner(cwd: string, options: GitRunnerOptions = {}): GitRunne
           resolve(stdout.replace(/\n$/, ""));
         },
       );
+      if (call.input !== undefined) child.stdin?.end(call.input);
     });
 
   return {
     run,
-    async tryRun(args) {
+    async tryRun(args, call) {
       try {
-        return await run(args);
+        return await run(args, call);
       } catch {
         return null;
       }

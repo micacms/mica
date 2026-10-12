@@ -30,6 +30,12 @@ export function developerPolicy(options: DeveloperPolicyOptions): OwnerPolicy {
         : { enabled: false, reason: "Publishing from local mode is disabled (MICA_LOCAL_PUBLISH=false)." };
     },
 
+    // The developer's checkout is theirs: Mica never fetches or merges here.
+    async prepare() {},
+
+    // The commit is the developer's, written with their own Git identity.
+    commitAuthor: () => undefined,
+
     async push(tree: GitTree, revision: string): Promise<PublishResult> {
       try {
         await tree.git.run(["push"]);

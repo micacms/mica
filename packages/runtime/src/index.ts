@@ -80,4 +80,36 @@ export {
   type WorkingTreeStagingDeps,
 } from "./services/staging-local.js";
 export { createMediaService, formatBytes, type MediaFile, type MediaService } from "./services/media.js";
+export {
+  developerEnvironment,
+  firstLine,
+  GitError,
+  gitRunner,
+  type GitCallOptions,
+  type GitRunner,
+  type GitRunnerOptions,
+} from "./workspace/git.js";
+export {
+  createMutex,
+  createReadWriteLock,
+  createWorkspaceLocks,
+  lockedConnector,
+  type Mutex,
+  type ReadWriteLock,
+  type WorkspaceLocks,
+} from "./workspace/locks.js";
+export type { OwnerPolicy, PublishAvailability } from "./workspace/policy.js";
+export { developerPolicy, type DeveloperPolicyOptions } from "./workspace/developer.js";
+export {
+  commitPaths,
+  headRevision,
+  inRepo,
+  listTreeChanges,
+  LITERAL,
+  locateTree,
+  parseStatus,
+  recommitPaths,
+  type GitTree,
+  type TreeChange,
+} from "./workspace/tree.js";
 export { schemaStats } from "./lib/schema-stats.js";
