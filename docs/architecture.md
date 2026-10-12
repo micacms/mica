@@ -8,14 +8,14 @@ itself.
 
 ## The one constraint
 
-> Losing Mica's database must never mean losing website content.
+> Losing Mica's data volume must never mean losing website content.
 
-Everything below follows from that sentence. Content lives in a Git repository;
-Mica's own SQLite file holds only the pending draft, and only behind a provider
-repository. A browser session is an encrypted cookie, not a row. Delete the
-repository and you have lost the
-website — which is why the repository is the thing under version control,
-replication and review, and the database is not.
+Everything below follows from that sentence. Content lives in a Git repository.
+Mica keeps no database: the pending drafts are uncommitted files in a working
+tree — the developer's checkout, or the clone a self-hosted Mica keeps on its
+volume. A browser session is an encrypted cookie, not a row. Delete the
+repository and you have lost the website — which is why the repository is the
+thing under version control, replication and review, and Mica's volume is not.
 
 ---
 
@@ -49,14 +49,13 @@ work.
 
 | Package                   | What it is                                                                            |
 | ------------------------- | ------------------------------------------------------------------------------------- |
-| `@micacms/core`           | The field DSL, the content model, the authoring format, and the port contracts |
-| `@micacms/connectors`     | Repository access, and the content store built on it                                  |
+| `@micacms/core`           | The field DSL, the content model, the authoring format, and how content is read |
 | `@micacms/astro`          | Content Layer loader, dev integration, Markdoc rendering                              |
-| `@micacms/runtime`        | The single-site Hono API and application services, authentication-neutral             |
+| `@micacms/runtime`        | The single-site Hono API and services, the working tree's files and Git, authentication-neutral |
 | `@micacms/editor-ui`      | The Vue admin SPA, shipped as built assets                                            |
 | `@micacms/auth-oidc`      | The server-only OIDC gate: sign-in, cookie sessions, admission                               |
 | `@micacms/editor`         | `apps/local-editor` — the `npx` composition: loopback, no auth, no database           |
-| `@micacms/self-hosted`    | `apps/self-hosted` — the Docker composition: runtime + UI behind OIDC                 |
+| `@micacms/self-hosted`    | `apps/self-hosted` — the Docker composition: runtime + UI behind OIDC, on its own clone |
 | `examples/muster-consulting` | A complete Astro site: a starter to copy, not a dependency                            |
 
 **Why the core package is not inside the Astro package.** The editor, the
@@ -92,7 +91,7 @@ image ship without a content model and be handed one at startup.
 
 The loaders write `<content root>/.mica/schema.json` — the model wrapped in a
 small protocol envelope — on every build and dev-server start, and the developer
-commits it. Mica reads it back through the same connector it reads entries with.
+commits it. Mica reads it back from the same working tree it reads entries from.
 
 Written from a loader rather than from an Astro integration, because that is the
 moment both facts are in hand: the model, and the project root that turns
@@ -146,73 +145,73 @@ rather than a rewrite of every entry in the collection.
 ### Saved and Published are different words
 
 A save lands in the site's draft workspace; an explicit **Publish** turns the
-accumulated changes into one commit. The two must never blur: Saved means the
+reviewed changes into one commit. The two must never blur: Saved means the
 work is durable in Mica, and only Published means it is in Git and on its way
 to a deployment.
 
 There is one shared pending change set per site — not one per editor, and no
-approval queue. The draft workspace differs by app, because the two apps
-genuinely differ:
+approval queue. In both apps the draft workspace is a **Git working tree**, and
+a save writes its files. What differs is who owns the tree:
 
-- **A working tree** (the local editor, `REPOSITORY=local`): autosave writes the checkout, which
-  is what lets the Astro dev server hot-reload it. Recent changes is `git
-  status` over the content root; Publish commits exactly the reviewed paths
-  and pushes with the developer's own Git.
-- **A draft store** (self-hosted, `github` / `gitlab` only): writing through a provider API is
-  already a commit, so saves accumulate in SQLite behind a connector overlay,
-  and Publish sends the whole set as one provider-side commit.
+- **The developer's checkout** (the local editor). Autosave writes it, which is
+  what lets the Astro dev server hot-reload it. Publish commits exactly the
+  reviewed paths and pushes with the developer's own Git. Mica never fetches or
+  merges there.
+- **Mica's own clone** (self-hosted). Mica clones the repository into its data
+  volume, keeps it up to date (fetch and fast-forward, never a merge), commits
+  each publication with the editor as author, and pushes it over HTTPS. A
+  change on the website to an entry with a draft is a conflict the editor
+  resolves: keep their version, or take the website's.
 
-There is still no status column on an entry. Release-level staging is a
-branch: point a second Mica at `REPOSITORY_BRANCH=staging` and editors have a
-staging site that is reviewed and merged like any other change.
+Publish sends the reviewed paths with the revision each had, so a file saved
+again since — or another file of the same entry — is never published unseen,
+and a colleague's draft of another entry stays a draft. There is still no
+status column on an entry. Release-level staging is a branch: point a second
+Mica at `MICA_REPOSITORY_BRANCH=staging` and editors have a staging site that
+is reviewed and merged like any other change.
 
 ---
 
 ## Repository access
 
-```ts
-interface RepositoryConnector extends ContentSource {
-  readBinary(path): Promise<Uint8Array | null>;
-  revision(path): Promise<string | null>; // opaque; equality only
-  head(): Promise<string | null>; // the branch head, for display
-  commit(input: CommitInput): Promise<CommitResult>;
-}
+```
+ContentFiles (the working tree's files)       GitTree (Git on that tree)
+  read, list, readBinary, revision, apply       status, commit, push, discard, HEAD reads
+                      \                           /
+                       owner policy: developer | managed
 ```
 
-Five operations. Mica does not implement Git: a Git client inside a server
-would be a working tree to keep in sync, a credential on disk and a merge to
-resolve. (Local publishing does spawn the developer's own `git` binary — the
-one place Git itself is the right tool, precisely because it brings the
-developer's credentials and remotes with it.)
+`ContentFiles` is four operations over the content root — read, list, ask
+whether a file changed, and apply a set of changes as one unit. It is not Git:
+applying changes writes files. Because it extends `ContentSource`, the Astro
+build reading a checkout and the server reading its working tree run **the
+same** discovery and parsing code, and cannot disagree about what a content
+directory means.
 
-Because the interface extends `ContentSource`, the Astro build reading a
-checkout and the server reading a remote repository run **the same** discovery
-and parsing code. They cannot disagree about what a content directory means.
+**One write, or none.** An entry is an `index.json`, its sidecars and its
+media, and a half-written entry is content corruption — so `apply()` writes
+every file beside its target, renames it into place, and undoes the whole set
+on any failure.
 
-| Connector | What it does                                                                         |
-| --------- | ------------------------------------------------------------------------------------ |
-| `local`   | A working tree on disk. Not a Git client: the developer commits with their own tools |
-| `github`  | Git Data API — blob, tree, commit, ref                                               |
-| `gitlab`  | The commits API, which takes a whole change set                                      |
-| `staged`  | A decorator: a draft store overlaid on any of the above. Reads see the repository as it will be once published; `commit()` records into the draft instead of writing |
+**Git is the binary, never a library.** In the local editor that brings the
+developer's credentials and remotes along. On the server, Mica runs `git` with
+an allowlisted environment and its settings from `GIT_CONFIG_*`: no hooks, no
+filters, no symlinks, HTTPS only, and a credential helper that gives the token
+to the configured host alone. Nothing of the repository can make Git run code,
+and the token is never on disk.
 
-**One commit, or none.** An entry is an `index.json`, its sidecars and its
-media, and a half-written entry is content corruption — so `commit()` applies
-everything or nothing. GitHub's Contents API writes one file per commit, which
-is why the GitHub connector goes the longer way round through the Git Data API.
-The local connector earns the same guarantee the hard way: staged writes beside
-their target, renamed into place, with a full rollback on any failure.
+**Locks.** Saves, commits, discards and fast-forwards share one tree, so they
+take a read/write lock; fetch and push take a separate queue, and no network
+call happens while the tree is locked. A slow push never blocks an autosave.
 
-**Concurrency.** Every read carries an opaque `revision`; every write sends
-back the one it was based on. A mismatch is a 409, and the editor's work stays
-in the form. Per path, not per repository head — two editors on different
-entries must never block each other. A `null` revision asserts absence, which is
-how two people creating the same slug produce a conflict rather than a silent
-overwrite. GitHub adds a second layer for free: the ref update is never forced,
-so a push that lands mid-publication is rejected rather than overwritten. The
-draft store records, for every staged path, the repository revision it had
-when first staged — that map is the publish gate, so a branch that moved on
-*other* paths never blocks a publication.
+**Concurrency.** Every read carries an opaque `revision` (a content hash);
+every save sends back the one it was based on. A mismatch is a 409, and the
+editor's work stays in the form. Per entry, not per repository head — two
+editors on different entries never block each other. A `null` revision asserts
+absence, which is how two people creating the same slug produce a conflict
+rather than a silent overwrite. On the server, a push is never forced: a
+rejected one is undone, the clone catches up, and the same commit is made
+again on top.
 
 ---
 
@@ -273,10 +272,10 @@ them is a separate, private product — see [`v3-arch.md`](v3-arch.md) §14.
 
 One runtime, two composition roots. The mode is which app you run.
 
-|                        | Identity             | Repository                   | Database                    |
-| ---------------------- | -------------------- | ---------------------------- | --------------------------- |
-| `@micacms/editor`      | **None** — see below | A working tree, always       | **None**                    |
-| `@micacms/self-hosted` | OIDC                 | A provider connector, always | SQLite: drafts only         |
+|                        | Identity             | Working tree                         | Database |
+| ---------------------- | -------------------- | ------------------------------------ | -------- |
+| `@micacms/editor`      | **None** — see below | The developer's checkout             | **None** |
+| `@micacms/self-hosted` | OIDC                 | Mica's own clone, on its data volume | **None** |
 
 Both compose `@micacms/runtime` — neither forks it — and hand it an
 `AuthSurface`: routes for `/api/auth` plus the gate in front of the admin API.
@@ -289,8 +288,8 @@ statement of fact rather than a bypass.
 `npx @micacms/editor` has no provider, no credential and nobody to be. It does
 not invent a developer account: there is no name, no avatar, no account menu
 and no sign-out, because there is nothing behind any of them. There is no
-session either, and no SQLite file anywhere — the content directory is the
-only place the process writes.
+session either, and no database — the content directory is the only place the
+process writes.
 
 This is the honest resolution of two requirements that genuinely conflict: Mica
 ships no passwords, and a developer cannot be asked to stand up Keycloak before
@@ -308,23 +307,14 @@ Origin check handles cross-site writes as before.
 
 ---
 
-## The operational database
+## Mica's state
 
-SQLite, holding:
-
-```
-drafts                  the pending change set, where saves are staged 
-draft_base              the branch head that pending set began from
-```
-
-No content history, no media library, no revisions, no accounts, no sessions.
-The draft tables hold exactly the current pending change set and are cleared by
-publication; Git stays the history. Losing this database loses work that was
-saved and not yet published, which the self-hosted backup guidance says out
-loud. It signs nobody out. Two rules keep it navigable: SQL is written only by
-the stores that own their tables — drafts and migrations in `apps/self-hosted`
-— and only the runtime's `db/driver.ts` knows which SQLite library is in use.
-The local editor opens no database at all.
+Mica keeps no database. A self-hosted Mica has one data volume, which holds its
+clone of the content repository and, in it, the drafts that are saved and not
+yet published. No content history, no media library, no revisions, no
+accounts, no sessions: Git is the history. Losing the volume loses unpublished
+work and nothing else; it signs nobody out. A clone that holds no draft and no
+unpushed commit can be thrown away and cloned again.
 
 ### Sessions are cookies
 
@@ -340,10 +330,10 @@ the server: a copied cookie stays valid until it expires. Rotating
 from the `MICA_ADMIT_*` rules and restarting refuses them on their next request.
 
 Note the startup order this implies. The content model is _in_ the repository,
-so the self-hosted entry point opens the database, builds the connector from
-the environment, reads the model through the connector, and only then composes
-the application — explicitly, rather than hiding it in the composition root.
-The local editor does the same minus the database.
+so the self-hosted entry point first answers `/health`, then clones or
+recovers its clone, brings it up to date, reads the model from it, and only
+then composes the application — explicitly, rather than hiding it in the
+composition root. The local editor reads the model from the checkout.
 
 ---
 

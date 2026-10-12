@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "Remove the draft-store and repository-port types (`DraftStore`, `memoryDraftStore`, `RepositoryConnector`, `CommitInput`, `Change`, `checkCommitPaths`, `ConnectorError`, `ConflictError`). The working tree's files and their errors are in `@micacms/runtime` now.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

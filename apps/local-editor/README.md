@@ -14,7 +14,7 @@ localhost:6422
        ▼
       Hono ── /api/*   /admin/*   /health   /ready
        │                  │
-   connector           Vue SPA (from @micacms/editor-ui)
+   content files       Vue SPA (from @micacms/editor-ui)
        │
  your working tree  ←— the draft workspace
 ```
@@ -72,7 +72,7 @@ proxies `/api` to the API; the API still needs
 ```
 src/
 ├── cli.ts        the `mica` bin: flags, checks, environment, hand-off
-├── index.ts      the composition: local connector + runtime + editor UI
+├── index.ts      the composition: developer policy + runtime + editor UI
 ├── config.ts     the local slice of the environment, and the refusals
 ├── guards.ts     the Host allowlist
 └── banner.ts     what a person sees instead of log lines
@@ -80,7 +80,7 @@ src/
 
 Everything of substance is elsewhere: the API and services in
 `@micacms/runtime`, the SPA in `@micacms/editor-ui`, the content rules in
-`@micacms/core` and `@micacms/connectors`. This package is the composition the
+`@micacms/core`. This package is the composition the
 architecture calls `apps/local-editor`, published under the name the command
 deserves.
 

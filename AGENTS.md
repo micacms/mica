@@ -20,15 +20,14 @@
 Ask the user before you:
 
 - Add or replace a production or development dependency.
-- Create or apply a database migration.
-- Make a breaking change to a public API, CLI, content format, database schema, or repository protocol.
+- Make a breaking change to a public API, CLI, content format, or repository protocol.
 - Change `examples/muster-consulting` or its contents.
 - Take another action that can break compatibility or cause data loss.
 
 ## Architecture rules
 
 - Git is the source of truth for website content.
-- The SQLite database holds only the drafts that are not published yet. It must not hold website content, sessions, accounts, or memberships.
+- Mica keeps no database. Drafts that are not published yet are uncommitted files in a Git working tree. Mica must not store website history, sessions, accounts, or memberships.
 - Do not add a content API, public media route, media server, or build webhook.
 - Keep `@micacms/core` independent from Astro and other frameworks; its boundary test enforces this.
 - Keep Node-only code out of browser bundles. Put Node-only model exports in the `@micacms/core/node` entry point.
@@ -90,18 +89,17 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 ## Repository map
 
 - `packages/core`: content model, field DSL, validation, serialization, authoring format, and the port contracts.
-- `packages/connectors`: local, GitHub, and GitLab repository access.
 - `packages/astro`: Astro Content Layer integration and Markdoc rendering.
-- `packages/runtime`: the authentication-neutral single-site Hono API and services.
+- `packages/runtime`: the authentication-neutral single-site Hono API and services, the working tree's files, and Git on that tree.
 - `packages/editor-ui`: the Vue administration SPA, shipped as built assets.
 - `packages/auth/oidc`: the server-only OIDC gate (`@micacms/auth-oidc`). Never a dependency of the local editor.
 - `apps/local-editor`: the `npx @micacms/editor` composition — loopback, no auth, no database.
-- `apps/self-hosted`: the Docker composition — runtime and UI behind OIDC, with SQLite.
+- `apps/self-hosted`: the Docker composition — runtime and UI behind OIDC, on a Git clone that it keeps, syncs and pushes itself.
 - `sites/micacms`: public Mica website, and the canonical user documentation (`content/docs`).
 - `examples/muster-consulting`: example website and evolving reference project.
 - `docs`: architecture and decision documentation for contributors. The user guides move to `sites/micacms` (#117).
 - `deploy/self-hosted`: the reference deployment — the Compose file and its `.env.example`.
 - `deploy/demo-identity`: the demo stack with ZITADEL.
 - `tests/e2e`: manual deployed-shape environment with Keycloak. Do not treat it as an automated browser test suite.
-- `tests/oidc`: automated OIDC round trip — the real image against Dex, run by CI. No browser.
+- `tests/oidc`: automated OIDC round trip — the real image against Dex and a Forgejo Git host, run by CI. No browser.
 - `tests/browser`: automated browser test — Playwright drives the editor UI on the `tests/oidc` stack, run by CI.

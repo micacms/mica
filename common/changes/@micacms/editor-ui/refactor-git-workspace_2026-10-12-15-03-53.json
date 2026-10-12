@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "Show changes made on the website to an entry with a draft, and let editors keep their version or take the website's. Show the clone's sync state, publish the reviewed changes, and remove the database from the System page.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor-ui",
+  "email": "alexander@muedespacher.ch"
+}

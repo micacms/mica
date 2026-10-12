@@ -18,7 +18,7 @@ Without other instructions, review `git diff main...HEAD` plus the uncommitted c
 
 ## Project rules to check
 
-- Git is the source of truth for content. SQLite holds only browser sessions and drafts — never content, accounts or memberships.
+- Git is the source of truth for content. Mica keeps no database: drafts are uncommitted files in a Git working tree — never content history, sessions, accounts or memberships.
 - No content API, public media route, media server or build webhook.
 - `@micacms/core` imports no framework. Node-only code is only in `@micacms/core/node`, never in a browser bundle.
 - `@micacms/editor` (apps/local-editor) has no path to `@micacms/auth-oidc`.

@@ -1,6 +1,6 @@
 # Mica on a Git working tree — Refactoring Plan
 
-Status: draft 3, after two review rounds (section 15); approved (section 14)
+Status: implemented on `refactor/git-workspace` (section 16); approved (section 14)
 Last updated: 12 October 2026
 
 ## 1. Purpose
@@ -960,3 +960,42 @@ afterwards; no setting was changed.
 
 Section 13's per-view targets look reachable: the slowest local step of a
 view is reading the files (about 35–160 ms for 1,500 entries).
+
+---
+
+## 16. Implementation record
+
+Built on `refactor/git-workspace` in the commit order of section 7, on 12
+October 2026. Where the code differs from the text above:
+
+- **`REPOSITORY` is gone from the runtime configuration**, not only from the
+  self-hosted app's. The owner policy says whose tree it is; the System page
+  reads `repository.owner`.
+- **`connector` is called `files`** everywhere it holds `ContentFiles` (the
+  runtime options, the media service, the staging service), and
+  `lockedConnector` is `lockedFiles`. The content store's own parameter is
+  `workspace`, because `save()` has a local `files`.
+- **The content store and the routes no longer pass an author or a message
+  to a file write.** Writing files is not a commit; Publish names the author.
+- **`services/staging-local.ts` is `services/staging.ts`**, the only staging
+  service.
+- **`check` works in a temporary repository** (a one-commit blobless fetch,
+  a dry-run push, the model from that commit) and only looks at the volume, so
+  it can run beside the server. The image's entrypoint is now
+  `node dist/index.js`, so `docker compose run --rm mica check` works.
+- **The first checkout uses `git checkout`, not `git restore`**: on a
+  blobless clone, `restore` fetched 200 missing blobs in 200 requests,
+  `checkout` in 2.
+- **The push loop checks the reviewed files again before it re-makes a
+  commit**: a file whose bytes differ from the original commit refuses, and
+  the publication stays a draft.
+- **A conflict carries its comparison target**, so the Publish page compares
+  the draft with the website's version, and the entry and settings pages show
+  their own conflict.
+- **The live workflow** is `live-git.yml` with `apps/self-hosted/test/live.test.ts`.
+  The GitHub half passed by hand against the scratch repository.
+- **Checks:** `rush typecheck` and `rush test` after every commit; the OIDC
+  flow test against the built image and Forgejo after commits 4 and 7 (8 of 8,
+  with a website-side conflict resolved with "Keep my version"). The browser
+  test was not run locally (AGENTS.md); CI runs it.
+

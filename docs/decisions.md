@@ -36,15 +36,17 @@ worse than no review.
 
 **What would change it:** point Mica at a `staging` branch and merge on a human's
 schedule — this already works and needs no code. A pull request per publication
-would be a connector change: both providers can create a branch and a PR, and the
-`RepositoryConnector` interface is where it would go.
+would be a change to the managed owner policy: push to a branch, then open the
+pull request through the host's API — the one feature that would bring a
+provider API back.
 
 **Trigger:** a customer with more than one editor who does not trust all of them,
 or a compliance regime that requires four eyes.
 
 **Built in Phase B.** A save is no longer that commit: it lands in the draft
-workspace — the working tree locally, SQLite behind a provider connector — and
-an explicit Publish writes the accumulated set as one commit. What did not
+workspace — the developer's working tree locally, and since 0.5.0 Mica's own
+clone when self-hosted — and an explicit Publish writes the accumulated set as
+one commit. What did not
 change is the sentence above: publishing writes to the branch, and nothing
 reviews it.
 
@@ -197,8 +199,9 @@ derived from `SESSION_SECRET`. There is no session table. Only the groups a
 rule names are kept, because a cookie holds 4 KB and a provider can send
 hundreds.
 
-**Why:** the database should hold unpublished drafts and nothing about
-people. A session table was the last place Mica stored who somebody is.
+**Why:** Mica's own state should be unpublished drafts and nothing about
+people. A session table was the last place Mica stored who somebody is. Since
+0.5.0 there is no database at all.
 
 **Consequence:** one session cannot be revoked on the server. Sign-out clears
 the cookie in the browser; a copy taken before that stays valid until it
@@ -245,6 +248,11 @@ concurrent sessions still check per-document revisions against the *draft*, so
 one browser cannot silently overwrite a colleague's newer autosave; publishing
 takes the whole set, whoever presses the button.
 
+**Changed in 0.5.0:** both apps keep the pending set as uncommitted files in a
+working tree. Publish commits exactly the paths the editor reviewed; a
+colleague's later autosave on another entry stays a draft instead of joining
+the publication. That is the server half of a selection (#98).
+
 **1.0 status:** accepted for 1.0. Selective publish (#98) lowers the cost.
 
 ---
@@ -259,8 +267,8 @@ of the changes.
 **Why:** credentials. A developer's push already works because of their SSH
 agent, credential helper and remote configuration. The binary inherits all
 three. A library would have to reimplement them, and would do it worse — which
-is the reason [`local.ts`](../packages/connectors/src/local.ts) refuses to be a
-Git client in the first place.
+is the reason [`files.ts`](../packages/runtime/src/workspace/files.ts) refuses to
+be a Git client in the first place.
 
 **Consequence:** `git` must be on the path, and Mica now meets Git's failure
 modes — no upstream, a diverged branch, a rejected push. A commit and a push are
@@ -271,8 +279,7 @@ and a retry must resume rather than repeat.
 never runs `git add -A`, so a developer's unrelated work in the same checkout is
 never swept into an editor's commit.
 
-**What would change it:** nothing foreseen. Self-hosted mode does not use this
-path at all — it publishes through the provider API.
+**What would change it:** nothing foreseen.
 
 **Built in Phase B.** `lib/git.ts` spawns the binary with
 `GIT_TERMINAL_PROMPT=0`, and `services/staging-local.ts` holds the rules: the
@@ -286,11 +293,25 @@ in follows the *connector* (`REPOSITORY`), not `MICA_MODE`.
 **Changed in 0.3.0:** a self-hosted deployment no longer accepts a checkout
 beside it. See "Local Git is the local editor's, never the server's".
 
+**Changed in 0.5.0:** the self-hosted app spawns `git` too, on a clone it owns
+and with an isolated environment instead of the developer's — see "Self-hosted
+Mica keeps its own Git clone". The runner is `workspace/git.ts`, the rules
+`services/staging.ts`, and the developer's half is the developer policy
+(`workspace/developer.ts`). The gate is no longer HEAD: Publish sends the
+reviewed paths with their revisions.
+
 **1.0 status:** accepted for 1.0. The Windows CI job tests it.
 
 ---
 
 ### P2 — Local Git is the local editor's, never the server's
+
+**Superseded in 0.5.0** by "Self-hosted Mica keeps its own Git clone" below.
+Its reasons were about a *developer's checkout* mounted into a server: a
+second credential path, and the hooks and configuration of whatever was
+mounted. A clone that Mica makes and owns has neither — one token, given to
+Git by an isolated environment, and no hooks or filters (see "Git on the
+server is isolated"). The rest of this entry is kept as history.
 
 **Decided:** there are two ways to run Mica, and each reaches the repository
 one way. The local editor works on the developer's checkout and publishes with
@@ -320,14 +341,221 @@ connector for its API, not `git` in the image.
 
 ---
 
+### P2 — Self-hosted Mica keeps its own Git clone
+
+**Decided:** both apps stage saves as uncommitted files in a Git working tree,
+through one staging service. The only difference is the owner: the local
+editor works on the developer's checkout; a self-hosted Mica clones
+`MICA_REPOSITORY_URL` into `MICA_DATA_DIR/repository` and keeps that clone
+itself. There is no database. Publish commits the reviewed files and pushes
+over HTTPS.
+
+**Why:** the provider APIs were slow (one call per read, in series, no cache),
+limited by rate limits, needed GitLab's broad `api` scope, and reached two
+hosts only. The working-tree service already existed and was well tested; the
+draft store duplicated it with a second data model, an overlay and a
+database. One model removed about 2,000 lines and the `@micacms/connectors`
+package.
+
+**Consequence:** the data volume holds the clone and, in it, the unpublished
+drafts — back it up as before. A clone that does not match the configuration
+is thrown away only when it holds no draft and no unpushed commit; otherwise
+Mica refuses to start and says how to get the work out. One Mica per volume:
+there is no lock file, because a stale lock after a crash would block the
+restart. For a hosted offering later, a clean clone can move to a new node,
+and the drafts pin a site to its volume, as the SQLite file did.
+
+**What would change it:** sites whose media outgrows a full checkout of the
+current content; then a bare clone and a draft store again (the "C" variant
+in the plan), or LFS first.
+
+**Built in 0.5.0.** `apps/self-hosted/src/workspace/` (clone, sync, push,
+credentials, isolation), on the runtime's `workspace/` (runner, tree, locks,
+owner policy). The plan and its reviews are in
+[`git-workspace-plan.md`](git-workspace-plan.md).
+
+**1.0 status:** accepted for 1.0.
+
+---
+
+### P2 — Sync never merges, and Mica finds the conflicts itself
+
+**Decided:** the managed clone fetches every `MICA_REPOSITORY_SYNC_SECONDS`
+(default 60), before each publish and on "Try again". It downloads every blob
+the fast-forward needs first, outside the tree lock, then compares upstream
+changes with the drafts **per entry group** — an entry with its files, a
+singleton, an order — and fast-forwards only when none overlap. An overlap is
+a conflict the editor resolves: "Keep my version" (the draft moves onto the
+new head) or "Use the website's version" (the draft is discarded). Mica never
+merges, rebases, stashes or pulls on the server.
+
+**Why:** a server has no person to resolve a merge, and a draft is a set of
+whole files, so file-level choices are enough. Mica checks itself because
+Git's own refusal is not enough: in tests, a fast-forward replaced an
+untracked draft (in a sparse clone, and inside an ignored directory) and let
+a local deletion undo an upstream edit, all without an error. A path-level
+check would mix an entry from two sides, so the unit is the group.
+
+**Consequence:** one conflict holds the fast-forward for every editor until
+somebody chooses, so it is shown on the Dashboard, the Publish page and the
+entry's own page. A change upstream to `.mica/schema.json` holds too, until
+a restart (see "The content model is read once").
+
+**What would change it:** frequent conflicts on different fields of one entry;
+then a merge per field.
+
+**Built in 0.5.0.** Tested for edit against edit, untracked against an add,
+deletion against edit both ways, an upstream `git mv`, `index.json` against
+the same entry's `.mdoc`, and an ignored draft.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
+### P2 — Publish takes the reviewed paths; a refused push becomes drafts again
+
+**Decided:** Publish sends each reviewed path with the revision the editor
+saw. Mica commits exactly those, and refuses only when one of them, or
+another file of the same entry, changed since. On the managed clone there is
+at most one unpushed commit, pushed with an explicit refspec and never forced.
+A push rejected as non-fast-forward is undone, the clone catches up, the
+drafts are checked again (validation and the revisions), and the same commit
+is made again with its author and message. A push the host refuses — a
+protected branch, a server hook, a token that cannot write — turns the commit
+back into drafts and shows the host's reason. A network or authentication
+failure keeps the commit and retries at the next sync.
+
+**Why:** a HEAD gate would refuse a publication after every upstream push,
+even of code, once the clone syncs every minute. Retrying a refusal forever
+would let the clone drift away from the remote.
+
+**Consequence:** the editor is the commit's author and Mica the committer.
+Failures without a porcelain line are classified from stderr in a fixed
+order, because a GitHub or GitLab 403 also contains the network pattern.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
+### P2 — Git on the server is isolated, and the token never touches the disk
+
+**Decided:** the managed clone's `git` runs with an allowlisted environment —
+never `process.env`, which holds `SESSION_SECRET` and the OIDC secret — and
+every setting comes from `GIT_CONFIG_*`: no system or global configuration,
+hooks off, symlinks as plain files, `autocrlf` off, `.git/info/attributes`
+that switch off every filter, `ident` and encoding, only the `https`
+transport (plain `http` only in development on loopback), no submodules,
+literal pathspecs, `safe.directory` set, and gc only after a fetch. The token
+is answered by a credential helper scoped to the configured host and port,
+after an empty `credential.helper` clears any other; it is never in the URL
+or in `.git/config`. Every URL in logs and errors is cleaned.
+
+**Why:** the repository is under someone else's control. These settings close
+every path from repository content to code execution that Git offers. Tests
+showed that an unscoped helper gives the token to any host, and that `ident`
+changes bytes on checkout.
+
+**Consequence:** the token Git needs is narrower than the REST API's: GitHub
+"Contents: read and write"; GitLab `read_repository` + `write_repository`,
+with a role that may push to the branch (a Developer cannot push to a `main`
+protected for Maintainers). A token rotates only with a restart.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
+### P2 — A blobless clone, without sparse checkout
+
+**Decided:** `git clone --filter=blob:none --single-branch`, no history blobs,
+the whole current tree checked out. Sparse checkout is not used. The first
+checkout uses `git checkout`, which fetches missing blobs in one batch.
+
+**Why:** a sparse clone let a fast-forward overwrite an untracked draft
+without an error, and the spike measured that it is not needed: a
+5,000-file, 2 GB repository cloned in 18 s and used a limit of 64 MB of
+memory. `git restore` on a blobless clone fetches each missing blob in its
+own request.
+
+**Consequence:** the volume needs about twice the current content (objects
+and files), and grows with upstream media changes. To shrink it: publish or
+discard every draft, stop Mica, delete `MICA_DATA_DIR/repository`, start.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
+### P2 — A crash in the middle of a fast-forward is finished at the next start
+
+**Decided:** before a fast-forward, Mica writes `MICA_DATA_DIR/operation.json`
+with `from` and `to`, atomically. A start that finds it restores every path
+that changed between them to `to` — the paths `to` has with `git restore`,
+the paths it deleted with `git rm --cached` and an unlink — and moves the
+branch to `to`. "Keep my version" writes its own marker after it copies the
+group's drafts aside. An `index.lock` older than the longest Git call is
+removed at start; a younger one may belong to a process that still runs.
+
+**Why:** without it, a crash during a fast-forward leaves old file versions
+that look like drafts, and the next publication would revert upstream work.
+No copy of the drafts is needed: the fast-forward ran only after the conflict
+check, so no upstream path is a draft. One `restore` over all paths fails as
+a whole when a crash leaves an upstream deletion half done, so it is two
+steps. Tested with `kill -9` at several points of a fast-forward over 6,301
+paths.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
+### P2 — Any Git host over HTTPS; supported means live-tested
+
+**Decided:** the self-hosted Mica uses no provider API, so any Git host over
+HTTPS should work. Support has three tiers:
+
+| Tier | Hosts |
+| --- | --- |
+| Supported (live-tested every week) | github.com and gitlab.com |
+| Tested in CI | Forgejo (`tests/oidc`) |
+| Expected to work, not tested | Bitbucket Cloud, Gitea, GitHub Enterprise Server, self-managed GitLab |
+
+**Why:** it keeps the rule of the entry it replaces: a promise needs a test.
+Forgejo runs in the CI stack; the two hosted services need tokens, so they
+run weekly (`live-git.yml`).
+
+**Consequence:** a defect that appears only on an untested host is fixed when
+somebody reports it. github.com and gitlab.com count as supported only while
+the live runs pass without skipping.
+
+**1.0 status:** blocker until the live runs pass with their secrets (#38).
+
+---
+
+### P2 — No migration of 0.4 drafts
+
+**Decided:** if `MICA_DATA_DIR` holds `cms.sqlite`, Mica 0.5 refuses to start
+and does not open the file. The message, and the 0.5.0 upgrade notes, give
+the order: on 0.4.1 publish or discard everything, stop, delete `cms.sqlite`,
+replace both `compose.yml` and `.env`, turn the project into a URL, narrow the
+token, run `check`, start. Old variable names are refused by name, all in one
+message.
+
+**Why:** the known deployments were trials. Migration code would keep SQLite
+in the codebase to run once.
+
+**Consequence:** deleting `cms.sqlite` without publishing first loses those
+drafts; the message says so.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
 ### P2 — The content model is read once, at startup
 
 **Decided:** Mica reads `.mica/schema.json` out of the content repository when
 the process starts, and holds it for the life of the process. Changing the
 model means restarting.
 
-**Why:** the alternative is re-reading it per request, which is a provider API
-call on every page of the admin, or a cache with an invalidation rule — and the
+**Why:** the alternative is re-reading it per request, or a cache with an
+invalidation rule — and the
 model changes a handful of times in a project's life, always by a developer who
 is already deploying something.
 
@@ -347,10 +575,18 @@ that cannot be restarted casually.
 edge: if the repository gains a model change while a draft is waiting, staged
 content was validated against a model that no longer holds. The answer is the
 expected one — **refuse, name the drift, require a restart**. The manifest's
-revision is recorded at startup; both staging implementations compare it
-immediately before publishing and answer 409 with a message that names the
-restart. Nothing is discarded: the draft survives, and after the restart it is
+revision is recorded at startup; the staging service compares it immediately
+before publishing and answers 409 with a message that names the restart. Nothing is discarded: the draft survives, and after the restart it is
 re-validated against the new model like any other pending set.
+
+**Changed in 0.5.0:** a clone that Mica keeps up to date by itself would bring
+a model change in under a running server. So a sync that would change
+`.mica/schema.json` (or a `.gitattributes` that applies to the content root)
+holds before the fast-forward and asks for a restart: saves go on with the
+loaded model, Publish waits, and the restart fast-forwards and then reads the
+new model. Saving with the old model after the change would drop the new
+fields, because `serializeEntry` writes only declared keys. #81 (reload
+without a restart) becomes more useful with this.
 
 **1.0 status:** accepted for 1.0.
 
@@ -381,6 +617,10 @@ assumes exactly one.
 ---
 
 ### P2 — A provider connector reads the content tree on every commit
+
+**Superseded in 0.5.0:** there are no provider connectors. Reads come from the
+working tree on disk, and a publication is a local commit and one push. Kept
+as history.
 
 **Decided:** `commit()` fetches the whole content tree before writing, to check
 `expect` and to expand `deleteTree`.
@@ -430,6 +670,11 @@ chafe. MapLibre + their own tile key, behind an optional `MAP_STYLE_URL`.
 
 ### P2 — `node:sqlite` rather than `better-sqlite3`
 
+**Superseded in 0.5.0:** Mica keeps no database. The drafts are files in a Git
+working tree, and the SQLite driver, the migrations and the draft store are
+removed. A 0.4 data volume with `cms.sqlite` is refused at start — see "No
+migration of 0.4 drafts". Kept as history.
+
 **Decided:** the built-in driver, behind the `SqlDatabase` interface in
 `db/driver.ts`.
 
@@ -477,8 +722,8 @@ the draft store and nothing about people. See "Sessions are encrypted cookies".
 `@micacms/editor` CLI, the self-hosted image contract (environment variables,
 port, volume, `/health` and `/ready`), the content format and the manifest
 protocol.
-`@micacms/runtime`, `@micacms/auth-oidc`, `@micacms/editor-ui` and
-`@micacms/connectors` are internal: published only because the apps install
+`@micacms/runtime`, `@micacms/auth-oidc` and `@micacms/editor-ui` are internal
+(`@micacms/connectors` was, until 0.5.0 removed it): published only because the apps install
 them, pinned exactly by the apps, and free to break in a minor.
 
 **Why:** all packages share one lockstep version, so a public `runtime` would
@@ -549,13 +794,13 @@ flags win over it.
 | --- | --- |
 | `LOG_LEVEL` | `MICA_LOG_LEVEL` |
 | `CONTENT_ROOT` | `MICA_CONTENT_ROOT` |
-| `REPOSITORY`, `REPOSITORY_*` | `MICA_REPOSITORY`, `MICA_REPOSITORY_*` |
+| `REPOSITORY`, `REPOSITORY_*` | `MICA_REPOSITORY_URL`, `MICA_REPOSITORY_*` (done in 0.5.0; `REPOSITORY` and `REPOSITORY_API_BASE` are gone, the URL says it all) |
 | `SESSION_SECRET`, `SESSION_*_HOURS` | `MICA_SESSION_SECRET`, `MICA_SESSION_*_HOURS` |
 | `LOGIN_MAX_ATTEMPTS`, `LOGIN_WINDOW_MS` | `MICA_SIGNIN_MAX_ATTEMPTS`, `MICA_SIGNIN_WINDOW_MS` |
 | `MAX_UPLOAD_BYTES` | `MICA_MAX_UPLOAD_BYTES` |
 | `TRUST_PROXY` | `MICA_TRUST_PROXY` |
 | `ADMIN_ORIGINS`, `ADMIN_DIR` | `MICA_ADMIN_ORIGINS`, `MICA_ADMIN_DIR` |
-| `DATA_DIR`, `DATABASE_PATH` | `MICA_DATA_DIR`, `MICA_DATABASE_PATH` |
+| `DATA_DIR`, `DATABASE_PATH` | `MICA_DATA_DIR` (done in 0.5.0); `DATABASE_PATH` is gone with the database |
 | `MICA_ADMIT_GROUP`, `MICA_ADMIT_DOMAIN` | `MICA_ADMIT_GROUPS`, `MICA_ADMIT_DOMAINS` |
 
 **Why:** an unprefixed name such as `REPOSITORY_TOKEN` or `SESSION_SECRET`
@@ -639,9 +884,8 @@ one minor before. A new Astro major is added in a minor once CI covers it;
 removing an Astro major is a Mica major.
 
 **Why:** the image and CI already run Node 24, and only what CI tests is
-supported. Node 22 reaches its end of life on 2027-04-30, close to 1.0, and
-its `node:sqlite` starts only from 22.13 and with an ExperimentalWarning
-(#130). Astro 6 is in the peer range today but no test covers it. Removing an
+supported. Node 22 reaches its end of life on 2027-04-30, close to 1.0. (Its
+`node:sqlite` was a second reason until 0.5.0 removed the database.) Astro 6 is in the peer range today but no test covers it. Removing an
 end-of-life Node in a minor is common FOSS practice, and the alternative keeps
 an unmaintained runtime in the matrix for all of 1.x.
 
@@ -659,7 +903,8 @@ before 1.0; then add that line to the CI matrix rather than promise it untested.
 
 **Decided:** the local editor supports Linux, macOS and native Windows, and CI
 runs the core, connectors and local-editor tests on all three. The self-hosted
-image is a multi-architecture image for `linux/amd64` and `linux/arm64`.
+image is a multi-architecture image for `linux/amd64` and `linux/arm64`, and
+carries `git` for both.
 
 **Why:** the people who edit content, and many agencies, work on Windows, and
 the local editor runs `git` and handles file paths, which is where Windows
@@ -679,6 +924,10 @@ serves; then document WSL instead of native Windows.
 ---
 
 ### P2 — github.com and gitlab.com are supported; self-managed providers are experimental
+
+**Superseded in 0.5.0** by "Any Git host over HTTPS; supported means
+live-tested". The rule it set — supported means live-tested — carries over.
+Kept as history.
 
 **Decided:** the supported providers of the self-hosted Mica are github.com and
 gitlab.com. GitHub Enterprise Server and self-managed GitLab are
@@ -711,11 +960,11 @@ fixture of that size and fail when a view exceeds its call or time budget.
 Above these numbers, Mica can work, but it makes no promise.
 
 **Why:** this covers brochure and agency sites with a blog or news archive,
-which is who Mica is for. The limit that matters first is the provider's rate
-limit, not the entry count: 5 active editors at about 5 calls per view can pass
-GitHub's 5,000 calls per hour per token without the warm-cache budgets of #73
-to #76. Search filters in the browser, which is fine at 1,000 entries. A larger
-target needs server-side search and paged tree reads.
+which is who Mica is for. Search filters in the browser, which is fine at 1,000
+entries. A larger target needs server-side search and paging. (Until 0.5.0 the
+first limit was the provider's rate limit; reads now come from the clone on
+disk, and the spike measured a 5,000-file, 2 GB clone at 18 s and a normal
+sync at under a second.)
 
 **Consequence:** a site with a larger archive must split it into more
 collections or accept unmeasured performance.
@@ -989,8 +1238,9 @@ An optional model option, such as `url: "/news/{slug}"`, together with
 publish. It is only a link. A docs page describes the staging-branch setup and
 the deploy previews of the common hosts. A live draft preview comes after 1.0.
 
-**Why:** drafts live in the draft store, not in Git, so a host's deploy preview
-cannot see them, and Mica must not call the website or trigger a build. A link
+**Why:** drafts are uncommitted files in Mica's clone, not on any branch the
+host builds, so a host's deploy preview cannot see them, and Mica must not
+call the website or trigger a build. A link
 couples nothing. A staging branch with a second Mica already gives a reviewed
 preview with no code.
 
@@ -1001,7 +1251,9 @@ it.
 **What would change it:** editors who publish to check their work. The next
 step is a "Preview" action that force-pushes the pending change set to a branch
 such as `mica/preview` for the host to build: Git only, no webhook, at the
-cost of build minutes and a second branch that Mica writes.
+cost of build minutes and a second branch that Mica writes. Since 0.5.0 Mica
+pushes with Git itself, so this is a commit on a second branch rather than a
+second API.
 
 **1.0 status:** should for 1.0; the link and the docs are in #103. The live
 preview is after 1.0.
@@ -1034,8 +1286,14 @@ never commits one.
 **What would change it:** groups that editors find too coarse, or too
 surprising when a shared upload comes along.
 
+**Built in 0.5.0, the server half:** Publish takes the reviewed paths with the
+revision each had in the review, commits exactly those, and refuses only when
+one of them, or another file of the same entry, changed since. The Publish
+page still sends every pending path; the selection UI and `required` at
+Publish are still #98.
+
 **1.0 status:** should for 1.0; both are in #98. The "One shared pending change
-set" entry gets a note when #98 lands.
+set" entry has its note.
 
 ---
 
@@ -1085,7 +1343,15 @@ The fix stays in Git and is one revert away, and the commit says which one.
 **What would change it:** frequent conflicts on the same fields; then merge per
 field, which is after 1.0.
 
-**1.0 status:** should for 1.0; the actions are in #97.
+**Built in 0.5.0, in part:** a change on the website to an entry that has a
+draft in Mica's clone is a conflict, per entry. The Publish page compares the
+draft with the website's version (`origin/<branch>`, not HEAD) and offers
+"Keep my version" and "Use the website's version"; Keep mine moves the draft
+onto the new head exactly as above. The server logs the choice. The commit
+trailer that names the replaced revision is still to do.
+
+**1.0 status:** should for 1.0; the trailer, and conflicts on save in the
+local editor, are in #97.
 
 ---
 
@@ -1279,8 +1545,7 @@ removal and an addition. A small entry whose title and URL change together can
 fall under the threshold in Git too, and its history then stops at the rename.
 
 **What would change it:** a rename recorded explicitly in the draft workspace.
-The working tree has no place for that record, so both workspaces would need
-one first.
+The working tree has no place for that record, so it would need one first.
 
 **1.0 status:** accepted for 1.0.
 
@@ -1343,22 +1608,29 @@ without a break.
   `deploy/demo-identity/compose.yml` (ZITADEL), run by hand. A claim whose name
   and shape differ per provider is exactly what a unit test cannot check.
   **1.0 status:** accepted for 1.0.
-- **P2** — The GitLab connector is tested against a stub only. The
-  `live-connectors` workflow (`packages/connectors/test/live.test.ts`) can
-  commit to a scratch project on gitlab.com, but no token is configured yet, so
-  it skips GitLab. Configure `MICA_LIVE_GITLAB_TOKEN` and
-  `MICA_LIVE_GITLAB_PROJECT` to close this. The scope is settled: the REST API
-  needs `api`, because `write_repository` covers only `git push` (found in the
-  first external adoption, #169). The live token must have exactly `api`. Open:
-  whether a Developer-role token can publish to a protected branch.
+- **P2** — The live workflow needs its secrets. `live-git.yml` runs
+  `apps/self-hosted/test/live.test.ts` every Monday against scratch
+  repositories on github.com and gitlab.com: clone, write check, one
+  publication, push. It skips a host whose `MICA_LIVE_*` token or repository is
+  not set, and the skip shows. The GitHub half passed by hand on 12 October
+  2026; the secrets are not configured yet. Self-managed hosts and GitHub
+  Enterprise Server stay untested.
   **1.0 status:** blocker (#38).
-- **P2** — The GitHub connector is not yet tested live. The `live-connectors`
-  workflow can commit to the scratch repository `amuedespacher/micacms-scratch`
-  every Monday and on demand, but the secret `MICA_LIVE_GITHUB_TOKEN` is not
-  set yet, so it skips GitHub. When it is set, this becomes P3: pull requests
-  still test against a stub only, because a fork cannot read the secret. `REPOSITORY_API_BASE` against GitHub Enterprise Server or a
-  self-managed GitLab is still untested.
-  **1.0 status:** blocker (#38).
+- **P2** — Git LFS under the content root is refused. Without the LFS filter,
+  Mica would commit whole files where LFS should hold pointers, so it stops
+  at start (and holds a sync) when a `.gitattributes` assigns `filter=lfs`
+  under the root. Support needs the filter configured before the first
+  checkout, `lfs.url` from the environment and `git lfs push` before each
+  push; the plan has the details.
+  **1.0 status:** after 1.0, before the first adopter with large media.
+- **P3** — Only HTTPS remotes. SSH deploy keys, a private CA
+  (`http.sslCAInfo`) and a token that rotates without a restart (a GitHub App
+  installation token lives an hour) are not supported yet.
+  **1.0 status:** on demand.
+- **P3** — A host that requires signed commits, or that allows changes only
+  through pull requests, refuses Mica's push. Mica turns the publication back
+  into drafts and shows the host's reason; it cannot sign or open a request.
+  **1.0 status:** on demand.
 - **P3** — Entry search filters in the browser over the whole collection. Fine at
   the stated scale (hundreds to low thousands); a repository large enough to
   need an index is a repository large enough to need a different design.
@@ -1379,10 +1651,10 @@ knowing the reasoning stops someone reintroducing the problem.
 
   Staging needed one narrow exception, and it is not that route. An image that
   is uploaded and not yet published is not in the repository, so the editor
-  cannot show it from there. Phase B built it without a new route at all: the
-  existing **authenticated** admin media route reads through the staged
-  overlay, so pending uploads are served from the draft store behind the same
-  session as everything else, and nothing is reachable signed-out. If media
+  cannot show it from there. It is served without a new route at all: the
+  existing **authenticated** admin media route reads the working tree, so
+  pending uploads are served behind the same session as everything else, and
+  nothing is reachable signed-out. If media
   bytes are ever served without a session, the public media route this
   decision forbids has come back.
 - **Publishing is not a webhook.** A push is the trigger. An in-process queue
@@ -1392,9 +1664,9 @@ knowing the reasoning stops someone reintroducing the problem.
 - **Rich text is Markdoc, never HTML.** The editor converts at the boundary and
   must never call Tiptap's `getHTML()` — see `packages/editor-ui/src/lib/markdoc.ts`.
 - **Git is the history.** No revision table, no retention policy, nothing to
-  prune. The draft store is not a second history and must never become one: it
-  holds exactly the current pending change set, and a successful publication
-  clears what it published.
+  prune. The drafts are not a second history and must never become one: the
+  working tree holds exactly the current pending change set, and a
+  publication commits what it published.
 - **The local editor carries no auth code.** `@micacms/editor` installs no OIDC
   dependency and bundles no auth code.
   `apps/local-editor/test/boundary.test.ts` checks the resolved dependency

@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/self-hosted",
+      "comment": "Keep a Git clone of the content repository on the data volume instead of a SQLite draft store and the GitHub and GitLab APIs. Configure it with `MICA_REPOSITORY_URL` and `MICA_REPOSITORY_TOKEN` (`REPOSITORY`, `REPOSITORY_*`, `DATA_DIR` and `DATABASE_PATH` are refused), check a setup with the `check` command, and resolve conflicts with changes made on the website. Any Git host over HTTPS should work; GitLab needs only `read_repository` and `write_repository`.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/self-hosted",
+  "email": "alexander@muedespacher.ch"
+}

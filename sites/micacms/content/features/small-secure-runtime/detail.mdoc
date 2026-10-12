@@ -4,4 +4,4 @@ One setting says who can edit: a group from your provider, a verified email doma
 
 Mica reads the rule on each request, thus a change to the rule is immediate. A change in your provider is not: Mica uses the data that the provider sent at sign-in, and gets new data at the next sign-in. Sessions therefore continue for hours, not weeks.
 
-Sessions are encrypted cookies, thus Mica keeps no session list. The only database is the SQLite file of the self-hosted editor, and it holds unpublished drafts only. The local editor has no database. It never holds the published website. If it is lost, unpublished drafts are gone and everything published is still in the repository.
+Sessions are encrypted cookies, thus Mica keeps no session list. Mica has no database. The self-hosted editor keeps a Git clone of your repository on its data volume, and the unpublished drafts are files in that clone. The local editor uses your own checkout. If the volume is lost, unpublished drafts are gone and everything published is still in the repository.

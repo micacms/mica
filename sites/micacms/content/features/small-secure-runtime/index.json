@@ -3,7 +3,7 @@
   "slug": "small-secure-runtime",
   "icon": "shield",
   "eyebrow": "Operate less",
-  "summary": "Deploy one container. OpenID Connect gives identity, and one setting gives permission. Sessions are encrypted cookies, and SQLite holds only unpublished drafts.",
+  "summary": "Deploy one container. OpenID Connect gives identity, and one setting gives permission. Sessions are encrypted cookies, and there is no database.",
   "outcomes": [
     {
       "text": "No passwords or accounts in Mica"

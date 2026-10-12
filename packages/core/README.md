@@ -4,8 +4,8 @@
 > without notice. Use it at your own risk.
 
 The core of Mica — a Git-native content editor for static Astro websites: the
-content model, the format its entries take on disk, and the provider-neutral
-`RepositoryConnector` port every repository adapter implements.
+content model, the format its entries take on disk, and the `ContentSource`
+contract that everything reads through.
 
 Formerly published as `@micacms/model`.
 
@@ -47,7 +47,7 @@ group. Zod is generated from the DSL, not the other way round.
   arrived in.
 - **How content is read.** A `ContentSource` is the small interface everything
   reads through. `@micacms/core/node` provides `fileSystemSource(root)` for a
-  working tree; `@micacms/connectors` provides the ones backed by a provider.
+  working tree.
 - **How a project describes itself to Mica.** `createManifest(site, by)` wraps
   the model in a versioned envelope, which `@micacms/astro` writes to
   `MANIFEST_PATH` (`.mica/schema.json`) inside the content root. Mica reads it
