@@ -1,11 +1,11 @@
 /**
  * Health endpoints for container orchestration and uptime monitoring.
  *
- *   /health  the process answers. No I/O: a provider outage must not restart
+ *   /health  the process answers. No I/O: a repository outage must not restart
  *            a container that would not be any better for it.
- *   /ready   the database, where the composition has one, and the content
- *            repository. Cached, because each probe spends one call of the
- *            repository token's quota and anybody can ask.
+ *   /ready   the content repository: the composition's own answer where it
+ *            keeps one, otherwise a read of the working tree. Cached, because
+ *            anybody can ask.
  *
  * Neither answer names the repository or the uptime: the endpoints are public,
  * and the System view shows both to editors (#79).
@@ -19,7 +19,6 @@ type Check = "ok" | "unavailable";
 
 interface Readiness {
   status: "ok" | "error";
-  database?: Check;
   repository: Check;
   /** Short codes from the composition, such as `sync_failing`. */
   reasons?: string[];
@@ -55,30 +54,12 @@ export function healthRoutes(options: HealthOptions = {}): Hono<Env> {
 async function probe(c: Context<Env>): Promise<Readiness> {
   const ctx = c.get("ctx");
   const logger = c.get("logger");
-  let database: Check | undefined;
-
-  // A probe only where the composition has a database. The local editor does
-  // not, and a health check must not invent one to report on.
-  if (ctx.health.database) {
-    try {
-      ctx.health.database();
-      database = "ok";
-    } catch (error) {
-      logger.error("Health check failed", { error: String(error) });
-      database = "unavailable";
-    }
-  }
 
   // A composition that keeps its own state answers for itself: a managed
   // clone knows whether it can be edited without asking the remote.
   if (ctx.health.ready) {
     const { ok, reasons } = ctx.health.ready();
-    return {
-      status: ok && database !== "unavailable" ? "ok" : "error",
-      ...(database ? { database } : {}),
-      repository: ok ? "ok" : "unavailable",
-      reasons,
-    };
+    return { status: ok ? "ok" : "error", repository: ok ? "ok" : "unavailable", reasons };
   }
 
   // `list` on a missing root returns an empty array rather than throwing, so
@@ -91,6 +72,5 @@ async function probe(c: Context<Env>): Promise<Readiness> {
     repository = "unavailable";
   }
 
-  const ok = repository === "ok" && database !== "unavailable";
-  return { status: ok ? "ok" : "error", ...(database ? { database } : {}), repository };
+  return { status: repository === "ok" ? "ok" : "error", repository };
 }

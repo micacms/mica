@@ -3,29 +3,20 @@
  * is allowed in.
  *
  * Everything is constructed here and passed down explicitly — no module-level
- * singletons, no service locator. The composing app builds the connector and,
- * where one exists, the draft store and the database; the runtime receives
- * them and never asks where they came from. That is what keeps this package
- * authentication-neutral and database-free on a developer's machine: the
- * local editor simply never hands it either.
+ * singletons, no service locator. The composing app builds the connector over
+ * its working tree and, where it owns the tree, the owner policy; the runtime
+ * receives them and never asks where they came from. That is what keeps this
+ * package authentication-neutral.
  */
 
-import {
-  createContentStore,
-  githubConnector,
-  gitlabConnector,
-  localConnector,
-  stagedConnector,
-  type ContentStore,
-} from "@micacms/connectors";
-import type { DraftStore, RepositoryConnector, Site } from "@micacms/core";
+import { createContentStore, type ContentStore } from "@micacms/connectors";
+import type { RepositoryConnector, Site } from "@micacms/core";
 
 import type { RuntimeConfig } from "./config.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
 import { createMediaService, type MediaService } from "./services/media.js";
 import type { ContentStagingService } from "./services/changes.js";
-import { createDraftStagingService } from "./services/staging.js";
 import { createWorkingTreeStagingService } from "./services/staging-local.js";
 import { createWorkspaceLocks, lockedConnector, type WorkspaceLocks } from "./workspace/locks.js";
 import type { OwnerPolicy } from "./workspace/policy.js";
@@ -45,9 +36,8 @@ export interface SiteContext {
   /** The content model, read from the repository at startup. */
   model: Site;
   /**
-   * What everything reads and saves through. With a draft store this is the
-   * staged overlay — saves land in the draft, and only the staging service's
-   * Publish reaches the repository itself.
+   * What everything reads and saves through: the working tree, behind the
+   * workspace locks. Only the staging service's Publish turns it into a commit.
    */
   contentRepository: RepositoryConnector;
   /**
@@ -85,8 +75,6 @@ export interface OperationalInfo {
 
 /** What /ready asks the composition. */
 export interface RuntimeHealth {
-  /** Throws when the database cannot answer. */
-  database?: () => void;
   /**
    * The composition's own answer, which replaces the repository probe:
    * whether the site can be edited, and short reason codes. Never names the
@@ -118,14 +106,8 @@ export interface RuntimeContext {
 export interface CreateRuntimeContextOptions {
   config: RuntimeConfig;
   model: Site;
-  /** How the content repository is reached. The app builds it. */
+  /** The working tree's files, without locks. The app builds it. */
   connector: RepositoryConnector;
-  /**
-   * Where saves accumulate when the repository is remote. Absent means the
-   * working tree is the draft workspace — the local editor, or a self-hosted
-   * deployment with a checkout beside it.
-   */
-  drafts?: DraftStore;
   /** Revision of the manifest the model was read from. Null when unknown. */
   schemaRevision?: string | null;
   siteId?: string;
@@ -142,7 +124,7 @@ export interface CreateRuntimeContextOptions {
 }
 
 export function createRuntimeContext(options: CreateRuntimeContextOptions): RuntimeContext {
-  const { config, model, drafts } = options;
+  const { config, model } = options;
 
   const logger =
     options.logger ??
@@ -160,9 +142,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
   const site: SiteContext = {
     id: options.siteId ?? DEFAULT_SITE_ID,
     model,
-    contentRepository: drafts
-      ? stagedConnector(options.connector, drafts)
-      : lockedConnector(options.connector, locks.tree),
+    contentRepository: lockedConnector(options.connector, locks.tree),
     schemaRevision,
   };
 
@@ -172,25 +152,17 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
       connector: site.contentRepository,
       maxBytes: config.MAX_UPLOAD_BYTES,
     }),
-    staging: drafts
-      ? createDraftStagingService({
-          model,
-          drafts,
-          repository: options.connector,
-          overlay: site.contentRepository,
-          schemaRevision,
-        })
-      : createWorkingTreeStagingService({
-          model,
-          connector: options.connector,
-          contentRoot: config.contentRoot,
-          schemaRevision,
-          publishEnabled: config.MICA_LOCAL_PUBLISH,
-          logger,
-          locks,
-          ...(options.policy ? { policy: options.policy } : {}),
-          ...(options.tree ? { tree: options.tree } : {}),
-        }),
+    staging: createWorkingTreeStagingService({
+      model,
+      connector: options.connector,
+      contentRoot: config.contentRoot,
+      schemaRevision,
+      publishEnabled: config.MICA_LOCAL_PUBLISH,
+      logger,
+      locks,
+      ...(options.policy ? { policy: options.policy } : {}),
+      ...(options.tree ? { tree: options.tree } : {}),
+    }),
   };
 
   const limiters = {
@@ -214,53 +186,4 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
       await options.onShutdown?.();
     },
   };
-}
-
-/**
- * The one place that decides how Mica reaches a configured content
- * repository. Every mode produces the same interface, so nothing downstream
- * can tell which one it got.
- *
- * The local editor does not call this — it *is* the local connector — but the
- * self-hosted app serves whichever repository its environment names.
- */
-export function createConnector(config: RuntimeConfig): RepositoryConnector {
-  const author = { name: "Mica CMS", email: "mica@localhost" };
-
-  const require = (value: string | undefined, what: string): string => {
-    if (!value) {
-      throw new Error(`REPOSITORY is "${config.REPOSITORY}" but ${what} is not set.`);
-    }
-    return value;
-  };
-
-  switch (config.REPOSITORY) {
-    case "github": {
-      const project = require(config.REPOSITORY_PROJECT, "REPOSITORY_PROJECT");
-      return githubConnector({
-        owner: project.split("/")[0]!,
-        repo: project.split("/").slice(1).join("/"),
-        branch: config.REPOSITORY_BRANCH,
-        root: config.REPOSITORY_ROOT,
-        token: require(config.REPOSITORY_TOKEN, "REPOSITORY_TOKEN"),
-        apiBase: config.REPOSITORY_API_BASE,
-        author,
-      });
-    }
-
-    case "gitlab":
-      return gitlabConnector({
-        project: require(config.REPOSITORY_PROJECT, "REPOSITORY_PROJECT"),
-        branch: config.REPOSITORY_BRANCH,
-        root: config.REPOSITORY_ROOT,
-        token: require(config.REPOSITORY_TOKEN, "REPOSITORY_TOKEN"),
-        apiBase: config.REPOSITORY_API_BASE,
-        author,
-      });
-
-    // Both are a working tree on disk: the developer's, or Mica's own clone.
-    case "local":
-    case "git":
-      return localConnector({ root: config.contentRoot });
-  }
 }

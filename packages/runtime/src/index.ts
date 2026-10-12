@@ -12,7 +12,6 @@
 
 export { createApp, allowAll, type AuthSurface, type CreateAppOptions } from "./app.js";
 export {
-  createConnector,
   createRuntimeContext,
   DEFAULT_SITE_ID,
   type CreateRuntimeContextOptions,
@@ -29,7 +28,6 @@ export {
   list,
   loadEnvFile,
   LOOPBACK,
-  requireRepositoryConfig,
   runtimeEnv,
   withoutBlanks,
   type RuntimeConfig,
@@ -63,8 +61,6 @@ export { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
 export { randomToken } from "./lib/id.js";
 export { DEFAULT_BASE_URL, DEFAULT_PORT } from "./lib/ports.js";
 export { VERSION } from "./lib/version.js";
-export { openSqlite, type RunResult, type SqlDatabase, type SqlParams, type SqlValue } from "./db/driver.js";
-export { createDraftStagingService, type DraftStagingDeps } from "./services/staging.js";
 export {
   analyseChanges,
   classifyPath,

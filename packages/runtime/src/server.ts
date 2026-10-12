@@ -23,7 +23,7 @@ export interface StartServerOptions {
   onListening(info: { port: number }): void;
   /** The message for a busy port. Defaults to a plain sentence. */
   portInUseMessage?(): string;
-  /** Releases what the composition holds — timers, the database. */
+  /** Releases what the composition holds — timers, the sync. */
   shutdown(): Promise<void>;
 }
 

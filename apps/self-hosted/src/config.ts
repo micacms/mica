@@ -29,15 +29,10 @@ import {
 
 import { defaultUsername, parseRemote, type Remote } from "./workspace/credentials.js";
 
-/** What the runtime reads, minus what a working tree on disk or a provider API needed. */
+/** What the runtime reads, minus what only the local editor's checkout needs. */
 const {
   CONTENT_ROOT: _contentRoot,
   REPOSITORY: _repository,
-  REPOSITORY_ROOT: _root,
-  REPOSITORY_BRANCH: _branch,
-  REPOSITORY_TOKEN: _token,
-  REPOSITORY_PROJECT: _project,
-  REPOSITORY_API_BASE: _apiBase,
   MICA_LOCAL_PUBLISH: _localPublish,
   ...runtimeFields
 } = runtimeEnv;
@@ -81,11 +76,6 @@ const schema = z.object(fields).transform((env) => {
   const runtime = deriveRuntime({
     ...env,
     REPOSITORY: "git" as const,
-    REPOSITORY_ROOT: root,
-    REPOSITORY_BRANCH: env.MICA_REPOSITORY_BRANCH,
-    REPOSITORY_TOKEN: undefined,
-    REPOSITORY_PROJECT: undefined,
-    REPOSITORY_API_BASE: undefined,
     CONTENT_ROOT: path.join(dataDir, "repository", root),
     MICA_LOCAL_PUBLISH: true,
   });

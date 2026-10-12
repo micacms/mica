@@ -67,8 +67,8 @@ export interface StagingStatus {
   workspace: "working-tree" | "draft-store";
   publish: { enabled: boolean; reason?: string };
   /**
-   * What the pending changes are based on: HEAD for a working tree, the
-   * branch head for a draft store. Sent back with Publish as `expectedBase`.
+   * What the pending changes are based on: the working tree's HEAD. Sent back
+   * with Publish as `expectedBase`.
    */
   baseRevision: string | null;
   /** The branch a publication lands on, where the workspace knows it. */

@@ -1,11 +1,12 @@
 /**
- * Working-tree staging: local mode's half of the staging service.
+ * Working-tree staging: the staging service of both apps.
  *
- * The checked-out working tree *is* the draft workspace. Autosave has already
- * written the files — that is what lets the Astro dev server hot-reload them,
- * which is the whole value of local mode — so this service's job is reading
- * what Git thinks of the tree and, on Publish, turning exactly the reviewed
- * paths into one commit and one push. The Git operations are in
+ * The working tree *is* the draft workspace — the developer's checkout in
+ * the local editor, Mica's own clone when self-hosted. Autosave has already
+ * written the files (in the local editor, that is what lets the Astro dev
+ * server hot-reload them), so this service's job is reading what Git thinks
+ * of the tree and, on Publish, turning exactly the reviewed paths into one
+ * commit and one push. The Git operations are in
  * `workspace/tree.ts`, the push in the owner policy, and the locks that keep
  * saves and commits apart in `workspace/locks.ts`.
  *
@@ -15,7 +16,7 @@
  *     path set derived from the change list — never `git add -A` over the
  *     repository, so unrelated work in the same checkout is never swept in.
  *   - HEAD is verified against the base the editor reviewed. A repository
- *     that moved refuses, like a provider branch that moved.
+ *     that moved refuses.
  *   - A commit and a push are two operations. When the push fails the commit
  *     is retained and reported as `committed-pending-push`; a retry pushes
  *     again and never creates a second commit.
@@ -177,10 +178,9 @@ export function createWorkingTreeStagingService(
         if (treeChanges.length === 0) throw badRequest("There is nothing to publish.");
 
         /**
-         * The reviewed base. The working tree has no per-path gate the way a
-         * provider commit does — the tree is already the truth — so the gate
-         * is HEAD: if the repository moved since the editor reviewed the
-         * change list, what a commit would be based on is not what they saw.
+         * The reviewed base. The tree is already the truth, so the gate is
+         * HEAD: if the repository moved since the editor reviewed the change
+         * list, what a commit would be based on is not what they saw.
          */
         if (input.expectedBase !== (await headRevision(tree))) {
           throw new ApiError(
@@ -190,8 +190,8 @@ export function createWorkingTreeStagingService(
           );
         }
 
-        // The model drift gate — same rule as the draft store: the staged set
-        // was validated against the model this process started with.
+        // The model drift gate: the pending set was validated against the
+        // model this process started with.
         if ((await connector.revision(MANIFEST_PATH)) !== deps.schemaRevision) {
           throw new ApiError(
             "conflict",

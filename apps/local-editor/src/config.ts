@@ -68,11 +68,6 @@ const schema = z
       // Fixed, not configurable: the local editor edits a checkout. A remote
       // repository is the self-hosted app's job.
       REPOSITORY: "local" as const,
-      REPOSITORY_ROOT: "content",
-      REPOSITORY_BRANCH: "main",
-      REPOSITORY_TOKEN: undefined,
-      REPOSITORY_PROJECT: undefined,
-      REPOSITORY_API_BASE: undefined,
       // There is no proxy in front of a loopback server to trust.
       TRUST_PROXY: false,
     }),

@@ -20,11 +20,6 @@ export {
 } from "@micacms/core";
 
 export { localConnector, type LocalConnectorOptions } from "./local.js";
-export { githubConnector, type GitHubConnectorOptions } from "./github.js";
-export { gitlabConnector, type GitLabConnectorOptions } from "./gitlab.js";
-export { stagedConnector } from "./staged.js";
-
-export { HttpError, type FetchLike } from "./http.js";
 
 export {
   createContentStore,

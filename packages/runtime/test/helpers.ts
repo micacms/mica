@@ -19,7 +19,6 @@ import {
   collection,
   defineSite,
   media,
-  memoryDraftStore,
   number,
   relation,
   richText,
@@ -27,7 +26,6 @@ import {
   singleton,
   slug,
   text,
-  type DraftStore,
   type Site,
 } from "@micacms/core";
 
@@ -93,11 +91,6 @@ export function testConfig(
     MICA_PUBLIC_URL: TEST_ORIGIN,
     CONTENT_ROOT: contentRoot,
     REPOSITORY: "local",
-    REPOSITORY_ROOT: "content",
-    REPOSITORY_BRANCH: "main",
-    REPOSITORY_TOKEN: undefined,
-    REPOSITORY_PROJECT: undefined,
-    REPOSITORY_API_BASE: undefined,
     MICA_LOCAL_PUBLISH: true,
     MAX_UPLOAD_BYTES: 25 * 1024 * 1024,
     TRUST_PROXY: false,
@@ -119,8 +112,6 @@ export interface Session {
 export interface TestHarness {
   ctx: RuntimeContext;
   contentRoot: string;
-  /** Present on a staged harness: the draft the saves landed in. */
-  drafts?: DraftStore;
   request(path: string, init?: RequestInit & { session?: Session }): Promise<Response>;
   /** There is nobody to be. Returns a token the harness ignores. */
   signIn(): Promise<Session>;
@@ -129,23 +120,15 @@ export interface TestHarness {
 
 export async function createHarness(
   overrides: Partial<RuntimeConfig> = {},
-  options: { site?: Site; staged?: boolean } = {},
+  options: { site?: Site } = {},
 ): Promise<TestHarness> {
   const contentRoot = mkdtempSync(join(tmpdir(), "mica-runtime-test-"));
-  const config = testConfig(contentRoot, {
-    // A staged harness mimics a provider deployment: saves accumulate in a
-    // draft store, and the "provider" is this temporary directory.
-    ...(options.staged ? { REPOSITORY: "github" as const } : {}),
-    ...overrides,
-  });
-
-  const drafts = options.staged ? memoryDraftStore() : undefined;
+  const config = testConfig(contentRoot, overrides);
 
   const ctx = createRuntimeContext({
     config,
     model: options.site ?? testSite,
     connector: localConnector({ root: contentRoot }),
-    drafts,
     logger: createLogger({ level: "silent", pretty: false }),
     operational: () => ({ auth: "none — test harness", database: null }),
   });
@@ -155,7 +138,6 @@ export async function createHarness(
   return {
     ctx,
     contentRoot,
-    drafts,
 
     async request(path, init = {}) {
       const { session: _session, ...rest } = init;

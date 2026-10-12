@@ -53,30 +53,15 @@ export const runtimeEnv = {
   /** Public origin of the CMS itself. Used for cookies, CORS and media URLs. */
   MICA_PUBLIC_URL: z.string().url().default(DEFAULT_BASE_URL),
 
-  /**
-   * The content repository this Mica serves, when it reaches it as a working
-   * tree on disk. Ignored for a provider connector, which is given
-   * REPOSITORY_ROOT inside the remote repository instead.
-   */
+  /** The content root this Mica serves: a directory in a Git working tree. */
   CONTENT_ROOT: z.string().default("../../examples/muster-consulting/content"),
 
   /**
-   * How Mica reaches that repository. `local` is the developer's working
-   * tree, and `git` a clone that the self-hosted app keeps itself; either
-   * way the working tree is the draft workspace. `github` and `gitlab`
-   * publish through the provider's API, with saves staged in the draft store
-   * until an editor publishes.
+   * Whose working tree it is: `local` is the developer's checkout, `git` a
+   * clone that the self-hosted app keeps itself. Set by the app, never by an
+   * operator; either way the working tree is the draft workspace.
    */
-  REPOSITORY: z.enum(["local", "git", "github", "gitlab"]).default("local"),
-  /** Where the content root sits *inside* the remote repository. */
-  REPOSITORY_ROOT: z.string().default("content"),
-  REPOSITORY_BRANCH: z.string().default("main"),
-  /** Token with write access to the content repository. */
-  REPOSITORY_TOKEN: z.string().optional(),
-  /** `owner/repo` for GitHub, `group/project` or a numeric id for GitLab. */
-  REPOSITORY_PROJECT: z.string().optional(),
-  /** For GitHub Enterprise or self-managed GitLab. */
-  REPOSITORY_API_BASE: z.string().url().optional(),
+  REPOSITORY: z.enum(["local", "git"]).default("local"),
 
   /**
    * Whether working-tree staging may commit and push. `false` reduces Publish
@@ -121,31 +106,6 @@ export type RuntimeConfig = ReturnType<typeof deriveRuntime<RuntimeEnv>> & {
   /** Resolved by the app: the runtime never guesses an address. */
   HOST: string;
 };
-
-/**
- * A remote repository needs to be told which one, and with what.
- *
- * Checked at startup rather than at the first save: a Mica that starts, shows
- * the editor their content, and only fails when they press Save has already
- * wasted their work.
- */
-export function requireRepositoryConfig(config: RuntimeConfig): void {
-  if (config.REPOSITORY === "local" || config.REPOSITORY === "git") return;
-
-  const needed = (["REPOSITORY_PROJECT", "REPOSITORY_TOKEN"] as const).filter(
-    (key) => !config[key],
-  );
-
-  if (needed.length > 0) {
-    throw new ConfigError(
-      `REPOSITORY is "${config.REPOSITORY}", so ${needed.join(" and ")} must be set.\n` +
-        (config.REPOSITORY === "github"
-          ? "  REPOSITORY_PROJECT is owner/repo, and the token needs contents: write."
-          : "  REPOSITORY_PROJECT is group/project or a numeric id, and the token needs\n" +
-            "  the api scope (write_repository covers only git push, not the REST API)."),
-    );
-  }
-}
 
 /**
  * Folds `./.env` into the ambient environment.
