@@ -61,12 +61,13 @@ export const runtimeEnv = {
   CONTENT_ROOT: z.string().default("../../examples/muster-consulting/content"),
 
   /**
-   * How Mica reaches that repository. `local` is a working tree beside the
-   * server — and the working tree is then the draft workspace. `github` and
-   * `gitlab` publish through the provider's API, with saves staged in the
-   * draft store until an editor publishes.
+   * How Mica reaches that repository. `local` is the developer's working
+   * tree, and `git` a clone that the self-hosted app keeps itself; either
+   * way the working tree is the draft workspace. `github` and `gitlab`
+   * publish through the provider's API, with saves staged in the draft store
+   * until an editor publishes.
    */
-  REPOSITORY: z.enum(["local", "github", "gitlab"]).default("local"),
+  REPOSITORY: z.enum(["local", "git", "github", "gitlab"]).default("local"),
   /** Where the content root sits *inside* the remote repository. */
   REPOSITORY_ROOT: z.string().default("content"),
   REPOSITORY_BRANCH: z.string().default("main"),
@@ -129,7 +130,7 @@ export type RuntimeConfig = ReturnType<typeof deriveRuntime<RuntimeEnv>> & {
  * wasted their work.
  */
 export function requireRepositoryConfig(config: RuntimeConfig): void {
-  if (config.REPOSITORY === "local") return;
+  if (config.REPOSITORY === "local" || config.REPOSITORY === "git") return;
 
   const needed = (["REPOSITORY_PROJECT", "REPOSITORY_TOKEN"] as const).filter(
     (key) => !config[key],

@@ -18,6 +18,7 @@ export {
   type CreateRuntimeContextOptions,
   type OperationalInfo,
   type RuntimeContext,
+  type RuntimeHealth,
   type SiteContext,
 } from "./context.js";
 export {
@@ -67,6 +68,8 @@ export { createDraftStagingService, type DraftStagingDeps } from "./services/sta
 export {
   analyseChanges,
   classifyPath,
+  describeProblems,
+  flattenProblems,
   type AnnotatedChange,
   type ChangeOwner,
   type ContentStagingService,
@@ -103,6 +106,7 @@ export { developerPolicy, type DeveloperPolicyOptions } from "./workspace/develo
 export {
   commitPaths,
   headRevision,
+  headSource,
   inRepo,
   listTreeChanges,
   LITERAL,

@@ -9,6 +9,9 @@
  */
 
 import assert from "node:assert/strict";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import { ConfigError } from "@micacms/runtime";
@@ -20,14 +23,22 @@ const base: NodeJS.ProcessEnv = {
   NODE_ENV: "test",
   LOG_LEVEL: "silent",
   SESSION_SECRET: "0".repeat(32),
-  DATA_DIR: "/tmp/mica-test-unused",
+  MICA_DATA_DIR: "/tmp/mica-test-unused",
   MICA_OIDC_ISSUER: "https://auth.example.com",
   MICA_OIDC_CLIENT_ID: "mica",
   MICA_ADMIT_GROUP: "mica-editors",
-  REPOSITORY: "github",
-  REPOSITORY_PROJECT: "acme/site",
-  REPOSITORY_TOKEN: "secret",
+  MICA_REPOSITORY_URL: "https://gitlab.com/acme/site.git",
+  MICA_REPOSITORY_TOKEN: "secret",
 };
+
+/** Asserts a startup refusal whose message matches every pattern. */
+function refuses(env: NodeJS.ProcessEnv, ...patterns: RegExp[]): void {
+  assert.throws(() => loadConfig(env), (error: unknown) => {
+    assert.ok(error instanceof ConfigError);
+    for (const pattern of patterns) assert.match(error.message, pattern);
+    return true;
+  });
+}
 
 describe("public URL", () => {
   const production = { ...base, NODE_ENV: "production" };
@@ -76,46 +87,60 @@ describe("unknown variables", () => {
 });
 
 describe("repository configuration", () => {
-  /** Local Git belongs to the local editor; a server publishes through a provider. */
-  it("refuses a working tree, set or by default", () => {
-    const { REPOSITORY: _, ...unset } = base;
-    for (const env of [{ ...base, REPOSITORY: "local" }, unset]) {
-      assert.throws(() => loadConfig(env), (error: unknown) => {
-        assert.ok(error instanceof ConfigError);
-        assert.match(error.message, /github or gitlab/);
-        assert.match(error.message, /npx @micacms\/editor/);
-        return true;
-      });
+  it("clones into the data directory, with defaults that keep a token away from the site's source", () => {
+    const config = loadConfig({ ...base });
+    assert.equal(config.repository.branch, "main");
+    assert.equal(config.repository.root, "content");
+    assert.equal(config.repository.remote.hostKey, "gitlab.com");
+    assert.equal(config.contentRoot, join("/tmp/mica-test-unused", "repository", "content"));
+    assert.equal(config.REPOSITORY, "git");
+  });
+
+  it("chooses the username by host", () => {
+    const username = (url: string) => loadConfig({ ...base, MICA_REPOSITORY_URL: url }).repository.username;
+    assert.equal(username("https://gitlab.com/acme/site.git"), "oauth2");
+    assert.equal(username("https://github.com/acme/site.git"), "x-access-token");
+    assert.equal(username("https://git.example.com/acme/site.git"), "mica");
+    assert.equal(loadConfig({ ...base, MICA_REPOSITORY_USERNAME: "bot" }).repository.username, "bot");
+  });
+
+  it("requires the URL and the token", () => {
+    refuses({ ...base, MICA_REPOSITORY_URL: "", MICA_REPOSITORY_TOKEN: "" }, /MICA_REPOSITORY_URL is not set/, /MICA_REPOSITORY_TOKEN is not set/);
+  });
+
+  it("refuses credentials in the URL", () => {
+    refuses({ ...base, MICA_REPOSITORY_URL: "https://oauth2:glpat-x@gitlab.com/acme/site.git" }, /contains credentials/);
+  });
+
+  it("refuses plain HTTP, SSH, and anything but https outside development", () => {
+    for (const url of ["http://gitlab.com/acme/site.git", "git@gitlab.com:acme/site.git", "file:///srv/site.git"]) {
+      refuses({ ...base, MICA_REPOSITORY_URL: url }, /MICA_REPOSITORY_URL/);
     }
   });
 
-  for (const provider of ["github", "gitlab"] as const) {
-    it(`refuses to start on ${provider} without a project and a token`, () => {
-      const env = { ...base, REPOSITORY: provider, REPOSITORY_PROJECT: "", REPOSITORY_TOKEN: "" };
-      assert.throws(() => loadConfig(env), (error: unknown) => {
-        assert.ok(error instanceof ConfigError);
-        assert.match(error.message, /REPOSITORY_PROJECT and REPOSITORY_TOKEN/);
-        return true;
-      });
-    });
+  it("accepts plain HTTP on loopback in development, for the tests and a local trial", () => {
+    const config = loadConfig({ ...base, NODE_ENV: "development", MICA_REPOSITORY_URL: "http://127.0.0.1:3000/site.git" });
+    assert.equal(config.repository.remote.scheme, "http");
+  });
 
-    it(`accepts ${provider} once both are given`, () => {
-      const config = loadConfig({
-        ...base,
-        REPOSITORY: provider,
-        REPOSITORY_PROJECT: "acme/site",
-        REPOSITORY_TOKEN: "secret",
-      });
+  it("refuses a branch name Git would read as something else, and a root outside the repository", () => {
+    refuses({ ...base, MICA_REPOSITORY_BRANCH: "--upload-pack=x" }, /not a branch name/);
+    refuses({ ...base, MICA_REPOSITORY_ROOT: "../etc" }, /inside the repository/);
+  });
 
-      assert.equal(config.REPOSITORY, provider);
-      // The defaults that keep a token away from the website's source code.
-      assert.equal(config.REPOSITORY_ROOT, "content");
-      assert.equal(config.REPOSITORY_BRANCH, "main");
-    });
-  }
+  it("refuses the names that 0.5 replaced, all in one message", () => {
+    refuses(
+      { ...base, REPOSITORY: "gitlab", REPOSITORY_PROJECT: "acme/site", DATA_DIR: "/data" },
+      /REPOSITORY is no longer read/,
+      /REPOSITORY_PROJECT is no longer read\. Use MICA_REPOSITORY_URL/,
+      /DATA_DIR is no longer read\. Use MICA_DATA_DIR/,
+    );
+  });
 
-  it("rejects a repository mode it has no connector for", () => {
-    assert.throws(() => loadConfig({ ...base, REPOSITORY: "subversion" }), ConfigError);
+  it("refuses a draft database left by 0.4, and says what deleting it costs", () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "mica-0.4-"));
+    writeFileSync(join(dataDir, "cms.sqlite"), "");
+    refuses({ ...base, MICA_DATA_DIR: dataDir }, /draft database of Mica 0\.4/, /publish or discard/, /lost/);
   });
 });
 

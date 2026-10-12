@@ -2,7 +2,7 @@
 
 [Playwright](https://playwright.dev) drives the editor UI in Chromium against
 the [OIDC test stack](../oidc/README.md): the real Mica image behind Dex,
-publishing to the [GitHub API stub](../github-stub/README.md). CI runs it on
+publishing to a Forgejo Git host. CI runs it on
 every pull request, in the `docker` job of
 [`ci.yml`](../../.github/workflows/ci.yml), after the OIDC test.
 

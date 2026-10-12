@@ -21,6 +21,8 @@ interface Readiness {
   status: "ok" | "error";
   database?: Check;
   repository: Check;
+  /** Short codes from the composition, such as `sync_failing`. */
+  reasons?: string[];
 }
 
 export interface HealthOptions {
@@ -65,6 +67,18 @@ async function probe(c: Context<Env>): Promise<Readiness> {
       logger.error("Health check failed", { error: String(error) });
       database = "unavailable";
     }
+  }
+
+  // A composition that keeps its own state answers for itself: a managed
+  // clone knows whether it can be edited without asking the remote.
+  if (ctx.health.ready) {
+    const { ok, reasons } = ctx.health.ready();
+    return {
+      status: ok && database !== "unavailable" ? "ok" : "error",
+      ...(database ? { database } : {}),
+      repository: ok ? "ok" : "unavailable",
+      reasons,
+    };
   }
 
   // `list` on a missing root returns an empty array rather than throwing, so

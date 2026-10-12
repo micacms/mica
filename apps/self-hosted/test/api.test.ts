@@ -5,6 +5,8 @@
  */
 
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { after, before, describe, it, mock } from "node:test";
 
 import {
@@ -23,11 +25,11 @@ describe("health", () => {
   });
   after(() => harness.close());
 
-  it("reports readiness, and actually touches both stores", async () => {
+  it("reports readiness from the workspace, with codes only", async () => {
     const response = await harness.request("/ready");
     assert.equal(response.status, 200);
     // No origin and no uptime: the endpoint is public (#79).
-    assert.deepEqual(await response.json(), { status: "ok", database: "ok", repository: "ok" });
+    assert.deepEqual(await response.json(), { status: "ok", repository: "ok", reasons: [] });
   });
 });
 
@@ -349,23 +351,17 @@ describe("CSRF protection", () => {
   });
 });
 
-describe("the draft store behind a provider repository", () => {
+describe("drafts in the working tree", () => {
   let harness: TestHarness;
   let session: Session;
 
   before(async () => {
-    // Provider-shaped: saves stage in SQLite. The local connector stands in
-    // as "the provider", so the temporary directory is the repository.
-    harness = await createHarness({
-      REPOSITORY: "github",
-      REPOSITORY_PROJECT: "acme/site",
-      REPOSITORY_TOKEN: "unused-by-the-test-connector",
-    });
+    harness = await createHarness();
     session = await harness.signIn();
   });
   after(() => harness.close());
 
-  it("stages a save in the database, and publishes it as one change set", async () => {
+  it("writes a save into the clone, where the change list finds it", async () => {
     const saved = await harness.request("/api/admin/collections/projects/entries", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -373,24 +369,12 @@ describe("the draft store behind a provider repository", () => {
       session,
     });
     assert.equal(saved.status, 201);
+    assert.ok(existsSync(join(harness.contentRoot, "projects/persistent/index.json")));
 
-    // In the database, not the repository: the SQLite draft store holds it.
-    const staged = harness.db.all<{ path: string }>("SELECT path FROM drafts ORDER BY path");
-    assert.ok(staged.some((row) => row.path === "projects/persistent/index.json"));
-
-    const published = await harness.request("/api/admin/publish", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ message: "Publish the persistent entry" }),
-      session,
-    });
-    assert.equal(published.status, 200);
-
-    assert.equal(
-      harness.db.all("SELECT path FROM drafts").length,
-      0,
-      "publication clears what it published",
-    );
+    const changes = (await (await harness.request("/api/admin/changes", { session })).json()) as {
+      changes: Array<{ path: string }>;
+    };
+    assert.ok(changes.changes.some((change) => change.path === "projects/persistent/index.json"));
   });
 });
 
@@ -401,16 +385,16 @@ describe("system information", () => {
   });
   after(() => harness.close());
 
-  it("reports the database and what decides who may edit", async () => {
+  it("reports no database, the repository kind and what decides who may edit", async () => {
     const session = await harness.signIn();
     const response = await harness.request("/api/admin/system", { session });
     const body = (await response.json()) as {
-      database: { version: number } | null;
-      deployment: { auth: string; admission: string | null };
+      database: unknown;
+      deployment: { auth: string; admission: string | null; repositoryMode: string };
     };
 
-    assert.ok(body.database);
-    assert.equal(body.database.version, 3);
+    assert.equal(body.database, null);
+    assert.equal(body.deployment.repositoryMode, "git");
     assert.match(body.deployment.auth, /oidc:/);
     assert.match(body.deployment.admission ?? "", /group=mica-editors/);
   });

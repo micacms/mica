@@ -9,20 +9,18 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 const MICA = "http://localhost:6422";
-const GITHUB = "http://localhost:8787/repos/acme/site";
+const FORGEJO = "http://localhost:3000/api/v1/repos/editor/site";
+const FORGEJO_AUTH = `Basic ${Buffer.from("editor:Forgejo-test-password-not-for-production").toString("base64")}`;
 
-/** Reads the stand-in GitHub API directly, to see what reached the repository. */
-async function github(path, accept = "application/vnd.github+json") {
-  const response = await fetch(`${GITHUB}/${path}`, {
-    headers: { authorization: "Bearer test", accept },
-  });
-  assert.equal(response.ok, true, `GitHub stub: ${path} answered ${response.status}`);
-  return accept.includes("raw") ? response.text() : response.json();
+/** Reads the Git host directly, to see what reached the repository. */
+async function forgejo(path, raw = false) {
+  const response = await fetch(`${FORGEJO}/${path}`, { headers: { authorization: FORGEJO_AUTH } });
+  assert.equal(response.ok, true, `Forgejo: ${path} answered ${response.status}`);
+  return raw ? response.text() : response.json();
 }
 
-const headOfMain = async () => (await github("git/ref/heads/main")).object.sha;
-const publishedSite = async () =>
-  JSON.parse(await github("contents/content/site/index.json?ref=main", "application/vnd.github.raw"));
+const headOfMain = async () => (await forgejo("branches/main")).commit.id;
+const publishedSite = async () => JSON.parse(await forgejo("raw/content/site/index.json?ref=main", true));
 
 /** One person's browser: a cookie jar and a redirect loop. */
 class Browser {
@@ -157,16 +155,23 @@ describe("an admitted session", () => {
     assert.equal(await headOfMain(), before);
     assert.notEqual((await publishedSite()).tagline, tagline);
 
+    // Publish sends back the base the editor reviewed, as the Publish page does.
+    const status = await (await alice.api("/api/admin/changes")).json();
     const message = `Publish the tagline (${tagline})`;
-    const published = await alice.api("/api/admin/publish", { method: "POST", body: { message } });
+    const published = await alice.api("/api/admin/publish", {
+      method: "POST",
+      body: { message, expectedBase: status.baseRevision },
+    });
     assert.equal(published.status, 200, await published.clone().text());
+    assert.equal((await published.json()).state, "published");
 
     // One commit on top of the old head, by the person who pressed Publish.
     const head = await headOfMain();
-    const commit = await github(`git/commits/${head}`);
-    assert.equal(commit.message, message);
-    assert.deepEqual(commit.parents, [{ sha: before }]);
-    assert.equal(commit.author?.email, "alice@gmail.com");
+    const commit = await forgejo(`git/commits/${head}`);
+    assert.equal(commit.commit.message.trim(), message);
+    assert.deepEqual(commit.parents.map((parent) => parent.sha), [before]);
+    assert.equal(commit.commit.author.email, "alice@gmail.com");
+    assert.equal(commit.commit.committer.name, "Mica CMS");
     assert.equal((await publishedSite()).tagline, tagline);
   });
 

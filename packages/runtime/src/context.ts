@@ -27,7 +27,9 @@ import { createMediaService, type MediaService } from "./services/media.js";
 import type { ContentStagingService } from "./services/changes.js";
 import { createDraftStagingService } from "./services/staging.js";
 import { createWorkingTreeStagingService } from "./services/staging-local.js";
-import { createWorkspaceLocks, lockedConnector } from "./workspace/locks.js";
+import { createWorkspaceLocks, lockedConnector, type WorkspaceLocks } from "./workspace/locks.js";
+import type { OwnerPolicy } from "./workspace/policy.js";
+import type { GitTree } from "./workspace/tree.js";
 
 /**
  * The site this process serves. One, explicitly.
@@ -81,6 +83,18 @@ export interface OperationalInfo {
   generatedSecrets?: string[];
 }
 
+/** What /ready asks the composition. */
+export interface RuntimeHealth {
+  /** Throws when the database cannot answer. */
+  database?: () => void;
+  /**
+   * The composition's own answer, which replaces the repository probe:
+   * whether the site can be edited, and short reason codes. Never names the
+   * repository — the endpoint is public.
+   */
+  ready?: () => { ok: boolean; reasons: string[] };
+}
+
 export interface RuntimeContext {
   config: RuntimeConfig;
   site: SiteContext;
@@ -96,9 +110,7 @@ export interface RuntimeContext {
   /** App-supplied: what the System page says about the composition. */
   operational(): OperationalInfo;
   /** App-supplied active probes for /ready. Absent means nothing to probe. */
-  health: {
-    database?: () => void;
-  };
+  health: RuntimeHealth;
   /** Releases timers, and whatever the app added on top. */
   shutdown(): Promise<void>;
 }
@@ -119,7 +131,13 @@ export interface CreateRuntimeContextOptions {
   siteId?: string;
   logger?: Logger;
   operational?: () => OperationalInfo;
-  health?: { database?: () => void };
+  health?: RuntimeHealth;
+  /** Who owns the working tree. Defaults to the developer. */
+  policy?: OwnerPolicy;
+  /** Shared with the owner's own work on the tree, such as a sync. */
+  locks?: WorkspaceLocks;
+  /** The tree, when the owner already knows it — see `WorkingTreeStagingDeps.tree`. */
+  tree?: GitTree;
   onShutdown?: () => void | Promise<void>;
 }
 
@@ -137,7 +155,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
 
   // A working tree is shared by saves, commits and discards; the services
   // write through the lock wrapper, and staging holds the locks itself.
-  const locks = createWorkspaceLocks();
+  const locks = options.locks ?? createWorkspaceLocks();
 
   const site: SiteContext = {
     id: options.siteId ?? DEFAULT_SITE_ID,
@@ -170,6 +188,8 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
           publishEnabled: config.MICA_LOCAL_PUBLISH,
           logger,
           locks,
+          ...(options.policy ? { policy: options.policy } : {}),
+          ...(options.tree ? { tree: options.tree } : {}),
         }),
   };
 
@@ -238,7 +258,9 @@ export function createConnector(config: RuntimeConfig): RepositoryConnector {
         author,
       });
 
+    // Both are a working tree on disk: the developer's, or Mica's own clone.
     case "local":
+    case "git":
       return localConnector({ root: config.contentRoot });
   }
 }

@@ -66,19 +66,20 @@ RUN node common/scripts/install-run-rush.js deploy --overwrite --target-folder /
 # ---------------------------------------------------------------- runtime
 FROM node:24-alpine AS runtime
 
-# tini reaps zombies and forwards SIGTERM, so the graceful shutdown that closes
-# SQLite actually runs.
-RUN apk add --no-cache tini
+# tini reaps zombies and forwards SIGTERM, so the graceful shutdown runs. Git
+# keeps the clone of the content repository that Mica edits and publishes.
+RUN apk add --no-cache tini git
 
 ENV NODE_ENV=production \
-    DATA_DIR=/data \
+    MICA_DATA_DIR=/data \
     HOST=0.0.0.0 \
     PORT=6422
 
 WORKDIR /app
 
 # node:alpine ships an unprivileged `node` user; the volume must be writable by
-# it. The draft store lives here, so the volume is part of the backup story.
+# it. The clone lives here, and the unpublished drafts are files in it, so the
+# volume is part of the backup story.
 RUN mkdir -p /data && chown -R node:node /data
 
 # The deploy folder mirrors the repository layout. Its node_modules are real
@@ -94,10 +95,12 @@ WORKDIR /app/apps/self-hosted
 VOLUME ["/data"]
 EXPOSE 6422
 
-# Liveness only: a provider outage must not restart a container that would not
-# be any better for it. /ready is for a load balancer or a monitor.
+# Liveness only: a repository outage must not restart a container that would
+# not be any better for it. /ready is for a load balancer or a monitor.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD node -e "fetch('http://127.0.0.1:'+(process.env.PORT||6422)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
 
-ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "dist/index.js"]
+# No arguments serves. `docker compose run --rm mica check` checks the
+# configuration and the repository, then exits.
+ENTRYPOINT ["/sbin/tini", "--", "node", "dist/index.js"]
+CMD []

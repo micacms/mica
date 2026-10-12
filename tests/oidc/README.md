@@ -1,13 +1,13 @@
 # Automated OIDC test
 
-The real Mica image against a real [Dex](https://dexidp.io), publishing to the
-[GitHub API stub](../github-stub/README.md), driven by a Node script with no
+The real Mica image against a real [Dex](https://dexidp.io), publishing to a
+real Git host, [Forgejo](https://forgejo.org), driven by a Node script with no
 dependencies. CI runs it on every pull request, in the `docker` job of
 [`ci.yml`](../../.github/workflows/ci.yml).
 
 It proves what unit tests cannot: a real OpenID Connect round trip — discovery,
-PKCE, `state`, `nonce`, the ID token — and a publication through the GitHub
-connector, with the container as it is deployed.
+PKCE, `state`, `nonce`, the ID token — and a clone, a save and a publication
+over Git, with the container as it is deployed.
 
 ## What it checks
 
@@ -21,7 +21,8 @@ And, for an admitted session:
 
 - no admin API without a session, and no write without the CSRF token;
 - a save is a draft: the repository does not move;
-- Publish makes one commit on top of the old head, by the editor who pressed it;
+- Publish makes one commit on top of the old head, by the editor who pressed it,
+  committed by Mica;
 - an altered session cookie is refused;
 - sign-out clears both cookies.
 
@@ -33,12 +34,14 @@ verified, as Google does.
 ```bash
 docker compose -f tests/oidc/compose.yml up -d --build --wait
 node --test tests/oidc/flow.test.mjs
-docker compose -f tests/oidc/compose.yml down
+docker compose -f tests/oidc/compose.yml down -v
 ```
 
-The ports are 5556 (Dex), 6422 (Mica) and 8787 (the GitHub stub). The stub
-keeps its repository in memory, so every start begins from the example
-content.
+The ports are 5556 (Dex), 6422 (Mica) and 3000 (Forgejo). A one-shot
+`forgejo-seed` service creates the user `editor` and the repository
+`editor/site` from the example content. Mica uses the account password where a
+token would go, which Forgejo accepts. Run `down -v` to start again from the
+example content.
 
 The login rate limit is 10 attempts in 15 minutes. One run uses 7, and the
 browser test uses 1, so restart the `mica` service before you run them again.
@@ -48,8 +51,8 @@ browser test uses 1, so restart the `mica` service before you run them again.
 - **Groups.** Dex's built-in users carry no groups claim. The group rule and the
   claim shapes of Keycloak and Entra are covered by unit tests and by the manual
   Keycloak rig in [`tests/e2e/`](../e2e/README.md).
-- **GitHub itself.** The stub answers the calls the connector makes, the way the
-  connector expects. A real repository is still a manual run.
+- **GitHub and GitLab.** Forgejo is a real Git host, but the hosts that Mica
+  supports are checked by the weekly live workflow, not here.
 - **The editor UI.** No browser is involved here.
   [`tests/browser/`](../browser/README.md) drives the editor on this stack.
 

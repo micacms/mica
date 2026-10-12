@@ -74,6 +74,12 @@ export interface WorkingTreeStagingDeps {
   policy?: OwnerPolicy;
   /** Shared with the services that write content. Defaults to locks of its own. */
   locks?: WorkspaceLocks;
+  /**
+   * The tree, when the owner already knows it — a managed clone, whose Git
+   * runs in an isolated environment. Without it, the repository around
+   * `contentRoot` is found with the developer's own Git.
+   */
+  tree?: GitTree;
 }
 
 export function createWorkingTreeStagingService(
@@ -108,8 +114,10 @@ export function createWorkingTreeStagingService(
     return { changes, validation };
   };
 
+  const locate = async (): Promise<GitTree | { reason: string }> => deps.tree ?? locateTree(contentRoot);
+
   const located = async (): Promise<GitTree> => {
-    const tree = await locateTree(contentRoot);
+    const tree = await locate();
     if ("reason" in tree) throw badRequest(tree.reason);
     return tree;
   };
@@ -122,7 +130,7 @@ export function createWorkingTreeStagingService(
 
   return {
     async status(): Promise<StagingStatus> {
-      const tree = await locateTree(contentRoot);
+      const tree = await locate();
 
       if ("reason" in tree) {
         return {
@@ -144,7 +152,9 @@ export function createWorkingTreeStagingService(
       }));
 
       return {
-        workspace: "working-tree",
+        // A managed clone is worded like a draft workspace: its editors do
+        // not need to know that it is a working tree.
+        workspace: policy.owner === "managed" ? "draft-store" : "working-tree",
         publish: policy.publishAvailability(),
         baseRevision: head,
         branch,
@@ -251,7 +261,7 @@ export function createWorkingTreeStagingService(
     },
 
     async compare(target: CompareTarget): Promise<Comparison> {
-      const tree = await locateTree(contentRoot);
+      const tree = await locate();
       // Without a repository (or before the first commit) nothing has ever
       // been published, so the honest "before" is a source with no files.
       const published = "reason" in tree ? memorySource({}, "unpublished") : headSource(tree);

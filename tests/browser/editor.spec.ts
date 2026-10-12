@@ -7,27 +7,23 @@
 
 import { expect, test, type APIRequestContext } from "@playwright/test";
 
-const GITHUB = "http://localhost:8787/repos/acme/site";
+const FORGEJO = "http://localhost:3000/api/v1/repos/editor/site";
+const FORGEJO_AUTH = `Basic ${Buffer.from("editor:Forgejo-test-password-not-for-production").toString("base64")}`;
 
-/** Reads the stand-in GitHub API directly, to see what reached the repository. */
-async function github(request: APIRequestContext, path: string, raw = false): Promise<unknown> {
-  const response = await request.get(`${GITHUB}/${path}`, {
-    headers: {
-      authorization: "Bearer test",
-      accept: raw ? "application/vnd.github.raw" : "application/vnd.github+json",
-    },
-  });
-  expect(response.ok(), `GitHub stub: ${path} answered ${response.status()}`).toBe(true);
+/** Reads the Git host directly, to see what reached the repository. */
+async function forgejo(request: APIRequestContext, path: string, raw = false): Promise<unknown> {
+  const response = await request.get(`${FORGEJO}/${path}`, { headers: { authorization: FORGEJO_AUTH } });
+  expect(response.ok(), `Forgejo: ${path} answered ${response.status()}`).toBe(true);
   return raw ? JSON.parse(await response.text()) : response.json();
 }
 
 async function headOfMain(request: APIRequestContext): Promise<string> {
-  const ref = (await github(request, "git/ref/heads/main")) as { object: { sha: string } };
-  return ref.object.sha;
+  const branch = (await forgejo(request, "branches/main")) as { commit: { id: string } };
+  return branch.commit.id;
 }
 
 async function publishedTagline(request: APIRequestContext): Promise<string> {
-  const site = (await github(request, "contents/content/site/index.json?ref=main", true)) as { tagline: string };
+  const site = (await forgejo(request, "raw/content/site/index.json?ref=main", true)) as { tagline: string };
   return site.tagline;
 }
 
@@ -85,14 +81,13 @@ test("an editor signs in, edits, saves and publishes", async ({ page, request, b
   await expect(page.getByText("Nothing waiting to be published")).toBeVisible();
 
   const head = await headOfMain(request);
-  const commit = (await github(request, `git/commits/${head}`)) as {
-    message: string;
+  const commit = (await forgejo(request, `git/commits/${head}`)) as {
+    commit: { message: string; author: { email: string } };
     parents: { sha: string }[];
-    author?: { email: string };
   };
-  expect(commit.message).toBe(message);
-  expect(commit.parents).toEqual([{ sha: before }]);
-  expect(commit.author?.email).toBe("alice@gmail.com");
+  expect(commit.commit.message.trim()).toBe(message);
+  expect(commit.parents.map((parent) => parent.sha)).toEqual([before]);
+  expect(commit.commit.author.email).toBe("alice@gmail.com");
   expect(await publishedTagline(request)).toBe(tagline);
 
   // Sign out: back to the login view, and the admin API refuses the browser.
