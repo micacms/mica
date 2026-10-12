@@ -128,7 +128,7 @@ describe("publishing the model", () => {
       );
       assert.deepEqual(
         written,
-        JSON.parse(JSON.stringify(createManifest(site, "@micacms/astro@0.0.1"))),
+        JSON.parse(JSON.stringify(createManifest(site, "@micacms/astro"))),
       );
     } finally {
       await rm(dir, { recursive: true, force: true });

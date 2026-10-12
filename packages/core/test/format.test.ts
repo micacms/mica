@@ -270,12 +270,28 @@ describe("protocol manifest", () => {
   });
 
   it("describes both content primitives", () => {
-    const manifest = createManifest(site, "@micacms/astro@2.0.0");
+    const manifest = createManifest(site, "@micacms/astro");
 
     assert.equal(manifest.protocolVersion, PROTOCOL_VERSION);
-    assert.equal(manifest.generatedBy, "@micacms/astro@2.0.0");
+    assert.equal(manifest.generatedBy, "@micacms/astro");
     assert.deepEqual(Object.keys(manifest.collections), ["projects"]);
     assert.deepEqual(Object.keys(manifest.singletons), ["site"]);
+  });
+
+  // A reader must not derive the layout from fields that a newer @micacms/astro may have added.
+  it("records how each collection and singleton is stored", () => {
+    const withBody = defineSite({
+      collections: {
+        news: collection({ label: "News", fields: { title: text(), slug: slug(), body: richText() } }),
+        team: collection({ label: "Team", fields: { name: text(), slug: slug() } }),
+      },
+      singletons: { site: singleton({ label: "Site", fields: { homepage: url() } }) },
+    });
+    const manifest = createManifest(withBody, "test");
+
+    assert.equal(manifest.collections["news"]?.layout, "directory");
+    assert.equal(manifest.collections["team"]?.layout, "file");
+    assert.equal(manifest.singletons["site"]?.layout, "file");
   });
 
   it("survives the trip through JSON that the protocol implies", () => {

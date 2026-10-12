@@ -113,6 +113,11 @@ times, so they are not required to move together. Whatever arrives is
 re-validated as if hand-written: an unknown field kind is reported by name at
 startup rather than surfacing later on an editor's screen.
 
+Beside the model, the manifest records `generatedBy` (the package, without a
+version) and each collection's and singleton's `layout`. It holds nothing that
+changes without a model change, because a self-hosted Mica must restart for
+every change to the file.
+
 ---
 
 ## The authoring format

@@ -9,13 +9,10 @@
 
 import { createManifest, type ProtocolManifest, type Site } from "@micacms/core";
 
-/** Replaced at publish time; the fallback keeps a workspace build honest. */
-const PACKAGE_VERSION = "0.0.1";
-
 /**
  * Mica holds no model of its own. The Astro project is the only place a
  * collection is defined, and this is how it says so.
  */
 export function manifestFor(site: Site): ProtocolManifest {
-  return createManifest(site, `@micacms/astro@${PACKAGE_VERSION}`);
+  return createManifest(site, "@micacms/astro");
 }

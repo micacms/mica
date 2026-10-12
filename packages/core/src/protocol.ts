@@ -14,6 +14,7 @@
  * The version is the backstop for changes that cannot be detected by looking.
  */
 
+import { entryLayout, type EntryLayout } from "./layout.js";
 import type { Collection, Singleton, Site } from "./types.js";
 
 /**
@@ -30,21 +31,41 @@ export const PROTOCOL_VERSION = 1;
  */
 export const MANIFEST_PATH = ".mica/schema.json";
 
+/**
+ * How the entries of a collection or singleton are stored. Recorded so that a
+ * reader does not have to derive it from fields it may not understand, and so
+ * that a layout change shows in the manifest's diff.
+ */
+export interface ManifestLayout {
+  layout: EntryLayout;
+}
+
+/**
+ * Holds nothing that changes without a model change, such as a package version
+ * or a timestamp: a self-hosted Mica must restart for every change to this file.
+ */
 export interface ProtocolManifest {
   protocolVersion: number;
-  /** Package and version that produced this manifest, for diagnostics. */
+  /** The package that wrote the manifest, without its version: `@micacms/astro`. */
   generatedBy: string;
-  collections: Record<string, Collection>;
-  singletons: Record<string, Singleton>;
+  collections: Record<string, Collection & ManifestLayout>;
+  singletons: Record<string, Singleton & ManifestLayout>;
 }
 
 export function createManifest(site: Site, generatedBy: string): ProtocolManifest {
+  const withLayout = <T extends Collection | Singleton>(defs: Record<string, T>) =>
+    Object.fromEntries(Object.entries(defs).map(([name, def]) => [name, layoutAfterType(def)]));
   return {
     protocolVersion: PROTOCOL_VERSION,
     generatedBy,
-    collections: { ...site.collections },
-    singletons: { ...site.singletons },
+    collections: withLayout(site.collections),
+    singletons: withLayout(site.singletons),
   };
+}
+
+/** `layout` right after `type`, where a reader of the file looks for it. */
+function layoutAfterType<T extends Collection | Singleton>(def: T): T & ManifestLayout {
+  return Object.assign({ type: def.type, layout: entryLayout(def.fields) }, def);
 }
 
 export type ManifestCompatibility =

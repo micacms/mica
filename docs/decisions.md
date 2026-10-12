@@ -1092,6 +1092,9 @@ semver-covered CLI.
 **What would change it:** model changes made where nobody can run a command,
 for example from the editor itself.
 
+**Built:** the manifest records `layout` for each collection and singleton
+(#60). The command is not built yet.
+
 **1.0 status:** blocker; the command is in #65.
 
 ---
@@ -1117,6 +1120,34 @@ changes before 1.0, with a changelog entry.
 format.
 
 **1.0 status:** blocker; the fix is in #59.
+
+---
+
+### P2 — The manifest changes only when the model changes
+
+**Decided:** `.mica/schema.json` holds the model, `protocolVersion`,
+`generatedBy` without a package version (`"@micacms/astro"`), and the `layout`
+of each collection and singleton. Nothing else: no package version, no
+timestamp, no build data. The history of the model is the Git history of the
+file, and a running Mica tells models apart by the fingerprint it logs and
+shows. There is no separate JSON Schema for the file: `checkSchema` validates
+it when Mica starts, and `mica check` runs the same check in CI.
+
+**Why:** a self-hosted Mica holds its sync and refuses to publish after any
+change to the file, until it restarts. With a package version in the file,
+every `@micacms/astro` update in a site, even a patch, would stop the editors,
+and every Mica release would change the committed manifests. A JSON Schema
+would be a second statement of the field types to keep in step for all of 1.x.
+
+**Consequence:** the manifest does not say which version of `@micacms/astro`
+wrote it; the site's lock file does. A reader acts on `protocolVersion` and on
+the field kinds it finds, never on a package version.
+
+**What would change it:** an editor or tool outside Mica that must validate
+the file without running Mica; then publish a JSON Schema generated from the
+same source as the types.
+
+**1.0 status:** accepted for 1.0.
 
 ---
 
