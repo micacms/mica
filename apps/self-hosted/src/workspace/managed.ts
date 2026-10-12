@@ -121,6 +121,9 @@ class RemoteFailure extends Error {
 
 const MAX_PUSH_TRIES = 3;
 
+/** Failures that a successful fetch ends. */
+const REACHABILITY = new Set<SyncProblem["code"]>(["auth", "network", "repo_not_found", "unknown"]);
+
 export function createManagedWorkspace(options: ManagedWorkspaceOptions): ManagedWorkspace {
   const { git, layout, locks, logger, branch, root } = options;
   const upstreamRef = `origin/${branch}`;
@@ -181,10 +184,17 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
    * Anything else ahead of the branch means the branch was rewritten under
    * the clone — pushing it, or turning it into drafts, would undo that.
    */
-  const pendingPublication = async (): Promise<boolean> =>
-    (await ahead()) === 1 &&
-    (await git.run(["log", "-1", "--format=%ce", "HEAD"])) === MICA_IDENTITY.email &&
-    (await git.tryRun(["merge-base", "--is-ancestor", "HEAD^", upstreamRef])) !== null;
+  const pendingPublication = async (): Promise<boolean> => {
+    if ((await ahead()) !== 1) return false;
+    if ((await git.run(["log", "-1", "--format=%ce", "HEAD"])) !== MICA_IDENTITY.email) return false;
+    if ((await git.tryRun(["merge-base", "--is-ancestor", "HEAD^", upstreamRef])) === null) return false;
+    // A publication the remote once had and no longer has was taken back by
+    // a force push; pushing it again would undo that. A push records the new
+    // head in the tracking branch's reflog.
+    const head = await git.run(["rev-parse", "HEAD"]);
+    const known = await git.tryRun(["reflog", "show", "--format=%H", `refs/remotes/${upstreamRef}`]);
+    return !(known ?? "").split("\n").includes(head);
+  };
 
   const diverged = () =>
     new RemoteFailure(
@@ -231,12 +241,14 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     // the new side counts — a blob that an intermediate commit had and the
     // last one replaced is never written.
     await git.run(["diff", "--numstat", from, to]);
-    const written = (await git.run(["diff", "--raw", "-z", "--no-renames", "--no-abbrev", from, to]))
-      .split("\0")
-      .filter((field) => field.startsWith(":"))
-      .map((field) => field.slice(1).split(" "))
-      .filter(([, mode, , object]) => mode !== "000000" && mode !== "160000" && !/^0+$/.test(object ?? ""))
-      .map(([, , , object]) => object!);
+    // `-z --no-renames` gives one path per record: the metadata field, then
+    // the path. Read in pairs, so a path that starts with ":" is a path.
+    const fields = (await git.run(["diff", "--raw", "-z", "--no-renames", "--no-abbrev", from, to])).split("\0");
+    const written: string[] = [];
+    for (let at = 0; at + 1 < fields.length; at += 2) {
+      const [, mode, , object] = fields[at]!.slice(1).split(" ");
+      if (mode !== "000000" && mode !== "160000" && object && !/^0+$/.test(object)) written.push(object);
+    }
     if (written.length > 0) {
       const checked = await git.run(["cat-file", "--batch-check"], {
         input: `${written.join("\n")}\n`,
@@ -488,19 +500,22 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
   const syncHeld = async (syncOptions: { skipHold?: boolean } = {}): Promise<SyncState> => {
     try {
       await fetch();
-      // The repository answered: an earlier failure is over. A failure of
-      // this sync's own push sets a new one, and then the sync stops there.
-      if (state.error) logger.info("The repository is reachable again");
-      state.error = null;
+      // The repository answered, so a failure to reach it is over. Other
+      // failures last until a whole sync succeeds.
+      if (state.error && REACHABILITY.has(state.error.code)) {
+        logger.info("The repository is reachable again");
+        state.error = null;
+      }
       if ((await ahead()) > 0) {
         if (!(await pendingPublication())) throw diverged();
         await push().catch((error: unknown) => {
-          // A refusal or a conflict is in the state now; the sync goes on.
+          // A refusal, a conflict or a recorded failure is in the state now.
           if (!(error instanceof ApiError)) throw error;
         });
-        if (state.error) return snapshot();
       }
       await fastForward(syncOptions.skipHold ?? false);
+      if (state.error) logger.info("Sync works again", { after: state.error.code });
+      state.error = null;
       state.lastSyncAt = new Date().toISOString();
     } catch (error) {
       // A refusal at start stops the process; everything else is a state
@@ -568,6 +583,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     // sync can run between this publication's commit and its push.
     async prepare() {
       await syncHeld();
+      if (state.error?.code === "diverged") throw new ApiError("conflict", state.error.message);
       const availability = policy.publishAvailability();
       if (!availability.enabled) throw new ApiError("conflict", availability.reason);
       if (state.pendingPush) {
@@ -582,7 +598,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
     // The staging service holds the remote lock around this call.
     async push(_tree, revision) {
-      if ((await git.run(["rev-parse", "HEAD"])) !== revision || (await ahead()) !== 1) {
+      if ((await git.run(["rev-parse", "HEAD"])) !== revision || !(await pendingPublication())) {
         throw new ApiError("conflict", "The clone is not where this publication left it. Nothing was pushed.");
       }
       return push();

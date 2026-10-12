@@ -173,23 +173,33 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
    * next save of an open tab a conflict rather than an overwrite.
    */
   const documentRevision = async (dataFile: string, folder: string | null): Promise<string | null> => {
+    const files = await documentFiles(dataFile, folder);
+    if (files === null) return null;
+    if (folder === null) return files.get(dataFile)!;
+    const parts = [...files].map(([path, revision]) => `${path}\u0000${revision}`);
+    return createHash("sha256").update(parts.sort().join("\n")).digest("hex").slice(0, 16);
+  };
+
+  /** Every file of a document with its revision, or null when its data file is absent. */
+  const documentFiles = async (dataFile: string, folder: string | null): Promise<Map<string, string> | null> => {
     const data = await workspace.revision(dataFile);
-    if (data === null || folder === null) return data;
-    const parts: string[] = [];
+    if (data === null) return null;
+    const files = new Map([[dataFile, data]]);
+    if (folder === null) return files;
     const walk = async (dir: string): Promise<void> => {
       for (const item of await workspace.list(dir)) {
         const child = `${dir}/${item.name}`;
         if (item.type === "directory") await walk(child);
-        else parts.push(`${child}\u0000${await workspace.revision(child)}`);
+        else files.set(child, (await workspace.revision(child)) ?? "");
       }
     };
     await walk(folder);
-    return createHash("sha256").update(parts.sort().join("\n")).digest("hex").slice(0, 16);
+    return files;
   };
 
   /**
    * Refuses when the document changed since the editor read `expected`, and
-   * returns the data file's own revision for `apply`, which checks it again
+   * returns every file's revision for `apply`, which checks them all again
    * under the write lock.
    */
   const expectDocument = async (
@@ -198,12 +208,13 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
     folder: string | null,
   ): Promise<Record<string, string | null> | undefined> => {
     if (expected === undefined) return undefined;
+    const files = await documentFiles(dataFile, folder);
     if ((await documentRevision(dataFile, folder)) !== expected) {
       throw new ConflictError("This content changed after you opened it. Reload to see the current version.", [
         dataFile,
       ]);
     }
-    return { [dataFile]: await workspace.revision(dataFile) };
+    return files === null ? { [dataFile]: null } : Object.fromEntries(files);
   };
 
   /**

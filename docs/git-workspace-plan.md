@@ -1022,3 +1022,19 @@ leaves `operation.json` for the next start; Git calls under the tree lock
 other than the fast-forward do not set `GIT_NO_LAZY_FETCH`; the serialization
 of publications has no test of its own.
 
+### Re-review of the fixes (12 October 2026)
+
+| Finding | Change |
+| --- | --- |
+| **Major:** a force push that took back Mica's own pushed publication made it look pending, and Mica pushed it again | A commit in the tracking branch's reflog was on the remote once, so it is never pending; test |
+| **Major:** Publish in the `diverged` state committed the reviewed drafts on the stale head | `prepare` refuses while the clone is `diverged`; test |
+| `policy.push` checked only the count of unpushed commits | It uses the same "pending publication" check |
+| Clearing every error after a fetch logged a lasting failure twice a minute and reset its start | A fetch ends only reachability failures; the others end when a whole sync succeeds |
+| The whole-entry check ran outside the write lock | `apply` gets every file of the entry in its `expect` map |
+| A path that starts with ":" broke the prefetch check | The `diff --raw` records are read in pairs; test |
+| A volume mounted at `repository` cannot take the rename | The self-hosting guide says to mount `MICA_DATA_DIR` |
+
+Accepted: the whole-entry revision hashes every file of the entry, media
+included, on each open and save; an upload into an entry's own folder makes
+an open tab's next save a 409 (the editor UI uploads to the shared folder).
+

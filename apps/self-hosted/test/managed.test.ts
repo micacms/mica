@@ -308,6 +308,32 @@ describe("sync", () => {
     assert.equal(read(s, "content/theme.json"), '{"color":"one"}\n');
   });
 
+  it("does not push again a publication that a force push took back, and refuses to publish", async () => {
+    const s = await setup();
+    writeIn(s.repo, "content/posts/a/index.json", '{"title":"Published"}\n');
+    const tree = { git: s.git, prefix: "content", contentRoot: join(s.repo, "content") };
+    const revision = await commitPaths(tree, ["posts/a/index.json"], "Edit A", { name: "E", email: "e@example.com" });
+    assert.equal((await s.workspace.policy.push(tree, revision)).state, "published");
+
+    // A developer takes the publication back.
+    devGit(s.developer, "fetch", "--quiet", "origin");
+    devGit(s.developer, "reset", "--hard", "--quiet", `${revision}^`);
+    devGit(s.developer, "push", "--quiet", "--force", "origin", "HEAD:main");
+
+    const state = await s.workspace.sync();
+    assert.equal(state.error?.code, "diverged");
+    assert.notEqual(devGit(host.bare(s.name), "rev-parse", "main"), revision);
+    await assert.rejects(s.workspace.policy.prepare(tree), ApiError);
+  });
+
+  it("reads an upstream file whose name starts with a colon", async () => {
+    const s = await setup();
+    const to = upstream(s, (dir) => writeIn(dir, "content/:notes.md", "colon\n"));
+    const state = await s.workspace.sync();
+    assert.equal(state.error, null, state.error?.message);
+    assert.equal(head(s), to);
+  });
+
   it("forgets a held model change once a start applies it", async () => {
     const s = await setup();
     upstream(s, (dir) => writeIn(dir, "content/.mica/schema.json", '{"protocolVersion":1,"x":2}\n'));

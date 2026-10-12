@@ -180,6 +180,9 @@ authority is not supported yet.
   refuses to clone, and `check` fails, when a `.gitattributes` assigns LFS to
   files under the content root. If the file changes later, the sync stops and
   shows "restart required".
+- **Mount the volume at `MICA_DATA_DIR`** (`/data` in the image), never at its
+  `repository` folder: Mica makes a new clone beside it and renames it into
+  place, which a mount point refuses.
 - **One Mica per volume.** Do not run two containers on one volume. Mica has no
   lock file, so it cannot stop a second process.
 
