@@ -141,7 +141,7 @@ export function requireRepositoryConfig(config: RuntimeConfig): void {
         (config.REPOSITORY === "github"
           ? "  REPOSITORY_PROJECT is owner/repo, and the token needs contents: write."
           : "  REPOSITORY_PROJECT is group/project or a numeric id, and the token needs\n" +
-            "  the write_repository scope."),
+            "  the api scope (write_repository covers only git push, not the REST API)."),
     );
   }
 }

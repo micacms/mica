@@ -31,7 +31,7 @@ export interface GitLabConnectorOptions {
   project: string;
   /** Defaults to `main`. */
   branch?: string;
-  /** A token with `write_repository` scope. */
+  /** A token with the `api` scope; `write_repository` covers only `git push`, not this REST API. */
   token: string;
   /** Directory inside the repository that is the content root. */
   root?: string;
