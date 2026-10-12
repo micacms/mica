@@ -21,7 +21,7 @@ import { collection, defineSite, slug, text } from "@micacms/core";
 import { ApiError } from "../src/lib/errors.js";
 import { createLogger } from "../src/lib/logger.js";
 import { createWorkingTreeStagingService } from "../src/services/staging-local.js";
-import type { ContentStagingService } from "../src/services/staging.js";
+import type { ContentStagingService } from "../src/services/changes.js";
 
 /** File-layout entries, so a path is one JSON file and assertions stay short. */
 const model = defineSite({

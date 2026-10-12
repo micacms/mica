@@ -63,19 +63,18 @@ export { randomToken } from "./lib/id.js";
 export { DEFAULT_BASE_URL, DEFAULT_PORT } from "./lib/ports.js";
 export { VERSION } from "./lib/version.js";
 export { openSqlite, type RunResult, type SqlDatabase, type SqlParams, type SqlValue } from "./db/driver.js";
+export { createDraftStagingService, type DraftStagingDeps } from "./services/staging.js";
 export {
-  createDraftStagingService,
   analyseChanges,
   classifyPath,
   type AnnotatedChange,
   type ChangeOwner,
   type ContentStagingService,
-  type DraftStagingDeps,
   type PublishInput,
   type StagingProblem,
   type StagingStatus,
   type StagingValidation,
-} from "./services/staging.js";
+} from "./services/changes.js";
 export {
   createWorkingTreeStagingService,
   type WorkingTreeStagingDeps,

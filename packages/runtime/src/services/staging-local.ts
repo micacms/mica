@@ -48,7 +48,7 @@ import {
   type PublishInput,
   type StagingStatus,
   type StagingValidation,
-} from "./staging.js";
+} from "./changes.js";
 
 export interface WorkingTreeStagingDeps {
   model: Site;

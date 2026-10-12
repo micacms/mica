@@ -24,7 +24,8 @@ import type { RuntimeConfig } from "./config.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
 import { createMediaService, type MediaService } from "./services/media.js";
-import { createDraftStagingService, type ContentStagingService } from "./services/staging.js";
+import type { ContentStagingService } from "./services/changes.js";
+import { createDraftStagingService } from "./services/staging.js";
 import { createWorkingTreeStagingService } from "./services/staging-local.js";
 
 /**
