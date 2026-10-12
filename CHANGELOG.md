@@ -5,10 +5,67 @@ Notable changes to Mica. The format follows
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Everything in this repository is released together and carries one version: the
-eight published packages and the CMS image.
+seven published packages and the CMS image.
 
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
+
+## [0.5.0-rc.1] — 2026-10-12
+
+A release candidate, published under the npm tag `next` and as the image
+`ghcr.io/micacms/mica:0.5.0-rc.1`. `latest` stays at 0.4.1.
+
+The self-hosted Mica keeps its own Git clone of the content repository. It no
+longer uses a SQLite database or the GitHub and GitLab APIs. Both apps now
+work the same way: a draft is an uncommitted file in a Git working tree, and
+Publish commits the reviewed files. Any Git host over HTTPS should work.
+
+### Breaking
+
+- **New repository configuration.** Set `MICA_REPOSITORY_URL` (the HTTPS clone
+  URL) and `MICA_REPOSITORY_TOKEN`. Optional: `MICA_REPOSITORY_USERNAME`,
+  `_BRANCH`, `_ROOT` and `_SYNC_SECONDS`. `MICA_DATA_DIR` replaces `DATA_DIR`.
+  `REPOSITORY`, `REPOSITORY_*` and `DATABASE_PATH` are not read any more. Start
+  from the new `deploy/self-hosted/compose.yml` and `.env.example`
+  (`@micacms/self-hosted`).
+- **No upgrade from 0.4.** Mica 0.5 does not read the 0.4 draft database.
+  Publish or discard every draft on 0.4 before you change the image.
+- **A narrower token.** GitLab needs only `read_repository` and
+  `write_repository`, not `api`. GitHub needs Contents: read and write.
+- **`@micacms/connectors` is removed.** Its file layer is in
+  `@micacms/runtime` as `contentFiles` and `ContentFiles`. Core no longer
+  exports the draft-store and repository-port types (`@micacms/core`,
+  `@micacms/runtime`).
+
+### Added
+
+- **Conflicts with the website.** When a change on the website touches an
+  entry that has a draft, the editor sees a conflict and chooses "Keep my
+  version" or "Use the website's version", with a comparison of the two
+  (`@micacms/editor-ui`, `@micacms/self-hosted`).
+- **The `check` command** tests a configuration, the token and the push
+  rights in a temporary clone: `docker compose run --rm mica check`
+  (`@micacms/self-hosted`).
+- **Sync state** on the Publish, Dashboard and System pages, and reason codes
+  on `/ready` (`@micacms/editor-ui`, `@micacms/runtime`).
+
+### Changed
+
+- **Publish commits only the reviewed files**, with the editor as author, and
+  refuses a file that changed after the review (`@micacms/runtime`).
+- **A refused push turns back into drafts** and shows the host's reason. A
+  push that fails on the network or on authentication stays committed and is
+  pushed again later (`@micacms/self-hosted`).
+- **Git on the server is isolated**: no hooks, filters or symlinks, HTTPS
+  only, and the token goes only to the configured host. The image now
+  contains `git` and `tini` (`@micacms/self-hosted`).
+
+### Known gaps
+
+- Git LFS under the content root is refused, and SSH remotes are not
+  supported yet.
+- A file that `.gitignore` hides under the content root is not shown and not
+  published.
 
 ## [0.4.1] — 2026-10-11
 
