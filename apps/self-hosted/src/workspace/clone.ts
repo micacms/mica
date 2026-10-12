@@ -1,0 +1,269 @@
+/**
+ * Mica's clone on the data volume. The clone holds the drafts and at most one
+ * unpushed commit, so a clone that does not match the configuration is replaced
+ * only when it holds neither. At start, it finishes what a crash interrupted.
+ */
+
+import { existsSync } from "node:fs";
+import { mkdir, readFile, readdir, rm, stat, writeFile, rename } from "node:fs/promises";
+import { basename, join } from "node:path";
+
+import { ConfigError, gitRunner, type GitRunner, type Logger } from "@micacms/runtime";
+
+import { writeIsolationAttributes } from "./isolation.js";
+import { lfsUnderRoot } from "./lfs.js";
+import { changedBetween, draftPaths, restorePaths } from "./restore.js";
+
+/** The longest a Git call may run. A lock older than this has no owner left. */
+export const LONGEST_GIT_CALL_MS = 10 * 60_000;
+
+export interface CloneLayout {
+  dataDir: string;
+  repositoryDir: string;
+  /** Marks a fast-forward in progress. */
+  operationFile: string;
+  /** Marks a "Keep my version" in progress; its copies are in `rescueDir`. */
+  keepMineFile: string;
+  rescueDir: string;
+}
+
+export function cloneLayout(dataDir: string): CloneLayout {
+  return {
+    dataDir,
+    repositoryDir: join(dataDir, "repository"),
+    operationFile: join(dataDir, "operation.json"),
+    keepMineFile: join(dataDir, "keep-mine.json"),
+    rescueDir: join(dataDir, "rescue"),
+  };
+}
+
+/** A start that must not go on. The message tells the operator what to do. */
+export class CloneRefusal extends ConfigError {
+  override name = "CloneRefusal";
+}
+
+export interface OpenCloneOptions {
+  layout: CloneLayout;
+  url: string;
+  branch: string;
+  root: string;
+  env: NodeJS.ProcessEnv;
+  logger: Logger;
+}
+
+/** Makes or finds the clone, recovers it, and returns a runner for it. */
+export async function openClone(options: OpenCloneOptions): Promise<GitRunner> {
+  const { layout, logger } = options;
+  const git = runner(layout.repositoryDir, options.env);
+  await removeUnfinishedClones(layout);
+
+  if (!existsSync(join(layout.repositoryDir, ".git"))) {
+    if (existsSync(layout.repositoryDir) && (await readdir(layout.repositoryDir)).length > 0) {
+      throw new CloneRefusal(
+        `${layout.repositoryDir} exists but is not a Git clone. Move it away, or delete it, and start again.`,
+      );
+    }
+    await refuseRescuedDrafts(layout);
+    await cloneFresh(options);
+    return git;
+  }
+
+  if ((await git.tryRun(["rev-parse", "--git-dir"])) === null) {
+    throw new CloneRefusal(
+      `${layout.repositoryDir} is not a valid Git repository. If it holds no unpublished work, delete it and start again.`,
+    );
+  }
+
+  const url = await git.tryRun(["config", "--get", "remote.origin.url"]);
+  const branch = await git.tryRun(["rev-parse", "--abbrev-ref", "HEAD"]);
+
+  if (url !== options.url || branch !== options.branch) {
+    const drafts = await draftPaths(git, "");
+    const ahead = Number((await git.tryRun(["rev-list", "--count", `origin/${branch}..HEAD`])) ?? "0");
+    await refuseRescuedDrafts(layout);
+    if (drafts.length > 0 || ahead > 0) {
+      const listed = drafts.slice(0, 10).map((path) => `    ${path}`).join("\n");
+      throw new CloneRefusal(
+        `The clone on the data volume is for ${url ?? "an unknown remote"} (${branch ?? "no branch"}),\n` +
+          `  but MICA_REPOSITORY_URL and MICA_REPOSITORY_BRANCH say ${options.url} (${options.branch}).\n` +
+          `  It holds work that is not published${ahead > 0 ? " (one commit not pushed)" : ""}:\n` +
+          `${listed}${drafts.length > 10 ? "\n    …" : ""}\n` +
+          "  Start Mica with the old configuration and publish, or copy the drafts out with\n" +
+          `    docker compose cp mica:${layout.repositoryDir}/${options.root} ./mica-drafts\n` +
+          "  and delete the volume.",
+      );
+    }
+    logger.info("The clone is for another repository or branch and holds no work; cloning again", {
+      was: url,
+      branch,
+    });
+    await rm(layout.repositoryDir, { recursive: true, force: true });
+    await cloneFresh(options);
+    return git;
+  }
+
+  await writeIsolationAttributes(join(layout.repositoryDir, ".git"));
+  await removeStaleLock(layout, logger);
+  await recover(git, options);
+  return git;
+}
+
+/**
+ * Clones into a temporary directory, so a clone stopped half-way never looks
+ * like one whose files were deleted.
+ */
+async function cloneFresh(options: OpenCloneOptions): Promise<void> {
+  const { layout } = options;
+  await mkdir(layout.dataDir, { recursive: true });
+  // Recovery markers belong to the clone they were written for, never to this one.
+  await rm(layout.operationFile, { force: true });
+  await rm(layout.rescueDir, { recursive: true, force: true });
+
+  const outside = runner(layout.dataDir, options.env);
+  const temporary = `${layout.repositoryDir}${UNFINISHED}${process.pid}`;
+  await rm(temporary, { recursive: true, force: true });
+
+  options.logger.info("Cloning the content repository", { url: options.url, branch: options.branch });
+  // No checkout yet, so the isolation attributes are in place before the first file is written.
+  await outside.run([
+    "clone",
+    "--filter=blob:none",
+    "--single-branch",
+    "--no-checkout",
+    "--branch",
+    options.branch,
+    "--",
+    options.url,
+    temporary,
+  ]);
+
+  try {
+    const git = runner(temporary, options.env);
+    await writeIsolationAttributes(join(temporary, ".git"));
+
+    const lfs = await lfsUnderRoot(git, "HEAD", options.root);
+    if (lfs) throw lfsRefusal(lfs, options.root);
+
+    // `checkout` fetches the missing blobs in one batch; `restore` would fetch
+    // them one request at a time.
+    await git.run(["checkout", "--force", "--quiet", "HEAD"]);
+    await rename(temporary, layout.repositoryDir);
+  } catch (error) {
+    await rm(temporary, { recursive: true, force: true });
+    throw error;
+  }
+  const head = await runner(layout.repositoryDir, options.env).run(["rev-parse", "HEAD"]);
+  options.logger.info("Cloned the content repository", { head });
+}
+
+const UNFINISHED = ".unfinished-";
+
+async function removeUnfinishedClones(layout: CloneLayout): Promise<void> {
+  if (!existsSync(layout.dataDir)) return;
+  const prefix = `${basename(layout.repositoryDir)}${UNFINISHED}`;
+  for (const name of await readdir(layout.dataDir)) {
+    if (name.startsWith(prefix)) await rm(join(layout.dataDir, name), { recursive: true, force: true });
+  }
+}
+
+/**
+ * An interrupted "Keep my version" holds drafts in the rescue directory; they
+ * must not go with the clone.
+ */
+async function refuseRescuedDrafts(layout: CloneLayout): Promise<void> {
+  if (!existsSync(layout.keepMineFile)) return;
+  throw new CloneRefusal(
+    `${layout.keepMineFile} says that ${layout.rescueDir} holds drafts from an interrupted "Keep my version".\n` +
+      "  Start Mica with the configuration of that clone to restore them, or copy them out of the rescue\n" +
+      "  directory and delete keep-mine.json.",
+  );
+}
+
+export function lfsRefusal(file: string, root: string): CloneRefusal {
+  return new CloneRefusal(
+    `${file} assigns Git LFS to files under the content root (${root || "the repository root"}).\n` +
+      "  Mica does not support Git LFS yet: it would commit whole files where LFS\n" +
+      "  should hold pointers. Keep LFS out of the content root.",
+  );
+}
+
+async function removeStaleLock(layout: CloneLayout, logger: Logger): Promise<void> {
+  const lock = join(layout.repositoryDir, ".git", "index.lock");
+  const found = await stat(lock).catch(() => null);
+  if (!found) return;
+  // A younger lock can belong to a process that still runs, for example during a rolling deploy.
+  if (Date.now() - found.mtimeMs < LONGEST_GIT_CALL_MS) return;
+  await rm(lock, { force: true });
+  logger.warn("Removed a stale index.lock", { lock });
+}
+
+interface OperationMarker {
+  from: string;
+  to: string;
+}
+
+interface KeepMineMarker {
+  /** Repository-relative path → its file in the rescue directory, or null for a deletion. */
+  files: Record<string, string | null>;
+}
+
+/** Writes a marker so that it is either there whole or not at all. */
+export async function writeMarker(file: string, value: unknown): Promise<void> {
+  const temporary = `${file}.tmp`;
+  await writeFile(temporary, JSON.stringify(value));
+  await rename(temporary, file);
+}
+
+async function recover(git: GitRunner, options: OpenCloneOptions): Promise<void> {
+  const { layout, logger } = options;
+
+  const operation = await readMarker<OperationMarker>(layout.operationFile);
+  if (operation) {
+    // Safe without a copy of the drafts: the fast-forward ran after the
+    // conflict check, so no upstream path is a draft.
+    const paths = await changedBetween(git, operation.from, operation.to);
+    await restorePaths(git, layout.repositoryDir, operation.to, paths);
+    await git.run(["update-ref", `refs/heads/${options.branch}`, operation.to]);
+    await rm(layout.operationFile, { force: true });
+    logger.warn("Finished a fast-forward that a crash interrupted", { to: operation.to, paths: paths.length });
+  }
+
+  if (await readMarker<KeepMineMarker>(layout.keepMineFile)) {
+    await writeBackKept(layout);
+    logger.warn("Restored the drafts of an interrupted \"Keep my version\"");
+  }
+
+  // Temporary files of a save that a crash interrupted.
+  for (const path of await draftPaths(git, options.root)) {
+    if (/\.mica-\d+-\d+$/.test(path)) await rm(join(layout.repositoryDir, path), { force: true });
+  }
+}
+
+/** Writes the rescued drafts back over the tree, then deletes the rescue. */
+export async function writeBackKept(layout: CloneLayout): Promise<void> {
+  const marker = await readMarker<KeepMineMarker>(layout.keepMineFile);
+  if (!marker) return;
+  for (const [path, copy] of Object.entries(marker.files)) {
+    const target = join(layout.repositoryDir, path);
+    if (copy === null) {
+      await rm(target, { force: true });
+      continue;
+    }
+    await mkdir(join(target, ".."), { recursive: true });
+    await writeFile(target, await readFile(join(layout.rescueDir, copy)));
+  }
+  await rm(layout.keepMineFile, { force: true });
+  await rm(layout.rescueDir, { recursive: true, force: true });
+}
+
+async function readMarker<T>(file: string): Promise<T | null> {
+  try {
+    return JSON.parse(await readFile(file, "utf8")) as T;
+  } catch {
+    return null;
+  }
+}
+
+function runner(cwd: string, env: NodeJS.ProcessEnv): GitRunner {
+  return gitRunner(cwd, { env, timeoutMs: LONGEST_GIT_CALL_MS, maxBuffer: 256 * 1024 * 1024 });
+}

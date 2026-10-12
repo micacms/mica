@@ -5,8 +5,8 @@
   "eyebrow": "Source of truth",
   "summary": "Content is readable files in your repository. Every publish is one commit, ready for review, rollback, and your normal CI.",
   "outcomes": [
-    { "text": "No export or database dump" },
+    { "text": "No export and no database" },
     { "text": "Human-readable changes" },
-    { "text": "Provider-backed history" }
+    { "text": "Your Git host keeps the history" }
   ]
 }

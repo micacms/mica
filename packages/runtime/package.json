@@ -32,7 +32,6 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.13.8",
-    "@micacms/connectors": "workspace:*",
     "@micacms/core": "workspace:*",
     "hono": "^4.13.7",
     "image-size": "^2.0.3",

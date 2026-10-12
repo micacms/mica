@@ -1,12 +1,6 @@
 /**
- * Test harness: the runtime composed the way the local editor composes it —
- * a real temporary content directory, the local connector, and the
- * unauthenticated surface. No sessions, no CSRF, no database: what the
- * runtime is, exercised without what an app adds around it.
- *
- * The content directory is real, and deliberately so. The store's whole job
- * is what it does to a repository, and a fake connector would let a test pass
- * while the files came out wrong.
+ * Test harness: the runtime as the local editor composes it, on a real
+ * temporary content directory.
  */
 
 import { mkdtempSync, rmSync } from "node:fs";
@@ -14,12 +8,11 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { deflateSync } from "node:zlib";
 
-import { localConnector } from "@micacms/connectors";
+import { contentFiles } from "../src/index.js";
 import {
   collection,
   defineSite,
   media,
-  memoryDraftStore,
   number,
   relation,
   richText,
@@ -27,7 +20,6 @@ import {
   singleton,
   slug,
   text,
-  type DraftStore,
   type Site,
 } from "@micacms/core";
 
@@ -38,7 +30,6 @@ import { createLogger } from "../src/lib/logger.js";
 
 export const TEST_ORIGIN = "http://localhost:6422";
 
-/** A deliberately small model, so assertions stay readable. */
 export const testSite = defineSite({
   collections: {
     projects: collection({
@@ -69,7 +60,7 @@ export const testSite = defineSite({
     }),
   },
   singletons: {
-    // File layout: no rich text and no media, so this is one JSON document.
+    // No rich text and no media, so this is one JSON file.
     settings: singleton({
       label: "Website",
       fields: {
@@ -80,7 +71,6 @@ export const testSite = defineSite({
   },
 });
 
-/** A complete RuntimeConfig as a plain object — no schema, no environment. */
 export function testConfig(
   contentRoot: string,
   overrides: Partial<RuntimeConfig> = {},
@@ -92,12 +82,6 @@ export function testConfig(
     PORT: 6422,
     MICA_PUBLIC_URL: TEST_ORIGIN,
     CONTENT_ROOT: contentRoot,
-    REPOSITORY: "local",
-    REPOSITORY_ROOT: "content",
-    REPOSITORY_BRANCH: "main",
-    REPOSITORY_TOKEN: undefined,
-    REPOSITORY_PROJECT: undefined,
-    REPOSITORY_API_BASE: undefined,
     MICA_LOCAL_PUBLISH: true,
     MAX_UPLOAD_BYTES: 25 * 1024 * 1024,
     TRUST_PROXY: false,
@@ -110,44 +94,26 @@ export function testConfig(
   };
 }
 
-/** Kept for signature compatibility with tests that name their caller. */
-export interface Session {
-  cookie: string;
-  csrfToken: string;
-}
-
 export interface TestHarness {
   ctx: RuntimeContext;
   contentRoot: string;
-  /** Present on a staged harness: the draft the saves landed in. */
-  drafts?: DraftStore;
-  request(path: string, init?: RequestInit & { session?: Session }): Promise<Response>;
-  /** There is nobody to be. Returns a token the harness ignores. */
-  signIn(): Promise<Session>;
+  request(path: string, init?: RequestInit): Promise<Response>;
   close(): Promise<void>;
 }
 
 export async function createHarness(
   overrides: Partial<RuntimeConfig> = {},
-  options: { site?: Site; staged?: boolean } = {},
+  options: { site?: Site } = {},
 ): Promise<TestHarness> {
   const contentRoot = mkdtempSync(join(tmpdir(), "mica-runtime-test-"));
-  const config = testConfig(contentRoot, {
-    // A staged harness mimics a provider deployment: saves accumulate in a
-    // draft store, and the "provider" is this temporary directory.
-    ...(options.staged ? { REPOSITORY: "github" as const } : {}),
-    ...overrides,
-  });
-
-  const drafts = options.staged ? memoryDraftStore() : undefined;
+  const config = testConfig(contentRoot, overrides);
 
   const ctx = createRuntimeContext({
     config,
     model: options.site ?? testSite,
-    connector: localConnector({ root: contentRoot }),
-    drafts,
+    files: contentFiles({ root: contentRoot }),
     logger: createLogger({ level: "silent", pretty: false }),
-    operational: () => ({ auth: "none — test harness", database: null }),
+    operational: () => ({ auth: "none — test harness" }),
   });
 
   const app = createApp(ctx);
@@ -155,22 +121,16 @@ export async function createHarness(
   return {
     ctx,
     contentRoot,
-    drafts,
 
     async request(path, init = {}) {
-      const { session: _session, ...rest } = init;
-      const headers = new Headers(rest.headers);
+      const headers = new Headers(init.headers);
 
       // A browser sets Origin on writes; the origin guard checks it.
-      if (!headers.has("origin") && rest.method && rest.method !== "GET") {
+      if (!headers.has("origin") && init.method && init.method !== "GET") {
         headers.set("origin", TEST_ORIGIN);
       }
 
-      return app.request(`${TEST_ORIGIN}${path}`, { ...rest, headers });
-    },
-
-    async signIn() {
-      return { cookie: "", csrfToken: "" };
+      return app.request(`${TEST_ORIGIN}${path}`, { ...init, headers });
     },
 
     async close() {
@@ -179,10 +139,6 @@ export async function createHarness(
     },
   };
 }
-
-/* ------------------------------------------------------------------ *
- * Fixtures
- * ------------------------------------------------------------------ */
 
 /** A real 1×1 PNG, so content sniffing and dimension reading see valid bytes. */
 export function pngBytes(): Uint8Array {

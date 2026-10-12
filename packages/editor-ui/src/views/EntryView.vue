@@ -1,19 +1,9 @@
 <script setup lang="ts">
 /**
- * Entry editor.
- *
- * One Save button, and Saved is not Published: a save lands in the site's
- * draft workspace and collects on the Publish page until somebody publishes
- * it. Unfinished work stays in this form and never reaches the server, which
- * is what the unsaved-changes guard is for.
- *
- * `revision` is how two editors stay out of each other's way. The form
- * remembers which version of the entry it opened and sends that token back with
- * the save. If someone else saved in the meantime the server answers 409, and
- * this view says so plainly rather than overwriting their work.
- *
- * An entry is addressed by its slug, so changing the slug field moves the entry
- * — files and all — and the route follows it.
+ * Entry editor. Saved is not Published: a save joins the pending changes, and
+ * unsaved work stays in the form. `revision` goes back with the save, so a
+ * concurrent save gets a 409 instead of an overwrite. The slug is the address:
+ * changing it moves the entry, and the route follows.
  */
 
 import { computed, onMounted, ref } from "vue";
@@ -46,13 +36,19 @@ const loading = ref(true);
 const saving = ref(false);
 const conflict = ref(false);
 const confirmDelete = ref(false);
+
+/** This entry was changed on the website while it has a draft here: Mica's own clone only. */
+const websiteConflict = computed(() =>
+  (staging.status.value?.sync?.conflicts ?? []).some(
+    (item) =>
+      item.target?.kind === "entry" && item.target.collection === props.collection && item.target.slug === props.slug,
+  ),
+);
 const references = ref<Array<{ collection: string; title: string }>>([]);
 
 /**
- * The version this form was opened against.
- *
- * `null` on a new entry, which asserts to the server that nothing is there —
- * so two people creating the same slug is a conflict, not a silent overwrite.
+ * The version this form was opened against; `null` on a new entry, so a
+ * duplicate slug is a conflict.
  */
 const revision = ref<string | null>(null);
 
@@ -70,10 +66,8 @@ const title = computed(() => {
 });
 
 /**
- * Where this entry lives in the repository — the path a reviewer will see.
- *
- * From the server, not assembled here: an entry with rich text or media is a
- * directory, and one without is a single `.json` file.
+ * Where this entry lives, from the server: a directory with rich text or media,
+ * else one `.json` file.
  */
 const location = computed(() => entry.value?.path ?? "Not saved yet");
 
@@ -126,8 +120,8 @@ async function save(): Promise<void> {
       ? await api.entries.update(props.collection, props.slug, payload)
       : await api.entries.create(props.collection, payload);
 
-    // The server owns the slug — it derives it, de-duplicates it, and may have
-    // moved the entry. Re-open at whatever it decided rather than assuming.
+    // The server derives and de-duplicates the slug and can move the entry:
+    // re-open at what it decided.
     unsaved.markClean();
     toast.success(saved.renamed ? `Saved as “${saved.slug}”.` : "Saved.");
     void staging.refresh();
@@ -143,14 +137,12 @@ async function save(): Promise<void> {
     await open(saved.slug);
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
-      // Nothing is lost: the form still holds the editor's work, and reloading
-      // is a deliberate act rather than something that happens under them.
+      // The form keeps the editor's work; a reload is their decision.
       conflict.value = true;
-      toast.error("Someone else saved this entry while you were editing it.");
+      toast.error("This entry was changed while you were editing it — by a colleague or on the website.");
     } else if (error instanceof ApiError && error.issues.length > 0) {
       issues.value = error.issues;
       toast.error(error.message, `${error.issues.length} field(s) need attention.`);
-      // Take the editor to the first problem rather than leaving them hunting.
       requestAnimationFrame(() => {
         document
           .querySelector('[aria-invalid="true"], .field-error')
@@ -229,6 +221,18 @@ async function remove(): Promise<void> {
 
       <template v-else>
         <div
+          v-if="websiteConflict"
+          role="alert"
+          class="mb-5 rounded-md border border-warning/15 bg-warning-soft p-4"
+        >
+          <p class="text-sm font-medium text-warning">This entry was changed on the website while you edited</p>
+          <p class="mt-1 text-xs text-muted">
+            Your saved version is kept. Choose which version to publish on the Publish page.
+          </p>
+          <RouterLink :to="{ name: 'changes' }" class="btn-secondary mt-2.5 inline-flex">Choose a version</RouterLink>
+        </div>
+
+        <div
           v-if="conflict"
           role="alert"
           class="mb-5 rounded-md border border-warning/15 bg-warning-soft p-4"
@@ -286,9 +290,6 @@ async function remove(): Promise<void> {
       @cancel="confirmDelete = false"
       @confirm="remove"
     >
-      <!-- Honest about what a delete is now: a pending change. It reaches the
-           repository's history when the pending set is published, and the
-           history keeps it from then on. -->
       <p>
         This removes <code>{{ location }}</code>. Like any edit, the removal joins the pending
         changes and reaches the repository when they are published.

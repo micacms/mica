@@ -42,12 +42,6 @@
       "tags": ["packages"]
     },
     {
-      "packageName": "@micacms/connectors",
-      "projectFolder": "packages/connectors",
-      "versionPolicyName": "mica",
-      "tags": ["packages"]
-    },
-    {
       "packageName": "@micacms/astro",
       "projectFolder": "packages/astro",
       "versionPolicyName": "mica",

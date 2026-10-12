@@ -9,20 +9,18 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 const MICA = "http://localhost:6422";
-const GITHUB = "http://localhost:8787/repos/acme/site";
+const FORGEJO = "http://localhost:3000/api/v1/repos/editor/site";
+const FORGEJO_AUTH = `Basic ${Buffer.from("editor:Forgejo-test-password-not-for-production").toString("base64")}`;
 
-/** Reads the stand-in GitHub API directly, to see what reached the repository. */
-async function github(path, accept = "application/vnd.github+json") {
-  const response = await fetch(`${GITHUB}/${path}`, {
-    headers: { authorization: "Bearer test", accept },
-  });
-  assert.equal(response.ok, true, `GitHub stub: ${path} answered ${response.status}`);
-  return accept.includes("raw") ? response.text() : response.json();
+/** Reads the Git host directly, to see what reached the repository. */
+async function forgejo(path, raw = false) {
+  const response = await fetch(`${FORGEJO}/${path}`, { headers: { authorization: FORGEJO_AUTH } });
+  assert.equal(response.ok, true, `Forgejo: ${path} answered ${response.status}`);
+  return raw ? response.text() : response.json();
 }
 
-const headOfMain = async () => (await github("git/ref/heads/main")).object.sha;
-const publishedSite = async () =>
-  JSON.parse(await github("contents/content/site/index.json?ref=main", "application/vnd.github.raw"));
+const headOfMain = async () => (await forgejo("branches/main")).commit.id;
+const publishedSite = async () => JSON.parse(await forgejo("raw/content/site/index.json?ref=main", true));
 
 /** One person's browser: a cookie jar and a redirect loop. */
 class Browser {
@@ -157,17 +155,78 @@ describe("an admitted session", () => {
     assert.equal(await headOfMain(), before);
     assert.notEqual((await publishedSite()).tagline, tagline);
 
+    // Publish sends back what the editor reviewed, as the Publish page does.
+    const status = await (await alice.api("/api/admin/changes")).json();
+    const paths = Object.fromEntries(status.changes.map((change) => [change.path, change.revision ?? null]));
     const message = `Publish the tagline (${tagline})`;
-    const published = await alice.api("/api/admin/publish", { method: "POST", body: { message } });
+    const published = await alice.api("/api/admin/publish", { method: "POST", body: { message, paths } });
     assert.equal(published.status, 200, await published.clone().text());
+    assert.equal((await published.json()).state, "published");
 
     // One commit on top of the old head, by the person who pressed Publish.
     const head = await headOfMain();
-    const commit = await github(`git/commits/${head}`);
-    assert.equal(commit.message, message);
-    assert.deepEqual(commit.parents, [{ sha: before }]);
-    assert.equal(commit.author?.email, "alice@gmail.com");
+    const commit = await forgejo(`git/commits/${head}`);
+    assert.equal(commit.commit.message.trim(), message);
+    assert.deepEqual(commit.parents.map((parent) => parent.sha), [before]);
+    assert.equal(commit.commit.author.email, "alice@gmail.com");
+    assert.equal(commit.commit.committer.name, "Mica CMS");
     assert.equal((await publishedSite()).tagline, tagline);
+  });
+
+  it("shows a change made on the website as a conflict, and publishes the version the editor keeps", async () => {
+    const alice = new Browser();
+    await alice.signIn("alice@gmail.com");
+
+    const current = await (await alice.api("/api/admin/singletons/site")).json();
+    const mine = `Mine, at ${new Date().toISOString()}`;
+    const saved = await alice.api("/api/admin/singletons/site", {
+      method: "PUT",
+      body: { data: { ...current.data, tagline: mine }, revision: current.revision },
+    });
+    assert.equal(saved.status, 200);
+
+    // A developer changes the same file on the website, through the Git host.
+    const file = await forgejo("contents/content/site/index.json?ref=main");
+    const theirs = { ...JSON.parse(Buffer.from(file.content, "base64").toString()), tagline: "Theirs" };
+    const updated = await fetch(`${FORGEJO}/contents/content/site/index.json`, {
+      method: "PUT",
+      headers: { authorization: FORGEJO_AUTH, "content-type": "application/json" },
+      body: JSON.stringify({
+        branch: "main",
+        sha: file.sha,
+        message: "A developer edits the tagline",
+        content: Buffer.from(`${JSON.stringify(theirs, null, 2)}\n`).toString("base64"),
+      }),
+    });
+    assert.equal(updated.status, 200, await updated.text());
+    const developerCommit = await headOfMain();
+
+    const synced = await (await alice.api("/api/admin/sync", { method: "POST" })).json();
+    assert.deepEqual(
+      synced.sync.conflicts.map((conflict) => [conflict.group, conflict.upstream]),
+      [["singleton:site", "changed"]],
+    );
+    assert.equal(synced.publish.enabled, false);
+
+    const compared = await (await alice.api("/api/admin/changes/compare?kind=singleton&name=site&against=origin")).json();
+    assert.equal(compared.before.tagline, "Theirs");
+    assert.equal(compared.after.tagline, mine);
+
+    const resolved = await (
+      await alice.api("/api/admin/changes/resolve", { method: "POST", body: { group: "singleton:site", choice: "mine" } })
+    ).json();
+    assert.deepEqual(resolved.sync.conflicts, []);
+    assert.equal(resolved.head, developerCommit);
+
+    const paths = Object.fromEntries(resolved.changes.map((change) => [change.path, change.revision ?? null]));
+    const published = await alice.api("/api/admin/publish", {
+      method: "POST",
+      body: { message: "Keep my tagline", paths },
+    });
+    assert.equal(published.status, 200, await published.clone().text());
+    assert.equal((await publishedSite()).tagline, mine);
+    const commit = await forgejo(`git/commits/${await headOfMain()}`);
+    assert.deepEqual(commit.parents.map((parent) => parent.sha), [developerCommit]);
   });
 
   it("rejects a session cookie that was altered", async () => {

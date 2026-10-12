@@ -1,19 +1,15 @@
 /**
- * Test harness: the complete self-hosted composition against an in-memory
- * database and a temporary content directory.
- *
- * Built exactly the way `src/index.ts` builds it — the runtime behind the
- * OIDC gate — so what these tests exercise is the composition itself:
- * sessions, admission, CSRF, and the SQLite draft store behind a
- * provider-shaped configuration.
+ * Test harness: the composition of `src/index.ts` on a data directory whose
+ * `repository/` is a plain Git repository. `managed.test.ts` covers the clone,
+ * sync and publication against a real Git host.
  */
 
-import { mkdtempSync, rmSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { createOidcAuth, type OidcAuth, type SessionIdentity } from "@micacms/auth-oidc";
-import { localConnector } from "@micacms/connectors";
 import {
   collection,
   defineSite,
@@ -28,6 +24,7 @@ import {
   type Site,
 } from "@micacms/core";
 import {
+  contentFiles,
   createApp,
   createLogger,
   createRuntimeContext,
@@ -35,10 +32,6 @@ import {
 } from "@micacms/runtime";
 
 import { loadConfig, type SelfHostedConfig } from "../src/config.js";
-import { createDraftRepository } from "../src/db/drafts.js";
-import { openTestDatabase } from "../src/db/index.js";
-import { databaseVersion } from "../src/db/migrations.js";
-import type { SqlDatabase } from "@micacms/runtime";
 
 export const TEST_ORIGIN = "http://localhost:6422";
 export const ISSUER = "https://id.example.test";
@@ -113,17 +106,13 @@ export interface TestHarness {
   ctx: RuntimeContext;
   config: SelfHostedConfig;
   auth: OidcAuth;
-  db: SqlDatabase;
-  /** The temporary content directory, so a test can assert on the files. */
+  /** The content root in the data directory's repository, so a test can assert on the files. */
   contentRoot: string;
   /** Issues a request; `session` carries cookies and the CSRF token. */
   request(path: string, init?: RequestInit & { session?: Session }): Promise<Response>;
   /**
-   * Starts a session without an identity provider round trip.
-   *
-   * Nothing below the session cookie cares how the cookie was obtained, so
-   * the admission tests do not need a fake provider to be meaningful: they
-   * state the claims a provider would have returned and go from there.
+   * Starts a session without a provider round trip: nothing below the cookie
+   * cares how it was obtained.
    */
   signIn(identity?: SessionIdentity): Promise<Session>;
   close(): Promise<void>;
@@ -133,56 +122,47 @@ export async function createHarness(
   overrides: Partial<NodeJS.ProcessEnv> = {},
   options: { site?: Site; adminDir?: string } = {},
 ): Promise<TestHarness> {
-  const contentRoot = mkdtempSync(join(tmpdir(), "mica-test-content-"));
+  const dataDir = mkdtempSync(join(tmpdir(), "mica-test-data-"));
 
   const config = loadConfig({
     NODE_ENV: "test",
     LOG_LEVEL: "silent",
     MICA_PUBLIC_URL: TEST_ORIGIN,
     SESSION_SECRET: "0".repeat(32),
-    DATA_DIR: "/tmp/mica-test-unused",
-    CONTENT_ROOT: contentRoot,
+    MICA_DATA_DIR: dataDir,
+    MICA_REPOSITORY_URL: "https://git.example.test/acme/site.git",
+    MICA_REPOSITORY_TOKEN: "unused-by-the-harness",
     MICA_OIDC_ISSUER: ISSUER,
     MICA_OIDC_CLIENT_ID: "mica",
     MICA_ADMIT_GROUP: "mica-editors",
-    // Provider-shaped, as every self-hosted deployment is. The local connector
-    // stands in as "the provider", so the temporary directory is the repository.
-    REPOSITORY: "github",
-    REPOSITORY_PROJECT: "acme/site",
-    REPOSITORY_TOKEN: "unused-by-the-test-connector",
     ...overrides,
   } as NodeJS.ProcessEnv);
 
-  const logger = createLogger({ level: "silent", pretty: false });
-  const db = openTestDatabase();
-  const connector = localConnector({ root: contentRoot });
-  const auth = createOidcAuth({ config, logger });
+  // The data directory's repository, without a remote: the harness never syncs.
+  const contentRoot = config.contentRoot;
+  mkdirSync(contentRoot, { recursive: true });
+  execFileSync("git", ["init", "--quiet", join(dataDir, "repository")]);
 
-  const drafts = createDraftRepository(db);
+  const logger = createLogger({ level: "silent", pretty: false });
+  const files = contentFiles({ root: contentRoot });
+  const auth = createOidcAuth({ config, logger });
 
   const ctx = createRuntimeContext({
     config,
     model: options.site ?? testSite,
-    connector,
-    drafts,
+    files,
     logger,
     operational: () => ({
       auth: `oidc:${new URL(ISSUER).hostname}`,
       admission: auth.admission.summary,
-      database: {
-        path: config.databasePath,
-        version: databaseVersion(db),
-        bytes: null,
-      },
       dataDir: config.dataDir,
       sessionTtlHours: config.SESSION_TTL_HOURS,
       sessionIdleHours: config.SESSION_IDLE_HOURS,
       generatedSecrets: config.devSecrets,
     }),
-    health: { database: () => void db.get("SELECT 1 AS ok") },
+    health: { ready: () => ({ ok: true, reasons: [] }) },
     onShutdown: () => {
       auth.loginLimiter.stop();
-      db.close();
     },
   });
 
@@ -196,7 +176,6 @@ export async function createHarness(
     ctx,
     config,
     auth,
-    db,
     contentRoot,
 
     async request(path, init = {}) {
@@ -226,7 +205,7 @@ export async function createHarness(
 
     async close() {
       await ctx.shutdown();
-      rmSync(contentRoot, { recursive: true, force: true });
+      rmSync(dataDir, { recursive: true, force: true });
     },
   };
 }

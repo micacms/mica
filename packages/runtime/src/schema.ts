@@ -1,21 +1,7 @@
 /**
- * Acquiring the content model at runtime.
- *
- * The server ships with no model of its own. It reads one out of the content
- * repository, at `.mica/schema.json`, through the same connector it reads
- * entries with. The Astro project writes that file and the developer commits
- * it, so the model reaches the server the way content does — no artifact to
- * mount, no second channel to keep in step, and a model change that is
- * reviewable in a diff.
- *
- * That is what lets one published image serve any project: the model is plain
- * data (field descriptors hold no functions, so `JSON.stringify(site)`
- * round-trips), and every consumer downstream — form generation, payload
- * validation, the admin — already reads it out of the request context.
- *
- * Whatever arrives is re-validated as if it had just been written by hand. A
- * manifest from a repository is untrusted input: it may have been produced by a
- * different version of `@micacms/core`, hand-edited, or truncated.
+ * Reads the content model from `.mica/schema.json` in the content repository.
+ * The Astro project writes it. The manifest is untrusted input (another core
+ * version, hand-edited or truncated), so it is validated again here.
  */
 
 import {
@@ -42,11 +28,8 @@ export function schemaOrigin(source: ContentSource): string {
 }
 
 /**
- * Reads the model the content repository publishes.
- *
- * A missing file is the interesting failure and gets the long message: it is
- * what a first deployment hits, and the fix — build the Astro project, commit
- * the result — is not guessable from "not found".
+ * Reads the model from the content repository. A missing file gets a long
+ * message because a first deployment hits it.
  */
 export async function loadSchema(source: ContentSource): Promise<Site> {
   const origin = schemaOrigin(source);
@@ -55,8 +38,7 @@ export async function loadSchema(source: ContentSource): Promise<Site> {
   try {
     text = await source.read(MANIFEST_PATH);
   } catch (error) {
-    // A repository that cannot be reached is not a bad model. Say which it is,
-    // because the two have completely different fixes.
+    // An unreachable repository is not a bad model; the fixes are different.
     throw new SchemaError(
       `Could not read the content model from ${source.origin}.\n` +
         `  ${(error as Error).message}\n` +
@@ -87,24 +69,16 @@ function describeMissing(origin: string): string {
 }
 
 /**
- * Re-runs the checks `defineSite` performs on a hand-written model, plus the
- * one it does not: that every `kind` is a kind this build knows about.
- *
- * `defineSite` assumes its input came from the typed builders, so it never
- * questions a `kind`. Field kinds reach a `switch` with no default when a form
- * is rendered and when a payload is validated, so an unknown one surfaces as an
- * incoherent failure much later, on an editor's screen. Catching it here turns
- * a version mismatch between the project's `@micacms/core` and the image's
- * into a startup error that names the field.
+ * Runs the `defineSite` checks, and also refuses an unknown field `kind`, which
+ * `defineSite` does not check. This turns a core version mismatch into a
+ * startup error, not a later failure on an editor's screen.
  */
 export function checkSchema(raw: unknown, origin = "the schema"): Site {
   if (raw === null || typeof raw !== "object") {
     throw new SchemaError(`${origin} is ${raw === null ? "null" : typeof raw}, expected an object.`);
   }
 
-  // Only when the envelope says so. A bare `{ collections }` is still accepted:
-  // the protocol version is a backstop for changes that cannot be detected by
-  // looking, not an admission ticket.
+  // A bare `{ collections }` without the protocol envelope is also accepted.
   if (isProtocolManifest(raw)) {
     const compatibility = checkCompatibility(raw);
     if (!compatibility.ok && compatibility.reason === "newer") {
@@ -116,16 +90,13 @@ export function checkSchema(raw: unknown, origin = "the schema"): Site {
     }
   }
 
-  const candidate = raw as { collections?: unknown; singletons?: unknown; globals?: unknown };
+  const candidate = raw as { collections?: unknown; singletons?: unknown };
 
   if (candidate.collections === null || typeof candidate.collections !== "object") {
     throw new SchemaError(`${origin} has no \`collections\`. Expected defineSite({ collections: { ... } }).`);
   }
 
-  // `globals` was the term before the model settled on `singletons`. A manifest
-  // outlives the release that produced it, so both spellings are read here;
-  // only the new one is written anywhere.
-  const rawSingletons = candidate.singletons ?? candidate.globals;
+  const rawSingletons = candidate.singletons;
   if (rawSingletons !== undefined && (rawSingletons === null || typeof rawSingletons !== "object")) {
     throw new SchemaError(`${origin} has a \`singletons\` that is not an object.`);
   }
@@ -140,29 +111,12 @@ export function checkSchema(raw: unknown, origin = "the schema"): Site {
     assertFieldMap(def?.fields, `singletons.${name}`, origin);
   }
 
-  /**
-   * A default sort naming a field the collection does not declare is dropped
-   * here rather than refused.
-   *
-   * `defineSite` rejects it, which is right when somebody is writing the model
-   * and can fix the line they are looking at. By the time it reaches Mica the
-   * model is committed and a site is starting against it: the entries are
-   * intact, the fields are intact, and the only casualty is the order of a
-   * list. Refusing to serve the site over that would be out of proportion —
-   * and models written before the check existed contain exactly this, because
-   * the old fixed list of sort fields offered names no collection had.
-   *
-   * So the option is dropped, the list falls back to the order editors
-   * arranged by hand, and the project's next build reports it properly.
-   */
+  // Drop, do not refuse, a default sort on an undeclared field: only the list order is affected.
   for (const def of Object.values(collections)) {
     const field = def?.defaultSort?.field;
     if (field && field !== "position" && !def.fields?.[field]) delete def.defaultSort;
   }
 
-  // Name injection and every cross-reference check — unknown relation targets,
-  // slugs derived from absent siblings, reserved collection names — come from
-  // the same function a hand-written model goes through.
   try {
     return defineSite({ collections, singletons });
   } catch (error) {
@@ -195,13 +149,8 @@ function assertFieldMap(fields: unknown, at: string, origin: string): void {
 }
 
 /**
- * A stable short digest of a model, for spotting drift.
- *
- * Logged at startup and returned by the schema endpoint so that a website built
- * against one model and a CMS serving another is a visible mismatch rather than
- * a puzzling absence of fields. Key order follows the model's own declaration
- * order, which is meaningful here — reordering fields reorders the admin form,
- * so it is a real change and should produce a different digest.
+ * A short digest of a model, to show drift. Field order counts, because it is
+ * the order of the admin form.
  */
 export async function schemaFingerprint(site: Site): Promise<string> {
   const { createHash } = await import("node:crypto");

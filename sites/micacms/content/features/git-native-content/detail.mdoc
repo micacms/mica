@@ -4,4 +4,6 @@ Structured fields use stable JSON. Long-form text uses Markdoc. Images sit besid
 
 ## One publish, one commit
 
-Saves accumulate in a draft workspace where only editors see them. Publish writes everything pending — entries, sidecar files, and media together — as one change set. GitHub uses the Git Data API. GitLab uses the commits API. The local connector gives the same all-or-nothing result in a working tree.
+Saves accumulate in a draft workspace where only editors see them. Publish writes everything pending — entries, sidecar files, and media together — as one Git commit. The editor is the author of the commit and Mica is the committer. The self-hosted editor pushes it over HTTPS to any Git host. The local editor commits in your checkout with your own Git.
+
+The self-hosted editor keeps its own clone and syncs it on its own. It fetches the branch and fast-forwards. It never merges.

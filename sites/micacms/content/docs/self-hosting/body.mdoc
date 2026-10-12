@@ -5,17 +5,18 @@ This page sets up the self-hosted editor for editors who are not developers. It 
 ## What you need
 
 - A server with Docker and Docker Compose, and a reverse proxy that gives you HTTPS. Example: `https://cms.example.com`.
-- A content repository on GitHub or GitLab. It must contain the content model at `content/.mica/schema.json`. Your Astro build writes that file, and you commit it.
+- A content repository on a Git host that you reach over HTTPS. github.com and gitlab.com are tested every week. Other hosts should work. It must contain the content model at `content/.mica/schema.json`. Your Astro build writes that file, and you commit it.
 - An OpenID Connect provider. Mica keeps no passwords. If you have none, use Google: [Sign in with Google](/docs/sign-in-with-google/).
 
-Before the first start, do these steps in this order. The self-hosted editor reads the model and the content only from the branch on GitHub or GitLab:
+Before the first start, do these steps in this order. The self-hosted editor clones the branch of your repository. It needs the model in that branch:
 
 1. Build the site once (`npx astro build`). This writes `content/.mica/schema.json`.
-2. Commit `content/` with `.mica/schema.json`, and push it to the branch that Mica uses.
+2. Commit the content root, `content/`, with `.mica/schema.json`. Push it to the branch that Mica uses.
 3. Make the token (step 2 below).
-4. Start Mica, sign in, and open each collection once. The start-up check reads only the model, so a token with too narrow a scope starts and then fails when it lists content.
+4. Run the check: `docker compose run --rm mica check`. It tests read access, push rights with a dry run, and the model. A dry run does not test branch protection. Fix each error that it reports.
+5. Start Mica (step 6 below), sign in, and open each collection once.
 
-Self-hosted Mica publishes only through GitHub or GitLab. It never runs local Git. `REPOSITORY=local` stops the start-up with an error. To edit a checkout on your machine, use the local editor.
+Self-hosted Mica keeps its own Git clone on its data volume. It talks to your Git host over HTTPS. SSH remotes are not supported yet. Git LFS under the content root is refused for now. To edit a checkout on your machine, use the local editor.
 
 ## 1. Get the two files
 
@@ -29,23 +30,26 @@ curl -o .env https://raw.githubusercontent.com/micacms/mica/main/deploy/self-hos
 
 ## 2. Connect the repository
 
-Mica commits through the provider API. Make a token for that one repository.
+Mica clones your repository and pushes to it over HTTPS. Make a token for that one repository.
 
-For GitHub, make a fine-grained personal access token with **Contents: read and write**.
+For GitHub, make a fine-grained personal access token for that one repository with **Contents: read and write**. Give it nothing else.
 
-For GitLab, make a project access token with the **`api`** scope. The narrower scopes are not enough: `write_repository` covers only `git push`, and Mica uses the GitLab API. `api` is broad, so use a project access token (it reaches one project only) and give it a short expiry. GitLab protects the default branch: if `REPOSITORY_BRANCH` is protected, give the token the **Maintainer** role. For a branch that is not protected, **Developer** is enough.
+For GitLab, make a project access token with the scopes **`read_repository`** and **`write_repository`**. Give it a role that may push to the branch. GitLab protects the default branch: if `MICA_REPOSITORY_BRANCH` is protected, give the token the **Maintainer** role. The **Developer** role cannot push to a protected branch. Give the token a short expiry.
 
 ```env
-REPOSITORY=github
-REPOSITORY_PROJECT=acme/website
-REPOSITORY_TOKEN=github_pat_...
-REPOSITORY_ROOT=content
-REPOSITORY_BRANCH=main
+MICA_REPOSITORY_URL=https://github.com/acme/website.git
+MICA_REPOSITORY_TOKEN=github_pat_...
+MICA_REPOSITORY_BRANCH=main
+MICA_REPOSITORY_ROOT=content
 ```
 
-For GitLab, set `REPOSITORY=gitlab`. `REPOSITORY_PROJECT` is `group/project` or the numeric id.
-
-`REPOSITORY_ROOT` defaults to `content`. `REPOSITORY_BRANCH` defaults to `main`. Mica reads and writes only below the root, even if the token can write more. For GitHub Enterprise Server or a self-managed GitLab, set `REPOSITORY_API_BASE`.
+- `MICA_REPOSITORY_URL` is the HTTPS clone URL. Do not put credentials in it.
+- `MICA_REPOSITORY_TOKEN` is the password for Git over HTTPS. Mica gives it only to this host and never writes it into the clone.
+- `MICA_REPOSITORY_BRANCH` defaults to `main`.
+- `MICA_REPOSITORY_ROOT` defaults to `content`. Mica writes only below the root, even if the token can write more.
+- `MICA_REPOSITORY_USERNAME` is optional. The default depends on the host: `x-access-token` for GitHub, `oauth2` for GitLab, and `mica` for other hosts.
+- `MICA_REPOSITORY_SYNC_SECONDS` is optional. It sets how often Mica fetches the branch. The default is 60.
+- `MICA_DATA_DIR` is optional. It sets where Mica keeps its clone. The image uses the `/data` volume.
 
 ## 3. Connect the sign-in
 
@@ -118,13 +122,15 @@ curl -s https://cms.example.com/ready
 
 You should see a start-up line that names the rule in force, and `/ready` should answer with `"status": "ok"`. Open `https://cms.example.com/admin/` and sign in.
 
-If the container stops, read the log. Mica stops at start-up when `REPOSITORY` is not `github` or `gitlab`, when the project or the token is missing, when no admission rule is set, or when the repository has no content model at `.mica/schema.json`.
+If the container stops, read the log. Run `docker compose run --rm mica check` to see the cause. Mica stops at start-up when the repository URL or the token is missing, when it cannot make its first clone, when an old setting is in use, when no admission rule is set, or when the repository has no content model at `.mica/schema.json`. When the token cannot push, Mica starts and logs a warning, and `check` names the cause.
 
-## Drafts and the data volume
+## Drafts, sync, and the data volume
 
-A save is a draft. Drafts are in a SQLite file in the `/data` volume. Only editors see them. **Publish** writes all pending drafts as one commit. The push starts your site build, and the website build needs no CMS address and no token.
+A save is a draft. Drafts are files in the Git clone on the `/data` volume. Only editors see them. **Publish** commits all pending drafts as one commit and pushes it over HTTPS. The editor is the author of the commit. Mica is the committer. The push starts your site build, and the website build needs no CMS address and no token.
 
-The volume holds unpublished drafts only. Never the website. If you lose it, unpublished work is gone. Nobody is signed out, and everything published is in the repository.
+Mica syncs with the branch on its own. It fetches and fast-forwards. It never merges. If somebody changes an entry on the website while an editor has a draft of that entry, this is a conflict. The editor chooses **Keep my version** or **Use the website's version**.
+
+The volume holds the clone and the unpublished drafts. If you lose it, unpublished work is gone. Nobody is signed out, and everything published is in the repository.
 
 ## Sessions and removal of access
 
@@ -143,7 +149,7 @@ SESSION_IDLE_HOURS=4
 
 ## Backups
 
-The repository is the content backup, with the history of every publish. For unpublished work, back up the `/data` volume. Use the SQLite `.backup` command and not a plain copy.
+The repository is the content backup, with the history of every publish. For unpublished work, back up the `/data` volume. First publish all drafts, or stop the container. Then copy the volume.
 
 ## Upgrades
 

@@ -1,5 +1,5 @@
 # The automated OIDC test: the real Mica image against a real Dex, publishing
-# to a stand-in for the GitHub API.
+# to a real Git host (Forgejo) over HTTP.
 #
 #   docker compose -f tests/oidc/compose.yml up -d --build --wait
 #   node --test tests/oidc/flow.test.mjs
@@ -16,12 +16,12 @@ services:
     volumes:
       - ./dex.yaml:/etc/dex/config.yaml:ro
 
-    # Mica and the GitHub stub share this network namespace (see below), so
-    # every port is published here.
+    # Mica and Forgejo share this network namespace (see below), so every port
+    # is published here.
     ports:
       - "127.0.0.1:5556:5556"
       - "127.0.0.1:6422:6422"
-      - "127.0.0.1:8787:8787"
+      - "127.0.0.1:3000:3000"
 
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5556/dex/.well-known/openid-configuration"]
@@ -29,26 +29,45 @@ services:
       timeout: 2s
       retries: 30
 
-  # The repository: the example content, served the way GitHub's API serves it.
-  github:
-    image: node:24-alpine
-    command: ["node", "/stub/server.mjs"]
+  # The repository: a real Git host. Plain HTTP on localhost, which Mica
+  # accepts only with NODE_ENV=development.
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:15.0.9
     network_mode: "service:dex"
     depends_on:
       dex:
         condition: service_started
+    environment:
+      FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO__database__DB_TYPE: sqlite3
+      FORGEJO__server__ROOT_URL: http://localhost:3000/
+      FORGEJO__server__HTTP_PORT: "3000"
+      FORGEJO__server__DISABLE_SSH: "true"
+      FORGEJO__service__DISABLE_REGISTRATION: "true"
+      FORGEJO__log__LEVEL: Warn
     volumes:
-      - ../github-stub/server.mjs:/stub/server.mjs:ro
-      - ../../examples/muster-consulting/content:/seed:ro
+      - forgejo-data:/data
     healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - "fetch('http://127.0.0.1:8787/repos/acme/site/git/ref/heads/main',{headers:{authorization:'Bearer x'}}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/v1/version"]
       interval: 2s
       timeout: 2s
-      retries: 30
+      retries: 60
+
+  # One user, one repository, the example content. Runs once.
+  forgejo-seed:
+    image: codeberg.org/forgejo/forgejo:15.0.9
+    network_mode: "service:dex"
+    user: "1000:1000"
+    entrypoint: ["/bin/sh", "/seed.sh"]
+    depends_on:
+      forgejo:
+        condition: service_healthy
+    environment:
+      FORGEJO_PASSWORD: Forgejo-test-password-not-for-production
+    volumes:
+      - forgejo-data:/data
+      - ./forgejo-seed.sh:/seed.sh:ro
+      - ../../examples/muster-consulting/content:/seed:ro
 
   mica:
     image: micacms/editor:ci
@@ -58,8 +77,8 @@ services:
     depends_on:
       dex:
         condition: service_healthy
-      github:
-        condition: service_healthy
+      forgejo-seed:
+        condition: service_completed_successfully
 
     # `localhost:5556` must mean the same issuer to Mica as to the test, or
     # the ID token's `iss` would not match what discovery returned.
@@ -90,10 +109,10 @@ services:
       MICA_ADMIT_EMAILS: alice@gmail.com
       MICA_ADMIT_DOMAIN: muster-consulting.example
 
-      REPOSITORY: github
-      REPOSITORY_PROJECT: acme/site
-      REPOSITORY_TOKEN: stub-token-not-for-production
-      REPOSITORY_API_BASE: http://localhost:8787
+      MICA_REPOSITORY_URL: http://localhost:3000/editor/site.git
+      MICA_REPOSITORY_USERNAME: editor
+      # Forgejo accepts the account password where a token would go.
+      MICA_REPOSITORY_TOKEN: Forgejo-test-password-not-for-production
 
       SESSION_SECRET: oidc-test-session-secret-00000000000
 
@@ -106,3 +125,6 @@ services:
       interval: 2s
       timeout: 2s
       retries: 30
+
+volumes:
+  forgejo-data:

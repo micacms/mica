@@ -1,10 +1,11 @@
 /**
- * The self-hosted composition: sessions, admission and CSRF around the
- * auth-neutral runtime. The content and media behaviour behind the gate is
- * the runtime's and is tested there; what these tests own is the gate.
+ * The gate around the runtime: sessions, admission and CSRF. The runtime's own
+ * tests cover the content behind it.
  */
 
 import assert from "node:assert/strict";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 import { after, before, describe, it, mock } from "node:test";
 
 import {
@@ -23,11 +24,11 @@ describe("health", () => {
   });
   after(() => harness.close());
 
-  it("reports readiness, and actually touches both stores", async () => {
+  it("reports readiness from the workspace, with codes only", async () => {
     const response = await harness.request("/ready");
     assert.equal(response.status, 200);
     // No origin and no uptime: the endpoint is public (#79).
-    assert.deepEqual(await response.json(), { status: "ok", database: "ok", repository: "ok" });
+    assert.deepEqual(await response.json(), { status: "ok", repository: "ok", reasons: [] });
   });
 });
 
@@ -164,8 +165,8 @@ describe("sessions", () => {
 });
 
 describe("admission", () => {
-  // The harness admits `mica-editors` by default; a test that states its own
-  // rule must clear that first, or every rule would pass through the group.
+  // The harness admits `mica-editors` by default; clear it, or every rule would
+  // pass through the group.
   const authenticated = (rules: Partial<NodeJS.ProcessEnv>) =>
     createHarness({ MICA_ADMIT_GROUP: undefined, ...rules });
 
@@ -193,7 +194,6 @@ describe("admission", () => {
 
     assert.equal(body.identity.email, ADMITTED.email);
     assert.equal(body.identity.subject, ADMITTED.subject);
-    // There is no role, because there are no roles.
     assert.ok(!("role" in body.identity));
 
     await harness.close();
@@ -260,18 +260,14 @@ describe("admission", () => {
     await harness.close();
   });
 
-  /**
-   * The property the membership table used to give, kept: admission is re-read
-   * on every request rather than copied into the session at sign-in.
-   */
+  /** Admission is read again on every request, not copied into the session at sign-in. */
   it("refuses a live session the moment the rules stop admitting it", async () => {
     const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
     const session = await harness.signIn(ADMITTED);
 
     assert.equal((await harness.request("/api/auth/me", { session })).status, 200);
 
-    // The gate re-reads the policy per request, so replacing the answer is
-    // exactly what an operator's configuration change does.
+    // Replacing the answer is what an operator's configuration change does.
     harness.auth.admission.admits = () => ({ admitted: false, reason: "removed" });
 
     assert.equal((await harness.request("/api/auth/me", { session })).status, 403);
@@ -349,23 +345,17 @@ describe("CSRF protection", () => {
   });
 });
 
-describe("the draft store behind a provider repository", () => {
+describe("drafts in the working tree", () => {
   let harness: TestHarness;
   let session: Session;
 
   before(async () => {
-    // Provider-shaped: saves stage in SQLite. The local connector stands in
-    // as "the provider", so the temporary directory is the repository.
-    harness = await createHarness({
-      REPOSITORY: "github",
-      REPOSITORY_PROJECT: "acme/site",
-      REPOSITORY_TOKEN: "unused-by-the-test-connector",
-    });
+    harness = await createHarness();
     session = await harness.signIn();
   });
   after(() => harness.close());
 
-  it("stages a save in the database, and publishes it as one change set", async () => {
+  it("writes a save into the clone, where the change list finds it", async () => {
     const saved = await harness.request("/api/admin/collections/projects/entries", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -373,24 +363,12 @@ describe("the draft store behind a provider repository", () => {
       session,
     });
     assert.equal(saved.status, 201);
+    assert.ok(existsSync(join(harness.contentRoot, "projects/persistent/index.json")));
 
-    // In the database, not the repository: the SQLite draft store holds it.
-    const staged = harness.db.all<{ path: string }>("SELECT path FROM drafts ORDER BY path");
-    assert.ok(staged.some((row) => row.path === "projects/persistent/index.json"));
-
-    const published = await harness.request("/api/admin/publish", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ message: "Publish the persistent entry" }),
-      session,
-    });
-    assert.equal(published.status, 200);
-
-    assert.equal(
-      harness.db.all("SELECT path FROM drafts").length,
-      0,
-      "publication clears what it published",
-    );
+    const changes = (await (await harness.request("/api/admin/changes", { session })).json()) as {
+      changes: Array<{ path: string }>;
+    };
+    assert.ok(changes.changes.some((change) => change.path === "projects/persistent/index.json"));
   });
 });
 
@@ -401,16 +379,16 @@ describe("system information", () => {
   });
   after(() => harness.close());
 
-  it("reports the database and what decides who may edit", async () => {
+  it("reports no database, the repository and what decides who may edit", async () => {
     const session = await harness.signIn();
     const response = await harness.request("/api/admin/system", { session });
     const body = (await response.json()) as {
-      database: { version: number } | null;
+      repository: { owner: string };
       deployment: { auth: string; admission: string | null };
     };
 
-    assert.ok(body.database);
-    assert.equal(body.database.version, 3);
+    assert.equal("database" in body, false);
+    assert.ok(body.repository.owner);
     assert.match(body.deployment.auth, /oidc:/);
     assert.match(body.deployment.admission ?? "", /group=mica-editors/);
   });

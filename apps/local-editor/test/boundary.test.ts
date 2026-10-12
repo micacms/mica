@@ -1,38 +1,30 @@
 /**
- * The product boundary, as tests.
- *
- * `npx @micacms/editor` must install no authentication code, keep no state,
- * and answer only to this machine. Rules like these erode the first time
- * somebody shares a convenient helper between the two apps — so they fail
- * the build here instead of eroding.
+ * The product boundary: `npx @micacms/editor` installs no authentication code, keeps no state,
+ * and answers only to this machine. A helper shared between the two apps must fail the build here.
  */
 
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync, mkdtempSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
+import { readdirSync, readFileSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { localConnector } from "@micacms/connectors";
 import { collection, defineSite, slug, text } from "@micacms/core";
-import { createApp, createLogger, createRuntimeContext } from "@micacms/runtime";
+import { contentFiles, createApp, createLogger, createRuntimeContext } from "@micacms/runtime";
 
 import { loadConfig } from "../src/config.js";
 import { hostGuard } from "../src/guards.js";
 
-/* ------------------------------------------------------------------ *
- * The dependency graph
- * ------------------------------------------------------------------ */
-
 const WORKSPACE_ROOT = path.resolve(import.meta.dirname, "../../..");
 
-/** Auth code that must never be reachable from the local editor. */
-const FORBIDDEN = new Set(["openid-client", "jose", "@micacms/auth-oidc"]);
+/**
+ * Never reachable from the local editor: auth code, and the self-hosted app
+ * with its clone, credential and sync code.
+ */
+const FORBIDDEN = new Set(["openid-client", "jose", "@micacms/auth-oidc", "@micacms/self-hosted"]);
 
-/** Where a workspace package's manifest lives, by name. */
 const WORKSPACE_DIRS: Record<string, string> = {
   "@micacms/core": "packages/core",
-  "@micacms/connectors": "packages/connectors",
   "@micacms/runtime": "packages/runtime",
   "@micacms/editor-ui": "packages/editor-ui",
   "@micacms/editor": "apps/local-editor",
@@ -80,8 +72,7 @@ describe("the dependency graph", () => {
       }
     }
 
-    // The walk actually reached the runtime — a rename must not silently turn
-    // this test into a walk over nothing.
+    // A rename must not silently turn this test into a walk over nothing.
     assert.ok(seen.has("@micacms/runtime"));
   });
 
@@ -98,10 +89,6 @@ describe("the dependency graph", () => {
     }
   });
 });
-
-/* ------------------------------------------------------------------ *
- * The running composition
- * ------------------------------------------------------------------ */
 
 const model = defineSite({
   collections: {
@@ -122,13 +109,13 @@ describe("the running composition", () => {
   before(() => {
     contentRoot = mkdtempSync(path.join(tmpdir(), "mica-boundary-"));
 
-    // Composed the way src/index.ts composes it, database-lessness included.
+    // Composed the way src/index.ts composes it.
     const ctx = createRuntimeContext({
       config: loadConfig({ NODE_ENV: "test", LOG_LEVEL: "silent", CONTENT_ROOT: contentRoot }),
       model,
-      connector: localConnector({ root: contentRoot }),
+      files: contentFiles({ root: contentRoot }),
       logger: createLogger({ level: "silent", pretty: false }),
-      operational: () => ({ auth: "none", database: null }),
+      operational: () => ({ auth: "none" }),
     });
 
     app = createApp(ctx, { guards: [hostGuard()] });
@@ -142,7 +129,6 @@ describe("the running composition", () => {
       assert.equal(response.status, 403, host);
 
       const body = await response.text();
-      // A clear error directing remote users to the self-hosted shape.
       assert.match(body, /self-hosted/);
     }
   });
@@ -180,24 +166,10 @@ describe("the running composition", () => {
     });
     assert.equal(saved.status, 201);
 
-    // The save is a file in the tree…
     const written = readdirSync(path.join(contentRoot, "notes"));
     assert.deepEqual(written, ["boundary.json"]);
-
-    // …and no database appeared beside it. There is no DATA_DIR to check
-    // because the configuration has no such concept; the content directory is
-    // the only place this process writes.
-    const everything = readdirSync(contentRoot, { recursive: true }) as string[];
-    assert.ok(
-      everything.every((entry) => !entry.includes("sqlite")),
-      `unexpected database file: ${everything.join(", ")}`,
-    );
   });
 });
-
-/* ------------------------------------------------------------------ *
- * The built browser bundle
- * ------------------------------------------------------------------ */
 
 describe("the browser bundle", () => {
   const dist = path.join(WORKSPACE_ROOT, "packages/editor-ui/dist");
@@ -209,8 +181,7 @@ describe("the browser bundle", () => {
         name.endsWith(".js"),
       );
     } catch {
-      // The UI has not been built in this checkout. CI builds packages before
-      // it tests, so there this check always runs.
+      // CI builds the packages before it tests, so there this check always runs.
       t.skip("editor-ui/dist is not built");
       return;
     }

@@ -1,17 +1,13 @@
 /**
- * The local editor's process entry point.
- *
- * The whole composition, in one page: the local connector, the
- * auth-neutral runtime with `allowAll()`, the Host allowlist, and nothing
- * else. No session service, no admission policy, no database — `npx
- * @micacms/editor` writes nothing outside the content directory, and there is
- * no auth code here to misconfigure because none is installed.
+ * The local editor's process entry point: the developer's checkout, the
+ * auth-neutral runtime and the Host allowlist. It writes nothing outside the
+ * content directory and installs no auth code that can be misconfigured.
  */
 
-import { localConnector } from "@micacms/connectors";
 import { MANIFEST_PATH } from "@micacms/core";
 import {
   ConfigError,
+  contentFiles,
   createApp,
   createLogger,
   createRuntimeContext,
@@ -43,14 +39,13 @@ async function main(): Promise<void> {
 
   const logger = createLogger({ level: config.LOG_LEVEL, pretty: true });
 
-  // The repository comes first, because the content model is in it. A bad or
-  // absent model is a project mistake rather than a crash: exit the way a bad
-  // environment does, with the message on stderr instead of a stack trace.
-  const connector = localConnector({ root: config.contentRoot });
+  // A bad or absent model is a project mistake, not a crash: exit like a bad
+  // environment, without a stack trace.
+  const files = contentFiles({ root: config.contentRoot });
 
   let model;
   try {
-    model = await loadSchema(connector);
+    model = await loadSchema(files);
   } catch (error) {
     if (error instanceof SchemaError) {
       process.stderr.write(`\n${error.message}\n\n`);
@@ -59,17 +54,16 @@ async function main(): Promise<void> {
     throw error;
   }
 
-  const schemaRevision = await connector.revision(MANIFEST_PATH);
+  const schemaRevision = await files.revision(MANIFEST_PATH);
 
   const ctx = createRuntimeContext({
     config,
     model,
-    connector,
+    files,
     schemaRevision,
     logger,
     operational: () => ({
       auth: "none — the local editor has no accounts and no sign-in",
-      database: null,
     }),
   });
 
@@ -87,10 +81,7 @@ async function main(): Promise<void> {
     logger,
 
     onListening() {
-      /**
-       * Two audiences, one event: the person who just typed a command gets an
-       * address and three facts; a log collector gets every field.
-       */
+      // A person at a terminal gets a short banner; a log collector gets every field.
       if (config.MICA_CLI) {
         const useColor = supportsColor(process.stdout, process.env);
 
@@ -99,7 +90,7 @@ async function main(): Promise<void> {
             {
               version: VERSION,
               url: config.MICA_PUBLIC_URL,
-              contentRoot: connector.origin,
+              contentRoot: files.origin,
               collections: Object.keys(model.collections).length,
               singletons: Object.keys(model.singletons).length,
             },
@@ -115,8 +106,8 @@ async function main(): Promise<void> {
         url: config.MICA_PUBLIC_URL,
         listening: `${config.HOST}:${config.PORT}`,
         auth: "none (local editor; loopback only)",
-        content: connector.origin,
-        schema: schemaOrigin(connector),
+        content: files.origin,
+        schema: schemaOrigin(files),
         schemaFingerprint: fingerprint,
         collections: Object.keys(model.collections).length,
       });

@@ -1,28 +1,7 @@
 /**
- * Application assembly.
- *
- *   cms.example.com
- *          │
- *          ▼
- *         Hono
- *   ┌──────┴───┬──────────┐
- *   │          │          │
- * /api/*    /admin/*   /health   /ready
- *   │          │
- * connector  Vue SPA
- *   │
- * content repository
- *
- * There is no public content API and no `/media/*`. A website is built from the
- * repository, not from this server, so nothing here has to be reachable for a
- * site to deploy — or to stay up.
- *
- * Authentication is not assembled here — it is *received*. The composing app
- * hands in an `AuthSurface`: routes for `/api/auth`, and the gate applied in
- * front of every admin route. The self-hosted app passes the OIDC surface
- * from `@micacms/auth-oidc`; the local editor passes nothing and gets the
- * unauthenticated surface below, which is a statement of fact — on your own
- * machine there is nobody to be — not a bypass of anything.
+ * Assembles the app: health, the admin API and the admin SPA. There is no
+ * public content API and no `/media/*`; a website builds from the repository,
+ * not from this server. Authentication comes from the composing app.
  */
 
 import { Hono } from "hono";
@@ -51,20 +30,13 @@ import { healthRoutes } from "./routes/health.js";
 export interface AuthSurface {
   /** Mounted at `/api/auth`: sign-in, callback, logout, whatever auth needs. */
   routes: Hono<Env>;
-  /**
-   * Applied before every `/api/admin` route, in order. Must either set the
-   * `access` variable or refuse the request — nothing behind it runs without
-   * an `AccessContext`.
-   */
+  /** Applied before every `/api/admin` route. Must set `access` or refuse the request. */
   gate: MiddlewareHandler<Env>[];
 }
 
 /**
- * The unauthenticated surface: every request is allowed, and none is anybody.
- *
- * An authorization policy, not authentication code. It exists so action
- * checks stay uniform without inventing a user, and it is safe only because
- * the local editor is loopback-bound and Host-guarded by construction.
+ * Allows every request with no identity. Safe only because the local editor is
+ * loopback-bound and Host-guarded.
  */
 export function allowAll(): MiddlewareHandler<Env> {
   return async (c, next) => {
@@ -84,11 +56,10 @@ export interface CreateAppOptions {
   /** Absent means the unauthenticated local surface. */
   auth?: AuthSurface;
   /**
-   * Extra middleware in front of everything — the local editor's Host
-   * allowlist goes here, so even the health endpoints answer only to this machine.
+   * Middleware in front of everything, so the local editor's Host allowlist
+   * also guards the health endpoints.
    */
   guards?: MiddlewareHandler<Env>[];
-  /** Where the built admin SPA is served from. */
   adminDir?: string;
 }
 
@@ -96,22 +67,14 @@ export function createApp(ctx: RuntimeContext, options: CreateAppOptions = {}): 
   const app = new Hono<Env>();
   const auth = options.auth ?? unauthenticatedSurface();
 
-  /* ---------------------------------------------------------- baseline */
-
   app.use("*", requestContext(ctx));
   for (const guard of options.guards ?? []) app.use("*", guard);
   app.use("*", securityHeaders());
   app.onError(errorHandler());
 
-  /* ------------------------------------------------------------ health */
-
   app.route("/", healthRoutes());
 
-  /* --------------------------------------------------------------- API */
-
-  // In development the SPA is served by Vite on another origin, so the API has
-  // to accept credentialed cross-origin calls from it. In production the SPA is
-  // same-origin and ADMIN_ORIGINS is normally empty.
+  // Only for the Vite dev server on another origin; in production the SPA is same-origin.
   if (ctx.config.adminOrigins.length > 0) {
     app.use(
       "/api/*",
@@ -130,11 +93,7 @@ export function createApp(ctx: RuntimeContext, options: CreateAppOptions = {}): 
 
   app.route("/api/auth", auth.routes);
 
-  /* ------------------------------------------------------- admin API */
-
-  // One gate, and no second one behind it: whoever the surface admits is an
-  // editor of this site. There are no roles, because there are no accounts to
-  // hang them on.
+  // One gate and no roles: whoever the surface admits is an editor of this site.
   for (const middleware of auth.gate) app.use("/api/admin/*", middleware);
 
   app.route("/api/admin", adminSystemRoutes());
@@ -146,15 +105,11 @@ export function createApp(ctx: RuntimeContext, options: CreateAppOptions = {}): 
     c.json({ error: { code: "not_found" as const, message: "No such endpoint." } }, 404),
   );
 
-  /* --------------------------------------------------------- admin SPA */
-
   const adminDir = options.adminDir ?? ctx.config.ADMIN_DIR;
 
   if (adminDir && adminAssetsExist(adminDir)) {
     app.route("/admin", adminSpaRoutes(adminDir));
   } else {
-    // Running from source with only the API built: point at the Vite server
-    // rather than returning a blank 404.
     app.get("/admin/*", (c) =>
       c.text(
         "The admin interface has not been built.\n" +

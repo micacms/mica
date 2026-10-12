@@ -12,9 +12,6 @@ importers:
 
   ../../apps/local-editor:
     dependencies:
-      '@micacms/connectors':
-        specifier: workspace:*
-        version: link:../../packages/connectors
       '@micacms/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -46,9 +43,6 @@ importers:
       '@micacms/auth-oidc':
         specifier: workspace:*
         version: link:../../packages/auth/oidc
-      '@micacms/connectors':
-        specifier: workspace:*
-        version: link:../../packages/connectors
       '@micacms/core':
         specifier: workspace:*
         version: link:../../packages/core
@@ -162,19 +156,6 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
-  ../../packages/connectors:
-    dependencies:
-      '@micacms/core':
-        specifier: workspace:*
-        version: link:../core
-    devDependencies:
-      '@types/node':
-        specifier: ^22.20.1
-        version: 22.20.1
-      typescript:
-        specifier: ^5.7.3
-        version: 5.9.3
-
   ../../packages/core:
     dependencies:
       zod:
@@ -247,9 +228,6 @@ importers:
       '@hono/node-server':
         specifier: ^1.13.8
         version: 1.19.17(hono@4.13.13)
-      '@micacms/connectors':
-        specifier: workspace:*
-        version: link:../connectors
       '@micacms/core':
         specifier: workspace:*
         version: link:../core

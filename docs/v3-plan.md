@@ -1,5 +1,8 @@
 # Mica v3 — Refactoring Plan
 
+> Superseded in part by [git-workspace-plan.md](git-workspace-plan.md) (0.5.0): the
+> self-hosted Mica keeps a Git clone, and Mica keeps no database.
+
 Status: accepted; execution guide for [`v3-arch.md`](v3-arch.md)  
 Last updated: 19 August 2026
 

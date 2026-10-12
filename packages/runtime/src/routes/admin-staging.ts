@@ -1,26 +1,26 @@
 /**
- * Admin staging routes — the pending change set, and Publish.
- *
- * Thin, like the content routes: the two staging implementations own every
- * rule, and what happens here is parsing and the mapping of their refusals
- * onto the API's error envelope.
- *
- * `committed-pending-push` is a 200, deliberately. The commit is real and the
- * state is recoverable by design; an error status would make the editor treat
- * a publication that half-happened as one that did not happen at all.
+ * Admin routes for the pending changes and Publish. Sync and conflict
+ * resolution exist only for a clone that Mica keeps. `committed-pending-push`
+ * is a 200: the commit is real, and an error status would tell the editor that
+ * nothing happened.
  */
 
-import { ConflictError } from "@micacms/connectors";
 import { Hono } from "hono";
 import { z } from "zod";
 
-import { ApiError, badRequest } from "../lib/errors.js";
 import { actorOf, type Env } from "../http.js";
+import { ApiError, badRequest } from "../lib/errors.js";
+import { ConflictError } from "../workspace/files.js";
 
 const publishSchema = z.object({
   message: z.string().max(500),
-  /** The base revision the editor reviewed. Null where the workspace has none. */
-  expectedBase: z.string().nullable().optional(),
+  /** The reviewed paths, with the revision each had in the review. */
+  paths: z.record(z.string().min(1), z.string().nullable()),
+});
+
+const resolveSchema = z.object({
+  group: z.string().min(1),
+  choice: z.enum(["mine", "website"]),
 });
 
 const discardSchema = z.object({ paths: z.array(z.string().min(1)).min(1).max(2000) });
@@ -60,8 +60,7 @@ export function adminStagingRoutes(): Hono<Env> {
     return c.json(await staging.status());
   });
 
-  // The document one pending change touches, before and after that change —
-  // raw data on both sides; the editor renders the comparison from the model.
+  // Raw data before and after one pending change; the editor renders the comparison.
   app.get("/changes/compare", async (c) => {
     const { staging } = c.get("ctx").services;
     const parsed = compareSchema.safeParse({
@@ -72,8 +71,9 @@ export function adminStagingRoutes(): Hono<Env> {
       name: c.req.query("name"),
     });
     if (!parsed.success) throw badRequest("The compare target is malformed.");
+    const against = c.req.query("against") === "origin" ? "origin" : "head";
 
-    return c.json(await staging.compare(parsed.data));
+    return c.json(await staging.compare(parsed.data, against));
   });
 
   app.post("/publish", async (c) => {
@@ -85,8 +85,8 @@ export function adminStagingRoutes(): Hono<Env> {
     const result = await handled(() =>
       staging.publish({
         message: parsed.data.message,
-        expectedBase: parsed.data.expectedBase ?? null,
-        author: actor ? { name: actor.email, email: actor.email } : undefined,
+        paths: parsed.data.paths,
+        author: actor ? { name: actor.name || actor.email, email: actor.email } : undefined,
       }),
     );
 
@@ -96,6 +96,22 @@ export function adminStagingRoutes(): Hono<Env> {
   app.post("/publish/push", async (c) => {
     const { staging } = c.get("ctx").services;
     return c.json(await handled(() => staging.push()));
+  });
+
+  // "Try again" after a sync error.
+  app.post("/sync", async (c) => {
+    const { staging } = c.get("ctx").services;
+    await staging.sync();
+    return c.json(await staging.status());
+  });
+
+  app.post("/changes/resolve", async (c) => {
+    const { staging } = c.get("ctx").services;
+    const parsed = resolveSchema.safeParse(await jsonBody(c));
+    if (!parsed.success) throw badRequest("Expected a group and a choice: mine or website.");
+
+    await handled(() => staging.resolve(parsed.data.group, parsed.data.choice));
+    return c.json(await staging.status());
   });
 
   app.post("/changes/discard", async (c) => {

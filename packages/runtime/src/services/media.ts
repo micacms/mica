@@ -1,23 +1,13 @@
 /**
- * Media uploads.
- *
- * Every uploaded byte passes through here, so this is where the file is judged:
- * size, and the real content type read from the bytes rather than from the
- * browser's claim.
- *
- * An upload is a *file in the content repository*. There is no media table, no
- * generated key and no object store — a media value is the path to a file a
- * reviewer can see in the diff.
- *
- * The filename therefore matters. It is derived from what the editor uploaded,
- * slugified so it is safe as a path segment, and made unique inside its own
- * directory rather than globally.
+ * Media uploads. Every upload is checked here for size and for its real content
+ * type, read from the bytes. An upload is a file in the content repository; its
+ * name is slugified and unique in its own directory.
  */
 
 import path from "node:path";
 
 import { contentPath, ContentPathError, MEDIA_DIR, slugify } from "@micacms/core";
-import type { RepositoryConnector } from "@micacms/connectors";
+import type { ContentFiles } from "../workspace/files.js";
 import { imageSize } from "image-size";
 
 import { ApiError, badRequest } from "../lib/errors.js";
@@ -27,12 +17,12 @@ import { detectFileType, isAccepted, isImageType, SVG_TYPE } from "../lib/file-t
 export const SHARED_MEDIA_DIR = "media";
 
 export interface MediaServiceDeps {
-  connector: RepositoryConnector;
+  files: ContentFiles;
   maxBytes: number;
 }
 
 export interface MediaFile {
-  /** Path relative to the content root — the value a `media()` field holds. */
+  /** Path relative to the content root: the value a `media()` field holds. */
   path: string;
   filename: string;
   mimeType: string;
@@ -42,19 +32,12 @@ export interface MediaFile {
 }
 
 export function createMediaService(deps: MediaServiceDeps) {
-  const { connector, maxBytes } = deps;
+  const { files, maxBytes } = deps;
 
-  /**
-   * A name that is unique in `directory`.
-   *
-   * Scoped to the directory rather than to the whole repository, because that
-   * is where a collision would actually overwrite something — and because
-   * `haus-a/media/exterior.jpg` and `haus-b/media/exterior.jpg` are two
-   * perfectly reasonable files with the same name.
-   */
+  /** A name that is unique in `directory`. Only there can a collision overwrite a file. */
   const uniqueName = async (directory: string, filename: string): Promise<string> => {
     const taken = new Set(
-      (await connector.list(directory)).filter((item) => item.type === "file").map((item) => item.name),
+      (await files.list(directory)).filter((item) => item.type === "file").map((item) => item.name),
     );
 
     const extension = path.extname(filename);
@@ -66,14 +49,7 @@ export function createMediaService(deps: MediaServiceDeps) {
   };
 
   return {
-    /**
-     * Reads and checks an upload, without writing it.
-     *
-     * Separate from the commit so that an entry and the media it references go
-     * into the repository in *one* change set. Uploading first and saving
-     * second would leave an orphaned file behind whenever the editor changed
-     * their mind.
-     */
+    /** Reads and checks an upload, without writing it. */
     async prepare(input: {
       file: File;
       /** Directory to place the file in, relative to the content root. */
@@ -92,7 +68,7 @@ export function createMediaService(deps: MediaServiceDeps) {
       }
 
       const contents = new Uint8Array(await file.arrayBuffer());
-      // From the bytes, never from the browser's claim about them.
+      // From the bytes, never from the browser's claim.
       const detected = detectFileType(contents);
 
       if (!detected) {
@@ -121,17 +97,14 @@ export function createMediaService(deps: MediaServiceDeps) {
     },
 
     /**
-     * Every media file in the repository, for the editor's picker.
-     *
-     * A walk of the content tree rather than a table scan. Content trees are
-     * small, and the alternative — an index Mica maintains — would be a second
-     * source of truth that could disagree with the repository.
+     * Every media file in the repository. A tree walk is sufficient because
+     * content trees are small.
      */
     async list(): Promise<MediaFile[]> {
       const found: MediaFile[] = [];
 
       const walk = async (directory: string): Promise<void> => {
-        for (const item of await connector.list(directory)) {
+        for (const item of await files.list(directory)) {
           const child = directory === "" ? item.name : `${directory}/${item.name}`;
 
           if (item.type === "directory") {
@@ -141,7 +114,7 @@ export function createMediaService(deps: MediaServiceDeps) {
 
           if (!isMediaName(item.name)) continue;
 
-          const bytes = await connector.readBinary(child);
+          const bytes = await files.readBinary(child);
           if (!bytes) continue;
 
           const mimeType = typeOf(bytes, item.name);
@@ -162,7 +135,7 @@ export function createMediaService(deps: MediaServiceDeps) {
     },
 
     async read(mediaPath: string): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
-      const bytes = await connector.readBinary(contentPath(mediaPath));
+      const bytes = await files.readBinary(contentPath(mediaPath));
       if (!bytes) return null;
 
       const mimeType = typeOf(bytes, mediaPath);
@@ -189,26 +162,13 @@ function uploadDirectory(directory: string): string {
   return clean;
 }
 
-/* ------------------------------------------------------------------ */
-
-/**
- * A filename that is safe as a path segment and still recognisable.
- *
- * Slugified rather than sanitised: the result is part of a URL in the built
- * site and part of a path in a Git repository, and both are better off without
- * spaces, accents or case.
- */
+/** A slugified filename: safe as a path segment and as part of a URL. */
 function safeName(original: string, extension: string): string {
   const stem = slugify(path.basename(original).replace(/\.[^.]*$/, "")).slice(0, 80);
   return `${stem || "upload"}.${extension}`;
 }
 
-/**
- * Extension to media type, for the formats byte-sniffing does not identify.
- *
- * A fallback, never the first answer: a file's own bytes are the only thing
- * that cannot be renamed to lie.
- */
+/** Extension to media type, only for formats that byte-sniffing does not identify. */
 const BY_EXTENSION: Record<string, string> = {
   svg: "image/svg+xml",
   pdf: "application/pdf",
@@ -221,9 +181,8 @@ const BY_EXTENSION: Record<string, string> = {
 };
 
 /**
- * The bytes are authoritative; the extension is the fallback for formats the
- * sniffer does not cover. An SVG name counts even when its bytes do not look
- * like one, so that a leading comment cannot slip one past the refusal.
+ * The bytes win over the extension, except that an SVG name always counts, so a
+ * leading comment cannot hide an SVG.
  */
 function typeOf(bytes: Uint8Array, name: string): string {
   const byName = mimeFromName(name);

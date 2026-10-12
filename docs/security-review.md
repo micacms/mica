@@ -22,8 +22,9 @@ is based on.
     `services/media.ts`.
   - `apps/local-editor/src/` (`guards.ts`, `config.ts`, `index.ts`) and
     `apps/self-hosted/src/` (`config.ts`, `index.ts`).
-  - The content path helpers in `packages/connectors/src/` and
-    `packages/core/src/node.ts`.
+  - The content path helpers in `packages/runtime/src/workspace/files.ts` and
+    `packages/core/src/node.ts`. (At the review commit, these were in
+    `packages/connectors/src/`. That package is removed in 0.5.)
 - **Not reviewed:** how the website build renders content (`@micacms/astro`),
   and the identity provider.
 - **Requirement IDs:** an ID marked "ID approximate" is the closest match in
@@ -59,13 +60,17 @@ review.
 
 ### Tracked issues, checked
 
-- **#85, confirmed.** The local connector keeps paths inside the content root
-  (`packages/core/src/node.ts:65-76`). The GitHub and GitLab connectors remove
-  only leading and trailing slashes (`packages/connectors/src/github.ts:97-104`,
-  `packages/connectors/src/gitlab.ts:86-88`), so a `../` segment can leave
-  `REPOSITORY_ROOT` within the same repository. `remove()` does not check the
-  slug (`packages/connectors/src/store.ts:302-313`). The upload `directory`
-  comes from the client (`packages/runtime/src/routes/admin-media.ts:49`).
+- **#85, confirmed at the review commit.** The local connector kept paths
+  inside the content root. The GitHub and GitLab connectors removed only
+  leading and trailing slashes, so a `../` segment could leave
+  `REPOSITORY_ROOT` within the same repository, and `remove()` did not check
+  the slug. In 0.5 the provider connectors are removed. Every write goes
+  through `packages/runtime/src/workspace/files.ts` (`contentPath`, and a
+  resolved-path check against the content root), and `remove()` in
+  `packages/runtime/src/services/content-store.ts` rejects an empty slug,
+  `/`, `.` and `..`. The upload `directory` still comes from the client
+  (`packages/runtime/src/routes/admin-media.ts:49`). The status below stays
+  until #85 is re-checked against the new code.
 - **#86, confirmed.** The media route sends no sandbox CSP and no
   `Content-Disposition` (`packages/runtime/src/routes/admin-media.ts:90-93`),
   `isScriptable` has no caller (`packages/runtime/src/lib/file-type.ts:109`),
@@ -85,10 +90,10 @@ review.
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
 | 1.2.1 | Output encoding for HTML and HTTP | Pass | `packages/editor-ui/src/views/LoginView.vue:77` | Vue text interpolation; no `v-html` or `innerHTML` in `packages/editor-ui/src`. |
-| 1.2.2 | URLs built with encoded data | Pass | `packages/connectors/src/http.ts:55-61`; `packages/auth/oidc/src/routes.ts:120`; `packages/editor-ui/src/api.ts:393` | |
+| 1.2.2 | URLs built with encoded data | Pass | `packages/auth/oidc/src/routes.ts:120`; `packages/editor-ui/src/api.ts:393` | |
 | 1.2.3 | Safe JSON output | Pass | `packages/runtime/src/middleware/index.ts:85,93` | Responses are built with `c.json`. |
-| 1.2.4 | Parameterized database queries | Pass | `apps/self-hosted/src/db/drafts.ts:102,114,121` | Placeholders only. |
-| 1.2.5 | No OS command injection | Pass | `packages/runtime/src/lib/git.ts:38`; `packages/runtime/src/services/staging-local.ts:269-271` | `execFile` with an argument array, and `--` before paths. |
+| 1.2.4 | Parameterized database queries | N/A | — | Since 0.5, Mica has no database. At the review commit, the draft store used placeholders only. |
+| 1.2.5 | No OS command injection | Pass | `packages/runtime/src/workspace/git.ts`; `packages/runtime/src/workspace/tree.ts`; `apps/self-hosted/src/config.ts` (`isBranchName`) | `execFile` with an argument array, `--` before paths, `--literal-pathspecs`, and a checked branch name. No shell. |
 | 1.3.1 | WYSIWYG HTML sanitized | N/A | — | The server stores Markdoc, not HTML. |
 | 1.3.2 | No `eval` or dynamic code | Pass | repository-wide search | No `eval(` or `new Function(`. |
 | 1.5.1 | Safe XML parser | N/A | `packages/runtime/src/lib/file-type.ts:67-78` | No XML parser; SVG is found by a text prefix. |
@@ -98,8 +103,8 @@ review.
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
 | 2.1.1 | Validation rules documented | Partial | `packages/runtime/src/routes/admin-content.ts:30-39` | The rules are in code (zod and the field DSL); no document lists them all. |
-| 2.2.1 | Positive input validation | Pass | `packages/runtime/src/routes/admin-content.ts:30-39`; `packages/connectors/src/store.ts:231,331` | The delete slug is not checked; see 5.3.2. |
-| 2.2.2 | Validation on the server | Pass | `packages/connectors/src/store.ts:231`; `packages/auth/oidc/src/config.ts:14-62` | |
+| 2.2.1 | Positive input validation | Pass | `packages/runtime/src/routes/admin-content.ts:30-39`; `packages/runtime/src/services/content-store.ts` | The delete slug is not checked; see 5.3.2. |
+| 2.2.2 | Validation on the server | Pass | `packages/runtime/src/services/content-store.ts`; `packages/auth/oidc/src/config.ts:14-62` | |
 | 2.3.1 | Business flow in the expected order | Pass | `packages/runtime/src/routes/admin-content.ts:107,173,227` | A save carries the expected revision; a stale save is a conflict. |
 
 ## V3 Web Frontend Security
@@ -135,7 +140,7 @@ are not counted.
 | 5.2.1 | Size limit without DoS | Partial | `packages/runtime/src/services/media.ts:87`; `packages/runtime/src/routes/admin-media.ts:32` | N3. |
 | 5.2.2 | Type from content; extension matches | Pass | `packages/runtime/src/services/media.ts:96-108,184-187`; `packages/runtime/src/lib/file-type.ts:21-64` | The extension comes from the detected type. |
 | 5.3.1 | Uploads never run as server code | Pass | `packages/runtime/src/routes/admin-media.ts:62-70` | Uploads are only committed to the repository. |
-| 5.3.2 | Paths from user input confined | Fail — #85 | `packages/connectors/src/github.ts:97-104`; `packages/connectors/src/store.ts:302-313`; `packages/runtime/src/routes/admin-media.ts:49,85-87` | The local connector is confined (`packages/core/src/node.ts:65-76`). |
+| 5.3.2 | Paths from user input confined | Fail — #85 | `packages/runtime/src/workspace/files.ts`; `packages/runtime/src/services/content-store.ts`; `packages/runtime/src/routes/admin-media.ts:49,85-87` | The provider connectors that this finding named are removed in 0.5. The file layer confines paths like the local connector did (`packages/core/src/node.ts:65-76`). Re-check before closing #85. |
 
 ## V6 Authentication
 
@@ -198,7 +203,7 @@ The levels in this chapter are approximate; several requirements can be level
 | --- | --- | --- | --- | --- |
 | 11.3.1 | No ECB or weak padding | Pass | `packages/auth/oidc/src/session.ts:159` | |
 | 11.3.2 | Approved authenticated cipher | Pass | `packages/auth/oidc/src/session.ts:158-161` | AES-256-GCM, random 96-bit IV, HKDF-derived key. |
-| 11.4.1 | Approved hash functions | Pass | `packages/auth/oidc/src/oidc.ts:73`; `packages/connectors/src/local.ts:84` | SHA-256 only. |
+| 11.4.1 | Approved hash functions | Pass | `packages/auth/oidc/src/oidc.ts:73`; `packages/runtime/src/workspace/files.ts:161` | SHA-256 only. |
 | 11.5.1 | CSPRNG for secrets | Pass | `packages/runtime/src/lib/id.ts:61`; `packages/auth/oidc/src/oidc.ts:163-166` | ID approximate. |
 
 ## V12 Secure Communication
@@ -206,7 +211,7 @@ The levels in this chapter are approximate; several requirements can be level
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
 | 12.1.1 | Current TLS versions only | N/A | `docs/self-hosting.md:225-234` | The operator's proxy terminates TLS. |
-| 12.2.1 | TLS for all client connections | Partial | `packages/auth/oidc/src/config.ts:96` | N2. `REPOSITORY_API_BASE` also accepts `http://` (`packages/runtime/src/config.ts:79`). |
+| 12.2.1 | TLS for all client connections | Partial | `packages/auth/oidc/src/config.ts:96` | N2. `MICA_REPOSITORY_URL` accepts only `https://`, and `http://` only with `NODE_ENV=development` on loopback (`apps/self-hosted/src/workspace/credentials.ts`, `parseRemote`). |
 | 12.2.2 | Publicly trusted certificates | N/A | — | The proxy holds the certificate. |
 
 ## V13 Configuration
@@ -234,6 +239,21 @@ The IDs and levels in this chapter are approximate.
 | 16.3.1 | Authentication events logged | Pass | `packages/auth/oidc/src/routes.ts:150,166`; `packages/auth/oidc/src/gate.ts:65` | |
 | 16.4.1 | Log injection prevented | Partial | `packages/runtime/src/lib/logger.ts:53-60`; `packages/runtime/src/middleware/index.ts:23` | JSON lines escape values; the request id is not checked (N7). |
 | 16.5.1 | Generic error to the client | Pass | `packages/runtime/src/middleware/index.ts:88-102` | The stack stays in the log. |
+
+## Git workspace (0.5)
+
+Since 0.5, the self-hosted Mica runs `git` on a repository that someone else
+controls, with a token. These rows are threats, not ASVS requirements, so the
+counts in the summary do not include them. They were checked against the code
+only. No test, scanner or live attack was run.
+
+| Threat | Status | Evidence | Note |
+| --- | --- | --- | --- |
+| Repository-controlled Git behaviour: hooks, filters, `.gitattributes`, symlinks, other protocols, submodules | Pass | `apps/self-hosted/src/workspace/isolation.ts` (`managedEnvironment`, `writeIsolationAttributes`); `apps/self-hosted/src/workspace/clone.ts` | Closed by the isolation settings (D7). No system or global Git configuration. `core.hooksPath` is `/dev/null`. `core.symlinks` is `false`, so a symlink is a plain file. `info/attributes` turns off text conversion, `ident`, filters and re-encoding. Only the HTTPS protocol is allowed (`http` only in development, on loopback). Submodules are never fetched. The isolation attributes are written before the first checkout. |
+| Credential leak to another host, to a file, to a log or to the editor | Pass | `apps/self-hosted/src/workspace/credentials.ts` (`parseRemote`, `redact`); `apps/self-hosted/src/workspace/isolation.ts` (`HELPER`); `apps/self-hosted/src/workspace/failures.ts` | The token is not in the URL (a URL with credentials is refused). A credential helper scoped to the configured host and port answers `get` only and reads the token from the environment of that one process. The environment of `git` is an allowlist (`PATH`, `HOME`, `LC_ALL`, the `GIT_CONFIG_*` set, the token), so `SESSION_SECRET` and the OIDC secret do not reach it. `redact` removes credentials from URLs and the token value from logs, errors and the host's messages. The token is never written to `.git/config`. |
+| Disk use: a clone that grows without limit | Partial | `apps/self-hosted/src/workspace/managed.ts` (`describe`, `sizeOf`); `docs/self-hosting.md` | The volume needs about twice the content, and `.git` grows with every upstream media change. The System page shows the clone size. There is no quota. Git LFS under the content root is refused. The operator sizes the volume and can shrink it by cloning again. |
+| Path or option injection through the branch or the content root | Pass | `apps/self-hosted/src/config.ts` (`isBranchName`, the root check); `packages/runtime/src/workspace/tree.ts` | A branch name cannot start with `-` or contain `..`. The root cannot contain `.` or `..` segments. `--` comes before every path, and Git reads paths literally. |
+| A second process writes to the volume | Accepted | `docs/self-hosting.md` | One Mica per volume. Mica has no lock file, because a stale lock after a crash would block the restart. `check` never writes to an existing clone. |
 
 ## Next review
 

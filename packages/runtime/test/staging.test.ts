@@ -1,0 +1,470 @@
+/** Uses real Git repositories, not a stubbed runner: the properties under test belong to Git. */
+
+import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { after, describe, it } from "node:test";
+
+import { contentFiles } from "../src/index.js";
+import { collection, defineSite, slug, text } from "@micacms/core";
+
+import { ApiError } from "../src/lib/errors.js";
+import { createLogger } from "../src/lib/logger.js";
+import { createWorkingTreeStagingService } from "../src/services/staging.js";
+import type { ContentStagingService } from "../src/services/changes.js";
+
+/** File-layout entries, so a path is one JSON file. */
+const model = defineSite({
+  collections: {
+    projects: collection({
+      label: "Projects",
+      fields: {
+        title: text({ label: "Title", required: true }),
+        slug: slug({ from: "title" }),
+      },
+    }),
+  },
+});
+
+const directories: string[] = [];
+after(() => {
+  for (const directory of directories) rmSync(directory, { recursive: true, force: true });
+});
+
+function temp(prefix: string): string {
+  const directory = mkdtempSync(join(tmpdir(), prefix));
+  directories.push(directory);
+  return directory;
+}
+
+function git(cwd: string, ...args: string[]): string {
+  return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
+}
+
+interface Repo {
+  root: string;
+  contentRoot: string;
+  service: ContentStagingService;
+  head(): string;
+}
+
+/** A repository with one committed entry under `content/`. */
+function makeRepo(options: { publishEnabled?: boolean; schemaRevision?: string | null } = {}): Repo {
+  const root = temp("mica-wt-");
+  git(root, "init", "-q", "-b", "main");
+  git(root, "config", "user.email", "test@example.com");
+  git(root, "config", "user.name", "Test");
+
+  const contentRoot = join(root, "content");
+  mkdirSync(join(contentRoot, "projects"), { recursive: true });
+  writeFileSync(
+    join(contentRoot, "projects/haus-a.json"),
+    JSON.stringify({ title: "Haus A", slug: "haus-a" }, null, 2),
+  );
+  git(root, "add", "-A");
+  git(root, "commit", "-q", "-m", "init");
+
+  const service = createWorkingTreeStagingService({
+    model,
+    files: contentFiles({ root: contentRoot }),
+    contentRoot,
+    schemaRevision: options.schemaRevision ?? null,
+    publishEnabled: options.publishEnabled ?? true,
+    logger: createLogger({ level: "silent", pretty: false }),
+  });
+
+  return { root, contentRoot, service, head: () => git(root, "rev-parse", "HEAD") };
+}
+
+describe("status", () => {
+  it("outside a repository, publishing is unavailable and says why", async () => {
+    const contentRoot = temp("mica-norepo-");
+    const service = createWorkingTreeStagingService({
+      model,
+      files: contentFiles({ root: contentRoot }),
+      contentRoot,
+      schemaRevision: null,
+      publishEnabled: true,
+      logger: createLogger({ level: "silent", pretty: false }),
+    });
+
+    const status = await service.status();
+    assert.equal(status.publish.enabled, false);
+    assert.match(status.publish.reason!, /git repository/i);
+    assert.deepEqual(status.changes, []);
+  });
+
+  it("reads the change list from the tree, with kinds and owners", async () => {
+    const { contentRoot, service, head } = makeRepo();
+
+    writeFileSync(
+      join(contentRoot, "projects/haus-a.json"),
+      JSON.stringify({ title: "Haus A, renovated", slug: "haus-a" }),
+    );
+    writeFileSync(
+      join(contentRoot, "projects/haus-b.json"),
+      JSON.stringify({ title: "Haus B", slug: "haus-b" }),
+    );
+    // Build output is not the editor's.
+    mkdirSync(join(contentRoot, ".mica"), { recursive: true });
+    writeFileSync(join(contentRoot, ".mica/schema.json"), "{}");
+
+    const status = await service.status();
+
+    assert.equal(status.owner, "developer");
+    assert.equal(status.head, head());
+    assert.equal(status.sync, null);
+    assert.equal(status.branch, "main");
+    assert.equal(status.validation.ok, true);
+
+    const byPath = new Map(status.changes.map((change) => [change.path, change]));
+    assert.equal(byPath.get("projects/haus-a.json")?.kind, "update");
+    assert.equal(byPath.get("projects/haus-b.json")?.kind, "create");
+    assert.equal(byPath.get("projects/haus-b.json")?.owner.label, "Projects: Haus B");
+    assert.equal(byPath.has(".mica/schema.json"), false);
+  });
+
+  it("a rename the developer staged reads as create plus delete", async () => {
+    const { root, service } = makeRepo();
+    git(root, "mv", "content/projects/haus-a.json", "content/projects/haus-z.json");
+
+    const status = await service.status();
+    const byPath = new Map(status.changes.map((change) => [change.path, change.kind]));
+
+    assert.equal(byPath.get("projects/haus-z.json"), "create");
+    assert.equal(byPath.get("projects/haus-a.json"), "delete");
+  });
+
+  it("a URL change reads as one renamed entry", async () => {
+    const { contentRoot, service } = makeRepo();
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+    writeFileSync(
+      join(contentRoot, "projects/haus-z.json"),
+      JSON.stringify({ title: "Haus A", slug: "haus-z" }, null, 2),
+    );
+
+    const status = await service.status();
+    for (const change of status.changes) {
+      assert.deepEqual(change.owner, {
+        kind: "entry",
+        collection: "projects",
+        slug: "haus-z",
+        label: "Projects: Haus A",
+        renamedFrom: "haus-a",
+      });
+    }
+
+    const { before, after } = await service.compare({
+      kind: "entry",
+      collection: "projects",
+      slug: "haus-z",
+      from: "haus-a",
+    });
+    assert.deepEqual(before, { title: "Haus A", slug: "haus-a" });
+    assert.deepEqual(after, { title: "Haus A", slug: "haus-z" });
+  });
+
+  it("an order file changed only by the rename belongs to the renamed entry", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-b.json"), JSON.stringify({ title: "Haus B", slug: "haus-b" }));
+    writeFileSync(join(contentRoot, "projects/_order.json"), JSON.stringify(["haus-b", "haus-a"]));
+    git(root, "add", "-A");
+    git(root, "commit", "-q", "-m", "order");
+
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+    writeFileSync(
+      join(contentRoot, "projects/haus-z.json"),
+      JSON.stringify({ title: "Haus A", slug: "haus-z" }, null, 2),
+    );
+    writeFileSync(join(contentRoot, "projects/_order.json"), JSON.stringify(["haus-b", "haus-z"]));
+
+    const status = await service.status();
+    const order = status.changes.find((change) => change.path === "projects/_order.json");
+    assert.deepEqual(order?.owner, {
+      kind: "entry",
+      collection: "projects",
+      slug: "haus-z",
+      label: "Projects: Haus A",
+      renamedFrom: "haus-a",
+    });
+  });
+
+  it("an unrelated deletion and creation stay two entries", async () => {
+    const { contentRoot, service } = makeRepo();
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+    writeFileSync(
+      join(contentRoot, "projects/haus-b.json"),
+      JSON.stringify({ title: "Haus B", slug: "haus-b" }, null, 2),
+    );
+
+    const status = await service.status();
+    const bySlug = new Map(status.changes.map((change) => [change.path, change.owner]));
+    assert.deepEqual(
+      [bySlug.get("projects/haus-a.json"), bySlug.get("projects/haus-b.json")].map(
+        (owner) => owner?.kind === "entry" && [owner.slug, owner.renamedFrom],
+      ),
+      [
+        ["haus-a", undefined],
+        ["haus-b", undefined],
+      ],
+    );
+  });
+
+  it("invalid staged content is named, and blocks nothing else", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(
+      join(contentRoot, "projects/haus-b.json"),
+      JSON.stringify({ title: "", slug: "haus-b" }),
+    );
+
+    const status = await service.status();
+    assert.equal(status.validation.ok, false);
+    assert.equal(status.validation.problems[0]?.path, "projects/haus-b.json");
+  });
+});
+
+/** The paths the Publish page shows, with the revisions it shows them at. */
+async function reviewed(service: ContentStagingService): Promise<Record<string, string | null>> {
+  const status = await service.status();
+  return Object.fromEntries(status.changes.map((change) => [change.path, change.revision ?? null]));
+}
+
+describe("publish", () => {
+  it("refuses a file that was saved again after the review", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Reviewed","slug":"haus-a"}');
+    const paths = await reviewed(service);
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Saved again","slug":"haus-a"}');
+
+    await assert.rejects(
+      service.publish({ message: "Publish", paths }),
+      (error: unknown) => error instanceof ApiError && error.code === "conflict",
+    );
+  });
+
+  it("publishes the reviewed entry and leaves another entry's later draft alone", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Reviewed","slug":"haus-a"}');
+    const paths = await reviewed(service);
+    // Another editor's autosave after the review.
+    writeFileSync(join(contentRoot, "projects/haus-c.json"), '{"title":"Haus C","slug":"haus-c"}');
+
+    await service.publish({ message: "Publish A", paths });
+
+    assert.deepEqual(git(root, "show", "--name-only", "--format=", "HEAD").split("\n"), ["content/projects/haus-a.json"]);
+    assert.deepEqual(
+      (await service.status()).changes.map((change) => change.path),
+      ["projects/haus-c.json"],
+    );
+  });
+
+  it("commits only the reviewed paths, and reports a failed push as a state", async () => {
+    const { root, contentRoot, service } = makeRepo();
+
+    writeFileSync(
+      join(contentRoot, "projects/haus-a.json"),
+      JSON.stringify({ title: "Haus A, renovated", slug: "haus-a" }),
+    );
+
+    // Unrelated developer work, some of it staged, must stay out of the commit.
+    writeFileSync(join(root, "notes.txt"), "developer notes");
+    writeFileSync(join(root, "staged.txt"), "already staged");
+    git(root, "add", "staged.txt");
+
+    const result = await service.publish({ message: "Renovate Haus A", paths: await reviewed(service) });
+
+    // No remote, so the push fails.
+    assert.equal(result.state, "committed-pending-push");
+    assert.ok(result.revision);
+    assert.ok(result.pushError);
+
+    assert.equal(git(root, "log", "-1", "--format=%s"), "Renovate Haus A");
+    const committed = git(root, "show", "--name-only", "--format=", "HEAD").split("\n");
+    assert.deepEqual(committed, ["content/projects/haus-a.json"]);
+
+    assert.equal(readFileSync(join(root, "notes.txt"), "utf8"), "developer notes");
+    assert.match(git(root, "status", "--porcelain"), /^A {2}staged\.txt$/m);
+
+    const status = await service.status();
+    assert.deepEqual(status.changes, []);
+  });
+
+  it("a published URL change is a rename in Git, so the history follows the file", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+    writeFileSync(
+      join(contentRoot, "projects/haus-z.json"),
+      JSON.stringify({ title: "Haus A", slug: "haus-z" }, null, 2),
+    );
+
+    await service.publish({ message: "Move Haus A", paths: await reviewed(service) });
+
+    assert.match(
+      git(root, "show", "-M", "--name-status", "--format=", "HEAD"),
+      /^R\d{3}\tcontent\/projects\/haus-a\.json\tcontent\/projects\/haus-z\.json$/,
+    );
+    assert.equal(git(root, "log", "--follow", "--format=%s", "--", "content/projects/haus-z.json"), "Move Haus A\ninit");
+  });
+
+  it("push retries the push and never creates a second commit", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Once","slug":"haus-a"}');
+
+    const first = await service.publish({ message: "Once", paths: await reviewed(service) });
+    assert.equal(first.state, "committed-pending-push");
+
+    // The developer adds the remote.
+    const bare = temp("mica-bare-");
+    git(bare, "init", "-q", "--bare", "-b", "main");
+    git(root, "remote", "add", "origin", bare);
+    git(root, "config", "branch.main.remote", "origin");
+    git(root, "config", "branch.main.merge", "refs/heads/main");
+
+    const retried = await service.push();
+    assert.equal(retried.state, "published");
+    assert.equal(retried.revision, first.revision);
+    assert.equal(git(bare, "rev-parse", "HEAD"), first.revision);
+    assert.equal(git(root, "rev-list", "--count", "HEAD"), "2");
+  });
+
+  it("publishes end to end when an upstream exists", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    const bare = temp("mica-bare-");
+    git(bare, "init", "-q", "--bare", "-b", "main");
+    git(root, "remote", "add", "origin", bare);
+    git(root, "push", "-q", "-u", "origin", "main");
+
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Live","slug":"haus-a"}');
+
+    const result = await service.publish({ message: "Go live", paths: await reviewed(service) });
+    assert.equal(result.state, "published");
+    assert.equal(git(bare, "rev-parse", "HEAD"), result.revision);
+  });
+
+  it("is refused when disabled by configuration", async () => {
+    const { contentRoot, service } = makeRepo({ publishEnabled: false });
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"No","slug":"haus-a"}');
+
+    const status = await service.status();
+    assert.equal(status.publish.enabled, false);
+    assert.equal(status.changes.length, 1, "the read-only view still lists changes");
+
+    await assert.rejects(
+      service.publish({ message: "Try", paths: await reviewed(service) }),
+      (error: unknown) => error instanceof ApiError && error.status === 400,
+    );
+  });
+
+  it("refuses across model drift, naming the restart", async () => {
+    const { contentRoot, service } = makeRepo({ schemaRevision: "the-startup-revision" });
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Drift","slug":"haus-a"}');
+
+    await assert.rejects(
+      service.publish({ message: "Publish", paths: await reviewed(service) }),
+      (error: unknown) =>
+        error instanceof ApiError && error.code === "conflict" && /restart/i.test(error.message),
+    );
+  });
+});
+
+describe("discard", () => {
+  it("restores a tracked file and removes an untracked one", async () => {
+    const { contentRoot, service } = makeRepo();
+
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Edited","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-b.json"), '{"title":"New","slug":"haus-b"}');
+
+    const { discarded } = await service.discard([
+      "projects/haus-a.json",
+      "projects/haus-b.json",
+      "projects/not-in-the-change-list.json",
+    ]);
+
+    assert.deepEqual(discarded, ["projects/haus-a.json", "projects/haus-b.json"]);
+    assert.equal(
+      JSON.parse(readFileSync(join(contentRoot, "projects/haus-a.json"), "utf8")).title,
+      "Haus A",
+    );
+    assert.equal(existsSync(join(contentRoot, "projects/haus-b.json")), false);
+  });
+
+  it("restores a deleted file", async () => {
+    const { contentRoot, service } = makeRepo();
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+
+    const { discarded } = await service.discard(["projects/haus-a.json"]);
+    assert.deepEqual(discarded, ["projects/haus-a.json"]);
+    assert.equal(existsSync(join(contentRoot, "projects/haus-a.json")), true);
+  });
+});
+
+describe("before/after comparison", () => {
+  it("an edited entry compares HEAD against the working tree", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(
+      join(contentRoot, "projects/haus-a.json"),
+      JSON.stringify({ title: "Haus A, renovated", slug: "haus-a" }, null, 2),
+    );
+
+    const { before, after } = await service.compare({
+      kind: "entry",
+      collection: "projects",
+      slug: "haus-a",
+    });
+    assert.equal(before?.["title"], "Haus A");
+    assert.equal(after?.["title"], "Haus A, renovated");
+  });
+
+  it("a new entry has no before, a deleted one no after", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(
+      join(contentRoot, "projects/haus-b.json"),
+      JSON.stringify({ title: "Haus B", slug: "haus-b" }, null, 2),
+    );
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+
+    const created = await service.compare({ kind: "entry", collection: "projects", slug: "haus-b" });
+    assert.equal(created.before, null);
+    assert.equal(created.after?.["title"], "Haus B");
+
+    const removed = await service.compare({ kind: "entry", collection: "projects", slug: "haus-a" });
+    assert.equal(removed.before?.["title"], "Haus A");
+    assert.equal(removed.after, null);
+  });
+
+  it("outside a repository, everything reads as new", async () => {
+    const contentRoot = join(temp("mica-wt-norepo-"), "content");
+    mkdirSync(join(contentRoot, "projects"), { recursive: true });
+    writeFileSync(
+      join(contentRoot, "projects/haus-a.json"),
+      JSON.stringify({ title: "Haus A", slug: "haus-a" }, null, 2),
+    );
+
+    const service = createWorkingTreeStagingService({
+      model,
+      files: contentFiles({ root: contentRoot }),
+      contentRoot,
+      schemaRevision: null,
+      publishEnabled: true,
+      logger: createLogger({ level: "silent", pretty: false }),
+    });
+
+    const { before, after } = await service.compare({
+      kind: "entry",
+      collection: "projects",
+      slug: "haus-a",
+    });
+    assert.equal(before, null);
+    assert.equal(after?.["title"], "Haus A");
+  });
+
+  it("an unknown collection is refused", async () => {
+    const { service } = makeRepo();
+    await assert.rejects(
+      service.compare({ kind: "entry", collection: "nope", slug: "haus-a" }),
+      (error: unknown) => error instanceof ApiError,
+    );
+  });
+});

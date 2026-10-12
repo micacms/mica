@@ -1,16 +1,7 @@
 /**
- * The local editor's configuration.
- *
- * Small on purpose: the variables the runtime reads, minus everything that
- * describes a deployment. There is no `REPOSITORY` — this app *is* the local
- * connector against a checkout — no `DATA_DIR`, because it keeps no state,
- * and no OIDC or admission variable exists to be set, which is a stronger
- * statement than ignoring one.
- *
- * The refusals are the containment for a server with no authentication:
- * production is refused, a non-local public URL is refused, and any listening
- * address but loopback is refused, with no override. Remote access is what
- * the self-hosted distribution is.
+ * The local editor's configuration: the runtime variables minus everything that
+ * describes a deployment. The server has no authentication, so it refuses
+ * production and any non-loopback URL or address, with no override.
  */
 
 import { z } from "zod";
@@ -54,9 +45,8 @@ const schema = z
     ADMIN_DIR,
 
     /**
-     * Set by the `mica` bin, and by nothing else. The audience for the
-     * startup output: a person at a terminal gets one banner, a log collector
-     * gets the structured lines.
+     * Set only by the `mica` bin: a terminal gets one banner, a log collector
+     * gets structured lines.
      */
     MICA_CLI: bool(false),
     /** Whether that front door should open a browser once it is listening. */
@@ -65,14 +55,6 @@ const schema = z
   .transform((env) => ({
     ...deriveRuntime({
       ...env,
-      // Fixed, not configurable: the local editor edits a checkout. A remote
-      // repository is the self-hosted app's job.
-      REPOSITORY: "local" as const,
-      REPOSITORY_ROOT: "content",
-      REPOSITORY_BRANCH: "main",
-      REPOSITORY_TOKEN: undefined,
-      REPOSITORY_PROJECT: undefined,
-      REPOSITORY_API_BASE: undefined,
       // There is no proxy in front of a loopback server to trust.
       TRUST_PROXY: false,
     }),
@@ -91,14 +73,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): LocalConfig {
 
   const config = parsed.data;
 
-  /**
-   * The local editor has no authentication. It must never be reachable.
-   *
-   * This is the single most dangerous configuration Mica can be in, so it is
-   * refused at the three points where it stops being a developer's
-   * convenience: a production build, a base URL that is not the local
-   * machine, and a listening address that is not the local machine either.
-   */
+  // The local editor has no authentication, so it must never be reachable from another machine.
   if (config.isProduction) {
     throw new ConfigError(
       "The local editor has no authentication, and NODE_ENV=production.\n" +
@@ -117,12 +92,9 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): LocalConfig {
     );
   }
 
-  /**
-   * The same rule for the socket. A base URL saying `localhost` while the
-   * process listens on `0.0.0.0` leaves an unauthenticated editor open to the
-   * whole network. There is deliberately no override.
-   */
-  if (!LOOPBACK.has(config.HOST) && config.HOST !== "::1") {
+  // A `localhost` URL with a socket on `0.0.0.0` opens the editor to the whole
+  // network. No override, on purpose.
+  if (!LOOPBACK.has(config.HOST)) {
     throw new ConfigError(
       `The local editor has no authentication, but HOST is "${config.HOST}".\n` +
         "  It binds to the loopback address and nothing else. Use HOST=127.0.0.1,\n" +

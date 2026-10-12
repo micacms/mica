@@ -1,13 +1,8 @@
 /**
- * Where content files come from.
- *
- * Two methods wide on purpose. Everything above it — entry discovery, layout,
- * parsing — is written against `read` and `list` and nothing else, so one
- * reader serves a checked-out repository during an Astro build, a repository
- * connector answering from a provider API, and an in-memory fixture in a test.
- *
- * Nothing here touches a filesystem. `fileSystemSource` lives in
- * `@micacms/core/node`, because this module is also bundled into the browser.
+ * Where content files come from. Only `read` and `list`, so one reader serves
+ * an Astro build, the server's working tree and a test fixture.
+ * `fileSystemSource` is in `@micacms/core/node`, because this module is also
+ * bundled into the browser.
  */
 
 export interface DirectoryEntry {
@@ -37,10 +32,10 @@ export class ContentPathError extends ContentSourceError {
 const CONTROL = /[\u0000-\u001f\u007f]/;
 
 /**
- * The one check every connector applies before a path reaches a filesystem or a
- * provider URL. A leading or trailing `/` is dropped, as connectors always did;
- * `.`, `..`, empty segments, `\`, control characters and a drive letter are
- * refused. The root itself (`""`) is only a path for reading and listing.
+ * The check every source applies before a path reaches a filesystem. A leading
+ * or trailing `/` is dropped; `.`, `..`, empty segments, `\`, control
+ * characters and a drive letter are refused. The root itself (`""`) is only a
+ * path for reading and listing.
  */
 export function contentPath(path: string, options: { allowRoot?: boolean } = {}): string {
   const clean = path.replace(/^\/+|\/+$/g, "");
@@ -63,9 +58,7 @@ export function contentPath(path: string, options: { allowRoot?: boolean } = {})
 
 /**
  * A source built from a flat path-to-contents map, for tests and fixtures.
- *
- * Directories are inferred from the paths rather than declared, which keeps a
- * fixture down to the files it actually cares about.
+ * Directories come from the paths.
  */
 export function memorySource(files: Record<string, string>, origin = "memory"): ContentSource {
   const normalise = (path: string) => path.replace(/^\.?\//, "").replace(/\/$/, "");

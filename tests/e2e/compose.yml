@@ -4,26 +4,16 @@
 #
 # Then open http://localhost:6422/admin/ and sign in as alice / alice.
 #
-# This exercises what the unit tests cannot: a real OpenID Connect round trip
-# through a real identity provider, with the CMS running from the image rather
-# than from source.
-#
-# Three accounts, chosen to make the outcomes visible:
+# A real OpenID Connect round trip through a real identity provider, with the CMS
+# running from the image rather than from source.
 #
 #   alice / alice        in the `mica-editors` group, and therefore an editor
-#   bob / bob            in the same group, and therefore the same. There is no
-#                        role to tell them apart: everybody admitted is an
-#                        editor of this site
-#   mallory / mallory    authenticates perfectly and is refused, because she is
-#                        in no group Mica was told to admit
+#   bob / bob            in the same group; there are no roles, so the same
+#   mallory / mallory    authenticates and is refused: she is in no admitted group
 #
-# Mallory is the point. Authentication and admission are separate questions,
-# and this is where you can watch that be true. Note where the answer lives:
-# alice and bob are editors because of a group in Keycloak, not because of a
-# row in Mica — there is no user table, and no People screen.
+# Authentication and admission are separate questions; mallory shows it.
 #
-# Everything here is deliberately insecure and deliberately local: plain HTTP,
-# a committed client secret, one-word passwords. It is a test rig.
+# Deliberately insecure and local: plain HTTP, a committed client secret, one-word passwords.
 
 name: mica-e2e
 
@@ -43,13 +33,12 @@ services:
     volumes:
       - ./keycloak-realm.json:/opt/keycloak/data/import/realm.json:ro
 
-    # Both ports are published here, including Mica's 6422. The CMS shares this
-    # container's network namespace (see `network_mode` below), so this is the
-    # only place either port can be exposed from.
+    # Mica's and Forgejo's ports are published here too: they share this container's
+    # network namespace, so this is the only place to expose them from.
     ports:
       - "127.0.0.1:8080:8080"
       - "127.0.0.1:6422:6422"
-      - "127.0.0.1:8787:8787"
+      - "127.0.0.1:3000:3000"
 
     healthcheck:
       # The realm's discovery document, which is the thing Mica actually needs
@@ -64,18 +53,43 @@ services:
       start_period: 15s
 
   # ---------------------------------------------------------- repository
-  # A stand-in for the GitHub API, seeded with the example content and kept in
-  # memory — see tests/github-stub/README.md. A self-hosted Mica publishes only
-  # through a provider.
-  github:
-    image: node:24-alpine
-    command: ["node", "/stub/server.mjs"]
+  # A real Git host, seeded with the example content by the same script as
+  # tests/oidc. Plain HTTP on localhost, which Mica accepts only in development.
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:15.0.9
     network_mode: "service:keycloak"
     depends_on:
       keycloak:
         condition: service_started
+    environment:
+      FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO__database__DB_TYPE: sqlite3
+      FORGEJO__server__ROOT_URL: http://localhost:3000/
+      FORGEJO__server__HTTP_PORT: "3000"
+      FORGEJO__server__DISABLE_SSH: "true"
+      FORGEJO__service__DISABLE_REGISTRATION: "true"
+      FORGEJO__log__LEVEL: Warn
     volumes:
-      - ../github-stub/server.mjs:/stub/server.mjs:ro
+      - forgejo-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/v1/version"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+
+  forgejo-seed:
+    image: codeberg.org/forgejo/forgejo:15.0.9
+    network_mode: "service:keycloak"
+    user: "1000:1000"
+    entrypoint: ["/bin/sh", "/seed.sh"]
+    depends_on:
+      forgejo:
+        condition: service_healthy
+    environment:
+      FORGEJO_PASSWORD: Forgejo-test-password-not-for-production
+    volumes:
+      - forgejo-data:/data
+      - ../oidc/forgejo-seed.sh:/seed.sh:ro
       - ../../examples/muster-consulting/content:/seed:ro
 
   # ---------------------------------------------------------------- mica
@@ -86,25 +100,16 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
-      github:
-        condition: service_started
+      forgejo-seed:
+        condition: service_completed_successfully
 
-    # Shares Keycloak's network namespace, so `localhost:8080` means the same
-    # thing inside this container as it does in your browser. Without that the
-    # issuer Mica discovers and the issuer the browser is redirected to would
-    # be different strings, and the ID token's `iss` check would fail.
+    # Shares Keycloak's network namespace, so `localhost:8080` means the same issuer
+    # here as in your browser, and the ID token's `iss` check passes.
     network_mode: "service:keycloak"
 
     environment:
-      # Development, deliberately, and the one thing here that is not
-      # production-shaped. Mica refuses plain-HTTP OIDC discovery when
-      # NODE_ENV=production — correctly, since an ID token over http is an ID
-      # token anyone on the path can read. Giving Keycloak a certificate is
-      # more machinery than a local test rig deserves, so the rig relaxes the
-      # one flag rather than the rule.
-      #
-      # What is being tested is the self-hosted composition: real provider, real
-      # redirect, real admission check against a real group claim.
+      # Development, on purpose: Mica refuses plain-HTTP OIDC discovery under
+      # NODE_ENV=production, and a certificate for Keycloak is too much for a test rig.
       NODE_ENV: development
       LOG_LEVEL: debug
 
@@ -114,18 +119,14 @@ services:
       MICA_OIDC_CLIENT_ID: mica
       MICA_OIDC_CLIENT_SECRET: e2e-client-secret-not-for-production
 
-      # Who may edit. The realm puts alice and bob in this group and leaves
-      # mallory out of it, so this one line is the whole of authorization —
-      # there is nothing to bootstrap and nobody to invite.
+      # The realm puts alice and bob in this group and leaves mallory out.
       MICA_ADMIT_GROUP: mica-editors
 
-      # Publish goes to the stub; read what arrived with
-      #   curl -H 'authorization: Bearer x' -H 'accept: application/vnd.github.raw' \
-      #     'http://localhost:8787/repos/acme/site/contents/content/site/index.json?ref=main'
-      REPOSITORY: github
-      REPOSITORY_PROJECT: acme/site
-      REPOSITORY_TOKEN: stub-token-not-for-production
-      REPOSITORY_API_BASE: http://localhost:8787
+      # Mica clones and pushes to Forgejo (the user `editor`, password below);
+      # read what arrived at http://localhost:3000/editor/site.
+      MICA_REPOSITORY_URL: http://localhost:3000/editor/site.git
+      MICA_REPOSITORY_USERNAME: editor
+      MICA_REPOSITORY_TOKEN: Forgejo-test-password-not-for-production
 
       SESSION_SECRET: e2e-session-secret-0000000000000000
 
@@ -134,3 +135,4 @@ services:
 
 volumes:
   mica-data:
+  forgejo-data:

@@ -1,12 +1,6 @@
 /**
- * The self-hosted deployment's configuration: the runtime fragment plus the
- * auth fragment plus the two things only this composition has — a data
- * directory and the database inside it.
- *
- * The refusals live where the fragments do — `requireAuthConfig` for OIDC and
- * admission, `requireRepositoryConfig` for a provider repository — and this
- * file adds the one that is the deployment's own: secrets are mandatory in
- * production, ephemeral in development.
+ * The self-hosted configuration: the runtime and auth fragments, plus the
+ * repository and the data directory.
  */
 
 import { randomBytes } from "node:crypto";
@@ -20,64 +14,74 @@ import {
   describeConfigIssues,
   loadEnvFile,
   LOOPBACK,
-  requireRepositoryConfig,
   runtimeEnv,
   withoutBlanks,
   type RuntimeConfig,
 } from "@micacms/runtime";
 
+import { defaultUsername, parseRemote, type Remote } from "./workspace/credentials.js";
+
+/** What the runtime reads, minus what only the local editor's checkout needs. */
+const {
+  CONTENT_ROOT: _contentRoot,
+  MICA_LOCAL_PUBLISH: _localPublish,
+  ...runtimeFields
+} = runtimeEnv;
+
 const fields = {
-  ...runtimeEnv,
+  ...runtimeFields,
   ...authEnv,
 
-  /** Operational state: the database holding the draft store. */
-  DATA_DIR: z.string().default("./data"),
-  DATABASE_PATH: z.string().optional(),
+  MICA_DATA_DIR: z.string().default("./data"),
+  /** The HTTPS clone URL, without credentials. */
+  MICA_REPOSITORY_URL: z.string().optional(),
+  MICA_REPOSITORY_TOKEN: z.string().optional(),
+  /** Defaults by host: `x-access-token` (GitHub), `oauth2` (GitLab), `mica`. */
+  MICA_REPOSITORY_USERNAME: z.string().optional(),
+  MICA_REPOSITORY_BRANCH: z.string().default("main"),
+  MICA_REPOSITORY_ROOT: z.string().default("content"),
+  MICA_REPOSITORY_SYNC_SECONDS: z.coerce.number().int().min(5).max(86_400).default(60),
 };
 
-/** Every variable this server reads, from the same object as the schema, so they cannot drift. */
+/** Built from the schema's fields, so the two cannot drift. */
 const KNOWN = new Set(Object.keys(fields));
 
-const schema = z
-  .object(fields)
-  .transform((env) => {
-    const dataDir = path.resolve(env.DATA_DIR);
-    return {
-      ...deriveAuth(deriveRuntime(env)),
-      // A container has to bind every interface to be reachable at all.
-      HOST: env.HOST ?? "0.0.0.0",
-      dataDir,
-      databasePath: path.resolve(env.DATABASE_PATH ?? path.join(dataDir, "cms.sqlite")),
-    };
+const schema = z.object(fields).transform((env) => {
+  const dataDir = path.resolve(env.MICA_DATA_DIR);
+  const root = env.MICA_REPOSITORY_ROOT.replace(/^\/+|\/+$/g, "");
+  const runtime = deriveRuntime({
+    ...env,
+    CONTENT_ROOT: path.join(dataDir, "repository", root),
+    MICA_LOCAL_PUBLISH: true,
   });
+  return {
+    ...deriveAuth(runtime),
+    // A container has to bind every interface to be reachable at all.
+    HOST: env.HOST ?? "0.0.0.0",
+    dataDir,
+  };
+});
+
+export interface RepositoryConfig {
+  remote: Remote;
+  branch: string;
+  /** Content root, repository-relative, without leading or trailing slashes. */
+  root: string;
+  token: string;
+  username: string;
+  syncSeconds: number;
+}
 
 export type SelfHostedConfig = RuntimeConfig &
   AuthConfig & {
     dataDir: string;
-    databasePath: string;
+    repository: RepositoryConfig;
     SESSION_SECRET?: string | undefined;
     /** Names of the secrets this process generated for itself. */
     devSecrets: string[];
-    /** `MICA_*` and `REPOSITORY_*` names in the environment that nothing reads: likely typos. */
+    /** `MICA_*` names in the environment that nothing reads: likely typos. */
     unknownVariables: string[];
   };
-
-/**
- * A hosted Mica reaches its repository only through a provider API.
- *
- * Local Git is the local editor's job: it uses the developer's own `git` and
- * credentials. A server has neither, so a working tree here could autosave but
- * never publish — see docs/decisions.md.
- */
-function requireProviderRepository(repository: string): void {
-  if (repository === "github" || repository === "gitlab") return;
-
-  throw new ConfigError(
-    "A self-hosted Mica publishes through GitHub or GitLab, so REPOSITORY must be\n" +
-      "  github or gitlab, with REPOSITORY_PROJECT and REPOSITORY_TOKEN.\n" +
-      "  To edit a checkout on your own machine, run `npx @micacms/editor` instead.",
-  );
-}
 
 /**
  * Over plain HTTP the session cookie is not Secure and travels in clear text,
@@ -102,24 +106,93 @@ function requireHttps(
   );
 }
 
-export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConfig {
-  // Only when reading the ambient environment: tests pass an explicit object
-  // and must not pick up whatever `.env` sits in the working directory.
-  if (env === process.env) loadEnvFile();
+/**
+ * Git's rules for a branch name, enough to refuse anything that could act as an
+ * option or a range.
+ */
+function isBranchName(name: string): boolean {
+  return (
+    name.length > 0 &&
+    !name.startsWith("-") &&
+    !name.startsWith("/") &&
+    !name.endsWith("/") &&
+    !name.endsWith(".lock") &&
+    !name.includes("..") &&
+    !name.includes("@{") &&
+    !/[\s~^:?*[\\\x00-\x1f\x7f]/.test(name)
+  );
+}
 
-  const parsed = schema.safeParse(withoutBlanks(env));
+/** All repository problems at once, so an operator fixes them in one pass. */
+function repositoryProblems(env: NodeJS.ProcessEnv, development: boolean): { problems: string[]; repository?: RepositoryConfig } {
+  const problems: string[] = [];
+
+  const url = env["MICA_REPOSITORY_URL"];
+  let remote: Remote | undefined;
+  if (!url) {
+    problems.push("MICA_REPOSITORY_URL is not set. It is the HTTPS clone URL of the content repository.");
+  } else {
+    try {
+      remote = parseRemote(url, development);
+    } catch (error) {
+      problems.push((error as Error).message);
+    }
+  }
+
+  const token = env["MICA_REPOSITORY_TOKEN"];
+  if (!token) {
+    problems.push(
+      "MICA_REPOSITORY_TOKEN is not set. GitHub: a fine-grained token with Contents: read and write.\n" +
+        "    GitLab: a project access token with read_repository and write_repository, and a role that may\n" +
+        "    push to the branch.",
+    );
+  }
+
+  const branch = env["MICA_REPOSITORY_BRANCH"] ?? "main";
+  if (!isBranchName(branch)) problems.push(`MICA_REPOSITORY_BRANCH is not a branch name: "${branch}".`);
+
+  const root = (env["MICA_REPOSITORY_ROOT"] ?? "content").replace(/^\/+|\/+$/g, "");
+  if (root.split("/").some((segment) => segment === ".." || segment === ".")) {
+    problems.push(`MICA_REPOSITORY_ROOT must be a path inside the repository: "${root}".`);
+  }
+
+  if (problems.length > 0 || !remote || !token) return { problems };
+  return {
+    problems,
+    repository: {
+      remote,
+      branch,
+      root,
+      token,
+      username: env["MICA_REPOSITORY_USERNAME"] ?? defaultUsername(remote),
+      syncSeconds: Number(env["MICA_REPOSITORY_SYNC_SECONDS"] ?? 60),
+    },
+  };
+}
+
+export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConfig {
+  // Tests pass an explicit object and must not pick up a `.env` in the working directory.
+  if (env === process.env) loadEnvFile();
+  const present = withoutBlanks(env);
+
+  const { problems, repository } = repositoryProblems(present, (present["NODE_ENV"] ?? "development") === "development");
+  if (problems.length > 0) {
+    throw new ConfigError(
+      `Mica cannot start:\n${problems.map((problem) => `  - ${problem}`).join("\n")}\n` +
+        "  See deploy/self-hosted/.env.example.",
+    );
+  }
+
+  const parsed = schema.safeParse(present);
   if (!parsed.success) throw new ConfigError(describeConfigIssues(parsed.error));
 
   const config = parsed.data;
 
   requireAuthConfig(config);
-  requireHttps(config, withoutBlanks(env));
-  requireProviderRepository(config.REPOSITORY);
-  requireRepositoryConfig({ ...config, HOST: config.HOST });
+  requireHttps(config, present);
 
-  // Secrets are mandatory in production. In development an ephemeral one is
-  // generated so a trial run works from a clean checkout — at the cost of
-  // signing everyone out on restart, which is the correct trade-off there.
+  // In development a generated secret lets a trial run work from a clean
+  // checkout; sessions end on restart.
   const missing: string[] = [];
   if (!config.SESSION_SECRET) missing.push("SESSION_SECRET");
 
@@ -132,10 +205,11 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
 
   return {
     ...config,
+    repository: repository!,
     sessionSecret: config.SESSION_SECRET ?? randomBytes(32).toString("hex"),
     devSecrets: missing,
     unknownVariables: Object.keys(env)
-      .filter((name) => /^(MICA_|REPOSITORY_)/.test(name) && !KNOWN.has(name))
+      .filter((name) => name.startsWith("MICA_") && !KNOWN.has(name))
       .sort(),
   };
 }

@@ -1,17 +1,10 @@
 #!/usr/bin/env node
 /**
- * Sets the version everything in this repository is released under.
+ * Sets the one version that every published package, both apps and the image carry.
  *
  *   rush release-version --version 0.2.0
  *
- * Everything here carries one version — every published package, both apps
- * and the image — so a release is one number in a handful of files. Doing
- * that by hand is how most of them end up right and one ships as the previous
- * version, which npm will happily accept and nobody notices until a bug report
- * quotes a version that never existed.
- *
- * Read-only checks live here too, because the moment to catch a missing
- * changelog entry is before the tag exists, not after the publish.
+ * It also checks for the changelog section, before the tag exists.
  */
 
 import { readFileSync, writeFileSync } from "node:fs";
@@ -20,7 +13,6 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-/** A manifest's `version` field. */
 const VERSION_FIELD = /^(\s*"version":\s*")([^"]+)(")/m;
 
 /** The image tag in the reference deployment, which carries the same version. */
@@ -28,20 +20,13 @@ const IMAGE_TAG = /^(\s*image:\s*ghcr\.io\/micacms\/mica:)(\S+)(\s*)$/m;
 
 /**
  * Every file that carries the release version, and the pattern that finds it.
- *
- * The compose file is here because it is the one that drifts: it holds the
- * version in an image tag rather than a `version` field, so a rewrite that only
- * knew about manifests left the reference deployment pinned a release behind.
- *
- * Each pattern captures prefix, version and suffix, so a rewrite replaces the
- * middle group and nothing else in the file moves.
+ * Each pattern captures prefix, version and suffix, so a rewrite replaces only the middle group.
  */
 export const MANIFESTS = [
   // The lockstep policy `rush version --bump` bumps from. Managed here too, so
   // a manual `rush release-version` cannot leave Rush bumping from a stale base.
   { file: "common/config/rush/version-policies.json", pattern: VERSION_FIELD },
   { file: "packages/core/package.json", pattern: VERSION_FIELD },
-  { file: "packages/connectors/package.json", pattern: VERSION_FIELD },
   { file: "packages/astro/package.json", pattern: VERSION_FIELD },
   { file: "packages/editor-ui/package.json", pattern: VERSION_FIELD },
   { file: "packages/runtime/package.json", pattern: VERSION_FIELD },
@@ -62,9 +47,8 @@ export function readVersions(root = ROOT) {
 }
 
 /**
- * Rewrites the version textually rather than through a parser, so key order,
- * indentation, comments and the trailing newline survive untouched. A release
- * should not also be a reformat of every file it touches.
+ * Rewrites the version as text, not through a parser, so formatting and
+ * comments stay as they are.
  */
 export function setVersion(version, root = ROOT) {
   if (!SEMVER.test(version)) {
@@ -102,10 +86,8 @@ function main(argv) {
   // for anyone running the script directly.
   if (version === "--version") version = argv[1];
 
-  // `rush version --bump` bumps every published manifest but knows nothing of
-  // the image tag in the reference deployment. `--sync` reads the version Rush
-  // chose and carries it to everything else, so `rush version-bump` leaves all
-  // of it agreeing.
+  // `rush version --bump` does not know the image tag: `--sync` carries the
+  // version Rush chose to every file.
   if (version === "--sync") {
     version = JSON.parse(
       readFileSync(path.join(ROOT, "packages/core/package.json"), "utf8"),

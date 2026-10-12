@@ -2,7 +2,7 @@
   "name": "@micacms/self-hosted",
   "version": "0.4.1",
   "type": "module",
-  "description": "The self-hosted Mica composition: the runtime and editor UI behind an external OIDC provider, with SQLite for the draft store. What the Docker image runs.",
+  "description": "The self-hosted Mica composition: the runtime and editor UI behind an external OIDC provider, on a Git clone of the content repository that it keeps itself. What the Docker image runs.",
   "license": "MIT",
   "author": "Alexander Müdespacher",
   "keywords": [
@@ -24,7 +24,6 @@
   },
   "dependencies": {
     "@micacms/auth-oidc": "workspace:*",
-    "@micacms/connectors": "workspace:*",
     "@micacms/core": "workspace:*",
     "@micacms/editor-ui": "workspace:*",
     "@micacms/runtime": "workspace:*",

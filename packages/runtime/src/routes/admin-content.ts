@@ -1,37 +1,24 @@
 /**
- * Admin content routes — entries and singletons.
- *
- * Thin: parse, delegate to the content store, serialise. Every rule about
- * validation, slugs and layout lives in the store, which is shared with the
- * Astro build rather than reimplemented here.
- *
- * Three things shape this surface:
- *
- *   - An entry is addressed by `collection/slug`. The path in the API is the
- *     path in the repository, so a URL here can be read off a diff.
- *   - There are no revision endpoints. Git is the history.
- *   - There is no status endpoint. Committed is published, and a draft is
- *     unsaved work in the editor that never reaches the server.
- *
- * `revision` is what makes concurrent editing safe: an opaque token naming the
- * version an editor opened, sent back with the save.
+ * Admin routes for entries and singletons. The content store holds every rule;
+ * these routes only parse and serialize. The API path is the repository path,
+ * Git is the history, and `revision` makes concurrent edits safe.
  */
 
-import { ConflictError, ValidationError } from "@micacms/connectors";
+import { ValidationError } from "../services/content-store.js";
+import { ConflictError } from "../workspace/files.js";
 import { collectionEntryPath, compareEntries, entryTitle, singletonPath } from "@micacms/core";
 import { Hono } from "hono";
 import { z } from "zod";
 
 import { ApiError, badRequest, notFound } from "../lib/errors.js";
-import { actorOf, type Env } from "../http.js";
+import type { Env } from "../http.js";
 
 const saveSchema = z.object({
   data: z.record(z.string(), z.unknown()),
   slug: z.string().max(120).optional(),
   /**
-   * The revision the editor opened. `null` asserts the entry did not exist,
-   * which is what makes two simultaneous creates fail instead of one silently
-   * overwriting the other.
+   * The revision the editor opened. `null` asserts that the entry does not
+   * exist, so two parallel creates cannot overwrite.
    */
   revision: z.string().nullable().optional(),
 });
@@ -44,13 +31,7 @@ async function jsonBody(c: { req: { json(): Promise<unknown> } }): Promise<unkno
   });
 }
 
-/**
- * Turns a store failure into the HTTP answer it deserves.
- *
- * A conflict is 409 and is recoverable in the editor — reload and reapply. A
- * validation failure is 422 with the offending fields. Everything else is a
- * genuine fault and reaches the error handler unchanged.
- */
+/** Maps a conflict to 409 and a validation failure to 422; other errors go to the error handler. */
 async function handled<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await run();
@@ -65,8 +46,6 @@ async function handled<T>(run: () => Promise<T>): Promise<T> {
 
 export function adminContentRoutes(): Hono<Env> {
   const app = new Hono<Env>();
-
-  /* ------------------------------------------------------------ entries */
 
   app.get("/collections/:collection/entries", async (c) => {
     const { content } = c.get("ctx").services;
@@ -83,13 +62,8 @@ export function adminContentRoutes(): Hono<Env> {
         title: entryTitle(def, entry.data),
         data: entry.data,
       }))
-      // A substring match over the payload, which is what the SQL `LIKE` did.
-      // Content trees are small enough that filtering in memory is simpler than
-      // an index, and it can no longer disagree with what is on disk.
+      // Content trees are small, so an in-memory substring match is sufficient.
       .filter((item) => !search || JSON.stringify(item.data).toLowerCase().includes(search))
-      // The order the model asks for — newest first for news, by hand for a
-      // menu. Ties fall back to the manual position, so the list is stable
-      // between requests whatever the sort field says.
       .sort(compareEntries(def));
 
     return c.json({ items, total: items.length });
@@ -103,9 +77,7 @@ export function adminContentRoutes(): Hono<Env> {
     const saved = await handled(() =>
       content.save(c.req.param("collection"), {
         data: parsed.data.data,
-        // A create asserts absence unless the client says otherwise.
         expectedRevision: parsed.data.revision ?? null,
-        author: actorOf(c) ? { name: actorOf(c)!.email, email: actorOf(c)!.email } : undefined,
       }),
     );
 
@@ -150,12 +122,8 @@ export function adminContentRoutes(): Hono<Env> {
       position: entry.position,
       title: entryTitle(def, entry.data),
       data: entry.data,
-      // Where this entry is on disk. Derived from the model, because whether an
-      // entry is one file or a directory depends on whether it has rich text or
-      // media — a rule the editor should not have to reimplement to show it.
+      // From the model, so the editor need not know when an entry is a directory.
       path: collectionEntryPath(def.fields, collection, entry.slug),
-      // Sent back with the save. Without it the editor cannot tell the server
-      // which version of the entry it was looking at.
       revision: await content.revisionOf(collection, slug),
     });
   });
@@ -165,13 +133,11 @@ export function adminContentRoutes(): Hono<Env> {
     const parsed = saveSchema.safeParse(await jsonBody(c));
     if (!parsed.success) throw badRequest("The entry payload is malformed.");
 
-    const actor = actorOf(c);
     const saved = await handled(() =>
       content.save(c.req.param("collection"), {
         data: parsed.data.data,
         slug: c.req.param("slug"),
         expectedRevision: parsed.data.revision,
-        author: actor ? { name: actor.email, email: actor.email } : undefined,
       }),
     );
 
@@ -180,12 +146,9 @@ export function adminContentRoutes(): Hono<Env> {
 
   app.delete("/collections/:collection/entries/:slug", async (c) => {
     const { content } = c.get("ctx").services;
-    const actor = actorOf(c);
 
     await handled(() =>
-      content.remove(c.req.param("collection"), c.req.param("slug"), {
-        author: actor ? { name: actor.email, email: actor.email } : undefined,
-      }),
+      content.remove(c.req.param("collection"), c.req.param("slug")),
     );
 
     return c.json({ ok: true });
@@ -200,8 +163,6 @@ export function adminContentRoutes(): Hono<Env> {
 
     return c.json({ references });
   });
-
-  /* --------------------------------------------------------- singletons */
 
   app.get("/singletons/:name", async (c) => {
     const { content } = c.get("ctx").services;
@@ -220,12 +181,10 @@ export function adminContentRoutes(): Hono<Env> {
   app.put("/singletons/:name", async (c) => {
     const { content } = c.get("ctx").services;
     const body = (await jsonBody(c)) as { data?: unknown; revision?: string | null };
-    const actor = actorOf(c);
 
     const saved = await handled(() =>
       content.saveSingleton(c.req.param("name"), body?.data ?? {}, {
         expectedRevision: body?.revision,
-        author: actor ? { name: actor.email, email: actor.email } : undefined,
       }),
     );
 

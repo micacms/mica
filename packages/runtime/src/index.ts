@@ -1,23 +1,16 @@
 /**
- * @micacms/runtime — the single-site Mica runtime, authentication-neutral.
- *
- * One Hono API over one `SiteContext`: content, media, staging and system
- * routes, with the question "who is this request?" answered by whatever
- * `AuthSurface` the composing app hands in. `@micacms/editor` composes it
- * with no authentication at all behind a loopback bind; `@micacms/self-hosted`
- * composes it behind `@micacms/auth-oidc`. This package must never import an
- * auth implementation — that direction is what protects the local
- * distribution.
+ * @micacms/runtime: the single-site, authentication-neutral Mica runtime.
+ * It must never import an auth implementation; the composing app supplies the `AuthSurface`.
  */
 
 export { createApp, allowAll, type AuthSurface, type CreateAppOptions } from "./app.js";
 export {
-  createConnector,
   createRuntimeContext,
   DEFAULT_SITE_ID,
   type CreateRuntimeContextOptions,
   type OperationalInfo,
   type RuntimeContext,
+  type RuntimeHealth,
   type SiteContext,
 } from "./context.js";
 export {
@@ -28,7 +21,6 @@ export {
   list,
   loadEnvFile,
   LOOPBACK,
-  requireRepositoryConfig,
   runtimeEnv,
   withoutBlanks,
   type RuntimeConfig,
@@ -62,23 +54,81 @@ export { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
 export { randomToken } from "./lib/id.js";
 export { DEFAULT_BASE_URL, DEFAULT_PORT } from "./lib/ports.js";
 export { VERSION } from "./lib/version.js";
-export { openSqlite, type RunResult, type SqlDatabase, type SqlParams, type SqlValue } from "./db/driver.js";
 export {
-  createDraftStagingService,
   analyseChanges,
   classifyPath,
+  describeProblems,
+  flattenProblems,
   type AnnotatedChange,
   type ChangeOwner,
   type ContentStagingService,
-  type DraftStagingDeps,
+  type RepositoryInfo,
   type PublishInput,
   type StagingProblem,
   type StagingStatus,
   type StagingValidation,
-} from "./services/staging.js";
+} from "./services/changes.js";
 export {
   createWorkingTreeStagingService,
   type WorkingTreeStagingDeps,
-} from "./services/staging-local.js";
+} from "./services/staging.js";
 export { createMediaService, formatBytes, type MediaFile, type MediaService } from "./services/media.js";
+export {
+  createContentStore,
+  ContentError,
+  ValidationError,
+  type ContentStore,
+  type SavedEntry,
+  type SaveEntryInput,
+} from "./services/content-store.js";
+export {
+  checkChangePaths,
+  ConflictError,
+  contentFiles,
+  FilesError,
+  type Author,
+  type ContentFiles,
+  type ContentFilesOptions,
+  type FileChange,
+  type FileChanges,
+} from "./workspace/files.js";
+export {
+  developerEnvironment,
+  firstLine,
+  GitError,
+  gitRunner,
+  type GitCallOptions,
+  type GitRunner,
+  type GitRunnerOptions,
+} from "./workspace/git.js";
+export {
+  createMutex,
+  createReadWriteLock,
+  createWorkspaceLocks,
+  lockedFiles,
+  type Mutex,
+  type ReadWriteLock,
+  type WorkspaceLocks,
+} from "./workspace/locks.js";
+export type {
+  OwnerPolicy,
+  PublishAvailability,
+  RepositoryDescription,
+  SyncConflict,
+  SyncStatus,
+} from "./workspace/policy.js";
+export { developerPolicy, type DeveloperPolicyOptions } from "./workspace/developer.js";
+export {
+  commitPaths,
+  headRevision,
+  headSource,
+  inRepo,
+  listTreeChanges,
+  LITERAL,
+  locateTree,
+  parseStatus,
+  recommitPaths,
+  type GitTree,
+  type TreeChange,
+} from "./workspace/tree.js";
 export { schemaStats } from "./lib/schema-stats.js";

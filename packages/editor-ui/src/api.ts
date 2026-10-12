@@ -1,9 +1,6 @@
 /**
- * Admin API client.
- *
- * Thin on purpose: one `request` function that attaches the CSRF header, parses
- * the error envelope the server sends, and surfaces field-level issues so forms
- * can place them next to the right input.
+ * Admin API client: one `request` function that attaches the CSRF header and
+ * surfaces field-level issues for forms.
  */
 
 import type { AnyField, FieldIssue } from "@micacms/core";
@@ -126,11 +123,8 @@ export interface Schema {
 }
 
 /**
- * Who the identity provider said this is.
- *
- * Null wherever there is no provider. Mica holds no accounts, so this is not a
- * record of anybody — it is what the last sign-in was told, kept only for as
- * long as the session, and there is nothing here to administer.
+ * Who the identity provider said this is, kept only for the session. Null where
+ * there is no provider.
  */
 export interface Identity {
   /** The provider's subject. Stable, opaque, and not shown to anybody. */
@@ -158,19 +152,13 @@ export interface EntrySummary {
 
 export interface EntryDetail extends EntrySummary {
   /**
-   * Where the entry is in the repository, relative to the content root.
-   *
-   * A directory when the entry has rich text or media beside it, a single
-   * `.json` file otherwise — which is why the server says so rather than the
-   * editor guessing.
+   * Relative to the content root: a directory when the entry has rich text or
+   * media beside it, else one `.json` file.
    */
   path: string;
   /**
-   * The version of this entry the form was opened against.
-   *
-   * Sent back with the save. `null` means the entry did not exist, which is
-   * what makes two people creating the same slug fail rather than one of them
-   * silently losing their work.
+   * The version the form was opened against, sent back with the save. `null` means a new entry,
+   * so two people who create the same slug get a conflict, not a silent loss.
    */
   revision: string | null;
 }
@@ -211,8 +199,9 @@ export type ChangeOwner =
 export interface FileChange {
   path: string;
   kind: "create" | "update" | "delete";
-  updatedAt?: string;
   owner: ChangeOwner;
+  /** The file's revision when listed, null for a deletion. Sent back with Publish. */
+  revision?: string | null;
 }
 
 /** One thing that would make the pending set unpublishable. */
@@ -222,25 +211,50 @@ export interface StagingProblem {
   issues: FieldIssue[];
 }
 
+/** Something an editor changed that the website changed too. */
+export interface SyncConflict {
+  /** What `resolve` takes. */
+  group: string;
+  label: string;
+  paths: string[];
+  upstream: "changed" | "deleted" | "added";
+  /** What the comparison with the website's version shows. */
+  target?: CompareTarget;
+}
+
+/** Where Mica's own clone stands against the repository. Null for the developer's checkout. */
+export interface SyncStatus {
+  lastSyncAt: string | null;
+  behind: number;
+  error: { code: string; message: string; since: string } | null;
+  /** The content model changed on the website; a restart applies it. */
+  restartRequired: boolean;
+  /** Published in Mica, not yet in the repository. Mica retries it. */
+  pendingPush: { revision: string; reason: string } | null;
+  /** The last publication the repository refused. It is a draft again. */
+  refused: { reason: string; at: string } | null;
+  conflicts: SyncConflict[];
+}
+
 /**
  * The pending change set — what is Saved and not yet Published.
  *
- * `workspace` decides the words: a working tree is the developer's checkout
- * and publishing runs their own Git; a draft store lives in Mica and
- * publishing writes one commit through the provider.
+ * `owner` decides the words: the developer's checkout is a working tree and
+ * publishing runs their own Git; the clone that a self-hosted Mica keeps is
+ * worded for editors, who save and publish.
  */
 export interface StagingStatus {
-  workspace: "working-tree" | "draft-store";
+  owner: "developer" | "managed";
   publish: { enabled: boolean; reason?: string };
-  /** What the pending changes are based on. Sent back with Publish. */
-  baseRevision: string | null;
+  /** The commit the pending changes sit on. For display. */
+  head: string | null;
   branch: string | null;
-  /** Commits created and not yet pushed. Working tree only. */
+  /** Commits created and not yet pushed. */
   ahead: number | null;
   /** File changes, not edits: count with `toEdits`, never with `.length`. */
   changes: FileChange[];
   validation: { ok: boolean; problems: StagingProblem[] };
-  updatedAt: string | null;
+  sync: SyncStatus | null;
 }
 
 export interface PublishOutcome {
@@ -327,35 +341,29 @@ export interface SystemInfo {
       listed: number;
       sortable: boolean;
       depth: number;
-      /** Entries in the repository. A plain count: there are no drafts. */
       entries: number;
     }>;
     singletons: Array<{ name: string; label: string; fields: FieldCounts; depth: number }>;
   };
-  /**
-   * The website's content, and what must be backed up — by Git, which is
-   * already doing it.
-   */
+  /** The website's content. Git is its backup. */
   repository: {
     origin: string;
     entries: number;
     media: MediaUsage;
+    owner: "developer" | "managed";
+    branch: string | null;
+    head: string | null;
+    /** The remote of Mica's own clone, without credentials. */
+    url: string | null;
+    /** What the clone takes on the data volume. */
+    cloneBytes: number | null;
+    sync: SyncStatus | null;
   };
-  /**
-   * The composition's operational state. Null in the local editor, which
-   * keeps no database at all.
-   */
-  database: {
-    path: string;
-    version: number;
-    bytes: number | null;
-  } | null;
   deployment: {
     site: string;
     baseUrl: string;
     /** Where the content model was read from, e.g. `<repo>/.mica/schema.json`. */
     schemaOrigin: string;
-    repositoryMode: "local" | "github" | "gitlab";
     /** Null unless the repository is a working tree on this machine. */
     contentRoot: string | null;
     dataDir: string | null;
@@ -386,11 +394,8 @@ export const api = {
     config: () => request<AuthConfig>("/auth/config"),
 
     /**
-     * Sign-in is a full-page navigation, not a fetch.
-     *
-     * The browser has to *visit* the identity provider — it is another origin
-     * that will set its own cookies and may need to show a consent screen or a
-     * second factor. An XHR cannot do any of that.
+     * A full-page navigation, not a fetch: the provider is another origin that
+     * can set cookies and ask for consent or a second factor.
      */
     signInUrl: (returnTo: string) =>
       `${BASE}/auth/login?returnTo=${encodeURIComponent(returnTo)}`,
@@ -448,10 +453,18 @@ export const api = {
 
   staging: {
     changes: () => request<StagingStatus>("/admin/changes"),
-    publish: (message: string, expectedBase: string | null) =>
+    /** `paths`: the reviewed paths, each with the revision the editor saw. */
+    publish: (message: string, paths: Record<string, string | null>) =>
       request<PublishOutcome>("/admin/publish", {
         method: "POST",
-        body: { message, expectedBase },
+        body: { message, paths },
+      }),
+    /** Brings Mica's clone up to date now. */
+    sync: () => request<StagingStatus>("/admin/sync", { method: "POST" }),
+    resolve: (group: string, choice: "mine" | "website") =>
+      request<StagingStatus>("/admin/changes/resolve", {
+        method: "POST",
+        body: { group, choice },
       }),
     /** Retries the push after `committed-pending-push`. Never commits again. */
     push: () => request<PublishOutcome>("/admin/publish/push", { method: "POST" }),
@@ -460,9 +473,13 @@ export const api = {
         method: "POST",
         body: { paths },
       }),
-    compare: (target: CompareTarget) =>
+    /** `origin` compares with the website's version, for a conflict. */
+    compare: (target: CompareTarget, against: "head" | "origin" = "head") =>
       request<Comparison>(
-        `/admin/changes/compare?${new URLSearchParams(target as unknown as Record<string, string>)}`,
+        `/admin/changes/compare?${new URLSearchParams({
+          ...(target as unknown as Record<string, string>),
+          ...(against === "origin" ? { against } : {}),
+        })}`,
       ),
   },
 
@@ -470,7 +487,6 @@ export const api = {
     list: () => request<{ items: MediaItem[] }>("/admin/media"),
     upload: async (files: File[], options: { accept?: string; directory?: string } = {}) => {
       const items: MediaItem[] = [];
-      // In batches: the server takes at most 10 files per request (#148).
       for (let start = 0; start < files.length; start += UPLOAD_BATCH) {
         const form = new FormData();
         for (const file of files.slice(start, start + UPLOAD_BATCH)) form.append("file", file);

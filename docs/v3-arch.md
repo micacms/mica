@@ -1,5 +1,8 @@
 # Mica CMS Technical Architecture
 
+> Superseded in part by [git-workspace-plan.md](git-workspace-plan.md) (0.5.0): the
+> self-hosted Mica keeps a Git clone, and Mica keeps no database.
+
 Status: target architecture and incremental implementation guide  
 Last updated: 19 August 2026
 

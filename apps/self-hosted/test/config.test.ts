@@ -1,33 +1,34 @@
-/**
- * Configuration.
- *
- * The tests here are all about failing early. A Mica that starts, lists the
- * editor's content and only discovers it cannot write when they press Save has
- * already cost them their work — so a repository that is named but not usable,
- * a provider without an admission rule, and a production run without secrets
- * all have to be startup errors.
- */
+/** A configuration that cannot work must stop the start, not fail later when an editor saves. */
 
 import assert from "node:assert/strict";
+import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import { ConfigError } from "@micacms/runtime";
 
 import { loadConfig } from "../src/config.js";
 
-/** A complete, valid self-hosted environment; tests subtract from it. */
+/** A valid environment; tests subtract from it. */
 const base: NodeJS.ProcessEnv = {
   NODE_ENV: "test",
   LOG_LEVEL: "silent",
   SESSION_SECRET: "0".repeat(32),
-  DATA_DIR: "/tmp/mica-test-unused",
+  MICA_DATA_DIR: "/tmp/mica-test-unused",
   MICA_OIDC_ISSUER: "https://auth.example.com",
   MICA_OIDC_CLIENT_ID: "mica",
   MICA_ADMIT_GROUP: "mica-editors",
-  REPOSITORY: "github",
-  REPOSITORY_PROJECT: "acme/site",
-  REPOSITORY_TOKEN: "secret",
+  MICA_REPOSITORY_URL: "https://gitlab.com/acme/site.git",
+  MICA_REPOSITORY_TOKEN: "secret",
 };
+
+/** Asserts a startup refusal whose message matches every pattern. */
+function refuses(env: NodeJS.ProcessEnv, ...patterns: RegExp[]): void {
+  assert.throws(() => loadConfig(env), (error: unknown) => {
+    assert.ok(error instanceof ConfigError);
+    for (const pattern of patterns) assert.match(error.message, pattern);
+    return true;
+  });
+}
 
 describe("public URL", () => {
   const production = { ...base, NODE_ENV: "production" };
@@ -63,60 +64,58 @@ describe("public URL", () => {
 });
 
 describe("unknown variables", () => {
-  it("names MICA_ and REPOSITORY_ variables that nothing reads, and only those", () => {
+  it("names MICA_ variables that nothing reads, and only those", () => {
     const config = loadConfig({
       ...base,
       MICA_ADMIT_GROUPS: "typo-for-group",
-      REPOSITORY_BRANCHES: "main",
       MICA_OIDC_ISSUER: "https://auth.example.com",
       UNRELATED_VARIABLE: "x",
     });
-    assert.deepEqual(config.unknownVariables, ["MICA_ADMIT_GROUPS", "REPOSITORY_BRANCHES"]);
+    assert.deepEqual(config.unknownVariables, ["MICA_ADMIT_GROUPS"]);
   });
 });
 
 describe("repository configuration", () => {
-  /** Local Git belongs to the local editor; a server publishes through a provider. */
-  it("refuses a working tree, set or by default", () => {
-    const { REPOSITORY: _, ...unset } = base;
-    for (const env of [{ ...base, REPOSITORY: "local" }, unset]) {
-      assert.throws(() => loadConfig(env), (error: unknown) => {
-        assert.ok(error instanceof ConfigError);
-        assert.match(error.message, /github or gitlab/);
-        assert.match(error.message, /npx @micacms\/editor/);
-        return true;
-      });
+  it("clones into the data directory, with defaults that keep a token away from the site's source", () => {
+    const config = loadConfig({ ...base });
+    assert.equal(config.repository.branch, "main");
+    assert.equal(config.repository.root, "content");
+    assert.equal(config.repository.remote.hostKey, "gitlab.com");
+    assert.equal(config.contentRoot, join("/tmp/mica-test-unused", "repository", "content"));
+  });
+
+  it("chooses the username by host", () => {
+    const username = (url: string) => loadConfig({ ...base, MICA_REPOSITORY_URL: url }).repository.username;
+    assert.equal(username("https://gitlab.com/acme/site.git"), "oauth2");
+    assert.equal(username("https://github.com/acme/site.git"), "x-access-token");
+    assert.equal(username("https://git.example.com/acme/site.git"), "mica");
+    assert.equal(loadConfig({ ...base, MICA_REPOSITORY_USERNAME: "bot" }).repository.username, "bot");
+  });
+
+  it("requires the URL and the token", () => {
+    refuses({ ...base, MICA_REPOSITORY_URL: "", MICA_REPOSITORY_TOKEN: "" }, /MICA_REPOSITORY_URL is not set/, /MICA_REPOSITORY_TOKEN is not set/);
+  });
+
+  it("refuses credentials in the URL", () => {
+    refuses({ ...base, MICA_REPOSITORY_URL: "https://oauth2:glpat-x@gitlab.com/acme/site.git" }, /contains credentials/);
+  });
+
+  it("refuses plain HTTP, SSH, and anything but https outside development", () => {
+    for (const url of ["http://gitlab.com/acme/site.git", "git@gitlab.com:acme/site.git", "file:///srv/site.git"]) {
+      refuses({ ...base, MICA_REPOSITORY_URL: url }, /MICA_REPOSITORY_URL/);
     }
   });
 
-  for (const provider of ["github", "gitlab"] as const) {
-    it(`refuses to start on ${provider} without a project and a token`, () => {
-      const env = { ...base, REPOSITORY: provider, REPOSITORY_PROJECT: "", REPOSITORY_TOKEN: "" };
-      assert.throws(() => loadConfig(env), (error: unknown) => {
-        assert.ok(error instanceof ConfigError);
-        assert.match(error.message, /REPOSITORY_PROJECT and REPOSITORY_TOKEN/);
-        return true;
-      });
-    });
-
-    it(`accepts ${provider} once both are given`, () => {
-      const config = loadConfig({
-        ...base,
-        REPOSITORY: provider,
-        REPOSITORY_PROJECT: "acme/site",
-        REPOSITORY_TOKEN: "secret",
-      });
-
-      assert.equal(config.REPOSITORY, provider);
-      // The defaults that keep a token away from the website's source code.
-      assert.equal(config.REPOSITORY_ROOT, "content");
-      assert.equal(config.REPOSITORY_BRANCH, "main");
-    });
-  }
-
-  it("rejects a repository mode it has no connector for", () => {
-    assert.throws(() => loadConfig({ ...base, REPOSITORY: "subversion" }), ConfigError);
+  it("accepts plain HTTP on loopback in development, for the tests and a local trial", () => {
+    const config = loadConfig({ ...base, NODE_ENV: "development", MICA_REPOSITORY_URL: "http://127.0.0.1:3000/site.git" });
+    assert.equal(config.repository.remote.scheme, "http");
   });
+
+  it("refuses a branch name Git would read as something else, and a root outside the repository", () => {
+    refuses({ ...base, MICA_REPOSITORY_BRANCH: "--upload-pack=x" }, /not a branch name/);
+    refuses({ ...base, MICA_REPOSITORY_ROOT: "../etc" }, /inside the repository/);
+  });
+
 });
 
 describe("authentication", () => {
@@ -132,7 +131,6 @@ describe("authentication", () => {
     assert.throws(() => loadConfig(withoutOidc), (error: unknown) => {
       assert.ok(error instanceof ConfigError);
       assert.match(error.message, /MICA_OIDC_ISSUER and MICA_OIDC_CLIENT_ID/);
-      // The message should say where to point the provider.
       assert.match(error.message, /\/api\/auth\/callback/);
       return true;
     });
@@ -162,11 +160,7 @@ describe("authentication", () => {
     assert.deepEqual(config.devSecrets, ["SESSION_SECRET"]);
   });
 
-  /**
-   * Plain-HTTP discovery is allowed only for a provider on this machine, and
-   * only outside production — a remote issuer over HTTP would mean handing an
-   * ID token to anybody on the path.
-   */
+  /** A remote issuer over HTTP would give the ID token to anybody on the path. */
   it("permits insecure discovery only for a local provider outside production", () => {
     const local = loadConfig({
       ...base,
@@ -188,10 +182,8 @@ describe("authentication", () => {
 });
 
 /**
- * Admission is configuration, and configuration that is absent has to be an
- * error rather than a default. Both possible defaults are wrong: admitting
- * everybody the provider knows is a public CMS, and admitting nobody is a
- * deployment that looks fine until the first person tries to sign in.
+ * No admission rule is an error, not a default: admitting everybody makes a
+ * public CMS, and admitting nobody looks fine until the first person signs in.
  */
 describe("who may edit", () => {
   const withoutRules = () => {
@@ -260,9 +252,8 @@ describe("who may edit", () => {
   });
 
   /**
-   * A subject list keyed on an email address would rebind access to whoever
-   * holds that address today, which is how account takeover happens. Refusing
-   * the shape is how an operator finds that out at startup rather than never.
+   * A subject keyed on an email address gives access to whoever holds that
+   * address today: account takeover.
    */
   it("refuses a subject that is not keyed by issuer", () => {
     assert.throws(

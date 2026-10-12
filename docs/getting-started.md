@@ -177,8 +177,8 @@ A save changes only your working tree — the dev server hot-reloads it, and
 nothing is committed yet. The editor's **Publish** commits exactly the changed
 content paths and pushes with your own Git configuration; or set
 `MICA_LOCAL_PUBLISH=false` and commit with your usual tools instead. A
-deployed Mica stages saves the same way and publishes them itself, as one
-commit per publication.
+deployed Mica stages saves the same way, in its own clone, and publishes them
+itself, as one commit per publication.
 
 ## 7. Render it
 
@@ -210,8 +210,8 @@ Run `astro dev` beside Mica. A save in one reloads the other.
 
 |                     | What it is                                               | Where it lives                   |
 | ------------------- | -------------------------------------------------------- | -------------------------------- |
-| **Your repository** | Entries as JSON and Markdoc, images beside them          | GitHub, GitLab, or a checkout    |
-| **Mica**            | One Node process; self-hosted, a SQLite file for unpublished drafts | Your machine now, a server later |
+| **Your repository** | Entries as JSON and Markdoc, images beside them          | Any Git host, or a checkout      |
+| **Mica**            | One Node process; self-hosted, it keeps its own Git clone, and the drafts are uncommitted files in it | Your machine now, a server later |
 | **Your website**    | Static files from `astro build`                          | Any static host                  |
 
 Your content stays in the repository, in formats Git and a text editor can
@@ -220,9 +220,10 @@ read. The website builds from those files, with or without Mica running.
 ## What changes when you deploy
 
 The model and the content stay as they are. Mica moves to a server,
-authenticates with an OIDC provider, and commits through the GitHub or GitLab
-API instead of writing to a checkout. Your build stays a `git push` away from a
-static host. See [self-hosting.md](./self-hosting.md).
+authenticates with an OIDC provider, and keeps its own clone of your
+repository instead of writing to your checkout. It has no database and calls no
+provider API: it fetches, commits and pushes with Git over HTTPS. Your build
+stays a `git push` away from a static host. See [self-hosting.md](./self-hosting.md).
 
 ## When something is wrong
 
@@ -239,7 +240,8 @@ Mica.
 **Saving returns 409.**
 Someone else changed that entry, or a push landed while the editor was open.
 Your changes stay in the form, and the message offers to load the current
-version.
+version. On a deployed Mica, a sync can also change the entry on the website
+side; reload to see it.
 
 **Saving returns 422.**
 The entry does not satisfy the model. The response names the fields, and the

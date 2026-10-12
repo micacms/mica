@@ -13,19 +13,18 @@
     },
     {
       "title": "For operators",
-      "text": "Run one container with OpenID Connect and, for drafts, SQLite. There is no database server, cache, queue, object store, content API, or build webhook."
+      "text": "Run one container with OpenID Connect. It keeps a Git clone of your repository on one volume. There is no database, cache, queue, object store, content API, or build webhook."
     }
   ],
   "stack": [
     { "name": "@micacms/core", "role": "Fields, validation, and file layout" },
     { "name": "@micacms/astro", "role": "Typed Astro Content Layer loaders" },
-    { "name": "@micacms/connectors", "role": "Local, GitHub, and GitLab writes" },
     { "name": "@micacms/runtime", "role": "The API server, authentication-neutral" },
     { "name": "@micacms/editor-ui", "role": "The editing interface, as built assets" },
     { "name": "@micacms/editor", "role": "The local editor: npx @micacms/editor" },
-    { "name": "@micacms/self-hosted", "role": "The Docker image, behind OIDC" },
+    { "name": "@micacms/self-hosted", "role": "The Docker image, behind OIDC, with its own Git clone" },
     { "name": "@micacms/auth-oidc", "role": "OpenID Connect for deployments" },
-    { "name": "SQLite", "role": "Unpublished drafts only" },
+    { "name": "Git over HTTPS", "role": "The self-hosted clone, drafts, and publish" },
     { "name": "OpenID Connect", "role": "Authentication in production" }
   ]
 }

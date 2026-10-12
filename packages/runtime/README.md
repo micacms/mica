@@ -2,8 +2,8 @@
 
 > **Experimental.** Pre-1.0: the API can still change without notice.
 
-The single-site Mica runtime: the Hono API, application services and staging
-orchestration, deliberately **authentication-neutral**. It answers "who is
+The single-site Mica runtime: the Hono API, application services, the content
+files and the Git working-tree code (Git runner, locks, owner policy), deliberately **authentication-neutral**. It answers "who is
 this request?" with whatever `AuthSurface` the composing app hands in, and
 never imports an auth implementation — that direction is what keeps
 `npx @micacms/editor` free of authentication code.

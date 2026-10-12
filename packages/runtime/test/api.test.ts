@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
@@ -21,9 +20,6 @@ import {
   createHarness,
   multipart,
   pngBytes,
-  TEST_ORIGIN,
-  testSite,
-  type Session,
   type TestHarness,
 } from "./helpers.js";
 
@@ -165,18 +161,15 @@ describe("client address", () => {
 
 describe("request size", () => {
   let harness: TestHarness;
-  let session: Session;
   before(async () => {
     // Small, so that an oversized upload is cheap to build: 10 × 1 kB + 1 MiB.
     harness = await createHarness({ MAX_UPLOAD_BYTES: 1024 });
-    session = await harness.signIn();
   });
   after(() => harness.close());
 
   it("refuses a JSON body above the limit before reading it", async () => {
     const response = await harness.request("/api/admin/collections/projects/entries", {
       method: "POST",
-      session,
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ data: { title: "x".repeat(MAX_JSON_BYTES) } }),
     });
@@ -187,7 +180,6 @@ describe("request size", () => {
     const big = new Uint8Array(10 * 1024 + 1024 * 1024 + 1);
     const response = await harness.request("/api/admin/media", {
       method: "POST",
-      session,
       body: multipart([{ name: "big.png", bytes: big, type: "image/png" }]),
     });
     assert.equal(response.status, 413);
@@ -199,27 +191,24 @@ describe("request size", () => {
       bytes: pngBytes(),
       type: "image/png",
     }));
-    const response = await harness.request("/api/admin/media", { method: "POST", session, body: multipart(files) });
+    const response = await harness.request("/api/admin/media", { method: "POST", body: multipart(files) });
     assert.equal(response.status, 400);
   });
 });
 
 describe("content", () => {
   let harness: TestHarness;
-  let session: Session;
 
   const create = (data: Record<string, unknown>) =>
     harness.request("/api/admin/collections/projects/entries", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ data }),
-      session,
     });
 
   const get = async (slug: string) => {
     const response = await harness.request(
       `/api/admin/collections/projects/entries/${slug}`,
-      { session },
     );
     return { response, body: (await response.json()) as Record<string, any> };
   };
@@ -229,19 +218,17 @@ describe("content", () => {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ data, revision }),
-      session,
     });
 
   const file = (path: string) => readFileSync(join(harness.contentRoot, path), "utf8");
 
   before(async () => {
     harness = await createHarness();
-    session = await harness.signIn();
   });
   after(() => harness.close());
 
   it("exposes the model so the admin can render forms it does not know about", async () => {
-    const response = await harness.request("/api/admin/schema", { session });
+    const response = await harness.request("/api/admin/schema");
     const body = (await response.json()) as {
       collections: Array<{ name: string; titleField: string; slugField: string; fields: object }>;
     };
@@ -259,7 +246,6 @@ describe("content", () => {
     const { slug } = (await response.json()) as { slug: string };
     assert.equal(slug, "haus-am-zuerichsee");
 
-    // The files are the product. Assert on them directly.
     assert.match(file(`projects/${slug}/index.json`), /"title": "Haus am Zürichsee"/);
     assert.equal(file(`projects/${slug}/summary.mdoc`), "# Hello\n");
   });
@@ -315,7 +301,6 @@ describe("content", () => {
 
     const response = await harness.request("/api/admin/collections/projects/entries/doomed", {
       method: "DELETE",
-      session,
     });
 
     assert.equal(response.status, 200);
@@ -331,7 +316,6 @@ describe("content", () => {
     for (const slug of ["..%2Fteam", "kept%2Fsummary.mdoc", "%2E%2E"]) {
       const response = await harness.request(`/api/admin/collections/projects/entries/${slug}`, {
         method: "DELETE",
-        session,
       });
       assert.ok(response.status === 400 || response.status === 404, `${slug}: ${response.status}`);
     }
@@ -343,13 +327,11 @@ describe("content", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ data: { name: "Anna Vogt" } }),
-      session,
     });
     await create({ title: "Led project", lead: "anna-vogt" });
 
     const response = await harness.request(
       "/api/admin/collections/team/entries/anna-vogt/references",
-      { session },
     );
 
     const body = (await response.json()) as { references: Array<{ slug: string }> };
@@ -361,7 +343,6 @@ describe("content", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ slugs: ["doppelt-2", "doppelt"] }),
-      session,
     });
 
     assert.equal(response.status, 200);
@@ -373,11 +354,6 @@ describe("content", () => {
     assert.equal(response.status, 404);
   });
 
-  /**
-   * `defaultSort` described an order for a long time without producing one:
-   * nothing read the option, so a collection came back in whatever order its
-   * directory was read in.
-   */
   it("lists entries in the order the model asks for", async () => {
     const sorted = await createHarness(
       {},
@@ -397,20 +373,16 @@ describe("content", () => {
         }),
       },
     );
-    const sortedSession = await sorted.signIn();
 
     for (const [title, year] of [["Oldest", 2019], ["Newest", 2026], ["Middle", 2022]] as const) {
       await sorted.request("/api/admin/collections/news/entries", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ data: { title, year } }),
-        session: sortedSession,
       });
     }
 
-    const response = await sorted.request("/api/admin/collections/news/entries", {
-      session: sortedSession,
-    });
+    const response = await sorted.request("/api/admin/collections/news/entries");
     const body = (await response.json()) as { items: Array<{ title: string }> };
 
     assert.deepEqual(
@@ -421,11 +393,6 @@ describe("content", () => {
     await sorted.close();
   });
 
-  /**
-   * Whether an entry is a directory or a single file follows from the model,
-   * so the editor is told rather than left to work it out. Getting this wrong
-   * would show an editor a path that is not there.
-   */
   it("reports where an entry is in the repository", async () => {
     await create({ title: "Where Am I", year: 2024, summary: "# Here" });
     const { body } = await get("where-am-i");
@@ -434,10 +401,8 @@ describe("content", () => {
     assert.equal(body.path, "projects/where-am-i");
   });
 
-  /* ------------------------------------------------------- singletons */
-
   it("opens an empty singleton before anything has been saved", async () => {
-    const response = await harness.request("/api/admin/singletons/settings", { session });
+    const response = await harness.request("/api/admin/singletons/settings");
     assert.equal(response.status, 200);
 
     const body = (await response.json()) as {
@@ -451,7 +416,7 @@ describe("content", () => {
   });
 
   it("saves a singleton to its own file", async () => {
-    const read = await harness.request("/api/admin/singletons/settings", { session });
+    const read = await harness.request("/api/admin/singletons/settings");
     const current = (await read.json()) as { data: Record<string, unknown>; revision: string | null };
 
     const response = await harness.request("/api/admin/singletons/settings", {
@@ -461,7 +426,6 @@ describe("content", () => {
         data: { ...current.data, siteName: "Mica" },
         revision: current.revision,
       }),
-      session,
     });
 
     assert.equal(response.status, 200);
@@ -469,7 +433,7 @@ describe("content", () => {
   });
 
   it("refuses a singleton save based on a stale revision", async () => {
-    const read = await harness.request("/api/admin/singletons/settings", { session });
+    const read = await harness.request("/api/admin/singletons/settings");
     const stale = (await read.json()) as { data: Record<string, unknown>; revision: string | null };
 
     const save = (name: string) =>
@@ -477,7 +441,6 @@ describe("content", () => {
         method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ data: { ...stale.data, siteName: name }, revision: stale.revision }),
-        session,
       });
 
     assert.equal((await save("First")).status, 200);
@@ -487,16 +450,14 @@ describe("content", () => {
 
 describe("media", () => {
   let harness: TestHarness;
-  let session: Session;
 
   before(async () => {
     harness = await createHarness();
-    session = await harness.signIn();
   });
   after(() => harness.close());
 
   const upload = (form: FormData) =>
-    harness.request("/api/admin/media", { method: "POST", body: form, session });
+    harness.request("/api/admin/media", { method: "POST", body: form });
 
   it("commits an upload into the repository", async () => {
     const response = await upload(
@@ -511,8 +472,6 @@ describe("media", () => {
     const item = body.items[0]!;
     assert.equal(item.mimeType, "image/png");
     assert.equal(item.width, 1);
-    // A path into the repository, with a name a person would recognise —
-    // not a ULID and not a URL on this server.
     assert.equal(item.path, "media/pixel-image.png");
     assert.ok(existsSync(join(harness.contentRoot, item.path)));
   });
@@ -578,20 +537,20 @@ describe("media", () => {
     // A leading comment hides the markup from the sniffer; the name still counts.
     writeFileSync(join(harness.contentRoot, "media/commented.svg"), "<!-- x --><svg/>");
 
-    const list = (await (await harness.request("/api/admin/media", { session })).json()) as {
+    const list = (await (await harness.request("/api/admin/media")).json()) as {
       items: Array<{ path: string }>;
     };
     assert.equal(list.items.some((item) => item.path.endsWith(".svg")), false);
 
     for (const name of ["repo.svg", "commented.svg"]) {
-      const response = await harness.request(`/api/admin/media/file/media/${name}`, { session });
+      const response = await harness.request(`/api/admin/media/file/media/${name}`);
       assert.equal(response.status, 415, name);
     }
   });
 
   it("serves a file sandboxed, and anything but an image as a download", async () => {
     await upload(multipart([{ name: "shown.png", bytes: pngBytes(), type: "image/png" }]));
-    const image = await harness.request("/api/admin/media/file/media/shown.png", { session });
+    const image = await harness.request("/api/admin/media/file/media/shown.png");
     assert.equal(image.status, 200);
     assert.equal(image.headers.get("content-security-policy"), "sandbox; default-src 'none'");
     assert.equal(image.headers.get("x-content-type-options"), "nosniff");
@@ -599,13 +558,13 @@ describe("media", () => {
 
     mkdirSync(join(harness.contentRoot, "media"), { recursive: true });
     writeFileSync(join(harness.contentRoot, "media/report.pdf"), "%PDF-1.7\n");
-    const document = await harness.request("/api/admin/media/file/media/report.pdf", { session });
+    const document = await harness.request("/api/admin/media/file/media/report.pdf");
     assert.equal(document.status, 200);
     assert.equal(document.headers.get("content-security-policy"), "sandbox; default-src 'none'");
     assert.equal(document.headers.get("content-disposition"), "attachment");
 
     writeFileSync(join(harness.contentRoot, "media/notes.txt"), "Grüezi");
-    const text = await harness.request("/api/admin/media/file/media/notes.txt", { session });
+    const text = await harness.request("/api/admin/media/file/media/notes.txt");
     assert.equal(text.headers.get("content-type"), "text/plain; charset=utf-8");
   });
 
@@ -615,12 +574,12 @@ describe("media", () => {
     try {
       const name = `outside-${process.pid}.txt`;
       for (const path of [`..%2F${name}`, `media%2F..%2F..%2F${name}`, `%2e%2e/${name}`, `..%5C${name}`, "%E0%A4%A"]) {
-        const response = await harness.request(`/api/admin/media/file/${path}`, { session });
+        const response = await harness.request(`/api/admin/media/file/${path}`);
         assert.notEqual(response.status, 200, path);
         assert.doesNotMatch(await response.text(), /secret/, path);
       }
 
-      const encoded = await harness.request(`/api/admin/media/file/..%2F${name}`, { session });
+      const encoded = await harness.request(`/api/admin/media/file/..%2F${name}`);
       assert.equal(encoded.status, 400);
     } finally {
       rmSync(outside, { force: true });
@@ -630,7 +589,7 @@ describe("media", () => {
   it("lists what the repository holds", async () => {
     await upload(multipart([{ name: "listed.png", bytes: pngBytes(), type: "image/png" }]));
 
-    const response = await harness.request("/api/admin/media", { session });
+    const response = await harness.request("/api/admin/media");
     const body = (await response.json()) as { items: Array<{ path: string }> };
 
     assert.ok(body.items.some((item) => item.path === "media/listed.png"));
@@ -639,7 +598,7 @@ describe("media", () => {
   it("serves a file to a signed-in editor", async () => {
     await upload(multipart([{ name: "served.png", bytes: pngBytes(), type: "image/png" }]));
 
-    const response = await harness.request("/api/admin/media/file/media/served.png", { session });
+    const response = await harness.request("/api/admin/media/file/media/served.png");
     assert.equal(response.status, 200);
     assert.equal(response.headers.get("content-type"), "image/png");
   });
@@ -647,28 +606,25 @@ describe("media", () => {
 
 describe("system information", () => {
   let harness: TestHarness;
-  let session: Session;
 
   before(async () => {
     harness = await createHarness();
-    session = await harness.signIn();
   });
   after(() => harness.close());
 
-  it("reports the repository, and no database where the composition has none", async () => {
-    const response = await harness.request("/api/admin/system", { session });
+  it("reports the repository as the developer's checkout, and no database", async () => {
+    const response = await harness.request("/api/admin/system");
     assert.equal(response.status, 200);
 
     const body = (await response.json()) as {
-      repository: { origin: string; entries: number; media: { files: number } };
-      database: unknown;
+      repository: { origin: string; entries: number; media: { files: number }; owner: string; sync: unknown };
     };
 
     assert.equal(body.repository.origin, harness.contentRoot);
     assert.equal(body.repository.entries, 0);
-    // The local composition keeps no database, and the system page says so
-    // rather than inventing an empty one.
-    assert.equal(body.database, null);
+    assert.equal(body.repository.owner, "developer");
+    assert.equal(body.repository.sync, null);
+    assert.equal("database" in body, false);
   });
 
   it("counts entries by reading the repository", async () => {
@@ -676,10 +632,9 @@ describe("system information", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ data: { title: "Counted" } }),
-      session,
     });
 
-    const response = await harness.request("/api/admin/overview", { session });
+    const response = await harness.request("/api/admin/overview");
     const body = (await response.json()) as {
       collections: Array<{ name: string; total: number }>;
     };
@@ -688,7 +643,7 @@ describe("system information", () => {
   });
 
   it("counts field kinds and finds the relations between collections", async () => {
-    const response = await harness.request("/api/admin/system", { session });
+    const response = await harness.request("/api/admin/system");
     const body = (await response.json()) as {
       schema: { relations: Array<{ from: string; to: string }>; totals: { collections: number } };
     };
@@ -698,7 +653,7 @@ describe("system information", () => {
   });
 
   it("says how this composition authenticates: not at all", async () => {
-    const response = await harness.request("/api/admin/system", { session });
+    const response = await harness.request("/api/admin/system");
     const body = (await response.json()) as {
       deployment: { site: string; auth: string; admission: string | null };
     };

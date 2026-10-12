@@ -24,16 +24,9 @@ import type { Collection, Singleton, Site } from "./types.js";
 export const PROTOCOL_VERSION = 1;
 
 /**
- * Where the manifest lives, relative to the content root.
- *
- * The Astro build writes it; the developer commits it; Mica reads it back
- * through the same connector it reads entries with. That is the whole delivery
- * mechanism — the model reaches the server the way content does, so there is
- * nothing to mount, no second artifact to keep in step, and a model change is
- * reviewable in a diff like every other change.
- *
- * Below the content root because a connector cannot read above it. Hidden
- * because it is build output, not something an editor has any business in.
+ * Where the manifest lives, relative to the content root. The Astro build writes it, the developer
+ * commits it, and Mica reads it like content: nothing to mount, and a model change shows in a diff.
+ * Below the content root because Mica reads nothing above it; hidden because it is build output.
  */
 export const MANIFEST_PATH = ".mica/schema.json";
 
@@ -71,13 +64,9 @@ export function checkCompatibility(manifest: ProtocolManifest): ManifestCompatib
 }
 
 /**
- * Structural check for a manifest arriving as untrusted data — read from disk,
- * or over HTTP from a project the reader did not build.
- *
- * Shallow on purpose: it establishes that the envelope is a manifest, not that
- * every field descriptor inside it is well formed. Field kinds are checked
- * where they are used, by `isFieldKind`, which can report the offending field
- * rather than rejecting the whole site.
+ * Structural check for a manifest that arrives as untrusted data. Shallow on
+ * purpose: `isFieldKind` checks field kinds where they are used, so it can
+ * report the bad field instead of rejecting the site.
  */
 export function isProtocolManifest(value: unknown): value is ProtocolManifest {
   if (value === null || typeof value !== "object") return false;

@@ -32,9 +32,10 @@ They meet in the repository.
 **Content lives in your Git repository, not in Mica's database.** Everything
 that follows from a commit follows for free: history, review, rollback,
 branching, and a website that can be rebuilt from the repository alone. Mica's
-own SQLite file holds only the pending draft between Save and Publish, on a
-deployment that publishes through a provider API. Nothing
-published is ever only in there.
+deployed copy keeps its own Git clone on its data volume, and the pending
+drafts between Save and Publish are uncommitted files in it. There is no
+database, and Mica calls no provider API: it commits and pushes over HTTPS.
+Nothing published is ever only in there.
 
 ---
 
@@ -148,7 +149,7 @@ npx @micacms/editor       # reads ./content, opens the editor on localhost:6422/
 |                 |                                                                                                                                                                                               |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | **Locally**     | The command above. Loopback only, no identity provider, no account, no user at all, no sign-in screen, nothing written into your repository — see [getting-started](./docs/getting-started.md) |
-| **On a server** | One container, an OIDC provider, a token for the repository — see [self-hosting](./docs/self-hosting.md). [`deploy/demo-identity/`](./deploy/demo-identity/README.md) runs that whole shape on your machine |
+| **On a server** | One container, an OIDC provider, a token for the repository, and a Git clone on its volume — see [self-hosting](./docs/self-hosting.md). [`deploy/demo-identity/`](./deploy/demo-identity/README.md) runs that whole shape on your machine |
 
 Deployed, Mica authenticates with **OpenID Connect** and nothing else. No
 passwords, no reset flow, no MFA enrolment, no passkeys, and no breach
@@ -165,11 +166,9 @@ leavers, and Mica has nothing to administer.
 
 ```
 packages/
-├── core/        the field DSL, the content model, the authoring format, and the port contracts
-├── model/       the old name for core — a thin re-export, kept for one release cycle
-├── connectors/  repository access: local working tree, GitHub, GitLab
+├── core/        the field DSL, the content model, the authoring format, and the content-source contract
 ├── astro/       Content Layer loader and the dev integration
-├── runtime/     the single-site Hono API and services, authentication-neutral
+├── runtime/     the single-site Hono API and services, the content files and the Git working-tree code, authentication-neutral
 ├── editor-ui/   the Vue 3 admin SPA, shipped as built assets
 └── auth/oidc/   the server-only OIDC gate
 apps/
@@ -189,7 +188,9 @@ deploy/
 ├── self-hosted/         the reference deployment: compose.yml + .env.example
 └── demo-identity/       the deployed shape on your machine: Mica + ZITADEL
 tests/
-└── e2e/                 a fast sign-in rig: Mica + Keycloak + a GitHub API stub
+├── e2e/                 a fast sign-in rig: Mica + Keycloak + Forgejo
+├── oidc/                the automated OIDC round trip: the real image + Dex + Forgejo
+└── browser/             an automated browser test of the editor UI
 ```
 
 `packages/*` are reusable libraries and `apps/*` are the two things you run;
@@ -228,7 +229,7 @@ mandatory cloud services.
 | `rush update`           | install — Rush fetches its own pinned pnpm, nothing global       |
 | `rush dev`              | build the packages, then run the CMS against the example project |
 | `rushx dev`             | the example website, from `examples/muster-consulting`           |
-| `rush test`             | 313 tests across the model, connectors, Astro loader and editor  |
+| `rush test`             | the tests of every package, with real Git on temporary repos     |
 | `rush typecheck`        | every package, including `.vue` and `.astro`                     |
 
 ### Releasing
@@ -249,7 +250,7 @@ git push origin main --follow-tags
 The tag is the trigger and the only one — a merge to `main` publishes nothing.
 [`.github/workflows/release.yml`](./.github/workflows/release.yml) checks the
 tag against the manifests, runs the build, the typecheck and the tests again,
-publishes the eight packages to npm — with provenance once this repository is
+publishes the seven packages to npm — with provenance once this repository is
 public, which is the only condition npm will verify one under — and opens a
 GitHub release
 whose notes are the `CHANGELOG.md` section for that version. Write that section

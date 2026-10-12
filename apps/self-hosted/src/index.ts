@@ -1,85 +1,93 @@
 /**
- * The self-hosted deployment's process entry point — what the Docker image
- * runs.
- *
- * The whole composition: the runtime behind the OIDC gate from
- * `@micacms/auth-oidc`, a repository connector built from the environment,
- * and one SQLite database holding the draft store. Sessions are cookies and need no storage. It composes `@micacms/runtime`; it does not
- * fork it.
+ * The Docker entry point: the runtime behind the OIDC gate, on a Git clone on
+ * the data volume. The order at start: `/health` answers first, then the clone
+ * is made and synced, and only then is the model read, so a restart applies a
+ * model change that a sync held back.
  */
 
-import fs from "node:fs";
-
 import { createOidcAuth } from "@micacms/auth-oidc";
-import { MANIFEST_PATH } from "@micacms/core";
+import { MANIFEST_PATH, type Site } from "@micacms/core";
 import {
   ConfigError,
+  contentFiles,
   createApp,
-  createConnector,
   createLogger,
   createRuntimeContext,
+  createWorkspaceLocks,
+  GitError,
   loadSchema,
   SchemaError,
   schemaFingerprint,
-  schemaOrigin,
   startServer,
+  type ContentFiles,
+  type Env,
+  type Logger,
+  type RuntimeContext,
 } from "@micacms/runtime";
+import { Hono } from "hono";
 
 import { editorUiDist } from "./admin-dir.js";
-import { loadConfig } from "./config.js";
-import { createDraftRepository } from "./db/drafts.js";
-import { openDatabase } from "./db/index.js";
-import { databaseVersion } from "./db/migrations.js";
+import { runCheck } from "./check.js";
+import { loadConfig, type SelfHostedConfig } from "./config.js";
+import { cloneLayout, CloneRefusal, openClone } from "./workspace/clone.js";
+import { coarseGroups, contentGroups, revalidator } from "./workspace/content-groups.js";
+import { redact } from "./workspace/credentials.js";
+import { classifyFailure, describeFailure } from "./workspace/failures.js";
+import { managedEnvironment } from "./workspace/isolation.js";
+import { createManagedWorkspace, type ManagedWorkspace } from "./workspace/managed.js";
 
-/** Size on disk including the WAL, or null for an in-memory database. */
-function databaseBytes(filename: string): number | null {
-  const size = (name: string): number | null => {
-    try {
-      return fs.statSync(name).size;
-    } catch {
-      return null;
-    }
-  };
-  const main = size(filename);
-  // The WAL holds committed transactions not yet checkpointed into the main
-  // file; leaving it out understates the database.
-  return main === null ? null : main + (size(`${filename}-wal`) ?? 0);
+const EX_USAGE = 64;
+const EX_CONFIG = 78;
+
+/** Stops the process with a message for the operator, not a stack trace. */
+function refuse(message: string): never {
+  process.stderr.write(`\n${message}\n\n`);
+  process.exit(EX_CONFIG);
 }
 
-async function main(): Promise<void> {
-  let config;
+/**
+ * The app the server runs from the first second: `/health` answers at once,
+ * `/ready` says "cloning", and everything else waits for the real app.
+ */
+function createDispatcher() {
+  const starting = new Hono<Env>();
+  starting.get("/health", (c) => c.json({ status: "ok" }));
+  starting.get("/ready", (c) => c.json({ status: "error", repository: "unavailable", reasons: ["cloning"] }, 503));
+  starting.all("*", (c) => c.json({ error: { code: "unavailable", message: "Mica is starting." } }, 503));
+
+  let current: Hono<Env> = starting;
+  const app = new Hono<Env>();
+  app.all("*", (c) => current.fetch(c.req.raw, c.env));
+  return { app, serve: (next: Hono<Env>) => void (current = next) };
+}
+
+async function readModel(config: SelfHostedConfig, files: ContentFiles): Promise<Site> {
+  try {
+    return await loadSchema(files);
+  } catch (error) {
+    if (error instanceof SchemaError) {
+      refuse(
+        `${error.message}\n  (Repository ${config.repository.remote.url}, branch ${config.repository.branch}, ` +
+          `content root ${config.repository.root || "/"}.)`,
+      );
+    }
+    throw error;
+  }
+}
+
+async function serve(): Promise<void> {
+  let config: SelfHostedConfig;
   try {
     config = loadConfig();
   } catch (error) {
-    if (error instanceof ConfigError) {
-      process.stderr.write(`\n${error.message}\n\n`);
-      process.exit(78); // EX_CONFIG
-    }
+    if (error instanceof ConfigError) refuse(error.message);
     throw error;
   }
 
-  const logger = createLogger({ level: config.LOG_LEVEL, pretty: !config.isProduction });
-
-  // The repository comes first, because the content model is in it. Mica holds
-  // no model of its own: the Astro project writes one into the content root
-  // and the developer commits it, so reading it is a repository read.
-  const db = openDatabase(config.databasePath, { logger });
-  const connector = createConnector(config);
-
-  let model;
-  try {
-    model = await loadSchema(connector);
-  } catch (error) {
-    if (error instanceof SchemaError) {
-      process.stderr.write(`\n${error.message}\n\n`);
-      process.exit(78); // EX_CONFIG
-    }
-    throw error;
-  }
-
-  // The manifest's revision at the moment the model was read. The publish
-  // drift gate compares against it — see decisions.md.
-  const schemaRevision = await connector.revision(MANIFEST_PATH);
+  const logger: Logger = createLogger({ level: config.LOG_LEVEL, pretty: !config.isProduction });
+  const { remote, branch, root, token, username, syncSeconds } = config.repository;
+  const clean = (text: string) => redact(text, [token]);
+  const authLabel = `oidc:${new URL(config.MICA_OIDC_ISSUER!).hostname}`;
 
   if (config.devSecrets.length > 0) {
     logger.warn("Using generated development secrets", {
@@ -87,7 +95,6 @@ async function main(): Promise<void> {
       note: "Sessions end on restart. Set these before deploying.",
     });
   }
-
   if (config.unknownVariables.length > 0) {
     logger.warn("Unknown configuration variables", {
       names: config.unknownVariables,
@@ -95,27 +102,116 @@ async function main(): Promise<void> {
     });
   }
 
+  const dispatcher = createDispatcher();
+  let ctx: RuntimeContext | null = null;
+  let managed: ManagedWorkspace | null = null;
+
+  startServer({
+    app: dispatcher.app,
+    host: config.HOST,
+    port: config.PORT,
+    logger,
+    onListening(info) {
+      logger.info("Listening", { listening: `${config.HOST}:${info.port}`, url: config.MICA_PUBLIC_URL });
+    },
+    shutdown: async () => {
+      managed?.stop();
+      await ctx?.shutdown();
+    },
+  });
+
+  const layout = cloneLayout(config.dataDir);
+  const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token });
+  let git;
+  try {
+    git = await openClone({ layout, url: remote.url, branch, root, env, logger });
+  } catch (error) {
+    if (error instanceof CloneRefusal) refuse(error.message);
+    if (error instanceof GitError) {
+      refuse(
+        `Could not clone ${remote.url} (branch ${branch}): ${describeFailure(classifyFailure(error.stderr))}\n` +
+          `  ${clean(error.stderr.trim())}`,
+      );
+    }
+    throw error;
+  }
+
+  const tree = { git, prefix: root, contentRoot: config.contentRoot };
+  const files = contentFiles({ root: config.contentRoot });
+  const locks = createWorkspaceLocks();
+
+  // The model at HEAD groups the files for the first sync, and is read again
+  // after it. Only the second read may stop the start: a model this image
+  // cannot read must not block the fetch of a fix.
+  const startModel = await loadSchema(files).catch((error: unknown) => {
+    if (!(error instanceof SchemaError)) throw error;
+    logger.warn("The content model at the clone's head cannot be read; syncing with a coarse grouping", {
+      message: error.message,
+    });
+    return null;
+  });
+  const groups = { of: startModel ? contentGroups(startModel) : coarseGroups };
+  const revalidate = {
+    run: startModel ? revalidator(startModel, files, tree) : async (_paths: string[]) => {},
+  };
+
+  managed = createManagedWorkspace({
+    layout,
+    url: remote.url,
+    git,
+    tree,
+    branch,
+    root,
+    locks,
+    logger,
+    groupOf: (path) => groups.of(path),
+    revalidate: (paths) => revalidate.run(paths),
+    secrets: [token],
+    syncSeconds,
+  });
+
+  let synced;
+  try {
+    synced = await managed.sync({ skipHold: true });
+  } catch (error) {
+    if (error instanceof CloneRefusal) refuse(error.message);
+    throw error;
+  }
+  if (synced.error) {
+    // A clone is in place, so editing works; Mica keeps trying.
+    logger.warn("Starting without a fresh sync", { code: synced.error.code, message: synced.error.message });
+  }
+
+  const model = await readModel(config, files);
+  groups.of = contentGroups(model);
+  revalidate.run = revalidator(model, files, tree);
+  const schemaRevision = await files.revision(MANIFEST_PATH);
+
+  const write = await managed.checkWrite();
+  const writeCheck =
+    write.kind === "pushed"
+      ? "ok"
+      : write.kind === "failed"
+        ? `failed: ${describeFailure(write.failure)}`
+        : `refused: ${clean(write.kind === "remote-rejected" ? write.reason : "non-fast-forward")}`;
+  if (write.kind !== "pushed") logger.warn("The write check did not pass; Publish will fail", { writeCheck });
+
   const auth = createOidcAuth({ config, logger });
+  const workspace = managed;
 
-  // Saves stage in the database until Publish commits them through the provider.
-  const drafts = createDraftRepository(db);
-
-  const ctx = createRuntimeContext({
+  ctx = createRuntimeContext({
     config,
     model,
-    connector,
-    drafts,
+    files,
     schemaRevision,
     logger,
+    policy: workspace.policy,
+    locks,
+    tree,
 
     operational: () => ({
-      auth: `oidc:${new URL(config.MICA_OIDC_ISSUER!).hostname}`,
+      auth: authLabel,
       admission: auth.admission.summary,
-      database: {
-        path: config.databasePath,
-        version: databaseVersion(db),
-        bytes: databaseBytes(config.databasePath),
-      },
       dataDir: config.dataDir,
       sessionTtlHours: config.SESSION_TTL_HOURS,
       sessionIdleHours: config.SESSION_IDLE_HOURS,
@@ -123,51 +219,60 @@ async function main(): Promise<void> {
     }),
 
     health: {
-      database: () => void db.get<{ ok: number }>("SELECT 1 AS ok"),
+      // Editing works as long as the clone is there; these are reasons to look.
+      ready: () => {
+        const state = workspace.state();
+        const reasons: string[] = [];
+        if (state.error) {
+          reasons.push(
+            state.error.code === "auth" ? "auth_failed" : state.error.code === "write_forbidden" ? "write_forbidden" : "sync_failing",
+          );
+        }
+        if (state.restartRequired) reasons.push("restart_required");
+        return { ok: true, reasons };
+      },
     },
 
     onShutdown: () => {
       auth.loginLimiter.stop();
-      db.close();
     },
   });
 
-  const app = createApp(ctx, {
-    auth: auth.surface,
-    adminDir: config.ADMIN_DIR ?? editorUiDist(),
+  dispatcher.serve(
+    createApp(ctx, {
+      auth: auth.surface,
+      adminDir: config.ADMIN_DIR ?? editorUiDist(),
+    }),
+  );
+  workspace.start();
+
+  logger.info("Mica CMS started", {
+    url: config.MICA_PUBLIC_URL,
+    site: ctx.site.id,
+    environment: config.NODE_ENV,
+    auth: authLabel,
+    // A rule that admits nobody and one that admits everybody look the same
+    // until somebody signs in.
+    admission: auth.admission.summary,
+    repository: remote.url,
+    branch,
+    root: root || "/",
+    head: workspace.state().head,
+    writeCheck,
+    // Shows when a website was built against a different model than the CMS serves.
+    schemaFingerprint: await schemaFingerprint(model),
+    collections: Object.keys(model.collections).length,
   });
+}
 
-  const fingerprint = await schemaFingerprint(model);
-
-  startServer({
-    app,
-    host: config.HOST,
-    port: config.PORT,
-    logger,
-
-    onListening(info) {
-      logger.info("Mica CMS started", {
-        url: config.MICA_PUBLIC_URL,
-        listening: `${config.HOST}:${info.port}`,
-        site: ctx.site.id,
-        environment: config.NODE_ENV,
-        auth: `oidc:${new URL(config.MICA_OIDC_ISSUER!).hostname}`,
-        // Who may edit, in the operator's own words. Said at startup because a
-        // rule that admits nobody and a rule that admits everybody look the
-        // same from outside until somebody tries to sign in.
-        admission: auth.admission.summary,
-        database: config.databasePath,
-        content: connector.origin,
-        // Enough to tell two deployments apart when a website was built
-        // against one model and the CMS is serving another.
-        schema: schemaOrigin(connector),
-        schemaFingerprint: fingerprint,
-        collections: Object.keys(model.collections).length,
-      });
-    },
-
-    shutdown: () => ctx.shutdown(),
-  });
+async function main(): Promise<void> {
+  const command = process.argv[2];
+  if (command === "check") process.exit(await runCheck());
+  if (command !== undefined && command !== "serve") {
+    process.stderr.write(`Unknown command "${command}". Use no command to serve, or "check".\n`);
+    process.exit(EX_USAGE);
+  }
+  await serve();
 }
 
 main().catch((error: unknown) => {
