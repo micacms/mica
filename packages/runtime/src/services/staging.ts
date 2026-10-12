@@ -10,13 +10,14 @@
  * `workspace/tree.ts`, the push in the owner policy, and the locks that keep
  * saves and commits apart in `workspace/locks.ts`.
  *
- * Three rules keep it safe in a repository that belongs to a developer:
+ * Three rules keep it safe in a repository that people share:
  *
  *   - Only Mica-managed paths. Every Git operation is limited to an explicit
  *     path set derived from the change list — never `git add -A` over the
  *     repository, so unrelated work in the same checkout is never swept in.
- *   - HEAD is verified against the base the editor reviewed. A repository
- *     that moved refuses.
+ *   - Exactly the reviewed files are published, as the editor saw them. A
+ *     file saved again since, or another file of the same entry, refuses;
+ *     drafts of other entries stay drafts.
  *   - A commit and a push are two operations. When the push fails the commit
  *     is retained and reported as `committed-pending-push`; a retry pushes
  *     again and never creates a second commit.
@@ -24,7 +25,7 @@
 
 import { MANIFEST_PATH, memorySource, type PublishResult, type Site } from "@micacms/core";
 
-import { ApiError, badRequest } from "../lib/errors.js";
+import { ApiError, badRequest, notFound } from "../lib/errors.js";
 import type { Logger } from "../lib/logger.js";
 import { developerPolicy } from "../workspace/developer.js";
 import type { ContentFiles } from "../workspace/files.js";
@@ -48,10 +49,12 @@ import {
   compareSources,
   describeProblems,
   flattenProblems,
+  type AnnotatedChange,
   type CompareTarget,
   type Comparison,
   type ContentStagingService,
   type PublishInput,
+  type RepositoryInfo,
   type StagingStatus,
   type StagingValidation,
 } from "./changes.js";
@@ -129,64 +132,102 @@ export function createWorkingTreeStagingService(
     return located();
   };
 
+  /** The key that keeps an entry's files together: a publication never splits one. */
+  const groupOf = (change: AnnotatedChange): string => {
+    const owner = change.owner;
+    if (owner.kind === "entry") return `entry:${owner.collection}/${owner.slug}`;
+    if (owner.kind === "singleton") return `singleton:${owner.name}`;
+    if (owner.kind === "order") return `order:${owner.collection}`;
+    return `file:${change.path}`;
+  };
+
+  const withRevisions = async (changes: AnnotatedChange[]): Promise<AnnotatedChange[]> =>
+    Promise.all(
+      changes.map(async (change) => ({
+        ...change,
+        revision: change.kind === "delete" ? null : await files.revision(change.path),
+      })),
+    );
+
+  /** Refused for the developer's checkout: Mica never fetches or merges there. */
+  const managedOnly = <T>(action: T | undefined): T => {
+    if (action === undefined) throw notFound("This is the developer's checkout; Git there is theirs.");
+    return action;
+  };
+
   return {
     async status(): Promise<StagingStatus> {
       const tree = await locate();
+      const sync = policy.syncStatus?.() ?? null;
 
       if ("reason" in tree) {
         return {
-          workspace: "working-tree",
+          owner: policy.owner,
           publish: { enabled: false, reason: tree.reason },
-          baseRevision: null,
+          head: null,
           branch: null,
           ahead: null,
           changes: [],
           validation: emptyValidation(),
-          updatedAt: null,
+          sync,
         };
       }
 
-      const { changes, validation, head, branch } = await locks.tree.read(async () => ({
-        ...(await analyse(tree, await listTreeChanges(tree))),
-        head: await headRevision(tree),
-        branch: await currentBranch(tree),
-      }));
+      const { changes, validation, head, branch } = await locks.tree.read(async () => {
+        const analysed = await analyse(tree, await listTreeChanges(tree));
+        return {
+          ...analysed,
+          changes: await withRevisions(analysed.changes),
+          head: await headRevision(tree),
+          branch: await currentBranch(tree),
+        };
+      });
 
       return {
-        // A managed clone is worded like a draft workspace: its editors do
-        // not need to know that it is a working tree.
-        workspace: policy.owner === "managed" ? "draft-store" : "working-tree",
+        owner: policy.owner,
         publish: policy.publishAvailability(),
-        baseRevision: head,
+        head,
         branch,
         ahead: await aheadOfUpstream(tree),
         changes,
         validation,
-        updatedAt: null,
+        sync,
       };
     },
 
     async publish(input: PublishInput): Promise<PublishResult> {
       const message = input.message.trim();
       if (!message) throw badRequest("A publication needs a commit message.");
+      const reviewed = Object.keys(input.paths);
+      if (reviewed.length === 0) throw badRequest("Choose at least one change to publish.");
 
       const tree = await publishable();
       await policy.prepare(tree);
 
       const revision = await locks.tree.write(async () => {
-        const treeChanges = await listTreeChanges(tree);
-        if (treeChanges.length === 0) throw badRequest("There is nothing to publish.");
+        const pending = await withRevisions((await analyse(tree, await listTreeChanges(tree))).changes);
+        const byPath = new Map(pending.map((change) => [change.path, change]));
 
         /**
-         * The reviewed base. The tree is already the truth, so the gate is
-         * HEAD: if the repository moved since the editor reviewed the change
-         * list, what a commit would be based on is not what they saw.
+         * The review gate. Exactly the reviewed files are published, and only
+         * as the editor saw them: a file saved again since, a reviewed file
+         * that is no longer pending, or another file of the same entry that
+         * the review did not include, all refuse. Drafts of other entries
+         * stay drafts — somebody else's autosave never blocks a publication.
          */
-        if (input.expectedBase !== (await headRevision(tree))) {
+        const reviewedGroups = new Set(
+          reviewed.map((path) => byPath.get(path)).flatMap((change) => (change ? [groupOf(change)] : [])),
+        );
+        const stale = [
+          ...reviewed.filter((path) => byPath.get(path)?.revision !== input.paths[path] || !byPath.has(path)),
+          ...pending
+            .filter((change) => reviewedGroups.has(groupOf(change)) && !(change.path in input.paths))
+            .map((change) => change.path),
+        ];
+        if (stale.length > 0) {
           throw new ApiError(
             "conflict",
-            "The repository moved while these changes were being reviewed. Refresh the " +
-              "change list and publish again.",
+            "Some of these changes were edited after you reviewed them. Review them again, then publish.",
           );
         }
 
@@ -200,7 +241,8 @@ export function createWorkingTreeStagingService(
           );
         }
 
-        const { validation } = await analyse(tree, treeChanges);
+        const selected = (await listTreeChanges(tree)).filter((change) => change.path in input.paths);
+        const { validation } = await analyse(tree, selected);
         if (!validation.ok) {
           throw new ApiError("validation_failed", describeProblems(validation.problems), {
             issues: flattenProblems(validation.problems),
@@ -208,13 +250,8 @@ export function createWorkingTreeStagingService(
         }
 
         try {
-          const revision = await commitPaths(
-            tree,
-            treeChanges.map((change) => change.path),
-            message,
-            policy.commitAuthor(input.author),
-          );
-          logger.info("Published from the working tree", { revision, files: treeChanges.length });
+          const revision = await commitPaths(tree, reviewed, message, policy.commitAuthor(input.author));
+          logger.info("Published", { revision, files: reviewed.length, owner: policy.owner });
           return revision;
         } catch (error) {
           if (error instanceof GitError) {
@@ -260,12 +297,37 @@ export function createWorkingTreeStagingService(
       });
     },
 
-    async compare(target: CompareTarget): Promise<Comparison> {
+    async compare(target: CompareTarget, against: "head" | "origin" = "head"): Promise<Comparison> {
       const tree = await locate();
+      if (against === "origin" && !policy.upstreamRef) throw badRequest("There is no website version to compare with here.");
       // Without a repository (or before the first commit) nothing has ever
       // been published, so the honest "before" is a source with no files.
-      const published = "reason" in tree ? memorySource({}, "unpublished") : headSource(tree);
+      const published =
+        "reason" in tree
+          ? memorySource({}, "unpublished")
+          : headSource(tree, against === "origin" ? policy.upstreamRef : "HEAD");
       return locks.tree.read(() => compareSources(model, published, files, target));
+    },
+
+    async sync(): Promise<void> {
+      await managedOnly(policy.sync)();
+    },
+
+    async resolve(group: string, choice: "mine" | "website"): Promise<void> {
+      await managedOnly(policy.resolve)(group, choice);
+    },
+
+    async repository(): Promise<RepositoryInfo> {
+      const tree = await locate();
+      const described = (await policy.describe?.()) ?? null;
+      return {
+        owner: policy.owner,
+        branch: "reason" in tree ? null : await currentBranch(tree),
+        head: "reason" in tree ? null : await headRevision(tree),
+        url: described?.url ?? null,
+        cloneBytes: described?.cloneBytes ?? null,
+        sync: policy.syncStatus?.() ?? null,
+      };
     },
   };
 }

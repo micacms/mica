@@ -51,11 +51,10 @@ describe("the local editor's containment", () => {
   });
 
   it("has no repository mode to configure: it edits a checkout", () => {
-    const config = loadConfig({ ...base });
-    assert.equal(config.REPOSITORY, "local");
-    // A provider variable in the environment changes nothing here — the
+    // A repository variable in the environment changes nothing here — the
     // schema never reads it, which is a stronger statement than refusing it.
-    assert.equal(loadConfig({ ...base, REPOSITORY: "github" }).REPOSITORY, "local");
+    const config = loadConfig({ ...base, REPOSITORY: "github" });
+    assert.equal("REPOSITORY" in config, false);
   });
 
   it("publishes from the working tree by default, and can be told not to", () => {

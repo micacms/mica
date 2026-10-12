@@ -23,6 +23,7 @@ import { useToast } from "@/stores/toast";
 const props = defineProps<{ name: string }>();
 
 const schema = useSchema();
+const staging = useStaging();
 const toast = useToast();
 
 const definition = computed(() => schema.singleton(props.name));
@@ -33,6 +34,13 @@ const revision = ref<string | null>(null);
 const loading = ref(true);
 const saving = ref(false);
 const conflict = ref(false);
+
+/** These settings were changed on the website while they have a draft here: Mica's own clone only. */
+const websiteConflict = computed(() =>
+  (staging.status.value?.sync?.conflicts ?? []).some(
+    (item) => item.target?.kind === "singleton" && item.target.name === props.name,
+  ),
+);
 
 /** Where these settings live, as the server reports it. */
 const location = ref("");
@@ -70,11 +78,11 @@ async function save(): Promise<void> {
     conflict.value = false;
     markClean();
     toast.success("Settings saved.");
-    void useStaging().refresh();
+    void staging.refresh();
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
       conflict.value = true;
-      toast.error("Someone else saved these settings while you were editing them.");
+      toast.error("These settings were changed while you were editing them — by a colleague or on the website.");
     } else if (error instanceof ApiError && error.issues.length > 0) {
       issues.value = error.issues;
       toast.error(error.message, `${error.issues.length} field(s) need attention.`);
@@ -106,6 +114,18 @@ async function save(): Promise<void> {
         <p v-if="definition.description" class="mb-5 text-sm text-muted">
           {{ definition.description }}
         </p>
+
+        <div
+          v-if="websiteConflict"
+          role="alert"
+          class="mb-5 rounded-md border border-warning/15 bg-warning-soft p-4"
+        >
+          <p class="text-sm font-medium text-warning">These settings was changed on the website while you edited</p>
+          <p class="mt-1 text-xs text-muted">
+            Your saved version is kept. Choose which version to publish on the Publish page.
+          </p>
+          <RouterLink :to="{ name: 'changes' }" class="btn-secondary mt-2.5 inline-flex">Choose a version</RouterLink>
+        </div>
 
         <div
           v-if="conflict"

@@ -16,7 +16,8 @@
  * "Publish: the reviewed paths, at most one unpushed commit".
  */
 
-import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
+import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import type { PublishResult } from "@micacms/core";
@@ -30,6 +31,8 @@ import {
   type Logger,
   type OwnerPolicy,
   type PublishAvailability,
+  type SyncConflict,
+  type SyncStatus,
   type WorkspaceLocks,
 } from "@micacms/runtime";
 
@@ -44,6 +47,8 @@ import { changedBetween, draftPaths, restorePaths } from "./restore.js";
 export interface ContentGroup {
   key: string;
   label: string;
+  /** What a comparison shows, when the group is one document. */
+  target?: SyncConflict["target"];
 }
 
 export interface ConflictGroup extends ContentGroup {
@@ -75,6 +80,8 @@ export interface SyncState {
 
 export interface ManagedWorkspaceOptions {
   layout: CloneLayout;
+  /** The remote URL, without credentials. */
+  url: string;
   git: GitRunner;
   tree: GitTree;
   branch: string;
@@ -281,10 +288,11 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       const ups = upstream.filter((path) => groupKey(path) === key);
       const kinds = new Set(ups.map((path) => status.get(path)));
       const paths = [...new Set([...drafts.filter((path) => groupKey(path) === key), ...ups])].map(contentPath);
-      const { label } = options.groupOf(paths[0]!);
+      const { label, target } = options.groupOf(paths[0]!);
       return {
         key,
         label,
+        ...(target ? { target } : {}),
         paths,
         upstream: kinds.size === 1 && kinds.has("D") ? "deleted" : kinds.size === 1 && kinds.has("A") ? "added" : "changed",
       };
@@ -370,8 +378,33 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
         );
       }
       await options.revalidate?.(paths);
-      await locks.tree.write(() => recommitPaths(options.tree, paths, original));
+      await locks.tree.write(async () => {
+        // Only what was reviewed and committed: an autosave that landed
+        // since would otherwise be published unseen.
+        const changed = await changedSince(original, paths);
+        if (changed.length > 0) {
+          throw new ApiError(
+            "conflict",
+            "Some of these changes were edited while they were being published. Review them again, then publish.",
+          );
+        }
+        await recommitPaths(options.tree, paths, original);
+      });
     }
+  };
+
+  /** Content paths whose file differs from how `commit` has it. */
+  const changedSince = async (commit: string, paths: string[]): Promise<string[]> => {
+    const changed: string[] = [];
+    for (const path of paths) {
+      const inRepository = root === "" ? path : `${root}/${path}`;
+      const committed = await git.tryRun(["rev-parse", "--verify", "--quiet", `${commit}:${inRepository}`]);
+      const current = existsSync(join(layout.repositoryDir, inRepository))
+        ? await git.run(["hash-object", "--", inRepository])
+        : null;
+      if (committed !== current) changed.push(path);
+    }
+    return changed;
   };
 
   const pushOnce = async (args: string[]): Promise<PushOutcome> => {
@@ -420,6 +453,36 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
   const snapshot = (): SyncState => ({ ...state, conflicts: [...state.conflicts] });
 
+  const syncStatus = (): SyncStatus => ({
+    lastSyncAt: state.lastSyncAt,
+    behind: state.behind,
+    error: state.error,
+    restartRequired: state.restartRequired,
+    pendingPush: state.pendingPush,
+    refused: state.refused,
+    conflicts: state.conflicts.map(({ key, label, paths, upstream, target }) => ({
+      group: key,
+      label,
+      paths,
+      upstream,
+      ...(target ? { target } : {}),
+    })),
+  });
+
+  const resolve = async (group: string, choice: "mine" | "website"): Promise<SyncState> => {
+    if (choice === "mine") {
+      kept.add(group);
+    } else {
+      kept.delete(group);
+      await locks.tree.write(async () => {
+        const paths = (await draftPaths(git, root)).filter((path) => groupKey(path) === group);
+        await restorePaths(git, layout.repositoryDir, "HEAD", paths);
+      });
+    }
+    logger.info("Resolved a conflict", { group, choice });
+    return sync();
+  };
+
   /* ----------------------------------------------------------- policy */
 
   const policy: OwnerPolicy = {
@@ -454,6 +517,12 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
     // The staging service holds the remote lock around this call.
     push: () => push(),
+
+    syncStatus,
+    sync: async () => void (await sync()),
+    resolve: async (group, choice) => void (await resolve(group, choice)),
+    upstreamRef,
+    describe: async () => ({ url: options.url, branch, cloneBytes: await sizeOf(layout.repositoryDir) }),
   };
 
   return {
@@ -461,19 +530,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     state: snapshot,
     sync,
 
-    async resolve(group, choice) {
-      if (choice === "mine") {
-        kept.add(group);
-      } else {
-        kept.delete(group);
-        await locks.tree.write(async () => {
-          const paths = (await draftPaths(git, root)).filter((path) => groupKey(path) === group);
-          await restorePaths(git, layout.repositoryDir, "HEAD", paths);
-        });
-      }
-      logger.info("Resolved a conflict", { group, choice });
-      return sync();
-    },
+    resolve,
 
     checkWrite: () =>
       locks.remote.run(() => pushOnce(["push", "--dry-run", "--porcelain", "origin", `HEAD:refs/heads/${branch}`])),
@@ -491,6 +548,19 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       timer = null;
     },
   };
+}
+
+/** Bytes under `dir`, files only. The clone's size on the data volume. */
+async function sizeOf(dir: string): Promise<number | null> {
+  try {
+    let total = 0;
+    for (const entry of await readdir(dir, { withFileTypes: true, recursive: true })) {
+      if (entry.isFile()) total += (await stat(join(entry.parentPath, entry.name))).size;
+    }
+    return total;
+  } catch {
+    return null;
+  }
 }
 
 function firstLines(text: string): string {

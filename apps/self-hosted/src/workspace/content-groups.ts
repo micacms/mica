@@ -28,11 +28,15 @@ export function contentGroups(model: Site): (path: string) => ContentGroup {
     const owner = classifyPath(model, path);
     switch (owner.kind) {
       case "entry":
-        return { key: `entry:${owner.collection}/${owner.slug}`, label: owner.label };
+        return {
+          key: `entry:${owner.collection}/${owner.slug}`,
+          label: owner.label,
+          target: { kind: "entry", collection: owner.collection, slug: owner.slug },
+        };
       case "singleton":
-        return { key: `singleton:${owner.name}`, label: owner.label };
+        return { key: `singleton:${owner.name}`, label: owner.label, target: { kind: "singleton", name: owner.name } };
       case "order":
-        return { key: `order:${owner.collection}`, label: owner.label };
+        return { key: `order:${owner.collection}`, label: owner.label, target: { kind: "order", collection: owner.collection } };
       default:
         return { key: `file:${path}`, label: owner.label };
     }

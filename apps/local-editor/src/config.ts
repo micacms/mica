@@ -2,8 +2,8 @@
  * The local editor's configuration.
  *
  * Small on purpose: the variables the runtime reads, minus everything that
- * describes a deployment. There is no `REPOSITORY` — this app always edits
- * the developer's checkout — no `MICA_DATA_DIR`, because it keeps no state,
+ * describes a deployment. There is no repository to name — this app always
+ * edits the developer's checkout — no `MICA_DATA_DIR`, because it keeps no state,
  * and no OIDC or admission variable exists to be set, which is a stronger
  * statement than ignoring one.
  *
@@ -67,7 +67,6 @@ const schema = z
       ...env,
       // Fixed, not configurable: the local editor edits a checkout. A remote
       // repository is the self-hosted app's job.
-      REPOSITORY: "local" as const,
       // There is no proxy in front of a loopback server to trust.
       TRUST_PROXY: false,
     }),

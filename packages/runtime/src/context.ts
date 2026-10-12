@@ -17,7 +17,7 @@ import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
 import { createMediaService, type MediaService } from "./services/media.js";
 import type { ContentStagingService } from "./services/changes.js";
 import { createContentStore, type ContentStore } from "./services/content-store.js";
-import { createWorkingTreeStagingService } from "./services/staging-local.js";
+import { createWorkingTreeStagingService } from "./services/staging.js";
 import { createWorkspaceLocks, lockedFiles, type WorkspaceLocks } from "./workspace/locks.js";
 import type { OwnerPolicy } from "./workspace/policy.js";
 import type { ContentFiles } from "./workspace/files.js";
@@ -52,19 +52,12 @@ export const DEFAULT_SITE_ID = "default";
 
 /**
  * What the composing app wants the System page to say about itself — the
- * facts the runtime cannot know because they belong to the composition:
- * whether there is a database, how this deployment authenticates, and which
- * rule admits people.
+ * facts the runtime cannot know because they belong to the composition: how
+ * this deployment authenticates, and which rule admits people.
  */
 export interface OperationalInfo {
   /** How this deployment authenticates, in words. */
   auth: string;
-  /** Null where there is no database, which is the local editor's answer. */
-  database: {
-    path: string;
-    version: number;
-    bytes: number | null;
-  } | null;
   /** What decides who may edit, in the operator's own words. */
   admission?: string;
   dataDir?: string;
@@ -179,7 +172,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
     limiters,
     operational:
       options.operational ??
-      (() => ({ auth: "unspecified", database: null })),
+      (() => ({ auth: "unspecified" })),
     health: options.health ?? {},
 
     async shutdown() {

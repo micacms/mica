@@ -81,6 +81,7 @@ async function setup(token = TOKEN, files: Record<string, string> = SEED): Promi
   const git = await open();
   const workspace = createManagedWorkspace({
     layout,
+    url: remote.url,
     git,
     tree: { git, prefix: "content", contentRoot: join(layout.repositoryDir, "content") },
     branch: "main",
@@ -300,6 +301,7 @@ describe("sync", () => {
     const git = await openClone({ layout: s.layout, url: remote.url, branch: "main", root: "content", env, logger });
     const workspace = createManagedWorkspace({
       layout: s.layout,
+      url: remote.url,
       git,
       tree: { git, prefix: "content", contentRoot: join(s.repo, "content") },
       branch: "main",
@@ -313,6 +315,26 @@ describe("sync", () => {
     const state = await workspace.sync();
     assert.equal(state.error?.code, "auth");
     assert.ok(!state.error.message.includes("wrong-token-123"));
+  });
+});
+
+describe("what the editor sees", () => {
+  it("reports a conflict with its group, label and comparison target, and describes the clone", async () => {
+    const s = await setup();
+    writeIn(s.repo, "content/posts/a/index.json", '{"title":"Mine"}\n');
+    upstream(s, (dir) => writeIn(dir, "content/posts/a/index.json", '{"title":"Theirs"}\n'));
+    await s.workspace.sync();
+
+    const status = s.workspace.policy.syncStatus!();
+    assert.equal(status.conflicts.length, 1);
+    assert.equal(status.conflicts[0]!.group, "posts/a");
+    assert.equal(status.conflicts[0]!.upstream, "changed");
+    assert.ok(status.lastSyncAt);
+    assert.equal(s.workspace.policy.upstreamRef, "origin/main");
+
+    const described = await s.workspace.policy.describe!();
+    assert.equal(described.url, host.url(s.name));
+    assert.ok((described.cloneBytes ?? 0) > 0);
   });
 });
 
@@ -419,6 +441,19 @@ describe("publishing", () => {
     assert.equal(devGit(bare, "log", "-1", "--format=%an|%s", "main"), "Erika Editor|Edit A");
     assert.equal(devGit(bare, "show", "main:content/posts/new/index.json"), '{"title":"New"}');
     assert.equal(devGit(bare, "show", "main:content/theme.json"), '{"color":"green"}');
+  });
+
+  it("does not publish an autosave that landed after the commit, when it has to make the commit again", async () => {
+    const s = await setup();
+    writeIn(s.repo, "content/posts/a/index.json", '{"title":"Reviewed"}\n');
+    const revision = await commitPaths(tree(s), ["posts/a/index.json"], "Edit A", editor);
+    upstream(s, (dir) => writeIn(dir, "content/theme.json", '{"color":"green"}\n'));
+    // Saved again after the commit, before the push went through.
+    writeIn(s.repo, "content/posts/a/index.json", '{"title":"Not reviewed"}\n');
+
+    await assert.rejects(s.workspace.policy.push(tree(s), revision), ApiError);
+    assert.notEqual(devGit(host.bare(s.name), "show", "main:content/posts/a/index.json"), '{"title":"Not reviewed"}');
+    assert.equal(read(s, "content/posts/a/index.json"), '{"title":"Not reviewed"}\n');
   });
 
   it("turns a publication the host refuses back into drafts", async () => {

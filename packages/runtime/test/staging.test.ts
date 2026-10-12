@@ -20,7 +20,7 @@ import { collection, defineSite, slug, text } from "@micacms/core";
 
 import { ApiError } from "../src/lib/errors.js";
 import { createLogger } from "../src/lib/logger.js";
-import { createWorkingTreeStagingService } from "../src/services/staging-local.js";
+import { createWorkingTreeStagingService } from "../src/services/staging.js";
 import type { ContentStagingService } from "../src/services/changes.js";
 
 /** File-layout entries, so a path is one JSON file and assertions stay short. */
@@ -123,8 +123,9 @@ describe("status", () => {
 
     const status = await service.status();
 
-    assert.equal(status.workspace, "working-tree");
-    assert.equal(status.baseRevision, head());
+    assert.equal(status.owner, "developer");
+    assert.equal(status.head, head());
+    assert.equal(status.sync, null);
     assert.equal(status.branch, "main");
     assert.equal(status.validation.ok, true);
 
@@ -234,20 +235,43 @@ describe("status", () => {
   });
 });
 
+/** The paths the Publish page shows, with the revisions it shows them at. */
+async function reviewed(service: ContentStagingService): Promise<Record<string, string | null>> {
+  const status = await service.status();
+  return Object.fromEntries(status.changes.map((change) => [change.path, change.revision ?? null]));
+}
+
 describe("publish", () => {
-  it("refuses without the base the editor reviewed", async () => {
+  it("refuses a file that was saved again after the review", async () => {
     const { contentRoot, service } = makeRepo();
-    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Moved","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Reviewed","slug":"haus-a"}');
+    const paths = await reviewed(service);
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Saved again","slug":"haus-a"}');
 
     await assert.rejects(
-      service.publish({ message: "Publish", expectedBase: "somewhere-else" }),
+      service.publish({ message: "Publish", paths }),
       (error: unknown) => error instanceof ApiError && error.code === "conflict",
+    );
+  });
+
+  it("publishes the reviewed entry and leaves another entry's later draft alone", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Reviewed","slug":"haus-a"}');
+    const paths = await reviewed(service);
+    // A colleague's autosave after the review: not part of this publication.
+    writeFileSync(join(contentRoot, "projects/haus-c.json"), '{"title":"Haus C","slug":"haus-c"}');
+
+    await service.publish({ message: "Publish A", paths });
+
+    assert.deepEqual(git(root, "show", "--name-only", "--format=", "HEAD").split("\n"), ["content/projects/haus-a.json"]);
+    assert.deepEqual(
+      (await service.status()).changes.map((change) => change.path),
+      ["projects/haus-c.json"],
     );
   });
 
   it("commits only the reviewed paths, and reports a failed push as a state", async () => {
     const { root, contentRoot, service, head } = makeRepo();
-    const base = head();
 
     writeFileSync(
       join(contentRoot, "projects/haus-a.json"),
@@ -260,7 +284,7 @@ describe("publish", () => {
     writeFileSync(join(root, "staged.txt"), "already staged");
     git(root, "add", "staged.txt");
 
-    const result = await service.publish({ message: "Renovate Haus A", expectedBase: base });
+    const result = await service.publish({ message: "Renovate Haus A", paths: await reviewed(service) });
 
     // No remote: the commit is real, the push failed, and the state says so.
     assert.equal(result.state, "committed-pending-push");
@@ -288,7 +312,7 @@ describe("publish", () => {
       JSON.stringify({ title: "Haus A", slug: "haus-z" }, null, 2),
     );
 
-    await service.publish({ message: "Move Haus A", expectedBase: head() });
+    await service.publish({ message: "Move Haus A", paths: await reviewed(service) });
 
     assert.match(
       git(root, "show", "-M", "--name-status", "--format=", "HEAD"),
@@ -301,7 +325,7 @@ describe("publish", () => {
     const { root, contentRoot, service, head } = makeRepo();
     writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Once","slug":"haus-a"}');
 
-    const first = await service.publish({ message: "Once", expectedBase: head() });
+    const first = await service.publish({ message: "Once", paths: await reviewed(service) });
     assert.equal(first.state, "committed-pending-push");
 
     // The remote appears — the developer fixes their origin — and the retry
@@ -328,7 +352,7 @@ describe("publish", () => {
 
     writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Live","slug":"haus-a"}');
 
-    const result = await service.publish({ message: "Go live", expectedBase: head() });
+    const result = await service.publish({ message: "Go live", paths: await reviewed(service) });
     assert.equal(result.state, "published");
     assert.equal(git(bare, "rev-parse", "HEAD"), result.revision);
   });
@@ -342,7 +366,7 @@ describe("publish", () => {
     assert.equal(status.changes.length, 1, "the read-only view still lists changes");
 
     await assert.rejects(
-      service.publish({ message: "Try", expectedBase: head() }),
+      service.publish({ message: "Try", paths: await reviewed(service) }),
       (error: unknown) => error instanceof ApiError && error.status === 400,
     );
   });
@@ -352,7 +376,7 @@ describe("publish", () => {
     writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Drift","slug":"haus-a"}');
 
     await assert.rejects(
-      service.publish({ message: "Publish", expectedBase: head() }),
+      service.publish({ message: "Publish", paths: await reviewed(service) }),
       (error: unknown) =>
         error instanceof ApiError && error.code === "conflict" && /restart/i.test(error.message),
     );

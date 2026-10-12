@@ -385,16 +385,16 @@ describe("system information", () => {
   });
   after(() => harness.close());
 
-  it("reports no database, the repository kind and what decides who may edit", async () => {
+  it("reports no database, the repository and what decides who may edit", async () => {
     const session = await harness.signIn();
     const response = await harness.request("/api/admin/system", { session });
     const body = (await response.json()) as {
-      database: unknown;
-      deployment: { auth: string; admission: string | null; repositoryMode: string };
+      repository: { owner: string };
+      deployment: { auth: string; admission: string | null };
     };
 
-    assert.equal(body.database, null);
-    assert.equal(body.deployment.repositoryMode, "git");
+    assert.equal("database" in body, false);
+    assert.ok(body.repository.owner);
     assert.match(body.deployment.auth, /oidc:/);
     assert.match(body.deployment.admission ?? "", /group=mica-editors/);
   });

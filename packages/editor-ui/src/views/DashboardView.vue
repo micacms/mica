@@ -97,6 +97,25 @@ onMounted(async () => {
       </section>
 
       <section
+        v-if="(staging.status.value?.sync?.conflicts.length ?? 0) > 0"
+        role="alert"
+        class="rounded-md border border-warning/15 bg-warning-soft p-4"
+        aria-labelledby="conflicts-heading"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 id="conflicts-heading" class="text-sm font-semibold text-warning">
+              Changed on the website while you edited
+            </h2>
+            <p class="mt-1 text-sm text-muted">
+              Choose a version for each. Until then, nothing can be published.
+            </p>
+          </div>
+          <RouterLink :to="{ name: 'changes' }" class="btn-secondary">Choose versions</RouterLink>
+        </div>
+      </section>
+
+      <section
         v-if="staging.editCount.value > 0"
         class="card p-4"
         aria-labelledby="pending-heading"

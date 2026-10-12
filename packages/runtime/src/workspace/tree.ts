@@ -170,17 +170,18 @@ export async function aheadOfUpstream(tree: GitTree): Promise<number | null> {
 }
 
 /**
- * The content root as HEAD has it — the published side of a comparison.
+ * The content root as HEAD has it — the published side of a comparison — or
+ * as another ref has it, such as the remote branch a conflict is about.
  *
  * Reading `HEAD:` rather than the tree is the point: the working tree *is*
  * the draft workspace, so the repository's own version of a document only
  * exists in Git's object store.
  */
-export function headSource(tree: GitTree): ContentSource {
-  const at = (path: string) => `HEAD:${path === "" ? tree.prefix : inRepo(tree.prefix, path)}`;
+export function headSource(tree: GitTree, ref = "HEAD"): ContentSource {
+  const at = (path: string) => `${ref}:${path === "" ? tree.prefix : inRepo(tree.prefix, path)}`;
 
   return {
-    origin: "HEAD",
+    origin: ref,
 
     async read(path) {
       // tryRun, because "not in HEAD" and "no commits yet" both simply mean

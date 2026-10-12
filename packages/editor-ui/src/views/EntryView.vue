@@ -46,6 +46,14 @@ const loading = ref(true);
 const saving = ref(false);
 const conflict = ref(false);
 const confirmDelete = ref(false);
+
+/** This entry was changed on the website while it has a draft here: Mica's own clone only. */
+const websiteConflict = computed(() =>
+  (staging.status.value?.sync?.conflicts ?? []).some(
+    (item) =>
+      item.target?.kind === "entry" && item.target.collection === props.collection && item.target.slug === props.slug,
+  ),
+);
 const references = ref<Array<{ collection: string; title: string }>>([]);
 
 /**
@@ -146,7 +154,7 @@ async function save(): Promise<void> {
       // Nothing is lost: the form still holds the editor's work, and reloading
       // is a deliberate act rather than something that happens under them.
       conflict.value = true;
-      toast.error("Someone else saved this entry while you were editing it.");
+      toast.error("This entry was changed while you were editing it — by a colleague or on the website.");
     } else if (error instanceof ApiError && error.issues.length > 0) {
       issues.value = error.issues;
       toast.error(error.message, `${error.issues.length} field(s) need attention.`);
@@ -228,6 +236,18 @@ async function remove(): Promise<void> {
       <p v-if="loading" class="text-sm text-muted">Loading…</p>
 
       <template v-else>
+        <div
+          v-if="websiteConflict"
+          role="alert"
+          class="mb-5 rounded-md border border-warning/15 bg-warning-soft p-4"
+        >
+          <p class="text-sm font-medium text-warning">This entry was changed on the website while you edited</p>
+          <p class="mt-1 text-xs text-muted">
+            Your saved version is kept. Choose which version to publish on the Publish page.
+          </p>
+          <RouterLink :to="{ name: 'changes' }" class="btn-secondary mt-2.5 inline-flex">Choose a version</RouterLink>
+        </div>
+
         <div
           v-if="conflict"
           role="alert"

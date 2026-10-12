@@ -29,6 +29,7 @@ import {
 } from "@micacms/core";
 
 import { badRequest } from "../lib/errors.js";
+import type { SyncStatus } from "../workspace/policy.js";
 
 /** Where the change happened, in words an editor recognises. */
 export type ChangeOwner =
@@ -47,6 +48,12 @@ export type ChangeOwner =
 
 export interface AnnotatedChange extends ContentChange {
   owner: ChangeOwner;
+  /**
+   * The file's revision in the working tree, null for a deletion. Publish
+   * sends it back, so a file saved again after the review is not published
+   * unseen.
+   */
+  revision?: string | null;
 }
 
 /** One thing that would make the staged result unpublishable. */
@@ -63,40 +70,64 @@ export interface StagingValidation {
 }
 
 export interface StagingStatus {
-  /** How this deployment stages. The UI words differ with it. */
-  workspace: "working-tree" | "draft-store";
-  publish: { enabled: boolean; reason?: string };
   /**
-   * What the pending changes are based on: the working tree's HEAD. Sent back
-   * with Publish as `expectedBase`.
+   * Whose working tree it is. The UI words differ with it: a developer reads
+   * "working tree" and "commit"; an editor of a clone that Mica keeps reads
+   * "saved" and "published".
    */
-  baseRevision: string | null;
+  owner: "developer" | "managed";
+  publish: { enabled: boolean; reason?: string };
+  /** The commit the pending changes sit on. For display. */
+  head: string | null;
   /** The branch a publication lands on, where the workspace knows it. */
   branch: string | null;
-  /** Commits created and not yet pushed. Working tree only. */
+  /** Commits created and not yet pushed. */
   ahead: number | null;
   changes: AnnotatedChange[];
   validation: StagingValidation;
-  /** When the pending set last moved. Null when nothing is pending. */
-  updatedAt: string | null;
+  /** Where a clone that Mica keeps stands against its remote. Null for the developer's checkout. */
+  sync: SyncStatus | null;
 }
 
 export interface PublishInput {
   /** Subject line of the commit. Written by the editor, for `git log`. */
   message: string;
-  /** The base the editor reviewed. A repository that moved past it refuses. */
-  expectedBase: string | null;
+  /**
+   * The paths the editor reviewed, with the revision each had then. Exactly
+   * these are published; a file saved again since, or another file of the
+   * same entry, makes Publish refuse rather than publish something unseen.
+   */
+  paths: Record<string, string | null>;
   author?: Author;
+}
+
+/** What the System page shows about the repository. */
+export interface RepositoryInfo {
+  owner: "developer" | "managed";
+  branch: string | null;
+  head: string | null;
+  /** The remote, for a clone that Mica keeps. */
+  url: string | null;
+  cloneBytes: number | null;
+  sync: SyncStatus | null;
 }
 
 export interface ContentStagingService {
   status(): Promise<StagingStatus>;
   publish(input: PublishInput): Promise<PublishResult>;
   discard(paths: string[]): Promise<{ discarded: string[] }>;
-  /** Retries the push after `committed-pending-push`. Working tree only. */
+  /** Retries the push after `committed-pending-push`. */
   push(): Promise<PublishResult>;
-  /** The document a pending change touches, before and after that change. */
-  compare(target: CompareTarget): Promise<Comparison>;
+  /**
+   * The document a pending change touches, before and after that change.
+   * `origin` compares against the website's version instead of the last
+   * commit: what a conflict's "Keep my version" would replace.
+   */
+  compare(target: CompareTarget, against?: "head" | "origin"): Promise<Comparison>;
+  /** Brings a clone that Mica keeps up to date now. Refused for the developer's checkout. */
+  sync(): Promise<void>;
+  resolve(group: string, choice: "mine" | "website"): Promise<void>;
+  repository(): Promise<RepositoryInfo>;
 }
 
 /** One thing an editor recognises on the Publish page, named for comparison. */

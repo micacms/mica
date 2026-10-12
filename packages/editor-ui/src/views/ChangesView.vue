@@ -8,11 +8,11 @@
  * shared by the whole site — one pending set, not one per editor — so
  * everything on it is published together, whoever presses the button.
  *
- * The two workspaces speak through one API and differ only in what the words
- * mean physically: a working tree lists `git status` and publishes through the
- * developer's own Git; a draft store lists staged rows and publishes one
- * provider-side commit. The `workspace` field decides the phrasing, never the
- * behaviour.
+ * Both owners of the working tree speak through one API: the developer's
+ * checkout is worded in Git's terms and pushed with their own Git; the clone
+ * that a self-hosted Mica keeps is worded for editors, and Mica keeps it in
+ * step with the website — which is where conflicts come from. The `owner`
+ * field decides the phrasing; the behaviour is the same.
  */
 
 import { computed, onMounted, ref, watch } from "vue";
@@ -27,6 +27,7 @@ import {
   type CompareTarget,
   type FileChange,
   type PublishOutcome,
+  type SyncConflict,
 } from "@/api";
 import ChangeComparison from "@/components/ChangeComparison.vue";
 import type { Edit } from "@/lib/edits";
@@ -95,8 +96,9 @@ watch(edits, (next) => {
   }
 });
 
-const workspace = computed(() => status.value?.workspace ?? "draft-store");
-const isTree = computed(() => workspace.value === "working-tree");
+/** The developer's checkout, worded in Git's terms; otherwise Mica's own clone, worded for editors. */
+const isTree = computed(() => status.value?.owner === "developer");
+const sync = computed(() => status.value?.sync ?? null);
 
 const subtitle = computed(() => {
   if (!status.value) return null;
@@ -108,9 +110,9 @@ const subtitle = computed(() => {
   return "Saved in Mica, waiting to be published";
 });
 
-/** Commits already made and not yet pushed — visible even across a restart. */
+/** Commits already made and not yet pushed — visible even across a restart. The developer retries; Mica retries its own. */
 const waitingToPush = computed(
-  () => pendingPush.value !== null || (isTree.value && (status.value?.ahead ?? 0) > 0),
+  () => isTree.value && (pendingPush.value !== null || (status.value?.ahead ?? 0) > 0),
 );
 
 const canPublish = computed(
@@ -143,18 +145,26 @@ onMounted(refresh);
 async function publish(): Promise<void> {
   publishing.value = true;
   try {
-    const outcome = await api.staging.publish(message.value, status.value?.baseRevision ?? null);
+    // Exactly what the editor sees here, at the revision they see it: a file
+    // saved again since makes the server refuse rather than publish it unseen.
+    const reviewed = Object.fromEntries(
+      (status.value?.changes ?? []).map((change) => [change.path, change.revision ?? null]),
+    );
+    const outcome = await api.staging.publish(message.value, reviewed);
 
     if (outcome.state === "published") {
       pendingPush.value = null;
       message.value = "";
       toast.success("Published.", outcome.revision ? `Commit ${short(outcome.revision)}.` : undefined);
-    } else {
+    } else if (isTree.value) {
       // The commit is real; only the push failed. Say so, and keep the retry
       // visible — pressing Publish again must not create a second commit.
       pendingPush.value = outcome;
       message.value = "";
       toast.error("Committed, but the push failed.", outcome.pushError);
+    } else {
+      message.value = "";
+      toast.error("Published in Mica, not yet sent to the website.", "Mica tries again every minute.");
     }
 
     await staging.refresh();
@@ -207,6 +217,87 @@ async function discard(): Promise<void> {
   }
 }
 
+/* --------------------------------------------- Mica's own clone */
+
+const syncing = ref(false);
+const resolving = ref<string | null>(null);
+/** "Use the website's version" on a new entry deletes it, so it asks first. */
+const confirmWebsite = ref<SyncConflict | null>(null);
+
+async function syncNow(): Promise<void> {
+  syncing.value = true;
+  try {
+    await api.staging.sync();
+    await refresh();
+  } catch (error) {
+    toast.error(error instanceof ApiError ? error.message : "Could not reach the repository.");
+  } finally {
+    syncing.value = false;
+  }
+}
+
+/** Whether taking the website's version would delete an entry the editor created. */
+function discardsNewWork(conflict: SyncConflict): boolean {
+  const created = new Set(
+    (status.value?.changes ?? []).filter((change) => change.kind === "create").map((change) => change.path),
+  );
+  return conflict.paths.some((path) => created.has(path));
+}
+
+async function resolve(conflict: SyncConflict, choice: "mine" | "website"): Promise<void> {
+  if (choice === "website" && discardsNewWork(conflict) && confirmWebsite.value !== conflict) {
+    confirmWebsite.value = conflict;
+    return;
+  }
+  confirmWebsite.value = null;
+  resolving.value = conflict.group;
+  try {
+    await api.staging.resolve(conflict.group, choice);
+    toast.success(choice === "mine" ? `Kept your version of ${conflict.label}.` : `Took the website's version of ${conflict.label}.`);
+    await refresh();
+  } catch (error) {
+    toast.error(error instanceof ApiError ? error.message : "Could not resolve the conflict.");
+  } finally {
+    resolving.value = null;
+  }
+}
+
+const upstreamWords: Record<SyncConflict["upstream"], string> = {
+  changed: "was changed on the website while you edited it",
+  deleted: "was deleted on the website while you edited it",
+  added: "was also created on the website",
+};
+
+const conflictComparisons = ref<Record<string, LoadedComparison>>({});
+
+async function loadConflictComparison(conflict: SyncConflict): Promise<void> {
+  if (!conflict.target) return;
+  conflictComparisons.value[conflict.group] = { loading: true, error: null, comparison: null };
+  try {
+    const comparison = await api.staging.compare(conflict.target, "origin");
+    conflictComparisons.value[conflict.group] = { loading: false, error: null, comparison };
+  } catch (error) {
+    conflictComparisons.value[conflict.group] = {
+      loading: false,
+      error: error instanceof ApiError ? error.message : "Could not load the comparison.",
+      comparison: null,
+    };
+  }
+}
+
+watch(
+  () => sync.value?.conflicts ?? [],
+  (conflicts) => {
+    for (const conflict of conflicts) {
+      if (!conflictComparisons.value[conflict.group]) void loadConflictComparison(conflict);
+    }
+  },
+);
+
+function since(iso: string): string {
+  return new Date(iso).toLocaleString();
+}
+
 function short(revision: string): string {
   return /^[0-9a-f]{20,}$/i.test(revision) ? revision.slice(0, 7) : revision;
 }
@@ -232,6 +323,94 @@ function short(revision: string): string {
         <p class="font-medium text-ink">Publishing is not available here</p>
         <p class="mt-1">{{ status.publish.reason }}</p>
       </div>
+
+      <!-- Mica's own clone: shown only when something needs attention. -->
+      <template v-if="sync">
+        <div v-if="sync.restartRequired" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
+          <p class="text-sm font-medium text-warning">The content model changed on the website</p>
+          <p class="mt-1 text-xs text-muted">
+            You can go on saving. To publish, ask the person who runs Mica to restart it.
+          </p>
+        </div>
+
+        <div v-if="sync.error" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
+          <p class="text-sm font-medium text-warning">Cannot reach the repository since {{ since(sync.error.since) }}</p>
+          <p class="mt-1 text-xs text-muted">
+            You can go on saving. Mica tries again every minute. If this stays, tell the person who runs Mica:
+            {{ sync.error.message }}
+          </p>
+          <button type="button" class="btn-secondary mt-2.5" :disabled="syncing" @click="syncNow">
+            {{ syncing ? "Trying…" : "Try again" }}
+          </button>
+        </div>
+
+        <div v-if="sync.pendingPush" role="status" class="rounded-md border border-line bg-subtle p-4">
+          <p class="text-sm font-medium">Published in Mica, not yet sent to the website</p>
+          <p class="mt-1 text-xs text-muted">
+            Mica tries again every minute. If this stays, tell the person who runs Mica:
+            {{ sync.pendingPush.reason }}
+          </p>
+        </div>
+
+        <div v-if="sync.refused" role="alert" class="rounded-md border border-danger/15 bg-danger-soft p-4">
+          <p class="text-sm font-medium text-danger">The repository refused the last publication</p>
+          <p class="mt-1 text-xs text-muted">
+            Its changes are drafts again, listed below. Tell the person who runs Mica: {{ sync.refused.reason }}
+          </p>
+        </div>
+
+        <section v-if="sync.conflicts.length > 0" aria-labelledby="conflicts-heading" class="space-y-3">
+          <h2 id="conflicts-heading" class="text-sm font-semibold">
+            Changed on the website while you edited
+          </h2>
+          <p class="text-xs text-muted">
+            Choose a version for each. Until you do, nothing can be published and the website's newer
+            changes stay out of Mica.
+          </p>
+          <ul class="card divide-y divide-line">
+            <li v-for="conflict in sync.conflicts" :key="conflict.group" class="p-4">
+              <p class="text-sm font-medium">{{ conflict.label }}</p>
+              <p class="mt-0.5 text-xs text-muted">It {{ upstreamWords[conflict.upstream] }}.</p>
+
+              <template v-if="conflict.target">
+                <p v-if="conflictComparisons[conflict.group]?.loading" class="mt-2 text-xs text-muted">Comparing…</p>
+                <p v-else-if="conflictComparisons[conflict.group]?.error" class="mt-2 text-xs text-danger">
+                  {{ conflictComparisons[conflict.group]?.error }}
+                </p>
+                <template v-else-if="conflictComparisons[conflict.group]?.comparison">
+                  <p class="mt-2 text-xs text-muted">The website's version, then yours:</p>
+                  <ChangeComparison
+                    :comparison="conflictComparisons[conflict.group]!.comparison!"
+                    :fields="fieldsFor(conflict.target)"
+                  />
+                </template>
+              </template>
+
+              <p v-if="confirmWebsite === conflict" role="alert" class="mt-2 text-xs text-danger">
+                This deletes the entry you created. Press the button again to confirm.
+              </p>
+              <div class="mt-2.5 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  class="btn-secondary"
+                  :disabled="resolving !== null"
+                  @click="resolve(conflict, 'mine')"
+                >
+                  {{ conflict.upstream === "deleted" ? "Restore it" : "Keep my version" }}
+                </button>
+                <button
+                  type="button"
+                  class="btn-ghost"
+                  :disabled="resolving !== null"
+                  @click="resolve(conflict, 'website')"
+                >
+                  {{ conflict.upstream === "deleted" ? "Accept the deletion" : "Use the website's version" }}
+                </button>
+              </div>
+            </li>
+          </ul>
+        </section>
+      </template>
 
       <!-- A commit exists that the repository's remote has not seen. -->
       <div
@@ -354,7 +533,7 @@ function short(revision: string): string {
               ? "One commit of exactly the files listed above, pushed with your own Git configuration."
               : "One commit to the content repository, which is what triggers your site's build."
           }}
-          <template v-if="status.baseRevision"> Based on {{ short(status.baseRevision) }}.</template>
+          <template v-if="isTree && status.head"> Based on {{ short(status.head) }}.</template>
         </p>
 
         <form class="mt-3 flex flex-wrap items-center gap-2" @submit.prevent="canPublish && message.trim() && publish()">

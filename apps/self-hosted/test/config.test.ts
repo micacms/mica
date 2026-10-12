@@ -93,7 +93,6 @@ describe("repository configuration", () => {
     assert.equal(config.repository.root, "content");
     assert.equal(config.repository.remote.hostKey, "gitlab.com");
     assert.equal(config.contentRoot, join("/tmp/mica-test-unused", "repository", "content"));
-    assert.equal(config.REPOSITORY, "git");
   });
 
   it("chooses the username by host", () => {

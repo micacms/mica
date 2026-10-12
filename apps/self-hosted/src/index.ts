@@ -161,6 +161,7 @@ async function serve(): Promise<void> {
 
   managed = createManagedWorkspace({
     layout,
+    url: remote.url,
     git,
     tree,
     branch,

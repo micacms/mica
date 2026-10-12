@@ -77,13 +77,21 @@ function report(): string {
     `Node ${data.cms.node} on ${data.cms.platform}, up ${formatDuration(data.cms.uptimeSeconds)}`,
     `Schema — ${data.schema.totals.collections} collections, ` +
       `${data.schema.totals.singletons} singletons, ${data.schema.totals.total} fields`,
-    `Repository ${data.repository.origin}`,
+    `Repository ${data.repository.url ?? data.repository.origin}` +
+      (data.repository.branch ? ` (branch ${data.repository.branch})` : ""),
+    `Working tree ${data.repository.owner === "managed" ? "Mica's own clone" : "the developer's checkout"}` +
+      (data.repository.head ? `, at ${data.repository.head.slice(0, 7)}` : ""),
     `Repository holds ${data.repository.entries} entries and ` +
       `${data.repository.media.files} media files (${data.repository.media.readable})`,
-    data.database
-      ? `Database: migration ${data.database.version}, ` +
-        `${data.database.bytes === null ? "size unknown" : formatBytes(data.database.bytes)}`
-      : "Database: none — the local editor keeps no state",
+    ...(data.repository.cloneBytes !== null ? [`Clone ${formatBytes(data.repository.cloneBytes)} on the data volume`] : []),
+    ...(data.repository.sync
+      ? [
+          `Last sync ${data.repository.sync.lastSyncAt ?? "never"}` +
+            (data.repository.sync.error ? `, failing since ${data.repository.sync.error.since}: ${data.repository.sync.error.message}` : ""),
+          ...(data.repository.sync.restartRequired ? ["Restart needed: the content model changed"] : []),
+          ...(data.repository.sync.refused ? [`Last publication refused: ${data.repository.sync.refused.reason}`] : []),
+        ]
+      : []),
     `Site ${data.deployment.site}`,
     `Base URL ${data.deployment.baseUrl}`,
     `Content model ${data.deployment.schemaOrigin}`,
@@ -311,10 +319,9 @@ async function copyReport(): Promise<void> {
       <!-- ----------------------------------------------------- repository -->
 
       <!--
-        Two sections rather than one "Storage", because they are not the same
-        kind of thing and should not be backed up the same way. The repository
-        is the website. The database holds only work that is saved and not
-        yet published.
+        The repository is the website. Published content is backed up by Git;
+        the drafts are files in the working tree — the developer's checkout,
+        or the clone a self-hosted Mica keeps on its data volume.
       -->
 
       <section class="card p-4" aria-labelledby="repository-heading">
@@ -324,10 +331,48 @@ async function copyReport(): Promise<void> {
           the site can be rebuilt from it without this server.
         </p>
 
+        <p
+          v-if="info.repository.sync?.restartRequired"
+          class="mt-3 rounded-md border border-warning/15 bg-warning-soft px-4 py-3 text-xs text-warning"
+        >
+          Restart needed: the content model changed in the repository. Editing goes on; publishing
+          waits for the restart.
+        </p>
+        <p
+          v-if="info.repository.sync?.refused"
+          class="mt-3 rounded-md border border-danger/15 bg-danger-soft px-4 py-3 text-xs text-danger"
+        >
+          The repository refused the last publication: {{ info.repository.sync.refused.reason }}
+        </p>
+
         <dl class="spec mt-3">
+          <div v-if="info.repository.url">
+            <dt>Remote</dt>
+            <dd class="mono">{{ info.repository.url }}</dd>
+          </div>
+          <div v-if="info.repository.branch">
+            <dt>Branch</dt>
+            <dd class="mono">
+              {{ info.repository.branch }}<template v-if="info.repository.head"> at {{ info.repository.head.slice(0, 7) }}</template>
+            </dd>
+          </div>
           <div>
-            <dt>Origin</dt>
+            <dt>Working tree</dt>
             <dd class="mono">{{ info.repository.origin }}</dd>
+          </div>
+          <div v-if="info.repository.sync">
+            <dt>Last sync</dt>
+            <dd>
+              {{ info.repository.sync.lastSyncAt ? new Date(info.repository.sync.lastSyncAt).toLocaleString() : "not yet" }}
+              <span v-if="info.repository.sync.error" class="text-danger">
+                — failing since {{ new Date(info.repository.sync.error.since).toLocaleString() }}:
+                {{ info.repository.sync.error.message }}
+              </span>
+            </dd>
+          </div>
+          <div v-if="info.repository.cloneBytes !== null">
+            <dt>Clone size</dt>
+            <dd class="tabular-nums">{{ formatBytes(info.repository.cloneBytes) }}</dd>
           </div>
           <div>
             <dt>Entries</dt>
@@ -337,30 +382,6 @@ async function copyReport(): Promise<void> {
             <dt>Media</dt>
             <dd class="tabular-nums">
               {{ info.repository.media.files }} files · {{ info.repository.media.readable }}
-            </dd>
-          </div>
-        </dl>
-      </section>
-
-      <!-- ------------------------------------------------------- database -->
-
-      <section v-if="info.database" class="card p-4" aria-labelledby="database-heading">
-        <h2 id="database-heading" class="text-sm font-semibold">Operational database</h2>
-        <p class="mt-1 text-xs text-muted">
-          The pending draft where saves are staged — there are no accounts or
-          sessions, and nothing published is only in here.
-        </p>
-
-        <dl class="spec mt-3">
-          <div>
-            <dt>Path</dt>
-            <dd class="mono">{{ info.database.path }}</dd>
-          </div>
-          <div>
-            <dt>Size</dt>
-            <dd class="tabular-nums">
-              {{ info.database.bytes === null ? "in memory" : formatBytes(info.database.bytes) }}
-              · migration {{ info.database.version }}
             </dd>
           </div>
         </dl>
@@ -395,10 +416,6 @@ async function copyReport(): Promise<void> {
           <div>
             <dt>Content model</dt>
             <dd class="mono">{{ info.deployment.schemaOrigin }}</dd>
-          </div>
-          <div>
-            <dt>Repository access</dt>
-            <dd>{{ info.deployment.repositoryMode }}</dd>
           </div>
           <div v-if="info.deployment.contentRoot">
             <dt>Content root</dt>

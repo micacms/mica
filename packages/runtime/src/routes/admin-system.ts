@@ -83,8 +83,8 @@ export function adminSystemRoutes(): Hono<Env> {
    * What this deployment is and what it is serving.
    *
    * Answers the questions that otherwise need shell access: which version is
-   * running, which content model it was handed, how large the database has
-   * grown, how this deployment decides who may edit it.
+   * running, which content model it was handed, where the clone stands
+   * against its remote, how this deployment decides who may edit it.
    *
    * All of it goes to everybody who is admitted. There is no administrator
    * role to withhold it from: admission is configuration, so the people who
@@ -110,9 +110,10 @@ export function adminSystemRoutes(): Hono<Env> {
 
     const uptimeSeconds = Math.floor(process.uptime());
 
-    // The composition's own facts — database, authentication, admission —
-    // come from the app. The runtime cannot know them, which is the point.
+    // The composition's own facts — authentication, admission — come from the
+    // app. The runtime cannot know them, which is the point.
     const operational = ctx.operational();
+    const repository = await ctx.services.staging.repository();
 
     return c.json({
       cms: {
@@ -136,26 +137,23 @@ export function adminSystemRoutes(): Hono<Env> {
         singletons: stats.singletons,
       },
       /**
-       * Deliberately two separate things. `repository` is where the website's
-       * content lives and what must be backed up — by Git, which is doing it
-       * already. `database` is the composition's operational state, and null
-       * where the composition has none: the local editor keeps no database at
-       * all.
+       * Where the website's content lives. Published content is backed up by
+       * Git; the drafts are files in this working tree — the developer's
+       * checkout, or the clone that Mica keeps on its data volume.
        */
       repository: {
         origin: ctx.site.contentRepository.origin,
         entries: Object.values(counts).reduce((sum, count) => sum + count, 0),
         media: { files: files.length, bytes: mediaBytes, readable: formatBytes(mediaBytes) },
+        ...repository,
       },
-      database: operational.database,
       deployment: {
         site: ctx.site.id,
         baseUrl: config.MICA_PUBLIC_URL,
         schemaOrigin: schemaOrigin(ctx.site.contentRepository),
-        repositoryMode: config.REPOSITORY,
         // Only meaningful for the developer's checkout; a clone that Mica
-        // keeps names its repository on the System page instead.
-        contentRoot: config.REPOSITORY === "local" ? config.contentRoot : null,
+        // keeps names its remote in `repository.url` instead.
+        contentRoot: repository.owner === "developer" ? config.contentRoot : null,
         dataDir: operational.dataDir ?? null,
         logLevel: config.LOG_LEVEL,
         maxUploadBytes: config.MAX_UPLOAD_BYTES,

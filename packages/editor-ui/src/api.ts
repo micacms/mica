@@ -211,8 +211,9 @@ export type ChangeOwner =
 export interface FileChange {
   path: string;
   kind: "create" | "update" | "delete";
-  updatedAt?: string;
   owner: ChangeOwner;
+  /** The file's revision when listed, null for a deletion. Sent back with Publish. */
+  revision?: string | null;
 }
 
 /** One thing that would make the pending set unpublishable. */
@@ -222,25 +223,50 @@ export interface StagingProblem {
   issues: FieldIssue[];
 }
 
+/** Something an editor changed that the website changed too. */
+export interface SyncConflict {
+  /** What `resolve` takes. */
+  group: string;
+  label: string;
+  paths: string[];
+  upstream: "changed" | "deleted" | "added";
+  /** What the comparison with the website's version shows. */
+  target?: CompareTarget;
+}
+
+/** Where Mica's own clone stands against the repository. Null for the developer's checkout. */
+export interface SyncStatus {
+  lastSyncAt: string | null;
+  behind: number;
+  error: { code: string; message: string; since: string } | null;
+  /** The content model changed on the website; a restart applies it. */
+  restartRequired: boolean;
+  /** Published in Mica, not yet in the repository. Mica retries it. */
+  pendingPush: { revision: string; reason: string } | null;
+  /** The last publication the repository refused. It is a draft again. */
+  refused: { reason: string; at: string } | null;
+  conflicts: SyncConflict[];
+}
+
 /**
  * The pending change set — what is Saved and not yet Published.
  *
- * `workspace` decides the words: a working tree is the developer's checkout
- * and publishing runs their own Git; a draft store lives in Mica and
- * publishing writes one commit through the provider.
+ * `owner` decides the words: the developer's checkout is a working tree and
+ * publishing runs their own Git; the clone that a self-hosted Mica keeps is
+ * worded for editors, who save and publish.
  */
 export interface StagingStatus {
-  workspace: "working-tree" | "draft-store";
+  owner: "developer" | "managed";
   publish: { enabled: boolean; reason?: string };
-  /** What the pending changes are based on. Sent back with Publish. */
-  baseRevision: string | null;
+  /** The commit the pending changes sit on. For display. */
+  head: string | null;
   branch: string | null;
-  /** Commits created and not yet pushed. Working tree only. */
+  /** Commits created and not yet pushed. */
   ahead: number | null;
   /** File changes, not edits: count with `toEdits`, never with `.length`. */
   changes: FileChange[];
   validation: { ok: boolean; problems: StagingProblem[] };
-  updatedAt: string | null;
+  sync: SyncStatus | null;
 }
 
 export interface PublishOutcome {
@@ -340,22 +366,20 @@ export interface SystemInfo {
     origin: string;
     entries: number;
     media: MediaUsage;
+    owner: "developer" | "managed";
+    branch: string | null;
+    head: string | null;
+    /** The remote of Mica's own clone, without credentials. */
+    url: string | null;
+    /** What the clone takes on the data volume. */
+    cloneBytes: number | null;
+    sync: SyncStatus | null;
   };
-  /**
-   * The composition's operational state. Null in the local editor, which
-   * keeps no database at all.
-   */
-  database: {
-    path: string;
-    version: number;
-    bytes: number | null;
-  } | null;
   deployment: {
     site: string;
     baseUrl: string;
     /** Where the content model was read from, e.g. `<repo>/.mica/schema.json`. */
     schemaOrigin: string;
-    repositoryMode: "local" | "github" | "gitlab";
     /** Null unless the repository is a working tree on this machine. */
     contentRoot: string | null;
     dataDir: string | null;
@@ -448,10 +472,18 @@ export const api = {
 
   staging: {
     changes: () => request<StagingStatus>("/admin/changes"),
-    publish: (message: string, expectedBase: string | null) =>
+    /** `paths`: the reviewed paths, each with the revision the editor saw. */
+    publish: (message: string, paths: Record<string, string | null>) =>
       request<PublishOutcome>("/admin/publish", {
         method: "POST",
-        body: { message, expectedBase },
+        body: { message, paths },
+      }),
+    /** Brings Mica's clone up to date now. */
+    sync: () => request<StagingStatus>("/admin/sync", { method: "POST" }),
+    resolve: (group: string, choice: "mine" | "website") =>
+      request<StagingStatus>("/admin/changes/resolve", {
+        method: "POST",
+        body: { group, choice },
       }),
     /** Retries the push after `committed-pending-push`. Never commits again. */
     push: () => request<PublishOutcome>("/admin/publish/push", { method: "POST" }),
@@ -460,9 +492,13 @@ export const api = {
         method: "POST",
         body: { paths },
       }),
-    compare: (target: CompareTarget) =>
+    /** `origin` compares with the website's version, for a conflict. */
+    compare: (target: CompareTarget, against: "head" | "origin" = "head") =>
       request<Comparison>(
-        `/admin/changes/compare?${new URLSearchParams(target as unknown as Record<string, string>)}`,
+        `/admin/changes/compare?${new URLSearchParams({
+          ...(target as unknown as Record<string, string>),
+          ...(against === "origin" ? { against } : {}),
+        })}`,
       ),
   },
 

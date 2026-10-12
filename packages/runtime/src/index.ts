@@ -69,6 +69,7 @@ export {
   type AnnotatedChange,
   type ChangeOwner,
   type ContentStagingService,
+  type RepositoryInfo,
   type PublishInput,
   type StagingProblem,
   type StagingStatus,
@@ -77,7 +78,7 @@ export {
 export {
   createWorkingTreeStagingService,
   type WorkingTreeStagingDeps,
-} from "./services/staging-local.js";
+} from "./services/staging.js";
 export { createMediaService, formatBytes, type MediaFile, type MediaService } from "./services/media.js";
 export {
   createContentStore,
@@ -117,7 +118,13 @@ export {
   type ReadWriteLock,
   type WorkspaceLocks,
 } from "./workspace/locks.js";
-export type { OwnerPolicy, PublishAvailability } from "./workspace/policy.js";
+export type {
+  OwnerPolicy,
+  PublishAvailability,
+  RepositoryDescription,
+  SyncConflict,
+  SyncStatus,
+} from "./workspace/policy.js";
 export { developerPolicy, type DeveloperPolicyOptions } from "./workspace/developer.js";
 export {
   commitPaths,

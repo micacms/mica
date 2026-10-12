@@ -57,13 +57,6 @@ export const runtimeEnv = {
   CONTENT_ROOT: z.string().default("../../examples/muster-consulting/content"),
 
   /**
-   * Whose working tree it is: `local` is the developer's checkout, `git` a
-   * clone that the self-hosted app keeps itself. Set by the app, never by an
-   * operator; either way the working tree is the draft workspace.
-   */
-  REPOSITORY: z.enum(["local", "git"]).default("local"),
-
-  /**
    * Whether working-tree staging may commit and push. `false` reduces Publish
    * to autosave plus a read-only view of the pending changes.
    */

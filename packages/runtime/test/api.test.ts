@@ -655,20 +655,20 @@ describe("system information", () => {
   });
   after(() => harness.close());
 
-  it("reports the repository, and no database where the composition has none", async () => {
+  it("reports the repository as the developer's checkout, and no database", async () => {
     const response = await harness.request("/api/admin/system", { session });
     assert.equal(response.status, 200);
 
     const body = (await response.json()) as {
-      repository: { origin: string; entries: number; media: { files: number } };
-      database: unknown;
+      repository: { origin: string; entries: number; media: { files: number }; owner: string; sync: unknown };
     };
 
     assert.equal(body.repository.origin, harness.contentRoot);
     assert.equal(body.repository.entries, 0);
-    // The local composition keeps no database, and the system page says so
-    // rather than inventing an empty one.
-    assert.equal(body.database, null);
+    assert.equal(body.repository.owner, "developer");
+    assert.equal(body.repository.sync, null);
+    // Mica keeps no database, and the system page does not invent one.
+    assert.equal("database" in body, false);
   });
 
   it("counts entries by reading the repository", async () => {

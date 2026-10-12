@@ -90,7 +90,6 @@ export function testConfig(
     PORT: 6422,
     MICA_PUBLIC_URL: TEST_ORIGIN,
     CONTENT_ROOT: contentRoot,
-    REPOSITORY: "local",
     MICA_LOCAL_PUBLISH: true,
     MAX_UPLOAD_BYTES: 25 * 1024 * 1024,
     TRUST_PROXY: false,

@@ -32,7 +32,6 @@ import { defaultUsername, parseRemote, type Remote } from "./workspace/credentia
 /** What the runtime reads, minus what only the local editor's checkout needs. */
 const {
   CONTENT_ROOT: _contentRoot,
-  REPOSITORY: _repository,
   MICA_LOCAL_PUBLISH: _localPublish,
   ...runtimeFields
 } = runtimeEnv;
@@ -75,7 +74,6 @@ const schema = z.object(fields).transform((env) => {
   const root = env.MICA_REPOSITORY_ROOT.replace(/^\/+|\/+$/g, "");
   const runtime = deriveRuntime({
     ...env,
-    REPOSITORY: "git" as const,
     CONTENT_ROOT: path.join(dataDir, "repository", root),
     MICA_LOCAL_PUBLISH: true,
   });
