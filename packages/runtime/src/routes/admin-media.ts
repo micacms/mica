@@ -19,7 +19,7 @@ import { Hono } from "hono";
 import { badRequest, notFound } from "../lib/errors.js";
 import { isImageType } from "../lib/file-type.js";
 import { MAX_FILES_PER_UPLOAD } from "../middleware/index.js";
-import { actorOf, type Env } from "../http.js";
+import type { Env } from "../http.js";
 
 export function adminMediaRoutes(): Hono<Env> {
   const app = new Hono<Env>();

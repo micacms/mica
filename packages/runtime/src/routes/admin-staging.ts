@@ -93,7 +93,8 @@ export function adminStagingRoutes(): Hono<Env> {
       staging.publish({
         message: parsed.data.message,
         paths: parsed.data.paths,
-        author: actor ? { name: actor.email, email: actor.email } : undefined,
+        // The provider's name where it sends one; the address otherwise.
+        author: actor ? { name: actor.name || actor.email, email: actor.email } : undefined,
       }),
     );
 

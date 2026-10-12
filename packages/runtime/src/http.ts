@@ -50,9 +50,9 @@ export function clientIp(c: Context<Env>): string {
  * identity — which is the right name for a change made on their machine, and
  * one Mica has no business overwriting.
  */
-export function actorOf(c: Context<Env>): { id: string; email: string } | null {
+export function actorOf(c: Context<Env>): { id: string; email: string; name: string } | null {
   const identity = c.get("access")?.identity;
-  return identity ? { id: identity.subject, email: identity.email } : null;
+  return identity ? { id: identity.subject, email: identity.email, name: identity.name } : null;
 }
 
 /** Parses a positive integer query parameter, falling back when absent. */

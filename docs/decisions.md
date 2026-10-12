@@ -1627,6 +1627,15 @@ without a break.
   (`http.sslCAInfo`) and a token that rotates without a restart (a GitHub App
   installation token lives an hour) are not supported yet.
   **1.0 status:** on demand.
+- **P3** — A file under the content root that `.gitignore` hides is never
+  published, and the change list does not show it. Mica writes only content
+  files, so this needs a developer's `.gitignore` rule that covers content.
+  **1.0 status:** accepted for 1.0; a warning on the Publish page is the fix.
+- **P3** — If the rollback of a failed fast-forward fails too (for example on
+  a lock that an operator's shell holds), `operation.json` stays, and the next
+  start finishes that fast-forward without a new conflict check. The docs tell
+  operators to run only `GIT_OPTIONAL_LOCKS=0 git status` in the container.
+  **1.0 status:** accepted for 1.0.
 - **P3** — A host that requires signed commits, or that allows changes only
   through pull requests, refuses Mica's push. Mica turns the publication back
   into drafts and shows the host's reason; it cannot sign or open a request.

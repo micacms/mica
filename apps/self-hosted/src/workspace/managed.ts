@@ -36,7 +36,7 @@ import {
   type WorkspaceLocks,
 } from "@micacms/runtime";
 
-import { lfsRefusal, writeBackKept, writeMarker, type CloneLayout } from "./clone.js";
+import { CloneRefusal, lfsRefusal, writeBackKept, writeMarker, type CloneLayout } from "./clone.js";
 import { redact } from "./credentials.js";
 import { classifyFailure, describeFailure, readPush, type FailureClass, type PushOutcome } from "./failures.js";
 import { MICA_IDENTITY } from "./isolation.js";
@@ -58,7 +58,7 @@ export interface ConflictGroup extends ContentGroup {
 }
 
 export interface SyncProblem {
-  code: FailureClass | "prefetch_incomplete" | "fast_forward_failed";
+  code: FailureClass | "prefetch_incomplete" | "fast_forward_failed" | "diverged";
   message: string;
   since: string;
 }
@@ -175,6 +175,24 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
   const ahead = async () => Number((await git.tryRun(["rev-list", "--count", `${upstreamRef}..HEAD`])) ?? "0");
 
+  /**
+   * Whether HEAD is one publication of Mica's that is not pushed yet: one
+   * commit ahead, committed by Mica, on a base the branch still contains.
+   * Anything else ahead of the branch means the branch was rewritten under
+   * the clone — pushing it, or turning it into drafts, would undo that.
+   */
+  const pendingPublication = async (): Promise<boolean> =>
+    (await ahead()) === 1 &&
+    (await git.run(["log", "-1", "--format=%ce", "HEAD"])) === MICA_IDENTITY.email &&
+    (await git.tryRun(["merge-base", "--is-ancestor", "HEAD^", upstreamRef])) !== null;
+
+  const diverged = () =>
+    new RemoteFailure(
+      "diverged",
+      "The branch was rewritten in the repository (a force push or a reset), and Mica's clone no longer " +
+        "follows it. Copy any drafts out of the clone, delete MICA_DATA_DIR/repository and restart Mica.",
+    );
+
   /* ------------------------------------------------------ fast-forward */
 
   /**
@@ -188,8 +206,10 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     state.head = from;
 
     // At start, LFS is checked even when nothing moved: the clone may be older
-    // than the attributes that brought LFS in.
+    // than the attributes that brought LFS in. The start reads the model after
+    // this fast-forward, so nothing waits for a restart any more.
     if (skipHold) {
+      state.restartRequired = false;
       const lfs = await lfsUnderRoot(git, to, root);
       if (lfs) throw lfsRefusal(lfs, root);
     }
@@ -200,18 +220,32 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       return;
     }
     if ((await git.tryRun(["merge-base", "--is-ancestor", "HEAD", upstreamRef])) === null) {
-      // A publication not yet pushed sits on HEAD; the push loop re-makes it.
-      return;
+      // Mica's own publication, not yet pushed: the push loop makes it again
+      // on top. Anything else cannot be fast-forwarded.
+      if (await pendingPublication()) return;
+      throw diverged();
     }
 
+    // Download every blob the fast-forward will write, then make sure they
+    // all arrived: the fast-forward itself must not need the network. Only
+    // the new side counts — a blob that an intermediate commit had and the
+    // last one replaced is never written.
     await git.run(["diff", "--numstat", from, to]);
-    const missing = (await git.run(["rev-list", "--objects", "--missing=print", `${from}..${to}`], {
-      env: { GIT_NO_LAZY_FETCH: "1" },
-    }))
-      .split("\n")
-      .filter((line) => line.startsWith("?"));
-    if (missing.length > 0) {
-      throw new RemoteFailure("prefetch_incomplete", `${missing.length} objects could not be downloaded.`);
+    const written = (await git.run(["diff", "--raw", "-z", "--no-renames", "--no-abbrev", from, to]))
+      .split("\0")
+      .filter((field) => field.startsWith(":"))
+      .map((field) => field.slice(1).split(" "))
+      .filter(([, mode, , object]) => mode !== "000000" && mode !== "160000" && !/^0+$/.test(object ?? ""))
+      .map(([, , , object]) => object!);
+    if (written.length > 0) {
+      const checked = await git.run(["cat-file", "--batch-check"], {
+        input: `${written.join("\n")}\n`,
+        env: { GIT_NO_LAZY_FETCH: "1" },
+      });
+      const missing = checked.split("\n").filter((line) => line.endsWith(" missing"));
+      if (missing.length > 0) {
+        throw new RemoteFailure("prefetch_incomplete", `${missing.length} files could not be downloaded.`);
+      }
     }
 
     state.behind = Number(await git.run(["rev-list", "--count", `${from}..${to}`]));
@@ -264,7 +298,8 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       await rm(layout.operationFile, { force: true });
       await writeBackKept(layout);
 
-      for (const key of keeping) kept.delete(key);
+      // A kept choice is for the conflict it answered, not for the next one.
+      kept.clear();
       state.conflicts = [];
       state.behind = 0;
       state.head = to;
@@ -326,6 +361,22 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
    * into drafts.
    */
   const push = async (): Promise<PublishResult> => {
+    try {
+      return await pushHeld();
+    } catch (error) {
+      if (error instanceof ApiError || error instanceof CloneRefusal) throw error;
+      // After an undo, a failure leaves the publication as drafts again. Say
+      // so, and record why, instead of a bare 500.
+      const problem = error instanceof RemoteFailure ? error : new RemoteFailure("unknown", clean(String(error)));
+      recordError(problem);
+      throw new ApiError(
+        "conflict",
+        `The publication could not be sent and is a draft again. ${problem.message}`,
+      );
+    }
+  };
+
+  const pushHeld = async (): Promise<PublishResult> => {
     for (let attempt = 1; ; attempt += 1) {
       const revision = await git.run(["rev-parse", "HEAD"]);
       const outcome = await pushOnce(["push", "--porcelain", "origin", `HEAD:refs/heads/${branch}`]);
@@ -417,39 +468,51 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     }
   };
 
-  /** Turns the one unpushed commit back into staged drafts. */
+  /** Turns the one unpushed commit back into staged drafts. Nothing is pending after it. */
   const undoPublication = async () => {
-    if ((await ahead()) !== 1) {
-      throw new ApiError("conflict", "The clone has an unexpected number of unpushed commits. Nothing was changed.");
-    }
+    if (!(await pendingPublication())) throw diverged();
     await locks.tree.write(() => git.run(["reset", "--soft", "HEAD^"]));
+    state.pendingPush = null;
+  };
+
+  const recordError = (problem: RemoteFailure) => {
+    if (state.error?.code !== problem.code) {
+      logger.warn("Sync failed", { code: problem.code, message: problem.message });
+      state.error = { code: problem.code, message: problem.message, since: new Date().toISOString() };
+    }
   };
 
   /* ------------------------------------------------------------- sync */
 
-  const sync = (syncOptions: { skipHold?: boolean } = {}): Promise<SyncState> =>
-    locks.remote.run(async () => {
-      try {
-        await fetch();
-        if ((await ahead()) > 0) {
-          await push().catch((error: unknown) => {
-            // The refusal is recorded in the state; the sync goes on.
-            if (!(error instanceof ApiError)) throw error;
-          });
-        }
-        await fastForward(syncOptions.skipHold ?? false);
-        if (state.error) logger.info("The repository is reachable again");
-        state.error = null;
-        state.lastSyncAt = new Date().toISOString();
-      } catch (error) {
-        if (!(error instanceof RemoteFailure)) throw error;
-        if (state.error?.code !== error.code) {
-          logger.warn("Sync failed", { code: error.code, message: error.message });
-          state.error = { code: error.code, message: error.message, since: new Date().toISOString() };
-        }
+  /** A sync, for a caller that already holds the remote lock. */
+  const syncHeld = async (syncOptions: { skipHold?: boolean } = {}): Promise<SyncState> => {
+    try {
+      await fetch();
+      // The repository answered: an earlier failure is over. A failure of
+      // this sync's own push sets a new one, and then the sync stops there.
+      if (state.error) logger.info("The repository is reachable again");
+      state.error = null;
+      if ((await ahead()) > 0) {
+        if (!(await pendingPublication())) throw diverged();
+        await push().catch((error: unknown) => {
+          // A refusal or a conflict is in the state now; the sync goes on.
+          if (!(error instanceof ApiError)) throw error;
+        });
+        if (state.error) return snapshot();
       }
-      return snapshot();
-    });
+      await fastForward(syncOptions.skipHold ?? false);
+      state.lastSyncAt = new Date().toISOString();
+    } catch (error) {
+      // A refusal at start stops the process; everything else is a state
+      // that editors and the operator can see, and the next sync tries again.
+      if (error instanceof CloneRefusal) throw error;
+      recordError(error instanceof RemoteFailure ? error : new RemoteFailure("unknown", clean(String(error))));
+    }
+    return snapshot();
+  };
+
+  const sync = (syncOptions: { skipHold?: boolean } = {}): Promise<SyncState> =>
+    locks.remote.run(() => syncHeld(syncOptions));
 
   const snapshot = (): SyncState => ({ ...state, conflicts: [...state.conflicts] });
 
@@ -501,8 +564,10 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       return { enabled: true };
     },
 
+    // The staging service holds the remote lock from here to the push, so no
+    // sync can run between this publication's commit and its push.
     async prepare() {
-      await sync();
+      await syncHeld();
       const availability = policy.publishAvailability();
       if (!availability.enabled) throw new ApiError("conflict", availability.reason);
       if (state.pendingPush) {
@@ -516,7 +581,12 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     commitAuthor: (editor: Author | undefined) => editor ?? MICA_IDENTITY,
 
     // The staging service holds the remote lock around this call.
-    push: () => push(),
+    async push(_tree, revision) {
+      if ((await git.run(["rev-parse", "HEAD"])) !== revision || (await ahead()) !== 1) {
+        throw new ApiError("conflict", "The clone is not where this publication left it. Nothing was pushed.");
+      }
+      return push();
+    },
 
     syncStatus,
     sync: async () => void (await sync()),
@@ -532,8 +602,12 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
     resolve,
 
+    // The remote's own head, so the answer is about rights, not about whether
+    // the clone happens to be behind: the host still authenticates the push.
     checkWrite: () =>
-      locks.remote.run(() => pushOnce(["push", "--dry-run", "--porcelain", "origin", `HEAD:refs/heads/${branch}`])),
+      locks.remote.run(() =>
+        pushOnce(["push", "--dry-run", "--porcelain", "origin", `refs/remotes/${upstreamRef}:refs/heads/${branch}`]),
+      ),
 
     start() {
       if (timer) return;

@@ -202,68 +202,73 @@ export function createWorkingTreeStagingService(
       if (reviewed.length === 0) throw badRequest("Choose at least one change to publish.");
 
       const tree = await publishable();
-      await policy.prepare(tree);
 
-      const revision = await locks.tree.write(async () => {
-        const pending = await withRevisions((await analyse(tree, await listTreeChanges(tree))).changes);
-        const byPath = new Map(pending.map((change) => [change.path, change]));
+      // One publication at a time, from the sync through the commit to the
+      // push: no sync can run in between, and no second commit can stack up.
+      return locks.remote.run(async () => {
+        await policy.prepare(tree);
 
-        /**
-         * The review gate. Exactly the reviewed files are published, and only
-         * as the editor saw them: a file saved again since, a reviewed file
-         * that is no longer pending, or another file of the same entry that
-         * the review did not include, all refuse. Drafts of other entries
-         * stay drafts — somebody else's autosave never blocks a publication.
-         */
-        const reviewedGroups = new Set(
-          reviewed.map((path) => byPath.get(path)).flatMap((change) => (change ? [groupOf(change)] : [])),
-        );
-        const stale = [
-          ...reviewed.filter((path) => byPath.get(path)?.revision !== input.paths[path] || !byPath.has(path)),
-          ...pending
-            .filter((change) => reviewedGroups.has(groupOf(change)) && !(change.path in input.paths))
-            .map((change) => change.path),
-        ];
-        if (stale.length > 0) {
-          throw new ApiError(
-            "conflict",
-            "Some of these changes were edited after you reviewed them. Review them again, then publish.",
+        const revision = await locks.tree.write(async () => {
+          const pending = await withRevisions((await analyse(tree, await listTreeChanges(tree))).changes);
+          const byPath = new Map(pending.map((change) => [change.path, change]));
+
+          /**
+           * The review gate. Exactly the reviewed files are published, and only
+           * as the editor saw them: a file saved again since, a reviewed file
+           * that is no longer pending, or another file of the same entry that
+           * the review did not include, all refuse. Drafts of other entries
+           * stay drafts — somebody else's autosave never blocks a publication.
+           */
+          const reviewedGroups = new Set(
+            reviewed.map((path) => byPath.get(path)).flatMap((change) => (change ? [groupOf(change)] : [])),
           );
-        }
-
-        // The model drift gate: the pending set was validated against the
-        // model this process started with.
-        if ((await files.revision(MANIFEST_PATH)) !== deps.schemaRevision) {
-          throw new ApiError(
-            "conflict",
-            "The content model changed after this server started. Restart Mica to load " +
-              "the new model, then review the pending changes and publish again.",
-          );
-        }
-
-        const selected = (await listTreeChanges(tree)).filter((change) => change.path in input.paths);
-        const { validation } = await analyse(tree, selected);
-        if (!validation.ok) {
-          throw new ApiError("validation_failed", describeProblems(validation.problems), {
-            issues: flattenProblems(validation.problems),
-          });
-        }
-
-        try {
-          const revision = await commitPaths(tree, reviewed, message, policy.commitAuthor(input.author));
-          logger.info("Published", { revision, files: reviewed.length, owner: policy.owner });
-          return revision;
-        } catch (error) {
-          if (error instanceof GitError) {
-            // Git's own verdict is the actionable part: no identity
-            // configured, a hook that refused, an unborn branch mid-rebase.
-            throw new ApiError("conflict", `Git refused the commit: ${error.message}`);
+          const stale = [
+            ...reviewed.filter((path) => byPath.get(path)?.revision !== input.paths[path] || !byPath.has(path)),
+            ...pending
+              .filter((change) => reviewedGroups.has(groupOf(change)) && !(change.path in input.paths))
+              .map((change) => change.path),
+          ];
+          if (stale.length > 0) {
+            throw new ApiError(
+              "conflict",
+              "Some of these changes were edited after you reviewed them. Review them again, then publish.",
+            );
           }
-          throw error;
-        }
-      });
 
-      return locks.remote.run(() => policy.push(tree, revision));
+          // The model drift gate: the pending set was validated against the
+          // model this process started with.
+          if ((await files.revision(MANIFEST_PATH)) !== deps.schemaRevision) {
+            throw new ApiError(
+              "conflict",
+              "The content model changed after this server started. Restart Mica to load " +
+                "the new model, then review the pending changes and publish again.",
+            );
+          }
+
+          const selected = (await listTreeChanges(tree)).filter((change) => change.path in input.paths);
+          const { validation } = await analyse(tree, selected);
+          if (!validation.ok) {
+            throw new ApiError("validation_failed", describeProblems(validation.problems), {
+              issues: flattenProblems(validation.problems),
+            });
+          }
+
+          try {
+            const revision = await commitPaths(tree, reviewed, message, policy.commitAuthor(input.author));
+            logger.info("Published", { revision, files: reviewed.length, owner: policy.owner });
+            return revision;
+          } catch (error) {
+            if (error instanceof GitError) {
+              // Git's own verdict is the actionable part: no identity
+              // configured, a hook that refused, an unborn branch mid-rebase.
+              throw new ApiError("conflict", `Git refused the commit: ${error.message}`);
+            }
+            throw error;
+          }
+        });
+
+        return policy.push(tree, revision);
+      });
     },
 
     async push(): Promise<PublishResult> {

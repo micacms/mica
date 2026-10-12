@@ -16,6 +16,8 @@
  *   - **Media expansion.** A media value is a path. There is nothing to expand.
  */
 
+import { createHash } from "node:crypto";
+
 import {
   ContentPathError,
   DOCUMENT_EXTENSION,
@@ -44,7 +46,7 @@ import {
   type Site,
 } from "@micacms/core";
 
-import { FilesError, type ContentFiles, type FileChange } from "../workspace/files.js";
+import { ConflictError, FilesError, type ContentFiles, type FileChange } from "../workspace/files.js";
 
 export class ContentError extends FilesError {
   override name = "ContentError";
@@ -152,12 +154,56 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
    * an empty token instead would be quietly handing back a revision that can
    * never match, which is the failure this exists to prevent.
    */
-  const revisionAfterWrite = async (path: string): Promise<string> => {
-    const revision = await workspace.revision(path);
+  const revisionAfterWrite = async (dataFile: string, folder: string | null): Promise<string> => {
+    const revision = await documentRevision(dataFile, folder);
     if (revision === null) {
-      throw new ContentError(`Saved, but "${path}" is not in the repository afterwards.`);
+      throw new ContentError(`Saved, but "${dataFile}" is not in the repository afterwards.`);
     }
     return revision;
+  };
+
+  /** The folder whose files make up one document, or null for a one-file document. */
+  const folderOf = (fields: FieldMap, base: string): string | null =>
+    entryLayout(fields) === "directory" ? base : null;
+
+  /**
+   * The revision of a whole document: its data file and, in the folder
+   * layout, every other file of its folder. A save writes all of them, so a
+   * change to any one — an `.mdoc` edited on the website, say — must make the
+   * next save of an open tab a conflict rather than an overwrite.
+   */
+  const documentRevision = async (dataFile: string, folder: string | null): Promise<string | null> => {
+    const data = await workspace.revision(dataFile);
+    if (data === null || folder === null) return data;
+    const parts: string[] = [];
+    const walk = async (dir: string): Promise<void> => {
+      for (const item of await workspace.list(dir)) {
+        const child = `${dir}/${item.name}`;
+        if (item.type === "directory") await walk(child);
+        else parts.push(`${child}\u0000${await workspace.revision(child)}`);
+      }
+    };
+    await walk(folder);
+    return createHash("sha256").update(parts.sort().join("\n")).digest("hex").slice(0, 16);
+  };
+
+  /**
+   * Refuses when the document changed since the editor read `expected`, and
+   * returns the data file's own revision for `apply`, which checks it again
+   * under the write lock.
+   */
+  const expectDocument = async (
+    expected: string | null | undefined,
+    dataFile: string,
+    folder: string | null,
+  ): Promise<Record<string, string | null> | undefined> => {
+    if (expected === undefined) return undefined;
+    if ((await documentRevision(dataFile, folder)) !== expected) {
+      throw new ConflictError("This content changed after you opened it. Reload to see the current version.", [
+        dataFile,
+      ]);
+    }
+    return { [dataFile]: await workspace.revision(dataFile) };
   };
 
   /**
@@ -203,13 +249,16 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
     /** The revision an editor must send back with a save of this entry. */
     async revisionOf(collectionName: string, slug: string): Promise<string | null> {
       const def = requireCollection(collectionName);
-      return workspace.revision(dataPath(def, collectionName, slug));
+      return documentRevision(
+        dataPath(def, collectionName, slug),
+        folderOf(def.fields, collectionEntryPath(def.fields, collectionName, slug)),
+      );
     },
 
     /** The revision an editor must send back with a save of this singleton. */
     async revisionOfSingleton(name: string): Promise<string | null> {
       const def = requireSingleton(name);
-      return workspace.revision(singletonDataPath(def, name));
+      return documentRevision(singletonDataPath(def, name), folderOf(def.fields, singletonPath(def.fields, name)));
     },
 
     async getSingleton(name: string): Promise<Record<string, unknown>> {
@@ -275,18 +324,17 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
       const title = entryTitle(def, data);
       await workspace.apply({
         changes,
-        expect:
-          input.expectedRevision === undefined
-            ? undefined
-            : { [dataPath(def, collectionName, input.slug ?? slug)]: input.expectedRevision },
+        expect: await expectDocument(
+          input.expectedRevision,
+          dataPath(def, collectionName, input.slug ?? slug),
+          folderOf(def.fields, previousBase ?? base),
+        ),
       });
 
-      // Deliberately not the commit's own identity, which addresses the change
-      // set rather than the file. The caller sends this straight back with
-      // their next save, and it is compared against the entry's data file — so
-      // it has to be that file's revision, read after the write, and at the new
-      // path when the save was a rename.
-      const revision = await revisionAfterWrite(dataPath(def, collectionName, slug));
+      // The whole entry's revision, read after the write and at the new path
+      // when the save was a rename. The caller sends it straight back with
+      // their next save.
+      const revision = await revisionAfterWrite(dataPath(def, collectionName, slug), folderOf(def.fields, base));
 
       return { slug, title, revision, renamed: previousBase !== null };
     },
@@ -309,10 +357,11 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
             ? { type: "deleteTree", path: base }
             : { type: "delete", path: base },
         ],
-        expect:
-          options.expectedRevision === undefined
-            ? undefined
-            : { [dataPath(def, collectionName, slug)]: options.expectedRevision },
+        expect: await expectDocument(
+          options.expectedRevision,
+          dataPath(def, collectionName, slug),
+          folderOf(def.fields, base),
+        ),
       });
     },
 
@@ -337,15 +386,12 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
 
       await workspace.apply({
         changes,
-        expect:
-          options.expectedRevision === undefined
-            ? undefined
-            : { [singletonDataPath(def, name)]: options.expectedRevision },
+        expect: await expectDocument(options.expectedRevision, singletonDataPath(def, name), folderOf(def.fields, base)),
       });
 
-      // The file's new revision, not the commit's. See `save` above: the editor
-      // sends this back when they change one more thing without reloading.
-      return { revision: await revisionAfterWrite(singletonDataPath(def, name)) };
+      // The whole document's new revision. See `save` above: the editor sends
+      // this back when they change one more thing without reloading.
+      return { revision: await revisionAfterWrite(singletonDataPath(def, name), folderOf(def.fields, base)) };
     },
 
     /**

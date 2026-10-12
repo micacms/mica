@@ -17,6 +17,7 @@
 /** Git's global option that makes every path argument a literal path. */
 export const LITERAL = "--literal-pathspecs";
 
+import { existsSync } from "node:fs";
 import { realpath, rm } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
@@ -78,15 +79,11 @@ export async function locateTree(
 export async function listTreeChanges(tree: GitTree): Promise<TreeChange[]> {
   // `-uall` because Git collapses a fully-untracked directory to one line,
   // and a brand-new entry is exactly that. The change list must name files.
-  const raw = await tree.git.run([
-    LITERAL,
-    "status",
-    "--porcelain=v1",
-    "-z",
-    "-uall",
-    "--",
-    tree.prefix === "" ? "." : tree.prefix,
-  ]);
+  // Read-only: no `index.lock`, so a commit running beside it cannot fail on it.
+  const raw = await tree.git.run(
+    [LITERAL, "status", "--porcelain=v1", "-z", "-uall", "--", tree.prefix === "" ? "." : tree.prefix],
+    { env: { GIT_OPTIONAL_LOCKS: "0" } },
+  );
   return parseStatus(raw, tree.prefix);
 }
 
@@ -119,13 +116,25 @@ export async function recommitPaths(tree: GitTree, paths: string[], original: st
   return tree.git.run(["rev-parse", "HEAD"]);
 }
 
-/** `git add` first: `git commit -- <paths>` alone refuses a file Git has never seen. */
+/**
+ * Stages `paths` before the commit: `git commit -- <paths>` alone refuses a
+ * file Git has never seen. A path that is gone from the disk is removed from
+ * the index instead — `git add` refuses a deletion that is already staged,
+ * which is what `reset --soft` leaves behind.
+ */
 async function stagePaths(tree: GitTree, paths: string[]): Promise<string[]> {
-  const inRepository = paths.map((path) => inRepo(tree.prefix, path));
-  for (const batch of chunked(inRepository, 500)) {
+  const present: string[] = [];
+  const gone: string[] = [];
+  for (const path of paths) {
+    (existsSync(within(tree.contentRoot, path)) ? present : gone).push(inRepo(tree.prefix, path));
+  }
+  for (const batch of chunked(present, 500)) {
     await tree.git.run([LITERAL, "add", "-A", "--", ...batch]);
   }
-  return inRepository;
+  for (const batch of chunked(gone, 500)) {
+    await tree.git.run([LITERAL, "rm", "--cached", "--ignore-unmatch", "--quiet", "--", ...batch]);
+  }
+  return paths.map((path) => inRepo(tree.prefix, path));
 }
 
 /** Puts one changed file back to its HEAD version, or removes it if HEAD has none. */

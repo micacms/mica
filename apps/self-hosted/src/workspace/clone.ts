@@ -14,7 +14,7 @@
 
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, rm, stat, writeFile, rename } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 
 import { ConfigError, gitRunner, type GitRunner, type Logger } from "@micacms/runtime";
 
@@ -66,6 +66,7 @@ export interface OpenCloneOptions {
 export async function openClone(options: OpenCloneOptions): Promise<GitRunner> {
   const { layout, logger } = options;
   const git = runner(layout.repositoryDir, options.env);
+  await removeUnfinishedClones(layout);
 
   if (!existsSync(join(layout.repositoryDir, ".git"))) {
     if (existsSync(layout.repositoryDir) && (await readdir(layout.repositoryDir)).length > 0) {
@@ -73,6 +74,7 @@ export async function openClone(options: OpenCloneOptions): Promise<GitRunner> {
         `${layout.repositoryDir} exists but is not a Git clone. Move it away, or delete it, and start again.`,
       );
     }
+    await refuseRescuedDrafts(layout);
     await cloneFresh(options);
     return git;
   }
@@ -89,6 +91,7 @@ export async function openClone(options: OpenCloneOptions): Promise<GitRunner> {
   if (url !== options.url || branch !== options.branch) {
     const drafts = await draftPaths(git, "");
     const ahead = Number((await git.tryRun(["rev-list", "--count", `origin/${branch}..HEAD`])) ?? "0");
+    await refuseRescuedDrafts(layout);
     if (drafts.length > 0 || ahead > 0) {
       const listed = drafts.slice(0, 10).map((path) => `    ${path}`).join("\n");
       throw new CloneRefusal(
@@ -116,10 +119,21 @@ export async function openClone(options: OpenCloneOptions): Promise<GitRunner> {
   return git;
 }
 
+/**
+ * Clones into a temporary directory and renames it into place only after the
+ * checkout: a clone stopped half-way — by a kill, a timeout or the LFS
+ * refusal — must never look like a clone whose files were all deleted.
+ */
 async function cloneFresh(options: OpenCloneOptions): Promise<void> {
   const { layout } = options;
   await mkdir(layout.dataDir, { recursive: true });
+  // Recovery markers belong to the clone they were written for, never to this one.
+  await rm(layout.operationFile, { force: true });
+  await rm(layout.rescueDir, { recursive: true, force: true });
+
   const outside = runner(layout.dataDir, options.env);
+  const temporary = `${layout.repositoryDir}${UNFINISHED}${process.pid}`;
+  await rm(temporary, { recursive: true, force: true });
 
   options.logger.info("Cloning the content repository", { url: options.url, branch: options.branch });
   // Blobless and single branch: no history blobs. No checkout yet, so the
@@ -133,20 +147,51 @@ async function cloneFresh(options: OpenCloneOptions): Promise<void> {
     options.branch,
     "--",
     options.url,
-    layout.repositoryDir,
+    temporary,
   ]);
 
-  const git = runner(layout.repositoryDir, options.env);
-  await writeIsolationAttributes(join(layout.repositoryDir, ".git"));
+  try {
+    const git = runner(temporary, options.env);
+    await writeIsolationAttributes(join(temporary, ".git"));
 
-  const lfs = await lfsUnderRoot(git, "HEAD", options.root);
-  if (lfs) throw lfsRefusal(lfs, options.root);
+    const lfs = await lfsUnderRoot(git, "HEAD", options.root);
+    if (lfs) throw lfsRefusal(lfs, options.root);
 
-  // A fresh clone has nothing to lose: fill the index and the tree from HEAD.
-  // `checkout` fetches the missing blobs in one batch; `restore` would fetch
-  // them one request at a time.
-  await git.run(["checkout", "--force", "--quiet", "HEAD"]);
-  options.logger.info("Cloned the content repository", { head: await git.run(["rev-parse", "HEAD"]) });
+    // A fresh clone has nothing to lose: fill the index and the tree from
+    // HEAD. `checkout` fetches the missing blobs in one batch; `restore`
+    // would fetch them one request at a time.
+    await git.run(["checkout", "--force", "--quiet", "HEAD"]);
+    await rename(temporary, layout.repositoryDir);
+  } catch (error) {
+    await rm(temporary, { recursive: true, force: true });
+    throw error;
+  }
+  const head = await runner(layout.repositoryDir, options.env).run(["rev-parse", "HEAD"]);
+  options.logger.info("Cloned the content repository", { head });
+}
+
+/** The suffix of a clone that is still being made. */
+const UNFINISHED = ".unfinished-";
+
+async function removeUnfinishedClones(layout: CloneLayout): Promise<void> {
+  if (!existsSync(layout.dataDir)) return;
+  const prefix = `${basename(layout.repositoryDir)}${UNFINISHED}`;
+  for (const name of await readdir(layout.dataDir)) {
+    if (name.startsWith(prefix)) await rm(join(layout.dataDir, name), { recursive: true, force: true });
+  }
+}
+
+/**
+ * A "Keep my version" that a crash interrupted holds an editor's drafts in
+ * the rescue directory. Before the clone is replaced, they must go somewhere.
+ */
+async function refuseRescuedDrafts(layout: CloneLayout): Promise<void> {
+  if (!existsSync(layout.keepMineFile)) return;
+  throw new CloneRefusal(
+    `${layout.keepMineFile} says that ${layout.rescueDir} holds drafts from an interrupted "Keep my version".\n` +
+      "  Start Mica with the configuration of that clone to restore them, or copy them out of the rescue\n" +
+      "  directory and delete keep-mine.json.",
+  );
 }
 
 /** Refuses LFS under the content root; Mica does not support it yet. */

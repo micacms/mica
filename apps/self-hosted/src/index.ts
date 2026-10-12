@@ -42,7 +42,7 @@ import { editorUiDist } from "./admin-dir.js";
 import { runCheck } from "./check.js";
 import { loadConfig, type SelfHostedConfig } from "./config.js";
 import { cloneLayout, CloneRefusal, openClone } from "./workspace/clone.js";
-import { contentGroups, revalidator } from "./workspace/content-groups.js";
+import { coarseGroups, contentGroups, revalidator } from "./workspace/content-groups.js";
 import { redact } from "./workspace/credentials.js";
 import { classifyFailure, describeFailure } from "./workspace/failures.js";
 import { managedEnvironment } from "./workspace/isolation.js";
@@ -155,9 +155,19 @@ async function serve(): Promise<void> {
 
   // The model at HEAD tells the first sync which files belong together. The
   // sync at start may move HEAD past a model change, so it is read again.
-  let model = await readModel(config, files);
-  const groups = { of: contentGroups(model) };
-  const revalidate = { run: revalidator(model, files, tree) };
+  // Only the read after the sync may stop the start: a model this image cannot
+  // read must not keep the clone from fetching a fix.
+  const startModel = await loadSchema(files).catch((error: unknown) => {
+    if (!(error instanceof SchemaError)) throw error;
+    logger.warn("The content model at the clone's head cannot be read; syncing with a coarse grouping", {
+      message: error.message,
+    });
+    return null;
+  });
+  const groups = { of: startModel ? contentGroups(startModel) : coarseGroups };
+  const revalidate = {
+    run: startModel ? revalidator(startModel, files, tree) : async (_paths: string[]) => {},
+  };
 
   managed = createManagedWorkspace({
     layout,
@@ -186,7 +196,7 @@ async function serve(): Promise<void> {
     logger.warn("Starting without a fresh sync", { code: synced.error.code, message: synced.error.message });
   }
 
-  model = await readModel(config, files);
+  const model = await readModel(config, files);
   groups.of = contentGroups(model);
   revalidate.run = revalidator(model, files, tree);
   const schemaRevision = await files.revision(MANIFEST_PATH);

@@ -8,7 +8,7 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, readdir, rm } from "node:fs/promises";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, afterEach, describe, it } from "node:test";
@@ -243,6 +243,26 @@ describe("concurrency", () => {
 
     const entry = await store.get("projects", "haus-a");
     assert.equal(entry?.data.year, 2024, "the first save must survive");
+  });
+
+  it("refuses a save after another file of the entry changed — the body edited on the website", async () => {
+    await store.save("projects", { data: { title: "Haus A", description: "Old body" } });
+    const opened = await store.revisionOf("projects", "haus-a");
+
+    // A fast-forward brings a new body, and only the body.
+    const [body] = (await files("projects/haus-a")).filter((name) => name.endsWith(".mdoc"));
+    await writeFile(join(root, "projects/haus-a", body!), "New body from the website\n");
+
+    await assert.rejects(
+      () =>
+        store.save("projects", {
+          slug: "haus-a",
+          data: { title: "Haus A", slug: "haus-a", description: "Old body" },
+          expectedRevision: opened,
+        }),
+      ConflictError,
+    );
+    assert.equal(await readFile(join(root, "projects/haus-a", body!), "utf8"), "New body from the website\n");
   });
 
   it("refuses a create that would overwrite an entry added in the meantime", async () => {

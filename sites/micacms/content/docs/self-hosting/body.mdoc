@@ -124,7 +124,7 @@ curl -s https://cms.example.com/ready
 
 You should see a start-up line that names the rule in force, and `/ready` should answer with `"status": "ok"`. Open `https://cms.example.com/admin/` and sign in.
 
-If the container stops, read the log. Run `docker compose run --rm mica check` to see the cause. Mica stops at start-up when the repository URL or the token is missing, when it cannot clone or push, when an old setting is in use, when no admission rule is set, or when the repository has no content model at `.mica/schema.json`.
+If the container stops, read the log. Run `docker compose run --rm mica check` to see the cause. Mica stops at start-up when the repository URL or the token is missing, when it cannot make its first clone, when an old setting is in use, when no admission rule is set, or when the repository has no content model at `.mica/schema.json`. When the token cannot push, Mica starts and logs a warning, and `check` names the cause.
 
 ## Drafts, sync, and the data volume
 

@@ -44,6 +44,16 @@ export function contentGroups(model: Site): (path: string) => ContentGroup {
 }
 
 /**
+ * Groups by the first path segment — a whole collection or singleton — for a
+ * sync that has no readable model. Coarse on purpose: a group too large shows
+ * more conflicts, never fewer.
+ */
+export function coarseGroups(path: string): ContentGroup {
+  const key = path.split("/")[0]!.replace(/\.json$/, "");
+  return { key: `path:${key}`, label: key };
+}
+
+/**
  * Validates the drafts at `paths` before a rejected publication is made
  * again on a newer base: the fast-forward may have changed what they refer
  * to. Throws the same `ApiError` a Publish would.

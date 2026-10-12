@@ -57,8 +57,9 @@ export interface OwnerPolicy {
   /** Whether Publish may run here, and the reason when it may not. */
   publishAvailability(): PublishAvailability;
   /**
-   * Runs before a publication takes the tree lock — a managed clone brings
-   * itself up to date here. Throws an `ApiError` when Publish must wait.
+   * Runs before a publication takes the tree lock, with the remote lock
+   * already held — a managed clone brings itself up to date here, without
+   * taking that lock again. Throws an `ApiError` when Publish must wait.
    */
   prepare(tree: GitTree): Promise<void>;
   /** Who a commit names as its author, given the signed-in editor. Undefined leaves it to Git. */

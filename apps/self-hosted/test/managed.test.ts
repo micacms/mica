@@ -21,7 +21,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { ApiError, commitPaths, createLogger, createWorkspaceLocks, type GitRunner } from "@micacms/runtime";
+import { ApiError, commitPaths, createLogger, createWorkspaceLocks, gitRunner, type GitRunner } from "@micacms/runtime";
 
 import { cloneLayout, CloneRefusal, openClone, writeMarker, type CloneLayout } from "../src/workspace/clone.js";
 import { parseRemote } from "../src/workspace/credentials.js";
@@ -280,6 +280,43 @@ describe("sync", () => {
     });
   }
 
+  it("fast-forwards over several upstream commits that change the same file", async () => {
+    const s = await setup();
+    writeIn(s.repo, "content/posts/a/index.json", '{"title":"Mine"}\n');
+    upstream(s, (dir) => writeIn(dir, "content/theme.json", '{"color":"one"}\n'), "First");
+    const to = upstream(s, (dir) => writeIn(dir, "content/theme.json", '{"color":"two"}\n'), "Second");
+
+    const state = await s.workspace.sync();
+    assert.equal(state.error, null, state.error?.message);
+    assert.equal(head(s), to);
+    assert.equal(read(s, "content/theme.json"), '{"color":"two"}\n');
+    assert.equal(read(s, "content/posts/a/index.json"), '{"title":"Mine"}\n');
+  });
+
+  it("reports a rewritten branch instead of following it", async () => {
+    const s = await setup();
+    upstream(s, (dir) => writeIn(dir, "content/theme.json", '{"color":"one"}\n'));
+    await s.workspace.sync();
+    // A developer rewrites the branch: the clone's head is no longer on it.
+    devGit(s.developer, "reset", "--hard", "HEAD^");
+    writeIn(s.developer, "content/theme.json", '{"color":"rewritten"}\n');
+    devGit(s.developer, "commit", "--quiet", "-am", "Rewritten");
+    devGit(s.developer, "push", "--quiet", "--force", "origin", "main");
+
+    const state = await s.workspace.sync();
+    assert.equal(state.error?.code, "diverged");
+    assert.equal(read(s, "content/theme.json"), '{"color":"one"}\n');
+  });
+
+  it("forgets a held model change once a start applies it", async () => {
+    const s = await setup();
+    upstream(s, (dir) => writeIn(dir, "content/.mica/schema.json", '{"protocolVersion":1,"x":2}\n'));
+    assert.equal((await s.workspace.sync()).restartRequired, true);
+    const started = await s.workspace.sync({ skipHold: true });
+    assert.equal(started.restartRequired, false);
+    assert.equal(s.workspace.policy.publishAvailability().enabled, true);
+  });
+
   it("holds at a model change, and a start applies it", async () => {
     const s = await setup();
     const before = head(s);
@@ -315,6 +352,25 @@ describe("sync", () => {
     const state = await workspace.sync();
     assert.equal(state.error?.code, "auth");
     assert.ok(!state.error.message.includes("wrong-token-123"));
+  });
+});
+
+describe("the credential helper", () => {
+  it("gives the token to the configured host only", async () => {
+    const s = await setup();
+    const other = await startGitHost("another-token-77");
+    try {
+      seedRepository(other, "elsewhere", SEED);
+      const remote = parseRemote(host.url(s.name), true);
+      const env = managedEnvironment({ remote, cloneDir: s.repo, username: "oauth2", token: TOKEN });
+      await assert.rejects(gitRunner(s.repo, { env }).run(["ls-remote", other.url("elsewhere")]));
+      const leaked = other.authorizations.filter((header) =>
+        Buffer.from(header.replace(/^Basic /, ""), "base64").toString().includes(TOKEN),
+      );
+      assert.deepEqual(leaked, []);
+    } finally {
+      await other.close();
+    }
   });
 });
 
@@ -391,6 +447,34 @@ describe("recovery at start", () => {
     assert.ok(!existsSync(s.layout.operationFile));
   });
 
+  it("removes a clone that a crash left half-made, and clones again", async () => {
+    const s = await setup();
+    rmSync(s.repo, { recursive: true, force: true });
+    const leftover = `${s.repo}.unfinished-99999`;
+    devGit(s.layout.dataDir, "init", "--quiet", leftover);
+    await s.open();
+    assert.ok(!existsSync(leftover));
+    assert.ok(existsSync(join(s.repo, "content/theme.json")));
+  });
+
+  it("leaves no clone behind when LFS refuses it", async () => {
+    const name = `site-lfs-${++counter}`;
+    seedRepository(host, name, { ...SEED, ".gitattributes": "content/**/*.jpg filter=lfs\n" });
+    const dataDir = mkdtempSync(join(tmpdir(), "mica-data-"));
+    const layout = cloneLayout(dataDir);
+    const remote = parseRemote(host.url(name), true);
+    const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username: "oauth2", token: TOKEN });
+    await assert.rejects(openClone({ layout, url: remote.url, branch: "main", root: "content", env, logger }), CloneRefusal);
+    assert.deepEqual(readdirSync(dataDir), []);
+  });
+
+  it("refuses to clone again while the rescue directory holds drafts", async () => {
+    const s = await setup();
+    await writeMarker(s.layout.keepMineFile, { files: {} });
+    rmSync(s.repo, { recursive: true, force: true });
+    await assert.rejects(s.open(), CloneRefusal);
+  });
+
   it("removes an old index.lock and keeps a young one", async () => {
     const s = await setup();
     const lock = join(s.repo, ".git", "index.lock");
@@ -441,6 +525,46 @@ describe("publishing", () => {
     assert.equal(devGit(bare, "log", "-1", "--format=%an|%s", "main"), "Erika Editor|Edit A");
     assert.equal(devGit(bare, "show", "main:content/posts/new/index.json"), '{"title":"New"}');
     assert.equal(devGit(bare, "show", "main:content/theme.json"), '{"color":"green"}');
+  });
+
+  it("makes a deletion again on top of a competing push", async () => {
+    const s = await setup();
+    rmSync(join(s.repo, "content/posts/b"), { recursive: true });
+    const revision = await commitPaths(tree(s), ["posts/b/index.json"], "Delete B", editor);
+    upstream(s, (dir) => writeIn(dir, "content/theme.json", '{"color":"green"}\n'));
+
+    const result = await s.workspace.policy.push(tree(s), revision);
+    assert.equal(result.state, "published");
+    assert.equal(devGit(host.bare(s.name), "ls-tree", "--name-only", "main", "content/posts/"), "content/posts/_order.json\ncontent/posts/a");
+  });
+
+  it("publishes a refused deletion once the host accepts it", async () => {
+    const s = await setup();
+    refusePushes(host, s.name, "protected");
+    rmSync(join(s.repo, "content/posts/b"), { recursive: true });
+    const refused = await commitPaths(tree(s), ["posts/b/index.json"], "Delete B", editor);
+    await assert.rejects(s.workspace.policy.push(tree(s), refused), ApiError);
+    rmSync(join(host.bare(s.name), "hooks", "pre-receive"));
+
+    const revision = await commitPaths(tree(s), ["posts/b/index.json"], "Delete B again", editor);
+    assert.equal((await s.workspace.policy.push(tree(s), revision)).state, "published");
+  });
+
+  it("clears a pending publication when it turns back into drafts", async () => {
+    const s = await setup();
+    writeIn(s.repo, "content/posts/a/index.json", '{"title":"Published"}\n');
+    const revision = await commitPaths(tree(s), ["posts/a/index.json"], "Edit A", editor);
+    const bare = host.bare(s.name);
+    renameSync(bare, `${bare}.away`);
+    assert.equal((await s.workspace.policy.push(tree(s), revision)).state, "committed-pending-push");
+    renameSync(`${bare}.away`, bare);
+
+    // Upstream moves, and the editor saves the same entry again before the retry.
+    upstream(s, (dir) => writeIn(dir, "content/theme.json", '{"color":"green"}\n'));
+    writeIn(s.repo, "content/posts/a/index.json", '{"title":"Saved again"}\n');
+    const state = await s.workspace.sync();
+    assert.equal(state.pendingPush, null);
+    assert.match(devGit(s.repo, "status", "--porcelain"), /content\/posts\/a\/index\.json/);
   });
 
   it("does not publish an autosave that landed after the commit, when it has to make the commit again", async () => {

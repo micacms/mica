@@ -999,3 +999,26 @@ October 2026. Where the code differs from the text above:
   with a website-side conflict resolved with "Keep my version"). The browser
   test was not run locally (AGENTS.md); CI runs it.
 
+### Code review of the branch (12 October 2026)
+
+The `reviewer` agent read the whole branch. What it found, and what changed:
+
+| Finding | Change |
+| --- | --- |
+| **Blocker:** the prefetch check listed every object of the range, so a sync over two upstream commits that touched the same file always failed | Only the blobs the fast-forward writes are checked (`diff --raw`, `cat-file --batch-check`); test with two commits |
+| A deletion turned back into a draft by `reset --soft` could not be committed again | `stagePaths` removes a missing path with `git rm --cached`; tests for a retried and for a refused deletion |
+| Undoing a commit left `pendingPush` set, so Publish stayed blocked | `undoPublication` clears it; test |
+| A publication was not serialized from its commit to its push | The staging service holds the remote lock from `prepare` to the push; `policy.push` checks that HEAD is the commit it was given |
+| A rewritten branch (force push) froze the clone in silence, and its old commit looked like a pending publication | A pending publication is one commit ahead **and** committed by Mica; anything else is the sync error `diverged`; test |
+| The whole-entry revision (D3) was not built | `revisionOf` and the save checks hash every file of a folder entry; test with an upstream `.mdoc` change |
+| A model that the image cannot read stopped the start before a sync could fetch a fix | The start syncs with a coarse grouping (per collection) when the model at HEAD cannot be read, and refuses only after the sync |
+| A fresh clone was not atomic | It is made in `repository.unfinished-<pid>` and renamed after the checkout; leftovers are removed at start; test |
+| Minors: `restartRequired` stuck after a start; old "Keep my version" choices; a 500 after an undo; old markers applied to a new clone; `git status` taking `index.lock`; the commit author's name; the write check's wording when only behind | All fixed: cleared at start; `kept` cleared after each fast-forward; a 409 that says the publication is a draft again; markers removed on a fresh clone, and a rescue marker refuses; `GIT_OPTIONAL_LOCKS=0`; the OIDC name; the write check pushes the remote's own head |
+
+Not done, and recorded as known gaps: ignored files under the content root are
+not shown in the change list (a file that `.gitignore` hides is never
+published, and nothing says so); a fast-forward rollback that itself fails
+leaves `operation.json` for the next start; Git calls under the tree lock
+other than the fast-forward do not set `GIT_NO_LAZY_FETCH`; the serialization
+of publications has no test of its own.
+
