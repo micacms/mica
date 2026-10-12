@@ -24,7 +24,6 @@
   },
   "dependencies": {
     "@micacms/auth-oidc": "workspace:*",
-    "@micacms/connectors": "workspace:*",
     "@micacms/core": "workspace:*",
     "@micacms/editor-ui": "workspace:*",
     "@micacms/runtime": "workspace:*",

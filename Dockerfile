@@ -24,7 +24,6 @@ WORKDIR /app
 COPY rush.json ./
 COPY common ./common
 COPY packages/core/package.json packages/core/
-COPY packages/connectors/package.json packages/connectors/
 COPY packages/astro/package.json packages/astro/
 COPY packages/runtime/package.json packages/runtime/
 COPY packages/auth/oidc/package.json packages/auth/oidc/
@@ -45,7 +44,6 @@ FROM deps AS build
 
 COPY tsconfig.base.json ./
 COPY packages/core packages/core
-COPY packages/connectors packages/connectors
 COPY packages/runtime packages/runtime
 COPY packages/auth/oidc packages/auth/oidc
 COPY packages/editor-ui packages/editor-ui

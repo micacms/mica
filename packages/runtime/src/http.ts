@@ -46,9 +46,9 @@ export function clientIp(c: Context<Env>): string {
 /**
  * Who to name as the author of a commit.
  *
- * Null in the local editor, where the connector falls back to the developer's
- * own Git identity — which is the right name for a change made on their
- * machine, and one Mica has no business overwriting.
+ * Null in the local editor, where the commit takes the developer's own Git
+ * identity — which is the right name for a change made on their machine, and
+ * one Mica has no business overwriting.
  */
 export function actorOf(c: Context<Env>): { id: string; email: string } | null {
   const identity = c.get("access")?.identity;

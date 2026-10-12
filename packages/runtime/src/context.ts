@@ -9,17 +9,18 @@
  * package authentication-neutral.
  */
 
-import { createContentStore, type ContentStore } from "@micacms/connectors";
-import type { RepositoryConnector, Site } from "@micacms/core";
+import type { Site } from "@micacms/core";
 
 import type { RuntimeConfig } from "./config.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
 import { createMediaService, type MediaService } from "./services/media.js";
 import type { ContentStagingService } from "./services/changes.js";
+import { createContentStore, type ContentStore } from "./services/content-store.js";
 import { createWorkingTreeStagingService } from "./services/staging-local.js";
-import { createWorkspaceLocks, lockedConnector, type WorkspaceLocks } from "./workspace/locks.js";
+import { createWorkspaceLocks, lockedFiles, type WorkspaceLocks } from "./workspace/locks.js";
 import type { OwnerPolicy } from "./workspace/policy.js";
+import type { ContentFiles } from "./workspace/files.js";
 import type { GitTree } from "./workspace/tree.js";
 
 /**
@@ -39,7 +40,7 @@ export interface SiteContext {
    * What everything reads and saves through: the working tree, behind the
    * workspace locks. Only the staging service's Publish turns it into a commit.
    */
-  contentRepository: RepositoryConnector;
+  contentRepository: ContentFiles;
   /**
    * Revision of `.mica/schema.json` when the model was loaded. The publish
    * drift gate compares against it — see decisions.md.
@@ -107,7 +108,7 @@ export interface CreateRuntimeContextOptions {
   config: RuntimeConfig;
   model: Site;
   /** The working tree's files, without locks. The app builds it. */
-  connector: RepositoryConnector;
+  files: ContentFiles;
   /** Revision of the manifest the model was read from. Null when unknown. */
   schemaRevision?: string | null;
   siteId?: string;
@@ -142,19 +143,19 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
   const site: SiteContext = {
     id: options.siteId ?? DEFAULT_SITE_ID,
     model,
-    contentRepository: lockedConnector(options.connector, locks.tree),
+    contentRepository: lockedFiles(options.files, locks.tree),
     schemaRevision,
   };
 
   const services = {
     content: createContentStore(model, site.contentRepository),
     media: createMediaService({
-      connector: site.contentRepository,
+      files: site.contentRepository,
       maxBytes: config.MAX_UPLOAD_BYTES,
     }),
     staging: createWorkingTreeStagingService({
       model,
-      connector: options.connector,
+      files: options.files,
       contentRoot: config.contentRoot,
       schemaRevision,
       publishEnabled: config.MICA_LOCAL_PUBLISH,

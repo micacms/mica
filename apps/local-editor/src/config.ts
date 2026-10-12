@@ -2,8 +2,8 @@
  * The local editor's configuration.
  *
  * Small on purpose: the variables the runtime reads, minus everything that
- * describes a deployment. There is no `REPOSITORY` — this app *is* the local
- * connector against a checkout — no `DATA_DIR`, because it keeps no state,
+ * describes a deployment. There is no `REPOSITORY` — this app always edits
+ * the developer's checkout — no `MICA_DATA_DIR`, because it keeps no state,
  * and no OIDC or admission variable exists to be set, which is a stronger
  * statement than ignoring one.
  *

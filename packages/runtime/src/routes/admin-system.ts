@@ -153,8 +153,8 @@ export function adminSystemRoutes(): Hono<Env> {
         baseUrl: config.MICA_PUBLIC_URL,
         schemaOrigin: schemaOrigin(ctx.site.contentRepository),
         repositoryMode: config.REPOSITORY,
-        // Only meaningful for the local connector; a remote one names itself
-        // in `repository.origin` above.
+        // Only meaningful for the developer's checkout; a clone that Mica
+        // keeps names its repository on the System page instead.
         contentRoot: config.REPOSITORY === "local" ? config.contentRoot : null,
         dataDir: operational.dataDir ?? null,
         logLevel: config.LOG_LEVEL,

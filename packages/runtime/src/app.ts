@@ -9,7 +9,8 @@
  *   │          │          │
  * /api/*    /admin/*   /health   /ready
  *   │          │
- * connector  Vue SPA
+ * working    Vue SPA
+ *   tree
  *   │
  * content repository
  *

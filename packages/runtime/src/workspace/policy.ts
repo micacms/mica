@@ -8,7 +8,9 @@
  * keeps itself gets its policy from the app that owns the clone.
  */
 
-import type { Author, PublishResult } from "@micacms/core";
+import type { PublishResult } from "@micacms/core";
+
+import type { Author } from "./files.js";
 
 import type { GitTree } from "./tree.js";
 

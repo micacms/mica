@@ -17,7 +17,7 @@
 import path from "node:path";
 
 import { contentPath, ContentPathError, MEDIA_DIR, slugify } from "@micacms/core";
-import type { RepositoryConnector } from "@micacms/connectors";
+import type { ContentFiles } from "../workspace/files.js";
 import { imageSize } from "image-size";
 
 import { ApiError, badRequest } from "../lib/errors.js";
@@ -27,7 +27,7 @@ import { detectFileType, isAccepted, isImageType, SVG_TYPE } from "../lib/file-t
 export const SHARED_MEDIA_DIR = "media";
 
 export interface MediaServiceDeps {
-  connector: RepositoryConnector;
+  files: ContentFiles;
   maxBytes: number;
 }
 
@@ -42,7 +42,7 @@ export interface MediaFile {
 }
 
 export function createMediaService(deps: MediaServiceDeps) {
-  const { connector, maxBytes } = deps;
+  const { files, maxBytes } = deps;
 
   /**
    * A name that is unique in `directory`.
@@ -54,7 +54,7 @@ export function createMediaService(deps: MediaServiceDeps) {
    */
   const uniqueName = async (directory: string, filename: string): Promise<string> => {
     const taken = new Set(
-      (await connector.list(directory)).filter((item) => item.type === "file").map((item) => item.name),
+      (await files.list(directory)).filter((item) => item.type === "file").map((item) => item.name),
     );
 
     const extension = path.extname(filename);
@@ -131,7 +131,7 @@ export function createMediaService(deps: MediaServiceDeps) {
       const found: MediaFile[] = [];
 
       const walk = async (directory: string): Promise<void> => {
-        for (const item of await connector.list(directory)) {
+        for (const item of await files.list(directory)) {
           const child = directory === "" ? item.name : `${directory}/${item.name}`;
 
           if (item.type === "directory") {
@@ -141,7 +141,7 @@ export function createMediaService(deps: MediaServiceDeps) {
 
           if (!isMediaName(item.name)) continue;
 
-          const bytes = await connector.readBinary(child);
+          const bytes = await files.readBinary(child);
           if (!bytes) continue;
 
           const mimeType = typeOf(bytes, item.name);
@@ -162,7 +162,7 @@ export function createMediaService(deps: MediaServiceDeps) {
     },
 
     async read(mediaPath: string): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
-      const bytes = await connector.readBinary(contentPath(mediaPath));
+      const bytes = await files.readBinary(contentPath(mediaPath));
       if (!bytes) return null;
 
       const mimeType = typeOf(bytes, mediaPath);

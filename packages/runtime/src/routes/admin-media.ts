@@ -62,15 +62,12 @@ export function adminMediaRoutes(): Hono<Env> {
       ),
     );
 
-    const actor = actorOf(c);
-    await ctx.site.contentRepository.commit({
-      message: `Media: upload ${prepared.map((item) => item.file.filename).join(", ")}`,
+    await ctx.site.contentRepository.apply({
       changes: prepared.map((item) => ({
         type: "write" as const,
         path: item.file.path,
         contents: item.contents,
       })),
-      author: actor ? { name: actor.email, email: actor.email } : undefined,
     });
 
     return c.json({ items: prepared.map((item) => item.file) }, 201);

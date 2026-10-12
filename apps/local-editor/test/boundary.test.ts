@@ -13,9 +13,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { localConnector } from "@micacms/connectors";
 import { collection, defineSite, slug, text } from "@micacms/core";
-import { createApp, createLogger, createRuntimeContext } from "@micacms/runtime";
+import { contentFiles, createApp, createLogger, createRuntimeContext } from "@micacms/runtime";
 
 import { loadConfig } from "../src/config.js";
 import { hostGuard } from "../src/guards.js";
@@ -26,13 +25,15 @@ import { hostGuard } from "../src/guards.js";
 
 const WORKSPACE_ROOT = path.resolve(import.meta.dirname, "../../..");
 
-/** Auth code that must never be reachable from the local editor. */
-const FORBIDDEN = new Set(["openid-client", "jose", "@micacms/auth-oidc"]);
+/**
+ * What must never be reachable from the local editor: auth code, and the
+ * self-hosted app with its clone, credential and sync code.
+ */
+const FORBIDDEN = new Set(["openid-client", "jose", "@micacms/auth-oidc", "@micacms/self-hosted"]);
 
 /** Where a workspace package's manifest lives, by name. */
 const WORKSPACE_DIRS: Record<string, string> = {
   "@micacms/core": "packages/core",
-  "@micacms/connectors": "packages/connectors",
   "@micacms/runtime": "packages/runtime",
   "@micacms/editor-ui": "packages/editor-ui",
   "@micacms/editor": "apps/local-editor",
@@ -126,7 +127,7 @@ describe("the running composition", () => {
     const ctx = createRuntimeContext({
       config: loadConfig({ NODE_ENV: "test", LOG_LEVEL: "silent", CONTENT_ROOT: contentRoot }),
       model,
-      connector: localConnector({ root: contentRoot }),
+      files: contentFiles({ root: contentRoot }),
       logger: createLogger({ level: "silent", pretty: false }),
       operational: () => ({ auth: "none", database: null }),
     });

@@ -6,7 +6,7 @@
  * entries it touches. Nothing here knows where the changes are kept.
  */
 
-import type { Author } from "@micacms/connectors";
+import type { Author } from "../workspace/files.js";
 import {
   ORDER_FILE,
   collectionEntryPath,

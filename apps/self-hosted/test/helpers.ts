@@ -14,7 +14,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { createOidcAuth, type OidcAuth, type SessionIdentity } from "@micacms/auth-oidc";
-import { localConnector } from "@micacms/connectors";
 import {
   collection,
   defineSite,
@@ -29,6 +28,7 @@ import {
   type Site,
 } from "@micacms/core";
 import {
+  contentFiles,
   createApp,
   createLogger,
   createRuntimeContext,
@@ -151,13 +151,13 @@ export async function createHarness(
   execFileSync("git", ["init", "--quiet", join(dataDir, "repository")]);
 
   const logger = createLogger({ level: "silent", pretty: false });
-  const connector = localConnector({ root: contentRoot });
+  const files = contentFiles({ root: contentRoot });
   const auth = createOidcAuth({ config, logger });
 
   const ctx = createRuntimeContext({
     config,
     model: options.site ?? testSite,
-    connector,
+    files,
     logger,
     operational: () => ({
       auth: `oidc:${new URL(ISSUER).hostname}`,

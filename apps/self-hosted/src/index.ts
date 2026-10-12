@@ -18,10 +18,10 @@
  */
 
 import { createOidcAuth } from "@micacms/auth-oidc";
-import { localConnector } from "@micacms/connectors";
 import { MANIFEST_PATH, type Site } from "@micacms/core";
 import {
   ConfigError,
+  contentFiles,
   createApp,
   createLogger,
   createRuntimeContext,
@@ -31,6 +31,7 @@ import {
   SchemaError,
   schemaFingerprint,
   startServer,
+  type ContentFiles,
   type Env,
   type Logger,
   type RuntimeContext,
@@ -72,9 +73,9 @@ function createDispatcher() {
   return { app, serve: (next: Hono<Env>) => void (current = next) };
 }
 
-async function readModel(config: SelfHostedConfig, connector: ReturnType<typeof localConnector>): Promise<Site> {
+async function readModel(config: SelfHostedConfig, files: ContentFiles): Promise<Site> {
   try {
-    return await loadSchema(connector);
+    return await loadSchema(files);
   } catch (error) {
     if (error instanceof SchemaError) {
       refuse(
@@ -149,14 +150,14 @@ async function serve(): Promise<void> {
   }
 
   const tree = { git, prefix: root, contentRoot: config.contentRoot };
-  const connector = localConnector({ root: config.contentRoot });
+  const files = contentFiles({ root: config.contentRoot });
   const locks = createWorkspaceLocks();
 
   // The model at HEAD tells the first sync which files belong together. The
   // sync at start may move HEAD past a model change, so it is read again.
-  let model = await readModel(config, connector);
+  let model = await readModel(config, files);
   const groups = { of: contentGroups(model) };
-  const revalidate = { run: revalidator(model, connector, tree) };
+  const revalidate = { run: revalidator(model, files, tree) };
 
   managed = createManagedWorkspace({
     layout,
@@ -184,10 +185,10 @@ async function serve(): Promise<void> {
     logger.warn("Starting without a fresh sync", { code: synced.error.code, message: synced.error.message });
   }
 
-  model = await readModel(config, connector);
+  model = await readModel(config, files);
   groups.of = contentGroups(model);
-  revalidate.run = revalidator(model, connector, tree);
-  const schemaRevision = await connector.revision(MANIFEST_PATH);
+  revalidate.run = revalidator(model, files, tree);
+  const schemaRevision = await files.revision(MANIFEST_PATH);
 
   const write = await managed.checkWrite();
   const writeCheck =
@@ -206,7 +207,7 @@ async function serve(): Promise<void> {
   ctx = createRuntimeContext({
     config,
     model,
-    connector,
+    files,
     schemaRevision,
     logger,
     policy: workspace.policy,

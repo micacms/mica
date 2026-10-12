@@ -1,5 +1,5 @@
 /**
- * The local connector.
+ * The content files of a working tree.
  *
  * Against a real temporary directory rather than a mock, because the whole
  * value of this implementation is what it does to a filesystem — atomicity,
@@ -12,10 +12,10 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { beforeEach, afterEach, describe, it } from "node:test";
 
-import { ConflictError, localConnector, type RepositoryConnector } from "../dist/index.js";
+import { ConflictError, contentFiles, type ContentFiles } from "../src/index.js";
 
 let root = "";
-let connector: RepositoryConnector;
+let files: ContentFiles;
 
 const fixture: Record<string, string> = {
   "projects/haus-a/index.json": '{ "title": "Haus A" }',
@@ -30,7 +30,7 @@ beforeEach(async () => {
     await mkdir(dirname(join(root, path)), { recursive: true });
     await writeFile(join(root, path), contents, "utf8");
   }
-  connector = localConnector({ root });
+  files = contentFiles({ root });
 });
 
 afterEach(async () => {
@@ -46,22 +46,21 @@ const missing = async (path: string) => {
 
 describe("reading", () => {
   it("reads text and bytes", async () => {
-    assert.equal(await connector.read("theme.json"), '{ "primaryColor": "#123456" }');
+    assert.equal(await files.read("theme.json"), '{ "primaryColor": "#123456" }');
 
-    const bytes = await connector.readBinary("projects/haus-a/media/photo.jpg");
+    const bytes = await files.readBinary("projects/haus-a/media/photo.jpg");
     assert.equal(Buffer.from(bytes!).toString("utf8"), "not really a jpeg");
   });
 
   it("returns null for what is not there", async () => {
-    assert.equal(await connector.read("missing.json"), null);
-    assert.equal(await connector.readBinary("missing.jpg"), null);
-    assert.equal(await connector.revision("missing.json"), null);
+    assert.equal(await files.read("missing.json"), null);
+    assert.equal(await files.readBinary("missing.jpg"), null);
+    assert.equal(await files.revision("missing.json"), null);
   });
 
   it("refuses a path that escapes the root", async () => {
-    await assert.rejects(() => connector.read("../secrets.json"));
-    await assert.rejects(() => connector.commit({
-      message: "escape",
+    await assert.rejects(() => files.read("../secrets.json"));
+    await assert.rejects(() => files.apply({
       changes: [{ type: "write", path: "../escaped.json", contents: "{}" }],
     }));
     await missing("../escaped.json");
@@ -70,7 +69,7 @@ describe("reading", () => {
   it("never deletes the content root, however the path names it", async () => {
     for (const path of ["", "projects/..", "projects/haus-a/../.."]) {
       await assert.rejects(
-        () => connector.commit({ message: "Everything", changes: [{ type: "deleteTree", path }] }),
+        () => files.apply({ changes: [{ type: "deleteTree", path }] }),
         { name: "ContentPathError" },
       );
     }
@@ -80,21 +79,20 @@ describe("reading", () => {
 
 describe("revisions", () => {
   it("changes when the content changes, and not otherwise", async () => {
-    const before = await connector.revision("theme.json");
+    const before = await files.revision("theme.json");
 
     // Rewritten byte for byte, as a Git checkout does constantly.
     await writeFile(join(root, "theme.json"), '{ "primaryColor": "#123456" }', "utf8");
-    assert.equal(await connector.revision("theme.json"), before);
+    assert.equal(await files.revision("theme.json"), before);
 
     await writeFile(join(root, "theme.json"), '{ "primaryColor": "#000000" }', "utf8");
-    assert.notEqual(await connector.revision("theme.json"), before);
+    assert.notEqual(await files.revision("theme.json"), before);
   });
 });
 
 describe("commit", () => {
   it("writes, deletes and removes trees in one call", async () => {
-    await connector.commit({
-      message: "a change set",
+    await files.apply({
       changes: [
         { type: "write", path: "news/one.json", contents: '{ "title": "One" }' },
         { type: "delete", path: "theme.json" },
@@ -109,8 +107,7 @@ describe("commit", () => {
   });
 
   it("creates parent directories for a new entry", async () => {
-    await connector.commit({
-      message: "new collection",
+    await files.apply({
       changes: [{ type: "write", path: "news/first/index.json", contents: "{}" }],
     });
 
@@ -118,31 +115,28 @@ describe("commit", () => {
   });
 
   it("writes bytes as well as text", async () => {
-    await connector.commit({
-      message: "upload",
+    await files.apply({
       changes: [
         { type: "write", path: "projects/haus-a/media/new.bin", contents: new Uint8Array([1, 2, 3]) },
       ],
     });
 
-    const bytes = await connector.readBinary("projects/haus-a/media/new.bin");
+    const bytes = await files.readBinary("projects/haus-a/media/new.bin");
     assert.deepEqual([...bytes!], [1, 2, 3]);
   });
 
   it("ignores a delete of something already gone", async () => {
-    await connector.commit({
-      message: "idempotent delete",
+    await files.apply({
       changes: [{ type: "delete", path: "news/never-existed.json" }],
     });
   });
 
   it("refuses when a path moved under the editor", async () => {
-    const revision = await connector.revision("theme.json");
+    const revision = await files.revision("theme.json");
     await writeFile(join(root, "theme.json"), '{ "primaryColor": "#999999" }', "utf8");
 
-    const error = await connector
-      .commit({
-        message: "stale save",
+    const error = await files
+      .apply({
         changes: [{ type: "write", path: "theme.json", contents: "{}" }],
         expect: { "theme.json": revision },
       })
@@ -158,16 +152,14 @@ describe("commit", () => {
   });
 
   it("asserts absence with a null revision, so two creates cannot collide", async () => {
-    await connector.commit({
-      message: "create",
+    await files.apply({
       changes: [{ type: "write", path: "news/one.json", contents: "{}" }],
       expect: { "news/one.json": null },
     });
 
     await assert.rejects(
       () =>
-        connector.commit({
-          message: "create again",
+        files.apply({
           changes: [{ type: "write", path: "news/one.json", contents: '{ "other": true }' }],
           expect: { "news/one.json": null },
         }),
@@ -179,8 +171,7 @@ describe("commit", () => {
 
   it("leaves the tree as it was when a change set fails part-way", async () => {
     await assert.rejects(() =>
-      connector.commit({
-        message: "half a change set",
+      files.apply({
         changes: [
           { type: "write", path: "projects/haus-a/index.json", contents: '{ "title": "Changed" }' },
           { type: "deleteTree", path: "projects/haus-a/media" },

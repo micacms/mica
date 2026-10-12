@@ -1,11 +1,11 @@
 /**
  * Test harness: the runtime composed the way the local editor composes it —
- * a real temporary content directory, the local connector, and the
+ * a real temporary content directory, its content files, and the
  * unauthenticated surface. No sessions, no CSRF, no database: what the
  * runtime is, exercised without what an app adds around it.
  *
  * The content directory is real, and deliberately so. The store's whole job
- * is what it does to a repository, and a fake connector would let a test pass
+ * is what it does to a repository, and a fake would let a test pass
  * while the files came out wrong.
  */
 
@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { deflateSync } from "node:zlib";
 
-import { localConnector } from "@micacms/connectors";
+import { contentFiles } from "../src/index.js";
 import {
   collection,
   defineSite,
@@ -128,7 +128,7 @@ export async function createHarness(
   const ctx = createRuntimeContext({
     config,
     model: options.site ?? testSite,
-    connector: localConnector({ root: contentRoot }),
+    files: contentFiles({ root: contentRoot }),
     logger: createLogger({ level: "silent", pretty: false }),
     operational: () => ({ auth: "none — test harness", database: null }),
   });

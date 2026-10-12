@@ -10,7 +10,7 @@
  * a publication that half-happened as one that did not happen at all.
  */
 
-import { ConflictError } from "@micacms/connectors";
+import { ConflictError } from "../workspace/files.js";
 import { Hono } from "hono";
 import { z } from "zod";
 

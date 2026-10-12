@@ -1,20 +1,18 @@
 /**
- * The content store: collections and singletons over a repository connector.
+ * The content store: collections and singletons over the working tree's files.
  *
- * Everything above a connector that is *about content* rather than about
- * repositories — validating against the model, deriving slugs, deciding which
- * files an entry is made of, and keeping `_order.json` in step.
- *
- * It lives in this package rather than in the CMS so the Astro build and the
- * server run the same code. Four things it deliberately does not do:
+ * Everything above `ContentFiles` that is *about content* rather than about
+ * files — validating against the model, deriving slugs, deciding which files
+ * an entry is made of, and keeping `_order.json` in step. Four things it
+ * deliberately does not do:
  *
  *   - **Identity.** An entry *is* its slug and its path, not a generated id.
  *     Renaming moves the directory, which is what an editor means by it and
  *     what a reviewer sees in the diff.
  *   - **Revisions.** Git has history. A second copy inside Mica would make
  *     Mica the thing that must not be lost.
- *   - **Draft/published status.** Committed is published; a draft is unsaved
- *     work in the editor that never reaches the repository.
+ *   - **Draft/published status.** A save is a draft in the working tree; only
+ *     Publish makes it a commit.
  *   - **Media expansion.** A media value is a path. There is nothing to expand.
  */
 
@@ -44,13 +42,11 @@ import {
   type FieldMap,
   type Singleton,
   type Site,
-  ConnectorError,
-  type Author,
-  type Change,
-  type RepositoryConnector,
 } from "@micacms/core";
 
-export class ContentError extends ConnectorError {
+import { FilesError, type ContentFiles, type FileChange } from "../workspace/files.js";
+
+export class ContentError extends FilesError {
   override name = "ContentError";
 }
 
@@ -76,7 +72,6 @@ export interface SaveEntryInput {
    * editor takes should supply it.
    */
   expectedRevision?: string | null;
-  author?: Author;
 }
 
 export interface SavedEntry {
@@ -95,7 +90,7 @@ export interface SavedEntry {
   renamed: boolean;
 }
 
-export function createContentStore(site: Site, connector: RepositoryConnector) {
+export function createContentStore(site: Site, workspace: ContentFiles) {
   const requireCollection = (name: string): Collection => {
     const def = site.collections[name];
     if (!def) throw new ContentError(`Unknown collection "${name}".`);
@@ -132,10 +127,10 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
    * alone — a file an editor uploaded is not garbage just because no field
    * currently points at it, and deleting it on save would lose work.
    */
-  const staleDocuments = async (base: string, keep: Set<string>): Promise<Change[]> => {
-    const changes: Change[] = [];
+  const staleDocuments = async (base: string, keep: Set<string>): Promise<FileChange[]> => {
+    const changes: FileChange[] = [];
 
-    for (const item of await connector.list(base)) {
+    for (const item of await workspace.list(base)) {
       if (item.type !== "file") continue;
       if (!item.name.endsWith(DOCUMENT_EXTENSION)) continue;
       if (keep.has(item.name)) continue;
@@ -158,7 +153,7 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
    * never match, which is the failure this exists to prevent.
    */
   const revisionAfterWrite = async (path: string): Promise<string> => {
-    const revision = await connector.revision(path);
+    const revision = await workspace.revision(path);
     if (revision === null) {
       throw new ContentError(`Saved, but "${path}" is not in the repository afterwards.`);
     }
@@ -169,9 +164,9 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
    * The order file with a renamed slug in its old place, or null when the file
    * does not list it. Without it a renamed entry drops to the end of the list.
    */
-  const renameInOrder = async (name: string, from: string, to: string): Promise<Change | null> => {
+  const renameInOrder = async (name: string, from: string, to: string): Promise<FileChange | null> => {
     const path = `${name}/${ORDER_FILE}`;
-    const raw = await connector.read(path);
+    const raw = await workspace.read(path);
     if (raw === null) return null;
 
     let listed: unknown;
@@ -189,7 +184,7 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
 
   /** Slugs already taken in a collection, so a new one can be made unique. */
   const takenSlugs = async (def: Collection, name: string, except?: string): Promise<string[]> => {
-    const entries = await readCollection(connector, def, name);
+    const entries = await readCollection(workspace, def, name);
     return entries.map((entry) => entry.slug).filter((slug) => slug !== except);
   };
 
@@ -197,7 +192,7 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
     /* ------------------------------------------------------ reading */
 
     async list(collectionName: string): Promise<ContentEntry[]> {
-      return readCollection(connector, requireCollection(collectionName), collectionName);
+      return readCollection(workspace, requireCollection(collectionName), collectionName);
     },
 
     async get(collectionName: string, slug: string): Promise<ContentEntry | null> {
@@ -208,18 +203,18 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
     /** The revision an editor must send back with a save of this entry. */
     async revisionOf(collectionName: string, slug: string): Promise<string | null> {
       const def = requireCollection(collectionName);
-      return connector.revision(dataPath(def, collectionName, slug));
+      return workspace.revision(dataPath(def, collectionName, slug));
     },
 
     /** The revision an editor must send back with a save of this singleton. */
     async revisionOfSingleton(name: string): Promise<string | null> {
       const def = requireSingleton(name);
-      return connector.revision(singletonDataPath(def, name));
+      return workspace.revision(singletonDataPath(def, name));
     },
 
     async getSingleton(name: string): Promise<Record<string, unknown>> {
       const def = requireSingleton(name);
-      const data = await readSingleton(connector, def, name);
+      const data = await readSingleton(workspace, def, name);
       // A singleton with no file yet is not missing content — it is content
       // nobody has filled in. The editor should open an empty form, not a 404.
       return withDefaults(def.fields, data);
@@ -256,7 +251,7 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
       );
       const files = entryFiles(def.fields, base, serialized);
 
-      const changes: Change[] = Object.entries(files).map(([path, contents]) => ({
+      const changes: FileChange[] = Object.entries(files).map(([path, contents]) => ({
         type: "write",
         path,
         contents,
@@ -270,7 +265,7 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
             ? { type: "deleteTree", path: previousBase }
             : { type: "delete", path: previousBase },
         );
-        await moveMedia(connector, previousBase, base, changes);
+        await moveMedia(workspace, previousBase, base, changes);
         const order = await renameInOrder(collectionName, input.slug!, slug);
         if (order) changes.push(order);
       } else if (entryLayout(def.fields) === "directory") {
@@ -278,16 +273,12 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
       }
 
       const title = entryTitle(def, data);
-      await connector.commit({
-        message: previousBase
-          ? `${def.labelSingular ?? def.label}: rename ${input.slug} to ${slug}`
-          : `${def.labelSingular ?? def.label}: ${title}`,
+      await workspace.apply({
         changes,
         expect:
           input.expectedRevision === undefined
             ? undefined
             : { [dataPath(def, collectionName, input.slug ?? slug)]: input.expectedRevision },
-        author: input.author,
       });
 
       // Deliberately not the commit's own identity, which addresses the change
@@ -303,7 +294,7 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
     async remove(
       collectionName: string,
       slug: string,
-      options: { expectedRevision?: string | null; author?: Author } = {},
+      options: { expectedRevision?: string | null } = {},
     ): Promise<void> {
       const def = requireCollection(collectionName);
       // One path segment: an empty slug or `a/b` would delete more than one entry.
@@ -312,8 +303,7 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
       }
       const base = collectionEntryPath(def.fields, collectionName, slug);
 
-      await connector.commit({
-        message: `${def.labelSingular ?? def.label}: delete ${slug}`,
+      await workspace.apply({
         changes: [
           entryLayout(def.fields) === "directory"
             ? { type: "deleteTree", path: base }
@@ -323,14 +313,13 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
           options.expectedRevision === undefined
             ? undefined
             : { [dataPath(def, collectionName, slug)]: options.expectedRevision },
-        author: options.author,
       });
     },
 
     async saveSingleton(
       name: string,
       payload: unknown,
-      options: { expectedRevision?: string | null; author?: Author } = {},
+      options: { expectedRevision?: string | null } = {},
     ): Promise<{ revision: string }> {
       const def = requireSingleton(name);
       const data = validate(def, payload, `The "${def.label}" settings`);
@@ -338,7 +327,7 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
       const base = singletonPath(def.fields, name);
       const serialized = serializeEntry(def.fields, mediaForDisk(def.fields, data, base));
 
-      const changes: Change[] = Object.entries(entryFiles(def.fields, base, serialized)).map(
+      const changes: FileChange[] = Object.entries(entryFiles(def.fields, base, serialized)).map(
         ([path, contents]) => ({ type: "write", path, contents }),
       );
 
@@ -346,14 +335,12 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
         changes.push(...(await staleDocuments(base, new Set(Object.keys(serialized.documents)))));
       }
 
-      await connector.commit({
-        message: `${def.label}: update`,
+      await workspace.apply({
         changes,
         expect:
           options.expectedRevision === undefined
             ? undefined
             : { [singletonDataPath(def, name)]: options.expectedRevision },
-        author: options.author,
       });
 
       // The file's new revision, not the commit's. See `save` above: the editor
@@ -371,15 +358,13 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
     async reorder(
       collectionName: string,
       slugs: string[],
-      options: { author?: Author } = {},
     ): Promise<void> {
       const def = requireCollection(collectionName);
       if (!def.sortable) {
         throw new ContentError(`The "${def.label}" collection is not manually sortable.`);
       }
 
-      await connector.commit({
-        message: `${def.label}: reorder`,
+      await workspace.apply({
         changes: [
           {
             type: "write",
@@ -387,7 +372,6 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
             contents: `${JSON.stringify(slugs, null, 2)}\n`,
           },
         ],
-        author: options.author,
       });
     },
 
@@ -413,7 +397,7 @@ export function createContentStore(site: Site, connector: RepositoryConnector) {
 
         if (keys.length === 0) continue;
 
-        for (const entry of await readCollection(connector, def, name)) {
+        for (const entry of await readCollection(workspace, def, name)) {
           const points = keys.some((key) => {
             const value = entry.data[key];
             return Array.isArray(value) ? value.includes(slug) : value === slug;
@@ -491,19 +475,19 @@ function pickSlug(
  *
  * The serializer records media paths but never moves bytes, so a rename would
  * otherwise leave every image behind in a directory that is about to be
- * deleted. Read and rewritten rather than referenced, because a connector has
+ * deleted. Read and rewritten rather than referenced, because the files have
  * no notion of moving a file — only of writing one and deleting another.
  */
 async function moveMedia(
-  connector: RepositoryConnector,
+  files: ContentFiles,
   from: string,
   to: string,
-  changes: Change[],
+  changes: FileChange[],
 ): Promise<void> {
-  for (const item of await connector.list(`${from}/media`)) {
+  for (const item of await files.list(`${from}/media`)) {
     if (item.type !== "file") continue;
 
-    const bytes = await connector.readBinary(`${from}/media/${item.name}`);
+    const bytes = await files.readBinary(`${from}/media/${item.name}`);
     if (bytes === null) continue;
 
     changes.push({ type: "write", path: `${to}/media/${item.name}`, contents: bytes });

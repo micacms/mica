@@ -1,17 +1,17 @@
 /**
  * The local editor's process entry point.
  *
- * The whole composition, in one page: the local connector, the
+ * The whole composition, in one page: the developer's checkout, the
  * auth-neutral runtime with `allowAll()`, the Host allowlist, and nothing
  * else. No session service, no admission policy, no database — `npx
  * @micacms/editor` writes nothing outside the content directory, and there is
  * no auth code here to misconfigure because none is installed.
  */
 
-import { localConnector } from "@micacms/connectors";
 import { MANIFEST_PATH } from "@micacms/core";
 import {
   ConfigError,
+  contentFiles,
   createApp,
   createLogger,
   createRuntimeContext,
@@ -46,11 +46,11 @@ async function main(): Promise<void> {
   // The repository comes first, because the content model is in it. A bad or
   // absent model is a project mistake rather than a crash: exit the way a bad
   // environment does, with the message on stderr instead of a stack trace.
-  const connector = localConnector({ root: config.contentRoot });
+  const files = contentFiles({ root: config.contentRoot });
 
   let model;
   try {
-    model = await loadSchema(connector);
+    model = await loadSchema(files);
   } catch (error) {
     if (error instanceof SchemaError) {
       process.stderr.write(`\n${error.message}\n\n`);
@@ -59,12 +59,12 @@ async function main(): Promise<void> {
     throw error;
   }
 
-  const schemaRevision = await connector.revision(MANIFEST_PATH);
+  const schemaRevision = await files.revision(MANIFEST_PATH);
 
   const ctx = createRuntimeContext({
     config,
     model,
-    connector,
+    files,
     schemaRevision,
     logger,
     operational: () => ({
@@ -99,7 +99,7 @@ async function main(): Promise<void> {
             {
               version: VERSION,
               url: config.MICA_PUBLIC_URL,
-              contentRoot: connector.origin,
+              contentRoot: files.origin,
               collections: Object.keys(model.collections).length,
               singletons: Object.keys(model.singletons).length,
             },
@@ -115,8 +115,8 @@ async function main(): Promise<void> {
         url: config.MICA_PUBLIC_URL,
         listening: `${config.HOST}:${config.PORT}`,
         auth: "none (local editor; loopback only)",
-        content: connector.origin,
-        schema: schemaOrigin(connector),
+        content: files.origin,
+        schema: schemaOrigin(files),
         schemaFingerprint: fingerprint,
         collections: Object.keys(model.collections).length,
       });

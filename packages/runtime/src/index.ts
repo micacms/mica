@@ -80,6 +80,26 @@ export {
 } from "./services/staging-local.js";
 export { createMediaService, formatBytes, type MediaFile, type MediaService } from "./services/media.js";
 export {
+  createContentStore,
+  ContentError,
+  ValidationError,
+  type ContentStore,
+  type SavedEntry,
+  type SaveEntryInput,
+} from "./services/content-store.js";
+export {
+  checkChangePaths,
+  ConflictError,
+  contentFiles,
+  FilesError,
+  type AppliedChanges,
+  type Author,
+  type ContentFiles,
+  type ContentFilesOptions,
+  type FileChange,
+  type FileChanges,
+} from "./workspace/files.js";
+export {
   developerEnvironment,
   firstLine,
   GitError,
@@ -92,7 +112,7 @@ export {
   createMutex,
   createReadWriteLock,
   createWorkspaceLocks,
-  lockedConnector,
+  lockedFiles,
   type Mutex,
   type ReadWriteLock,
   type WorkspaceLocks,

@@ -17,9 +17,9 @@ import {
   flattenProblems,
   headSource,
   listTreeChanges,
+  type ContentFiles,
   type GitTree,
 } from "@micacms/runtime";
-import type { RepositoryConnector } from "@micacms/core";
 
 import type { ContentGroup } from "./managed.js";
 
@@ -46,13 +46,13 @@ export function contentGroups(model: Site): (path: string) => ContentGroup {
  */
 export function revalidator(
   model: Site,
-  connector: RepositoryConnector,
+  files: ContentFiles,
   tree: GitTree,
 ): (paths: string[]) => Promise<void> {
   return async (paths) => {
     const wanted = new Set(paths);
     const changes = (await listTreeChanges(tree)).filter((change) => wanted.has(change.path));
-    const { validation } = await analyseChanges(model, connector, changes, headSource(tree));
+    const { validation } = await analyseChanges(model, files, changes, headSource(tree));
     if (!validation.ok) {
       throw new ApiError("validation_failed", describeProblems(validation.problems), {
         issues: flattenProblems(validation.problems),

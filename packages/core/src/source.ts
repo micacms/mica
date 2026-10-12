@@ -3,8 +3,8 @@
  *
  * Two methods wide on purpose. Everything above it — entry discovery, layout,
  * parsing — is written against `read` and `list` and nothing else, so one
- * reader serves a checked-out repository during an Astro build, a repository
- * connector answering from a provider API, and an in-memory fixture in a test.
+ * reader serves a checked-out repository during an Astro build, the Mica
+ * server's working tree, and an in-memory fixture in a test.
  *
  * Nothing here touches a filesystem. `fileSystemSource` lives in
  * `@micacms/core/node`, because this module is also bundled into the browser.
@@ -37,8 +37,8 @@ export class ContentPathError extends ContentSourceError {
 const CONTROL = /[\u0000-\u001f\u007f]/;
 
 /**
- * The one check every connector applies before a path reaches a filesystem or a
- * provider URL. A leading or trailing `/` is dropped, as connectors always did;
+ * The one check every source applies before a path reaches a filesystem. A
+ * leading or trailing `/` is dropped;
  * `.`, `..`, empty segments, `\`, control characters and a drive letter are
  * refused. The root itself (`""`) is only a path for reading and listing.
  */

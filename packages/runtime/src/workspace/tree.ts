@@ -20,9 +20,10 @@ export const LITERAL = "--literal-pathspecs";
 import { realpath, rm } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
-import type { Author, ContentChange, ContentSource, DirectoryEntry } from "@micacms/core";
+import type { ContentChange, ContentSource, DirectoryEntry } from "@micacms/core";
 import { within } from "@micacms/core/node";
 
+import type { Author } from "./files.js";
 import { GitError, gitRunner, type GitRunner, type GitRunnerOptions } from "./git.js";
 
 /** A content root inside a Git repository. */

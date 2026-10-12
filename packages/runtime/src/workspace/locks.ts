@@ -15,7 +15,7 @@
  * read during a fast-forward could see one half-written.
  */
 
-import type { RepositoryConnector } from "@micacms/core";
+import type { ContentFiles } from "./files.js";
 
 /** Runs one function at a time, in arrival order. */
 export interface Mutex {
@@ -92,22 +92,21 @@ export function createReadWriteLock(): ReadWriteLock {
 }
 
 /**
- * The connector the services use: reads share the tree lock, writes hold it.
+ * The files the services use: reads share the tree lock, writes hold it.
  *
  * The staging service does not use this wrapper. It takes the lock itself,
- * around a whole publication, and reads through the bare connector inside it.
+ * around a whole publication, and reads through the bare files inside it.
  */
-export function lockedConnector(
-  connector: RepositoryConnector,
+export function lockedFiles(
+  files: ContentFiles,
   tree: ReadWriteLock,
-): RepositoryConnector {
+): ContentFiles {
   return {
-    origin: connector.origin,
-    read: (path) => tree.read(() => connector.read(path)),
-    list: (path) => tree.read(() => connector.list(path)),
-    readBinary: (path) => tree.read(() => connector.readBinary(path)),
-    revision: (path) => tree.read(() => connector.revision(path)),
-    head: () => connector.head(),
-    commit: (input) => tree.write(() => connector.commit(input)),
+    origin: files.origin,
+    read: (path) => tree.read(() => files.read(path)),
+    list: (path) => tree.read(() => files.list(path)),
+    readBinary: (path) => tree.read(() => files.readBinary(path)),
+    revision: (path) => tree.read(() => files.revision(path)),
+    apply: (input) => tree.write(() => files.apply(input)),
   };
 }

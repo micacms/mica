@@ -22,12 +22,12 @@
  *     again and never creates a second commit.
  */
 
-import type { RepositoryConnector } from "@micacms/connectors";
 import { MANIFEST_PATH, memorySource, type PublishResult, type Site } from "@micacms/core";
 
 import { ApiError, badRequest } from "../lib/errors.js";
 import type { Logger } from "../lib/logger.js";
 import { developerPolicy } from "../workspace/developer.js";
+import type { ContentFiles } from "../workspace/files.js";
 import { GitError } from "../workspace/git.js";
 import { createWorkspaceLocks, type WorkspaceLocks } from "../workspace/locks.js";
 import type { OwnerPolicy } from "../workspace/policy.js";
@@ -59,11 +59,11 @@ import {
 export interface WorkingTreeStagingDeps {
   model: Site;
   /**
-   * Reads the working tree — the same local connector autosave writes
+   * Reads the working tree — the same files autosave writes
    * through, but without the lock wrapper: this service holds the locks
    * itself, around whole operations.
    */
-  connector: RepositoryConnector;
+  files: ContentFiles;
   /** Absolute path of the content root. */
   contentRoot: string;
   /** Revision of `.mica/schema.json` when the model was loaded. */
@@ -86,14 +86,14 @@ export interface WorkingTreeStagingDeps {
 export function createWorkingTreeStagingService(
   deps: WorkingTreeStagingDeps,
 ): ContentStagingService {
-  const { model, connector, contentRoot, logger } = deps;
+  const { model, files, contentRoot, logger } = deps;
   const policy = deps.policy ?? developerPolicy({ publishEnabled: deps.publishEnabled, logger });
   const locks = deps.locks ?? createWorkspaceLocks();
 
   const analyse = async (tree: GitTree, treeChanges: TreeChange[]) => {
     const { changes, validation } = await analyseChanges(
       model,
-      connector,
+      files,
       treeChanges,
       headSource(tree),
     );
@@ -192,7 +192,7 @@ export function createWorkingTreeStagingService(
 
         // The model drift gate: the pending set was validated against the
         // model this process started with.
-        if ((await connector.revision(MANIFEST_PATH)) !== deps.schemaRevision) {
+        if ((await files.revision(MANIFEST_PATH)) !== deps.schemaRevision) {
           throw new ApiError(
             "conflict",
             "The content model changed after this server started. Restart Mica to load " +
@@ -265,7 +265,7 @@ export function createWorkingTreeStagingService(
       // Without a repository (or before the first commit) nothing has ever
       // been published, so the honest "before" is a source with no files.
       const published = "reason" in tree ? memorySource({}, "unpublished") : headSource(tree);
-      return locks.tree.read(() => compareSources(model, published, connector, target));
+      return locks.tree.read(() => compareSources(model, published, files, target));
     },
   };
 }

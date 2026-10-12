@@ -19,9 +19,10 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import type { Author, PublishResult } from "@micacms/core";
+import type { PublishResult } from "@micacms/core";
 import {
   ApiError,
+  type Author,
   GitError,
   recommitPaths,
   type GitRunner,

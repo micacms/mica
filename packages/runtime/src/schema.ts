@@ -2,8 +2,8 @@
  * Acquiring the content model at runtime.
  *
  * The server ships with no model of its own. It reads one out of the content
- * repository, at `.mica/schema.json`, through the same connector it reads
- * entries with. The Astro project writes that file and the developer commits
+ * repository, at `.mica/schema.json`, through the same files it reads
+ * entries from. The Astro project writes that file and the developer commits
  * it, so the model reaches the server the way content does — no artifact to
  * mount, no second channel to keep in step, and a model change that is
  * reviewable in a diff.

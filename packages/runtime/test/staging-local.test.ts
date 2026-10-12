@@ -15,7 +15,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, describe, it } from "node:test";
 
-import { localConnector } from "@micacms/connectors";
+import { contentFiles } from "../src/index.js";
 import { collection, defineSite, slug, text } from "@micacms/core";
 
 import { ApiError } from "../src/lib/errors.js";
@@ -76,7 +76,7 @@ function makeRepo(options: { publishEnabled?: boolean; schemaRevision?: string |
 
   const service = createWorkingTreeStagingService({
     model,
-    connector: localConnector({ root: contentRoot }),
+    files: contentFiles({ root: contentRoot }),
     contentRoot,
     schemaRevision: options.schemaRevision ?? null,
     publishEnabled: options.publishEnabled ?? true,
@@ -93,7 +93,7 @@ describe("status", () => {
     const contentRoot = temp("mica-norepo-");
     const service = createWorkingTreeStagingService({
       model,
-      connector: localConnector({ root: contentRoot }),
+      files: contentFiles({ root: contentRoot }),
       contentRoot,
       schemaRevision: null,
       publishEnabled: true,
@@ -434,7 +434,7 @@ describe("before/after comparison", () => {
 
     const service = createWorkingTreeStagingService({
       model,
-      connector: localConnector({ root: contentRoot }),
+      files: contentFiles({ root: contentRoot }),
       contentRoot,
       schemaRevision: null,
       publishEnabled: true,

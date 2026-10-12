@@ -41,7 +41,6 @@ export const MANIFESTS = [
   // a manual `rush release-version` cannot leave Rush bumping from a stale base.
   { file: "common/config/rush/version-policies.json", pattern: VERSION_FIELD },
   { file: "packages/core/package.json", pattern: VERSION_FIELD },
-  { file: "packages/connectors/package.json", pattern: VERSION_FIELD },
   { file: "packages/astro/package.json", pattern: VERSION_FIELD },
   { file: "packages/editor-ui/package.json", pattern: VERSION_FIELD },
   { file: "packages/runtime/package.json", pattern: VERSION_FIELD },

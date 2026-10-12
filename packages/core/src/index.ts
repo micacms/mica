@@ -14,7 +14,6 @@
  *   serialize/parse      how it is written there and read back
  *   protocol             how a project describes itself to Mica
  *   source/read          how a content directory is discovered and loaded
- *   repository           the connector port every repository adapter implements
  *   staging              what sits between saved and published
  *   access               who a request acts as, however an app decided that
  *
@@ -34,6 +33,5 @@ export * from "./parse.js";
 export * from "./protocol.js";
 export * from "./source.js";
 export * from "./read.js";
-export * from "./repository.js";
 export * from "./staging.js";
 export * from "./access.js";

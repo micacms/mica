@@ -1,40 +1,116 @@
 /**
- * The local connector: a working tree on disk.
+ * The content files of a working tree: the port everything reads and saves
+ * through, and its one implementation.
  *
- * What `mica dev` uses. The editor writes into the developer's checkout, the
- * Astro dev server notices the files and reloads, and the developer commits
- * with their own tools. Deliberately *not* a Git client — there is no commit,
- * no author configuration and no credential handling here, because in local
- * mode the person at the keyboard already has all three and does the job
- * better than Mica would.
+ * Four operations, as narrow as they can usefully be — read a file, list a
+ * directory, ask whether something has changed, and apply a set of changes as
+ * one unit. Deliberately *not* Git: applying changes writes files, and only
+ * Publish turns them into a commit (`tree.ts`).
  *
- * `commit()` therefore means "apply this change set to the working tree". The
- * name is the connector's, not Git's, and the atomicity it promises is what
- * makes an entry safe to save: an entry is an `index.json`, its rich-text
- * sidecars and its media, and half of one is corruption.
+ * The interface extends `ContentSource`, so `readCollection` and
+ * `readSingleton` work unchanged over it. That is the point: the Astro build
+ * reading a checkout and the Mica server reading its working tree run the
+ * *same* discovery and parsing code, and cannot drift into disagreeing about
+ * what a content directory means.
+ *
+ * Atomicity is what makes an entry safe to save: an entry is an `index.json`,
+ * its rich-text sidecars and its media, and half of one is corruption. So
+ * every file is written beside its target and renamed into place, and a
+ * failure part-way through undoes the whole change set.
  */
 
 import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
+import { contentPath, type ContentSource } from "@micacms/core";
 import { isMissing, within } from "@micacms/core/node";
 
-import {
-  checkCommitPaths,
-  ConflictError,
-  ConnectorError,
-  type CommitInput,
-  type CommitResult,
-  type RepositoryConnector,
-} from "@micacms/core";
+export class FilesError extends Error {
+  override name = "FilesError";
+}
 
-export interface LocalConnectorOptions {
+/**
+ * Raised when a file moved under an editor.
+ *
+ * Separate from `FilesError` because it is the one failure with a sensible
+ * answer in the editor — reload and reapply — rather than a message to report.
+ */
+export class ConflictError extends FilesError {
+  override name = "ConflictError";
+  constructor(
+    message: string,
+    /** Paths whose revision no longer matched. */
+    readonly paths: string[],
+  ) {
+    super(message);
+  }
+}
+
+/** Who a commit names. */
+export interface Author {
+  name: string;
+  email: string;
+}
+
+export type FileChange =
+  | { type: "write"; path: string; contents: string | Uint8Array }
+  | { type: "delete"; path: string }
+  /** Deletes every file under `path`. Removing an entry removes its directory. */
+  | { type: "deleteTree"; path: string };
+
+export interface FileChanges {
+  changes: FileChange[];
+  /**
+   * Revisions the editor's work was based on, keyed by path.
+   *
+   * Per path rather than one repository head, so that two editors working on
+   * different entries never block each other. A value of null asserts the path
+   * did not exist — which is how creating an entry avoids overwriting one that
+   * appeared in the meantime.
+   *
+   * Omitted entirely, the write is unconditional. That is correct for a first
+   * import and wrong for anything an editor did.
+   */
+  expect?: Record<string, string | null>;
+}
+
+export interface AppliedChanges {
+  /** A digest of what was written, for logs. Not a commit. */
+  revision: string;
+}
+
+export interface ContentFiles extends ContentSource {
+  /** Bytes of a file, for media. Null when there is no such file. */
+  readBinary(path: string): Promise<Uint8Array | null>;
+
+  /**
+   * An opaque token for the current state of `path`, or null when it is absent.
+   *
+   * Only ever compared for equality — nothing above this interface may assume
+   * what it is, or attempt to order two of them.
+   */
+  revision(path: string): Promise<string | null>;
+
+  /** Applies every change, or none of them. Throws `ConflictError` when any `expect` no longer holds. */
+  apply(input: FileChanges): Promise<AppliedChanges>;
+}
+
+/**
+ * Refuses changes or expectations that name a path outside the content root,
+ * or the root itself — before anything is written.
+ */
+export function checkChangePaths(input: FileChanges): void {
+  for (const change of input.changes) contentPath(change.path);
+  for (const path of Object.keys(input.expect ?? {})) contentPath(path);
+}
+
+export interface ContentFilesOptions {
   /** The content root: the directory collections and singletons live in. */
   root: string;
 }
 
-export function localConnector(options: LocalConnectorOptions): RepositoryConnector {
+export function contentFiles(options: ContentFilesOptions): ContentFiles {
   const base = resolve(options.root);
   const full = (path: string, allowRoot = false) => within(base, path, { allowRoot });
 
@@ -76,7 +152,7 @@ export function localConnector(options: LocalConnectorOptions): RepositoryConnec
      * A content hash, not an mtime.
      *
      * An mtime would call a file changed when a checkout rewrote it byte for
-     * byte, which happens constantly in the workflow this connector serves —
+     * byte, which happens constantly in a working tree —
      * and would then reject the editor's next save for no reason.
      */
     async revision(path) {
@@ -85,14 +161,8 @@ export function localConnector(options: LocalConnectorOptions): RepositoryConnec
       return createHash("sha256").update(bytes).digest("hex").slice(0, 16);
     },
 
-    // A working tree has no commit identity; asking Git about the checkout is
-    // the local publisher's business, deliberately not this connector's.
-    async head() {
-      return null;
-    },
-
-    async commit(input: CommitInput): Promise<CommitResult> {
-      checkCommitPaths(input);
+    async apply(input: FileChanges): Promise<AppliedChanges> {
+      checkChangePaths(input);
       await assertExpected(this, input);
 
       // Everything the change set will overwrite or remove, kept so that a
@@ -160,9 +230,9 @@ export function localConnector(options: LocalConnectorOptions): RepositoryConnec
         }
         for (const staged of written) await rm(staged, { force: true }).catch(() => {});
 
-        throw error instanceof ConnectorError
+        throw error instanceof FilesError
           ? error
-          : new ConnectorError(
+          : new FilesError(
               `Could not apply changes to ${base}: ${(error as Error).message}`,
             );
       }
@@ -181,14 +251,14 @@ export function localConnector(options: LocalConnectorOptions): RepositoryConnec
 /* ------------------------------------------------------------------ */
 
 async function assertExpected(
-  connector: RepositoryConnector,
-  input: CommitInput,
+  files: ContentFiles,
+  input: FileChanges,
 ): Promise<void> {
   if (!input.expect) return;
 
   const stale: string[] = [];
   for (const [path, expected] of Object.entries(input.expect)) {
-    if ((await connector.revision(path)) !== expected) stale.push(path);
+    if ((await files.revision(path)) !== expected) stale.push(path);
   }
 
   if (stale.length > 0) {
@@ -201,19 +271,19 @@ async function assertExpected(
 
 /** Every file under `path`, so a tree deletion can be undone. */
 async function snapshotTree(
-  connector: RepositoryConnector,
+  files: ContentFiles,
   path: string,
 ): Promise<Array<[string, Uint8Array]>> {
   const saved: Array<[string, Uint8Array]> = [];
 
   const walk = async (at: string): Promise<void> => {
-    for (const item of await connector.list(at)) {
+    for (const item of await files.list(at)) {
       const child = `${at}/${item.name}`;
       if (item.type === "directory") {
         await walk(child);
         continue;
       }
-      const bytes = await connector.readBinary(child);
+      const bytes = await files.readBinary(child);
       if (bytes !== null) saved.push([child, bytes]);
     }
   };

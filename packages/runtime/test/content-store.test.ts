@@ -1,7 +1,7 @@
 /**
  * The content store.
  *
- * Driven over the local connector against a real directory, so every test is
+ * Driven over the content files of a real directory, so every test is
  * also a statement about what the repository looks like afterwards. That is the
  * property that matters: the files are the product, not an implementation
  * detail behind an API.
@@ -29,9 +29,9 @@ import {
   ConflictError,
   ValidationError,
   createContentStore,
-  localConnector,
+  contentFiles,
   type ContentStore,
-} from "../dist/index.js";
+} from "../src/index.js";
 
 const site = defineSite({
   collections: {
@@ -65,7 +65,7 @@ let store: ContentStore;
 
 beforeEach(async () => {
   root = await mkdtemp(join(tmpdir(), "mica-store-"));
-  store = createContentStore(site, localConnector({ root }));
+  store = createContentStore(site, contentFiles({ root }));
 });
 
 afterEach(async () => {
@@ -191,8 +191,7 @@ describe("renaming an entry", () => {
     await store.save("projects", { data: { title: "Haus A", description: "Body." } });
 
     // Stands in for an upload, which the media pipeline writes separately.
-    await localConnector({ root }).commit({
-      message: "upload",
+    await contentFiles({ root }).apply({
       changes: [
         { type: "write", path: "projects/haus-a/media/photo.jpg", contents: "bytes" },
       ],

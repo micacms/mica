@@ -17,13 +17,14 @@
  * version an editor opened, sent back with the save.
  */
 
-import { ConflictError, ValidationError } from "@micacms/connectors";
+import { ValidationError } from "../services/content-store.js";
+import { ConflictError } from "../workspace/files.js";
 import { collectionEntryPath, compareEntries, entryTitle, singletonPath } from "@micacms/core";
 import { Hono } from "hono";
 import { z } from "zod";
 
 import { ApiError, badRequest, notFound } from "../lib/errors.js";
-import { actorOf, type Env } from "../http.js";
+import type { Env } from "../http.js";
 
 const saveSchema = z.object({
   data: z.record(z.string(), z.unknown()),
@@ -105,7 +106,6 @@ export function adminContentRoutes(): Hono<Env> {
         data: parsed.data.data,
         // A create asserts absence unless the client says otherwise.
         expectedRevision: parsed.data.revision ?? null,
-        author: actorOf(c) ? { name: actorOf(c)!.email, email: actorOf(c)!.email } : undefined,
       }),
     );
 
@@ -165,13 +165,11 @@ export function adminContentRoutes(): Hono<Env> {
     const parsed = saveSchema.safeParse(await jsonBody(c));
     if (!parsed.success) throw badRequest("The entry payload is malformed.");
 
-    const actor = actorOf(c);
     const saved = await handled(() =>
       content.save(c.req.param("collection"), {
         data: parsed.data.data,
         slug: c.req.param("slug"),
         expectedRevision: parsed.data.revision,
-        author: actor ? { name: actor.email, email: actor.email } : undefined,
       }),
     );
 
@@ -180,11 +178,9 @@ export function adminContentRoutes(): Hono<Env> {
 
   app.delete("/collections/:collection/entries/:slug", async (c) => {
     const { content } = c.get("ctx").services;
-    const actor = actorOf(c);
 
     await handled(() =>
       content.remove(c.req.param("collection"), c.req.param("slug"), {
-        author: actor ? { name: actor.email, email: actor.email } : undefined,
       }),
     );
 
@@ -220,12 +216,10 @@ export function adminContentRoutes(): Hono<Env> {
   app.put("/singletons/:name", async (c) => {
     const { content } = c.get("ctx").services;
     const body = (await jsonBody(c)) as { data?: unknown; revision?: string | null };
-    const actor = actorOf(c);
 
     const saved = await handled(() =>
       content.saveSingleton(c.req.param("name"), body?.data ?? {}, {
         expectedRevision: body?.revision,
-        author: actor ? { name: actor.email, email: actor.email } : undefined,
       }),
     );
 

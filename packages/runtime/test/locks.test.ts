@@ -6,9 +6,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { memorySource, type RepositoryConnector } from "@micacms/core";
+import { memorySource } from "@micacms/core";
 
-import { createMutex, createReadWriteLock, lockedConnector } from "../src/workspace/locks.js";
+import type { ContentFiles } from "../src/workspace/files.js";
+import { createMutex, createReadWriteLock, lockedFiles } from "../src/workspace/locks.js";
 
 /** A promise with its resolver, to hold an operation open from outside. */
 function gate(): { open: () => void; opened: Promise<void> } {
@@ -113,29 +114,28 @@ describe("mutex", () => {
   });
 });
 
-describe("locked connector", () => {
+describe("locked files", () => {
   it("makes a save wait for a commit that holds the tree", async () => {
     const lock = createReadWriteLock();
-    const files = memorySource({ "a.json": "{}" }, "memory");
+    const source = memorySource({ "a.json": "{}" }, "memory");
     const order: string[] = [];
-    const connector: RepositoryConnector = {
-      ...files,
+    const files: ContentFiles = {
+      ...source,
       readBinary: async () => null,
       revision: async () => null,
-      head: async () => null,
-      commit: async () => {
+      apply: async () => {
         order.push("save");
         return { revision: "r" };
       },
     };
-    const locked = lockedConnector(connector, lock);
+    const locked = lockedFiles(files, lock);
     const held = gate();
 
     const committing = lock.write(async () => {
       await held.opened;
       order.push("commit");
     });
-    const saving = locked.commit({ message: "m", changes: [] });
+    const saving = locked.apply({ changes: [] });
 
     await tick();
     assert.deepEqual(order, []);
