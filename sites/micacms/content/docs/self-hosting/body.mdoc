@@ -8,6 +8,13 @@ This page sets up the self-hosted editor for editors who are not developers. It 
 - A content repository on GitHub or GitLab. It must contain the content model at `content/.mica/schema.json`. Your Astro build writes that file, and you commit it.
 - An OpenID Connect provider. Mica keeps no passwords. If you have none, use Google: [Sign in with Google](/docs/sign-in-with-google/).
 
+Before the first start, do these steps in this order. The self-hosted editor reads the model and the content only from the branch on GitHub or GitLab:
+
+1. Build the site once (`npx astro build`). This writes `content/.mica/schema.json`.
+2. Commit `content/` with `.mica/schema.json`, and push it to the branch that Mica uses.
+3. Make the token (step 2 below).
+4. Start Mica, sign in, and open each collection once. The start-up check reads only the model, so a token with too narrow a scope starts and then fails when it lists content.
+
 Self-hosted Mica publishes only through GitHub or GitLab. It never runs local Git. `REPOSITORY=local` stops the start-up with an error. To edit a checkout on your machine, use the local editor.
 
 ## 1. Get the two files
@@ -24,7 +31,9 @@ curl -o .env https://raw.githubusercontent.com/micacms/mica/main/deploy/self-hos
 
 Mica commits through the provider API. Make a token for that one repository.
 
-For GitHub, make a fine-grained personal access token with **Contents: read and write**. For GitLab, make a project access token with the `write_repository` scope.
+For GitHub, make a fine-grained personal access token with **Contents: read and write**.
+
+For GitLab, make a project access token with the **`api`** scope. The narrower scopes are not enough: `write_repository` covers only `git push`, and Mica uses the GitLab API. `api` is broad, so use a project access token (it reaches one project only) and give it a short expiry. GitLab protects the default branch: if `REPOSITORY_BRANCH` is protected, give the token the **Maintainer** role. For a branch that is not protected, **Developer** is enough.
 
 ```env
 REPOSITORY=github

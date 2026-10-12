@@ -44,6 +44,19 @@ Ten minutes, on a server with Docker and a reverse proxy.
   not have one, [step 3](#3-an-identity-provider) starts one.
 - **A hostname with TLS**, terminated by a proxy in front of the container.
 
+**The order of the first start.** The self-hosted editor reads the model and
+the content only from the remote branch, never from a checkout. So:
+
+1. Build the Astro project once (`npx astro build`, or start the dev server
+   once). This writes `content/.mica/schema.json`.
+2. Commit `content/` **with** `.mica/schema.json`, and push it to the branch
+   that Mica will use (`REPOSITORY_BRANCH`). A pushed model without the
+   content gives an editor with empty collections.
+3. Make the token ([step 2](#2-a-repository-token)).
+4. Start Mica ([step 6](#6-start-it)), sign in, and open each collection once.
+   The start-up check reads only the model, so a token with too narrow a scope
+   starts and then fails on the first list.
+
 ### 1. The two files
 
 No clone of this repository. The image is published, and the content model
@@ -76,10 +89,22 @@ REPOSITORY_ROOT=content
 REPOSITORY_BRANCH=main
 ```
 
-**gitlab.com** — a project access token with the `write_repository` scope.
+**gitlab.com** — a project access token with the **`api`** scope. Mica uses
+the REST API, and GitLab's narrower scopes do not cover it: `read_repository`
+reads files but cannot list a directory, and `write_repository` covers only
+`git push` over HTTPS. `read_api` is enough to read, but not to publish.
 
-> The project → Settings → Access tokens → Add new token → Role: Developer →
-> Scopes: write_repository
+> The project → Settings → Access tokens → Add new token → Role: Maintainer →
+> Scopes: api → Expiration date
+
+`api` is a broad scope: it covers the whole REST API, within what the token's
+role may do. A **project** access token limits that to one project. Do not use
+a personal access token, and give the token a short expiry.
+
+The role: GitLab protects the default branch, and by default only Maintainers
+can push to a protected branch. Use **Maintainer** when `REPOSITORY_BRANCH` is
+protected. **Developer** is enough for a branch that is not protected. This is
+GitLab's documented default; Mica's live test has not confirmed it yet (#38).
 
 ```env
 REPOSITORY=gitlab
@@ -88,6 +113,13 @@ REPOSITORY_TOKEN=glpat-…
 REPOSITORY_ROOT=content
 REPOSITORY_BRANCH=main
 ```
+
+#### Token reference
+
+| Host | Token | Scope or permission | What Mica calls | What fails without it |
+| --- | --- | --- | --- | --- |
+| github.com | Fine-grained personal access token, one repository | **Contents: read and write** (GitHub adds Metadata: read) | Contents API to read files and list directories; Git Data API (blobs, trees, commits, refs) to publish | Read: start-up stops with "Could not read the content model". Write: Publish fails with 403 |
+| gitlab.com | Project access token, one project | **`api`**; role Maintainer for a protected branch | `repository/files` (read), `repository/tree` (list), `repository/branches` (head), `repository/commits` (publish) | With `read_repository` only: start-up passes, then every list fails with 500 (GitLab answers 403 `insufficient_scope`). Without `api`: Publish fails with 403 |
 
 Saving and publishing are two different things. A save lands in Mica's draft
 workspace — durable, but not in Git. An editor's explicit **Publish** writes
@@ -440,7 +472,9 @@ That path is not covered by tests against a real instance yet. Other providers
 | Exits at startup with `ConfigError` | `REPOSITORY` is not `github` or `gitlab` (`local` is refused), or `REPOSITORY_PROJECT` / `REPOSITORY_TOKEN` is missing | Set all three. To edit a checkout, run `npx @micacms/editor` |
 | Exits with "No content model at …" | `.mica/schema.json` was never committed, or is on another branch | Build the Astro project, commit it, push to `REPOSITORY_BRANCH` |
 | Exits with "Could not read the content model" | The repository is unreachable — bad token, wrong project, provider down | Check the token's scope and `REPOSITORY_PROJECT` |
-| Health 503, `repository: unavailable` | Token expired, revoked, or wrong scope | Reissue with contents write / `write_repository` |
+| Health 503, `repository: unavailable` | Token expired, revoked, or wrong scope | Reissue: GitHub **Contents: read and write**; GitLab **`api`** |
+| Starts, then the dashboard and the collections return 500; the log shows `403 … insufficient_scope` | A GitLab token without `api`: `read_repository` can read the model, so start-up passes | Reissue with the `api` scope |
+| Publishing fails with 403 on GitLab, and the scope is `api` | The token's role cannot push to a protected `REPOSITORY_BRANCH` | Use the Maintainer role, or allow the role to push to that branch |
 | Admin loads with the wrong collections | The model in the repository is stale | Rebuild the project, commit, `docker compose restart mica` |
 | Saving returns 409 | Someone else changed that entry in the shared draft | Reload; the editor's work is still in the form |
 | Saving returns 422 | The entry does not satisfy the model | The response names the fields |

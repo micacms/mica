@@ -1347,8 +1347,10 @@ without a break.
   `live-connectors` workflow (`packages/connectors/test/live.test.ts`) can
   commit to a scratch project on gitlab.com, but no token is configured yet, so
   it skips GitLab. Configure `MICA_LIVE_GITLAB_TOKEN` and
-  `MICA_LIVE_GITLAB_PROJECT` to close this. It also checks whether the
-  documented `write_repository` scope is enough for the REST API.
+  `MICA_LIVE_GITLAB_PROJECT` to close this. The scope is settled: the REST API
+  needs `api`, because `write_repository` covers only `git push` (found in the
+  first external adoption, #169). The live token must have exactly `api`. Open:
+  whether a Developer-role token can publish to a protected branch.
   **1.0 status:** blocker (#38).
 - **P2** — The GitHub connector is not yet tested live. The `live-connectors`
   workflow can commit to the scratch repository `amuedespacher/micacms-scratch`
