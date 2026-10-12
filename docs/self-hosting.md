@@ -447,6 +447,10 @@ jobs:
         with: { node-version: 22 }
       - run: npm ci
       - run: npx astro build
+      # The model in the commit must match the one the build wrote.
+      - run: git diff --exit-code content/.mica/schema.json
+      # Every entry must match the model (needs @micacms/editor as a dev dependency).
+      - run: npx mica check
       # …then upload dist/ wherever you like.
 ```
 

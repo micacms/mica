@@ -123,7 +123,7 @@ describe("running it", () => {
     assert.equal(result.status, 78, "EX_CONFIG");
     assert.match(result.stderr, /no content model/i);
     // The fix is in the Astro project, not in Mica's configuration.
-    assert.match(result.stderr, /astro build/);
+    assert.match(result.stderr, /astro sync/);
   });
 
   it("gets past its own checks once the model is published", () => {
