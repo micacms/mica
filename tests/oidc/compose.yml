@@ -32,7 +32,7 @@ services:
   # The repository: a real Git host. Plain HTTP on localhost, which Mica
   # accepts only with NODE_ENV=development.
   forgejo:
-    image: codeberg.org/forgejo/forgejo:15.0.9
+    image: data.forgejo.org/forgejo/forgejo:15.0.9
     network_mode: "service:dex"
     depends_on:
       dex:
@@ -55,7 +55,7 @@ services:
 
   # One user, one repository, the example content. Runs once.
   forgejo-seed:
-    image: codeberg.org/forgejo/forgejo:15.0.9
+    image: data.forgejo.org/forgejo/forgejo:15.0.9
     network_mode: "service:dex"
     user: "1000:1000"
     entrypoint: ["/bin/sh", "/seed.sh"]
