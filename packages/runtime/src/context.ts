@@ -27,6 +27,7 @@ import { createMediaService, type MediaService } from "./services/media.js";
 import type { ContentStagingService } from "./services/changes.js";
 import { createDraftStagingService } from "./services/staging.js";
 import { createWorkingTreeStagingService } from "./services/staging-local.js";
+import { createWorkspaceLocks, lockedConnector } from "./workspace/locks.js";
 
 /**
  * The site this process serves. One, explicitly.
@@ -134,10 +135,16 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
 
   const schemaRevision = options.schemaRevision ?? null;
 
+  // A working tree is shared by saves, commits and discards; the services
+  // write through the lock wrapper, and staging holds the locks itself.
+  const locks = createWorkspaceLocks();
+
   const site: SiteContext = {
     id: options.siteId ?? DEFAULT_SITE_ID,
     model,
-    contentRepository: drafts ? stagedConnector(options.connector, drafts) : options.connector,
+    contentRepository: drafts
+      ? stagedConnector(options.connector, drafts)
+      : lockedConnector(options.connector, locks.tree),
     schemaRevision,
   };
 
@@ -157,11 +164,12 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
         })
       : createWorkingTreeStagingService({
           model,
-          connector: site.contentRepository,
+          connector: options.connector,
           contentRoot: config.contentRoot,
           schemaRevision,
           publishEnabled: config.MICA_LOCAL_PUBLISH,
           logger,
+          locks,
         }),
   };
 
