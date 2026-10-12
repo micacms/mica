@@ -95,6 +95,9 @@ jobs:
       - name: Assert the website's published content model is committed
         run: git diff --exit-code sites/micacms/content/.mica/schema.json
 
+      - name: Check the website's content
+        run: node apps/local-editor/dist/cli.js check sites/micacms/content
+
   docker:
     runs-on: ubuntu-latest
     timeout-minutes: 20
