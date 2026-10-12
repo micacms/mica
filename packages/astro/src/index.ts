@@ -1,12 +1,11 @@
 /**
  * @micacms/astro — a Git repository as an Astro content source.
  *
- *   // src/content.config.ts
+ *   // src/content.config.ts — the model is in src/mica.ts
  *   import { micaCollections } from "@micacms/astro";
- *   import { defineSite } from "@micacms/core";
+ *   import { site } from "./mica";
  *
- *   export const site = defineSite({ collections: { … } });
- *   export const collections = micaCollections(site, { root: "./content" });
+ *   export const collections = micaCollections(site);
  *
  * From there the website uses ordinary Astro APIs — `getCollection("projects")`
  * — and knows nothing about how the content arrived.
@@ -18,7 +17,7 @@
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, sep } from "node:path";
+import { dirname, join, relative, sep } from "node:path";
 
 import {
   fieldsSchema,
@@ -272,7 +271,7 @@ export function micaCollections<S extends Site>(
               context.store.set({ id: entry.slug, data, digest: context.generateDigest(data) });
             }
 
-            context.logger.info(`Loaded ${entries.length} ${def.label.toLowerCase()}`);
+            context.logger.info(`Loaded ${entries.length} ${entries.length === 1 ? "entry" : "entries"} of "${def.label}"`);
           };
 
           await publish(context);
@@ -301,7 +300,7 @@ export function micaCollections<S extends Site>(
               // Not fatal. A site is normally deployed before every settings
               // form has been filled in, and the page that reads this singleton
               // reports the absence far better than the loader can.
-              context.logger.warn(`No content for the "${def.label}" settings yet.`);
+              context.logger.warn(`No content for "${def.label}" yet.`);
               return;
             }
 
@@ -350,7 +349,7 @@ async function publishModel(
 
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, contents, "utf8");
-    logger.info(`Wrote the content model to ${MANIFEST_PATH} — commit it for Mica to read.`);
+    logger.info(`Wrote the content model to ${relative(process.cwd(), target)} — commit it for Mica to read.`);
   } catch (error) {
     // A site that builds correctly should not fail over this, and a read-only
     // checkout is a normal way to build one in CI. Mica reports a missing model

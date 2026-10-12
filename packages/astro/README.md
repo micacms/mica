@@ -88,6 +88,12 @@ of its collections reloads that collection only — never a foreign loader.
 `transformRichText(source)` returns the renderable tree instead, for a project
 that wants to render with its own components.
 
+## Setup guides for coding agents
+
+`setup/` holds the guides that https://micacms.com/setup.md sends a coding
+agent to: a new or empty Astro project, and a project with content
+collections. They ship with the package, so they match the installed version.
+
 ## Install
 
 ```bash

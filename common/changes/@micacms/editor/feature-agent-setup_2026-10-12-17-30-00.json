@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor",
+      "comment": "Add `mica init`, which adds Mica to an Astro project without overwriting a file, and `mica check`, which checks every entry against the model and exits with 1 on an error.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

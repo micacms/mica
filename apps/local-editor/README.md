@@ -39,6 +39,21 @@ site's dev server hot-reloads, and Publish turns the reviewed changes into one
 commit pushed with your own Git configuration (`MICA_LOCAL_PUBLISH=false`
 keeps Publish out of the editor entirely).
 
+## Two more commands
+
+```bash
+npx @micacms/editor init     # add Mica to the Astro project in this directory
+npx @micacms/editor check    # check every entry against the model
+```
+
+`init` writes a starter `src/mica.ts` and `src/content.config.ts`, and never
+overwrites a file. `check` reads every entry the way Mica and the
+website read it, and reports what they would skip or refuse: fields that do
+not validate, missing media, relations to entries that do not exist, slugs
+that do not match their file names, and files that are not read at all. It
+exits with 1 on an error, so it fits in CI. With the package installed, both
+are also `npx mica init` and `npx mica check`.
+
 ## Working on Mica itself
 
 ```bash
@@ -72,6 +87,8 @@ proxies `/api` to the API; the API still needs
 ```
 src/
 ├── cli.ts        the `mica` bin: flags, checks, environment, hand-off
+├── init.ts       `mica init`: the starter files
+├── check.ts      `mica check`: every entry against the model
 ├── index.ts      the composition: developer policy + runtime + editor UI
 ├── config.ts     the local slice of the environment, and the refusals
 ├── guards.ts     the Host allowlist

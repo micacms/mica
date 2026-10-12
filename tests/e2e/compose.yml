@@ -56,7 +56,7 @@ services:
   # A real Git host, seeded with the example content by the same script as
   # tests/oidc. Plain HTTP on localhost, which Mica accepts only in development.
   forgejo:
-    image: codeberg.org/forgejo/forgejo:15.0.9
+    image: data.forgejo.org/forgejo/forgejo:15.0.9
     network_mode: "service:keycloak"
     depends_on:
       keycloak:
@@ -78,7 +78,7 @@ services:
       retries: 60
 
   forgejo-seed:
-    image: codeberg.org/forgejo/forgejo:15.0.9
+    image: data.forgejo.org/forgejo/forgejo:15.0.9
     network_mode: "service:keycloak"
     user: "1000:1000"
     entrypoint: ["/bin/sh", "/seed.sh"]

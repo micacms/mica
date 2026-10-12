@@ -5,6 +5,20 @@
 
 Add Mica to an Astro project and edit its content on your machine. Five minutes.
 
+## With a coding agent
+
+Give your coding agent this prompt:
+
+```text
+Read https://micacms.com/setup.md and set up Mica in this project.
+```
+
+[`SETUP.md`](../SETUP.md) finds out whether the project is new, an empty Astro
+project, or an Astro project with content collections, and sends the agent to
+the matching guide in `@micacms/astro/setup/`. The guides ship with the
+package, so they match the installed version. The agent asks you about the
+content model, and checks its work with `npx mica check`.
+
 ## Before you start
 
 - Node 22.12 or newer — `node --version`
@@ -15,12 +29,14 @@ Add Mica to an Astro project and edit its content on your machine. Five minutes.
 
 ```bash
 npm install @micacms/astro @micacms/core
-# write src/mica.ts and src/content.config.ts — steps 2 and 3
-npx astro build          # writes content/.mica/schema.json
-npx @micacms/editor      # opens the editor
+npm install --save-dev @micacms/editor
+npx mica init            # writes a starter src/mica.ts and src/content.config.ts
+npx astro sync           # writes content/.mica/schema.json
+npx mica check           # checks every entry against the model
+npx mica                 # opens the editor
 ```
 
-The steps below are the same four commands, with the two files written out.
+The steps below write the two files by hand.
 
 ---
 

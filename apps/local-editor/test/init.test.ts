@@ -1,0 +1,70 @@
+/** `mica init` adds Mica to an Astro project and never overwrites a file. */
+
+import assert from "node:assert/strict";
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterEach, beforeEach, describe, it } from "node:test";
+
+import { collection, date, defineSite, media, richText, singleton, slug, text } from "@micacms/core";
+
+import { initProject, InitError, MODEL } from "../src/init.js";
+
+let project = "";
+
+const write = (file: string, contents: string) => {
+  mkdirSync(path.dirname(path.join(project, file)), { recursive: true });
+  writeFileSync(path.join(project, file), contents);
+};
+
+beforeEach(() => {
+  project = mkdtempSync(path.join(tmpdir(), "mica-init-"));
+  write("package.json", JSON.stringify({ dependencies: { astro: "^6.0.0" } }));
+});
+
+afterEach(() => rmSync(project, { recursive: true, force: true }));
+
+describe("mica init", () => {
+  it("writes the model and the collections", () => {
+    const result = initProject(project);
+    assert.deepEqual(result.created, ["src/mica.ts", "src/content.config.ts"]);
+    assert.match(readFileSync(path.join(project, "src/mica.ts"), "utf8"), /defineSite\(/);
+    assert.match(readFileSync(path.join(project, "src/content.config.ts"), "utf8"), /micaCollections\(site\)/);
+    assert.ok(result.next.some((step) => step.includes("npm install @micacms/astro @micacms/core")));
+  });
+
+  it("keeps existing files, and says how to add Mica to an existing content config", () => {
+    write("src/mica.ts", "// mine\n");
+    write("src/content.config.ts", "export const collections = {};\n");
+    const result = initProject(project);
+    assert.deepEqual(result.kept, ["src/mica.ts", "src/content.config.ts"]);
+    assert.equal(readFileSync(path.join(project, "src/mica.ts"), "utf8"), "// mine\n");
+    assert.equal(readFileSync(path.join(project, "src/content.config.ts"), "utf8"), "export const collections = {};\n");
+    assert.ok(result.next.some((step) => step.includes("...micaCollections(site)")));
+  });
+
+  it("writes a starter model that defineSite accepts", () => {
+    const body = MODEL.replace(/^import[\s\S]*?from "@micacms\/core";/, "").replace("export const site =", "return");
+    const site = new Function("collection", "date", "defineSite", "media", "richText", "singleton", "slug", "text", body)(
+      collection, date, defineSite, media, richText, singleton, slug, text,
+    );
+    assert.deepEqual(Object.keys(site.collections), ["news"]);
+  });
+
+  it("keeps a legacy src/content/config.ts instead of adding a second config", () => {
+    write("src/content/config.ts", "export const collections = {};\n");
+    assert.ok(initProject(project).kept.includes("src/content/config.ts"));
+  });
+
+  it("refuses a package.json that is not JSON, with a message instead of a crash", () => {
+    write("package.json", "{ not json");
+    assert.throws(() => initProject(project), InitError);
+  });
+
+  it("refuses a directory that is not an Astro project", () => {
+    write("package.json", JSON.stringify({ dependencies: { react: "^19.0.0" } }));
+    assert.throws(() => initProject(project), InitError);
+    rmSync(path.join(project, "package.json"));
+    assert.throws(() => initProject(project), /npm create astro@latest/);
+  });
+});

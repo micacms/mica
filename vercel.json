@@ -5,7 +5,7 @@
   "buildCommand": "node common/scripts/install-run-rush.js build --to @micacms/site",
   "outputDirectory": "sites/micacms/dist",
   "trailingSlash": true,
-  "ignoreCommand": "base=\"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\"; git cat-file -e \"$base^{commit}\" 2>/dev/null && git diff --quiet \"$base\" HEAD -- sites/micacms packages rush.json common/config/rush vercel.json && exit 0; exit 1",
+  "ignoreCommand": "base=\"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\"; git cat-file -e \"$base^{commit}\" 2>/dev/null && git diff --quiet \"$base\" HEAD -- sites/micacms packages SETUP.md rush.json common/config/rush vercel.json && exit 0; exit 1",
   "redirects": [
     {
       "source": "/(.*)",
@@ -19,6 +19,12 @@
       "source": "/_astro/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
+      ]
+    },
+    {
+      "source": "/setup.md",
+      "headers": [
+        { "key": "Content-Type", "value": "text/markdown; charset=utf-8" }
       ]
     },
     {

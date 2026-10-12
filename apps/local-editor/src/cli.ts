@@ -33,6 +33,9 @@ import { pathToFileURL } from "node:url";
 import { MANIFEST_PATH } from "@micacms/core";
 import { DEFAULT_PORT, VERSION } from "@micacms/runtime";
 
+import { checkContent, formatReport } from "./check.js";
+import { formatInit, initProject, InitError } from "./init.js";
+
 export interface Options {
   content: string;
   port?: string;
@@ -45,7 +48,11 @@ const USAGE = `
   mica — edit your Astro project's content, on this machine
 
   Usage
-    $ npx @micacms/editor [content directory]
+    $ npx @micacms/editor [content directory]   open the editor
+    $ npx @micacms/editor init                  add Mica to this Astro project
+    $ npx @micacms/editor check [content dir]   check every entry against the model
+
+  With @micacms/editor installed in the project, \`npx mica\` is the same command.
 
   Options
     -c, --content <dir>   The content root (default: ./content)
@@ -58,7 +65,7 @@ const USAGE = `
   There is no sign-in here, because there is nothing to sign in to: this mode
   has no identity provider, no account and no user. That is right for your own
   machine and wrong everywhere else — a Mica other people reach runs as a
-  container with an identity provider. See docs/self-hosting.md.
+  container with an identity provider. See https://micacms.com/docs/self-hosting/.
 `;
 
 export function parse(argv: string[]): Options {
@@ -138,6 +145,10 @@ export function shouldOpenBrowser(options: Options, env: NodeJS.ProcessEnv): boo
 }
 
 export async function main(): Promise<void> {
+  const [command, ...rest] = process.argv.slice(2);
+  if (command === "init") return init(rest);
+  if (command === "check") return check(rest);
+
   const options = parse(process.argv.slice(2));
   const content = path.resolve(options.content);
 
@@ -161,9 +172,10 @@ export async function main(): Promise<void> {
       "Mica ships without one: your Astro project defines the model, and building",
       "the project writes it there. Run this in the project, then start Mica again:",
       "",
-      "  npx astro build        # or start the dev server once",
+      "  npx astro sync         # or build, or start the dev server once",
       "",
-      "If you have not defined a model yet, docs/getting-started.md is five minutes.",
+      "If you have not defined a model yet, run `npx @micacms/editor init`, or see",
+      "https://micacms.com/docs/getting-started/.",
     ]);
     process.exit(78); // EX_CONFIG
   }
@@ -191,8 +203,27 @@ export async function main(): Promise<void> {
   await import("./index.js");
 }
 
-// Only when this file *is* the command. Importing it — which the tests do, and
-// which a future `mica init` would — must not start a server.
+function init(argv: string[]): void {
+  if (argv.length > 0) fail(`init takes no options; it works in the current directory.`);
+  try {
+    process.stdout.write(formatInit(initProject(process.cwd())));
+  } catch (error) {
+    if (!(error instanceof InitError)) throw error;
+    report(error.message, []);
+    process.exit(64); // EX_USAGE
+  }
+}
+
+async function check(argv: string[]): Promise<void> {
+  const { content } = parse(argv);
+  const root = path.resolve(content);
+  const result = await checkContent(root);
+  process.stdout.write(formatReport(result, root));
+  if (result.problems.some((problem) => problem.level === "error")) process.exit(1);
+}
+
+// Only when this file *is* the command. Importing it, as the tests do, must
+// not start a server.
 //
 // `realpathSync` matters: npm and npx run this file through a symlink in
 // `node_modules/.bin`, and Node resolves `import.meta.url` to the symlink's

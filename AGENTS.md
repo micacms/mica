@@ -89,7 +89,7 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 ## Repository map
 
 - `packages/core`: content model, field DSL, validation, serialization, authoring format, and the port contracts.
-- `packages/astro`: Astro Content Layer integration and Markdoc rendering.
+- `packages/astro`: Astro Content Layer integration and Markdoc rendering, and the setup guides for coding agents (`setup/`), which ship with the package.
 - `packages/runtime`: the authentication-neutral single-site Hono API and services, the working tree's files, and Git on that tree.
 - `packages/editor-ui`: the Vue administration SPA, shipped as built assets.
 - `packages/auth/oidc`: the server-only OIDC gate (`@micacms/auth-oidc`). Never a dependency of the local editor.
@@ -97,6 +97,7 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `apps/self-hosted`: the Docker composition — runtime and UI behind OIDC, on a Git clone that it keeps, syncs and pushes itself.
 - `sites/micacms`: public Mica website, and the canonical user documentation (`content/docs`).
 - `examples/muster-consulting`: example website and evolving reference project.
+- `SETUP.md`: the entry point for a coding agent that sets up Mica in a user's project, served at `micacms.com/setup.md`. Keep it valid for every version; version-specific steps go in `packages/astro/setup/`.
 - `docs`: architecture and decision documentation for contributors. The user guides move to `sites/micacms` (#117).
 - `deploy/self-hosted`: the reference deployment — the Compose file and its `.env.example`.
 - `deploy/demo-identity`: the demo stack with ZITADEL.
