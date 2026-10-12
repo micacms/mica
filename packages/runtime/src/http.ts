@@ -1,7 +1,3 @@
-/**
- * Shared HTTP types and small request helpers.
- */
-
 import type { Context } from "hono";
 
 import type { AccessContext } from "@micacms/core";
@@ -15,20 +11,17 @@ export interface Env {
     logger: Logger;
     requestId: string;
     /**
-     * Who this request acts as. Set by the auth surface's gate — the OIDC
-     * gate in the self-hosted app, `allowAll()` in the local editor — and
-     * therefore present on every admin route. The runtime consumes it and
-     * never produces it: which is the whole of being authentication-neutral.
+     * Who this request acts as. The auth surface's gate sets it on every admin
+     * route; the runtime never sets it.
      */
     access: AccessContext;
   };
 }
 
 /**
- * Client IP. `X-Forwarded-For` is only consulted when TRUST_PROXY is set —
- * otherwise a client could spoof its own address and bypass rate limiting.
- * Behind one proxy, the right-most entry is the address that proxy saw; the
- * entries to its left are whatever the client sent (#149).
+ * Client IP. Reads `X-Forwarded-For` only with TRUST_PROXY, or a client could
+ * spoof its address past the rate limit. The right-most entry is the address
+ * the proxy saw; the entries to its left come from the client.
  */
 export function clientIp(c: Context<Env>): string {
   const { config } = c.get("ctx");
@@ -44,11 +37,8 @@ export function clientIp(c: Context<Env>): string {
 }
 
 /**
- * Who to name as the author of a commit.
- *
- * Null in the local editor, where the commit takes the developer's own Git
- * identity — which is the right name for a change made on their machine, and
- * one Mica has no business overwriting.
+ * The commit author. Null in the local editor, where the commit keeps the
+ * developer's own Git identity.
  */
 export function actorOf(c: Context<Env>): { id: string; email: string; name: string } | null {
   const identity = c.get("access")?.identity;

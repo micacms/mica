@@ -1,12 +1,8 @@
 /**
- * What a failed `git` call against the remote means.
- *
- * Authentication, permission, not-found and network failures exit with 128
- * and print no porcelain line, so their class comes from stderr (with
- * `LC_ALL=C`). The order of the checks matters: GitHub's and GitLab's 403
- * messages also say "unable to access", which is the network pattern, so the
- * network check comes last. A push that reached the remote prints porcelain
- * lines on stdout instead, and those are read first.
+ * Git exits with 128 and no porcelain line for auth, permission, not-found and
+ * network failures, so the class comes from stderr (with `LC_ALL=C`). The
+ * network pattern is last: GitHub's and GitLab's 403 also say "unable to
+ * access".
  */
 
 export type FailureClass = "write_forbidden" | "auth" | "repo_not_found" | "network" | "unknown";
@@ -49,9 +45,8 @@ export type PushOutcome =
   | { kind: "failed"; failure: FailureClass };
 
 /**
- * Reads `git push --porcelain` for one ref. The host's reason for a refusal is
- * in the porcelain line on GitHub, and in the `remote:` lines on GitLab and
- * Forgejo, so both are kept.
+ * Reads `git push --porcelain` for one ref. The reason is in the porcelain line
+ * (GitHub) or in `remote:` lines.
  */
 export function readPush(exitCode: number | null, stdout: string, stderr: string): PushOutcome {
   if (exitCode === 0) return { kind: "pushed" };

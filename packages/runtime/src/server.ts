@@ -1,11 +1,6 @@
 /**
- * Listening, and stopping.
- *
- * The shared half of every app's entry point: bind the Hono app to a socket,
- * shut down cleanly on SIGTERM/SIGINT, and turn the one most likely first-run
- * failure — a busy port — into a message instead of a stack trace. What the
- * apps keep for themselves is what to *say* when the server is up, because
- * that is where a laptop and a container genuinely differ.
+ * Binds the app to a socket and shuts down cleanly on SIGTERM and SIGINT. Each
+ * app keeps its own startup message.
  */
 
 import { serve } from "@hono/node-server";
@@ -19,11 +14,8 @@ export interface StartServerOptions {
   host: string;
   port: number;
   logger: Logger;
-  /** Called once the socket is listening — the banner or the log line. */
   onListening(info: { port: number }): void;
-  /** The message for a busy port. Defaults to a plain sentence. */
   portInUseMessage?(): string;
-  /** Releases what the composition holds — timers, the sync. */
   shutdown(): Promise<void>;
 }
 
@@ -53,7 +45,6 @@ export function startServer(options: StartServerOptions): void {
     shuttingDown = true;
     logger.info("Shutting down", { signal });
 
-    // Stop accepting connections, then release whatever the app holds.
     server.close(() => {
       void options.shutdown().then(() => {
         logger.info("Shutdown complete");
@@ -61,7 +52,7 @@ export function startServer(options: StartServerOptions): void {
       });
     });
 
-    // Do not let a hung connection block a container restart indefinitely.
+    // A hung connection must not block a container restart.
     setTimeout(() => {
       logger.warn("Forcing exit after shutdown timeout");
       process.exit(1);

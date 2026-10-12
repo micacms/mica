@@ -6,17 +6,13 @@
 #   docker compose run --rm mica check     # access, push rights and the content model
 #   docker compose up -d
 #
-# Two files on a server, and no clone of this repository: the image is
-# published, and the content model comes out of your content repository at
-# runtime.
+# Two files on a server, and no clone of this repository. One container: no database,
+# no cache, no queue, no object storage. Mica keeps a clone of the content repository
+# on the volume below and edits it there.
 #
-# One container. No database, no cache, no queue, no object storage. Mica keeps
-# a clone of the content repository on the volume below and edits it there.
-#
-# The image carries no content model: it reads one from the content repository,
-# at `.mica/schema.json`, which the Astro project writes and the developer
-# commits. That is why the same published image serves any project, and why
-# changing the model is a commit plus a restart rather than a rebuild.
+# The image carries no content model: it reads `.mica/schema.json` from the content
+# repository, which the Astro project writes and the developer commits. So one published
+# image serves any project, and a model change is a commit plus a restart, not a rebuild.
 #
 # There is no backup service. The published content is in a Git repository,
 # which is already replicated, versioned and off-site. The volume holds the
@@ -58,7 +54,7 @@ services:
       - mica-data:/data
 
     # Nothing but /data and /tmp is writable, and no capability is left. With
-    # no-new-privileges below, the unprivileged `node` user stays that (#133).
+    # no-new-privileges below, the unprivileged `node` user stays that.
     read_only: true
     tmpfs:
       - /tmp

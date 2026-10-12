@@ -1,24 +1,14 @@
 /**
- * The managed owner policy: a clone that Mica keeps up to date by itself.
- *
- * Sync never merges. It fetches, pushes a pending publication, downloads the
- * blobs the fast-forward will need (outside the tree lock), and fast-forwards
- * only when no entry that an editor changed was also changed upstream. Mica
- * finds those conflicts itself, per entry group, before it asks Git to move:
- * Git's own refusal misses an untracked draft in some cases and never sees
- * that a local deletion undoes an upstream edit. An editor resolves a
- * conflict by keeping their version or by taking the website's.
- *
- * A publication is pushed with an explicit refspec and never forced. A push
- * the remote rejects as non-fast-forward is undone, the clone is brought up
- * to date, and the same commit is made again on top; a push the host refuses
- * outright turns back into drafts. See decisions.md, "Sync never merges" and
- * "Publish: the reviewed paths, at most one unpushed commit".
+ * The managed owner policy: a clone that Mica keeps up to date. Sync never
+ * merges; it fast-forwards only when no group that an editor changed also
+ * changed upstream. Mica finds conflicts itself, because Git's refusal misses
+ * some untracked drafts and never sees that a local deletion undoes an upstream
+ * edit. A push is never forced.
  */
 
 import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 
 import type { PublishResult } from "@micacms/core";
 import {
@@ -40,7 +30,7 @@ import { CloneRefusal, lfsRefusal, writeBackKept, writeMarker, type CloneLayout 
 import { redact } from "./credentials.js";
 import { classifyFailure, describeFailure, readPush, type FailureClass, type PushOutcome } from "./failures.js";
 import { MICA_IDENTITY } from "./isolation.js";
-import { lfsUnderRoot } from "./lfs.js";
+import { attributesPlace, lfsUnderRoot } from "./lfs.js";
 import { changedBetween, draftPaths, restorePaths } from "./restore.js";
 
 /** The editor's name for a piece of content, and the key that groups its files. */
@@ -80,16 +70,13 @@ export interface SyncState {
 
 export interface ManagedWorkspaceOptions {
   layout: CloneLayout;
-  /** The remote URL, without credentials. */
   url: string;
   git: GitRunner;
   tree: GitTree;
   branch: string;
-  /** Content root, repository-relative. */
   root: string;
   locks: WorkspaceLocks;
   logger: Logger;
-  /** The groups an editor sees: an entry with its files, a singleton, an order. */
   groupOf(contentPath: string): ContentGroup;
   /** Checks the drafts again before a rejected publication is made again. Throws an `ApiError`. */
   revalidate?(contentPaths: string[]): Promise<void>;
@@ -101,10 +88,16 @@ export interface ManagedWorkspaceOptions {
 export interface ManagedWorkspace {
   policy: OwnerPolicy;
   state(): SyncState;
-  /** At start, `skipHold` lets the fast-forward apply a model change — the model is read after it. */
+  /**
+   * At start, `skipHold` lets the fast-forward apply a model change; the model
+   * is read after it.
+   */
   sync(options?: { skipHold?: boolean }): Promise<SyncState>;
   resolve(group: string, choice: "mine" | "website"): Promise<SyncState>;
-  /** Whether the remote would accept a push: proves authentication and push rights, not branch rules. */
+  /**
+   * Whether the remote would accept a push: proves authentication and push
+   * rights, not branch rules.
+   */
   checkWrite(): Promise<PushOutcome>;
   start(): void;
   stop(): void;
@@ -143,21 +136,10 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
   const kept = new Set<string>();
   let timer: NodeJS.Timeout | null = null;
 
-  /* ------------------------------------------------------------ paths */
-
   const underRoot = (path: string) => root === "" || path.startsWith(`${root}/`);
   const contentPath = (path: string) => (root === "" ? path : path.slice(root.length + 1));
   const groupKey = (path: string) => options.groupOf(contentPath(path)).key;
   const manifestPath = root === "" ? ".mica/schema.json" : `${root}/.mica/schema.json`;
-
-  /** A `.gitattributes` that can apply under the root: in it, below it, or in an ancestor. */
-  const attributesForRoot = (path: string) => {
-    if (path !== ".gitattributes" && !path.endsWith("/.gitattributes")) return false;
-    const dir = path === ".gitattributes" ? "" : dirname(path);
-    return underRoot(path) || dir === "" || root === dir || root.startsWith(`${dir}/`);
-  };
-
-  /* ----------------------------------------------------------- remote */
 
   const fetch = async () => {
     try {
@@ -165,8 +147,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     } catch (error) {
       throw remoteFailure(error);
     }
-    // gc is off for every other call (`isolation.ts`); here, under the remote
-    // lock and outside the tree lock, it may run.
+    // gc is off for every other call (`isolation.ts`); here it runs outside the tree lock.
     await git.tryRun(["-c", "gc.auto=6700", "gc", "--auto", "--quiet"]);
   };
 
@@ -179,18 +160,17 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
   const ahead = async () => Number((await git.tryRun(["rev-list", "--count", `${upstreamRef}..HEAD`])) ?? "0");
 
   /**
-   * Whether HEAD is one publication of Mica's that is not pushed yet: one
-   * commit ahead, committed by Mica, on a base the branch still contains.
-   * Anything else ahead of the branch means the branch was rewritten under
-   * the clone — pushing it, or turning it into drafts, would undo that.
+   * Whether HEAD is one unpushed publication of Mica's: one commit ahead,
+   * committed by Mica, on a base the branch still contains. Anything else ahead
+   * means the branch was rewritten; pushing it or making drafts would undo
+   * that.
    */
   const pendingPublication = async (): Promise<boolean> => {
     if ((await ahead()) !== 1) return false;
     if ((await git.run(["log", "-1", "--format=%ce", "HEAD"])) !== MICA_IDENTITY.email) return false;
     if ((await git.tryRun(["merge-base", "--is-ancestor", "HEAD^", upstreamRef])) === null) return false;
-    // A publication the remote once had and no longer has was taken back by
-    // a force push; pushing it again would undo that. A push records the new
-    // head in the tracking branch's reflog.
+    // A publication in the tracking branch's reflog was pushed once and then
+    // taken back by a force push.
     const head = await git.run(["rev-parse", "HEAD"]);
     const known = await git.tryRun(["reflog", "show", "--format=%H", `refs/remotes/${upstreamRef}`]);
     return !(known ?? "").split("\n").includes(head);
@@ -203,21 +183,14 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
         "follows it. Copy any drafts out of the clone, delete MICA_DATA_DIR/repository and restart Mica.",
     );
 
-  /* ------------------------------------------------------ fast-forward */
-
-  /**
-   * Brings the clone to the upstream head, or reports why not. The caller
-   * holds the remote lock. Network access happens before the tree lock: the
-   * prefetch downloads every blob the fast-forward will write.
-   */
+  /** The caller holds the remote lock. All network access happens before the tree lock is taken. */
   const fastForward = async (skipHold: boolean): Promise<void> => {
     const from = await git.run(["rev-parse", "HEAD"]);
     const to = await git.run(["rev-parse", upstreamRef]);
     state.head = from;
 
     // At start, LFS is checked even when nothing moved: the clone may be older
-    // than the attributes that brought LFS in. The start reads the model after
-    // this fast-forward, so nothing waits for a restart any more.
+    // than the attributes that added LFS.
     if (skipHold) {
       state.restartRequired = false;
       const lfs = await lfsUnderRoot(git, to, root);
@@ -230,19 +203,17 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       return;
     }
     if ((await git.tryRun(["merge-base", "--is-ancestor", "HEAD", upstreamRef])) === null) {
-      // Mica's own publication, not yet pushed: the push loop makes it again
-      // on top. Anything else cannot be fast-forwarded.
+      // The push loop makes Mica's unpushed publication again on top.
       if (await pendingPublication()) return;
       throw diverged();
     }
 
-    // Download every blob the fast-forward will write, then make sure they
-    // all arrived: the fast-forward itself must not need the network. Only
-    // the new side counts — a blob that an intermediate commit had and the
-    // last one replaced is never written.
+    // Download every blob the fast-forward will write, then make sure they all
+    // arrived: the fast-forward must not need the network. Only the new side
+    // counts.
     await git.run(["diff", "--numstat", from, to]);
-    // `-z --no-renames` gives one path per record: the metadata field, then
-    // the path. Read in pairs, so a path that starts with ":" is a path.
+    // `-z --no-renames` gives pairs of metadata and path, so a path that starts
+    // with ":" is still a path.
     const fields = (await git.run(["diff", "--raw", "-z", "--no-renames", "--no-abbrev", from, to])).split("\0");
     const written: string[] = [];
     for (let at = 0; at + 1 < fields.length; at += 2) {
@@ -263,9 +234,8 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     state.behind = Number(await git.run(["rev-list", "--count", `${from}..${to}`]));
     const upstream = await changedBetween(git, from, to);
 
-    if (!skipHold && upstream.some((path) => path === manifestPath || attributesForRoot(path))) {
-      // Saves go on with the loaded model; the restart fast-forwards and then
-      // reads the new one. A save with the old model would drop new fields.
+    if (!skipHold && upstream.some((path) => path === manifestPath || attributesPlace(path, root) !== null)) {
+      // Hold the fast-forward: a save with the old model would drop new fields.
       if (!state.restartRequired) logger.warn("The content model changed upstream; a restart applies it", { to });
       state.restartRequired = true;
       return;
@@ -283,8 +253,8 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
         return;
       }
 
-      // "Keep my version": put the group's drafts aside, let the upstream
-      // version in, and write the drafts back on top.
+      // "Keep my version": put the drafts aside, let the upstream version in,
+      // and write the drafts back on top.
       const keeping = [...kept].filter((key) => upstreamGroups.has(key) && draftGroups.has(key));
       const keptPaths = drafts.filter((path) => keeping.includes(groupKey(path)));
       if (keptPaths.length > 0) {
@@ -296,8 +266,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       try {
         await git.run(["merge", "--ff-only", "--quiet", to], { env: { GIT_NO_LAZY_FETCH: "1" } });
       } catch (error) {
-        // A fast-forward that fails during the checkout has already changed
-        // files. Put every upstream path back the way `from` has it.
+        // A fast-forward that fails during the checkout has already changed files.
         await restorePaths(git, layout.repositoryDir, from, upstream);
         if ((await git.run(["rev-parse", "HEAD"])) !== from) {
           await git.run(["update-ref", `refs/heads/${branch}`, from]);
@@ -365,20 +334,16 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     await writeMarker(layout.keepMineFile, { files });
   };
 
-  /* ------------------------------------------------------------- push */
-
   /**
-   * Pushes HEAD. The caller holds the remote lock. Returns the outcome an
-   * editor sees, or throws an `ApiError` when the publication turned back
-   * into drafts.
+   * The caller holds the remote lock. Throws an `ApiError` when the publication
+   * turned back into drafts.
    */
   const push = async (): Promise<PublishResult> => {
     try {
       return await pushHeld();
     } catch (error) {
       if (error instanceof ApiError || error instanceof CloneRefusal) throw error;
-      // After an undo, a failure leaves the publication as drafts again. Say
-      // so, and record why, instead of a bare 500.
+      // After an undo, a failure leaves the publication as drafts again.
       const problem = error instanceof RemoteFailure ? error : new RemoteFailure("unknown", clean(String(error)));
       recordError(problem);
       throw new ApiError(
@@ -423,7 +388,6 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       }
 
       // Non-fast-forward: undo the commit, catch up, and make it again.
-      const original = revision;
       const paths = (await git.run(["diff-tree", "--no-commit-id", "--name-only", "--no-renames", "-r", "-z", "HEAD"]))
         .split("\0")
         .filter(Boolean)
@@ -442,16 +406,15 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       }
       await options.revalidate?.(paths);
       await locks.tree.write(async () => {
-        // Only what was reviewed and committed: an autosave that landed
-        // since would otherwise be published unseen.
-        const changed = await changedSince(original, paths);
+        // An autosave that landed since would otherwise be published unseen.
+        const changed = await changedSince(revision, paths);
         if (changed.length > 0) {
           throw new ApiError(
             "conflict",
             "Some of these changes were edited while they were being published. Review them again, then publish.",
           );
         }
-        await recommitPaths(options.tree, paths, original);
+        await recommitPaths(options.tree, paths, revision);
       });
     }
   };
@@ -472,8 +435,8 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
   const pushOnce = async (args: string[]): Promise<PushOutcome> => {
     try {
-      const stdout = await git.run(args);
-      return readPush(0, stdout, "");
+      await git.run(args);
+      return { kind: "pushed" };
     } catch (error) {
       if (!(error instanceof GitError)) throw error;
       return readPush(error.exitCode, error.stdout, error.stderr);
@@ -494,14 +457,11 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     }
   };
 
-  /* ------------------------------------------------------------- sync */
-
-  /** A sync, for a caller that already holds the remote lock. */
+  /** For a caller that holds the remote lock. */
   const syncHeld = async (syncOptions: { skipHold?: boolean } = {}): Promise<SyncState> => {
     try {
       await fetch();
-      // The repository answered, so a failure to reach it is over. Other
-      // failures last until a whole sync succeeds.
+      // A reachability failure ends here; other failures last until a whole sync succeeds.
       if (state.error && REACHABILITY.has(state.error.code)) {
         logger.info("The repository is reachable again");
         state.error = null;
@@ -518,8 +478,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       state.error = null;
       state.lastSyncAt = new Date().toISOString();
     } catch (error) {
-      // A refusal at start stops the process; everything else is a state
-      // that editors and the operator can see, and the next sync tries again.
+      // A refusal stops the start; anything else is recorded, and the next sync tries again.
       if (error instanceof CloneRefusal) throw error;
       recordError(error instanceof RemoteFailure ? error : new RemoteFailure("unknown", clean(String(error))));
     }
@@ -561,8 +520,6 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     return sync();
   };
 
-  /* ----------------------------------------------------------- policy */
-
   const policy: OwnerPolicy = {
     owner: "managed",
 
@@ -580,7 +537,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     },
 
     // The staging service holds the remote lock from here to the push, so no
-    // sync can run between this publication's commit and its push.
+    // sync runs between commit and push.
     async prepare() {
       await syncHeld();
       if (state.error?.code === "diverged") throw new ApiError("conflict", state.error.message);
@@ -618,8 +575,8 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
     resolve,
 
-    // The remote's own head, so the answer is about rights, not about whether
-    // the clone happens to be behind: the host still authenticates the push.
+    // Push the remote's own head, so the answer is about rights, not about
+    // whether the clone is behind.
     checkWrite: () =>
       locks.remote.run(() =>
         pushOnce(["push", "--dry-run", "--porcelain", "origin", `refs/remotes/${upstreamRef}:refs/heads/${branch}`]),
@@ -640,7 +597,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
   };
 }
 
-/** Bytes under `dir`, files only. The clone's size on the data volume. */
+/** Bytes of the files under `dir`. */
 async function sizeOf(dir: string): Promise<number | null> {
   try {
     let total = 0;

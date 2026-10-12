@@ -1,10 +1,6 @@
 /**
- * The content store.
- *
- * Driven over the content files of a real directory, so every test is
- * also a statement about what the repository looks like afterwards. That is the
- * property that matters: the files are the product, not an implementation
- * detail behind an API.
+ * Uses a real directory, so each test also checks the files that the repository
+ * holds afterwards.
  */
 
 import assert from "node:assert/strict";
@@ -75,8 +71,6 @@ afterEach(async () => {
 const files = async (path: string) => (await readdir(join(root, path))).sort();
 const read = (path: string) => readFile(join(root, path), "utf8");
 
-/* ------------------------------------------------------------------ */
-
 describe("saving an entry", () => {
   it("writes the entry as the layout describes it", async () => {
     const saved = await store.save("projects", {
@@ -109,8 +103,7 @@ describe("saving an entry", () => {
         title: "Haus A",
         year: 2024,
         description: "Body text.",
-        // Root-relative, because that is the form `get` hands out and the form
-        // an upload reports — so it is what the editor sends back.
+        // Root-relative, as `get` and an upload return it.
         cover: "projects/haus-a/media/photo.jpg",
       },
     });
@@ -119,7 +112,6 @@ describe("saving an entry", () => {
     assert.equal(entry?.data.title, "Haus A");
     assert.equal(entry?.data.year, 2024);
     assert.equal(entry?.data.description, "Body text.");
-    // Media comes back resolved against the content root.
     assert.equal(entry?.data.cover, "projects/haus-a/media/photo.jpg");
   });
 
@@ -128,8 +120,6 @@ describe("saving an entry", () => {
       data: { title: "Haus A", year: 2024, cover: "projects/haus-a/media/photo.jpg" },
     });
 
-    // What a person reading the repository sees, and what the entry keeps if
-    // its directory is ever moved.
     const onDisk = JSON.parse(await read("projects/haus-a/index.json"));
     assert.equal(onDisk.cover, "media/photo.jpg");
   });
@@ -139,9 +129,7 @@ describe("saving an entry", () => {
       data: { title: "Haus A", year: 2024, cover: "projects/haus-a/media/photo.jpg" },
     });
 
-    // Saving what `get` returned is the ordinary case: an editor changes one
-    // field and sends the whole entry back. The media path must survive it
-    // unchanged, or every save buries the file one directory deeper.
+    // Saving what `get` returned must not bury the media path one directory deeper each time.
     for (let round = 0; round < 3; round += 1) {
       const current = await store.get("projects", "haus-a");
       await store.save("projects", { data: { ...current!.data }, slug: "haus-a" });
@@ -167,7 +155,6 @@ describe("saving an entry", () => {
 
     assert.ok(error instanceof ValidationError);
     assert.ok(error.issues.some((issue) => issue.path === "title"));
-    // Nothing may be written when validation fails.
     assert.deepEqual(await readdir(root), []);
   });
 
@@ -190,7 +177,7 @@ describe("renaming an entry", () => {
   it("moves the directory, and its media with it", async () => {
     await store.save("projects", { data: { title: "Haus A", description: "Body." } });
 
-    // Stands in for an upload, which the media pipeline writes separately.
+    // Stands in for an upload.
     await contentFiles({ root }).apply({
       changes: [
         { type: "write", path: "projects/haus-a/media/photo.jpg", contents: "bytes" },
@@ -224,7 +211,6 @@ describe("concurrency", () => {
     await store.save("projects", { data: { title: "Haus A" } });
     const stale = await store.revisionOf("projects", "haus-a");
 
-    // Another editor saves first.
     await store.save("projects", {
       slug: "haus-a",
       data: { title: "Haus A", slug: "haus-a", year: 2024 },
@@ -279,13 +265,6 @@ describe("concurrency", () => {
     );
   });
 
-  /**
-   * The revision a save hands back has to be the one the next save may send.
-   *
-   * An editor who saves twice without reloading is the ordinary case, not an
-   * edge case, and it is the case that breaks if a save returns anything but
-   * the new revision of the file it just wrote.
-   */
   it("returns a revision the next save is allowed to use", async () => {
     const first = await store.save("projects", { data: { title: "Haus A" } });
 
@@ -329,8 +308,7 @@ describe("concurrency", () => {
 
     assert.equal(first.revision, await store.revisionOfSingleton("theme"));
 
-    // This is what an editor does when they change one more thing before
-    // reloading. It used to be refused as somebody else's edit.
+    // A second save without a reload.
     const second = await store.saveSingleton(
       "theme",
       { primaryColor: "#334455" },

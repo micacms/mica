@@ -1,15 +1,7 @@
 /**
- * Mica's own clone on the data volume: making it, and finding it again.
- *
- * The clone is a cache that also holds the drafts and, at most, one commit
- * that is not pushed yet. So a clone that does not match the configuration is
- * thrown away only when it holds neither; otherwise Mica refuses to start and
- * says how to get the work out. Mica writes no state file of its own: the
- * clone's URL and branch are read from the clone.
- *
- * At every start this module also finishes what a crash interrupted: a
- * fast-forward (`operation.json`), a "Keep my version" (`keep-mine.json`), a
- * stale `index.lock`, and the temporary files of a save.
+ * Mica's clone on the data volume. The clone holds the drafts and at most one
+ * unpushed commit, so a clone that does not match the configuration is replaced
+ * only when it holds neither. At start, it finishes what a crash interrupted.
  */
 
 import { existsSync } from "node:fs";
@@ -27,7 +19,6 @@ export const LONGEST_GIT_CALL_MS = 10 * 60_000;
 
 export interface CloneLayout {
   dataDir: string;
-  /** `<dataDir>/repository` */
   repositoryDir: string;
   /** Marks a fast-forward in progress. */
   operationFile: string;
@@ -53,10 +44,8 @@ export class CloneRefusal extends ConfigError {
 
 export interface OpenCloneOptions {
   layout: CloneLayout;
-  /** Configured URL, without credentials. */
   url: string;
   branch: string;
-  /** Content root inside the repository. */
   root: string;
   env: NodeJS.ProcessEnv;
   logger: Logger;
@@ -120,9 +109,8 @@ export async function openClone(options: OpenCloneOptions): Promise<GitRunner> {
 }
 
 /**
- * Clones into a temporary directory and renames it into place only after the
- * checkout: a clone stopped half-way — by a kill, a timeout or the LFS
- * refusal — must never look like a clone whose files were all deleted.
+ * Clones into a temporary directory, so a clone stopped half-way never looks
+ * like one whose files were deleted.
  */
 async function cloneFresh(options: OpenCloneOptions): Promise<void> {
   const { layout } = options;
@@ -136,8 +124,7 @@ async function cloneFresh(options: OpenCloneOptions): Promise<void> {
   await rm(temporary, { recursive: true, force: true });
 
   options.logger.info("Cloning the content repository", { url: options.url, branch: options.branch });
-  // Blobless and single branch: no history blobs. No checkout yet, so the
-  // isolation attributes are in place before the first file is written.
+  // No checkout yet, so the isolation attributes are in place before the first file is written.
   await outside.run([
     "clone",
     "--filter=blob:none",
@@ -157,9 +144,8 @@ async function cloneFresh(options: OpenCloneOptions): Promise<void> {
     const lfs = await lfsUnderRoot(git, "HEAD", options.root);
     if (lfs) throw lfsRefusal(lfs, options.root);
 
-    // A fresh clone has nothing to lose: fill the index and the tree from
-    // HEAD. `checkout` fetches the missing blobs in one batch; `restore`
-    // would fetch them one request at a time.
+    // `checkout` fetches the missing blobs in one batch; `restore` would fetch
+    // them one request at a time.
     await git.run(["checkout", "--force", "--quiet", "HEAD"]);
     await rename(temporary, layout.repositoryDir);
   } catch (error) {
@@ -170,7 +156,6 @@ async function cloneFresh(options: OpenCloneOptions): Promise<void> {
   options.logger.info("Cloned the content repository", { head });
 }
 
-/** The suffix of a clone that is still being made. */
 const UNFINISHED = ".unfinished-";
 
 async function removeUnfinishedClones(layout: CloneLayout): Promise<void> {
@@ -182,8 +167,8 @@ async function removeUnfinishedClones(layout: CloneLayout): Promise<void> {
 }
 
 /**
- * A "Keep my version" that a crash interrupted holds an editor's drafts in
- * the rescue directory. Before the clone is replaced, they must go somewhere.
+ * An interrupted "Keep my version" holds drafts in the rescue directory; they
+ * must not go with the clone.
  */
 async function refuseRescuedDrafts(layout: CloneLayout): Promise<void> {
   if (!existsSync(layout.keepMineFile)) return;
@@ -194,7 +179,6 @@ async function refuseRescuedDrafts(layout: CloneLayout): Promise<void> {
   );
 }
 
-/** Refuses LFS under the content root; Mica does not support it yet. */
 export function lfsRefusal(file: string, root: string): CloneRefusal {
   return new CloneRefusal(
     `${file} assigns Git LFS to files under the content root (${root || "the repository root"}).\n` +
@@ -207,8 +191,7 @@ async function removeStaleLock(layout: CloneLayout, logger: Logger): Promise<voi
   const lock = join(layout.repositoryDir, ".git", "index.lock");
   const found = await stat(lock).catch(() => null);
   if (!found) return;
-  // A younger lock can belong to a process that still runs — a rolling
-  // deploy, or `check` — so only an old one is removed.
+  // A younger lock can belong to a process that still runs, for example during a rolling deploy.
   if (Date.now() - found.mtimeMs < LONGEST_GIT_CALL_MS) return;
   await rm(lock, { force: true });
   logger.warn("Removed a stale index.lock", { lock });
@@ -236,7 +219,7 @@ async function recover(git: GitRunner, options: OpenCloneOptions): Promise<void>
 
   const operation = await readMarker<OperationMarker>(layout.operationFile);
   if (operation) {
-    // Safe without a copy of the drafts: the fast-forward ran only after the
+    // Safe without a copy of the drafts: the fast-forward ran after the
     // conflict check, so no upstream path is a draft.
     const paths = await changedBetween(git, operation.from, operation.to);
     await restorePaths(git, layout.repositoryDir, operation.to, paths);
@@ -250,13 +233,13 @@ async function recover(git: GitRunner, options: OpenCloneOptions): Promise<void>
     logger.warn("Restored the drafts of an interrupted \"Keep my version\"");
   }
 
-  // A save's temporary files, left behind by a crash during the save.
+  // Temporary files of a save that a crash interrupted.
   for (const path of await draftPaths(git, options.root)) {
     if (/\.mica-\d+-\d+$/.test(path)) await rm(join(layout.repositoryDir, path), { force: true });
   }
 }
 
-/** Writes the rescued drafts back over the tree, then forgets them. */
+/** Writes the rescued drafts back over the tree, then deletes the rescue. */
 export async function writeBackKept(layout: CloneLayout): Promise<void> {
   const marker = await readMarker<KeepMineMarker>(layout.keepMineFile);
   if (!marker) return;

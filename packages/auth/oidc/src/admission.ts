@@ -6,8 +6,7 @@
  * perfectly valid ID token is the beginning of the question rather than the
  * answer to it.
  *
- * Mica used to answer it from a `memberships` table. It no longer has one, and
- * has no accounts to put in it. Admission is configuration:
+ * Mica has no accounts, so admission is configuration:
  *
  *   MICA_ADMIT_GROUP=mica-editors            a claim the provider sends
  *   MICA_ADMIT_DOMAIN=example.com            every verified address there
@@ -24,8 +23,7 @@
  * the provider does not take effect until their next sign-in, because the
  * claims Mica checks are the ones it was given. Configuration changes *are*
  * immediate — this policy is re-read on every request — and the session
- * lifetime is the upper bound on the rest. That trade is recorded as a P1
- * decision in docs/decisions.md.
+ * lifetime is the upper bound on the rest. docs/decisions.md records the trade.
  */
 
 import type { AuthConfig } from "./config.js";

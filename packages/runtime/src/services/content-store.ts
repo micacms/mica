@@ -1,19 +1,7 @@
 /**
- * The content store: collections and singletons over the working tree's files.
- *
- * Everything above `ContentFiles` that is *about content* rather than about
- * files — validating against the model, deriving slugs, deciding which files
- * an entry is made of, and keeping `_order.json` in step. Four things it
- * deliberately does not do:
- *
- *   - **Identity.** An entry *is* its slug and its path, not a generated id.
- *     Renaming moves the directory, which is what an editor means by it and
- *     what a reviewer sees in the diff.
- *   - **Revisions.** Git has history. A second copy inside Mica would make
- *     Mica the thing that must not be lost.
- *   - **Draft/published status.** A save is a draft in the working tree; only
- *     Publish makes it a commit.
- *   - **Media expansion.** A media value is a path. There is nothing to expand.
+ * Collections and singletons over the working tree's files: validation, slugs,
+ * entry files and `_order.json`. An entry is its slug and path, Git keeps the
+ * history, a save is a draft, and only Publish makes a commit.
  */
 
 import { createHash } from "node:crypto";
@@ -66,27 +54,14 @@ export interface SaveEntryInput {
   data: Record<string, unknown>;
   /** The entry being replaced. Absent when creating. */
   slug?: string;
-  /**
-   * The revision `slug` had when the editor opened it.
-   *
-   * Passing it is what makes a save safe against a repository that moved. It is
-   * optional so that an import can write unconditionally, and every path an
-   * editor takes should supply it.
-   */
+  /** The revision `slug` had when the editor opened it. Absent writes unconditionally. */
   expectedRevision?: string | null;
 }
 
 export interface SavedEntry {
   slug: string;
   title: string;
-  /**
-   * The entry's revision *after* this save, ready to be sent back with the
-   * next one.
-   *
-   * Not the commit's identity. The two are different things — a commit
-   * addresses a change set, a revision addresses one file — and returning the
-   * commit here means every second save is refused as somebody else's edit.
-   */
+  /** The entry's revision after this save, for the next save. A file revision, not a commit. */
   revision: string;
   /** True when the save moved the entry's files. */
   renamed: boolean;
@@ -121,13 +96,9 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
   };
 
   /**
-   * Files that belong to an entry now, so the ones that no longer do can be
-   * removed in the same commit.
-   *
-   * Clearing a rich-text field means its `.mdoc` must disappear; leaving it
-   * would make the next read resurrect the text. Media is deliberately left
-   * alone — a file an editor uploaded is not garbage just because no field
-   * currently points at it, and deleting it on save would lose work.
+   * Deletes for `.mdoc` files not in `keep`, so a cleared rich-text field does
+   * not come back on the next read. Media stays: an unreferenced upload is not
+   * garbage.
    */
   const staleDocuments = async (base: string, keep: Set<string>): Promise<FileChange[]> => {
     const changes: FileChange[] = [];
@@ -143,16 +114,8 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
   };
 
   /**
-   * The revision of a file that was just written.
-   *
-   * A save hands this to the editor, who sends it back with their next save.
-   * It must be the file's revision and never the commit's: a commit names a
-   * change set, and comparing one against a file's revision can only ever say
-   * "somebody else edited this".
-   *
-   * Absent means the write did not produce the file the caller named. Returning
-   * an empty token instead would be quietly handing back a revision that can
-   * never match, which is the failure this exists to prevent.
+   * The document's revision after a write. Throws when the file is absent,
+   * because an empty token could never match.
    */
   const revisionAfterWrite = async (dataFile: string, folder: string | null): Promise<string> => {
     const revision = await documentRevision(dataFile, folder);
@@ -167,10 +130,9 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
     entryLayout(fields) === "directory" ? base : null;
 
   /**
-   * The revision of a whole document: its data file and, in the folder
-   * layout, every other file of its folder. A save writes all of them, so a
-   * change to any one — an `.mdoc` edited on the website, say — must make the
-   * next save of an open tab a conflict rather than an overwrite.
+   * The revision of a whole document: its data file and, in the folder layout,
+   * every file of its folder. A change to any one of them makes the next save a
+   * conflict, not an overwrite.
    */
   const documentRevision = async (dataFile: string, folder: string | null): Promise<string | null> => {
     const files = await documentFiles(dataFile, folder);
@@ -218,8 +180,8 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
   };
 
   /**
-   * The order file with a renamed slug in its old place, or null when the file
-   * does not list it. Without it a renamed entry drops to the end of the list.
+   * The order file with a renamed slug in its old place, so the entry does not
+   * drop to the end of the list.
    */
   const renameInOrder = async (name: string, from: string, to: string): Promise<FileChange | null> => {
     const path = `${name}/${ORDER_FILE}`;
@@ -246,8 +208,6 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
   };
 
   return {
-    /* ------------------------------------------------------ reading */
-
     async list(collectionName: string): Promise<ContentEntry[]> {
       return readCollection(workspace, requireCollection(collectionName), collectionName);
     },
@@ -275,12 +235,9 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
     async getSingleton(name: string): Promise<Record<string, unknown>> {
       const def = requireSingleton(name);
       const data = await readSingleton(workspace, def, name);
-      // A singleton with no file yet is not missing content — it is content
-      // nobody has filled in. The editor should open an empty form, not a 404.
+      // A singleton with no file yet opens as an empty form, not a 404.
       return withDefaults(def.fields, data);
     },
-
-    /* ------------------------------------------------------ writing */
 
     async save(collectionName: string, input: SaveEntryInput): Promise<SavedEntry> {
       const def = requireCollection(collectionName);
@@ -301,10 +258,8 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
           ? collectionEntryPath(def.fields, collectionName, input.slug)
           : null;
 
-      // Back to the on-disk form. The editor works in root-relative paths
-      // because that is what `readCollection` hands it; writing those through
-      // unchanged would bake the entry's own directory into the stored path.
-      // A rename relativizes against the old directory, whose media moves along.
+      // The editor uses root-relative media paths; store them relative to the
+      // entry (the old directory on a rename).
       const serialized = serializeEntry(
         def.fields,
         mediaForDisk(def.fields, data, previousBase ?? base),
@@ -318,8 +273,6 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
       }));
 
       if (previousBase) {
-        // A rename moves the whole entry, media included, so the directory goes
-        // rather than the files being deleted one by one.
         changes.push(
           entryLayout(def.fields) === "directory"
             ? { type: "deleteTree", path: previousBase }
@@ -342,9 +295,6 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
         ),
       });
 
-      // The whole entry's revision, read after the write and at the new path
-      // when the save was a rename. The caller sends it straight back with
-      // their next save.
       const revision = await revisionAfterWrite(dataPath(def, collectionName, slug), folderOf(def.fields, base));
 
       return { slug, title, revision, renamed: previousBase !== null };
@@ -400,18 +350,9 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
         expect: await expectDocument(options.expectedRevision, singletonDataPath(def, name), folderOf(def.fields, base)),
       });
 
-      // The whole document's new revision. See `save` above: the editor sends
-      // this back when they change one more thing without reloading.
       return { revision: await revisionAfterWrite(singletonDataPath(def, name), folderOf(def.fields, base)) };
     },
 
-    /**
-     * Records the order an editor arranged a collection in.
-     *
-     * Only the order file is written. Reordering used to rewrite a `position`
-     * column on every row; now one drag is a one-line diff, which is both
-     * cheaper and reviewable.
-     */
     async reorder(
       collectionName: string,
       slugs: string[],
@@ -431,8 +372,6 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
         ],
       });
     },
-
-    /* ---------------------------------------------------- utilities */
 
     requireCollection,
     requireSingleton,
@@ -472,15 +411,9 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
 
 export type ContentStore = ReturnType<typeof createContentStore>;
 
-/* ------------------------------------------------------------------ */
-
-/** The file whose revision identifies an entry, for concurrency checks. */
 /**
- * Media paths as the repository stores them.
- *
- * Mirrors the read side, which resolves media only for directory-shaped
- * entries: a file-shaped entry has no directory of its own for a colocated
- * path to be relative to, so there is nothing to undo.
+ * Media paths as the repository stores them. Only a directory entry has
+ * colocated media to relativize.
  */
 function mediaForDisk(
   fields: FieldMap,
@@ -500,10 +433,7 @@ function singletonDataPath(def: Singleton, name: string): string {
   return entryLayout(def.fields) === "directory" ? `${base}/${INDEX_FILE}` : base;
 }
 
-/**
- * The slug for a payload: what was asked for, what the payload says, or one
- * derived from the title.
- */
+/** The slug from the payload's slug field, or one derived from the title. */
 function pickSlug(
   def: Collection,
   data: Record<string, unknown>,
@@ -527,14 +457,7 @@ function pickSlug(
   return normalised === current ? current : normalised;
 }
 
-/**
- * Carries colocated media across a rename.
- *
- * The serializer records media paths but never moves bytes, so a rename would
- * otherwise leave every image behind in a directory that is about to be
- * deleted. Read and rewritten rather than referenced, because the files have
- * no notion of moving a file — only of writing one and deleting another.
- */
+/** Copies colocated media to the renamed entry; the caller deletes the old directory. */
 async function moveMedia(
   files: ContentFiles,
   from: string,

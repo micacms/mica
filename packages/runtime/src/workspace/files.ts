@@ -1,22 +1,8 @@
 /**
  * The content files of a working tree: the port everything reads and saves
- * through, and its one implementation.
- *
- * Four operations, as narrow as they can usefully be — read a file, list a
- * directory, ask whether something has changed, and apply a set of changes as
- * one unit. Deliberately *not* Git: applying changes writes files, and only
- * Publish turns them into a commit (`tree.ts`).
- *
- * The interface extends `ContentSource`, so `readCollection` and
- * `readSingleton` work unchanged over it. That is the point: the Astro build
- * reading a checkout and the Mica server reading its working tree run the
- * *same* discovery and parsing code, and cannot drift into disagreeing about
- * what a content directory means.
- *
- * Atomicity is what makes an entry safe to save: an entry is an `index.json`,
- * its rich-text sidecars and its media, and half of one is corruption. So
- * every file is written beside its target and renamed into place, and a
- * failure part-way through undoes the whole change set.
+ * through, and its implementation. It extends `ContentSource`, so the Astro
+ * build and Mica share the same content reading code. `apply` is atomic: an
+ * entry is several files, and half of one is corruption.
  */
 
 import { createHash } from "node:crypto";
@@ -30,12 +16,7 @@ export class FilesError extends Error {
   override name = "FilesError";
 }
 
-/**
- * Raised when a file moved under an editor.
- *
- * Separate from `FilesError` because it is the one failure with a sensible
- * answer in the editor — reload and reapply — rather than a message to report.
- */
+/** A file changed under an editor. The editor can recover: reload and apply again. */
 export class ConflictError extends FilesError {
   override name = "ConflictError";
   constructor(
@@ -62,22 +43,11 @@ export type FileChange =
 export interface FileChanges {
   changes: FileChange[];
   /**
-   * Revisions the editor's work was based on, keyed by path.
-   *
-   * Per path rather than one repository head, so that two editors working on
-   * different entries never block each other. A value of null asserts the path
-   * did not exist — which is how creating an entry avoids overwriting one that
-   * appeared in the meantime.
-   *
-   * Omitted entirely, the write is unconditional. That is correct for a first
-   * import and wrong for anything an editor did.
+   * Revisions the edit was based on, per path, so editors of different entries
+   * never block each other. Null asserts that the path does not exist. Omitted,
+   * the write is unconditional.
    */
   expect?: Record<string, string | null>;
-}
-
-export interface AppliedChanges {
-  /** A digest of what was written, for logs. Not a commit. */
-  revision: string;
 }
 
 export interface ContentFiles extends ContentSource {
@@ -86,19 +56,20 @@ export interface ContentFiles extends ContentSource {
 
   /**
    * An opaque token for the current state of `path`, or null when it is absent.
-   *
-   * Only ever compared for equality — nothing above this interface may assume
-   * what it is, or attempt to order two of them.
+   * Compare only for equality.
    */
   revision(path: string): Promise<string | null>;
 
-  /** Applies every change, or none of them. Throws `ConflictError` when any `expect` no longer holds. */
-  apply(input: FileChanges): Promise<AppliedChanges>;
+  /**
+   * Applies every change, or none of them. Throws `ConflictError` when any
+   * `expect` no longer holds.
+   */
+  apply(input: FileChanges): Promise<void>;
 }
 
 /**
- * Refuses changes or expectations that name a path outside the content root,
- * or the root itself — before anything is written.
+ * Refuses, before any write, a change or expectation that names the content
+ * root or a path outside it.
  */
 export function checkChangePaths(input: FileChanges): void {
   for (const change of input.changes) contentPath(change.path);
@@ -106,7 +77,6 @@ export function checkChangePaths(input: FileChanges): void {
 }
 
 export interface ContentFilesOptions {
-  /** The content root: the directory collections and singletons live in. */
   root: string;
 }
 
@@ -149,11 +119,8 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
     },
 
     /**
-     * A content hash, not an mtime.
-     *
-     * An mtime would call a file changed when a checkout rewrote it byte for
-     * byte, which happens constantly in a working tree —
-     * and would then reject the editor's next save for no reason.
+     * A content hash, not an mtime: a checkout that rewrites identical bytes
+     * must not cause a conflict.
      */
     async revision(path) {
       const bytes = await readBytes(path);
@@ -161,16 +128,14 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
       return createHash("sha256").update(bytes).digest("hex").slice(0, 16);
     },
 
-    async apply(input: FileChanges): Promise<AppliedChanges> {
+    async apply(input: FileChanges): Promise<void> {
       checkChangePaths(input);
       await assertExpected(this, input);
 
-      // Everything the change set will overwrite or remove, kept so that a
-      // failure part-way through can be undone. Content trees are small — a
-      // few hundred files of a few kilobytes — so holding one change set in
-      // memory is cheaper than any journal that would replace it.
+      // In-memory undo of every overwrite and removal. Content trees are small,
+      // so no journal is necessary.
       const undo: Array<() => Promise<void>> = [];
-      const written: string[] = [];
+      const staging: string[] = [];
 
       try {
         for (const change of input.changes) {
@@ -184,13 +149,12 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
             });
 
             await mkdir(dirname(target), { recursive: true });
-            // Written beside the target and renamed into place, so a reader —
-            // the Astro dev server watches this directory — never observes a
-            // partially written file.
-            const staged = `${target}.mica-${process.pid}-${written.length}`;
+            // Write beside the target and rename, so a reader (the Astro dev
+            // server) never sees a partial file.
+            const staged = `${target}.mica-${process.pid}-${staging.length}`;
+            staging.push(staged);
             await writeFile(staged, change.contents);
             await rename(staged, target);
-            written.push(staged);
             continue;
           }
 
@@ -208,7 +172,6 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
             continue;
           }
 
-          // deleteTree
           const saved = await snapshotTree(this, change.path);
           undo.push(async () => {
             for (const [path, bytes] of saved) {
@@ -220,15 +183,12 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
           await rm(target, { recursive: true, force: true });
         }
       } catch (error) {
-        // Reverse order, so a path written and then deleted comes back in the
-        // state it started in.
+        // Reverse order, so a path written and then deleted comes back in its first state.
         for (const step of undo.reverse()) {
-          await step().catch(() => {
-            // Nothing useful to do: the original failure is what matters, and
-            // hiding it behind a rollback failure would help nobody.
-          });
+          // The original failure is what matters, not a rollback failure.
+          await step().catch(() => {});
         }
-        for (const staged of written) await rm(staged, { force: true }).catch(() => {});
+        for (const staged of staging) await rm(staged, { force: true }).catch(() => {});
 
         throw error instanceof FilesError
           ? error
@@ -236,19 +196,9 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
               `Could not apply changes to ${base}: ${(error as Error).message}`,
             );
       }
-
-      // The working tree has no commit identity. A digest of what was written
-      // is enough for a log line, and is honest about being derived rather
-      // than assigned.
-      const digest = createHash("sha256");
-      for (const change of input.changes) digest.update(change.type).update(change.path);
-
-      return { revision: `local:${digest.digest("hex").slice(0, 12)}` };
     },
   };
 }
-
-/* ------------------------------------------------------------------ */
 
 async function assertExpected(
   files: ContentFiles,

@@ -28,7 +28,7 @@ async function publishedTagline(request: APIRequestContext): Promise<string> {
 }
 
 test("an editor signs in, edits, saves and publishes", async ({ page, request, baseURL }) => {
-  // Mica's pages load nothing from another origin and break no CSP rule (#88).
+  // Mica's pages load nothing from another origin and break no CSP rule.
   // The sign-in itself navigates to Dex, which is not a Mica page.
   const mica = new URL(baseURL ?? "").origin;
   const external: string[] = [];

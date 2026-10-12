@@ -1,8 +1,4 @@
-/**
- * The managed workspace against a real Git host on loopback: the clone, sync
- * and its conflict check, "Keep my version" and "Use the website's version",
- * recovery after a crash, the push results, and the isolation of Git.
- */
+/** The managed workspace against a real Git host on loopback. */
 
 import assert from "node:assert/strict";
 import {

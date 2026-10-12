@@ -1,9 +1,6 @@
 /**
- * The content files of a working tree.
- *
- * Against a real temporary directory rather than a mock, because the whole
- * value of this implementation is what it does to a filesystem — atomicity,
- * rollback and traversal refusal are not properties a fake can demonstrate.
+ * Uses a real temporary directory: a fake cannot show atomicity, rollback and
+ * traversal refusal.
  */
 
 import assert from "node:assert/strict";
@@ -42,8 +39,6 @@ const missing = async (path: string) => {
   await assert.rejects(() => readFile(join(root, path), "utf8"));
 };
 
-/* ------------------------------------------------------------------ */
-
 describe("reading", () => {
   it("reads text and bytes", async () => {
     assert.equal(await files.read("theme.json"), '{ "primaryColor": "#123456" }');
@@ -81,7 +76,7 @@ describe("revisions", () => {
   it("changes when the content changes, and not otherwise", async () => {
     const before = await files.revision("theme.json");
 
-    // Rewritten byte for byte, as a Git checkout does constantly.
+    // Rewritten byte for byte, as a Git checkout does.
     await writeFile(join(root, "theme.json"), '{ "primaryColor": "#123456" }', "utf8");
     assert.equal(await files.revision("theme.json"), before);
 
@@ -147,7 +142,6 @@ describe("commit", () => {
 
     assert.ok(error instanceof ConflictError);
     assert.deepEqual(error.paths, ["theme.json"]);
-    // The write must not have happened.
     assert.equal(await read("theme.json"), '{ "primaryColor": "#999999" }');
   });
 
@@ -181,7 +175,6 @@ describe("commit", () => {
       }),
     );
 
-    // Both earlier changes must have been undone.
     assert.equal(await read("projects/haus-a/index.json"), '{ "title": "Haus A" }');
     assert.equal(await read("projects/haus-a/media/photo.jpg"), "not really a jpeg");
   });

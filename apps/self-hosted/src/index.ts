@@ -1,20 +1,8 @@
 /**
- * The self-hosted deployment's process entry point — what the Docker image
- * runs.
- *
- * The whole composition: the runtime behind the OIDC gate from
- * `@micacms/auth-oidc`, working on a clone of the content repository that
- * this process keeps on its data volume. The working tree is the draft
- * workspace; there is no database. It composes `@micacms/runtime`; it does
- * not fork it.
- *
- * The order at start matters (decisions.md, "Start, readiness and check"):
- * the HTTP server answers `/health` first, then the clone is made or
- * recovered, brought up to date, and only then is the content model read —
- * so a restart is what applies a model change that a sync held back.
- *
- *   node dist/index.js          serve
- *   node dist/index.js check    check the configuration and the repository, then exit
+ * The Docker entry point: the runtime behind the OIDC gate, on a Git clone on
+ * the data volume. The order at start: `/health` answers first, then the clone
+ * is made and synced, and only then is the model read, so a restart applies a
+ * model change that a sync held back.
  */
 
 import { createOidcAuth } from "@micacms/auth-oidc";
@@ -99,6 +87,7 @@ async function serve(): Promise<void> {
   const logger: Logger = createLogger({ level: config.LOG_LEVEL, pretty: !config.isProduction });
   const { remote, branch, root, token, username, syncSeconds } = config.repository;
   const clean = (text: string) => redact(text, [token]);
+  const authLabel = `oidc:${new URL(config.MICA_OIDC_ISSUER!).hostname}`;
 
   if (config.devSecrets.length > 0) {
     logger.warn("Using generated development secrets", {
@@ -131,8 +120,6 @@ async function serve(): Promise<void> {
     },
   });
 
-  /* ------------------------------------------------------------ the clone */
-
   const layout = cloneLayout(config.dataDir);
   const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token });
   let git;
@@ -153,10 +140,9 @@ async function serve(): Promise<void> {
   const files = contentFiles({ root: config.contentRoot });
   const locks = createWorkspaceLocks();
 
-  // The model at HEAD tells the first sync which files belong together. The
-  // sync at start may move HEAD past a model change, so it is read again.
-  // Only the read after the sync may stop the start: a model this image cannot
-  // read must not keep the clone from fetching a fix.
+  // The model at HEAD groups the files for the first sync, and is read again
+  // after it. Only the second read may stop the start: a model this image
+  // cannot read must not block the fetch of a fix.
   const startModel = await loadSchema(files).catch((error: unknown) => {
     if (!(error instanceof SchemaError)) throw error;
     logger.warn("The content model at the clone's head cannot be read; syncing with a coarse grouping", {
@@ -210,8 +196,6 @@ async function serve(): Promise<void> {
         : `refused: ${clean(write.kind === "remote-rejected" ? write.reason : "non-fast-forward")}`;
   if (write.kind !== "pushed") logger.warn("The write check did not pass; Publish will fail", { writeCheck });
 
-  /* -------------------------------------------------------------- the app */
-
   const auth = createOidcAuth({ config, logger });
   const workspace = managed;
 
@@ -226,9 +210,8 @@ async function serve(): Promise<void> {
     tree,
 
     operational: () => ({
-      auth: `oidc:${new URL(config.MICA_OIDC_ISSUER!).hostname}`,
+      auth: authLabel,
       admission: auth.admission.summary,
-      database: null,
       dataDir: config.dataDir,
       sessionTtlHours: config.SESSION_TTL_HOURS,
       sessionIdleHours: config.SESSION_IDLE_HOURS,
@@ -267,18 +250,16 @@ async function serve(): Promise<void> {
     url: config.MICA_PUBLIC_URL,
     site: ctx.site.id,
     environment: config.NODE_ENV,
-    auth: `oidc:${new URL(config.MICA_OIDC_ISSUER!).hostname}`,
-    // Who may edit, in the operator's own words. Said at startup because a
-    // rule that admits nobody and a rule that admits everybody look the same
-    // from outside until somebody tries to sign in.
+    auth: authLabel,
+    // A rule that admits nobody and one that admits everybody look the same
+    // until somebody signs in.
     admission: auth.admission.summary,
     repository: remote.url,
     branch,
     root: root || "/",
     head: workspace.state().head,
     writeCheck,
-    // Enough to tell two deployments apart when a website was built against
-    // one model and the CMS is serving another.
+    // Shows when a website was built against a different model than the CMS serves.
     schemaFingerprint: await schemaFingerprint(model),
     collections: Object.keys(model.collections).length,
   });

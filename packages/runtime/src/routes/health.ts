@@ -1,14 +1,7 @@
 /**
- * Health endpoints for container orchestration and uptime monitoring.
- *
- *   /health  the process answers. No I/O: a repository outage must not restart
- *            a container that would not be any better for it.
- *   /ready   the content repository: the composition's own answer where it
- *            keeps one, otherwise a read of the working tree. Cached, because
- *            anybody can ask.
- *
- * Neither answer names the repository or the uptime: the endpoints are public,
- * and the System view shows both to editors (#79).
+ * `/health` does no I/O, so a repository outage does not restart the container.
+ * `/ready` checks the content repository and is cached because it is public.
+ * Neither names the repository or the uptime.
  */
 
 import { Hono, type Context } from "hono";
@@ -55,15 +48,13 @@ async function probe(c: Context<Env>): Promise<Readiness> {
   const ctx = c.get("ctx");
   const logger = c.get("logger");
 
-  // A composition that keeps its own state answers for itself: a managed
-  // clone knows whether it can be edited without asking the remote.
+  // A managed clone knows whether it can be edited without asking the remote.
   if (ctx.health.ready) {
     const { ok, reasons } = ctx.health.ready();
     return { status: ok ? "ok" : "error", repository: ok ? "ok" : "unavailable", reasons };
   }
 
-  // `list` on a missing root returns an empty array rather than throwing, so
-  // this proves reachability, not that anyone has written content yet.
+  // `list` on a missing root returns an empty array, so this proves reachability only.
   let repository: Check = "ok";
   try {
     await ctx.site.contentRepository.list("");

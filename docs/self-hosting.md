@@ -333,10 +333,6 @@ Mica refuses to start, and lists every problem in one message, when:
 
 - `MICA_REPOSITORY_URL` or `MICA_REPOSITORY_TOKEN` is missing, or the URL has
   credentials or is not HTTPS;
-- a variable from 0.4 is still set (`REPOSITORY`, `REPOSITORY_PROJECT`,
-  `REPOSITORY_API_BASE`, `REPOSITORY_TOKEN`, `REPOSITORY_BRANCH`,
-  `REPOSITORY_ROOT`, `DATA_DIR`, `DATABASE_PATH`);
-- `cms.sqlite` is on the volume ([Upgrading from 0.4](#upgrading-from-04));
 - the first clone fails;
 - the repository has no content model;
 - the content root uses Git LFS;
@@ -505,33 +501,6 @@ docker compose pull && docker compose up -d
 Mica is pre-1.0: read the [changelog](../CHANGELOG.md) first, and pin a
 version rather than tracking `latest`, so an upgrade is a decision.
 
-### Upgrading from 0.4
-
-Version 0.5 has no database and uses new variable names. It does not migrate
-drafts. Do the steps in this order:
-
-1. On 0.4.1, **publish or discard** every pending change.
-2. Stop Mica.
-3. Delete `cms.sqlite` from the volume. Drafts that you did not publish are
-   lost.
-4. Replace **both** `compose.yml` and `.env` with the 0.5 versions. The 0.4
-   `compose.yml` sets `REPOSITORY` and `DATA_DIR` in `environment`, so an edit
-   of `.env` alone is refused.
-5. Convert the project to a URL. GitHub `acme/site` becomes
-   `MICA_REPOSITORY_URL=https://github.com/acme/site.git`. GitLab
-   `group/project` becomes `https://gitlab.com/group/project.git`. A
-   `REPOSITORY_API_BASE` becomes the URL of that host.
-6. Narrow the token. A GitLab `api` token becomes `read_repository` and
-   `write_repository` ([Token reference](#token-reference)).
-7. Run `docker compose run --rm mica check`.
-8. Start Mica with `docker compose up -d`.
-
-Mica refuses to start while `cms.sqlite` is on the volume, or while one of the
-old variable names is set (`REPOSITORY`, `REPOSITORY_PROJECT`,
-`REPOSITORY_API_BASE`, `REPOSITORY_TOKEN`, `REPOSITORY_BRANCH`,
-`REPOSITORY_ROOT`, `DATA_DIR`, `DATABASE_PATH`). It lists all problems at once.
-It never opens the database file.
-
 ---
 
 ## Verifying the image
@@ -635,8 +604,6 @@ Mica exits at start and lists every problem in one message.
 | "`MICA_REPOSITORY_URL` is not set" or "… is not a URL" | The variable is missing or wrong | Set the HTTPS clone URL, for example `https://gitlab.com/group/project.git` |
 | "`MICA_REPOSITORY_URL` contains credentials" | A token is in the URL | Remove it, and set `MICA_REPOSITORY_TOKEN` |
 | "must be an https:// URL" | An `ssh://`, `git@…` or `http://` URL | Use HTTPS. SSH is not supported yet. `http://` works only with `NODE_ENV=development` on loopback |
-| "`REPOSITORY_…` is no longer read" | A name from 0.4 | Use the new name that the message gives. Check `compose.yml` too |
-| "`cms.sqlite` is the draft database of Mica 0.4" | An upgrade from 0.4 | [Upgrading from 0.4](#upgrading-from-04) |
 | "assigns Git LFS to files under the content root" | `.gitattributes` has `filter=lfs` for the content | Keep LFS out of the content root. Mica does not support it yet |
 | "The clone on the data volume is for …" | The URL or branch changed, and the clone has drafts | Start with the old configuration and publish, or copy the drafts out and delete the volume |
 | "No content model at …" | `.mica/schema.json` was never committed, or is on another branch | Build the Astro project, commit it, push to `MICA_REPOSITORY_BRANCH` |

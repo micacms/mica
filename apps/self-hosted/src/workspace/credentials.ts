@@ -1,27 +1,19 @@
 /**
- * The repository URL and the credentials that reach it.
- *
- * The token is a password for Git over HTTPS. It never goes into the URL or a
- * file: Git asks a credential helper for it, and the helper reads it from the
- * environment of that one `git` process (`isolation.ts`). The helper is scoped
- * to the configured host, so a redirect or a second remote gets nothing.
+ * The token never goes into the URL or a file: a credential helper reads it
+ * from the environment of each `git` process (`isolation.ts`). The helper is
+ * scoped to the configured host, so a redirect or a second remote gets nothing.
  */
 
 import { ConfigError, LOOPBACK } from "@micacms/runtime";
 
 export interface Remote {
-  /** The URL as configured, without credentials. */
   url: string;
   scheme: "https" | "http";
   /** `host` or `host:port` — the key a credential helper is scoped to. Git drops a default port. */
   hostKey: string;
 }
 
-/**
- * Checks `MICA_REPOSITORY_URL`. Plain HTTP is accepted only in development,
- * on a loopback host — the same rule as for the OIDC issuer, and what the
- * tests need.
- */
+/** Checks `MICA_REPOSITORY_URL`. Plain HTTP is accepted only in development, on a loopback host. */
 export function parseRemote(raw: string, development: boolean): Remote {
   let url: URL;
   try {
@@ -58,8 +50,8 @@ export function parseRemote(raw: string, development: boolean): Remote {
 }
 
 /**
- * The username Git sends with the token. GitHub, GitLab and Forgejo accept any
- * non-empty name with a token (spike S1); these are the names their docs use.
+ * GitHub, GitLab and Forgejo accept any non-empty username with a token; these
+ * are the names their docs use.
  */
 export function defaultUsername(remote: Remote): string {
   const host = remote.hostKey.split(":")[0];
@@ -69,8 +61,8 @@ export function defaultUsername(remote: Remote): string {
 }
 
 /**
- * Removes credentials from text that may reach a log or an editor: any
- * `user:password@` in a URL, and every value in `secrets`.
+ * Removes any `user:password@` in a URL and every value in `secrets` from text
+ * that may reach a log or an editor.
  */
 export function redact(text: string, secrets: Array<string | undefined>): string {
   let clean = text.replace(/(\b[a-z][a-z0-9+.-]*:\/\/)[^/\s@]*@/gi, "$1");

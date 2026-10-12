@@ -1,17 +1,9 @@
 /**
- * The self-hosted deployment's configuration: the runtime fragment plus the
- * auth fragment plus what only this composition has — the repository it
- * clones, and the data directory the clone lives in.
- *
- * The refusals live where the fragments do — `requireAuthConfig` for OIDC and
- * admission — and this file adds the deployment's own: the repository, the
- * names that 0.5 replaced, a draft database left by 0.4, and secrets that are
- * mandatory in production. Every problem is reported in one message, so an
- * operator fixes an upgrade in one pass.
+ * The self-hosted configuration: the runtime and auth fragments, plus the
+ * repository and the data directory.
  */
 
 import { randomBytes } from "node:crypto";
-import { existsSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 
@@ -40,34 +32,19 @@ const fields = {
   ...runtimeFields,
   ...authEnv,
 
-  /** Holds the clone, and in it the drafts. */
   MICA_DATA_DIR: z.string().default("./data"),
   /** The HTTPS clone URL, without credentials. */
   MICA_REPOSITORY_URL: z.string().optional(),
-  /** The password for Git over HTTPS. */
   MICA_REPOSITORY_TOKEN: z.string().optional(),
   /** Defaults by host: `x-access-token` (GitHub), `oauth2` (GitLab), `mica`. */
   MICA_REPOSITORY_USERNAME: z.string().optional(),
   MICA_REPOSITORY_BRANCH: z.string().default("main"),
-  /** Where the content root sits inside the repository. */
   MICA_REPOSITORY_ROOT: z.string().default("content"),
   MICA_REPOSITORY_SYNC_SECONDS: z.coerce.number().int().min(5).max(86_400).default(60),
 };
 
-/** Every variable this server reads, from the same object as the schema, so they cannot drift. */
+/** Built from the schema's fields, so the two cannot drift. */
 const KNOWN = new Set(Object.keys(fields));
-
-/** Names that 0.5 replaced, and what replaced them. Startup refuses the old ones. */
-const REPLACED: Record<string, string> = {
-  REPOSITORY: "MICA_REPOSITORY_URL (the URL tells everything)",
-  REPOSITORY_PROJECT: "MICA_REPOSITORY_URL, for example https://gitlab.com/group/project.git",
-  REPOSITORY_API_BASE: "MICA_REPOSITORY_URL",
-  REPOSITORY_TOKEN: "MICA_REPOSITORY_TOKEN",
-  REPOSITORY_BRANCH: "MICA_REPOSITORY_BRANCH",
-  REPOSITORY_ROOT: "MICA_REPOSITORY_ROOT",
-  DATA_DIR: "MICA_DATA_DIR",
-  DATABASE_PATH: "nothing: Mica 0.5 keeps no database",
-};
 
 const schema = z.object(fields).transform((env) => {
   const dataDir = path.resolve(env.MICA_DATA_DIR);
@@ -102,7 +79,7 @@ export type SelfHostedConfig = RuntimeConfig &
     SESSION_SECRET?: string | undefined;
     /** Names of the secrets this process generated for itself. */
     devSecrets: string[];
-    /** `MICA_*` and `REPOSITORY_*` names in the environment that nothing reads: likely typos. */
+    /** `MICA_*` names in the environment that nothing reads: likely typos. */
     unknownVariables: string[];
   };
 
@@ -129,7 +106,10 @@ function requireHttps(
   );
 }
 
-/** Git's rules for a branch name, enough to refuse anything that could act as an option or a range. */
+/**
+ * Git's rules for a branch name, enough to refuse anything that could act as an
+ * option or a range.
+ */
 function isBranchName(name: string): boolean {
   return (
     name.length > 0 &&
@@ -143,22 +123,9 @@ function isBranchName(name: string): boolean {
   );
 }
 
-/** The upgrade and repository problems, all at once — an operator fixes them in one pass. */
+/** All repository problems at once, so an operator fixes them in one pass. */
 function repositoryProblems(env: NodeJS.ProcessEnv, development: boolean): { problems: string[]; repository?: RepositoryConfig } {
   const problems: string[] = [];
-
-  const dataDir = path.resolve(env["MICA_DATA_DIR"] ?? env["DATA_DIR"] ?? "./data");
-  if (existsSync(path.join(dataDir, "cms.sqlite"))) {
-    problems.push(
-      `${path.join(dataDir, "cms.sqlite")} is the draft database of Mica 0.4. Mica 0.5 keeps drafts in a Git clone\n` +
-        "    and cannot read it. Start 0.4.1 again, publish or discard every pending change, stop it, then\n" +
-        "    delete cms.sqlite. Drafts that you did not publish are lost when you delete it.",
-    );
-  }
-
-  for (const [name, replacement] of Object.entries(REPLACED)) {
-    if (env[name] !== undefined) problems.push(`${name} is no longer read. Use ${replacement}.`);
-  }
 
   const url = env["MICA_REPOSITORY_URL"];
   let remote: Remote | undefined;
@@ -204,8 +171,7 @@ function repositoryProblems(env: NodeJS.ProcessEnv, development: boolean): { pro
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConfig {
-  // Only when reading the ambient environment: tests pass an explicit object
-  // and must not pick up whatever `.env` sits in the working directory.
+  // Tests pass an explicit object and must not pick up a `.env` in the working directory.
   if (env === process.env) loadEnvFile();
   const present = withoutBlanks(env);
 
@@ -213,7 +179,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
   if (problems.length > 0) {
     throw new ConfigError(
       `Mica cannot start:\n${problems.map((problem) => `  - ${problem}`).join("\n")}\n` +
-        "  See the upgrade notes for 0.5.0 and deploy/self-hosted/.env.example.",
+        "  See deploy/self-hosted/.env.example.",
     );
   }
 
@@ -225,9 +191,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
   requireAuthConfig(config);
   requireHttps(config, present);
 
-  // Secrets are mandatory in production. In development an ephemeral one is
-  // generated so a trial run works from a clean checkout — at the cost of
-  // signing everyone out on restart, which is the correct trade-off there.
+  // In development a generated secret lets a trial run work from a clean
+  // checkout; sessions end on restart.
   const missing: string[] = [];
   if (!config.SESSION_SECRET) missing.push("SESSION_SECRET");
 
@@ -244,7 +209,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
     sessionSecret: config.SESSION_SECRET ?? randomBytes(32).toString("hex"),
     devSecrets: missing,
     unknownVariables: Object.keys(env)
-      .filter((name) => /^(MICA_|REPOSITORY_)/.test(name) && !KNOWN.has(name) && !(name in REPLACED))
+      .filter((name) => name.startsWith("MICA_") && !KNOWN.has(name))
       .sort(),
   };
 }

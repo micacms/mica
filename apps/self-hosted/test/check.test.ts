@@ -1,7 +1,6 @@
 /**
- * The `check` command against a real Git host on loopback: it passes a good
- * setup, names the failing check, and never writes to a clone that a running
- * server may be using.
+ * `check` against a real Git host on loopback. It must never write to a clone
+ * that a running server may use.
  */
 
 import assert from "node:assert/strict";

@@ -1,18 +1,8 @@
 <script setup lang="ts">
 /**
- * The pending change set, and Publish.
- *
- * This view is where Saved and Published stop being abstract words: everything
- * listed here is durable in the draft workspace and absent from the
- * repository's history until the button at the bottom is pressed. The list is
- * shared by the whole site — one pending set, not one per editor — so
- * everything on it is published together, whoever presses the button.
- *
- * Both owners of the working tree speak through one API: the developer's
- * checkout is worded in Git's terms and pushed with their own Git; the clone
- * that a self-hosted Mica keeps is worded for editors, and Mica keeps it in
- * step with the website — which is where conflicts come from. The `owner`
- * field decides the phrasing; the behaviour is the same.
+ * The pending change set, and Publish. The whole site shares one pending set,
+ * so everything on it is published together, whoever presses the button.
+ * `owner` changes only the words, not the behaviour.
  */
 
 import { computed, onMounted, ref, watch } from "vue";
@@ -88,15 +78,17 @@ async function loadComparison(edit: Edit): Promise<void> {
   }
 }
 
-// The comparison is the change list, so it loads with it — every edit, as
-// soon as it appears, without anything to click.
+// Comparisons load with the change list, with nothing to click.
 watch(edits, (next) => {
   for (const edit of next) {
     if (edit.target && !comparisons.value[edit.key]) void loadComparison(edit);
   }
 });
 
-/** The developer's checkout, worded in Git's terms; otherwise Mica's own clone, worded for editors. */
+/**
+ * The developer's checkout, worded in Git's terms; otherwise Mica's own clone,
+ * worded for editors.
+ */
 const isTree = computed(() => status.value?.owner === "developer");
 const sync = computed(() => status.value?.sync ?? null);
 
@@ -110,7 +102,10 @@ const subtitle = computed(() => {
   return "Saved in Mica, waiting to be published";
 });
 
-/** Commits already made and not yet pushed — visible even across a restart. The developer retries; Mica retries its own. */
+/**
+ * Commits already made and not yet pushed — visible even across a restart. The
+ * developer retries; Mica retries its own.
+ */
 const waitingToPush = computed(
   () => isTree.value && (pendingPush.value !== null || (status.value?.ahead ?? 0) > 0),
 );
@@ -454,7 +449,6 @@ function short(revision: string): string {
         </ul>
       </div>
 
-      <!-- Nothing pending -->
       <div v-if="edits.length === 0" class="card p-8 text-center">
         <p class="text-sm font-medium">Nothing waiting to be published</p>
         <p class="mt-1 text-sm text-muted">
@@ -463,7 +457,6 @@ function short(revision: string): string {
         </p>
       </div>
 
-      <!-- The pending set -->
       <section v-else aria-labelledby="changes-heading">
         <h2 id="changes-heading" class="sr-only">Pending changes</h2>
 
@@ -521,7 +514,6 @@ function short(revision: string): string {
         </ul>
       </section>
 
-      <!-- Publish -->
       <section v-if="edits.length > 0 && status.publish.enabled" class="card p-4" aria-labelledby="publish-heading">
         <h2 id="publish-heading" class="text-sm font-semibold">
           Publish {{ edits.length === 1 ? "this edit" : `these ${edits.length} edits` }}

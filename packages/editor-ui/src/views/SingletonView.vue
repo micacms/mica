@@ -1,11 +1,8 @@
 <script setup lang="ts">
 /**
- * Singleton editor — site configuration, navigation, theme.
- *
- * A singleton is one file in the repository, so this view is the entry editor
- * without the parts that need a slug: no rename, no delete, no list to go back
- * to. What it shares is `revision` — the version the form was opened against,
- * sent back with the save so a second editor cannot be overwritten in silence.
+ * Singleton editor: the entry editor without the parts that need a slug (no
+ * rename, no delete, no list). `revision` goes back with the save, so a second
+ * editor cannot be overwritten in silence.
  */
 
 import { computed, onMounted, ref, watch } from "vue";
@@ -35,7 +32,10 @@ const loading = ref(true);
 const saving = ref(false);
 const conflict = ref(false);
 
-/** These settings were changed on the website while they have a draft here: Mica's own clone only. */
+/**
+ * These settings were changed on the website while they have a draft here:
+ * Mica's own clone only.
+ */
 const websiteConflict = computed(() =>
   (staging.status.value?.sync?.conflicts ?? []).some(
     (item) => item.target?.kind === "singleton" && item.target.name === props.name,

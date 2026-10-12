@@ -1,26 +1,13 @@
 /**
- * Working-tree staging: the staging service of both apps.
+ * The staging service on a Git working tree. Autosave has already written the
+ * files; Publish commits the reviewed paths.
  *
- * The working tree *is* the draft workspace — the developer's checkout in
- * the local editor, Mica's own clone when self-hosted. Autosave has already
- * written the files (in the local editor, that is what lets the Astro dev
- * server hot-reload them), so this service's job is reading what Git thinks
- * of the tree and, on Publish, turning exactly the reviewed paths into one
- * commit and one push. The Git operations are in
- * `workspace/tree.ts`, the push in the owner policy, and the locks that keep
- * saves and commits apart in `workspace/locks.ts`.
- *
- * Three rules keep it safe in a repository that people share:
- *
- *   - Only Mica-managed paths. Every Git operation is limited to an explicit
- *     path set derived from the change list — never `git add -A` over the
- *     repository, so unrelated work in the same checkout is never swept in.
- *   - Exactly the reviewed files are published, as the editor saw them. A
- *     file saved again since, or another file of the same entry, refuses;
- *     drafts of other entries stay drafts.
- *   - A commit and a push are two operations. When the push fails the commit
- *     is retained and reported as `committed-pending-push`; a retry pushes
- *     again and never creates a second commit.
+ *   - Every Git operation is limited to an explicit path set, so other work in
+ *     the same checkout is never swept in.
+ *   - Only the reviewed files are published, as the editor saw them. Drafts of
+ *     other entries stay drafts.
+ *   - When the push fails, the commit stays as `committed-pending-push`; a
+ *     retry pushes and never commits again.
  */
 
 import { MANIFEST_PATH, memorySource, type PublishResult, type Site } from "@micacms/core";
@@ -62,26 +49,22 @@ import {
 export interface WorkingTreeStagingDeps {
   model: Site;
   /**
-   * Reads the working tree — the same files autosave writes
-   * through, but without the lock wrapper: this service holds the locks
-   * itself, around whole operations.
+   * The working tree's files without the lock wrapper: this service holds the
+   * locks around whole operations.
    */
   files: ContentFiles;
-  /** Absolute path of the content root. */
   contentRoot: string;
-  /** Revision of `.mica/schema.json` when the model was loaded. */
   schemaRevision: string | null;
   /** `MICA_LOCAL_PUBLISH`, for the default developer policy. */
   publishEnabled: boolean;
   logger: Logger;
-  /** Who owns the tree. Defaults to the developer. */
+  /** Defaults to the developer. */
   policy?: OwnerPolicy;
-  /** Shared with the services that write content. Defaults to locks of its own. */
+  /** Shared with the services that write content. */
   locks?: WorkspaceLocks;
   /**
-   * The tree, when the owner already knows it — a managed clone, whose Git
-   * runs in an isolated environment. Without it, the repository around
-   * `contentRoot` is found with the developer's own Git.
+   * Set by a managed clone, whose Git runs in an isolated environment. Without
+   * it, the developer's Git finds the tree.
    */
   tree?: GitTree;
 }
@@ -101,8 +84,7 @@ export function createWorkingTreeStagingService(
       headSource(tree),
     );
 
-    // A merge conflict is a validity problem the field validator cannot see:
-    // the file on disk is Git's conflict format, not content.
+    // The field validator cannot see a merge conflict: the file holds Git's conflict format.
     for (const change of treeChanges) {
       if (!change.conflicted) continue;
       validation.problems.push({
@@ -203,8 +185,8 @@ export function createWorkingTreeStagingService(
 
       const tree = await publishable();
 
-      // One publication at a time, from the sync through the commit to the
-      // push: no sync can run in between, and no second commit can stack up.
+      // One publication at a time from sync to push: no sync can run in
+      // between, and no second commit can stack up.
       return locks.remote.run(async () => {
         await policy.prepare(tree);
 
@@ -212,13 +194,9 @@ export function createWorkingTreeStagingService(
           const pending = await withRevisions((await analyse(tree, await listTreeChanges(tree))).changes);
           const byPath = new Map(pending.map((change) => [change.path, change]));
 
-          /**
-           * The review gate. Exactly the reviewed files are published, and only
-           * as the editor saw them: a file saved again since, a reviewed file
-           * that is no longer pending, or another file of the same entry that
-           * the review did not include, all refuse. Drafts of other entries
-           * stay drafts — somebody else's autosave never blocks a publication.
-           */
+          // The review gate refuses a file saved again since the review, a
+          // reviewed file that is no longer pending, or another file of a
+          // reviewed entry. Drafts of other entries never block a publication.
           const reviewedGroups = new Set(
             reviewed.map((path) => byPath.get(path)).flatMap((change) => (change ? [groupOf(change)] : [])),
           );
@@ -235,8 +213,7 @@ export function createWorkingTreeStagingService(
             );
           }
 
-          // The model drift gate: the pending set was validated against the
-          // model this process started with.
+          // The model drift gate: validation used the model that this process started with.
           if ((await files.revision(MANIFEST_PATH)) !== deps.schemaRevision) {
             throw new ApiError(
               "conflict",
@@ -259,8 +236,8 @@ export function createWorkingTreeStagingService(
             return revision;
           } catch (error) {
             if (error instanceof GitError) {
-              // Git's own verdict is the actionable part: no identity
-              // configured, a hook that refused, an unborn branch mid-rebase.
+              // Git's message is the actionable part: no identity, a hook that
+              // refused, a rebase in progress.
               throw new ApiError("conflict", `Git refused the commit: ${error.message}`);
             }
             throw error;
@@ -285,9 +262,7 @@ export function createWorkingTreeStagingService(
       const tree = await located();
 
       return locks.tree.write(async () => {
-        // Only paths the change list actually names. Discard is the one
-        // destructive operation here, and it must not be able to reach
-        // anything the editor was not shown.
+        // Discard is destructive, so it reaches only paths that the change list names.
         const current = new Map((await listTreeChanges(tree)).map((change) => [change.path, change]));
 
         const discarded: string[] = [];
@@ -305,8 +280,7 @@ export function createWorkingTreeStagingService(
     async compare(target: CompareTarget, against: "head" | "origin" = "head"): Promise<Comparison> {
       const tree = await locate();
       if (against === "origin" && !policy.upstreamRef) throw badRequest("There is no website version to compare with here.");
-      // Without a repository (or before the first commit) nothing has ever
-      // been published, so the honest "before" is a source with no files.
+      // Without a repository nothing is published, so "before" is an empty source.
       const published =
         "reason" in tree
           ? memorySource({}, "unpublished")

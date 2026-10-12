@@ -1,15 +1,8 @@
-# Mica CMS — the self-hosted composition in one image.
+# Mica CMS — @micacms/self-hosted in one image: the runtime and the editor UI behind an
+# external OIDC provider. CI builds the public website from the content repository, not here.
 #
-# The public website is NOT built here: it is a static bundle produced by CI
-# from the content repository and uploaded to whatever host the customer uses.
-# This image is the CMS alone: @micacms/self-hosted, composing the runtime and
-# the editor UI behind an external OIDC provider.
-#
-# Nor is any content model baked in. The image knows the *field types* — it
-# carries `@micacms/core` for validation — but it knows no collections until it
-# reads the model out of the content repository, at `.mica/schema.json`. That is
-# what makes one published image serve any project instead of one image per
-# customer, and why a content change never needs a rebuild.
+# No content model is baked in: the image reads `.mica/schema.json` from the content
+# repository, so one published image serves any project and a content change needs no rebuild.
 
 # ---------------------------------------------------------------- deps
 FROM node:24-alpine AS deps
@@ -34,9 +27,7 @@ COPY sites/micacms/package.json sites/micacms/
 COPY examples/muster-consulting/package.json examples/muster-consulting/
 COPY tests/browser/package.json tests/browser/
 
-# install-run-rush bootstraps the Rush version rush.json pins, then installs
-# only the closure the image needs. `rush install` is frozen by definition: it
-# refuses rather than update the committed lockfile.
+# Installs only the closure the image needs. `rush install` never updates the committed lockfile.
 RUN node common/scripts/install-run-rush.js install --to @micacms/self-hosted
 
 # ---------------------------------------------------------------- build
@@ -49,16 +40,11 @@ COPY packages/auth/oidc packages/auth/oidc
 COPY packages/editor-ui packages/editor-ui
 COPY apps/self-hosted apps/self-hosted
 
-# Rush knows the dependency order; `--to` builds the app's closure and nothing
-# else. (No .git in the build context, so every project builds — there is no
-# history for the incremental analysis to compare against.)
+# With no .git in the build context, every project in the closure builds, not only changed ones.
 RUN node common/scripts/install-run-rush.js build --to @micacms/self-hosted
 
-# Assemble the runtime tree: the app, its workspace dependencies, and their
-# production node_modules only — common/config/rush/deploy.json is the
-# scenario. This replaces the old `pnpm install --prod` re-resolve; the editor
-# UI is finished assets by now, so its toolchain does not survive into the
-# runtime image.
+# The app, its workspace dependencies and their production node_modules only, as
+# common/config/rush/deploy.json sets. The editor UI's toolchain stays out of the runtime image.
 RUN node common/scripts/install-run-rush.js deploy --overwrite --target-folder /deploy
 
 # ---------------------------------------------------------------- runtime

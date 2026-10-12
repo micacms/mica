@@ -1,11 +1,7 @@
 /**
- * Test harness: the self-hosted composition against a temporary data
- * directory whose `repository/` is a plain Git repository.
- *
- * Built the way `src/index.ts` builds it — the runtime behind the OIDC gate,
- * on a working tree in the data directory — so what these tests exercise is
- * the composition itself: sessions, admission and CSRF. The clone, its sync
- * and its publications are `managed.test.ts`'s, against a real Git host.
+ * Test harness: the composition of `src/index.ts` on a data directory whose
+ * `repository/` is a plain Git repository. `managed.test.ts` covers the clone,
+ * sync and publication against a real Git host.
  */
 
 import { execFileSync } from "node:child_process";
@@ -115,11 +111,8 @@ export interface TestHarness {
   /** Issues a request; `session` carries cookies and the CSRF token. */
   request(path: string, init?: RequestInit & { session?: Session }): Promise<Response>;
   /**
-   * Starts a session without an identity provider round trip.
-   *
-   * Nothing below the session cookie cares how the cookie was obtained, so
-   * the admission tests do not need a fake provider to be meaningful: they
-   * state the claims a provider would have returned and go from there.
+   * Starts a session without a provider round trip: nothing below the cookie
+   * cares how it was obtained.
    */
   signIn(identity?: SessionIdentity): Promise<Session>;
   close(): Promise<void>;
@@ -162,7 +155,6 @@ export async function createHarness(
     operational: () => ({
       auth: `oidc:${new URL(ISSUER).hostname}`,
       admission: auth.admission.summary,
-      database: null,
       dataDir: config.dataDir,
       sessionTtlHours: config.SESSION_TTL_HOURS,
       sessionIdleHours: config.SESSION_IDLE_HOURS,

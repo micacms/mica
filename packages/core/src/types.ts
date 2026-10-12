@@ -238,10 +238,6 @@ export interface CollectionOptions {
  * Either `"position"` — the order they arranged by hand, kept in
  * `_order.json` — or the key of a field this collection declares.
  *
- * It used to be a fixed set: `createdAt`, `updatedAt`, `publishedAt`, `title`,
- * `position`. Three of those were columns in a database Mica no longer has, so
- * they type-checked and then meant nothing, and both projects in this
- * repository ended up sorting by a `publishedAt` that no collection declared.
  * A name from the model can be checked against the model; a name from a fixed
  * list cannot.
  */

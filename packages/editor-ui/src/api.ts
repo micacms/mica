@@ -1,9 +1,6 @@
 /**
- * Admin API client.
- *
- * Thin on purpose: one `request` function that attaches the CSRF header, parses
- * the error envelope the server sends, and surfaces field-level issues so forms
- * can place them next to the right input.
+ * Admin API client: one `request` function that attaches the CSRF header and
+ * surfaces field-level issues for forms.
  */
 
 import type { AnyField, FieldIssue } from "@micacms/core";
@@ -126,11 +123,8 @@ export interface Schema {
 }
 
 /**
- * Who the identity provider said this is.
- *
- * Null wherever there is no provider. Mica holds no accounts, so this is not a
- * record of anybody — it is what the last sign-in was told, kept only for as
- * long as the session, and there is nothing here to administer.
+ * Who the identity provider said this is, kept only for the session. Null where
+ * there is no provider.
  */
 export interface Identity {
   /** The provider's subject. Stable, opaque, and not shown to anybody. */
@@ -158,19 +152,13 @@ export interface EntrySummary {
 
 export interface EntryDetail extends EntrySummary {
   /**
-   * Where the entry is in the repository, relative to the content root.
-   *
-   * A directory when the entry has rich text or media beside it, a single
-   * `.json` file otherwise — which is why the server says so rather than the
-   * editor guessing.
+   * Relative to the content root: a directory when the entry has rich text or
+   * media beside it, else one `.json` file.
    */
   path: string;
   /**
-   * The version of this entry the form was opened against.
-   *
-   * Sent back with the save. `null` means the entry did not exist, which is
-   * what makes two people creating the same slug fail rather than one of them
-   * silently losing their work.
+   * The version the form was opened against, sent back with the save. `null` means a new entry,
+   * so two people who create the same slug get a conflict, not a silent loss.
    */
   revision: string | null;
 }
@@ -353,15 +341,11 @@ export interface SystemInfo {
       listed: number;
       sortable: boolean;
       depth: number;
-      /** Entries in the repository. A plain count: there are no drafts. */
       entries: number;
     }>;
     singletons: Array<{ name: string; label: string; fields: FieldCounts; depth: number }>;
   };
-  /**
-   * The website's content, and what must be backed up — by Git, which is
-   * already doing it.
-   */
+  /** The website's content. Git is its backup. */
   repository: {
     origin: string;
     entries: number;
@@ -410,11 +394,8 @@ export const api = {
     config: () => request<AuthConfig>("/auth/config"),
 
     /**
-     * Sign-in is a full-page navigation, not a fetch.
-     *
-     * The browser has to *visit* the identity provider — it is another origin
-     * that will set its own cookies and may need to show a consent screen or a
-     * second factor. An XHR cannot do any of that.
+     * A full-page navigation, not a fetch: the provider is another origin that
+     * can set cookies and ask for consent or a second factor.
      */
     signInUrl: (returnTo: string) =>
       `${BASE}/auth/login?returnTo=${encodeURIComponent(returnTo)}`,
@@ -506,7 +487,6 @@ export const api = {
     list: () => request<{ items: MediaItem[] }>("/admin/media"),
     upload: async (files: File[], options: { accept?: string; directory?: string } = {}) => {
       const items: MediaItem[] = [];
-      // In batches: the server takes at most 10 files per request (#148).
       for (let start = 0; start < files.length; start += UPLOAD_BATCH) {
         const form = new FormData();
         for (const file of files.slice(start, start + UPLOAD_BATCH)) form.append("file", file);

@@ -1,10 +1,4 @@
-/**
- * Understanding a pending change set, shared by every staging implementation.
- *
- * The types the staging API speaks, the before/after comparison of one
- * document, and the analysis that names each changed file and validates the
- * entries it touches. Nothing here knows where the changes are kept.
- */
+/** The staging API types, the before/after comparison and the analysis of a pending change set. */
 
 import type { Author } from "../workspace/files.js";
 import {
@@ -49,9 +43,8 @@ export type ChangeOwner =
 export interface AnnotatedChange extends ContentChange {
   owner: ChangeOwner;
   /**
-   * The file's revision in the working tree, null for a deletion. Publish
-   * sends it back, so a file saved again after the review is not published
-   * unseen.
+   * The file's revision, null for a deletion. Publish sends it back, so a file
+   * saved after the review is not published unseen.
    */
   revision?: string | null;
 }
@@ -70,14 +63,10 @@ export interface StagingValidation {
 }
 
 export interface StagingStatus {
-  /**
-   * Whose working tree it is. The UI words differ with it: a developer reads
-   * "working tree" and "commit"; an editor of a clone that Mica keeps reads
-   * "saved" and "published".
-   */
+  /** Whose working tree it is. The UI wording changes with it. */
   owner: "developer" | "managed";
   publish: { enabled: boolean; reason?: string };
-  /** The commit the pending changes sit on. For display. */
+  /** The commit the pending changes sit on. */
   head: string | null;
   /** The branch a publication lands on, where the workspace knows it. */
   branch: string | null;
@@ -90,12 +79,12 @@ export interface StagingStatus {
 }
 
 export interface PublishInput {
-  /** Subject line of the commit. Written by the editor, for `git log`. */
+  /** Subject line of the commit. */
   message: string;
   /**
-   * The paths the editor reviewed, with the revision each had then. Exactly
-   * these are published; a file saved again since, or another file of the
-   * same entry, makes Publish refuse rather than publish something unseen.
+   * The reviewed paths, with the revision each had in the review. Only these
+   * are published; a file saved again since, or another file of the same entry,
+   * makes Publish refuse.
    */
   paths: Record<string, string | null>;
   author?: Author;
@@ -119,9 +108,8 @@ export interface ContentStagingService {
   /** Retries the push after `committed-pending-push`. */
   push(): Promise<PublishResult>;
   /**
-   * The document a pending change touches, before and after that change.
-   * `origin` compares against the website's version instead of the last
-   * commit: what a conflict's "Keep my version" would replace.
+   * A document before and after a pending change. `origin` compares against the
+   * website's version, not the last commit.
    */
   compare(target: CompareTarget, against?: "head" | "origin"): Promise<Comparison>;
   /** Brings a clone that Mica keeps up to date now. Refused for the developer's checkout. */
@@ -130,7 +118,7 @@ export interface ContentStagingService {
   repository(): Promise<RepositoryInfo>;
 }
 
-/** One thing an editor recognises on the Publish page, named for comparison. */
+/** What to compare on the Publish page. */
 export type CompareTarget =
   /** `from` names the published slug of a renamed entry. */
   | { kind: "entry"; collection: string; slug: string; from?: string }
@@ -138,11 +126,8 @@ export type CompareTarget =
   | { kind: "order"; collection: string };
 
 /**
- * A document on both sides of the pending change set.
- *
- * Raw field data, deliberately: the editor holds the model and can name,
- * order and render every field, so the friendly comparison is its job. What
- * only the server can do is read the same document from two places.
+ * Raw field data on both sides of a pending change. The editor renders the
+ * comparison from the model.
  */
 export interface Comparison {
   /** As the repository has it — null when the change creates the document. */
@@ -152,12 +137,8 @@ export interface Comparison {
 }
 
 /**
- * Reads one document from the repository (`published`) and from the pending
- * workspace (`staged`) — the whole of a before/after comparison, shared by
- * both staging implementations since a `ContentSource` is all it needs.
- *
- * An order target compares the collection's ordering rather than a document:
- * each side becomes `{ order: [{ slug, title }] }`, in position order.
+ * Reads one document from `published` and from `staged`. An order target
+ * becomes `{ order: [{ slug, title }] }` on each side, in position order.
  */
 export async function compareSources(
   model: Site,
@@ -186,8 +167,8 @@ export async function compareSources(
     const after = await readCollectionEntry(staged, def, target.collection, target.slug);
     if (from === target.slug) return { before, after };
 
-    // A rename: colocated media paths name the entry's folder, so they are
-    // compared in the on-disk form, where a moved file keeps its path.
+    // A rename: compare the on-disk form, where colocated media paths do not
+    // name the entry's folder.
     return {
       before: before && onDisk(def, target.collection, from, before),
       after: after && onDisk(def, target.collection, target.slug, after),
@@ -205,21 +186,10 @@ export async function compareSources(
   return { before: await ordering(published), after: await ordering(staged) };
 }
 
-/* ------------------------------------------------------------------ *
- * Understanding a change set
- * ------------------------------------------------------------------ */
-
 /**
- * Annotates a change set with owners and validates the entries it touches.
- *
- * One pass on purpose: naming a change and validating it both need the same
- * read of the same entries, and content trees are small enough to read the
- * affected collections whole.
- *
- * Validation is scoped to *changed* documents. Content that was already in
- * the repository is not this publication's problem — refusing
- * to publish a fixed typo because somebody once hand-committed a broken entry
- * elsewhere would make the editor hostage to history it cannot touch.
+ * Annotates a change set with owners and validates the entries it touches, in
+ * one read of the affected collections. Only changed documents are validated: a
+ * broken entry committed earlier must not block an unrelated publication.
  */
 export async function analyseChanges(
   model: Site,
@@ -229,8 +199,6 @@ export async function analyseChanges(
   published?: ContentSource,
 ): Promise<{ changes: AnnotatedChange[]; validation: StagingValidation }> {
   const owners = changes.map((change) => classifyPath(model, change.path));
-
-  /* ------------------------------------------------------- reading */
 
   const collectionsToRead = new Set<string>();
   for (const owner of owners) {
@@ -249,9 +217,8 @@ export async function analyseChanges(
       entriesByCollection.set(name, bySlug);
       for (const [slug, data] of bySlug) titles.set(`${name}/${slug}`, entryTitle(def, data));
     } catch (error) {
-      // The collection cannot be read at all — a malformed file, possibly one
-      // this change set did not touch. Publication needs the whole picture,
-      // so the honest answer is the error, at the path it names.
+      // An unreadable collection, possibly from an untouched file, is a problem
+      // at the path it names.
       const path = (error as { path?: string }).path ?? name;
       problems.push({
         path,
@@ -265,8 +232,6 @@ export async function analyseChanges(
     await detectRenames(model, published, source, changes, owners, entriesByCollection);
   }
 
-  /* ---------------------------------------------------- validation */
-
   const validated = new Set<string>();
 
   for (const owner of owners) {
@@ -276,8 +241,7 @@ export async function analyseChanges(
       validated.add(key);
 
       const def = model.collections[owner.collection]!;
-      // Absent means the change set deletes this entry; there is nothing left
-      // to validate, which is exactly right.
+      // Absent means the change set deletes this entry.
       const data = entriesByCollection.get(owner.collection)?.get(owner.slug);
       if (!data) continue;
 
@@ -314,8 +278,6 @@ export async function analyseChanges(
     }
   }
 
-  /* ---------------------------------------------------- annotation */
-
   const annotated = changes.map((change, index): AnnotatedChange => {
     const owner = owners[index]!;
     if (owner.kind === "entry") {
@@ -334,13 +296,7 @@ export async function analyseChanges(
   };
 }
 
-/**
- * Which piece of content a file belongs to.
- *
- * The path layout is the model's own (`layout.ts`), so this is a reading of
- * it, not a second convention: `collection/slug/…` or `collection/slug.json`,
- * `singleton.json` or `singleton/…`, and the shared `media/` directory.
- */
+/** Which piece of content a file belongs to, read from the model's path layout. */
 export function classifyPath(model: Site, path: string): ChangeOwner {
   const segments = path.split("/");
   const head = segments[0] ?? "";
@@ -383,16 +339,10 @@ export function classifyPath(model: Site, path: string): ChangeOwner {
 const RENAME_SIMILARITY = 0.5;
 
 /**
- * Marks entries that a pending rename moved, in place in `owners`.
- *
- * A rename is a deleted and a created entry in one collection. The change set
- * holds only files and an entry has no identity but its slug, so the pairs are
- * found by content, like Git's rename detection: the published version of the
- * deleted entry against the staged version of the created one.
- *
- * An order file whose only change is the renamed slug joins the renamed entry:
- * it is part of the same edit, and discarding one without the other would
- * leave the order naming a slug that does not exist.
+ * Marks renamed entries in place in `owners`. An entry has no identity but its
+ * slug, so deleted and created entries are paired by content, like Git's rename
+ * detection. An order file whose only change is the renamed slug joins the
+ * entry, so a discard cannot leave the order naming a slug that does not exist.
  */
 async function detectRenames(
   model: Site,
@@ -428,7 +378,6 @@ async function detectRenames(
       const entries = await readCollection(published, def, name);
       before = new Map(entries.map((entry) => [entry.slug, entry.data]));
     } catch {
-      // A published side that cannot be read only costs the pairing.
       continue;
     }
 
@@ -515,7 +464,10 @@ function similarity(def: Collection, a: Record<string, unknown>, b: Record<strin
   return compared === 0 ? 0 : equal / compared;
 }
 
-/** Entry data with media paths as the files store them: relative to the entry, where it has a folder. */
+/**
+ * Entry data with media paths as the files store them: relative to the entry,
+ * where it has a folder.
+ */
 function onDisk(
   def: Collection,
   collection: string,

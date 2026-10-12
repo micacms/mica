@@ -531,18 +531,15 @@ the live runs pass without skipping.
 
 ### P2 — No migration of 0.4 drafts
 
-**Decided:** if `MICA_DATA_DIR` holds `cms.sqlite`, Mica 0.5 refuses to start
-and does not open the file. The message, and the 0.5.0 upgrade notes, give
-the order: on 0.4.1 publish or discard everything, stop, delete `cms.sqlite`,
-replace both `compose.yml` and `.env`, turn the project into a URL, narrow the
-token, run `check`, start. Old variable names are refused by name, all in one
-message.
+**Decided:** 0.5 has no upgrade path from 0.4. It does not read `cms.sqlite`
+or the 0.4 variable names, and it does not check for them. A 0.4 deployment is
+set up again from the 0.5 `compose.yml` and `.env.example`.
 
-**Why:** the known deployments were trials. Migration code would keep SQLite
-in the codebase to run once.
+**Why:** the only 0.4 deployment was a trial. Migration or refusal code would
+be carried for one upgrade that nobody makes.
 
-**Consequence:** deleting `cms.sqlite` without publishing first loses those
-drafts; the message says so.
+**Consequence:** drafts in a 0.4 `cms.sqlite` are lost unless they are
+published on 0.4 first. An old variable name is ignored without a warning.
 
 **1.0 status:** accepted for 1.0.
 
@@ -672,8 +669,7 @@ chafe. MapLibre + their own tile key, behind an optional `MAP_STYLE_URL`.
 
 **Superseded in 0.5.0:** Mica keeps no database. The drafts are files in a Git
 working tree, and the SQLite driver, the migrations and the draft store are
-removed. A 0.4 data volume with `cms.sqlite` is refused at start — see "No
-migration of 0.4 drafts". Kept as history.
+removed — see "No migration of 0.4 drafts". Kept as history.
 
 **Decided:** the built-in driver, behind the `SqlDatabase` interface in
 `db/driver.ts`.
@@ -786,9 +782,8 @@ surface.
 gets the `MICA_` prefix, and the names are then frozen for 1.x. `NODE_ENV`,
 `PORT` and `HOST` keep their names, because they are conventions that Node
 libraries and hosting platforms already use. The old names are removed at 1.0
-with no aliases: startup refuses a known old name and names the new one. The
-local editor reads no `.env` file; it reads the process environment, and its
-flags win over it.
+with no aliases. The local editor reads no `.env` file; it reads the process
+environment, and its flags win over it.
 
 | Old | New |
 | --- | --- |
@@ -813,7 +808,7 @@ through all of 1.x. Reading the site's `.env` gave the editor the site's
 `NODE_ENV` and secrets, and a site with `NODE_ENV=production` stopped it.
 
 **Consequence:** every 0.x deployment must rename its variables to upgrade to
-1.0. The refusal at startup makes this loud, not silent. A local-editor user
+1.0. A local-editor user
 who kept settings in `.env` must pass them as flags or export them.
 
 **What would change it:** an adopter on 0.x who cannot rename in one step; then

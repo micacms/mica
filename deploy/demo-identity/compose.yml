@@ -8,14 +8,11 @@
 #   mica        Mica itself: one Node process, and its clone of your repository
 #   zitadel     the identity provider, with its database
 #
-# The third part is your content repository, on github.com, gitlab.com or any
-# Git host over HTTPS. It is not in here, and that is the architecture rather
-# than a shortcut: Mica pushes to a repository you already own, and the website
-# is built from that repository by CI that never contacts Mica.
+# Your content repository, on any Git host over HTTPS, is not in here, on purpose:
+# Mica pushes to a repository you own, and CI builds the website from it without Mica.
 #
-# Nothing has to be clicked to make this work. ZITADEL generates its own
-# credentials on first boot, so a seed job registers Mica as an application and
-# creates the three demo people over ZITADEL's API.
+# Nothing has to be clicked. ZITADEL generates its own credentials on first boot,
+# so a seed job registers Mica and creates the three demo people over ZITADEL's API.
 #
 # Deliberately local: plain HTTP, passwords in this file, a master key anybody
 # can read. Do not copy it to a server — copy deploy/self-hosted/compose.yml,
@@ -131,10 +128,8 @@ services:
     # thing here as it does in your browser.
     network_mode: "service:zitadel"
 
-    # ZITADEL generated the client credentials and everybody's subject on first
-    # boot, so none of them can be written into this file. The seed job leaves
-    # them in the volume, MICA_ADMIT_SUBJECTS among them. The image's own
-    # entrypoint runs `node dist/index.js`; this one reads the file first.
+    # ZITADEL generates the client credentials and the subjects on first boot. The seed job
+    # leaves them in the volume, MICA_ADMIT_SUBJECTS too; this entrypoint reads them first.
     entrypoint:
       - /sbin/tini
       - --
@@ -143,10 +138,8 @@ services:
       - "set -a; . /seed/oidc.env; set +a; exec node dist/index.js"
 
     environment:
-      # Development, deliberately: Mica refuses plain-HTTP OIDC discovery under
-      # NODE_ENV=production, correctly, and giving ZITADEL a certificate is more
-      # machinery than a local rig deserves. Everything else is the deployed
-      # shape — a real provider, a real clone, a real admission rule.
+      # Development, on purpose: Mica refuses plain-HTTP OIDC discovery under NODE_ENV=production,
+      # and a certificate for ZITADEL is too much for a local rig. All else is the deployed shape.
       NODE_ENV: development
       LOG_LEVEL: debug
 
@@ -155,8 +148,7 @@ services:
 
       MICA_OIDC_ISSUER: http://localhost:8080
 
-      # Your repository, from deploy/demo-identity/.env, configured the same way
-      # as a real deployment.
+      # Your repository, from deploy/demo-identity/.env.
       MICA_REPOSITORY_URL: ${MICA_REPOSITORY_URL:?set MICA_REPOSITORY_URL in deploy/demo-identity/.env}
       MICA_REPOSITORY_TOKEN: ${MICA_REPOSITORY_TOKEN:?set MICA_REPOSITORY_TOKEN in deploy/demo-identity/.env}
       MICA_REPOSITORY_ROOT: ${MICA_REPOSITORY_ROOT:-content}

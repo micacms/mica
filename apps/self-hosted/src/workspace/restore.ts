@@ -1,13 +1,8 @@
 /**
- * Putting a set of paths back to how one commit has them, in the index and in
- * the tree — the step behind a fast-forward's rollback, its recovery after a
- * crash, and "Use the website's version".
- *
- * Two parts, because one `git restore` over all the paths fails as a whole
- * when one of them is in neither the commit, the index nor the tree — which
- * is exactly the state an interrupted fast-forward leaves an upstream
- * deletion in. Paths the commit has are restored; paths it does not have are
- * removed from the index and from the disk.
+ * Puts paths back to how a commit has them. Two parts, because one `git
+ * restore` fails as a whole when a path is in neither the commit, the index nor
+ * the tree, which is how an interrupted fast-forward leaves an upstream
+ * deletion.
  */
 
 import { rm } from "node:fs/promises";
@@ -15,7 +10,7 @@ import { join } from "node:path";
 
 import type { GitRunner } from "@micacms/runtime";
 
-/** `paths` are relative to the repository root. */
+/** `paths` are repository-relative. */
 export async function restorePaths(
   git: GitRunner,
   repositoryDir: string,
@@ -46,9 +41,8 @@ export async function restorePaths(
 }
 
 /**
- * Every path under `prefix` that differs from HEAD: modified, staged,
- * deleted, untracked and ignored. Ignored files count, because a
- * fast-forward overwrites them without asking; `--ignored=traditional` names
+ * Every path under `prefix` that differs from HEAD, ignored files included: a
+ * fast-forward overwrites them without asking. `--ignored=traditional` names
  * the files inside an ignored directory, which `matching` does not.
  * Repository-relative.
  */
@@ -72,7 +66,7 @@ export async function draftPaths(git: GitRunner, prefix: string): Promise<string
     .map((field) => field.slice(3));
 }
 
-/** Paths that differ between two commits, without rename detection. Repository-relative. */
+/** Repository-relative paths that differ between two commits. */
 export async function changedBetween(git: GitRunner, from: string, to: string, prefix?: string): Promise<string[]> {
   const raw = await git.run([
     "diff",

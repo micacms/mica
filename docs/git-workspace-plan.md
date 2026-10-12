@@ -1038,3 +1038,10 @@ Accepted: the whole-entry revision hashes every file of the entry, media
 included, on each open and save; an upload into an entry's own folder makes
 an open tab's next save a 409 (the editor UI uploads to the shared folder).
 
+
+### Cleanup pass (12 October 2026)
+
+D13 and its row in the volume table of section 3 are reversed: 0.5 has no
+upgrade path from 0.4 and does not check for `cms.sqlite` or the 0.4 variable
+names. The only 0.4 deployment was a trial and is set up again on 0.5. `docs/decisions.md`
+("No migration of 0.4 drafts") records the decision.

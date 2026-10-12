@@ -1,18 +1,12 @@
 /**
- * The two locks of a working tree that several requests share.
+ * The two locks of a shared working tree: `remote` (fetch and push, one at a
+ * time) and `tree` (read/write; saves, discards, commits and fast-forwards
+ * write). A save during a commit could otherwise put half an entry into the
+ * commit, and a read during a fast-forward could see a half-written file.
  *
- *   - `remote` — fetch and push, one at a time.
- *   - `tree`   — a read/write lock. Reads of files and of Git's status share
- *     it; saves, discards, commits and fast-forwards hold it alone.
- *
- * Both wait rather than refuse: an autosave that arrives during a commit is
- * written after it, not rejected. An operation that needs both takes `remote`
- * first, then `tree`, so two of them can never wait on each other. No network
- * call may run while `tree` is held — a slow push must not block autosave.
- *
- * Why the tree needs a lock at all: a save during a commit could put half of
- * an entry into the commit, and Git's checkout rewrites files in place, so a
- * read during a fast-forward could see one half-written.
+ * Both wait, they do not refuse. Take `remote` first, then `tree`, so two
+ * operations never wait on each other. No network call may run while `tree` is
+ * held: a slow push must not block autosave.
  */
 
 import type { ContentFiles } from "./files.js";
@@ -37,7 +31,6 @@ export function createWorkspaceLocks(): WorkspaceLocks {
   return { remote: createMutex(), tree: createReadWriteLock() };
 }
 
-/** A mutex is a read/write lock that only ever writes. */
 export function createMutex(): Mutex {
   const lock = createReadWriteLock();
   return { run: (fn) => lock.write(fn) };
@@ -92,10 +85,8 @@ export function createReadWriteLock(): ReadWriteLock {
 }
 
 /**
- * The files the services use: reads share the tree lock, writes hold it.
- *
- * The staging service does not use this wrapper. It takes the lock itself,
- * around a whole publication, and reads through the bare files inside it.
+ * Files behind the tree lock. The staging service does not use it: it holds the
+ * lock around whole operations.
  */
 export function lockedFiles(
   files: ContentFiles,

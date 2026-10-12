@@ -1,11 +1,7 @@
 /**
- * The local editor's process entry point.
- *
- * The whole composition, in one page: the developer's checkout, the
- * auth-neutral runtime with `allowAll()`, the Host allowlist, and nothing
- * else. No session service, no admission policy, no database — `npx
- * @micacms/editor` writes nothing outside the content directory, and there is
- * no auth code here to misconfigure because none is installed.
+ * The local editor's process entry point: the developer's checkout, the
+ * auth-neutral runtime and the Host allowlist. It writes nothing outside the
+ * content directory and installs no auth code that can be misconfigured.
  */
 
 import { MANIFEST_PATH } from "@micacms/core";
@@ -43,9 +39,8 @@ async function main(): Promise<void> {
 
   const logger = createLogger({ level: config.LOG_LEVEL, pretty: true });
 
-  // The repository comes first, because the content model is in it. A bad or
-  // absent model is a project mistake rather than a crash: exit the way a bad
-  // environment does, with the message on stderr instead of a stack trace.
+  // A bad or absent model is a project mistake, not a crash: exit like a bad
+  // environment, without a stack trace.
   const files = contentFiles({ root: config.contentRoot });
 
   let model;
@@ -69,7 +64,6 @@ async function main(): Promise<void> {
     logger,
     operational: () => ({
       auth: "none — the local editor has no accounts and no sign-in",
-      database: null,
     }),
   });
 
@@ -87,10 +81,7 @@ async function main(): Promise<void> {
     logger,
 
     onListening() {
-      /**
-       * Two audiences, one event: the person who just typed a command gets an
-       * address and three facts; a log collector gets every field.
-       */
+      // A person at a terminal gets a short banner; a log collector gets every field.
       if (config.MICA_CLI) {
         const useColor = supportsColor(process.stdout, process.env);
 

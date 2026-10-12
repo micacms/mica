@@ -1,14 +1,8 @@
 /**
- * Admin staging routes — the pending change set, and Publish.
- *
- * Thin, like the content routes: the staging service owns every rule, and
- * what happens here is parsing and the mapping of its refusals onto the API's
- * error envelope. Sync and conflict resolution exist only for a clone that
- * Mica keeps; the developer's checkout answers them with 404.
- *
- * `committed-pending-push` is a 200, deliberately. The commit is real and the
- * state is recoverable by design; an error status would make the editor treat
- * a publication that half-happened as one that did not happen at all.
+ * Admin routes for the pending changes and Publish. Sync and conflict
+ * resolution exist only for a clone that Mica keeps. `committed-pending-push`
+ * is a 200: the commit is real, and an error status would tell the editor that
+ * nothing happened.
  */
 
 import { Hono } from "hono";
@@ -66,8 +60,7 @@ export function adminStagingRoutes(): Hono<Env> {
     return c.json(await staging.status());
   });
 
-  // The document one pending change touches, before and after that change —
-  // raw data on both sides; the editor renders the comparison from the model.
+  // Raw data before and after one pending change; the editor renders the comparison.
   app.get("/changes/compare", async (c) => {
     const { staging } = c.get("ctx").services;
     const parsed = compareSchema.safeParse({
@@ -93,7 +86,6 @@ export function adminStagingRoutes(): Hono<Env> {
       staging.publish({
         message: parsed.data.message,
         paths: parsed.data.paths,
-        // The provider's name where it sends one; the address otherwise.
         author: actor ? { name: actor.name || actor.email, email: actor.email } : undefined,
       }),
     );
@@ -106,7 +98,7 @@ export function adminStagingRoutes(): Hono<Env> {
     return c.json(await handled(() => staging.push()));
   });
 
-  // Brings a clone that Mica keeps up to date now: "Try again" after a sync error.
+  // "Try again" after a sync error.
   app.post("/sync", async (c) => {
     const { staging } = c.get("ctx").services;
     await staging.sync();

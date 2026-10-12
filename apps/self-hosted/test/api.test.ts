@@ -1,7 +1,6 @@
 /**
- * The self-hosted composition: sessions, admission and CSRF around the
- * auth-neutral runtime. The content and media behaviour behind the gate is
- * the runtime's and is tested there; what these tests own is the gate.
+ * The gate around the runtime: sessions, admission and CSRF. The runtime's own
+ * tests cover the content behind it.
  */
 
 import assert from "node:assert/strict";
@@ -166,8 +165,8 @@ describe("sessions", () => {
 });
 
 describe("admission", () => {
-  // The harness admits `mica-editors` by default; a test that states its own
-  // rule must clear that first, or every rule would pass through the group.
+  // The harness admits `mica-editors` by default; clear it, or every rule would
+  // pass through the group.
   const authenticated = (rules: Partial<NodeJS.ProcessEnv>) =>
     createHarness({ MICA_ADMIT_GROUP: undefined, ...rules });
 
@@ -195,7 +194,6 @@ describe("admission", () => {
 
     assert.equal(body.identity.email, ADMITTED.email);
     assert.equal(body.identity.subject, ADMITTED.subject);
-    // There is no role, because there are no roles.
     assert.ok(!("role" in body.identity));
 
     await harness.close();
@@ -262,18 +260,14 @@ describe("admission", () => {
     await harness.close();
   });
 
-  /**
-   * The property the membership table used to give, kept: admission is re-read
-   * on every request rather than copied into the session at sign-in.
-   */
+  /** Admission is read again on every request, not copied into the session at sign-in. */
   it("refuses a live session the moment the rules stop admitting it", async () => {
     const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
     const session = await harness.signIn(ADMITTED);
 
     assert.equal((await harness.request("/api/auth/me", { session })).status, 200);
 
-    // The gate re-reads the policy per request, so replacing the answer is
-    // exactly what an operator's configuration change does.
+    // Replacing the answer is what an operator's configuration change does.
     harness.auth.admission.admits = () => ({ admitted: false, reason: "removed" });
 
     assert.equal((await harness.request("/api/auth/me", { session })).status, 403);

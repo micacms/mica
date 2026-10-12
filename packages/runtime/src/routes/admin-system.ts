@@ -1,12 +1,6 @@
 /**
- * Schema, dashboard and system information.
- *
- * The schema endpoint is what makes the admin generic: the SPA ships no
- * knowledge of any particular collection, it renders whatever this returns.
- *
- * There is no publish route. Publishing is a commit, and the commit happened
- * when the editor pressed Save; what follows belongs to the repository's CI,
- * which Mica neither owns nor should pretend to.
+ * Schema, dashboard and system information. The SPA knows no collection; it
+ * renders what `/schema` returns.
  */
 
 import { Hono } from "hono";
@@ -22,11 +16,7 @@ import { formatBytes } from "../services/media.js";
 export function adminSystemRoutes(): Hono<Env> {
   const app = new Hono<Env>();
 
-  /**
-   * The content model, plus the few derived values the UI would otherwise have
-   * to recompute. Field descriptors are already plain data, so the model
-   * serialises as-is.
-   */
+  /** The content model, plus the derived values that the UI would otherwise recompute. */
   app.get("/schema", (c) => {
     const { site } = c.get("ctx");
 
@@ -56,8 +46,6 @@ export function adminSystemRoutes(): Hono<Env> {
     const ctx = c.get("ctx");
     const { content, media } = ctx.services;
 
-    // Read from the repository rather than counted in SQL. A count that can
-    // disagree with the files is worse than no count.
     const collections = await Promise.all(
       Object.values(ctx.site.model.collections).map(async (def) => ({
         name: def.name,
@@ -80,16 +68,8 @@ export function adminSystemRoutes(): Hono<Env> {
   });
 
   /**
-   * What this deployment is and what it is serving.
-   *
-   * Answers the questions that otherwise need shell access: which version is
-   * running, which content model it was handed, where the clone stands
-   * against its remote, how this deployment decides who may edit it.
-   *
-   * All of it goes to everybody who is admitted. There is no administrator
-   * role to withhold it from: admission is configuration, so the people who
-   * reach this endpoint are exactly the people the operator named. No secret
-   * value is returned anywhere, only whether one is set.
+   * What this deployment is and serves. Every admitted editor sees it, because
+   * there is no administrator role. It never returns a secret value.
    */
   app.get("/system", async (c) => {
     const ctx = c.get("ctx");
@@ -110,8 +90,6 @@ export function adminSystemRoutes(): Hono<Env> {
 
     const uptimeSeconds = Math.floor(process.uptime());
 
-    // The composition's own facts — authentication, admission — come from the
-    // app. The runtime cannot know them, which is the point.
     const operational = ctx.operational();
     const repository = await ctx.services.staging.repository();
 
@@ -128,19 +106,12 @@ export function adminSystemRoutes(): Hono<Env> {
         totals: stats.totals,
         kinds: stats.kinds,
         relations: stats.relations,
-        // Entry counts alongside the shape, because "8 fields, 0 entries" is
-        // the pair that tells an editor a collection was never filled in.
         collections: stats.collections.map((item) => ({
           ...item,
           entries: counts[item.name] ?? 0,
         })),
         singletons: stats.singletons,
       },
-      /**
-       * Where the website's content lives. Published content is backed up by
-       * Git; the drafts are files in this working tree — the developer's
-       * checkout, or the clone that Mica keeps on its data volume.
-       */
       repository: {
         origin: ctx.site.contentRepository.origin,
         entries: Object.values(counts).reduce((sum, count) => sum + count, 0),
@@ -151,8 +122,7 @@ export function adminSystemRoutes(): Hono<Env> {
         site: ctx.site.id,
         baseUrl: config.MICA_PUBLIC_URL,
         schemaOrigin: schemaOrigin(ctx.site.contentRepository),
-        // Only meaningful for the developer's checkout; a clone that Mica
-        // keeps names its remote in `repository.url` instead.
+        // A clone that Mica keeps names its remote in `repository.url` instead.
         contentRoot: repository.owner === "developer" ? config.contentRoot : null,
         dataDir: operational.dataDir ?? null,
         logLevel: config.LOG_LEVEL,
@@ -160,13 +130,10 @@ export function adminSystemRoutes(): Hono<Env> {
         maxUploadReadable: formatBytes(config.MAX_UPLOAD_BYTES),
         sessionTtlHours: operational.sessionTtlHours ?? null,
         sessionIdleHours: operational.sessionIdleHours ?? null,
-        /** How this deployment authenticates, in words. */
         auth: operational.auth,
-        /** What decides who may edit here, in the operator's own words. */
         admission: operational.admission ?? null,
         trustProxy: config.TRUST_PROXY,
         adminOrigins: config.adminOrigins,
-        /** Names of the secrets this process generated for itself. */
         generatedSecrets: operational.generatedSecrets ?? [],
         memoryBytes: process.memoryUsage().rss,
       },

@@ -70,11 +70,8 @@ export interface MicaCollectionsOptions {
 /**
  * Entry metadata attached to every collection document.
  *
- * Much smaller than it was when a database backed the CMS. Timestamps and
- * version numbers came from table columns that no longer exist; in Git the
- * equivalents are commit metadata, which a static build has no cheap way to
- * read and no strong reason to need. A date an editor cares about belongs in
- * the model as a `date()` field, where it is editorial rather than incidental.
+ * No timestamps: in Git they are commit metadata, which a static build cannot
+ * read cheaply. A date an editor cares about belongs in the model as a `date()` field.
  *
  * Namespaced because these keys share a namespace with the customer's own
  * fields, and `position` is a plausible field name.

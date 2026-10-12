@@ -1,14 +1,8 @@
 <script setup lang="ts">
 /**
- * System information.
- *
- * What is running, what content model it was handed, and how much content
- * there is — the questions that otherwise need shell access to the container.
- * Read-only except for "Copy report", which puts the whole thing on the
- * clipboard in the shape a bug report wants.
- *
- * Nothing here is per customer: the model section is generated from whatever
- * model the server was given, exactly like the rest of the admin.
+ * System information: what runs, its content model and how much content there
+ * is, without shell access. Read-only except "Copy report", which copies the
+ * page as text for a bug report.
  */
 
 import { computed, onMounted, ref } from "vue";
@@ -38,9 +32,8 @@ async function load(): Promise<void> {
 onMounted(load);
 
 /**
- * `richText` → "Rich text". Derived rather than a table, so a field kind added
- * to the model reads correctly here without a second edit — the initialisms are
- * the only thing splitting on case cannot get right.
+ * `richText` → "Rich text". Derived, so a new field kind needs no edit here;
+ * only initialisms need a table.
  */
 const INITIALISMS: Record<string, string> = { url: "URL" };
 
@@ -317,12 +310,6 @@ async function copyReport(): Promise<void> {
       </section>
 
       <!-- ----------------------------------------------------- repository -->
-
-      <!--
-        The repository is the website. Published content is backed up by Git;
-        the drafts are files in the working tree — the developer's checkout,
-        or the clone a self-hosted Mica keeps on its data volume.
-      -->
 
       <section class="card p-4" aria-labelledby="repository-heading">
         <h2 id="repository-heading" class="text-sm font-semibold">Content repository</h2>

@@ -1,13 +1,6 @@
 /**
- * @micacms/runtime — the single-site Mica runtime, authentication-neutral.
- *
- * One Hono API over one `SiteContext`: content, media, staging and system
- * routes, with the question "who is this request?" answered by whatever
- * `AuthSurface` the composing app hands in. `@micacms/editor` composes it
- * with no authentication at all behind a loopback bind; `@micacms/self-hosted`
- * composes it behind `@micacms/auth-oidc`. This package must never import an
- * auth implementation — that direction is what protects the local
- * distribution.
+ * @micacms/runtime: the single-site, authentication-neutral Mica runtime.
+ * It must never import an auth implementation; the composing app supplies the `AuthSurface`.
  */
 
 export { createApp, allowAll, type AuthSurface, type CreateAppOptions } from "./app.js";
@@ -93,7 +86,6 @@ export {
   ConflictError,
   contentFiles,
   FilesError,
-  type AppliedChanges,
   type Author,
   type ContentFiles,
   type ContentFilesOptions,

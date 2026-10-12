@@ -1,13 +1,9 @@
 /**
- * The environment of every `git` process that works on Mica's own clone.
- *
- * The repository is under someone else's control, and the server holds
- * secrets that Git has no business seeing. So `git` gets an allowlisted
- * environment — never `process.env` — and every setting below comes from
- * `GIT_CONFIG_*` variables, which beat anything a repository or the image
- * could configure. Together they close every path from repository content to
- * code execution that Git offers: no hooks, no filters, no symlinks, no
- * transports but HTTPS. See decisions.md, "Git on the server is isolated".
+ * The repository is under someone else's control, and the server holds secrets.
+ * So `git` gets an allowlisted environment, never `process.env`, and its
+ * settings come from `GIT_CONFIG_*`, which beat any repository or image
+ * configuration. This closes every path from repository content to code
+ * execution: no hooks, filters, symlinks, or transports other than HTTPS.
  */
 
 import { writeFile, mkdir } from "node:fs/promises";
@@ -28,8 +24,8 @@ export interface ManagedEnvironmentOptions {
 export const MICA_IDENTITY = { name: "Mica CMS", email: "mica@localhost" } as const;
 
 /**
- * Answers Git's `get` with the username and token from this process's own
- * environment, and nothing else. Git runs it with `sh`.
+ * Answers only Git's `get`, with the username and token from the environment of
+ * that `git` process.
  */
 const HELPER =
   '!f() { test "$1" = get || exit 0; echo "username=$MICA_GIT_USERNAME"; echo "password=$MICA_GIT_TOKEN"; }; f';
@@ -38,8 +34,7 @@ export function managedEnvironment(options: ManagedEnvironmentOptions): NodeJS.P
   const { remote } = options;
 
   const config: Array<[string, string]> = [
-    // Clear every helper that could have come from elsewhere, then add ours
-    // for the configured host only.
+    // Clear every other helper, then add ours for the configured host only.
     ["credential.helper", ""],
     ...(options.token
       ? ([[`credential.${remote.scheme}://${remote.hostKey}.helper`, HELPER]] as Array<[string, string]>)
@@ -52,8 +47,8 @@ export function managedEnvironment(options: ManagedEnvironmentOptions): NodeJS.P
     ["protocol.https.allow", "always"],
     ...(remote.scheme === "http" ? ([["protocol.http.allow", "always"]] as Array<[string, string]>) : []),
     ["submodule.recurse", "false"],
-    // No automatic gc inside a commit that holds the tree lock. The sync runs
-    // `git -c gc.auto=… gc --auto` after a fetch instead; `-c` beats this list.
+    // No automatic gc inside a commit that holds the tree lock; the sync runs
+    // `git -c gc.auto=… gc --auto` instead.
     ["gc.auto", "0"],
     ["safe.directory", options.cloneDir],
     ["user.name", MICA_IDENTITY.name],
@@ -84,9 +79,8 @@ export function managedEnvironment(options: ManagedEnvironmentOptions): NodeJS.P
 }
 
 /**
- * Attributes that override the repository's `.gitattributes` in this clone:
- * no end-of-line conversion, no `$Id$` expansion, no filter, no re-encoding.
- * The bytes on disk are the bytes in Git. Written before the first checkout.
+ * Overrides `.gitattributes` so the bytes on disk are the bytes in Git. Write
+ * it before the first checkout.
  */
 export async function writeIsolationAttributes(gitDir: string): Promise<void> {
   const info = join(gitDir, "info");

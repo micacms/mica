@@ -1,12 +1,7 @@
 /**
- * The runtime's composition: one site, its services, and nothing about who
- * is allowed in.
- *
- * Everything is constructed here and passed down explicitly — no module-level
- * singletons, no service locator. The composing app builds the connector over
- * its working tree and, where it owns the tree, the owner policy; the runtime
- * receives them and never asks where they came from. That is what keeps this
- * package authentication-neutral.
+ * Builds the runtime's services for one site, with no module-level singletons.
+ * The app supplies the working tree's files and the owner policy, so the
+ * runtime stays authentication-neutral.
  */
 
 import type { Site } from "@micacms/core";
@@ -23,38 +18,24 @@ import type { OwnerPolicy } from "./workspace/policy.js";
 import type { ContentFiles } from "./workspace/files.js";
 import type { GitTree } from "./workspace/tree.js";
 
-/**
- * The site this process serves. One, explicitly.
- *
- * Explicit rather than implicit even though there is only ever one: a runtime
- * that names its site is testable and has no global state, and a runtime that
- * *assumes* its site is the one that quietly grows a second. Several sites
- * means several processes.
- */
+/** The one site this process serves. Several sites means several processes. */
 export interface SiteContext {
-  /** Identifies this site in logs. Constant while one runtime serves one site. */
+  /** Identifies this site in logs. */
   id: string;
   /** The content model, read from the repository at startup. */
   model: Site;
-  /**
-   * What everything reads and saves through: the working tree, behind the
-   * workspace locks. Only the staging service's Publish turns it into a commit.
-   */
+  /** The working tree's files behind the workspace locks. Only Publish makes a commit. */
   contentRepository: ContentFiles;
   /**
    * Revision of `.mica/schema.json` when the model was loaded. The publish
-   * drift gate compares against it — see decisions.md.
+   * drift gate compares against it.
    */
   schemaRevision: string | null;
 }
 
 export const DEFAULT_SITE_ID = "default";
 
-/**
- * What the composing app wants the System page to say about itself — the
- * facts the runtime cannot know because they belong to the composition: how
- * this deployment authenticates, and which rule admits people.
- */
+/** Facts about the composition that the System page shows and the runtime cannot know. */
 export interface OperationalInfo {
   /** How this deployment authenticates, in words. */
   auth: string;
@@ -70,9 +51,8 @@ export interface OperationalInfo {
 /** What /ready asks the composition. */
 export interface RuntimeHealth {
   /**
-   * The composition's own answer, which replaces the repository probe:
-   * whether the site can be edited, and short reason codes. Never names the
-   * repository — the endpoint is public.
+   * Whether the site can be edited, with short reason codes. Never names the
+   * repository: the endpoint is public.
    */
   ready?: () => { ok: boolean; reasons: string[] };
 }
@@ -89,11 +69,8 @@ export interface RuntimeContext {
   limiters: {
     api: RateLimiter;
   };
-  /** App-supplied: what the System page says about the composition. */
   operational(): OperationalInfo;
-  /** App-supplied active probes for /ready. Absent means nothing to probe. */
   health: RuntimeHealth;
-  /** Releases timers, and whatever the app added on top. */
   shutdown(): Promise<void>;
 }
 
@@ -112,7 +89,7 @@ export interface CreateRuntimeContextOptions {
   policy?: OwnerPolicy;
   /** Shared with the owner's own work on the tree, such as a sync. */
   locks?: WorkspaceLocks;
-  /** The tree, when the owner already knows it — see `WorkingTreeStagingDeps.tree`. */
+  /** See `WorkingTreeStagingDeps.tree`. */
   tree?: GitTree;
   onShutdown?: () => void | Promise<void>;
 }
@@ -129,8 +106,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
 
   const schemaRevision = options.schemaRevision ?? null;
 
-  // A working tree is shared by saves, commits and discards; the services
-  // write through the lock wrapper, and staging holds the locks itself.
+  // Services write through the lock wrapper; staging takes the locks itself.
   const locks = options.locks ?? createWorkspaceLocks();
 
   const site: SiteContext = {
@@ -160,7 +136,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
   };
 
   const limiters = {
-    // Generous: this exists to blunt runaway scripts, not to shape traffic.
+    // Generous: it stops runaway scripts, it does not shape traffic.
     api: createRateLimiter({ limit: 600, windowMs: 60_000 }),
   };
 

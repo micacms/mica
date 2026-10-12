@@ -1,15 +1,7 @@
 /**
- * `check`: whether this configuration can serve its repository, without a
- * browser and without touching the running server's clone.
- *
- *   docker compose run --rm mica check          before the first start
- *   docker compose exec mica node dist/index.js check   while it runs
- *
- * It works in a temporary repository of its own: a one-commit, blobless
- * fetch proves read access, a dry-run push proves push rights, and the
- * content model is read from that commit. The data volume is only looked at.
- * A dry run cannot see branch protection or server hooks, so a pass here
- * means the token may push — not that every push to the branch is allowed.
+ * `check`: whether this configuration can serve its repository. It works in a
+ * temporary repository and only reads the data volume, so it is safe while the
+ * server runs. A dry-run push cannot see branch protection or server hooks.
  */
 
 import { existsSync, mkdtempSync, rmSync } from "node:fs";
@@ -94,7 +86,7 @@ async function checkWrite(
 ): Promise<void> {
   const args = ["push", "--dry-run", "--porcelain", "origin", `FETCH_HEAD:refs/heads/${branch}`];
   try {
-    readPush(0, await git.run(args), "");
+    await git.run(args);
     pass("push rights", "the token may push (branch protection is checked only by a real push)");
   } catch (error) {
     if (!(error instanceof GitError)) throw error;

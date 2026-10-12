@@ -1,15 +1,10 @@
 /**
- * The Host allowlist — what replaced the local session's cookie.
+ * The Host allowlist.
  *
  * Under DNS rebinding, a page re-resolves its own name to `127.0.0.1` and the
  * browser then treats requests to it as same-origin. Writes still fail on the
- * Origin check; *reads* would succeed, and the only thing that used to stop
- * them was a session cookie scoped to `localhost` that the rebound name never
- * received. The cookie is gone — local mode keeps no session, no token and no
- * database — so the rule is stated directly instead: this server answers only
- * to names that are this machine.
- *
- * Smaller than what it replaces, standard for exactly this, and applied in
+ * Origin check; *reads* would succeed. Local mode keeps no session or token,
+ * so this server answers only to names that are this machine. It applies in
  * front of everything, the health endpoints included.
  */
 

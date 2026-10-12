@@ -1,12 +1,4 @@
-/**
- * Working-tree staging, against real Git.
- *
- * Real repositories in temporary directories rather than a stubbed runner,
- * because the properties under test belong to Git: what status says about a
- * rename, what a pathspec-limited commit leaves alone, what push does with
- * and without an upstream. A stub would only prove the service agrees with
- * itself.
- */
+/** Uses real Git repositories, not a stubbed runner: the properties under test belong to Git. */
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -23,7 +15,7 @@ import { createLogger } from "../src/lib/logger.js";
 import { createWorkingTreeStagingService } from "../src/services/staging.js";
 import type { ContentStagingService } from "../src/services/changes.js";
 
-/** File-layout entries, so a path is one JSON file and assertions stay short. */
+/** File-layout entries, so a path is one JSON file. */
 const model = defineSite({
   collections: {
     projects: collection({
@@ -86,8 +78,6 @@ function makeRepo(options: { publishEnabled?: boolean; schemaRevision?: string |
   return { root, contentRoot, service, head: () => git(root, "rev-parse", "HEAD") };
 }
 
-/* ------------------------------------------------------------------ */
-
 describe("status", () => {
   it("outside a repository, publishing is unavailable and says why", async () => {
     const contentRoot = temp("mica-norepo-");
@@ -117,7 +107,7 @@ describe("status", () => {
       join(contentRoot, "projects/haus-b.json"),
       JSON.stringify({ title: "Haus B", slug: "haus-b" }),
     );
-    // Build output is the developer's business, never the editor's.
+    // Build output is not the editor's.
     mkdirSync(join(contentRoot, ".mica"), { recursive: true });
     writeFileSync(join(contentRoot, ".mica/schema.json"), "{}");
 
@@ -258,7 +248,7 @@ describe("publish", () => {
     const { root, contentRoot, service } = makeRepo();
     writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Reviewed","slug":"haus-a"}');
     const paths = await reviewed(service);
-    // A colleague's autosave after the review: not part of this publication.
+    // Another editor's autosave after the review.
     writeFileSync(join(contentRoot, "projects/haus-c.json"), '{"title":"Haus C","slug":"haus-c"}');
 
     await service.publish({ message: "Publish A", paths });
@@ -271,22 +261,21 @@ describe("publish", () => {
   });
 
   it("commits only the reviewed paths, and reports a failed push as a state", async () => {
-    const { root, contentRoot, service, head } = makeRepo();
+    const { root, contentRoot, service } = makeRepo();
 
     writeFileSync(
       join(contentRoot, "projects/haus-a.json"),
       JSON.stringify({ title: "Haus A, renovated", slug: "haus-a" }),
     );
 
-    // A developer's unrelated work, some of it already staged. None of it may
-    // end up in the editor's commit.
+    // Unrelated developer work, some of it staged, must stay out of the commit.
     writeFileSync(join(root, "notes.txt"), "developer notes");
     writeFileSync(join(root, "staged.txt"), "already staged");
     git(root, "add", "staged.txt");
 
     const result = await service.publish({ message: "Renovate Haus A", paths: await reviewed(service) });
 
-    // No remote: the commit is real, the push failed, and the state says so.
+    // No remote, so the push fails.
     assert.equal(result.state, "committed-pending-push");
     assert.ok(result.revision);
     assert.ok(result.pushError);
@@ -295,17 +284,15 @@ describe("publish", () => {
     const committed = git(root, "show", "--name-only", "--format=", "HEAD").split("\n");
     assert.deepEqual(committed, ["content/projects/haus-a.json"]);
 
-    // The developer's files: untouched, and still staged where they were.
     assert.equal(readFileSync(join(root, "notes.txt"), "utf8"), "developer notes");
     assert.match(git(root, "status", "--porcelain"), /^A {2}staged\.txt$/m);
 
-    // The content change list is clean — published, even if not yet pushed.
     const status = await service.status();
     assert.deepEqual(status.changes, []);
   });
 
   it("a published URL change is a rename in Git, so the history follows the file", async () => {
-    const { root, contentRoot, service, head } = makeRepo();
+    const { root, contentRoot, service } = makeRepo();
     unlinkSync(join(contentRoot, "projects/haus-a.json"));
     writeFileSync(
       join(contentRoot, "projects/haus-z.json"),
@@ -322,14 +309,13 @@ describe("publish", () => {
   });
 
   it("push retries the push and never creates a second commit", async () => {
-    const { root, contentRoot, service, head } = makeRepo();
+    const { root, contentRoot, service } = makeRepo();
     writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Once","slug":"haus-a"}');
 
     const first = await service.publish({ message: "Once", paths: await reviewed(service) });
     assert.equal(first.state, "committed-pending-push");
 
-    // The remote appears — the developer fixes their origin — and the retry
-    // must push the existing commit rather than commit again.
+    // The developer adds the remote.
     const bare = temp("mica-bare-");
     git(bare, "init", "-q", "--bare", "-b", "main");
     git(root, "remote", "add", "origin", bare);
@@ -344,7 +330,7 @@ describe("publish", () => {
   });
 
   it("publishes end to end when an upstream exists", async () => {
-    const { root, contentRoot, service, head } = makeRepo();
+    const { root, contentRoot, service } = makeRepo();
     const bare = temp("mica-bare-");
     git(bare, "init", "-q", "--bare", "-b", "main");
     git(root, "remote", "add", "origin", bare);
@@ -358,7 +344,7 @@ describe("publish", () => {
   });
 
   it("is refused when disabled by configuration", async () => {
-    const { contentRoot, service, head } = makeRepo({ publishEnabled: false });
+    const { contentRoot, service } = makeRepo({ publishEnabled: false });
     writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"No","slug":"haus-a"}');
 
     const status = await service.status();
@@ -372,7 +358,7 @@ describe("publish", () => {
   });
 
   it("refuses across model drift, naming the restart", async () => {
-    const { contentRoot, service, head } = makeRepo({ schemaRevision: "the-startup-revision" });
+    const { contentRoot, service } = makeRepo({ schemaRevision: "the-startup-revision" });
     writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Drift","slug":"haus-a"}');
 
     await assert.rejects(

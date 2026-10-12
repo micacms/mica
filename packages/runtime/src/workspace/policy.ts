@@ -1,11 +1,7 @@
 /**
- * Who owns a working tree, and what that changes.
- *
- * The staging service is the same for both owners: the tree is the draft
- * workspace, and Publish commits an explicit path set. What differs is what
- * happens around it — whether Publish is allowed, and how a commit reaches
- * the remote. The developer's policy is in `developer.ts`; a clone that Mica
- * keeps itself gets its policy from the app that owns the clone.
+ * What changes with the owner of a working tree: whether Publish may run and
+ * how a commit reaches the remote. The app that keeps a managed clone supplies
+ * its policy; `developer.ts` is the developer's.
  */
 
 import type { PublishResult } from "@micacms/core";
@@ -54,27 +50,24 @@ export interface RepositoryDescription {
 
 export interface OwnerPolicy {
   readonly owner: "developer" | "managed";
-  /** Whether Publish may run here, and the reason when it may not. */
   publishAvailability(): PublishAvailability;
   /**
-   * Runs before a publication takes the tree lock, with the remote lock
-   * already held — a managed clone brings itself up to date here, without
-   * taking that lock again. Throws an `ApiError` when Publish must wait.
+   * Runs with the remote lock held, before the tree lock. A managed clone syncs
+   * here and must not take the remote lock again. Throws an `ApiError` when
+   * Publish must wait.
    */
   prepare(tree: GitTree): Promise<void>;
   /** Who a commit names as its author, given the signed-in editor. Undefined leaves it to Git. */
   commitAuthor(editor: Author | undefined): Author | undefined;
   /**
-   * Sends HEAD to the remote. A failure is a state, not an exception: the
-   * commit is real, and `committed-pending-push` says that only the second
-   * half is missing.
+   * Sends HEAD to the remote. A failure returns `committed-pending-push`, not
+   * an exception: the commit is real.
    */
   push(tree: GitTree, revision: string): Promise<PublishResult>;
 
   /* A clone that Mica keeps answers these; the developer's checkout does not. */
 
   syncStatus?(): SyncStatus;
-  /** Brings the clone up to date now. */
   sync?(): Promise<void>;
   /** Keeps the editor's version of a conflicting group, or takes the website's. */
   resolve?(group: string, choice: "mine" | "website"): Promise<void>;

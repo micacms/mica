@@ -1,9 +1,7 @@
 /**
- * A Git host for tests: bare repositories served over HTTP on loopback by
- * `git http-backend`, behind Basic authentication with one token.
- *
- * Real Git on both ends, so the managed workspace's credential path runs in
- * `rush test` exactly as it does against a real host.
+ * A Git host for tests: `git http-backend` on loopback, behind Basic
+ * authentication with one token, so the credential path runs as it does against
+ * a real host.
  */
 
 import { execFileSync, spawn } from "node:child_process";
@@ -16,7 +14,6 @@ import { join } from "node:path";
 export interface GitHost {
   /** `http://127.0.0.1:<port>/<name>.git` */
   url(name: string): string;
-  /** Path of a bare repository on disk. */
   bare(name: string): string;
   /** Every `Authorization` header the host saw. */
   authorizations: string[];
@@ -144,7 +141,6 @@ export function seedRepository(host: GitHost, name: string, files: Record<string
   return checkout;
 }
 
-/** Writes a file, creating its directories. */
 export function writeIn(dir: string, path: string, contents: string): void {
   const target = join(dir, path);
   mkdirSync(join(target, ".."), { recursive: true });

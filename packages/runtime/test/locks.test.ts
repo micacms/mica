@@ -1,8 +1,3 @@
-/**
- * The workspace locks: readers share, writers are alone, and nobody jumps the
- * queue — a waiting writer holds back the readers that arrive after it.
- */
-
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
@@ -125,7 +120,6 @@ describe("locked files", () => {
       revision: async () => null,
       apply: async () => {
         order.push("save");
-        return { revision: "r" };
       },
     };
     const locked = lockedFiles(files, lock);

@@ -1,16 +1,6 @@
-/**
- * Configuration.
- *
- * The tests here are all about failing early. A Mica that starts, lists the
- * editor's content and only discovers it cannot write when they press Save has
- * already cost them their work — so a repository that is named but not usable,
- * a provider without an admission rule, and a production run without secrets
- * all have to be startup errors.
- */
+/** A configuration that cannot work must stop the start, not fail later when an editor saves. */
 
 import assert from "node:assert/strict";
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
@@ -18,7 +8,7 @@ import { ConfigError } from "@micacms/runtime";
 
 import { loadConfig } from "../src/config.js";
 
-/** A complete, valid self-hosted environment; tests subtract from it. */
+/** A valid environment; tests subtract from it. */
 const base: NodeJS.ProcessEnv = {
   NODE_ENV: "test",
   LOG_LEVEL: "silent",
@@ -74,15 +64,14 @@ describe("public URL", () => {
 });
 
 describe("unknown variables", () => {
-  it("names MICA_ and REPOSITORY_ variables that nothing reads, and only those", () => {
+  it("names MICA_ variables that nothing reads, and only those", () => {
     const config = loadConfig({
       ...base,
       MICA_ADMIT_GROUPS: "typo-for-group",
-      REPOSITORY_BRANCHES: "main",
       MICA_OIDC_ISSUER: "https://auth.example.com",
       UNRELATED_VARIABLE: "x",
     });
-    assert.deepEqual(config.unknownVariables, ["MICA_ADMIT_GROUPS", "REPOSITORY_BRANCHES"]);
+    assert.deepEqual(config.unknownVariables, ["MICA_ADMIT_GROUPS"]);
   });
 });
 
@@ -127,20 +116,6 @@ describe("repository configuration", () => {
     refuses({ ...base, MICA_REPOSITORY_ROOT: "../etc" }, /inside the repository/);
   });
 
-  it("refuses the names that 0.5 replaced, all in one message", () => {
-    refuses(
-      { ...base, REPOSITORY: "gitlab", REPOSITORY_PROJECT: "acme/site", DATA_DIR: "/data" },
-      /REPOSITORY is no longer read/,
-      /REPOSITORY_PROJECT is no longer read\. Use MICA_REPOSITORY_URL/,
-      /DATA_DIR is no longer read\. Use MICA_DATA_DIR/,
-    );
-  });
-
-  it("refuses a draft database left by 0.4, and says what deleting it costs", () => {
-    const dataDir = mkdtempSync(join(tmpdir(), "mica-0.4-"));
-    writeFileSync(join(dataDir, "cms.sqlite"), "");
-    refuses({ ...base, MICA_DATA_DIR: dataDir }, /draft database of Mica 0\.4/, /publish or discard/, /lost/);
-  });
 });
 
 describe("authentication", () => {
@@ -156,7 +131,6 @@ describe("authentication", () => {
     assert.throws(() => loadConfig(withoutOidc), (error: unknown) => {
       assert.ok(error instanceof ConfigError);
       assert.match(error.message, /MICA_OIDC_ISSUER and MICA_OIDC_CLIENT_ID/);
-      // The message should say where to point the provider.
       assert.match(error.message, /\/api\/auth\/callback/);
       return true;
     });
@@ -186,11 +160,7 @@ describe("authentication", () => {
     assert.deepEqual(config.devSecrets, ["SESSION_SECRET"]);
   });
 
-  /**
-   * Plain-HTTP discovery is allowed only for a provider on this machine, and
-   * only outside production — a remote issuer over HTTP would mean handing an
-   * ID token to anybody on the path.
-   */
+  /** A remote issuer over HTTP would give the ID token to anybody on the path. */
   it("permits insecure discovery only for a local provider outside production", () => {
     const local = loadConfig({
       ...base,
@@ -212,10 +182,8 @@ describe("authentication", () => {
 });
 
 /**
- * Admission is configuration, and configuration that is absent has to be an
- * error rather than a default. Both possible defaults are wrong: admitting
- * everybody the provider knows is a public CMS, and admitting nobody is a
- * deployment that looks fine until the first person tries to sign in.
+ * No admission rule is an error, not a default: admitting everybody makes a
+ * public CMS, and admitting nobody looks fine until the first person signs in.
  */
 describe("who may edit", () => {
   const withoutRules = () => {
@@ -284,9 +252,8 @@ describe("who may edit", () => {
   });
 
   /**
-   * A subject list keyed on an email address would rebind access to whoever
-   * holds that address today, which is how account takeover happens. Refusing
-   * the shape is how an operator finds that out at startup rather than never.
+   * A subject keyed on an email address gives access to whoever holds that
+   * address today: account takeover.
    */
   it("refuses a subject that is not keyed by issuer", () => {
     assert.throws(

@@ -1,7 +1,4 @@
-/**
- * Reading Git's answers: the failure classes, the push results, the URL
- * cleaner and the LFS patterns. The texts are the hosts' own, from the spike.
- */
+/** The texts are the hosts' own messages. */
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";

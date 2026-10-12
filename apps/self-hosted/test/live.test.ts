@@ -1,18 +1,11 @@
 /**
- * The managed workspace against the real hosts: github.com and gitlab.com.
+ * The managed workspace against github.com and gitlab.com, run weekly by the
+ * `live-git` workflow. A host without a token or repository is skipped. Each
+ * run publishes one commit to `content/live/run.json`.
  *
- * What the loopback Git host in the other tests cannot show — that the token,
- * the username, the scoped credential helper and a publication work where
- * the supported hosts really are. Run every week by the `live-git` workflow;
- * a host whose token or repository is not configured is skipped, and the
- * skip shows in the log.
- *
- *   MICA_LIVE_GITHUB_TOKEN, MICA_LIVE_GITHUB_REPO      owner/repo
- *   MICA_LIVE_GITLAB_TOKEN, MICA_LIVE_GITLAB_PROJECT   group/project
- *   MICA_LIVE_BRANCH                                   default `main`; the token must be allowed to push to it
- *
- * Each run publishes one commit that changes `content/live/run.json` in the
- * scratch repository.
+ *   MICA_LIVE_GITHUB_TOKEN, MICA_LIVE_GITHUB_REPO     owner/repo
+ *   MICA_LIVE_GITLAB_TOKEN, MICA_LIVE_GITLAB_PROJECT  group/project
+ *   MICA_LIVE_BRANCH    default `main`; the token must be allowed to push to it
  */
 
 import assert from "node:assert/strict";

@@ -1,16 +1,8 @@
 <script setup lang="ts">
 /**
- * Dashboard.
- *
- * Counts and where the content lives, and deliberately little else.
- *
- * One pending-changes card, because Saved and Published are different words
- * now and the difference should be visible from the front door. Still no
- * "Rebuild website" button: the published commit is the trigger, and what
- * follows belongs to the repository's own pipeline. No "recently edited" list
- * either — the honest source for that is the repository's history, which a
- * connector in front of a plain working tree cannot read, and a half-true
- * version would be worse than none.
+ * Dashboard: counts, where the content lives, and the pending changes.
+ * No "Rebuild website" button: the published commit triggers the repository's own pipeline.
+ * No "recently edited" list: only the repository's history can say that truthfully.
  */
 
 import { computed, onMounted, ref } from "vue";
@@ -28,13 +20,7 @@ const toast = useToast();
 const overview = ref<Overview | null>(null);
 const loading = ref(true);
 
-/**
- * Greeted by name only where somebody said what the name is.
- *
- * Local mode has no user, so there is nobody to greet — and "Good morning,
- * there" would be a greeting to an imaginary person, which is exactly the
- * synthetic local user this design does without.
- */
+/** Greets by name only when the provider gave one; local mode has no user. */
 const greeting = computed(() => {
   const name = session.identity.value?.name?.split(" ")[0];
   if (!name) return "Overview";

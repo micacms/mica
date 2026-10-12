@@ -1,11 +1,7 @@
 /**
- * What the managed workspace needs to know about content: which files belong
- * together, and whether a set of drafts may be published.
- *
- * A conflict is decided per group, never per file — an entry's `index.json`
- * from one side and its `.mdoc` from the other is a mixed entry that nobody
- * wrote. The groups are the change list's own (`classifyPath`), so a conflict
- * names the same thing the Publish page shows.
+ * Content groups for the managed workspace. A conflict is decided per group,
+ * never per file: an `index.json` from one side and an `.mdoc` from the other
+ * is an entry that nobody wrote. The groups match the Publish page.
  */
 
 import type { Site } from "@micacms/core";
@@ -44,20 +40,15 @@ export function contentGroups(model: Site): (path: string) => ContentGroup {
 }
 
 /**
- * Groups by the first path segment — a whole collection or singleton — for a
- * sync that has no readable model. Coarse on purpose: a group too large shows
- * more conflicts, never fewer.
+ * Groups by the first path segment when no model is readable. A large group
+ * shows more conflicts, never fewer.
  */
 export function coarseGroups(path: string): ContentGroup {
   const key = path.split("/")[0]!.replace(/\.json$/, "");
   return { key: `path:${key}`, label: key };
 }
 
-/**
- * Validates the drafts at `paths` before a rejected publication is made
- * again on a newer base: the fast-forward may have changed what they refer
- * to. Throws the same `ApiError` a Publish would.
- */
+/** Validates the drafts at `paths` before a rejected publication is made again on a newer base. */
 export function revalidator(
   model: Site,
   files: ContentFiles,

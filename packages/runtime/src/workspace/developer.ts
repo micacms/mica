@@ -1,10 +1,7 @@
 /**
- * The developer's policy: the local editor works on their own checkout.
- *
- * Mica never fetches, merges or resets here — the checkout belongs to the
- * developer, who stays in control of it. Publish pushes with their own `git`,
- * their credentials and their upstream; a push that fails leaves the commit
- * for a "Retry push" or for the developer's own tools.
+ * The policy for the developer's own checkout. Mica never fetches, merges or
+ * resets here. Publish pushes with the developer's `git`, credentials and
+ * upstream; a failed push keeps the commit.
  */
 
 import type { PublishResult } from "@micacms/core";
@@ -15,7 +12,7 @@ import type { OwnerPolicy, PublishAvailability } from "./policy.js";
 import type { GitTree } from "./tree.js";
 
 export interface DeveloperPolicyOptions {
-  /** `MICA_LOCAL_PUBLISH`. False reduces the editor to a read-only changes view. */
+  /** `MICA_LOCAL_PUBLISH`. */
   publishEnabled: boolean;
   logger: Logger;
 }
@@ -30,10 +27,9 @@ export function developerPolicy(options: DeveloperPolicyOptions): OwnerPolicy {
         : { enabled: false, reason: "Publishing from local mode is disabled (MICA_LOCAL_PUBLISH=false)." };
     },
 
-    // The developer's checkout is theirs: Mica never fetches or merges here.
     async prepare() {},
 
-    // The commit is the developer's, written with their own Git identity.
+    // The commit keeps the developer's own Git identity.
     commitAuthor: () => undefined,
 
     async push(tree: GitTree, revision: string): Promise<PublishResult> {

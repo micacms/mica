@@ -1,8 +1,7 @@
 name: Live Git
 
-# The managed workspace against real scratch repositories on github.com and
-# gitlab.com — see apps/self-hosted/test/live.test.ts. Not on pull requests: a
-# fork cannot read the secrets, and a host outage must not block a merge.
+# Runs apps/self-hosted/test/live.test.ts against scratch repositories on github.com and gitlab.com.
+# Not on pull requests: a fork cannot read the secrets, and a host outage must not block a merge.
 on:
   schedule:
     - cron: "17 5 * * 1"
@@ -37,9 +36,8 @@ jobs:
       - run: node common/scripts/install-run-rush.js install --to @micacms/self-hosted
       - run: node common/scripts/install-run-rush.js build --to @micacms/self-hosted
 
-      # A host whose token or repository is not configured is skipped, and the
-      # skip is visible in the log. The token must be allowed to push to
-      # MICA_LIVE_BRANCH: on GitLab, a protected branch needs the Maintainer role.
+      # A host without a token or repository is skipped, visibly in the log. The token must be
+      # allowed to push to MICA_LIVE_BRANCH: on GitLab, a protected branch needs the Maintainer role.
       - name: Publish to the scratch repositories
         working-directory: apps/self-hosted
         env:

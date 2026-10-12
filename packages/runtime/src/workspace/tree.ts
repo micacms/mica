@@ -1,21 +1,9 @@
 /**
  * Git operations on a working tree whose content root is the draft workspace.
- *
- * What both owners of a tree need — the developer's checkout and a clone that
- * Mica keeps itself: finding the repository, reading what Git thinks of the
- * content root, committing an explicit path set, discarding a change, and
- * reading the published side from HEAD. Who pushes, and how, is the owner
- * policy's business (`policy.ts`).
- *
- * Every operation is limited to paths under the content root. Mica never runs
- * `git add -A` over the repository, so unrelated work in the same checkout is
- * never swept into an editor's commit. Paths are passed with
- * `--literal-pathspecs`: a file called `tour[1].json` is not a pattern that
- * also matches `tour1.json`.
+ * The owner policy does the push. Every operation is limited to paths under the
+ * content root, never `git add -A` over the repository, so other work in the
+ * same checkout is never swept into a commit.
  */
-
-/** Git's global option that makes every path argument a literal path. */
-export const LITERAL = "--literal-pathspecs";
 
 import { existsSync } from "node:fs";
 import { realpath, rm } from "node:fs/promises";
@@ -26,6 +14,12 @@ import { within } from "@micacms/core/node";
 
 import type { Author } from "./files.js";
 import { GitError, gitRunner, type GitRunner, type GitRunnerOptions } from "./git.js";
+
+/**
+ * Makes every path argument literal: `tour[1].json` is not a pattern that also
+ * matches `tour1.json`.
+ */
+export const LITERAL = "--literal-pathspecs";
 
 /** A content root inside a Git repository. */
 export interface GitTree {
@@ -56,9 +50,8 @@ export async function locateTree(
   const probe = gitRunner(contentRoot, options);
   try {
     const repoRoot = await probe.run(["rev-parse", "--show-toplevel"]);
-    // Git reports the toplevel with symlinks resolved (`/private/var` where
-    // the caller said `/var`, on macOS). Resolve our side the same way, or
-    // the relative prefix walks out of the repository.
+    // Git resolves symlinks in the toplevel (`/private/var` for `/var` on
+    // macOS); do the same, or the prefix is wrong.
     const resolved = await realpath(contentRoot);
     return {
       git: gitRunner(repoRoot, options),
@@ -77,9 +70,8 @@ export async function locateTree(
 
 /** The content root's changes, as `git status` sees them. */
 export async function listTreeChanges(tree: GitTree): Promise<TreeChange[]> {
-  // `-uall` because Git collapses a fully-untracked directory to one line,
-  // and a brand-new entry is exactly that. The change list must name files.
-  // Read-only: no `index.lock`, so a commit running beside it cannot fail on it.
+  // `-uall`: Git otherwise collapses a new, untracked entry directory to one line.
+  // `GIT_OPTIONAL_LOCKS=0`: no `index.lock`, so a parallel commit cannot fail on it.
   const raw = await tree.git.run(
     [LITERAL, "status", "--porcelain=v1", "-z", "-uall", "--", tree.prefix === "" ? "." : tree.prefix],
     { env: { GIT_OPTIONAL_LOCKS: "0" } },
@@ -88,10 +80,9 @@ export async function listTreeChanges(tree: GitTree): Promise<TreeChange[]> {
 }
 
 /**
- * Stages and commits exactly `paths` (content-root relative) and returns the
- * new HEAD. The pathspec limits both operations, so anything else in the
- * index or the tree — staged or not — stays where it was. Without an
- * `author`, Git's configured identity writes the commit.
+ * Stages and commits only `paths` (content-root relative) and returns the new
+ * HEAD. The pathspec limits both steps, so all other staged or unstaged work
+ * stays. Without `author`, Git's configured identity applies.
  */
 export async function commitPaths(
   tree: GitTree,
@@ -106,9 +97,8 @@ export async function commitPaths(
 }
 
 /**
- * Commits `paths` again with the message, author and author date of
- * `original` — a publication re-made on a newer base after its push was
- * rejected. Returns the new HEAD.
+ * Commits `paths` again with the message, author and date of `original`, after
+ * a rejected push. Returns the new HEAD.
  */
 export async function recommitPaths(tree: GitTree, paths: string[], original: string): Promise<string> {
   const inRepository = await stagePaths(tree, paths);
@@ -117,10 +107,9 @@ export async function recommitPaths(tree: GitTree, paths: string[], original: st
 }
 
 /**
- * Stages `paths` before the commit: `git commit -- <paths>` alone refuses a
- * file Git has never seen. A path that is gone from the disk is removed from
- * the index instead — `git add` refuses a deletion that is already staged,
- * which is what `reset --soft` leaves behind.
+ * Stages `paths`, because `git commit -- <paths>` refuses a file Git has never
+ * seen. A path gone from the disk uses `rm --cached`, because `git add` refuses
+ * a deletion that is already staged (as `reset --soft` leaves it).
  */
 async function stagePaths(tree: GitTree, paths: string[]): Promise<string[]> {
   const present: string[] = [];
@@ -140,9 +129,7 @@ async function stagePaths(tree: GitTree, paths: string[]): Promise<string[]> {
 /** Puts one changed file back to its HEAD version, or removes it if HEAD has none. */
 export async function discardChange(tree: GitTree, change: TreeChange): Promise<void> {
   if (change.kind === "create") {
-    // Nothing to restore: before this change there was no file. A creation
-    // already staged is unstaged first, so the index does not keep pointing
-    // at a file that is gone.
+    // Unstage a staged creation first, so the index does not point at a deleted file.
     if (!change.untracked) {
       await tree.git.tryRun([LITERAL, "rm", "--cached", "--force", "--", inRepo(tree.prefix, change.path)]);
     }
@@ -179,12 +166,8 @@ export async function aheadOfUpstream(tree: GitTree): Promise<number | null> {
 }
 
 /**
- * The content root as HEAD has it — the published side of a comparison — or
- * as another ref has it, such as the remote branch a conflict is about.
- *
- * Reading `HEAD:` rather than the tree is the point: the working tree *is*
- * the draft workspace, so the repository's own version of a document only
- * exists in Git's object store.
+ * The content root as `ref` has it, read from Git's object store, because the
+ * working tree holds the drafts.
  */
 export function headSource(tree: GitTree, ref = "HEAD"): ContentSource {
   const at = (path: string) => `${ref}:${path === "" ? tree.prefix : inRepo(tree.prefix, path)}`;
@@ -193,9 +176,7 @@ export function headSource(tree: GitTree, ref = "HEAD"): ContentSource {
     origin: ref,
 
     async read(path) {
-      // tryRun, because "not in HEAD" and "no commits yet" both simply mean
-      // there is no published version. Stdout arrives trimmed, which the
-      // entry parsers already tolerate.
+      // "Not in HEAD" and "no commits yet" both mean that there is no published version.
       return tree.git.tryRun(["show", at(path)]);
     },
 
@@ -216,23 +197,16 @@ export function headSource(tree: GitTree, ref = "HEAD"): ContentSource {
 }
 
 /**
- * A save's temporary file: written beside its target, then renamed into
- * place (`*.mica-<pid>-<n>`). Seen only during a save, or after a crash in
- * one; never content.
+ * A save's temporary file (`*.mica-<pid>-<n>`), seen during a save or after a
+ * crash. Never content.
  */
 const TEMPORARY_FILE = /\.mica-\d+-\d+$/;
 
 /**
  * Parses `git status --porcelain=v1 -z` into content-root-relative changes.
- *
- * The `-z` format is the one that never munges a path: entries are
- * NUL-terminated, and a rename is two fields — the new path, then the one it
- * came from. A rename becomes a create and a delete, which is how the rest of
- * Mica already thinks about moves.
- *
- * `.mica/` is excluded. The manifest there is build output a developer
- * commits with their own tools; the editor neither shows nor publishes it,
- * and model changes are guarded separately, by the drift check.
+ * `-z` never changes a path; a rename is two fields and becomes a create and a
+ * delete. `.mica/` is excluded: the developer commits the manifest, and the
+ * drift check guards model changes.
  */
 export function parseStatus(raw: string, prefix: string): TreeChange[] {
   const fields = raw.split("\0").filter((field) => field !== "");
@@ -265,16 +239,14 @@ export function parseStatus(raw: string, prefix: string): TreeChange[] {
       continue;
     }
 
-    // Both sides touched it in a merge, or one side deleted while the other
-    // edited: the file is in Git's conflict state, whatever the tree holds.
+    // A merge conflict state, whatever the tree holds.
     if (x === "U" || y === "U" || (x === "A" && y === "A") || (x === "D" && y === "D")) {
       push(repoPath, "update", { conflicted: true });
       continue;
     }
 
     if (x === "R" || x === "C") {
-      // The next field is the source path. A copy keeps its source; a rename
-      // loses it, which the status letters already said (C keeps both files).
+      // The next field is the source path; only a rename deletes it.
       const from = fields[++at]!;
       push(repoPath, "create");
       if (x === "R") push(from, "delete");
