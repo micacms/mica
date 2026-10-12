@@ -10,6 +10,32 @@ seven published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.5.0-rc.2] — 2026-10-12
+
+The second release candidate, published under the npm tag `next` and as the
+image `ghcr.io/micacms/mica:0.5.0-rc.2`. `latest` stays at 0.4.1. It contains
+everything in 0.5.0-rc.1, and the additions below.
+
+### Added
+
+- **Set up Mica with a coding agent.** Give the agent the prompt "Read
+  https://micacms.com/setup.md and set up Mica in this project." The guides it
+  follows ship in `@micacms/astro/setup/`: a new or empty Astro project, and a
+  project with Astro content collections (`@micacms/astro`).
+- **`mica check`** checks every entry against the model and exits with 1 on an
+  error. It finds fields that do not validate, missing media, relations to
+  entries that do not exist, entries in the wrong layout, and files that Mica
+  does not read. Run it in CI with `npx mica check` (`@micacms/editor`).
+- **`mica init`** writes a starter `src/mica.ts` and `src/content.config.ts`,
+  and never overwrites a file (`@micacms/editor`).
+
+### Changed
+
+- The loader logs name any collection or singleton correctly, and show the
+  path of the written model from the project (`@micacms/astro`).
+- The source maps contain their sources, so an Astro build no longer warns
+  about missing source files.
+
 ## [0.5.0-rc.1] — 2026-10-12
 
 A release candidate, published under the npm tag `next` and as the image
