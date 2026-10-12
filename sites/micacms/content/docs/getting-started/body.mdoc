@@ -2,6 +2,16 @@ Mica adds an editing interface to an Astro project. The website keeps reading lo
 
 > Mica is experimental and pre-1.0. Its API and content format can change. Use it for work that you can update as the project changes.
 
+## Set up with a coding agent
+
+Give your coding agent this prompt:
+
+```text
+Read https://micacms.com/setup.md and set up Mica in this project.
+```
+
+The agent finds out whether the project is new, an empty Astro project, or an Astro project with content collections. It asks you about the content model, installs the packages, and checks the result with `npx mica check`. To do the setup yourself, follow the steps below.
+
 ## What you need
 
 - Node 22.12 or newer
@@ -74,6 +84,8 @@ npm install --save-dev @micacms/editor
 ```
 
 `npm run mica` then starts the same editor, at the version your lockfile holds, for everyone who works on the project.
+
+With the editor installed, `npx mica init` writes a starter `src/mica.ts` and `src/content.config.ts` and never overwrites a file. `npx mica check` checks every entry against the model and exits with an error code when it finds a problem. Run it in CI, or after a change to the content files.
 
 ## 5. Render the content
 

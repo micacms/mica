@@ -1546,6 +1546,32 @@ The working tree has no place for that record, so it would need one first.
 
 ---
 
+### P3 — Setup by a coding agent: the entry on the website, the guides in the package
+
+**Decided:** `SETUP.md` in the repository root is served at
+`micacms.com/setup.md`. It finds the project's situation, installs the
+packages and sends the agent to one guide in `@micacms/astro/setup/`. The
+guides cover a new or empty Astro project and a project with content
+collections; moving content from another CMS is a placeholder. `mica check`
+is the agent's "done" signal, and `mica init` writes the starter files.
+
+**Why:** the website deploys from `main` and the packages from a tag, so a
+guide on the website can describe a version that `npm install` does not give.
+In the package, a guide always matches the installed code. The entry file only
+routes, so it stays valid for every version. A setup without a check that an
+agent can run alone ends with "the browser opened", which proves nothing about
+the content.
+
+**Consequence:** a guide change reaches users only with a release. `SETUP.md`
+must not name a version-specific API.
+
+**What would change it:** a second framework besides Astro, which would need
+its own guides in its own package.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
 ## Deferred scope
 
 Explicitly not built. Everything in this section is after 1.0.
