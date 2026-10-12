@@ -49,7 +49,7 @@ services:
     ports:
       - "127.0.0.1:8080:8080"
       - "127.0.0.1:6422:6422"
-      - "127.0.0.1:8787:8787"
+      - "127.0.0.1:3000:3000"
 
     healthcheck:
       # The realm's discovery document, which is the thing Mica actually needs
@@ -64,18 +64,43 @@ services:
       start_period: 15s
 
   # ---------------------------------------------------------- repository
-  # A stand-in for the GitHub API, seeded with the example content and kept in
-  # memory — see tests/github-stub/README.md. A self-hosted Mica publishes only
-  # through a provider.
-  github:
-    image: node:24-alpine
-    command: ["node", "/stub/server.mjs"]
+  # A real Git host, seeded with the example content by the same script as
+  # tests/oidc. Plain HTTP on localhost, which Mica accepts only in development.
+  forgejo:
+    image: codeberg.org/forgejo/forgejo:15.0.9
     network_mode: "service:keycloak"
     depends_on:
       keycloak:
         condition: service_started
+    environment:
+      FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO__database__DB_TYPE: sqlite3
+      FORGEJO__server__ROOT_URL: http://localhost:3000/
+      FORGEJO__server__HTTP_PORT: "3000"
+      FORGEJO__server__DISABLE_SSH: "true"
+      FORGEJO__service__DISABLE_REGISTRATION: "true"
+      FORGEJO__log__LEVEL: Warn
     volumes:
-      - ../github-stub/server.mjs:/stub/server.mjs:ro
+      - forgejo-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/v1/version"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+
+  forgejo-seed:
+    image: codeberg.org/forgejo/forgejo:15.0.9
+    network_mode: "service:keycloak"
+    user: "1000:1000"
+    entrypoint: ["/bin/sh", "/seed.sh"]
+    depends_on:
+      forgejo:
+        condition: service_healthy
+    environment:
+      FORGEJO_PASSWORD: Forgejo-test-password-not-for-production
+    volumes:
+      - forgejo-data:/data
+      - ../oidc/forgejo-seed.sh:/seed.sh:ro
       - ../../examples/muster-consulting/content:/seed:ro
 
   # ---------------------------------------------------------------- mica
@@ -86,8 +111,8 @@ services:
     depends_on:
       keycloak:
         condition: service_healthy
-      github:
-        condition: service_started
+      forgejo-seed:
+        condition: service_completed_successfully
 
     # Shares Keycloak's network namespace, so `localhost:8080` means the same
     # thing inside this container as it does in your browser. Without that the
@@ -119,13 +144,11 @@ services:
       # there is nothing to bootstrap and nobody to invite.
       MICA_ADMIT_GROUP: mica-editors
 
-      # Publish goes to the stub; read what arrived with
-      #   curl -H 'authorization: Bearer x' -H 'accept: application/vnd.github.raw' \
-      #     'http://localhost:8787/repos/acme/site/contents/content/site/index.json?ref=main'
-      REPOSITORY: github
-      REPOSITORY_PROJECT: acme/site
-      REPOSITORY_TOKEN: stub-token-not-for-production
-      REPOSITORY_API_BASE: http://localhost:8787
+      # Mica clones and pushes to Forgejo (the user `editor`, password below);
+      # read what arrived at http://localhost:3000/editor/site.
+      MICA_REPOSITORY_URL: http://localhost:3000/editor/site.git
+      MICA_REPOSITORY_USERNAME: editor
+      MICA_REPOSITORY_TOKEN: Forgejo-test-password-not-for-production
 
       SESSION_SECRET: e2e-session-secret-0000000000000000
 
@@ -134,3 +157,4 @@ services:
 
 volumes:
   mica-data:
+  forgejo-data:

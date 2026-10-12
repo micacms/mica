@@ -3,24 +3,26 @@
 #   curl -o compose.yml https://raw.githubusercontent.com/micacms/mica/main/deploy/self-hosted/compose.yml
 #   curl -o .env https://raw.githubusercontent.com/micacms/mica/main/deploy/self-hosted/.env.example
 #   $EDITOR .env                           # the repository, the provider, one secret
+#   docker compose run --rm mica check     # access, push rights and the content model
 #   docker compose up -d
 #
 # Two files on a server, and no clone of this repository: the image is
 # published, and the content model comes out of your content repository at
 # runtime.
 #
-# One container. No database server, no cache, no queue, no object storage —
-# and, since content moved into Git, no content volume either.
+# One container. No database, no cache, no queue, no object storage. Mica keeps
+# a clone of the content repository on the volume below and edits it there.
 #
 # The image carries no content model: it reads one from the content repository,
 # at `.mica/schema.json`, which the Astro project writes and the developer
 # commits. That is why the same published image serves any project, and why
 # changing the model is a commit plus a restart rather than a rebuild.
 #
-# There is no backup service any more. The content is in a Git repository, which
-# is already replicated, versioned and off-site; the volume below holds only
-# unpublished drafts, and losing it loses those and nothing else. There are
-# no accounts in it, and no passwords — Mica has neither.
+# There is no backup service. The published content is in a Git repository,
+# which is already replicated, versioned and off-site. The volume holds the
+# clone, and in it the drafts that are saved and not yet published: losing the
+# volume loses those and nothing else. There are no accounts in it, and no
+# passwords — Mica has neither. Run one Mica per volume.
 
 services:
   mica:
@@ -31,7 +33,7 @@ services:
     env_file: .env
     environment:
       NODE_ENV: production
-      DATA_DIR: /data
+      MICA_DATA_DIR: /data
 
       # OIDC or nothing: this image has no unauthenticated mode. Set
       # MICA_OIDC_ISSUER and MICA_OIDC_CLIENT_ID in .env, and register
@@ -41,12 +43,9 @@ services:
       # MICA_ADMIT_GROUP, MICA_ADMIT_DOMAIN, MICA_ADMIT_EMAILS or
       # MICA_ADMIT_SUBJECTS in .env.
 
-      # How this deployment reaches its content repository.
-      #
-      # `github` or `gitlab` is required: Mica commits through the provider's
-      # API, so there is no clone to keep in sync and no deploy key on disk.
-      # `local` is refused. Set REPOSITORY_PROJECT and REPOSITORY_TOKEN in .env.
-      REPOSITORY: ${REPOSITORY:-github}
+      # The content repository is MICA_REPOSITORY_URL, with
+      # MICA_REPOSITORY_TOKEN, in .env. Mica clones it over HTTPS into /data,
+      # fetches and fast-forwards on its own, and pushes each publication.
 
     ports:
       # Bound to loopback: put a reverse proxy in front for TLS. Change to
@@ -54,8 +53,8 @@ services:
       - "127.0.0.1:6422:6422"
 
     volumes:
-      # Unpublished drafts. Not the website — that is in the repository, and so
-      # is the content model.
+      # Mica's clone of the content repository, with the drafts in it. Size it
+      # for about twice the content (the clone's objects plus its files).
       - mica-data:/data
 
     # Nothing but /data and /tmp is writable, and no capability is left. With
@@ -68,8 +67,8 @@ services:
     mem_limit: 512m
 
     healthcheck:
-      # Liveness only: a provider outage must not restart the container.
-      # /ready checks the database and the repository, for a monitor.
+      # Liveness only: a repository outage must not restart the container.
+      # /ready reports the clone, with reason codes, for a monitor.
       test:
         - CMD
         - node

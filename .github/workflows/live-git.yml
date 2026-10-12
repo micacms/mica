@@ -1,0 +1,51 @@
+name: Live Git
+
+# The managed workspace against real scratch repositories on github.com and
+# gitlab.com — see apps/self-hosted/test/live.test.ts. Not on pull requests: a
+# fork cannot read the secrets, and a host outage must not block a merge.
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: live-git
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  live:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: |
+            ~/.rush
+            common/temp/pnpm-store
+          key: rush-${{ runner.os }}-${{ hashFiles('rush.json', 'common/config/rush/pnpm-lock.yaml') }}
+          restore-keys: rush-${{ runner.os }}-
+
+      - run: node common/scripts/install-run-rush.js install --to @micacms/self-hosted
+      - run: node common/scripts/install-run-rush.js build --to @micacms/self-hosted
+
+      # A host whose token or repository is not configured is skipped, and the
+      # skip is visible in the log. The token must be allowed to push to
+      # MICA_LIVE_BRANCH: on GitLab, a protected branch needs the Maintainer role.
+      - name: Publish to the scratch repositories
+        working-directory: apps/self-hosted
+        env:
+          MICA_LIVE_GITHUB_TOKEN: ${{ secrets.MICA_LIVE_GITHUB_TOKEN }}
+          MICA_LIVE_GITHUB_REPO: ${{ vars.MICA_LIVE_GITHUB_REPO }}
+          MICA_LIVE_GITLAB_TOKEN: ${{ secrets.MICA_LIVE_GITLAB_TOKEN }}
+          MICA_LIVE_GITLAB_PROJECT: ${{ vars.MICA_LIVE_GITLAB_PROJECT }}
+          MICA_LIVE_BRANCH: ${{ vars.MICA_LIVE_BRANCH }}
+        run: node --test --import tsx test/live.test.ts

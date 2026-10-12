@@ -5,13 +5,13 @@
 #
 # What a self-hosted Mica consists of, and nothing more:
 #
-#   mica        Mica itself: one Node process, one SQLite file
+#   mica        Mica itself: one Node process, and its clone of your repository
 #   zitadel     the identity provider, with its database
 #
-# The third part is your content repository on github.com or gitlab.com. It is
-# not in here, and that is the architecture rather than a shortcut: Mica commits
-# to a repository you already own, and the website is built from that repository
-# by CI that never contacts Mica.
+# The third part is your content repository, on github.com, gitlab.com or any
+# Git host over HTTPS. It is not in here, and that is the architecture rather
+# than a shortcut: Mica pushes to a repository you already own, and the website
+# is built from that repository by CI that never contacts Mica.
 #
 # Nothing has to be clicked to make this work. ZITADEL generates its own
 # credentials on first boot, so a seed job registers Mica as an application and
@@ -133,8 +133,11 @@ services:
 
     # ZITADEL generated the client credentials and everybody's subject on first
     # boot, so none of them can be written into this file. The seed job leaves
-    # them in the volume, MICA_ADMIT_SUBJECTS among them.
-    command:
+    # them in the volume, MICA_ADMIT_SUBJECTS among them. The image's own
+    # entrypoint runs `node dist/index.js`; this one reads the file first.
+    entrypoint:
+      - /sbin/tini
+      - --
       - /bin/sh
       - -c
       - "set -a; . /seed/oidc.env; set +a; exec node dist/index.js"
@@ -143,7 +146,7 @@ services:
       # Development, deliberately: Mica refuses plain-HTTP OIDC discovery under
       # NODE_ENV=production, correctly, and giving ZITADEL a certificate is more
       # machinery than a local rig deserves. Everything else is the deployed
-      # shape — a real provider, a real connector, a real admission rule.
+      # shape — a real provider, a real clone, a real admission rule.
       NODE_ENV: development
       LOG_LEVEL: debug
 
@@ -152,15 +155,14 @@ services:
 
       MICA_OIDC_ISSUER: http://localhost:8080
 
-      # Your repository on github.com or gitlab.com, from deploy/demo-identity/.env.
-      # This is the same connector, configured the same way, as a real deployment.
-      REPOSITORY: ${REPOSITORY:?set REPOSITORY in deploy/demo-identity/.env}
-      REPOSITORY_PROJECT: ${REPOSITORY_PROJECT:?set REPOSITORY_PROJECT in deploy/demo-identity/.env}
-      REPOSITORY_TOKEN: ${REPOSITORY_TOKEN:?set REPOSITORY_TOKEN in deploy/demo-identity/.env}
-      REPOSITORY_ROOT: ${REPOSITORY_ROOT:-content}
-      REPOSITORY_BRANCH: ${REPOSITORY_BRANCH:-main}
+      # Your repository, from deploy/demo-identity/.env, configured the same way
+      # as a real deployment.
+      MICA_REPOSITORY_URL: ${MICA_REPOSITORY_URL:?set MICA_REPOSITORY_URL in deploy/demo-identity/.env}
+      MICA_REPOSITORY_TOKEN: ${MICA_REPOSITORY_TOKEN:?set MICA_REPOSITORY_TOKEN in deploy/demo-identity/.env}
+      MICA_REPOSITORY_ROOT: ${MICA_REPOSITORY_ROOT:-content}
+      MICA_REPOSITORY_BRANCH: ${MICA_REPOSITORY_BRANCH:-main}
 
-      DATA_DIR: /data
+      MICA_DATA_DIR: /data
 
     volumes:
       - seed:/seed:ro

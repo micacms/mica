@@ -1,8 +1,7 @@
 # End-to-end test rig
 
 A complete Mica on your machine: the CMS from its image, a real Keycloak, and
-the [GitHub API stub](../github-stub/README.md) seeded with the example
-project's content.
+a real Git host (Forgejo) seeded with the example project's content.
 
 This exercises the parts unit tests cannot — a real OpenID Connect round trip,
 and the container as it would actually be deployed.
@@ -13,7 +12,7 @@ docker compose -f tests/e2e/compose.yml up --build
 
 Then open <http://localhost:6422/admin/>.
 
-It is the *fast* rig: the repository is a stub in memory, so it starts in under
+It is the *fast* rig: everything runs on your machine, so it starts in about
 a minute. [`tests/oidc/`](../oidc/README.md) is the automated version with Dex. For the deployed shape — Mica against ZITADEL and a
 real repository on github.com or gitlab.com — see [deploy/demo-identity/](../../deploy/demo-identity/README.md).
 
@@ -60,13 +59,11 @@ on.
 4. **Edit the site settings, save, and publish.** Save is a draft: the
    repository does not move until Publish. Then read what arrived:
 
-   ```bash
-   curl -s -H 'authorization: Bearer x' -H 'accept: application/vnd.github.raw' \
-     'http://localhost:8787/repos/acme/site/contents/content/site/index.json?ref=main'
-   ```
+   <http://localhost:3000/editor/site/commits/branch/main> (`editor` /
+   `Forgejo-test-password-not-for-production`).
 
-   One commit, by the editor who pressed Publish. The stub keeps it in memory,
-   so a restart starts from the example content again.
+   One commit, by the editor who pressed Publish, committed by Mica. `down -v`
+   starts again from the example content.
 
 5. **Try mallory.** Read the message. Then open the Keycloak console at
    <http://localhost:8080> (`admin` / `admin`), put her in `mica-editors`, and

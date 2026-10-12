@@ -1,7 +1,8 @@
 # The demo stack
 
 Mica in its deployed shape, on your machine: the CMS from its image, a real
-identity provider, and a real repository on github.com or gitlab.com.
+identity provider, and a real repository on github.com, gitlab.com or any Git
+host over HTTPS.
 
 ```bash
 cp deploy/demo-identity/.env.example deploy/demo-identity/.env   # your repository and its token
@@ -11,16 +12,16 @@ docker compose -f deploy/demo-identity/compose.yml up --build
 Then open <http://localhost:6422/admin/> and sign in as `alice` /
 `Alice-Demo1`.
 
-Two containers and a database, which is what self-hosting Mica costs:
+Two containers, and a database for the identity provider — Mica keeps none:
 
 | Service | What it is |
 | --- | --- |
-| `mica` | Mica itself: one Node process, one SQLite file |
+| `mica` | Mica itself: one Node process, and its clone of your repository |
 | `zitadel` + `db` | The identity provider |
 | `prepare`, `seed-identity` | One-shot jobs. They exit and stay exited |
 
 Your content repository is the third part, and it is deliberately not in here.
-Mica commits to a repository you already own, and your website is built from
+Mica pushes to a repository you already own, and your website is built from
 that repository by CI that never contacts Mica.
 
 > Deliberately local: plain HTTP, passwords in the Compose file, a master key
@@ -73,14 +74,16 @@ ZITADEL's own console is at <http://localhost:8080>, as `admin` /
 3. **Sign out, sign in as bob.** He gets in without anybody inviting him,
    because the seed script put his subject on the list.
 
-4. **Edit an entry and save.** Then look at your repository:
+4. **Edit an entry, save, and publish it on the Publish page.** A save alone is
+   a draft in Mica's clone; the repository does not move. After Publish, look
+   at your repository:
 
    ```bash
    git -C /path/to/your/repo pull && git log -1 --stat
    ```
 
    One commit, authored by the editor, touching only files under
-   `REPOSITORY_ROOT`. That is the whole architecture in one command.
+   `MICA_REPOSITORY_ROOT`. That is the whole architecture in one command.
 
 5. **Try mallory.** Read the message. To let her in, add her subject to
    `MICA_ADMIT_SUBJECTS` — you can read it from the ZITADEL console — and
@@ -110,7 +113,7 @@ is also why both ports are published on the `zitadel` service.
 `NODE_ENV=production` — correctly, since an ID token over http is one anybody
 on the path can read. Giving ZITADEL a certificate is more machinery than a
 local rig deserves, so the rig relaxes that one flag. What is under test is
-the self-hosted composition: a real provider, a real connector, and a real
+the self-hosted composition: a real provider, a real clone, and a real
 admission check.
 
 ---
@@ -121,6 +124,7 @@ admission check.
 docker compose -f deploy/demo-identity/compose.yml down -v
 ```
 
-`-v` drops the volumes: ZITADEL's database, Mica's SQLite file, and
-the generated credentials. Your content repository is untouched — anything an
-editor saved is a commit in it, and stays there.
+`-v` drops the volumes: ZITADEL's database, Mica's clone with any drafts
+that were not published, and the generated credentials. Your content
+repository is untouched — anything an editor published is a commit in it, and
+stays there.
