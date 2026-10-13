@@ -216,6 +216,42 @@ describe("publishing the model", () => {
   });
 });
 
+describe("a draft that is not valid yet", () => {
+  const refuseHausB = (context: ReturnType<typeof createContext>) => {
+    context.parseData = async ({ id, data }) => {
+      if (id === "haus-b") throw new Error("title: Title is required.");
+      return data;
+    };
+  };
+
+  it("is left out with a warning in dev, and the rest of the collection loads", async () => {
+    const dir = await project();
+    await writeEntry(dir, "projects/haus-b.json", { slug: "haus-b" });
+    try {
+      const context = createContext(dir, createWatcher());
+      refuseHausB(context);
+      await micaCollections(site).projects.loader.load(context);
+
+      assert.deepEqual([...context.entries.keys()], ["haus-a"]);
+      assert.ok(context.logs.some((line) => line.startsWith('warn: Left out "projects/haus-b" until it is valid')));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("fails a build", async () => {
+    const dir = await project();
+    await writeEntry(dir, "projects/haus-b.json", { slug: "haus-b" });
+    try {
+      const context = createContext(dir);
+      refuseHausB(context);
+      await assert.rejects(micaCollections(site).projects.loader.load(context), /Title is required/);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe("reloading in dev", () => {
   it("reloads its own collection when a file under it changes", async () => {
     const dir = await project();
@@ -318,7 +354,8 @@ describe("reloading in dev", () => {
 
       failNext = true;
       watcher.emit("change", join(dir, "content", "projects", "haus-a.json"));
-      await waitFor(() => context.logs.some((l) => l.startsWith("error:")), "the reload error");
+      await waitFor(() => context.logs.some((l) => l.startsWith('warn: Left out "projects/haus-a"')), "the warning");
+      assert.equal(context.entries.size, 0);
 
       // The dev server has to stay up: the next save is very likely the fix.
       failNext = false;
