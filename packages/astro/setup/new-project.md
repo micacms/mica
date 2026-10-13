@@ -25,8 +25,24 @@ Ask these questions, and wait for the answers:
    file.
 6. Do they want example content, so that the pages show something at once?
 
-Suggest a model from the answers, as a short list of collections, singletons
-and fields. Change it until the user agrees.
+Then show one proposal, and wait for a short approval or correction before
+you write a file. Write for a reader who is new to Mica and may know little
+about Astro: plain words, no code.
+
+- **What editors will manage:** each collection and singleton, one line on
+  what it is, and its fields in plain words ("Title — text, required",
+  "Cover — an image, with its alt text under it").
+- **The pages:** each page you will make, with its URL and what it shows.
+- **Existing files that change:** in an empty Astro project, for example
+  `src/pages/index.astro` or a layout: what changes, and why. Nothing else
+  changes.
+- Your recommendation where there is a choice, and the other option: manual
+  order by dragging, or sorting by a field; alt text required for images that
+  carry meaning.
+
+End with: "Shall I go ahead like this? You can change any point." Change the
+proposal until the user agrees, and later make no change that it did not
+list without asking first.
 
 ## 2. Add Mica to the project
 

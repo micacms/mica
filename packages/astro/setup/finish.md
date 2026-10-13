@@ -52,33 +52,49 @@ paths if the project uses others.
 - Before a commit that changes `content/`, `npm run check` must pass.
 ```
 
+Change no other documentation, such as `README.md`, unless the user asks.
+
 ## 4. Tell the user
 
-- What you added and changed, file by file.
-- The decisions they made, and what was not converted, if anything.
-- How to commit: give the commands, and run them only if the user asks. With
-  converted content, use two commits, so that the history keeps the setup
-  apart from the content. Name the files of the first commit from
-  `git status`:
+Your last message is the report. Its commands are for this one time: do not
+write them into `README.md` or another file. Use this form, with the real
+files from `git status`:
 
-  ```bash
-  # 1. The setup: packages, model, collections config, agent notes, scripts.
-  git add package.json package-lock.json src/mica.ts src/content.config.ts \
-    content/.mica/schema.json AGENTS.md
-  git commit -m "Add Mica"
-  # 2. The content and the page changes: everything else that git status shows.
-  git add -A
-  git commit -m "Move the content to Mica"
-  ```
+````markdown
+## Done
 
-  Use the project's lock file (`pnpm-lock.yaml`, `yarn.lock`). For a new
-  project without converted content, one commit is enough.
-- How to publish the branch: on a branch that is not on the remote yet,
-  `git push -u origin <branch>`. The editor's Publish does this too, the first
-  time.
-- How to edit: `npm run mica` opens the editor on this computer. A save writes
-  files in `content/`; Publish commits them. `npm run check` checks the content
-  (and the types, if `@astrojs/check` is there). `@micacms/editor` is a dev
-  dependency, so on another clone, run `npm install` first.
-- That a self-hosted editor for other people is described at
-  https://micacms.com/docs/self-hosting/.
+Mica is set up. <one sentence on what editors can now edit>.
+
+**What changed:** <file by file, one line each: what and why, in plain words>.
+**Your decisions:** <each decision from the proposal, and the choice>.
+**Not converted:** <anything that was not converted, or "nothing">.
+**Checks:** `npm run check` and `npx astro build` pass. <how the website
+compares with the version before>.
+
+## Commit it
+
+```bash
+# 1. The setup: packages, model, collections config, agent notes.
+git add package.json package-lock.json src/mica.ts src/content.config.ts \
+  content/.mica/schema.json AGENTS.md <other setup files>
+git commit -m "Add Mica"
+# 2. The content and the page changes.
+git add -A
+git commit -m "Move the content to Mica"
+# 3. A branch that is not on the remote yet.
+git push -u origin <branch>
+```
+
+## Edit the content
+
+`npm run mica` opens the editor on this computer. A save writes files in
+`content/`; Publish commits them, and pushes a new branch the first time.
+`npm run check` checks the content (and the types, if `@astrojs/check` is
+there). On another clone, run `npm install` first. A self-hosted editor for
+other people: https://micacms.com/docs/self-hosting/.
+````
+
+- Use the project's lock file (`pnpm-lock.yaml`, `yarn.lock`) and package
+  manager.
+- For a new project without converted content, one commit is enough.
+- Run the commands only if the user asks.

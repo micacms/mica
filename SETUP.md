@@ -13,6 +13,10 @@ installed version.
 
 - Ask the user before you make a decision that changes their website or their
   content. Each guide names these decisions. Stop and wait for the answers.
+- Before you change a page, a component, a layout, a style or a config file,
+  show the user what will change and why, in plain words, with your
+  recommendation. Continue after the user agrees.
+- Do not change `README.md` or other documentation unless the user asks.
 - Do not delete or overwrite content until `npx mica check` reports 0 errors
   and the user agrees.
 - Do not commit, push or deploy unless the user asks you to.
@@ -73,5 +77,6 @@ missing, stop and tell the user.
 Read `node_modules/@micacms/astro/setup/<guide>` from the table in step 2, and
 follow it from start to end. Every guide ends with `finish.md`.
 
-When you are done, tell the user what you did, which decisions they made, and
-how to open the editor, as the guide says.
+When you are done, your last message is the report that the guide describes:
+what you did, which decisions the user made, the commands to commit and push,
+and how to open the editor. Write the commands in the message, not in a file.
