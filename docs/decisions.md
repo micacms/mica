@@ -1113,8 +1113,9 @@ for example from the editor itself.
 
 **Built:** the manifest records `layout` for each collection and singleton
 (#60). In 0.6, the reader refuses an entry in the other layout (`LayoutError`),
-so the Astro build fails, both apps refuse to start, and a list request answers
-409 (#64); `mica migrate-layout` moves the entries (#65).
+so the Astro build fails, the local editor refuses to start, the self-hosted
+app logs a warning (a refusal there would loop on its own drafts), and a list
+request answers 409 (#64); `mica migrate-layout` moves the entries (#65).
 
 **1.0 status:** done.
 

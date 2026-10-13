@@ -51,7 +51,7 @@ Keys stay in model order. A repeat save of the same values gives the same bytes.
 
 Run an Astro build after each model change and commit the new `.mica/schema.json`. A new required field makes old entries invalid until an editor adds the value. The build reports this problem before deployment.
 
-The first rich-text or media field in a collection or singleton changes its layout from `<slug>.json` to `<slug>/index.json`. Removing the last such field changes it back. The existing files do not move, so the build fails and Mica refuses to start, and both name the files. Run `npx mica migrate-layout`: it moves each entry, and lists the rich-text and media files that it removes because no field reads them any more. Run `npx mica check`, and commit the result with the model change.
+The first rich-text or media field in a collection or singleton changes its layout from `<slug>.json` to `<slug>/index.json`. Removing the last such field changes it back. The existing files do not move, so the build fails and the local editor refuses to start, and both name the files. Run `npx mica migrate-layout`: it moves each entry, and lists the rich-text and media files that it removes because no field reads them any more. Run `npx mica check`, and commit the result with the model change.
 
 ## Next
 
