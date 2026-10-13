@@ -63,7 +63,7 @@ in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
 
 | Field | Stored as | Other options |
 | --- | --- | --- |
-| `text()` | string | `minLength`, `maxLength`, `pattern` (must match the whole value), `placeholder`, `default` |
+| `text()` | string | `minLength`, `maxLength`, `pattern` (must match the whole value), `patternMessage` (what the editor reads when it does not), `placeholder`, `default` |
 | `textarea()` | string | `minLength`, `maxLength`, `rows`, `placeholder`, `default` |
 | `richText()` | Markdoc in its own `.mdoc` file | `toolbar`, `maxLength`, `default` |
 | `number()` | number | `min`, `max`, `step`, `integer`, `unit`, `default` |

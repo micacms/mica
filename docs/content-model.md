@@ -131,7 +131,7 @@ Singletons take `label`, `description` and `fields`, and nothing else.
 
 | Field           | Stored as                           | Options beyond the shared ones                                  |
 | --------------- | ----------------------------------- | --------------------------------------------------------------- |
-| `text()`        | string                              | `minLength`, `maxLength`, `pattern`, `placeholder`, `default`   |
+| `text()`        | string                              | `minLength`, `maxLength`, `pattern`, `patternMessage`, `placeholder`, `default` |
 | `textarea()`    | string                              | `minLength`, `maxLength`, `rows`, `placeholder`, `default`      |
 | `richText()`    | **a `.mdoc` file beside the entry** | `toolbar`, `maxLength`, `default`                               |
 | `number()`      | number                              | `min`, `max`, `step`, `integer`, `unit`, `default`              |
@@ -153,7 +153,15 @@ A few that repay a closer look:
 **`text({ pattern })`** must match the whole value, like the HTML `pattern`
 attribute: `"[A-Z]{2}"` accepts `CH` and refuses `CHE`. Mica compiles it with
 the `u` flag, so an emoji is one character. For "contains", write `.*x.*`. An
-invalid pattern stops the model from loading.
+invalid pattern stops the model from loading. `patternMessage` is what the
+editor reads when the value does not match, for example `"Use two capital
+letters, like CH."`; without it, the message is "Country does not have the
+expected form."
+
+Every validation message names the field by its label and says the limit:
+"Title can have at most 120 characters (now 134)." The editor checks a field
+when the editor leaves it and the whole form before a save. A required value
+may stay empty in a saved draft; Publish refuses it until it is filled in.
 
 **`richText()`** is [Markdoc](https://markdoc.dev), stored in its own file and
 _absent_ from `index.json`. Readable in a diff, and it cannot inject a script
