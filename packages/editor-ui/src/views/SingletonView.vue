@@ -132,7 +132,8 @@ async function showIssues(): Promise<void> {
 
 /** `keepMine`: save over the colleague's version that the conflict showed. */
 async function save(options: { keepMine?: boolean } = {}): Promise<void> {
-  if (definition.value?.readOnly) return;
+  // Enter in a read-only field still submits the form while a save runs.
+  if (definition.value?.readOnly || saving.value) return;
   if (!form.checkAll()) {
     toast.error("Some fields need attention before you can save.");
     await showIssues();
@@ -179,7 +180,7 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
 
 <template>
   <template v-if="definition">
-    <PageHeader :title="definition.label" :subtitle="location">
+    <PageHeader :title="definition.label" :subtitle="location" :loading="loading">
       <template v-if="!definition.readOnly && !loadError">
         <span :class="['badge', state.tone]">
           <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
@@ -192,7 +193,7 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
     </PageHeader>
 
     <div class="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-      <p v-if="loading" class="text-sm text-muted">Loading…</p>
+      <p v-if="loading" role="status" class="text-sm text-muted">Loading…</p>
 
       <div v-else-if="loadError" role="alert" class="rounded-md border border-danger/15 bg-danger-soft p-4">
         <p class="text-sm font-medium text-danger">These settings could not be loaded</p>

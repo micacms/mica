@@ -119,7 +119,7 @@ async function copyReport(): Promise<void> {
   </PageHeader>
 
   <div class="mx-auto max-w-5xl space-y-6 px-4 py-5 pb-12 sm:px-6">
-    <p v-if="loading" class="text-sm text-muted">Loading…</p>
+    <p v-if="loading" role="status" class="text-sm text-muted">Loading…</p>
 
     <template v-else-if="info">
       <!-- ------------------------------------------------------ at a glance -->

@@ -10,7 +10,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | string[] | null] }>();
 
 const field = computed(() => props.field as SelectField);
-const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 
 const selected = computed<string[]>(() =>
   Array.isArray(props.modelValue)
@@ -19,6 +19,16 @@ const selected = computed<string[]>(() =>
       ? [props.modelValue]
       : [],
 );
+
+/** A native select has no read-only state: while locked, it puts the stored choice back. */
+function onSelect(event: Event): void {
+  const select = event.target as HTMLSelectElement;
+  if (locked.value) {
+    select.value = selected.value[0] ?? "";
+    return;
+  }
+  emit("update:modelValue", select.value || null);
+}
 
 function toggle(value: string): void {
   const next = selected.value.includes(value)
@@ -30,6 +40,7 @@ function toggle(value: string): void {
 
 <template>
   <FieldShell
+    :as="field.multiple ? 'group' : 'label'"
     :input-id="inputId"
     :label="label"
     :description="field.description"
@@ -37,39 +48,41 @@ function toggle(value: string): void {
     :error="error"
     :hint-id="hintId"
     :error-id="errorId"
+    :described-by="describedBy"
   >
     <!-- Multi-select is a checkbox group: a native multiple <select> is
          notoriously hard to operate, especially on a tablet. -->
-    <fieldset v-if="field.multiple" class="space-y-1.5" :aria-describedby="describedBy">
-      <legend class="sr-only">{{ label }}</legend>
+    <div v-if="field.multiple" class="space-y-1.5">
       <label
         v-for="option in field.options"
         :key="option.value"
-        class="flex cursor-pointer items-center gap-2.5 rounded-sm border border-line bg-raised px-3 py-2 text-sm hover:bg-canvas"
+        :class="[
+          'flex items-center gap-2.5 rounded-sm border border-line px-3 py-2 text-sm',
+          locked ? 'cursor-default bg-subtle' : 'cursor-pointer bg-raised hover:bg-canvas',
+        ]"
       >
         <input
           type="checkbox"
           :checked="selected.includes(option.value)"
-          :disabled="disabled || field.readonly"
+          :aria-readonly="locked || undefined"
           class="h-4 w-4 rounded-sm border-line text-accent focus:ring-ink/20"
+          @click="locked && $event.preventDefault()"
           @change="toggle(option.value)"
         />
         {{ option.label }}
       </label>
-    </fieldset>
+    </div>
 
     <select
       v-else
       :id="inputId"
       :value="selected[0] ?? ''"
       :required="field.required"
-      :disabled="disabled || field.readonly"
+      :aria-readonly="locked || undefined"
       :aria-invalid="error ? 'true' : undefined"
       :aria-describedby="describedBy"
-      :class="['input', error && 'input-invalid']"
-      @change="
-        emit('update:modelValue', ($event.target as HTMLSelectElement).value || null)
-      "
+      :class="['input', error && 'input-invalid', locked && 'bg-subtle text-muted']"
+      @change="onSelect"
     >
       <option value="">{{ field.required ? "Choose…" : "Not set" }}</option>
       <option v-for="option in field.options" :key="option.value" :value="option.value">

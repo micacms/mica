@@ -1,0 +1,40 @@
+/** Moving items, and finding entries for a relation (#99, #101). */
+
+import assert from "node:assert/strict";
+import { describe, it } from "node:test";
+
+import { matchEntries, moveItem } from "../src/lib/order.js";
+
+describe("moveItem", () => {
+  it("moves one item and keeps the others in order", () => {
+    assert.deepEqual(moveItem(["a", "b", "c", "d"], 3, 0), ["d", "a", "b", "c"]);
+    assert.deepEqual(moveItem(["a", "b", "c", "d"], 0, 2), ["b", "c", "a", "d"]);
+    assert.deepEqual(moveItem(["a", "b", "c"], 1, 1), ["a", "b", "c"]);
+  });
+
+  it("clamps the target, and ignores a source outside the list", () => {
+    assert.deepEqual(moveItem(["a", "b", "c"], 0, 99), ["b", "c", "a"]);
+    assert.deepEqual(moveItem(["a", "b", "c"], 2, -5), ["c", "a", "b"]);
+    assert.deepEqual(moveItem(["a", "b"], 5, 0), ["a", "b"]);
+  });
+});
+
+describe("matchEntries", () => {
+  const entries = [
+    { slug: "anna-meier", title: "Anna Meier" },
+    { slug: "jan-annaheim", title: "Jan Annaheim" },
+    { slug: "bento", title: "Bento" },
+  ];
+
+  it("finds a term in the title or the slug, with the ones that start with it first", () => {
+    assert.deepEqual(matchEntries(entries, "anna").map((entry) => entry.slug), ["anna-meier", "jan-annaheim"]);
+    assert.deepEqual(matchEntries(entries, "BENTO").map((entry) => entry.slug), ["bento"]);
+    assert.deepEqual(matchEntries(entries, "jan-").map((entry) => entry.slug), ["jan-annaheim"]);
+  });
+
+  it("leaves out what is already chosen, and limits the list", () => {
+    assert.deepEqual(matchEntries(entries, "", ["bento"]).map((entry) => entry.slug), ["anna-meier", "jan-annaheim"]);
+    assert.equal(matchEntries(entries, "", [], 2).length, 2);
+    assert.deepEqual(matchEntries(entries, "zzz"), []);
+  });
+});

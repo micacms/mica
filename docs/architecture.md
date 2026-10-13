@@ -147,8 +147,8 @@ decisions that belong to the website, and cannot inject script into a build:
 Markdoc escapes raw HTML and renders an undeclared `{% tag %}` as nothing.
 
 **Media is colocated**, so an entry is self-contained and renaming it is a
-directory move. **Order is a file**, so dragging one entry is a one-line diff
-rather than a rewrite of every entry in the collection.
+directory move. **Order is a file**, so moving one entry, however far, is one
+save and a one-line diff rather than a rewrite of every entry in the collection.
 
 ### Saved and Published are different words
 

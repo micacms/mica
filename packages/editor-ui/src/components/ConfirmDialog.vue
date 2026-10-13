@@ -1,7 +1,9 @@
 <script setup lang="ts">
 /** Confirmation dialog with focus handling and Escape-to-cancel. */
 
-import { nextTick, ref, watch } from "vue";
+import { ref } from "vue";
+
+import { useDialogFocus } from "@/composables/useDialogFocus";
 
 const props = withDefaults(
   defineProps<{
@@ -18,39 +20,13 @@ const props = withDefaults(
 const emit = defineEmits<{ confirm: []; cancel: [] }>();
 
 const panel = ref<HTMLElement | null>(null);
+// Focus the safe option, not the destructive one.
 const cancelButton = ref<HTMLButtonElement | null>(null);
-let previouslyFocused: HTMLElement | null = null;
-
-watch(
-  () => props.open,
-  async (open) => {
-    if (!open) {
-      previouslyFocused?.focus();
-      return;
-    }
-    previouslyFocused = document.activeElement as HTMLElement | null;
-    await nextTick();
-    // Focus the safe option, not the destructive one.
-    cancelButton.value?.focus();
-  },
-);
+const { trapTab } = useDialogFocus(() => props.open, panel, cancelButton);
 
 function onKeydown(event: KeyboardEvent): void {
   if (event.key === "Escape" && !props.busy) emit("cancel");
-  if (event.key !== "Tab" || !panel.value) return;
-
-  const focusable = panel.value.querySelectorAll<HTMLElement>("button:not([disabled])");
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  if (!first || !last) return;
-
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
-  }
+  trapTab(event);
 }
 </script>
 

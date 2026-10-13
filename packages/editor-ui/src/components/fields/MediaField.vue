@@ -29,7 +29,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [unknown] }>();
 
 const field = computed(() => props.field as MediaField);
-const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 
 const pickerOpen = ref(false);
 /** The form's own `media/` folder; undefined outside an entry or settings form. */
@@ -171,7 +171,7 @@ function setAlt(index: number, event: Event): void {
               type="text"
               :value="item.alt ?? ''"
               :required="field.alt === 'required'"
-              :disabled="disabled || field.readonly"
+              :readonly="locked"
               :aria-invalid="item.altError ? 'true' : undefined"
               :aria-describedby="item.altError ? item.altErrorId : undefined"
               :class="['input mt-0.5 text-xs', item.altError && 'input-invalid']"
@@ -190,7 +190,7 @@ function setAlt(index: number, event: Event): void {
               v-if="field.multiple && index > 0"
               type="button"
               class="rounded-sm bg-raised/90 px-1.5 text-xs font-semibold hover:bg-raised"
-              :disabled="disabled"
+              :disabled="locked"
               @click="move(index, -1)"
             >
               <ArrowLeft :size="14" aria-hidden="true" />
@@ -200,7 +200,7 @@ function setAlt(index: number, event: Event): void {
               v-if="field.multiple && index < items.length - 1"
               type="button"
               class="rounded-sm bg-raised/90 px-1.5 text-xs font-semibold hover:bg-raised"
-              :disabled="disabled"
+              :disabled="locked"
               @click="move(index, 1)"
             >
               <ArrowRight :size="14" aria-hidden="true" />
@@ -209,7 +209,7 @@ function setAlt(index: number, event: Event): void {
             <button
               type="button"
               class="rounded-sm bg-raised/90 px-1.5 text-xs font-semibold text-danger hover:bg-raised"
-              :disabled="disabled"
+              :disabled="locked"
               @click="removeAt(index)"
             >
               <X :size="14" aria-hidden="true" />
@@ -223,7 +223,7 @@ function setAlt(index: number, event: Event): void {
         :id="inputId"
         type="button"
         class="btn-secondary"
-        :disabled="disabled || field.readonly || atLimit"
+        :disabled="locked || atLimit"
         @click="pickerOpen = true"
       >
         <Plus :size="16" aria-hidden="true" />

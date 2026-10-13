@@ -23,7 +23,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [Coordinates | { lat: number | null; lng: number | null } | null] }>();
 
 const field = computed(() => props.field as CoordinatesField);
-const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 
 const current = computed<Coordinates | null>(() => {
   const value = props.modelValue;
@@ -61,6 +61,7 @@ function update(part: "lat" | "lng", raw: string): void {
 
 /** Accepts "47.3769, 8.5417" as pasted from any mapping site. */
 function onPaste(event: ClipboardEvent): void {
+  if (locked.value) return;
   const text = event.clipboardData?.getData("text") ?? "";
   const match = /^\s*(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)\s*$/.exec(text);
   if (!match) return;
@@ -78,6 +79,8 @@ const previewUrl = computed(() =>
 
 <template>
   <FieldShell
+    as="group"
+    :described-by="describedBy"
     :input-id="inputId"
     :label="label"
     :description="field.description"
@@ -97,8 +100,7 @@ const previewUrl = computed(() =>
           max="90"
           placeholder="Latitude"
           :value="typed.lat"
-          :disabled="disabled || field.readonly"
-          :aria-describedby="describedBy"
+          :readonly="locked"
           :class="['input font-mono text-[13px]', partError('lat') && 'input-invalid']"
           @input="update('lat', ($event.target as HTMLInputElement).value)"
           @paste="onPaste"
@@ -114,7 +116,7 @@ const previewUrl = computed(() =>
           max="180"
           placeholder="Longitude"
           :value="typed.lng"
-          :disabled="disabled || field.readonly"
+          :readonly="locked"
           :class="['input font-mono text-[13px]', partError('lng') && 'input-invalid']"
           @input="update('lng', ($event.target as HTMLInputElement).value)"
           @paste="onPaste"
@@ -140,7 +142,8 @@ const previewUrl = computed(() =>
       <button
         v-if="current"
         type="button"
-        class="ml-auto font-medium hover:text-ink"
+        class="ml-auto font-medium hover:text-ink disabled:opacity-40"
+        :disabled="locked"
         @click="emit('update:modelValue', null)"
       >
         Clear

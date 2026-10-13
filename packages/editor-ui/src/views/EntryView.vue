@@ -202,7 +202,8 @@ async function showIssues(): Promise<void> {
 
 /** `keepMine`: save over the colleague's version that the conflict showed. */
 async function save(options: { keepMine?: boolean } = {}): Promise<void> {
-  if (definition.value?.readOnly) return;
+  // Enter in a read-only field still submits the form while a save runs.
+  if (definition.value?.readOnly || saving.value) return;
   if (!form.checkAll()) {
     toast.error("Some fields need attention before you can save.");
     await showIssues();
@@ -336,6 +337,7 @@ async function remove(): Promise<void> {
     <PageHeader
       :title="title"
       :subtitle="location"
+      :loading="loading"
       :back="{ name: 'collection', params: { collection } }"
       :back-label="definition.label"
     >
@@ -351,7 +353,7 @@ async function remove(): Promise<void> {
     </PageHeader>
 
     <div class="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-      <p v-if="loading" class="text-sm text-muted">Loading…</p>
+      <p v-if="loading" role="status" class="text-sm text-muted">Loading…</p>
 
       <template v-else>
         <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />

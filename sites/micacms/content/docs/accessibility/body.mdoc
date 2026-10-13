@@ -1,0 +1,34 @@
+This page is about the Mica editor: the pages where editors write, order and publish content. Your website uses your own templates, so its accessibility is your responsibility. `@micacms/astro` turns rich text into plain HTML: headings, paragraphs, lists, quotes and links.
+
+## The target
+
+The editor aims to conform to [WCAG 2.2](https://www.w3.org/TR/WCAG22/) at level AA. It has not had an independent audit, so Mica does not claim conformance.
+
+## How Mica checks it
+
+- **Automated checks.** On every pull request, a browser test runs [axe](https://github.com/dequelabs/axe-core) on every view of the editor: sign-in, overview, collection, entry, settings, media, Publish and System. It also checks the open relation picker and the link dialog. A serious or critical finding stops the change.
+- **Design rules.** Each form field has a visible label. Each control has a visible keyboard focus, and an icon button has a name for screen readers and a tooltip. A field that you cannot change stays readable and focusable. Colour is never the only sign of a difference.
+
+Automated checks find only a part of the problems. They do not replace tests with people who use assistive technology.
+
+## What you can expect
+
+- Each page has its own title. After you move to a different page, the focus goes to the page heading, and a screen reader announces the page.
+- After you sign in, a "Skip to the content" link is the first item on each page.
+- The menu on a small screen opens and closes with the keyboard. Escape closes it.
+- You can order entries with the mouse (drag the handle), with the keyboard (Space on the handle, then the arrow keys, Home or End, then Space), or with the position button next to each entry. Each move saves once.
+- A relation field finds entries as you type, and you can put the chosen entries in a different order with buttons.
+- The link dialog of rich text is a dialog, not a browser prompt.
+- The Publish page shows the words **Before** and **After** above each changed value.
+- Errors interrupt a screen reader. Other messages wait until it stops speaking.
+
+## Known gaps
+
+- There is no independent audit, and no test with screen reader users yet.
+- The automated tests use Chromium only. Drag and drop is not tested in other browsers.
+- The editor is in English only.
+- Image previews have no text of their own. The file name next to each preview names the file, but a screen reader does not describe the picture.
+
+## Report a problem
+
+Open an [issue on GitHub](https://github.com/micacms/mica/issues). Say which page, what you did, what happened, and which browser and assistive technology you use.

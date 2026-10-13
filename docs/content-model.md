@@ -102,7 +102,7 @@ projects: collection({
 | `titleField`    | Field key used as the entry title. Defaults to `title`                                   |
 | `slugField`     | Field key holding the slug. Defaults to the first `slug()` field                         |
 | `defaultSort`   | `{ field, direction }`: `field` is `"position"` or a key of the collection's own fields; TypeScript refuses another name |
-| `sortable`      | Lets editors drag entries into an order, kept in `_order.json`                           |
+| `sortable`      | Lets editors order entries (drag, keyboard or position), kept in `_order.json`           |
 
 Every collection needs a slug field: it is the entry's identity in the
 repository and its address on the website. That is the field that `slugField`
