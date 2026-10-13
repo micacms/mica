@@ -76,8 +76,8 @@ maintains the templates stays in the repository, reviewed in a pull request.
 Pages read both with the same `getCollection`. Keep the names distinct: a clash
 is resolved by whichever spread comes last, silently.
 
-`examples/muster-consulting` does exactly this, with a `glossary` collection
-beside four Mica ones.
+`examples/company-site` does exactly this, with a `glossary` collection
+beside five Mica ones.
 
 ---
 
@@ -151,6 +151,7 @@ Singletons take `label`, `description` and `fields`, and nothing else.
 | `media()`       | repository path, or `{ path, alt }` | `accept: "image" \| "document" \| "any"`, `multiple`, `max`, `alt` |
 | `color()`       | hex string                          | `presets`, `default`                                            |
 | `coordinates()` | `{ lat, lng }`                      | —                                                               |
+| `tags()`        | string[]                            | `max`, `maxLength`, `suggestions`, `default`                    |
 
 A few that repay a closer look:
 

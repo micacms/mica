@@ -177,7 +177,8 @@ apps/
 sites/
 └── micacms/             the public micacms.com website
 examples/
-└── muster-consulting/   a complete site to read: model, content, templates
+├── company-site/       a complete site to read: every field kind, content, templates
+└── starter/            the minimal starter for `npm create astro --template`
 docs/
 ├── getting-started.md   add Mica to an Astro project, and run it locally
 ├── content-model.md     every field type, and the layout it produces on disk
@@ -195,7 +196,7 @@ tests/
 
 `packages/*` are reusable libraries and `apps/*` are the two things you run;
 all of them are published under one lockstep version.
-`examples/muster-consulting` is a site to copy and redesign, not a dependency —
+`examples/company-site` is a site to copy and redesign, not a dependency —
 the design is the part that should differ between projects.
 
 ---
@@ -228,7 +229,7 @@ mandatory cloud services.
 | ----------------------- | ---------------------------------------------------------------- |
 | `rush update`           | install — Rush fetches its own pinned pnpm, nothing global       |
 | `rush dev`              | build the packages, then run the CMS against the example project |
-| `rushx dev`             | the example website, from `examples/muster-consulting`           |
+| `rushx dev`             | the example website, from `examples/company-site`           |
 | `rush test`             | the tests of every package, with real Git on temporary repos     |
 | `rush typecheck`        | every package, including `.vue` and `.astro`                     |
 

@@ -276,5 +276,5 @@ The website build reports it. Edit those entries, or make the field optional.
 
 ---
 
-`examples/muster-consulting` is a complete site — model, content and templates.
+`examples/company-site` is a complete site — model, content and templates.
 `rush dev` from a clone edits it.

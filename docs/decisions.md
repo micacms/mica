@@ -1610,6 +1610,40 @@ hiking blog that is planned; then an index of references and of titles.
 
 ---
 
+### P2 — Tags are a field kind; relations resolve with a helper; the starter lives in this repository
+
+**Decided:**
+
+- **`tags()`** is a field kind for a free list of short words, stored as a list
+  of strings, never null (`[]` when empty). Options: `max`, `maxLength`,
+  `suggestions` (offered while typing, not a closed list) and `default`. A tag
+  given twice, in any case, is refused. A fixed list stays a `select({ multiple
+  })`, and a list of entries a relation (#177).
+- **`@micacms/astro/relations`** exports `related(collection, slug)` and
+  `relatedAll(collection, slugs)`: `getEntry` with the site's types, a missing
+  target left out, and a warning in `astro dev`. It is a separate entry point
+  because it imports `astro:content`, which exists only inside an Astro build.
+  Relation values stay slugs; Astro's `reference()` would change every page
+  that reads them (#110).
+- **`examples/starter`** is the minimal starter, used with `npm create astro
+  -- --template micacms/mica/examples/starter`. It installs the published
+  packages and is not a Rush project; `scripts/version.mjs` sets its versions at
+  each release, and CI runs `mica check` on its content. `examples/company-site`
+  stays the full example of every feature (#112, #200).
+
+**Why:** a starter must stay small to be read in one sitting, and an example
+must show everything; one project cannot do both. A helper keeps the stored
+value and the pages simple, and adds what a page needs.
+
+**Consequence:** the starter is built only by a user and, from 0.9, by the
+packed-package test (#128). Its `content/.mica/schema.json` is written by hand
+from its model when the model changes. The template URL works once the
+repository is public (#51).
+
+**1.0 status:** accepted for 1.0.
+
+---
+
 ### P2 — The editor speaks of saving and publishing, not of Git
 
 **Decided:** the editor's text uses editing words: "Say what changed", not
