@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/astro",
+      "comment": "Breaking: requires Astro 7 and Node 24 or newer. `@micacms/core` and zod 4 are now peer dependencies: install `@micacms/core` beside `@micacms/astro`.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

@@ -4,6 +4,13 @@
   "type": "module",
   "description": "The local Mica editor — `npx @micacms/editor` against a checkout on your own machine. No authentication, no database, loopback only.",
   "license": "MIT",
+  "homepage": "https://micacms.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/micacms/mica.git",
+    "directory": "apps/local-editor"
+  },
+  "bugs": "https://github.com/micacms/mica/issues",
   "author": "Alexander Müdespacher",
   "keywords": [
     "mica",
@@ -40,7 +47,7 @@
     "typescript": "^5.7.3"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=24"
   },
   "publishConfig": {
     "access": "public"

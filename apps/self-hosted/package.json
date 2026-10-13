@@ -1,9 +1,17 @@
 {
   "name": "@micacms/self-hosted",
   "version": "0.5.0",
+  "private": true,
   "type": "module",
   "description": "The self-hosted Mica composition: the runtime and editor UI behind an external OIDC provider, on a Git clone of the content repository that it keeps itself. What the Docker image runs.",
   "license": "MIT",
+  "homepage": "https://micacms.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/micacms/mica.git",
+    "directory": "apps/self-hosted"
+  },
+  "bugs": "https://github.com/micacms/mica/issues",
   "author": "Alexander Müdespacher",
   "keywords": [
     "mica",
@@ -36,9 +44,6 @@
     "typescript": "^5.7.3"
   },
   "engines": {
-    "node": ">=22.12.0"
-  },
-  "publishConfig": {
-    "access": "public"
+    "node": ">=24"
   }
 }

@@ -4,6 +4,13 @@
   "type": "module",
   "description": "The server-only OIDC gate for Mica: sign-in, sessions and admission around @micacms/runtime. Never enters a browser bundle, and never a dependency of the local editor.",
   "license": "MIT",
+  "homepage": "https://micacms.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/micacms/mica.git",
+    "directory": "packages/auth/oidc"
+  },
+  "bugs": "https://github.com/micacms/mica/issues",
   "author": "Alexander Müdespacher",
   "keywords": [
     "mica",
@@ -22,7 +29,8 @@
     }
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -42,6 +50,6 @@
     "typescript": "^5.7.3"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=24"
   }
 }

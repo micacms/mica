@@ -4,6 +4,13 @@
   "type": "module",
   "description": "The Mica editor SPA — identity-neutral Vue administration UI, shipped as built assets and mounted by a composing app.",
   "license": "MIT",
+  "homepage": "https://micacms.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/micacms/mica.git",
+    "directory": "packages/editor-ui"
+  },
+  "bugs": "https://github.com/micacms/mica/issues",
   "author": "Alexander Müdespacher",
   "keywords": [
     "mica",
@@ -46,6 +53,6 @@
     "vue-tsc": "^2.2.0"
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=24"
   }
 }

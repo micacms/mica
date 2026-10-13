@@ -772,7 +772,10 @@ surface.
 
 **Trigger:** an Astro major that moves to a zod major Mica does not support.
 
-**1.0 status:** accepted for 1.0; the manifest change is in #129.
+**Built in 0.6 (#129):** zod is a peer of `core` and `astro`, and `core` is a
+peer of `astro`.
+
+**1.0 status:** done.
 
 ---
 
@@ -895,7 +898,10 @@ an unmaintained runtime in the matrix for all of 1.x.
 **What would change it:** an adopter that cannot leave Node 22 or Astro 6
 before 1.0; then add that line to the CI matrix rather than promise it untested.
 
-**1.0 status:** blocker; the floor is in #130, the matrix in #131.
+**Built in 0.6 (#130):** `>=24` in every `engines` field and in `rush.json`,
+and the `astro` peer range is `^7.0.0`.
+
+**1.0 status:** blocker until the CI matrix is in place (#131).
 
 ---
 
@@ -1042,7 +1048,11 @@ without Docker is not supported.
 **What would change it:** a real demand for a Docker-free server, for example
 on a Node PaaS; then add a `bin` and put it under semver.
 
-**1.0 status:** blocker; the publish change is in #129.
+**Built in 0.6 (#129):** `apps/self-hosted` is `private` and has no version
+policy, so `rush publish` skips it; `scripts/version.mjs --sync` still sets its
+version. Deprecating the versions on npm needs an npm login.
+
+**1.0 status:** done, except the deprecation.
 
 ---
 

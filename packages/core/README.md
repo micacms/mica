@@ -59,4 +59,4 @@ group. Zod is generated from the DSL, not the other way round.
 npm install @micacms/core
 ```
 
-Requires Node 22.12 or newer. Licence: MIT.
+zod 4 is a peer dependency. ESM only. Requires Node 24 or newer. Licence: MIT.

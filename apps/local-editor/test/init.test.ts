@@ -19,7 +19,7 @@ const write = (file: string, contents: string) => {
 
 beforeEach(() => {
   project = mkdtempSync(path.join(tmpdir(), "mica-init-"));
-  write("package.json", JSON.stringify({ dependencies: { astro: "^6.0.0" } }));
+  write("package.json", JSON.stringify({ dependencies: { astro: "^7.0.0" } }));
 });
 
 afterEach(() => rmSync(project, { recursive: true, force: true }));
@@ -66,17 +66,17 @@ describe("mica init", () => {
     assert.match(step()!, /"mica": "mica",\n {2}"check": "mica check"$/);
 
     rmSync(path.join(project, "src"), { recursive: true });
-    write("package.json", JSON.stringify({ dependencies: { astro: "^6.0.0" }, devDependencies: { "@astrojs/check": "^0.9.4" } }));
+    write("package.json", JSON.stringify({ dependencies: { astro: "^7.0.0" }, devDependencies: { "@astrojs/check": "^0.9.4" } }));
     assert.match(step()!, /"check": "mica check && astro check"/);
   });
 
   it("keeps the project's scripts, and puts mica check in front of its own check", () => {
     const step = () => initProject(project).next.find((line) => line.includes('"scripts"'));
-    write("package.json", JSON.stringify({ dependencies: { astro: "^6.0.0" }, scripts: { mica: "mica --port 3000", check: "astro check" } }));
+    write("package.json", JSON.stringify({ dependencies: { astro: "^7.0.0" }, scripts: { mica: "mica --port 3000", check: "astro check" } }));
     assert.match(step()!, /^Set in "scripts" in package\.json:\n\n {2}"check": "mica check && astro check"$/);
 
     rmSync(path.join(project, "src"), { recursive: true });
-    write("package.json", JSON.stringify({ dependencies: { astro: "^6.0.0" }, scripts: { mica: "mica", check: "mica check" } }));
+    write("package.json", JSON.stringify({ dependencies: { astro: "^7.0.0" }, scripts: { mica: "mica", check: "mica check" } }));
     assert.equal(step(), undefined);
   });
 

@@ -4,6 +4,16 @@
   "type": "module",
   "description": "Reads a Mica content repository as Astro Content Collections via the Content Layer API.",
   "license": "MIT",
+  "homepage": "https://micacms.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/micacms/mica.git",
+    "directory": "packages/astro"
+  },
+  "bugs": "https://github.com/micacms/mica/issues",
+  "engines": {
+    "node": ">=24"
+  },
   "author": "Alexander Müdespacher",
   "keywords": [
     "mica",
@@ -25,7 +35,8 @@
   },
   "files": [
     "dist",
-    "setup"
+    "setup",
+    "src"
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
@@ -34,16 +45,18 @@
     "test": "tsc -p tsconfig.json && node --test test/*.test.ts"
   },
   "dependencies": {
-    "@markdoc/markdoc": "^0.5.9",
-    "@micacms/core": "workspace:*",
-    "zod": "^4.3.6"
+    "@markdoc/markdoc": "^0.5.9"
   },
   "peerDependencies": {
-    "astro": "^6.0.0 || ^7.0.0"
+    "@micacms/core": "workspace:^",
+    "astro": "^7.0.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@micacms/core": "workspace:*",
     "@types/node": "^22.20.1",
     "astro": "^7.2.2",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "zod": "^4.3.6"
   }
 }
