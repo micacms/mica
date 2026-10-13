@@ -36,9 +36,15 @@ const extra = computed(() =>
 </script>
 
 <template>
+  <p
+    v-if="!component && !field.hidden"
+    class="rounded-md border border-line bg-subtle px-3 py-2 text-xs text-muted"
+  >
+    {{ field.label ?? path }}: the field type "{{ field.kind }}" needs a newer version of Mica.
+  </p>
   <component
     :is="component"
-    v-if="!field.hidden"
+    v-else-if="!field.hidden"
     :field="field"
     :path="path"
     :issues="issues"

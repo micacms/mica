@@ -1171,10 +1171,17 @@ Mica never writes what it cannot interpret.
 image is upgraded. The versioning policy says: upgrade the image first, or at
 the same time.
 
+**Built (#60):** `readOnlyParts` in the runtime names the parts. Writes and
+uploads are refused with the reason, and Publish refuses their pending
+changes. The editor shows a notice and a placeholder for the unknown field;
+`mica check` reports the part as an error and checks the rest. Entries are
+read where the manifest's `layout` says. A collection whose recorded `layout`
+is not the one this build derives is read-only too.
+
 **What would change it:** editors who are often blocked by this; then lock
 only the field, with a tested round trip of unknown values.
 
-**1.0 status:** blocker; the behaviour is in #60, the rule in #54.
+**1.0 status:** the behaviour is built; the rule for operators is still a blocker in #54.
 
 ---
 

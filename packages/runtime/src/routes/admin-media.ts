@@ -5,7 +5,7 @@
 
 import { Hono } from "hono";
 
-import { badRequest, notFound } from "../lib/errors.js";
+import { ApiError, badRequest, notFound } from "../lib/errors.js";
 import { isImageType } from "../lib/file-type.js";
 import { MAX_FILES_PER_UPLOAD } from "../middleware/index.js";
 import type { Env } from "../http.js";
@@ -37,6 +37,10 @@ export function adminMediaRoutes(): Hono<Env> {
     const accept = form.get("accept");
     // An entry's own `media/` directory or the shared one; the media service refuses anything else.
     const directory = typeof form.get("directory") === "string" ? String(form.get("directory")) : undefined;
+    // The media service accepts `/gallery/x/media` too; take the owner from the path it will write to.
+    const owner = (directory ?? "").replace(/^[/\\]+/, "").split(/[/\\]/)[0] ?? "";
+    const readOnly = ctx.site.readOnly.get(`collections.${owner}`) ?? ctx.site.readOnly.get(`singletons.${owner}`);
+    if (readOnly) throw new ApiError("conflict", readOnly);
 
     const prepared = await Promise.all(
       files.map((file) =>

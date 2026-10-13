@@ -14,6 +14,7 @@ import { ArrowDown, ArrowUp, Plus } from "@lucide/vue";
 
 import { api, ApiError, type EntrySummary } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
+import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import { previewValue } from "@/lib/format";
 import { useSchema } from "@/stores/schema";
 import { useToast } from "@/stores/toast";
@@ -93,7 +94,9 @@ async function move(index: number, direction: -1 | 1): Promise<void> {
 }
 
 // Reordering a filtered list would move the wrong neighbours.
-const canReorder = computed(() => (definition.value?.sortable ?? false) && !search.value);
+const canReorder = computed(
+  () => (definition.value?.sortable ?? false) && !definition.value?.readOnly && !search.value,
+);
 </script>
 
 <template>
@@ -105,13 +108,14 @@ const canReorder = computed(() => (definition.value?.sortable ?? false) && !sear
         `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`
       "
     >
-      <RouterLink :to="{ name: 'entry-new', params: { collection } }" class="btn-primary">
+      <RouterLink v-if="!definition.readOnly" :to="{ name: 'entry-new', params: { collection } }" class="btn-primary">
         <Plus :size="16" aria-hidden="true" />
         New {{ definition.labelSingular.toLowerCase() }}
       </RouterLink>
     </PageHeader>
 
     <div class="mx-auto max-w-5xl px-4 py-5 sm:px-6">
+      <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
       <div class="mb-3 flex flex-wrap items-center gap-2">
         <input
           v-model="search"
@@ -130,7 +134,7 @@ const canReorder = computed(() => (definition.value?.sortable ?? false) && !sear
             {{ search ? `Nothing matches "${search}".` : `No ${definition.label.toLowerCase()} yet.` }}
           </p>
           <RouterLink
-            v-if="!search"
+            v-if="!search && !definition.readOnly"
             :to="{ name: 'entry-new', params: { collection } }"
             class="btn-primary mt-4"
           >

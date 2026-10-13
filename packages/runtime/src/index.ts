@@ -28,7 +28,7 @@ export {
 } from "./config.js";
 export { startServer, type StartServerOptions } from "./server.js";
 export { actorOf, clientIp, intParam, type Env } from "./http.js";
-export { checkSchema, loadSchema, SchemaError, schemaFingerprint, schemaOrigin } from "./schema.js";
+export { checkSchema, loadSchema, readOnlyParts, SchemaError, schemaFingerprint, schemaOrigin } from "./schema.js";
 export {
   allowedOrigins,
   errorHandler,

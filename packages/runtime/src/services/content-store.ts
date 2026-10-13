@@ -40,6 +40,11 @@ export class ContentError extends FilesError {
   override name = "ContentError";
 }
 
+/** A write to a collection or singleton that this build of Mica cannot interpret. */
+export class ReadOnlyError extends ContentError {
+  override name = "ReadOnlyError";
+}
+
 export class ValidationError extends ContentError {
   override name = "ValidationError";
   constructor(
@@ -67,7 +72,8 @@ export interface SavedEntry {
   renamed: boolean;
 }
 
-export function createContentStore(site: Site, workspace: ContentFiles) {
+/** `readOnly` comes from `readOnlyParts`: its collections and singletons are read, never written. */
+export function createContentStore(site: Site, workspace: ContentFiles, readOnly: ReadonlyMap<string, string> = new Map()) {
   const requireCollection = (name: string): Collection => {
     const def = site.collections[name];
     if (!def) throw new ContentError(`Unknown collection "${name}".`);
@@ -77,6 +83,12 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
   const requireSingleton = (name: string): Singleton => {
     const def = site.singletons[name];
     if (!def) throw new ContentError(`Unknown singleton "${name}".`);
+    return def;
+  };
+
+  const writable = <T>(def: T, key: string): T => {
+    const reason = readOnly.get(key);
+    if (reason) throw new ReadOnlyError(reason);
     return def;
   };
 
@@ -240,7 +252,7 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
     },
 
     async save(collectionName: string, input: SaveEntryInput): Promise<SavedEntry> {
-      const def = requireCollection(collectionName);
+      const def = writable(requireCollection(collectionName), `collections.${collectionName}`);
       const data = validate(def, input.data, "This entry");
 
       const slugKey = resolveSlugField(def)!;
@@ -305,7 +317,7 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
       slug: string,
       options: { expectedRevision?: string | null } = {},
     ): Promise<void> {
-      const def = requireCollection(collectionName);
+      const def = writable(requireCollection(collectionName), `collections.${collectionName}`);
       // One path segment: an empty slug or `a/b` would delete more than one entry.
       if (slug === "" || slug.includes("/") || slug === "." || slug === "..") {
         throw new ContentPathError(`"${slug}" is not an entry of "${collectionName}".`);
@@ -331,7 +343,7 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
       payload: unknown,
       options: { expectedRevision?: string | null } = {},
     ): Promise<{ revision: string }> {
-      const def = requireSingleton(name);
+      const def = writable(requireSingleton(name), `singletons.${name}`);
       const data = validate(def, payload, `The "${def.label}" settings`);
 
       const base = singletonPath(def.fields, name);
@@ -357,7 +369,7 @@ export function createContentStore(site: Site, workspace: ContentFiles) {
       collectionName: string,
       slugs: string[],
     ): Promise<void> {
-      const def = requireCollection(collectionName);
+      const def = writable(requireCollection(collectionName), `collections.${collectionName}`);
       if (!def.sortable) {
         throw new ContentError(`The "${def.label}" collection is not manually sortable.`);
       }

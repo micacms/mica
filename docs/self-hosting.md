@@ -648,6 +648,7 @@ Mica exits at start and lists every problem in one message.
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
 | "The content model changed on the website"; `/ready` has `restart_required` | `.mica/schema.json` or a `.gitattributes` changed on the branch | `docker compose restart mica` |
+| "Read-only in this version of Mica" on a collection | The site uses a field type from a newer `@micacms/astro` than the image | Change the image tag in `compose.yml` to that version or newer, then `docker compose pull && docker compose up -d` |
 
 ### Other
 

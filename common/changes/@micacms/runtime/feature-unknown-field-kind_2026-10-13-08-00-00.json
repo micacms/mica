@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "A field kind from a newer `@micacms/astro` no longer stops Mica: only its collection or singleton becomes read-only, writes and publications of it are refused with the reason, and `/admin/schema` reports it as `readOnly`.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

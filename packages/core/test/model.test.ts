@@ -28,6 +28,7 @@ import {
   uniqueSlug,
   url,
   validateFields,
+  type FieldMap,
   withDefaults,
   type InferFields,
 } from "../dist/index.js";
@@ -88,6 +89,14 @@ describe("slugify", () => {
 });
 
 describe("validation", () => {
+  // A kind from a newer @micacms/astro: reading must keep the value, the runtime locks the collection.
+  it("keeps the value of a field kind this build does not know", () => {
+    const fields = { title: text(), photos: { kind: "photoGrid" } } as unknown as FieldMap;
+    const result = validateFields(fields, { title: "Summer", photos: { grid: [1, 2] } });
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.ok && result.data["photos"], { grid: [1, 2] });
+  });
+
   const fields = {
     title: text({ label: "Title", required: true, maxLength: 10 }),
     subtitle: text(),

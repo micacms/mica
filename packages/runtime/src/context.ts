@@ -9,6 +9,7 @@ import type { Site } from "@micacms/core";
 import type { RuntimeConfig } from "./config.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
+import { readOnlyParts } from "./schema.js";
 import { createMediaService, type MediaService } from "./services/media.js";
 import type { ContentStagingService } from "./services/changes.js";
 import { createContentStore, type ContentStore } from "./services/content-store.js";
@@ -31,6 +32,8 @@ export interface SiteContext {
    * drift gate compares against it.
    */
   schemaRevision: string | null;
+  /** Collections and singletons this build cannot write, from `readOnlyParts`, with the reason. */
+  readOnly: ReadonlyMap<string, string>;
 }
 
 export const DEFAULT_SITE_ID = "default";
@@ -109,15 +112,19 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
   // Services write through the lock wrapper; staging takes the locks itself.
   const locks = options.locks ?? createWorkspaceLocks();
 
+  const readOnly = readOnlyParts(model);
+  for (const reason of readOnly.values()) logger.warn("Read-only in this version of Mica", { reason });
+
   const site: SiteContext = {
     id: options.siteId ?? DEFAULT_SITE_ID,
     model,
     contentRepository: lockedFiles(options.files, locks.tree),
     schemaRevision,
+    readOnly,
   };
 
   const services = {
-    content: createContentStore(model, site.contentRepository),
+    content: createContentStore(model, site.contentRepository, readOnly),
     media: createMediaService({
       files: site.contentRepository,
       maxBytes: config.MAX_UPLOAD_BYTES,
@@ -127,6 +134,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
       files: options.files,
       contentRoot: config.contentRoot,
       schemaRevision,
+      readOnly,
       publishEnabled: config.MICA_LOCAL_PUBLISH,
       logger,
       locks,

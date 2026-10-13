@@ -15,6 +15,7 @@ import { api, ApiError, type EntryDetail } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FieldList from "@/components/fields/FieldList.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
@@ -110,6 +111,7 @@ onMounted(async () => {
 });
 
 async function save(): Promise<void> {
+  if (definition.value?.readOnly) return;
   saving.value = true;
   issues.value = [];
 
@@ -207,19 +209,23 @@ async function remove(): Promise<void> {
       :back="{ name: 'collection', params: { collection } }"
       :back-label="definition.label"
     >
-      <span :class="['badge', dirty ? 'border-accent bg-accent-soft text-accent' : 'text-success']">
-        <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
-        {{ dirty ? "Unsaved" : "Saved" }}
-      </span>
-      <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save">
-        {{ saving ? "Saving…" : "Save changes" }}
-      </button>
+      <template v-if="!definition.readOnly">
+        <span :class="['badge', dirty ? 'border-accent bg-accent-soft text-accent' : 'text-success']">
+          <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+          {{ dirty ? "Unsaved" : "Saved" }}
+        </span>
+        <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save">
+          {{ saving ? "Saving…" : "Save changes" }}
+        </button>
+      </template>
     </PageHeader>
 
     <div class="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <p v-if="loading" class="text-sm text-muted">Loading…</p>
 
       <template v-else>
+        <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
+
         <div
           v-if="websiteConflict"
           role="alert"
@@ -265,16 +271,16 @@ async function remove(): Promise<void> {
             v-model="values"
             :fields="definition.fields"
             :issues="issues"
-            :disabled="saving"
+            :disabled="saving || !!definition.readOnly"
             :collection="collection"
             :entry-slug="slug"
           />
 
           <!-- Enter in a text input should save, not do nothing. -->
-          <button type="submit" class="sr-only">Save</button>
+          <button v-if="!definition.readOnly" type="submit" class="sr-only">Save</button>
         </form>
 
-        <div v-if="!isNew" class="mt-10 border-t border-line pt-5">
+        <div v-if="!isNew && !definition.readOnly" class="mt-10 border-t border-line pt-5">
           <button type="button" class="btn-danger" @click="askDelete">
             Delete this {{ definition.labelSingular.toLowerCase() }}
           </button>

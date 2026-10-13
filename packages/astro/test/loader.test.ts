@@ -127,6 +127,16 @@ describe("micaCollections", () => {
     await collections.projects.loader.load(context);
     assert.equal(context.entries.size, 2);
   });
+
+  // Mica reads an unknown kind as one from a newer version; in the site's own model it is a typo.
+  it("refuses a field kind it does not know, such as a typo", () => {
+    const site = defineSite({
+      collections: {
+        notes: collection({ label: "Notes", fields: { title: text(), slug: slug(), body: { kind: "txet" } as never } }),
+      },
+    });
+    assert.throws(() => micaCollections(site), /"collections\.notes\.body" has the unknown kind "txet"/);
+  });
 });
 
 describe("mixing with ordinary Astro collections", () => {

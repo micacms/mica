@@ -12,6 +12,7 @@ import { withDefaults as fillDefaults, type FieldIssue } from "@micacms/core";
 import { api, ApiError } from "@/api";
 import FieldList from "@/components/fields/FieldList.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
@@ -69,6 +70,7 @@ onMounted(load);
 watch(() => props.name, load);
 
 async function save(): Promise<void> {
+  if (definition.value?.readOnly) return;
   saving.value = true;
   issues.value = [];
 
@@ -98,13 +100,15 @@ async function save(): Promise<void> {
 <template>
   <template v-if="definition">
     <PageHeader :title="definition.label" :subtitle="location">
-      <span :class="['badge', dirty ? 'border-accent bg-accent-soft text-accent' : 'text-success']">
-        <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
-        {{ dirty ? "Unsaved" : "Saved" }}
-      </span>
-      <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save">
-        {{ saving ? "Saving…" : dirty ? "Save changes" : "Saved" }}
-      </button>
+      <template v-if="!definition.readOnly">
+        <span :class="['badge', dirty ? 'border-accent bg-accent-soft text-accent' : 'text-success']">
+          <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+          {{ dirty ? "Unsaved" : "Saved" }}
+        </span>
+        <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save">
+          {{ saving ? "Saving…" : dirty ? "Save changes" : "Saved" }}
+        </button>
+      </template>
     </PageHeader>
 
     <div class="mx-auto max-w-3xl px-4 py-6 sm:px-6">
@@ -115,12 +119,14 @@ async function save(): Promise<void> {
           {{ definition.description }}
         </p>
 
+        <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
+
         <div
           v-if="websiteConflict"
           role="alert"
           class="mb-5 rounded-md border border-warning/15 bg-warning-soft p-4"
         >
-          <p class="text-sm font-medium text-warning">These settings was changed on the website while you edited</p>
+          <p class="text-sm font-medium text-warning">These settings were changed on the website while you edited</p>
           <p class="mt-1 text-xs text-muted">
             Your saved version is kept. Choose which version to publish on the Publish page.
           </p>
@@ -159,9 +165,9 @@ async function save(): Promise<void> {
             v-model="values"
             :fields="definition.fields"
             :issues="issues"
-            :disabled="saving"
+            :disabled="saving || !!definition.readOnly"
           />
-          <button type="submit" class="sr-only">Save</button>
+          <button v-if="!definition.readOnly" type="submit" class="sr-only">Save</button>
         </form>
       </template>
     </div>
