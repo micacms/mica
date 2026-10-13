@@ -62,6 +62,8 @@ const problems = computed(() => problemsByEdit(edits.value, status.value?.valida
 /** Edits that cannot be published now: a problem in them, or in what they need. */
 const blocked = computed(() => blockedEdits(edits.value, problems.value));
 const labelOf = computed(() => new Map(edits.value.map((edit) => [edit.key, edit.label])));
+/** Edits that another pending edit uses: a new shared upload outside this set is not in any field yet. */
+const neededKeys = computed(() => new Set(edits.value.flatMap((edit) => edit.needs)));
 
 /** Where a problem can be fixed: its entry or settings page, at the field. */
 function fixLink(problemPath: string, field: string) {
@@ -389,6 +391,14 @@ function plural(count: number, one: string, many: string): string {
         </DeveloperDetails>
       </div>
 
+      <div v-if="status.model?.warning" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
+        <p class="text-sm font-medium text-warning">Publishing waits for the developer</p>
+        <p class="mt-1 text-xs text-muted">
+          The website's new content model cannot be read. You can go on saving. Tell the developer:
+          {{ status.model.warning }}
+        </p>
+      </div>
+
       <!-- Publishing unavailable: still an honest, read-only list. -->
       <div
         v-if="!status.publish.enabled"
@@ -401,7 +411,7 @@ function plural(count: number, one: string, many: string): string {
       <!-- Mica's own clone: shown only when something needs attention. -->
       <template v-if="sync">
         <div v-if="sync.restartRequired" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
-          <p class="text-sm font-medium text-warning">The content model changed on the website</p>
+          <p class="text-sm font-medium text-warning">The way the website stores its files changed</p>
           <p class="mt-1 text-xs text-muted">
             You can go on saving. To publish, ask the person who runs Mica to restart it.
           </p>
@@ -592,6 +602,12 @@ function plural(count: number, one: string, many: string): string {
                 </span>
                 <span v-if="edit.savedAt" class="text-xs text-muted">
                   · saved {{ relativeTime(edit.savedAt) }}
+                </span>
+                <span
+                  v-if="edit.key.startsWith('media:') && edit.state === 'new' && !neededKeys.has(edit.key)"
+                  class="text-xs text-warning"
+                >
+                  · not in any field yet
                 </span>
               </div>
 

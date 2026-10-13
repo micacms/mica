@@ -59,7 +59,7 @@ export interface SyncState {
   lastSyncAt: string | null;
   /** Upstream commits not yet in the clone. */
   behind: number;
-  /** Upstream changed the content model or `.gitattributes`; a restart applies it. */
+  /** Upstream changed `.gitattributes`; a restart applies it. A new content model needs none. */
   restartRequired: boolean;
   conflicts: ConflictGroup[];
   pendingPush: { revision: string; reason: string } | null;
@@ -83,6 +83,8 @@ export interface ManagedWorkspaceOptions {
   /** Removed from every message that leaves this module. */
   secrets?: string[];
   syncSeconds: number;
+  /** After a fast-forward brought a new content model: the app uses it at once. */
+  onModelChange?(): Promise<void>;
 }
 
 export interface ManagedWorkspace {
@@ -234,12 +236,13 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     state.behind = Number(await git.run(["rev-list", "--count", `${from}..${to}`]));
     const upstream = await changedBetween(git, from, to);
 
-    if (!skipHold && upstream.some((path) => path === manifestPath || attributesPlace(path, root) !== null)) {
-      // Hold the fast-forward: a save with the old model would drop new fields.
-      if (!state.restartRequired) logger.warn("The content model changed upstream; a restart applies it", { to });
+    if (!skipHold && upstream.some((path) => attributesPlace(path, root) !== null)) {
+      // Hold the fast-forward: the LFS check runs at start.
+      if (!state.restartRequired) logger.warn("The Git attributes changed upstream; a restart applies them", { to });
       state.restartRequired = true;
       return;
     }
+    const modelChanged = upstream.includes(manifestPath);
 
     await locks.tree.write(async () => {
       const drafts = await draftPaths(git, root);
@@ -285,6 +288,8 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       state.behind = 0;
       state.head = to;
       logger.info("Brought the clone up to date", { from, to, files: upstream.length });
+      // Still under the tree lock: no save runs between the new files and the new model.
+      if (modelChanged) await options.onModelChange?.();
     });
   };
 
@@ -400,7 +405,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
         throw new ApiError(
           "conflict",
           state.restartRequired
-            ? "The content model changed on the website. Ask the person who runs Mica to restart it, then publish again."
+            ? "The way the website stores its files changed. Ask the person who runs Mica to restart it, then publish again."
             : "The website changed some of these entries while you published. Resolve the conflicts, then publish again.",
         );
       }
@@ -527,7 +532,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       if (state.restartRequired) {
         return {
           enabled: false,
-          reason: "The content model changed on the website. Ask the person who runs Mica to restart it.",
+          reason: "The way the website stores its files changed. Ask the person who runs Mica to restart it.",
         };
       }
       if (state.conflicts.length > 0) {

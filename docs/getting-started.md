@@ -257,8 +257,9 @@ Run step 4, and commit the file to the branch Mica reads.
 Another Mica, most likely. Stop it, or run `npx @micacms/editor start --port 6423`.
 
 **The admin shows collections you removed, or misses one you added.**
-The model in the repository is stale. Re-run the build, commit, and restart
-Mica.
+The model in the repository is stale. Run the build again (the dev server
+writes it on each change). Mica loads the new model by itself; load the page
+again.
 
 **Saving returns 409.**
 Someone else changed that entry, or a push landed while the editor was open.

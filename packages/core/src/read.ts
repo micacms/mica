@@ -267,13 +267,13 @@ async function readEntry(
 }
 
 /**
- * Walks every media field in an entry, replacing each path with `mapOne`.
+ * Applies `mapOne` to every media path in a payload, nested fields included;
+ * `{ path, alt }` keeps its alt text.
  *
- * The two directions below have to agree about *which* values are media —
- * including the ones nested in objects and repeaters — so they share one
- * traversal rather than each keeping their own copy of the rules.
+ * The two directions below have to agree about *which* values are media, so
+ * they share one traversal rather than each keeping their own copy of the rules.
  */
-function mapMedia(
+export function mapMedia(
   fields: FieldMap,
   data: Record<string, unknown>,
   mapOne: (value: unknown) => unknown,

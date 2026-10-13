@@ -66,7 +66,11 @@ interface Setup {
   open(): Promise<GitRunner>;
 }
 
-async function setup(token = TOKEN, files: Record<string, string> = SEED): Promise<Setup> {
+async function setup(
+  token = TOKEN,
+  files: Record<string, string> = SEED,
+  onModelChange?: () => Promise<void>,
+): Promise<Setup> {
   const name = `site-${++counter}`;
   const developer = seedRepository(host, name, files);
   const dataDir = mkdtempSync(join(tmpdir(), "mica-data-"));
@@ -87,6 +91,7 @@ async function setup(token = TOKEN, files: Record<string, string> = SEED): Promi
     groupOf,
     secrets: [token],
     syncSeconds: 60,
+    ...(onModelChange ? { onModelChange } : {}),
   });
   return { name, developer, layout, git, repo: layout.repositoryDir, workspace, open };
 }
@@ -330,27 +335,27 @@ describe("sync", () => {
     assert.equal(head(s), to);
   });
 
-  it("forgets a held model change once a start applies it", async () => {
+  it("forgets a held attributes change once a start applies it", async () => {
     const s = await setup();
-    upstream(s, (dir) => writeIn(dir, "content/.mica/schema.json", '{"protocolVersion":1,"x":2}\n'));
+    upstream(s, (dir) => writeIn(dir, "content/.gitattributes", "*.txt text\n"));
     assert.equal((await s.workspace.sync()).restartRequired, true);
     const started = await s.workspace.sync({ skipHold: true });
     assert.equal(started.restartRequired, false);
     assert.equal(s.workspace.policy.publishAvailability().enabled, true);
   });
 
-  it("holds at a model change, and a start applies it", async () => {
-    const s = await setup();
-    const before = head(s);
+  it("brings a model change in at once, and tells the app", async () => {
+    let told = 0;
+    const s = await setup(TOKEN, SEED, async () => {
+      told += 1;
+    });
     const to = upstream(s, (dir) => writeIn(dir, "content/.mica/schema.json", '{"protocolVersion":1,"x":1}\n'));
 
-    const held = await s.workspace.sync();
-    assert.equal(held.restartRequired, true);
-    assert.equal(head(s), before);
-
-    const started = await s.workspace.sync({ skipHold: true });
-    assert.equal(started.error, null);
+    const state = await s.workspace.sync();
+    assert.equal(state.error, null, state.error?.message);
+    assert.equal(state.restartRequired, false);
     assert.equal(head(s), to);
+    assert.equal(told, 1);
   });
 
   it("reports an authentication failure without the token", async () => {

@@ -95,6 +95,11 @@ export function createApp(ctx: RuntimeContext, options: CreateAppOptions = {}): 
 
   // One gate and no roles: whoever the surface admits is an editor of this site.
   for (const middleware of auth.gate) app.use("/api/admin/*", middleware);
+  // A model pushed or written since is used at once; editors cannot restart the server.
+  app.use("/api/admin/*", async (c, next) => {
+    await c.get("ctx").refreshModel();
+    await next();
+  });
 
   app.route("/api/admin", adminSystemRoutes());
   app.route("/api/admin", adminContentRoutes());

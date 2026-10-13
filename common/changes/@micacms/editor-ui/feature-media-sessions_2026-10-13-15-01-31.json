@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "The Media view deletes a file or a selection when nothing uses it, and shows where a file is used; the picker in a form uploads into the form's own folder and offers only its files and the shared ones",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor-ui",
+  "email": "alexander@muedespacher.ch"
+}

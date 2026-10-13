@@ -100,3 +100,41 @@ test("an editor signs in, edits, saves and publishes", async ({ page, request, b
   expect(external, "requests to another origin").toEqual([]);
   expect(violations, "Content-Security-Policy violations").toEqual([]);
 });
+
+test("an editor whose session ends signs in again and keeps the unsaved changes", async ({ page, context }) => {
+  const signIn = async () => {
+    await page.locator("input[name=login]").fill("alice@gmail.com");
+    await page.locator("input[name=password]").fill("password");
+    await page.locator("button[type=submit]").click();
+  };
+
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await signIn();
+  await expect(page).toHaveURL(/\/admin\/$/);
+
+  const sidebar = page.getByRole("complementary");
+  await sidebar.getByRole("link", { name: "Website" }).click();
+  const tagline = `Kept across a sign-in at ${new Date().toISOString()}`;
+  await page.getByLabel("Tagline").fill(tagline);
+
+  // The session ends while the form has changes: the cookies are gone.
+  await context.clearCookies();
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Your session ended")).toBeVisible();
+
+  // Signing in again comes back to the same page, which offers the changes.
+  await page.getByRole("button", { name: "Sign in again" }).click();
+  await signIn();
+  await expect(page).toHaveURL(/\/admin\/singletons\/site$/);
+  await page.getByRole("button", { name: "Restore them" }).click();
+  await expect(page.getByLabel("Tagline")).toHaveValue(tagline);
+
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Saved · not published")).toBeVisible();
+
+  // Leave nothing pending for the next run.
+  await page.getByRole("button", { name: "Discard changes" }).click();
+  await page.getByRole("alertdialog").getByRole("button", { name: "Discard", exact: true }).click();
+  await expect(page.getByText("Saved · not published")).toBeHidden();
+});

@@ -52,12 +52,17 @@ async function handled<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
+/** Which model is in use, so that the editor can tell a stale form, and why a newer one is not. */
+function modelState(ctx: Env["Variables"]["ctx"]) {
+  return { revision: ctx.site.schemaRevision, warning: ctx.site.modelWarning?.message ?? null };
+}
+
 export function adminStagingRoutes(): Hono<Env> {
   const app = new Hono<Env>();
 
   app.get("/changes", async (c) => {
-    const { staging } = c.get("ctx").services;
-    return c.json(await staging.status());
+    const ctx = c.get("ctx");
+    return c.json({ ...(await ctx.services.staging.status()), model: modelState(ctx) });
   });
 
   // Raw data before and after one pending change; the editor renders the comparison.
@@ -77,6 +82,15 @@ export function adminStagingRoutes(): Hono<Env> {
   });
 
   app.post("/publish", async (c) => {
+    // Publish validates with the newest model, so a model change never needs a restart first.
+    await c.get("ctx").refreshModel({ force: true });
+    const warning = c.get("ctx").site.modelWarning;
+    if (warning) {
+      throw new ApiError(
+        "conflict",
+        `The website's new content model cannot be read, so Mica cannot publish yet. Tell the developer: ${warning.message}`,
+      );
+    }
     const { staging } = c.get("ctx").services;
     const parsed = publishSchema.safeParse(await jsonBody(c));
     if (!parsed.success) throw badRequest("The publish payload is malformed.");
@@ -103,7 +117,7 @@ export function adminStagingRoutes(): Hono<Env> {
   app.post("/sync", async (c) => {
     const { staging } = c.get("ctx").services;
     await staging.sync();
-    return c.json(await staging.status());
+    return c.json({ ...(await staging.status()), model: modelState(c.get("ctx")) });
   });
 
   app.post("/changes/resolve", async (c) => {
@@ -112,7 +126,7 @@ export function adminStagingRoutes(): Hono<Env> {
     if (!parsed.success) throw badRequest("Expected a group and a choice: mine or website.");
 
     await handled(() => staging.resolve(parsed.data.group, parsed.data.choice, editorOf(c)));
-    return c.json(await staging.status());
+    return c.json({ ...(await staging.status()), model: modelState(c.get("ctx")) });
   });
 
   app.post("/changes/discard", async (c) => {

@@ -18,6 +18,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { X } from "@lucide/vue";
 
 import { api, ApiError, type MediaItem } from "@/api";
+import { SHARED_MEDIA, type MediaFolder } from "@/lib/media-folder";
 import { useToast } from "@/stores/toast";
 
 const props = withDefaults(
@@ -27,6 +28,12 @@ const props = withDefaults(
     multiple?: boolean;
     /** Paths already chosen by the field, shown as ticked. */
     selected?: string[];
+    /**
+     * The form's own `media/` folder: uploads go there, and the picker offers its
+     * files and the shared ones, never another entry's. Null while a new entry has
+     * no URL. Undefined outside a form.
+     */
+    folder?: MediaFolder | null;
   }>(),
   { accept: "any", multiple: false, selected: () => [] },
 );
@@ -54,6 +61,9 @@ const items = computed(() => {
   const term = search.value.trim().toLowerCase();
 
   return all.value.filter((item) => {
+    if (props.folder !== undefined && !item.path.startsWith(`${SHARED_MEDIA}/`) && !(props.folder && item.path.startsWith(`${props.folder.path}/`))) {
+      return false;
+    }
     if (props.accept === "image" && !isImage(item)) return false;
     if (props.accept === "document" && isImage(item)) return false;
     // Over the whole path, so `projects/bleicherweg` finds a file by the entry
@@ -129,7 +139,10 @@ async function upload(files: FileList | File[] | null): Promise<void> {
 
   uploading.value = true;
   try {
-    const { items: uploaded } = await api.media.upload(list, { accept: props.accept });
+    const { items: uploaded } = await api.media.upload(list, {
+      accept: props.accept,
+      ...(props.folder ? { directory: props.folder.path, newEntry: props.folder.isNew } : {}),
+    });
 
     if (!props.multiple) {
       if (uploaded[0]) emit("choose", [uploaded[0]]);
@@ -227,7 +240,11 @@ const folderOf = (path: string): string => {
           @dragleave.prevent="dragging = false"
           @drop.prevent="onDrop"
         >
+          <p v-if="folder === null" class="mb-4 rounded-md border border-line bg-subtle px-4 py-3 text-sm text-muted">
+            Give it a title or a valid URL first. Its files then get their own folder, and you can upload here.
+          </p>
           <label
+            v-else
             class="mb-4 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-line-strong bg-canvas/50 px-4 py-6 text-center transition hover:border-ink/40"
           >
             <input
@@ -244,6 +261,7 @@ const folderOf = (path: string): string => {
             </span>
             <span class="text-xs text-muted">
               {{ accept === "image" ? "Images" : accept === "document" ? "PDF documents" : "Images and documents" }}
+              {{ folder ? "· stored with this content" : "· shared by all content" }}
             </span>
           </label>
 

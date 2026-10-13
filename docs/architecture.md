@@ -117,8 +117,8 @@ an image that is older than the site's `@micacms/astro` still serves the rest.
 
 Beside the model, the manifest records `generatedBy` (the package, without a
 version) and each collection's and singleton's `layout`. It holds nothing that
-changes without a model change, because a self-hosted Mica must restart for
-every change to the file.
+changes without a model change, because Mica loads the model again whenever the
+file changes.
 
 ---
 

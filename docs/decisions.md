@@ -216,6 +216,15 @@ restart. Rotating `MICA_SESSION_SECRET` ends every session at once.
 without signing everybody out. That needs a deny list, which is server state
 again.
 
+**Changed in 0.7.0 (#95):** the end of a session no longer loses a form's
+unsaved changes. The entry and settings forms keep them, with the revision they
+started from, in the tab's `sessionStorage` while they differ from the saved
+version (`useKeptChanges`). A 401 keeps the page and shows "Sign in again",
+which returns to it; the form then offers to restore the changes, and a
+revision that moved since gives the save conflict. Five minutes before the end,
+the editor asks `/auth/me` (which also extends an idle session) and warns.
+Nothing is stored on the server: the browser tab holds the changes.
+
 **1.0 status:** accepted for 1.0. "No server-side revocation" goes in the
 security docs (#84).
 
@@ -416,8 +425,9 @@ check would mix an entry from two sides, so the unit is the group.
 
 **Consequence:** one conflict holds the fast-forward for every editor until
 somebody chooses, so it is shown on the Dashboard, the Publish page and the
-entry's own page. A change upstream to `.mica/schema.json` holds too, until
-a restart (see "The content model is read once").
+entry's own page. A change upstream to `.gitattributes` holds too, until a
+restart; a new content model is used at once (see "The content model is read at
+startup, and again when it changes").
 
 **What would change it:** frequent conflicts on different fields of one entry;
 then a merge per field.
@@ -563,11 +573,11 @@ published on 0.4 first. An old variable name is ignored without a warning.
 
 ---
 
-### P2 — The content model is read once, at startup
+### P2 — The content model is read at startup, and again when it changes
 
-**Decided:** Mica reads `.mica/schema.json` out of the content repository when
-the process starts, and holds it for the life of the process. Changing the
-model means restarting.
+**Decided (until 0.7.0, see "Changed in 0.7.0" below):** Mica reads
+`.mica/schema.json` out of the content repository when the process starts, and
+holds it for the life of the process. Changing the model means restarting.
 
 **Why:** the alternative is re-reading it per request, or a cache with an
 invalidation rule — and the
@@ -602,6 +612,21 @@ loaded model, Publish waits, and the restart fast-forwards and then reads the
 new model. Saving with the old model after the change would drop the new
 fields, because `serializeEntry` writes only declared keys. #81 (reload
 without a restart) becomes more useful with this.
+
+**Changed in 0.7.0 (#81):** Mica uses a new model without a restart.
+`refreshModel` in the runtime compares the manifest's revision with the one in
+use: on admin requests at most every two seconds, always before Publish, and,
+in a clone that Mica keeps, right after a fast-forward that changed the
+manifest, still under the tree lock, so that no save runs between the new files
+and the new model. A valid model replaces the content store and the staging
+service; the drafts are checked against it on the Publish page as always. A
+model that cannot be read leaves the one in use in place, and the System page
+names the problem. An open page sees that the server uses a newer model and
+asks the editor to save and load the page again. A form opened with the old
+model cannot drop a new field's value without a conflict: the entry's file
+changed, so the save's revision no longer matches. Only a `.gitattributes`
+change still holds the fast-forward until a restart, because the LFS check runs
+at start.
 
 **1.0 status:** accepted for 1.0.
 
@@ -1286,7 +1311,16 @@ the Media view, or stored twice. Deleting an entry deletes its files.
 default the picker's upload to the shared folder, which the layout rule would
 no longer justify.
 
-**1.0 status:** should for 1.0; the fix is in #102, the path forms in #58.
+**Built in 0.7.0 (#102):** the entry and settings forms send their own folder
+(`<collection>/<slug>/media`, `<name>/media`) with an upload, and the picker
+offers only those files and the shared ones. In a new entry, the folder is the
+URL in the form; when the first save gives the entry another URL, the save
+moves the files it uses from a folder that has no entry into its own
+(`stagedUploads` in the content store), with a free name. MP4 is refused: a
+video makes the repository large, and the editor cannot show one. A new shared
+upload that no field uses is marked on the Publish page.
+
+**1.0 status:** accepted for 1.0; the path forms are in #58.
 
 ---
 
@@ -1477,6 +1511,36 @@ its note.
 
 ---
 
+### P2 — A file is deleted in the Media view only when nothing uses it
+
+**Decided:** the Media view deletes a file, or a selection of files, when no
+entry and no settings page uses it: not in a media field, and not as an image
+or a link in rich text (`mediaUses` in the content store; a rich-text target
+starting with `/` is from the content root, others from the document's
+folder). A used file is refused, with the entries and pages that use it. The
+delete is a pending change: Publish removes the file from the website, and
+Discard on the Publish page brings it back. The log names who deleted.
+
+**Why:** shared folders grow, and before this only a developer could tidy
+them. A file that something uses is a broken image on the website once it is
+gone, so the editor first removes it there.
+
+**Consequence:** each check reads every entry and settings page once. That is
+fine at the stated scale, and the read budgets (#72) cover it. Only files in a
+`media/` folder can be deleted here. When a collection cannot be read, the
+delete is refused, because a use there cannot be ruled out. Two gaps stay: the
+check at Publish reads fields, not rich text, so a file that a save starts to
+use in rich text after the check can still be published as deleted; and rich
+text is scanned for links, images, references and tag attributes, not for a
+path written another way.
+
+**What would change it:** a site large enough that the scan is slow; then an
+index of references, as for the check at Publish.
+
+**1.0 status:** accepted for 1.0 (#192).
+
+---
+
 ### P2 — The editor speaks of saving and publishing, not of Git
 
 **Decided:** the editor's text uses editing words: "Say what changed", not
@@ -1562,8 +1626,11 @@ revision; the server logs "Kept own version over a newer save" with the
 editor) and "Use theirs" (load it). In both apps the overwritten version is a
 draft, not a commit, so there is no revision to name in Git.
 
-**1.0 status:** should for 1.0. Still open: the commit trailer that names the
-website revision that "Keep my version" replaced at a sync conflict.
+**Changed in 0.7.0:** no commit trailer names the replaced revision. The log
+names who chose "Keep my version" (#82), and the website's version stays in
+the history before the publication, so the trailer would add little.
+
+**1.0 status:** accepted for 1.0.
 
 ---
 
@@ -1824,10 +1891,6 @@ without a break.
 - **A blocks field.** A repeater has one item shape; there is no page builder
   with differently shaped items. It would be a new field kind. Trigger: a site
   whose pages are composed of sections of different kinds.
-- **Media delete.** A published shared file cannot be deleted from the editor,
-  because a delete needs a scan of all content, rich text included, for
-  references. An entry's own files go with the entry, and a pending upload can
-  be discarded. Trigger: shared media folders that editors cannot keep tidy.
 - **A branch switcher.** One Mica serves one branch. Trigger: a team that needs
   to edit more than one branch from one deployment.
 - Decided elsewhere in this file: native multilingual content, a draft preview,

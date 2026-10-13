@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, defineSite, number, slug, text } from "@micacms/core";
+import { collection, createManifest, defineSite, MANIFEST_PATH, number, slug, text } from "@micacms/core";
 import { Hono } from "hono";
 
 import { clientIp, type Env } from "../src/http.js";
@@ -20,6 +20,7 @@ import {
   createHarness,
   multipart,
   pngBytes,
+  testSite,
   type TestHarness,
 } from "./helpers.js";
 
@@ -643,6 +644,105 @@ describe("media", () => {
   });
 });
 
+describe("media in an entry's folder, and media delete", () => {
+  let harness: TestHarness;
+  before(async () => {
+    harness = await createHarness();
+  });
+  after(() => harness.close());
+
+  const json = (path: string, method: string, body: unknown) =>
+    harness.request(path, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+  const uploadTo = async (directory: string, name: string): Promise<string> => {
+    const form = multipart([{ name, bytes: pngBytes(), type: "image/png" }]);
+    form.append("directory", directory);
+    const response = await harness.request("/api/admin/media", { method: "POST", body: form });
+    assert.equal(response.status, 201);
+    return ((await response.json()) as { items: Array<{ path: string }> }).items[0]!.path;
+  };
+
+  it("moves the uploads of a new entry into its folder when its URL changed before the first save", async () => {
+    const staged = await uploadTo("projects/first-title/media", "front.png");
+    assert.equal(staged, "projects/first-title/media/front.png");
+
+    const created = await json("/api/admin/collections/projects/entries", "POST", { data: { title: "Final title", cover: staged } });
+    assert.equal(created.status, 201);
+
+    assert.ok(existsSync(join(harness.contentRoot, "projects/final-title/media/front.png")));
+    assert.ok(!existsSync(join(harness.contentRoot, staged)));
+    const stored = JSON.parse(readFileSync(join(harness.contentRoot, "projects/final-title/index.json"), "utf8"));
+    assert.equal(stored.cover, "media/front.png");
+  });
+
+  it("refuses a video", async () => {
+    const mp4 = new Uint8Array([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0]);
+    const response = await harness.request("/api/admin/media", {
+      method: "POST",
+      body: multipart([{ name: "clip.mp4", bytes: mp4, type: "video/mp4" }]),
+    });
+    assert.equal(response.status, 415);
+    assert.match(((await response.json()) as { error: { message: string } }).error.message, /does not keep videos/);
+  });
+
+  it("names where a file is used, in a field or in rich text, and refuses to delete it", async () => {
+    const shared = await uploadTo("media", "logo.png");
+    const linked = await uploadTo("media", "plan.png");
+    await json("/api/admin/collections/projects/entries", "POST", {
+      data: { title: "Uses", cover: shared, summary: "See the [plan](/media/plan.png)." },
+    });
+
+    const usage = await harness.request(`/api/admin/media/usage?path=${shared}&path=${linked}`);
+    const { uses } = (await usage.json()) as { uses: Record<string, Array<{ title: string }>> };
+    assert.deepEqual(uses[shared]!.map((item) => item.title), ["Uses"]);
+    assert.deepEqual(uses[linked]!.map((item) => item.title), ["Uses"]);
+
+    const refused = await json("/api/admin/media/delete", "POST", { paths: [shared] });
+    assert.equal(refused.status, 409);
+    assert.match(((await refused.json()) as { error: { message: string } }).error.message, /"logo.png" is still used by Uses/);
+    assert.ok(existsSync(join(harness.contentRoot, shared)));
+  });
+
+  it("deletes a file that nothing uses", async () => {
+    const unused = await uploadTo("media", "unused.png");
+    const response = await json("/api/admin/media/delete", "POST", { paths: [unused] });
+    assert.equal(response.status, 200);
+    assert.ok(!existsSync(join(harness.contentRoot, unused)));
+  });
+
+  it("deletes only media files, not an entry's data or the model", async () => {
+    for (const path of ["projects/final-title/index.json", ".mica/schema.json"]) {
+      const response = await json("/api/admin/media/delete", "POST", { paths: [path] });
+      assert.equal(response.status, 400, path);
+    }
+    assert.ok(existsSync(join(harness.contentRoot, "projects/final-title/index.json")));
+  });
+
+  it("counts a reference link and a tag attribute in rich text as a use", async () => {
+    const one = await uploadTo("media", "ref.png");
+    const two = await uploadTo("media", "tag.png");
+    await json("/api/admin/collections/projects/entries", "POST", {
+      data: { title: "Markdoc uses", summary: `See [the plan][p].\n\n[p]: /${one}\n\n{% figure src="/${two}" /%}` },
+    });
+    const usage = await harness.request(`/api/admin/media/usage?path=${one}&path=${two}`);
+    const { uses } = (await usage.json()) as { uses: Record<string, Array<{ title: string }>> };
+    assert.deepEqual(uses[one]!.map((item) => item.title), ["Markdoc uses"]);
+    assert.deepEqual(uses[two]!.map((item) => item.title), ["Markdoc uses"]);
+  });
+
+  it("refuses a new entry's upload into the folder of a saved entry", async () => {
+    const form = multipart([{ name: "x.png", bytes: pngBytes(), type: "image/png" }]);
+    form.append("directory", "projects/final-title/media");
+    form.append("newEntry", "true");
+    const response = await harness.request("/api/admin/media", { method: "POST", body: form });
+    assert.equal(response.status, 409);
+  });
+
+  it("refuses a path outside the content root", async () => {
+    const response = await json("/api/admin/media/delete", "POST", { paths: ["../secret.png"] });
+    assert.equal(response.status, 400);
+  });
+});
+
 describe("system information", () => {
   let harness: TestHarness;
 
@@ -700,5 +800,64 @@ describe("system information", () => {
     assert.equal(body.deployment.site, "default");
     assert.match(body.deployment.auth, /none/);
     assert.equal(body.deployment.admission, null);
+  });
+});
+
+describe("a forced model check", () => {
+  it("reads the files again instead of joining a check that started before", async () => {
+    const harness = await createHarness();
+    try {
+      mkdirSync(join(harness.contentRoot, ".mica"), { recursive: true });
+      const first = harness.ctx.refreshModel();
+      const next = defineSite({ collections: { ...testSite.collections, late: collection({ label: "Late", fields: { title: text(), slug: slug() } }) }, singletons: testSite.singletons });
+      writeFileSync(join(harness.contentRoot, MANIFEST_PATH), JSON.stringify(createManifest(next, "test")));
+      await Promise.all([first, harness.ctx.refreshModel({ force: true })]);
+      assert.ok(harness.ctx.site.model.collections["late"]);
+    } finally {
+      await harness.close();
+    }
+  });
+});
+
+describe("a new content model", () => {
+  it("is used without a restart, and an invalid one leaves the old one in use", async () => {
+    const harness = await createHarness();
+    try {
+      const write = (contents: string) => {
+        mkdirSync(join(harness.contentRoot, ".mica"), { recursive: true });
+        writeFileSync(join(harness.contentRoot, MANIFEST_PATH), contents);
+      };
+      const next = defineSite({
+        collections: { ...testSite.collections, events: collection({ label: "Events", fields: { title: text(), slug: slug() } }) },
+        singletons: testSite.singletons,
+      });
+      write(JSON.stringify(createManifest(next, "test")));
+      await harness.ctx.refreshModel({ force: true });
+
+      const schema = (await (await harness.request("/api/admin/schema")).json()) as { collections: Array<{ name: string }> };
+      assert.ok(schema.collections.some((item) => item.name === "events"));
+      const created = await harness.request("/api/admin/collections/events/entries", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ data: { title: "Opening" } }),
+      });
+      assert.equal(created.status, 201);
+
+      write("{ not json");
+      await harness.ctx.refreshModel({ force: true });
+      const changes = (await (await harness.request("/api/admin/changes")).json()) as { model: { warning: string | null } };
+      assert.ok(changes.model.warning);
+      assert.ok(harness.ctx.site.model.collections["events"], "the model in use stays");
+
+      const publish = await harness.request("/api/admin/publish", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ message: "Try", paths: {} }),
+      });
+      assert.equal(publish.status, 409);
+      assert.match(((await publish.json()) as { error: { message: string } }).error.message, /cannot be read/);
+    } finally {
+      await harness.close();
+    }
   });
 });

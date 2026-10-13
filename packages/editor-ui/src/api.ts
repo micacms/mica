@@ -38,15 +38,30 @@ function csrfToken(): string {
 export interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
-  query?: Record<string, string | number | boolean | undefined>;
+  /** A list repeats the parameter: `?path=a&path=b`. */
+  query?: Record<string, string | number | boolean | string[] | undefined>;
   signal?: AbortSignal;
+}
+
+let onUnauthenticated: (() => void) | null = null;
+let onSessionExpiry: ((at: string) => void) | null = null;
+
+/** Called on every 401, so that the shell can say that the session ended. */
+export function whenUnauthenticated(handler: () => void): void {
+  onUnauthenticated = handler;
+}
+
+/** Called with the session's end from each response that names it. */
+export function whenSessionExpiry(handler: (at: string) => void): void {
+  onSessionExpiry = handler;
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = new URL(`${BASE}${path}`, window.location.origin);
 
   for (const [key, value] of Object.entries(options.query ?? {})) {
-    if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
+    if (Array.isArray(value)) for (const one of value) url.searchParams.append(key, one);
+    else if (value !== undefined && value !== "") url.searchParams.set(key, String(value));
   }
 
   const headers: Record<string, string> = {};
@@ -75,12 +90,16 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
     throw new ApiError(0, "network_error", "Could not reach the server. Check your connection.");
   }
 
+  const expires = response.headers.get("x-mica-session-expires");
+  if (expires) onSessionExpiry?.(expires);
+
   if (response.status === 204) return undefined as T;
 
   const text = await response.text();
   const payload = text ? (JSON.parse(text) as unknown) : null;
 
   if (!response.ok) {
+    if (response.status === 401) onUnauthenticated?.();
     const envelope = payload as { error?: { code?: string; message?: string; issues?: FieldIssue[] } };
     throw new ApiError(
       response.status,
@@ -124,6 +143,8 @@ export interface SchemaSingleton {
 export interface Schema {
   collections: SchemaCollection[];
   singletons: SchemaSingleton[];
+  /** The model's revision; the pending changes name the one the server uses now. */
+  revision: string | null;
 }
 
 /**
@@ -242,7 +263,7 @@ export interface SyncStatus {
   lastSyncAt: string | null;
   behind: number;
   error: { code: string; message: string; since: string } | null;
-  /** The content model changed on the website; a restart applies it. */
+  /** A `.gitattributes` changed on the website; a restart applies it. A new content model needs none. */
   restartRequired: boolean;
   /** Published in Mica, not yet in the repository. Mica retries it. */
   pendingPush: { revision: string; reason: string } | null;
@@ -273,6 +294,8 @@ export interface StagingStatus {
   changes: FileChange[];
   validation: { ok: boolean; problems: StagingProblem[] };
   sync: SyncStatus | null;
+  /** The model the server uses now, and why a newer one is not in use. */
+  model?: { revision: string | null; warning: string | null };
 }
 
 export interface PublishOutcome {
@@ -341,6 +364,8 @@ export interface SystemInfo {
     uptimeSeconds: number;
   };
   schema: {
+    /** Why a newer model is not in use: the developer's change cannot be read. */
+    warning: string | null;
     totals: FieldCounts & { collections: number; singletons: number };
     kinds: Array<{ kind: string; count: number }>;
     relations: Array<{
@@ -508,7 +533,7 @@ export const api = {
 
   media: {
     list: () => request<{ items: MediaItem[] }>("/admin/media"),
-    upload: async (files: File[], options: { accept?: string; directory?: string } = {}) => {
+    upload: async (files: File[], options: { accept?: string; directory?: string; newEntry?: boolean } = {}) => {
       const items: MediaItem[] = [];
       for (let start = 0; start < files.length; start += UPLOAD_BATCH) {
         const form = new FormData();
@@ -517,11 +542,18 @@ export const api = {
         // Where the file goes in the repository. An entry's own `media/`
         // directory keeps the entry self-contained and its rename cheap.
         if (options.directory) form.append("directory", options.directory);
+        if (options.newEntry) form.append("newEntry", "true");
         const result = await request<{ items: MediaItem[] }>("/admin/media", { method: "POST", body: form });
         items.push(...result.items);
       }
       return { items };
     },
+    /** Where each file is used, in a media field or in rich text. */
+    usage: (paths: string[]) =>
+      request<{ uses: Record<string, Referrer[]>; unreadable: string[] }>("/admin/media/usage", { query: { path: paths } }),
+    /** Deletes files that nothing uses. The delete waits on the Publish page like any change. */
+    remove: (paths: string[]) =>
+      request<{ deleted: string[] }>("/admin/media/delete", { method: "POST", body: { paths } }),
     /** Absolute URL for previewing a repository file inside the admin. */
     url: (path: string) =>
       `${BASE}/admin/media/file/${path.split("/").map(encodeURIComponent).join("/")}`,

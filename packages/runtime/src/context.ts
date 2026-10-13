@@ -4,12 +4,12 @@
  * runtime stays authentication-neutral.
  */
 
-import type { Site } from "@micacms/core";
+import { MANIFEST_PATH, type Site } from "@micacms/core";
 
 import type { RuntimeConfig } from "./config.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
-import { readOnlyParts } from "./schema.js";
+import { loadSchema, readOnlyParts, SchemaError } from "./schema.js";
 import { createMediaService, type MediaService } from "./services/media.js";
 import type { ContentStagingService } from "./services/changes.js";
 import { createContentStore, type ContentStore } from "./services/content-store.js";
@@ -23,7 +23,7 @@ import type { GitTree } from "./workspace/tree.js";
 export interface SiteContext {
   /** Identifies this site in logs. */
   id: string;
-  /** The content model, read from the repository at startup. */
+  /** The content model in use: read at startup, and again when `.mica/schema.json` changes. */
   model: Site;
   /** The working tree's files behind the workspace locks. Only Publish makes a commit. */
   contentRepository: ContentFiles;
@@ -34,6 +34,8 @@ export interface SiteContext {
   schemaRevision: string | null;
   /** Collections and singletons this build cannot write, from `readOnlyParts`, with the reason. */
   readOnly: ReadonlyMap<string, string>;
+  /** Why the newer model in the working tree is not in use. The model above stays in use. */
+  modelWarning: { message: string; revision: string | null } | null;
 }
 
 export const DEFAULT_SITE_ID = "default";
@@ -74,6 +76,12 @@ export interface RuntimeContext {
   };
   operational(): OperationalInfo;
   health: RuntimeHealth;
+  /**
+   * Uses a new content model when `.mica/schema.json` changed, and keeps the one
+   * in use when the new one cannot be read. Checks at most every two seconds,
+   * unless `force`.
+   */
+  refreshModel(options?: { force?: boolean }): Promise<void>;
   shutdown(): Promise<void>;
 }
 
@@ -94,6 +102,8 @@ export interface CreateRuntimeContextOptions {
   locks?: WorkspaceLocks;
   /** See `WorkingTreeStagingDeps.tree`. */
   tree?: GitTree;
+  /** Called after a new model is in use, for what the app keeps beside the runtime. */
+  onModel?: (model: Site) => void;
   onShutdown?: () => void | Promise<void>;
 }
 
@@ -112,35 +122,73 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
   // Services write through the lock wrapper; staging takes the locks itself.
   const locks = options.locks ?? createWorkspaceLocks();
 
-  const readOnly = readOnlyParts(model);
-  for (const reason of readOnly.values()) logger.warn("Read-only in this version of Mica", { reason });
-
   const site: SiteContext = {
     id: options.siteId ?? DEFAULT_SITE_ID,
     model,
     contentRepository: lockedFiles(options.files, locks.tree),
     schemaRevision,
-    readOnly,
+    readOnly: new Map(),
+    modelWarning: null,
   };
 
+  /** The services that read the model. Media does not. */
+  const forModel = (current: Site, revision: string | null) => {
+    const readOnly = readOnlyParts(current);
+    for (const reason of readOnly.values()) logger.warn("Read-only in this version of Mica", { reason });
+    site.model = current;
+    site.schemaRevision = revision;
+    site.readOnly = readOnly;
+    return {
+      content: createContentStore(current, site.contentRepository, readOnly),
+      staging: createWorkingTreeStagingService({
+        model: current,
+        files: options.files,
+        contentRoot: config.contentRoot,
+        schemaRevision: revision,
+        readOnly,
+        publishEnabled: config.MICA_LOCAL_PUBLISH,
+        logger,
+        locks,
+        ...(options.policy ? { policy: options.policy } : {}),
+        ...(options.tree ? { tree: options.tree } : {}),
+      }),
+    };
+  };
+
+  // Routes read `ctx.services` on each request, so a reload replaces these in place.
   const services = {
-    content: createContentStore(model, site.contentRepository, readOnly),
+    ...forModel(model, schemaRevision),
     media: createMediaService({
       files: site.contentRepository,
       maxBytes: config.MICA_MAX_UPLOAD_BYTES,
     }),
-    staging: createWorkingTreeStagingService({
-      model,
-      files: options.files,
-      contentRoot: config.contentRoot,
-      schemaRevision,
-      readOnly,
-      publishEnabled: config.MICA_LOCAL_PUBLISH,
-      logger,
-      locks,
-      ...(options.policy ? { policy: options.policy } : {}),
-      ...(options.tree ? { tree: options.tree } : {}),
-    }),
+  };
+
+  let checkedAt = 0;
+  let checking: Promise<void> | null = null;
+  const refreshModel = (refresh: { force?: boolean } = {}): Promise<void> => {
+    // A forced check must read the files as they are now, not join one that started earlier.
+    if (checking) return refresh.force ? checking.then(() => refreshModel(refresh)) : checking;
+    if (!refresh.force && Date.now() - checkedAt < 2_000) return Promise.resolve();
+    checking = (async () => {
+      checkedAt = Date.now();
+      const revision = await options.files.revision(MANIFEST_PATH);
+      if (revision === site.schemaRevision || revision === site.modelWarning?.revision) return;
+      try {
+        const next = await loadSchema(options.files);
+        Object.assign(services, forModel(next, revision));
+        site.modelWarning = null;
+        logger.info("Using the new content model", { revision });
+        options.onModel?.(next);
+      } catch (error) {
+        if (!(error instanceof SchemaError)) throw error;
+        site.modelWarning = { message: error.message, revision };
+        logger.warn("The new content model cannot be read; the one in use stays", { message: error.message });
+      }
+    })().finally(() => {
+      checking = null;
+    });
+    return checking;
   };
 
   const limiters = {
@@ -158,6 +206,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
       options.operational ??
       (() => ({ auth: "unspecified" })),
     health: options.health ?? {},
+    refreshModel,
 
     async shutdown() {
       limiters.api.stop();

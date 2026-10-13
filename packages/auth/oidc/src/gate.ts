@@ -80,8 +80,13 @@ export function requireAccess(deps: GateDeps): MiddlewareHandler<Env> {
     if (refreshed) {
       setCookie(c, deps.sessions.names.session, refreshed.cookie, deps.sessions.sessionCookieOptions());
     }
+    // The editor warns before the end from this, without asking (and so extending) the session.
+    c.header(SESSION_EXPIRES_HEADER, session.expiresAt);
   };
 }
+
+/** When the session ends, on every admitted response. */
+export const SESSION_EXPIRES_HEADER = "x-mica-session-expires";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 

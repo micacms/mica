@@ -5,7 +5,7 @@
  * editor cannot be overwritten in silence.
  */
 
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
 import { withDefaults as fillDefaults } from "@micacms/core";
@@ -13,19 +13,28 @@ import { withDefaults as fillDefaults } from "@micacms/core";
 import { api, ApiError, type SingletonDetail } from "@/api";
 import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
+import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PendingNotice from "@/components/PendingNotice.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
 import { fieldPathOf, useFormIssues } from "@/composables/useFormIssues";
+import { useKeptChanges } from "@/composables/useKeptChanges";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
 import { focusField } from "@/lib/focus";
+import { MEDIA_FOLDER } from "@/lib/media-folder";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
 const props = defineProps<{ name: string }>();
 const route = useRoute();
+
+// Settings with media keep them in their own folder, as an entry does.
+provide(
+  MEDIA_FOLDER,
+  computed(() => ({ path: `${props.name}/media`, isNew: false })),
+);
 
 const schema = useSchema();
 const staging = useStaging();
@@ -58,6 +67,8 @@ const form = useFormIssues(() => definition.value?.fields, values);
 const issues = form.issues;
 
 const { dirty, markClean } = useUnsavedChanges(values);
+// Kept in this tab, so that signing in again after the session ended loses nothing.
+const kept = useKeptChanges(() => `singleton:${props.name}`, values, revision, dirty);
 
 /** These settings' saved changes that are not on the website yet. */
 const pending = computed(() => staging.edits.value.find((edit) => edit.key === `singleton:${props.name}`) ?? null);
@@ -97,6 +108,7 @@ async function load(): Promise<void> {
 
 onMounted(async () => {
   await load();
+  kept.check();
   // From a problem on the Publish page: go to its field.
   if (typeof route.query.field === "string") {
     const field = route.query.field;
@@ -140,6 +152,7 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
     conflict.value = "none";
     theirs.value = null;
     markClean();
+    kept.forget();
     toast.success("Settings saved.");
     void staging.refresh();
   } catch (error) {
@@ -193,7 +206,7 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
         </p>
 
         <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
-        <PendingNotice v-else-if="pending && !dirty" :edit="pending" @discarded="load" />
+        <PendingNotice v-else-if="pending && !dirty" :edit="pending" @discarded="kept.forget(); load()" />
 
         <div
           v-if="websiteConflict"
@@ -215,9 +228,10 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
           :fields="definition.fields"
           :busy="saving"
           @keep="save({ keepMine: true })"
-          @take="load"
+          @take="kept.forget(); load()"
         />
 
+        <KeptChangesNotice v-if="kept.offered.value" :at="kept.offered.value.at" @restore="kept.restore()" @forget="kept.forget()" />
         <IssueSummary :issues="issues" />
 
         <form novalidate @submit.prevent="save()" @focusout="onLeave">

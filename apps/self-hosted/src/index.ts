@@ -1,8 +1,8 @@
 /**
  * The Docker entry point: the runtime behind the OIDC gate, on a Git clone on
  * the data volume. The order at start: `/health` answers first, then the clone
- * is made and synced, and only then is the model read, so a restart applies a
- * model change that a sync held back.
+ * is made and synced, and only then is the model read. A later model change
+ * comes in with a sync, and the runtime loads it.
  */
 
 import { createOidcAuth } from "@micacms/auth-oidc";
@@ -169,6 +169,10 @@ async function serve(): Promise<void> {
     revalidate: (paths) => revalidate.run(paths),
     secrets: [token],
     syncSeconds,
+    // Before the runtime exists, the start reads the model after the first sync anyway.
+    onModelChange: async () => {
+      await ctx?.refreshModel({ force: true });
+    },
   });
 
   let synced;
@@ -212,6 +216,10 @@ async function serve(): Promise<void> {
     policy: workspace.policy,
     locks,
     tree,
+    onModel: (next) => {
+      groups.of = contentGroups(next);
+      revalidate.run = revalidator(next, files, tree);
+    },
 
     operational: () => ({
       auth: authLabel,

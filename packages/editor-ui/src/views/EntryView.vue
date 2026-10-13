@@ -6,23 +6,26 @@
  * changing it moves the entry, and the route follows.
  */
 
-import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, provide, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import { defaultValues } from "@micacms/core";
+import { defaultValues, isValidSlug } from "@micacms/core";
 
 import { api, ApiError, type EntryDetail, type Referrer } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
+import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PendingNotice from "@/components/PendingNotice.vue";
 import type { Edit } from "@/lib/edits";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
 import { fieldPathOf, useFormIssues } from "@/composables/useFormIssues";
+import { useKeptChanges } from "@/composables/useKeptChanges";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
 import { focusField } from "@/lib/focus";
+import { MEDIA_FOLDER } from "@/lib/media-folder";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
@@ -67,6 +70,15 @@ const newSlug = computed(() => {
 });
 const urlChanging = computed(() => !!props.slug && newSlug.value !== "" && newSlug.value !== props.slug);
 const linkers = ref<Referrer[] | null>(null);
+
+// Uploads go into the entry's folder: the saved URL's, or for a new entry a valid URL in the form.
+provide(
+  MEDIA_FOLDER,
+  computed(() => {
+    if (props.slug) return { path: `${props.collection}/${props.slug}/media`, isNew: false };
+    return isValidSlug(newSlug.value) ? { path: `${props.collection}/${newSlug.value}/media`, isNew: true } : null;
+  }),
+);
 const updateLinks = ref(true);
 
 watch(urlChanging, async (changing) => {
@@ -90,6 +102,9 @@ const issues = form.issues;
 
 const unsaved = useUnsavedChanges(values);
 const dirty = unsaved.dirty;
+// Kept in this tab, so that signing in again after the session ended loses nothing.
+// ":new" is no valid URL, so it never names a saved entry.
+const kept = useKeptChanges(() => `${props.collection}/${props.slug ?? ":new"}`, values, revision, dirty);
 
 const isNew = computed(() => !props.slug);
 
@@ -163,6 +178,7 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
+  kept.check();
 
   // From a problem on the Publish page: go to its field.
   if (typeof route.query.field === "string") {
@@ -211,6 +227,7 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
     // The server derives and de-duplicates the slug and can move the entry:
     // re-open at what it decided.
     unsaved.markClean();
+    kept.forget();
     toast.success(
       saved.renamed ? `Saved as “${saved.slug}”.` : "Saved.",
       saved.relinked > 0 ? `Updated the links in ${saved.relinked} other entr${saved.relinked === 1 ? "y or page" : "ies or pages"}.` : undefined,
@@ -266,6 +283,7 @@ async function useTheirs(): Promise<void> {
   if (!props.slug) return;
   try {
     await open(props.slug);
+    kept.forget();
     toast.success("Loaded their version.");
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not load this entry.");
@@ -274,6 +292,7 @@ async function useTheirs(): Promise<void> {
 
 /** After a discard, a new entry is gone, and a URL change goes back to the old URL. */
 async function discarded(edit: Edit): Promise<void> {
+  kept.forget();
   if (edit.state === "new") {
     await router.replace({ name: "collection", params: { collection: props.collection } });
   } else if (edit.target?.kind === "entry" && edit.target.from) {
@@ -361,6 +380,7 @@ async function remove(): Promise<void> {
           @take="useTheirs"
         />
 
+        <KeptChangesNotice v-if="kept.offered.value" :at="kept.offered.value.at" @restore="kept.restore()" @forget="kept.forget()" />
         <IssueSummary :issues="issues" />
 
         <div v-if="urlChanging" role="status" class="mb-5 rounded-md border border-line bg-subtle p-4">

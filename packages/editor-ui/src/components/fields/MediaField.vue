@@ -9,7 +9,7 @@
  * preview.
  */
 
-import { computed, ref } from "vue";
+import { computed, inject, ref } from "vue";
 import { ArrowLeft, ArrowRight, Plus, X } from "@lucide/vue";
 
 import type { MediaField } from "@micacms/core";
@@ -18,6 +18,7 @@ import FieldShell from "./FieldShell.vue";
 import MediaPicker from "@/components/MediaPicker.vue";
 import { api, type MediaItem } from "@/api";
 import { useField, type FieldProps } from "@/composables/useField";
+import { MEDIA_FOLDER } from "@/lib/media-folder";
 
 interface Value {
   path: string;
@@ -31,6 +32,8 @@ const field = computed(() => props.field as MediaField);
 const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
 
 const pickerOpen = ref(false);
+/** The form's own `media/` folder; undefined outside an entry or settings form. */
+const mediaFolder = inject(MEDIA_FOLDER, undefined);
 
 /** A path saved before the field asked for alt text reads as one without it. */
 function toValue(raw: unknown): Value {
@@ -237,6 +240,7 @@ function setAlt(index: number, event: Event): void {
       :accept="field.accept ?? 'any'"
       :multiple="field.multiple"
       :selected="paths"
+      :folder="mediaFolder"
       @close="pickerOpen = false"
       @choose="onChoose"
     />

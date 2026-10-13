@@ -546,14 +546,14 @@ describe("publish", () => {
     );
   });
 
-  it("refuses across model drift, naming the restart", async () => {
+  it("refuses across model drift, and asks for a new review", async () => {
     const { contentRoot, service } = makeRepo({ schemaRevision: "the-startup-revision" });
     writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Drift","slug":"haus-a"}');
 
     await assert.rejects(
       service.publish({ message: "Publish", paths: await reviewed(service) }),
       (error: unknown) =>
-        error instanceof ApiError && error.code === "conflict" && /restart/i.test(error.message),
+        error instanceof ApiError && error.code === "conflict" && /changed just now/.test(error.message),
     );
   });
 });

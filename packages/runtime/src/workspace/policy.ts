@@ -30,7 +30,7 @@ export interface SyncStatus {
   /** Upstream commits not yet in the clone. */
   behind: number;
   error: { code: string; message: string; since: string } | null;
-  /** The content model changed upstream; a restart applies it. */
+  /** A `.gitattributes` changed upstream; a restart applies it. A new content model needs none. */
   restartRequired: boolean;
   /** A publication committed and not yet pushed. Mica retries it. */
   pendingPush: { revision: string; reason: string } | null;
