@@ -16,6 +16,7 @@ import type { FieldKind } from "@micacms/core";
 import BooleanField from "./BooleanField.vue";
 import ColorField from "./ColorField.vue";
 import CoordinatesField from "./CoordinatesField.vue";
+import TagsField from "./TagsField.vue";
 import DateField from "./DateField.vue";
 import MediaField from "./MediaField.vue";
 import NumberField from "./NumberField.vue";
@@ -44,4 +45,5 @@ export const fieldComponents: Record<FieldKind, Component> = {
   media: MediaField,
   color: ColorField,
   coordinates: CoordinatesField,
+  tags: TagsField,
 };

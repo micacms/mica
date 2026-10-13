@@ -165,7 +165,7 @@ export function displayValue(field: AnyField, value: unknown): string {
     }
   }
 
-  if (Array.isArray(value)) return value.map(String).join(", ");
+  if (Array.isArray(value)) return value.length === 0 ? "Empty" : value.map(String).join(", ");
   if (typeof value === "object") return canonical(value);
 
   return String(value);
