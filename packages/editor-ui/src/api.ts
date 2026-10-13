@@ -173,7 +173,14 @@ export interface SavedEntry {
   revision: string;
   /** True when the save moved the entry to a new slug. */
   renamed: boolean;
+  /** How many other entries and settings pages now link to the new URL. */
+  relinked: number;
 }
+
+/** An entry or settings page that links to an entry. */
+export type Referrer =
+  | { kind: "entry"; collection: string; slug: string; title: string; readOnly?: true }
+  | { kind: "singleton"; name: string; title: string; readOnly?: true };
 
 export interface SingletonDetail {
   name: string;
@@ -429,7 +436,12 @@ export const api = {
       request<EntryDetail>(`/admin/collections/${collection}/entries/${slug}`),
     create: (collection: string, body: { data: unknown; revision?: string | null }) =>
       request<SavedEntry>(`/admin/collections/${collection}/entries`, { method: "POST", body }),
-    update: (collection: string, slug: string, body: { data: unknown; revision?: string | null }) =>
+    /** `keepMine`: the editor saw a newer save and chose to save over it. */
+    update: (
+      collection: string,
+      slug: string,
+      body: { data: unknown; revision?: string | null; keepMine?: boolean; updateLinks?: boolean },
+    ) =>
       request<SavedEntry>(`/admin/collections/${collection}/entries/${slug}`, {
         method: "PUT",
         body,
@@ -448,17 +460,17 @@ export const api = {
         query: { source, except },
       }),
     references: (collection: string, slug: string) =>
-      request<{ references: Array<{ collection: string; title: string; slug: string }> }>(
+      request<{ references: Referrer[] }>(
         `/admin/collections/${collection}/entries/${slug}/references`,
       ),
   },
 
   singletons: {
     get: (name: string) => request<SingletonDetail>(`/admin/singletons/${name}`),
-    save: (name: string, data: unknown, revision?: string | null) =>
+    save: (name: string, data: unknown, revision?: string | null, keepMine?: boolean) =>
       request<{ revision: string }>(`/admin/singletons/${name}`, {
         method: "PUT",
-        body: { data, revision },
+        body: { data, revision, ...(keepMine ? { keepMine } : {}) },
       }),
   },
 

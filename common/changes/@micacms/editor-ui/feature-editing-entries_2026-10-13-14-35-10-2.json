@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "Fix 'Today' in the date field (local date), half-typed coordinates, the list search, the slug hint, list cells for dates, choices, rich text and media, a settings page that failed to load, and '0 entries' while the dashboard loads",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/editor-ui",
+  "email": "alexander@muedespacher.ch"
+}

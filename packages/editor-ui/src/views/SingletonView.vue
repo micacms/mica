@@ -5,21 +5,27 @@
  * editor cannot be overwritten in silence.
  */
 
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useRoute } from "vue-router";
 
-import { withDefaults as fillDefaults, type FieldIssue } from "@micacms/core";
+import { withDefaults as fillDefaults } from "@micacms/core";
 
-import { api, ApiError } from "@/api";
+import { api, ApiError, type SingletonDetail } from "@/api";
 import FieldList from "@/components/fields/FieldList.vue";
+import IssueSummary from "@/components/IssueSummary.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PendingNotice from "@/components/PendingNotice.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
+import SaveConflict from "@/components/SaveConflict.vue";
+import { fieldPathOf, useFormIssues } from "@/composables/useFormIssues";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
+import { focusField } from "@/lib/focus";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
 const props = defineProps<{ name: string }>();
+const route = useRoute();
 
 const schema = useSchema();
 const staging = useStaging();
@@ -28,11 +34,12 @@ const toast = useToast();
 const definition = computed(() => schema.singleton(props.name));
 
 const values = ref<Record<string, unknown>>({});
-const issues = ref<FieldIssue[]>([]);
 const revision = ref<string | null>(null);
 const loading = ref(true);
 const saving = ref(false);
-const conflict = ref(false);
+/** A colleague saved since this form opened: their version, for the comparison. */
+const conflict = ref<"none" | "loading" | "loaded" | "missing">("none");
+const theirs = ref<SingletonDetail | null>(null);
 
 /**
  * These settings were changed on the website while they have a draft here:
@@ -46,6 +53,9 @@ const websiteConflict = computed(() =>
 
 /** Where these settings live, as the server reports it. */
 const location = ref("");
+
+const form = useFormIssues(() => definition.value?.fields, values);
+const issues = form.issues;
 
 const { dirty, markClean } = useUnsavedChanges(values);
 
@@ -62,46 +72,89 @@ const state = computed(() =>
         : { label: "Saved", tone: "text-muted" },
 );
 
+/** Why the settings could not be loaded. The form then stays hidden: an empty form would save over them. */
+const loadError = ref<string | null>(null);
+
 async function load(): Promise<void> {
   loading.value = true;
+  loadError.value = null;
   try {
     const detail = await api.singletons.get(props.name);
     // Defaults fill in fields added to the model since the file was written.
     values.value = structuredClone(fillDefaults(definition.value?.fields ?? {}, detail.data));
     revision.value = detail.revision;
     location.value = detail.path;
-    issues.value = [];
-    conflict.value = false;
+    form.reset();
+    conflict.value = "none";
+    theirs.value = null;
     markClean();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not load these settings.");
+    loadError.value = error instanceof ApiError ? error.message : "Could not load these settings.";
   } finally {
     loading.value = false;
   }
 }
 
-onMounted(load);
+onMounted(async () => {
+  await load();
+  // From a problem on the Publish page: go to its field.
+  if (typeof route.query.field === "string") {
+    const field = route.query.field;
+    await nextTick();
+    focusField(field);
+  }
+});
 watch(() => props.name, load);
 
-async function save(): Promise<void> {
+/** Checks a field when the editor leaves it. */
+function onLeave(event: FocusEvent): void {
+  const path = fieldPathOf(event.target);
+  if (path) form.leave(path);
+}
+
+/** Shows the problems and moves to the first one. */
+async function showIssues(): Promise<void> {
+  await nextTick();
+  if (issues.value[0]) focusField(issues.value[0].path);
+}
+
+/** `keepMine`: save over the colleague's version that the conflict showed. */
+async function save(options: { keepMine?: boolean } = {}): Promise<void> {
   if (definition.value?.readOnly) return;
+  if (!form.checkAll()) {
+    toast.error("Some fields need attention before you can save.");
+    await showIssues();
+    return;
+  }
   saving.value = true;
-  issues.value = [];
 
   try {
-    const saved = await api.singletons.save(props.name, values.value, revision.value);
+    const keepMine = options.keepMine === true && theirs.value !== null;
+    const saved = await api.singletons.save(
+      props.name,
+      values.value,
+      keepMine ? theirs.value!.revision : revision.value,
+      keepMine,
+    );
     revision.value = saved.revision;
-    conflict.value = false;
+    conflict.value = "none";
+    theirs.value = null;
     markClean();
     toast.success("Settings saved.");
     void staging.refresh();
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
-      conflict.value = true;
-      toast.error("These settings were changed while you were editing them — by a colleague or on the website.");
+      conflict.value = "loading";
+      try {
+        theirs.value = await api.singletons.get(props.name);
+        conflict.value = "loaded";
+      } catch {
+        conflict.value = "missing";
+      }
     } else if (error instanceof ApiError && error.issues.length > 0) {
-      issues.value = error.issues;
+      form.set(error.issues);
       toast.error(error.message, `${error.issues.length} field(s) need attention.`);
+      await showIssues();
     } else {
       toast.error(error instanceof ApiError ? error.message : "Could not save these settings.");
     }
@@ -114,12 +167,12 @@ async function save(): Promise<void> {
 <template>
   <template v-if="definition">
     <PageHeader :title="definition.label" :subtitle="location">
-      <template v-if="!definition.readOnly">
+      <template v-if="!definition.readOnly && !loadError">
         <span :class="['badge', state.tone]">
           <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
           {{ state.label }}
         </span>
-        <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save">
+        <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save()">
           {{ saving ? "Saving…" : "Save changes" }}
         </button>
       </template>
@@ -127,6 +180,12 @@ async function save(): Promise<void> {
 
     <div class="mx-auto max-w-3xl px-4 py-6 sm:px-6">
       <p v-if="loading" class="text-sm text-muted">Loading…</p>
+
+      <div v-else-if="loadError" role="alert" class="rounded-md border border-danger/15 bg-danger-soft p-4">
+        <p class="text-sm font-medium text-danger">These settings could not be loaded</p>
+        <p class="mt-1 text-xs text-muted">{{ loadError }}</p>
+        <button type="button" class="btn-secondary mt-2.5" @click="load">Try again</button>
+      </div>
 
       <template v-else>
         <p v-if="definition.description" class="mb-5 text-sm text-muted">
@@ -148,34 +207,20 @@ async function save(): Promise<void> {
           <RouterLink :to="{ name: 'changes' }" class="btn-secondary mt-2.5 inline-flex">Choose a version</RouterLink>
         </div>
 
-        <div
-          v-if="conflict"
-          role="alert"
-          class="mb-5 rounded-md border border-warning/15 bg-warning-soft p-4"
-        >
-          <p class="text-sm font-medium text-warning">These settings changed while you were editing</p>
-          <p class="mt-1 text-xs text-muted">
-            Nothing has been saved. Copy anything you need, then load the current version.
-          </p>
-          <button type="button" class="btn-secondary mt-2.5" @click="load">
-            Discard mine and reload
-          </button>
-        </div>
+        <SaveConflict
+          v-if="conflict !== 'none'"
+          :state="conflict"
+          :theirs="theirs?.data ?? null"
+          :mine="values"
+          :fields="definition.fields"
+          :busy="saving"
+          @keep="save({ keepMine: true })"
+          @take="load"
+        />
 
-        <div
-          v-if="issues.length"
-          role="alert"
-          class="mb-5 rounded-md border border-danger/15 bg-danger-soft p-4"
-        >
-          <p class="text-sm font-medium text-danger">
-            {{ issues.length }} field{{ issues.length === 1 ? "" : "s" }} need attention
-          </p>
-          <ul class="mt-1.5 space-y-0.5 text-xs text-danger">
-            <li v-for="issue in issues" :key="issue.path">{{ issue.message }}</li>
-          </ul>
-        </div>
+        <IssueSummary :issues="issues" />
 
-        <form novalidate @submit.prevent="save">
+        <form novalidate @submit.prevent="save()" @focusout="onLeave">
           <FieldList
             v-model="values"
             :fields="definition.fields"

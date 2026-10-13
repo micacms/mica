@@ -11,15 +11,16 @@
  * any map covers the actual editorial task.
  */
 
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 
 import type { Coordinates, CoordinatesField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
 import { useField, type FieldProps } from "@/composables/useField";
+import { coordinatesFrom } from "@/lib/format";
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
-const emit = defineEmits<{ "update:modelValue": [Coordinates | null] }>();
+const emit = defineEmits<{ "update:modelValue": [Coordinates | { lat: number | null; lng: number | null } | null] }>();
 
 const field = computed(() => props.field as CoordinatesField);
 const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
@@ -35,18 +36,27 @@ const current = computed<Coordinates | null>(() => {
 const partError = (part: "lat" | "lng") =>
   props.issues?.find((issue) => issue.path === `${props.path}.${part}`)?.message ?? null;
 
+/**
+ * What the two boxes show. It follows the value, except where the editor's text
+ * means the same number ("47." is 47), so typing is never interrupted.
+ */
+const typed = ref({ lat: "", lng: "" });
+const textOf = (part: unknown) => (typeof part === "number" ? String(part) : "");
+const sameAs = (text: string, part: unknown) => (text.trim() === "" ? typeof part !== "number" : Number(text) === part);
+watch(
+  () => props.modelValue,
+  (value) => {
+    const pair = value !== null && typeof value === "object" ? (value as { lat?: unknown; lng?: unknown }) : {};
+    if (sameAs(typed.value.lat, pair.lat) && sameAs(typed.value.lng, pair.lng)) return;
+    typed.value = { lat: textOf(pair.lat), lng: textOf(pair.lng) };
+  },
+  { immediate: true, deep: true },
+);
+
 function update(part: "lat" | "lng", raw: string): void {
-  const parsed = Number(raw);
-  const base = current.value ?? { lat: 0, lng: 0 };
-
-  if (raw.trim() === "") {
-    // Clearing either half clears the pair — a half-set coordinate is not a place.
-    emit("update:modelValue", null);
-    return;
-  }
-
-  if (!Number.isFinite(parsed)) return;
-  emit("update:modelValue", { ...base, [part]: parsed });
+  typed.value = { ...typed.value, [part]: raw };
+  const pair = coordinatesFrom(typed.value.lat, typed.value.lng);
+  if (pair !== undefined) emit("update:modelValue", pair);
 }
 
 /** Accepts "47.3769, 8.5417" as pasted from any mapping site. */
@@ -86,7 +96,7 @@ const previewUrl = computed(() =>
           min="-90"
           max="90"
           placeholder="Latitude"
-          :value="current?.lat ?? ''"
+          :value="typed.lat"
           :disabled="disabled || field.readonly"
           :aria-describedby="describedBy"
           :class="['input font-mono text-[13px]', partError('lat') && 'input-invalid']"
@@ -103,7 +113,7 @@ const previewUrl = computed(() =>
           min="-180"
           max="180"
           placeholder="Longitude"
-          :value="current?.lng ?? ''"
+          :value="typed.lng"
           :disabled="disabled || field.readonly"
           :class="['input font-mono text-[13px]', partError('lng') && 'input-invalid']"
           @input="update('lng', ($event.target as HTMLInputElement).value)"

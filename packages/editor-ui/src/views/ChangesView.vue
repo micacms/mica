@@ -63,6 +63,14 @@ const problems = computed(() => problemsByEdit(edits.value, status.value?.valida
 const blocked = computed(() => blockedEdits(edits.value, problems.value));
 const labelOf = computed(() => new Map(edits.value.map((edit) => [edit.key, edit.label])));
 
+/** Where a problem can be fixed: its entry or settings page, at the field. */
+function fixLink(problemPath: string, field: string) {
+  const edit = edits.value.find((candidate) =>
+    (problems.value.get(candidate.key) ?? []).some((problem) => problem.path === problemPath),
+  );
+  return edit?.link ? { ...edit.link, ...(field ? { query: { field } } : {}) } : null;
+}
+
 /* ------------------------------------------------- the selection */
 
 /**
@@ -518,8 +526,16 @@ function plural(count: number, one: string, many: string): string {
         <ul class="mt-1.5 space-y-1 text-xs text-danger">
           <li v-for="problem in status.validation.problems" :key="problem.path">
             <span class="font-medium">{{ problem.label }}</span>
-            <template v-if="problem.issues.length">
-              — {{ problem.issues.map((issue) => issue.message).join("; ") }}
+            <template v-for="(issue, index) in problem.issues" :key="index">
+              {{ index === 0 ? "—" : ";" }}
+              <RouterLink
+                v-if="fixLink(problem.path, issue.path)"
+                :to="fixLink(problem.path, issue.path)!"
+                class="underline underline-offset-2 hover:no-underline"
+              >
+                {{ issue.message }}
+              </RouterLink>
+              <template v-else>{{ issue.message }}</template>
             </template>
           </li>
         </ul>

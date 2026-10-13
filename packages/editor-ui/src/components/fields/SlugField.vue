@@ -21,6 +21,8 @@ const props = defineProps<
     modelValue: unknown;
     /** Current value of the field named in `from`. */
     source?: string | null;
+    /** The label of the field named in `from`, for the hint. */
+    sourceLabel?: string;
     collection?: string;
     /** Slug of the entry being edited, excluded from the uniqueness check. */
     exceptSlug?: string;
@@ -120,7 +122,7 @@ function unlock(): void {
     </div>
 
     <p v-if="!locked && field.from" class="field-hint">
-      Generated from the {{ field.from }}. Edit it to set your own.
+      Made from the {{ (sourceLabel ?? field.from).toLowerCase() }}. Change it to set your own.
     </p>
   </FieldShell>
 </template>

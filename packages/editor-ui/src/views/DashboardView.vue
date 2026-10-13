@@ -49,7 +49,7 @@ onMounted(async () => {
 <template>
   <PageHeader
     :title="greeting"
-    :subtitle="`${entries} entr${entries === 1 ? 'y' : 'ies'}`"
+    :subtitle="overview ? `${entries} entr${entries === 1 ? 'y' : 'ies'}` : undefined"
   />
 
   <div class="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6">
