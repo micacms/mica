@@ -268,14 +268,21 @@ describe("collections", () => {
 
   it("gives the images of the rich text to image(), as paths from the entry's file", async () => {
     const collections = build({
-      "projects/haus-a/description.mdoc": "![Plan](media/plan.png)\n\n![Logo](/shared/logo.png)\n\n![Web](https://example.com/a.png)\n",
+      "projects/haus-a/description.mdoc":
+        "![Plan](media/plan.png)\n\n![Logo](/shared/logo.png)\n\n![Web](https://example.com/a.png)\n\n![Public](/photo.jpg)\n\n![Gone](media/gone.png)\n",
+      "projects/haus-a/media/plan.png": "png",
+      "shared/logo.png": "png",
     });
     const context = createContext(collections.projects.schema);
     await collections.projects.loader.load(context);
 
+    // Only files that exist go to image(); a missing /path may be in public/, a missing relative one is a problem.
     assert.deepEqual((context.entries.get("haus-a")?._mica as { images: unknown }).images, [
       { path: "media/plan.png", src: "./media/plan.png" },
       { path: "/shared/logo.png", src: "../../shared/logo.png" },
+    ]);
+    assert.deepEqual(context.logs.filter((line) => line.includes("image")), [
+      'warn: projects/haus-a: description: The image "media/gone.png" does not exist.',
     ]);
   });
 

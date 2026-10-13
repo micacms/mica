@@ -1681,20 +1681,30 @@ table or an image that is already there. The presets `"minimal"`, `"default"`
 and `"full"` keep the common case to one word; a list stays possible. The image button
 opens the media picker and asks for the alt text, which it requires. An image
 inside a line of text, an image title, a table with aligned columns and a block
-inside a cell open read-only, because a conversion would change them. The Astro
-loader gives each entry its rich-text images through `image()` in
-`_mica.images`, and `renderRichText(text, { images })` writes their address,
-width and height. `mica check` reports an image whose file is missing.
+inside a cell, a table row with more cells than its header, and an image in a
+list open read-only, because a conversion would change them. A new entry must
+be saved once before it takes an image, because its folder is not final before.
+
+One rule in `@micacms/core` decides what an image path is, and the delete
+warning, Publish, the Astro loader and `mica check` all use it: a file of the
+content that exists is used; a missing relative path is an error; a missing
+`/path` is allowed, because it can be a file of the website, such as one in
+Astro's `public/` folder; an address on the web is the website's business.
+Publish brings a pending upload along that an image uses, and refuses a
+missing one. The loader gives each entry the images that exist through
+`image()` in `_mica.images`, and `renderRichText(text, { images })` writes their
+address, width and height.
 
 **Why:** a table or an image made the whole field read-only, which also hid the
 text around it. Pipe tables and lone images are what Markdown and Markdoc read
-everywhere, so the stored file stays readable in a diff. The media-reference
-check already scanned rich text; the loader and `mica check` now use the same
-rule from `@micacms/core`.
+everywhere, so the stored file stays readable in a diff. One rule keeps the
+editor, Publish and the build from disagreeing about the same image, and the
+`/path` exception keeps sites building that put images in `public/`.
 
 **Consequence:** a cell cannot hold a list or a second line. The image in a
 page is the original file, with its size, not a version that Astro optimizes.
-Pasted HTML images are removed: an image must be a file in the media library.
+Pasted HTML images from other pages are removed: an image must be a file in
+the media library. An image from `public/` shows no preview in the editor.
 
 **What would change it:** a site that needs rich cells (Markdoc's
 `{% table %}`), or an optimized image in text (Astro's `getImage`, which is

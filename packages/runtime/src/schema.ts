@@ -6,19 +6,20 @@
 
 import {
   checkCompatibility,
+  type Collection,
+  type ContentSource,
   defineSite,
   deriveLayout,
   entryLayout,
-  LayoutError,
-  misplacedFiles,
-  recordLayout,
+  type FieldMap,
   isFieldKind,
   isProtocolManifest,
+  LayoutError,
   MANIFEST_PATH,
+  misplacedFiles,
   PROTOCOL_VERSION,
-  type Collection,
-  type ContentSource,
-  type FieldMap,
+  recordLayout,
+  RICH_TEXT_TOOLBARS,
   type Singleton,
   type Site,
 } from "@micacms/core";
@@ -139,6 +140,9 @@ export function checkSchema(raw: unknown, origin = "the schema"): Site {
     if (field && field !== "position" && !def.fields?.[field]) delete def.defaultSort;
   }
 
+  // Drop, do not refuse, a toolbar feature or preset from a newer @micacms/astro: only buttons are affected.
+  for (const def of [...Object.values(collections), ...Object.values(singletons)]) knownToolbars(def?.fields);
+
   try {
     const site = defineSite({ collections, singletons });
     // Read and classify entries where the manifest says they are, not where fields this build may not know imply.
@@ -214,4 +218,19 @@ function unknownKinds(fields: FieldMap, at: string[]): Array<{ path: string; kin
 export async function schemaFingerprint(site: Site): Promise<string> {
   const { createHash } = await import("node:crypto");
   return createHash("sha256").update(JSON.stringify(site)).digest("hex").slice(0, 12);
+}
+
+/** Keeps the toolbar features that this build knows, nested fields included; an unknown preset becomes the default. */
+function knownToolbars(fields: unknown): void {
+  if (!fields || typeof fields !== "object") return;
+  const known = RICH_TEXT_TOOLBARS.full as readonly string[];
+  for (const field of Object.values(fields as Record<string, Record<string, unknown>>)) {
+    if (!field || typeof field !== "object") continue;
+    if (field["kind"] === "richText" && field["toolbar"] !== undefined) {
+      const toolbar = field["toolbar"];
+      if (Array.isArray(toolbar)) field["toolbar"] = toolbar.filter((feature) => known.includes(feature as string));
+      else if (typeof toolbar !== "string" || !Object.hasOwn(RICH_TEXT_TOOLBARS, toolbar)) delete field["toolbar"];
+    }
+    if (field["kind"] === "object" || field["kind"] === "repeater") knownToolbars(field["fields"]);
+  }
 }

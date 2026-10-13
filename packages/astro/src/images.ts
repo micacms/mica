@@ -6,7 +6,7 @@
 
 import { posix } from "node:path";
 
-import { markdocImages, resolveMarkdocTarget, richTextValues, type FieldMap } from "@micacms/core";
+import type { FieldMap } from "@micacms/core";
 
 /**
  * Rewrites the paths of `media({ accept: "image" })` fields, which the reader
@@ -45,26 +45,21 @@ export function imagePathsFromEntry(
 }
 
 /**
- * The images in an entry's rich text, each as Markdoc writes it (`path`) and as
- * a path from the entry's data file (`src`), which `image()` resolves. An
- * address on the web is left to the website.
+ * The images of an entry's rich text whose files exist, each as Markdoc writes
+ * it (`path`) and as a path from the entry's data file (`src`), which `image()`
+ * resolves. `found` comes from the reference check of `@micacms/core`.
  */
-export function richTextImages(
-  fields: FieldMap,
-  data: Record<string, unknown>,
+export function richTextImageSources(
+  found: ReadonlyArray<{ target: string; path: string }>,
   dataFile: string,
 ): Array<{ path: string; src: string }> {
   const folder = posix.dirname(dataFile);
-  const found = new Map<string, string>();
-  for (const text of richTextValues(fields, data)) {
-    for (const target of markdocImages(text)) {
-      const file = resolveMarkdocTarget(target, folder === "." ? "" : folder);
-      if (file === null || found.has(target)) continue;
-      const relative = posix.relative(folder, file);
-      found.set(target, relative.startsWith(".") ? relative : `./${relative}`);
-    }
+  const sources = new Map<string, string>();
+  for (const { target, path } of found) {
+    const relative = posix.relative(folder, path);
+    sources.set(target, relative.startsWith(".") ? relative : `./${relative}`);
   }
-  return [...found].map(([path, src]) => ({ path, src }));
+  return [...sources].map(([path, src]) => ({ path, src }));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

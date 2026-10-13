@@ -20,21 +20,29 @@ export function richTextFeatures(toolbar: RichTextToolbar | undefined): readonly
   return typeof toolbar === "string" ? RICH_TEXT_TOOLBARS[toolbar] : toolbar;
 }
 
-/** Every rich-text value in a payload, nested fields included. */
-export function richTextValues(fields: FieldMap, data: Record<string, unknown>): string[] {
-  const found: string[] = [];
+/** Every rich-text value in a payload with its dotted field path, nested fields included. */
+export function richTextDocuments(fields: FieldMap, data: Record<string, unknown>): Array<{ field: string; text: string }> {
+  const found: Array<{ field: string; text: string }> = [];
   const isRecord = (value: unknown): value is Record<string, unknown> =>
     value !== null && typeof value === "object" && !Array.isArray(value);
-  const visit = (map: FieldMap, record: Record<string, unknown>) => {
+  const visit = (map: FieldMap, record: Record<string, unknown>, prefix: string) => {
     for (const [key, field] of Object.entries(map)) {
       const value = record[key];
-      if (field.kind === "richText" && typeof value === "string") found.push(value);
-      else if (field.kind === "object" && isRecord(value)) visit(field.fields, value);
-      else if (field.kind === "repeater" && Array.isArray(value)) for (const row of value) if (isRecord(row)) visit(field.fields, row);
+      const here = prefix ? `${prefix}.${key}` : key;
+      if (field.kind === "richText" && typeof value === "string") found.push({ field: here, text: value });
+      else if (field.kind === "object" && isRecord(value)) visit(field.fields, value, here);
+      else if (field.kind === "repeater" && Array.isArray(value)) {
+        value.forEach((row, index) => isRecord(row) && visit(field.fields, row, `${here}.${index}`));
+      }
     }
   };
-  visit(fields, data);
+  visit(fields, data, "");
   return found;
+}
+
+/** Every rich-text value in a payload, nested fields included. */
+export function richTextValues(fields: FieldMap, data: Record<string, unknown>): string[] {
+  return richTextDocuments(fields, data).map((document) => document.text);
 }
 
 /**
@@ -51,14 +59,24 @@ export function markdocTargets(text: string): string[] {
   return [...inline, ...references, ...attributes];
 }
 
-/** The paths of the images in Markdoc, `![alt](media/x.jpg)`, as written. A scan, not a parse, so code is not left out. */
+/** Markdoc without its code blocks and code spans, where `![…](…)` is text, not an image. */
+function withoutCode(text: string): string {
+  return text.replace(/^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[ \t]*$/gm, "").replace(/`[^`\n]*`/g, "");
+}
+
+/** The paths of the images in Markdoc, `![alt](media/x.jpg)` or `![alt](<media/x y.jpg>)`, as written. Code is left out. */
 export function markdocImages(text: string): string[] {
-  return [...text.matchAll(/!\[(?:[^\]\\]|\\.)*\]\(\s*<?([^)\s>]+)/g)].map((match) => match[1]!);
+  return [...withoutCode(text).matchAll(/!\[(?:[^\]\\]|\\.)*\]\(\s*(?:<([^>\n]+)>|([^)\s]+))/g)].map((match) => (match[1] ?? match[2])!);
+}
+
+/** An address on the web, an address of another kind such as `mailto:`, or an anchor: not a file of the content. */
+export function isWebAddress(target: string): boolean {
+  return /^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("//") || target.startsWith("#");
 }
 
 /** A rich-text target as a content path: from the content root with `/`, else from the document's folder. */
 export function resolveMarkdocTarget(target: string, folder: string): string | null {
-  if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#")) return null;
+  if (isWebAddress(target)) return null;
   let decoded: string;
   try {
     decoded = decodeURI(target.split(/[?#]/)[0]!);

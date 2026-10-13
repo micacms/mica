@@ -97,9 +97,17 @@ describe("mica check", () => {
 
   it("reports an image in rich text whose file is missing, and accepts one from the shared folder or the web", async () => {
     write("media/logo.png", "png");
-    write("news/hello/body.mdoc", "![Cover](media/cover.jpg)\n\n![Logo](/media/logo.png)\n\n![Web](https://example.com/a.png)\n\n![Gone](media/gone.jpg)\n");
-    const errors = problems(await checkContent(root), "error");
-    assert.deepEqual(errors, ['news/hello/body.mdoc: The image "media/gone.jpg" does not exist under the content root.']);
+    write(
+      "news/hello/body.mdoc",
+      "![Cover](media/cover.jpg)\n\n![Logo](/media/logo.png)\n\n![Web](//cdn.example.com/a.png)\n\n![Gone](media/gone.jpg)\n\n" +
+        "![Public](/photo.jpg)\n\n![Up](../../../up.jpg)\n\n`![Code](media/code.jpg)`\n",
+    );
+    const report = await checkContent(root);
+    assert.deepEqual(problems(report, "error"), [
+      'news/hello/body.mdoc: The image "media/gone.jpg" does not exist under the content root.',
+      'news/hello/body.mdoc: The image "../../../up.jpg" is outside the content root.',
+    ]);
+    assert.ok(problems(report, "warning").some((line) => line.includes('"/photo.jpg" is not under the content root')));
   });
 
   it("checks the file and the alt text of a media field with alt", async () => {

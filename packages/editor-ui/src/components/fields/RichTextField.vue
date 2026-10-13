@@ -18,7 +18,7 @@ import { computed, inject, onBeforeUnmount, ref, watch } from "vue";
 
 import { EditorContent, useEditor } from "@tiptap/vue-3";
 
-import { richTextFeatures, type RichTextFeature, type RichTextField } from "@micacms/core";
+import { isWebAddress, richTextFeatures, type RichTextFeature, type RichTextField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
 import { api, type MediaItem } from "@/api";
@@ -87,11 +87,25 @@ const mediaFolder = inject(MEDIA_FOLDER, undefined);
 const pickerFolder = computed(() => mediaFolder?.value ?? null);
 const entryFolder = computed(() => pickerFolder.value?.path.replace(/\/media$/, "") ?? null);
 
-/** A path as rich text stores it: from the entry's folder, or from the content root with `/`. */
+/** The preview address of a path as rich text stores it: from the entry's folder, or from the content root with `/`. */
 function imageUrl(src: string): string | null {
-  if (src.startsWith("/")) return api.media.url(src.slice(1));
-  return entryFolder.value ? api.media.url(`${entryFolder.value}/${src}`) : null;
+  if (isWebAddress(src)) return null;
+  let path: string;
+  try {
+    // Markdown keeps a space or a letter outside ASCII percent-encoded; `api.media.url` encodes it once.
+    path = decodeURI(src);
+  } catch {
+    path = src;
+  }
+  if (path.startsWith("/")) return api.media.url(path.slice(1));
+  return entryFolder.value ? api.media.url(`${entryFolder.value}/${path}`) : null;
 }
+
+/** Why the image button is off, or null when it works. */
+const imageBlocked = computed(() => {
+  if (!pickerFolder.value || pickerFolder.value.isNew) return "Save the entry once, then add images.";
+  return null;
+});
 
 const editor = useEditor({
   content: readOnlyReason.value ? "" : fromMarkdoc(source.value),
@@ -107,7 +121,8 @@ const editor = useEditor({
     // A function, so that ProseMirror reads the current hint, error and state at each update.
     attributes: () => textboxAttributes(),
     // An image must be a file in the media library: one pasted from another page would point elsewhere.
-    transformPastedHTML: (html) => html.replace(/<img\b[^>]*>/gi, ""),
+    // An image cut or copied in this editor carries its stored path and stays.
+    transformPastedHTML: (html) => html.replace(/<img\b(?![^>]*\bdata-mica-src=)[^>]*>/gi, ""),
   },
 
   onUpdate({ editor: instance }) {
@@ -226,6 +241,11 @@ function applyImage(): void {
     imageDialog.value.error = "Describe what the image shows, for people who cannot see it.";
     return;
   }
+  // Markdown ends the alt text at a bracket.
+  if (/[[\]]/.test(alt)) {
+    imageDialog.value.error = "Use round brackets ( ) instead of square brackets [ ].";
+    return;
+  }
   imageDialog.value.open = false;
   const chain = editor.value?.chain().focus();
   if (editing) chain?.updateAttributes("image", { alt }).run();
@@ -239,12 +259,13 @@ const inTable = computed(() => editor.value?.isActive("table") ?? false);
 const tableActions = computed(() => {
   const instance = editor.value;
   if (!instance) return [];
+  // The visible words are the accessible names; the title says where a row or column goes.
   return [
-    { label: "Add a row below", glyph: "+ Row", run: () => instance.chain().focus().addRowAfter().run() },
-    { label: "Add a column to the right", glyph: "+ Column", run: () => instance.chain().focus().addColumnAfter().run() },
-    { label: "Delete this row", glyph: "− Row", run: () => instance.chain().focus().deleteRow().run() },
-    { label: "Delete this column", glyph: "− Column", run: () => instance.chain().focus().deleteColumn().run() },
-    { label: "Delete the table", glyph: "Delete table", run: () => instance.chain().focus().deleteTable().run() },
+    { label: "Add row", title: "Add a row below this one", run: () => instance.chain().focus().addRowAfter().run() },
+    { label: "Add column", title: "Add a column to the right", run: () => instance.chain().focus().addColumnAfter().run() },
+    { label: "Delete row", title: "Delete this row", run: () => instance.chain().focus().deleteRow().run() },
+    { label: "Delete column", title: "Delete this column", run: () => instance.chain().focus().deleteColumn().run() },
+    { label: "Delete table", title: "Delete the whole table", run: () => instance.chain().focus().deleteTable().run() },
   ];
 });
 
@@ -253,6 +274,8 @@ interface ToolbarButton {
   label: string;
   glyph: string;
   isActive: () => boolean;
+  /** Why the button is off here, or null. */
+  blocked?: () => string | null;
   run: () => void;
 }
 
@@ -335,16 +358,20 @@ const buttons = computed<ToolbarButton[]>(() => {
       feature: "table",
       label: "Table",
       glyph: "▦",
-      isActive: () => instance.isActive("table"),
-      run: () => {
-        if (!instance.isActive("table")) instance.chain().focus().insertTable({ rows: 3, cols: 2, withHeaderRow: true }).run();
-      },
+      isActive: () => false,
+      // A table cannot hold a table, and a list item cannot hold one in Markdown.
+      blocked: () => (instance.isActive("table") || instance.isActive("listItem") ? "Place the cursor outside a table or a list." : null),
+      run: () => instance.chain().focus().insertTable({ rows: 3, cols: 2, withHeaderRow: true }).run(),
     },
     {
       feature: "image",
       label: "Image",
       glyph: "▣",
-      isActive: () => instance.isActive("image"),
+      isActive: () => false,
+      blocked: () =>
+        instance.isActive("image")
+          ? null
+          : (imageBlocked.value ?? (instance.isActive("table") || instance.isActive("listItem") ? "Place the cursor outside a table or a list." : null)),
       run: chooseImage,
     },
   ];
@@ -394,10 +421,10 @@ const buttons = computed<ToolbarButton[]>(() => {
           v-for="button in buttons"
           :key="button.label"
           type="button"
-          :title="button.label"
-          :aria-label="button.label"
-          :aria-pressed="button.isActive()"
-          :disabled="locked"
+          :title="button.blocked?.() ?? button.label"
+          :aria-label="button.blocked?.() ? `${button.label}: ${button.blocked()}` : button.label"
+          :aria-pressed="button.feature === 'table' || button.feature === 'image' ? undefined : button.isActive()"
+          :disabled="locked || !!button.blocked?.()"
           :class="[
             'h-7 min-w-7 rounded px-1.5 text-xs font-semibold transition',
             button.isActive()
@@ -420,12 +447,11 @@ const buttons = computed<ToolbarButton[]>(() => {
           v-for="action in tableActions"
           :key="action.label"
           type="button"
-          :title="action.label"
-          :aria-label="action.label"
+          :title="action.title"
           class="h-7 rounded px-1.5 text-xs font-medium text-muted transition hover:bg-raised hover:text-ink"
           @click="action.run()"
         >
-          {{ action.glyph }}
+          {{ action.label }}
         </button>
       </div>
 

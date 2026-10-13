@@ -17,7 +17,7 @@
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, relative, sep } from "node:path";
+import { dirname, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -44,7 +44,7 @@ import { fileSystemSource } from "@micacms/core/node";
 import type { ImageMetadata } from "astro";
 import { z } from "zod";
 
-import { imagePathsFromEntry, richTextImages } from "./images.js";
+import { imagePathsFromEntry, richTextImageSources } from "./images.js";
 import { manifestFor } from "./manifest.js";
 import { DEFAULT_CONTENT_ROOT, resolveContentRoot } from "./root.js";
 
@@ -120,6 +120,8 @@ const metaSchema = (image: () => z.ZodType) =>
     position: z.number(),
     images: imagesSchema(image),
   });
+
+type ReferenceCheck = ReturnType<typeof createReferenceCheck>;
 
 /** What a document looks like inside Astro: the payload plus `_mica`. */
 export type AstroDocument<T> = T & { _mica: MicaMeta };
@@ -240,15 +242,18 @@ export function micaCollections<S extends Site>(
   };
 
   /** Warns about broken relations and missing files, or fails the build with `strict`. */
+  /** The images of a document's rich text whose files exist, for `image()`. */
+  const imagesOf = async (check: ReferenceCheck, fields: FieldMap, data: Record<string, unknown>, dataFile: string) =>
+    richTextImageSources((await check.richTextImages(fields, data, posix.dirname(dataFile))).found, dataFile);
+
   const checkReferences = async (
     context: LoaderContext,
-    source: ContentSource,
-    documents: Array<{ label: string; fields: FieldMap; data: Record<string, unknown> }>,
+    check: ReferenceCheck,
+    documents: Array<{ label: string; fields: FieldMap; data: Record<string, unknown>; folder: string }>,
   ): Promise<void> => {
-    const check = createReferenceCheck(site, source);
     const problems: string[] = [];
-    for (const { label, fields, data } of documents) {
-      for (const issue of await check.issues(fields, data)) problems.push(`${label}: ${issue.path}: ${issue.message}`);
+    for (const { label, fields, data, folder } of documents) {
+      for (const issue of await check.issues(fields, data, folder)) problems.push(`${label}: ${issue.path}: ${issue.message}`);
     }
     if (problems.length === 0) return;
     if (options.strict) throw new Error(`Broken references:\n  ${problems.join("\n  ")}`);
@@ -309,6 +314,7 @@ export function micaCollections<S extends Site>(
         load: async (context) => {
           const read = async (): Promise<void> => {
             const source = sourceFor(context);
+            const check = createReferenceCheck(site, source);
             const entries = await guard(context, source, () => readCollection(source, def, name));
 
             // A full replace, not a merge: an entry deleted from the repository
@@ -323,7 +329,7 @@ export function micaCollections<S extends Site>(
                 slug: entry.slug,
                 collection: name,
                 position: entry.position,
-                images: richTextImages(def.fields, entry.data, file.inContent),
+                images: await imagesOf(check, def.fields, entry.data, file.inContent),
               };
 
               const data = await draftTolerant(context, `${name}/${entry.slug}`, () =>
@@ -344,8 +350,13 @@ export function micaCollections<S extends Site>(
 
             await checkReferences(
               context,
-              source,
-              entries.map((entry) => ({ label: `${name}/${entry.slug}`, fields: def.fields, data: entry.data })),
+              check,
+              entries.map((entry) => ({
+                label: `${name}/${entry.slug}`,
+                fields: def.fields,
+                data: entry.data,
+                folder: posix.dirname(entryFile(context, def.fields, name, entry.slug).inContent),
+              })),
             );
             context.logger.info(`Loaded ${entries.length} ${entries.length === 1 ? "entry" : "entries"} of "${def.label}"`);
           };
@@ -369,6 +380,7 @@ export function micaCollections<S extends Site>(
         load: async (context) => {
           const read = async (): Promise<void> => {
             const source = sourceFor(context);
+            const check = createReferenceCheck(site, source);
             const data = await guard(context, source, () => readSingleton(source, def, name));
 
             context.store.clear();
@@ -380,14 +392,15 @@ export function micaCollections<S extends Site>(
               return;
             }
 
-            await checkReferences(context, source, [{ label: name, fields: def.fields, data }]);
             const file = entryFile(context, def.fields, name);
+            await checkReferences(context, check, [{ label: name, fields: def.fields, data, folder: posix.dirname(file.inContent) }]);
+            const images = await imagesOf(check, def.fields, data, file.inContent);
             const parsed = await draftTolerant(context, name, () =>
               context.parseData({
                 id: name,
                 data: {
                   ...imagePathsFromEntry(def.fields, data, file.inContent),
-                  _mica: { images: richTextImages(def.fields, data, file.inContent) },
+                  _mica: { images },
                 },
                 ...(file.inProject ? { filePath: file.inProject } : {}),
               }),

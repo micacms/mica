@@ -117,6 +117,12 @@ of its collections reloads that collection only — never a foreign loader.
 `transformRichText(source)` returns the renderable tree instead, for a project
 that wants to render with its own components.
 
+An image in rich text needs its entry's images to get its address on the
+website: `renderRichText(entry.data.body, { images: entry.data._mica.images })`.
+`_mica.images` holds the images whose files are in the content, made by Astro's
+`image()`; an image with a `/path` that is not in the content, for example one
+in `public/`, keeps its path.
+
 ## Setup guides for coding agents
 
 `setup/` holds the guides that https://micacms.com/setup.md sends a coding

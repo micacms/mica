@@ -32,11 +32,20 @@ export interface RichTextOptions {
   images?: ReadonlyArray<{ path: string; src: { src: string; width?: number; height?: number } }>;
 }
 
+function decoded(path: string): string {
+  try {
+    return decodeURI(path);
+  } catch {
+    return path;
+  }
+}
+
 /** The configuration with an image node that uses the entry's images; a project's own image node wins. */
 function withImages(options: RichTextOptions): Config {
   const config = options.config ?? {};
   if (!options.images?.length) return config;
-  const byPath = new Map(options.images.map((image) => [image.path, image.src]));
+  // Markdoc gives `src` percent-encoded (`z%C3%BCrich.jpg`); the path is as written. Both are compared decoded.
+  const byPath = new Map(options.images.map((image) => [decoded(image.path), image.src]));
   return {
     ...config,
     nodes: {
@@ -44,7 +53,7 @@ function withImages(options: RichTextOptions): Config {
         attributes: { src: { type: String }, alt: { type: String }, title: { type: String } },
         transform(node, nodeConfig) {
           const attributes = node.transformAttributes(nodeConfig) as Record<string, unknown>;
-          const image = byPath.get(String(attributes["src"] ?? ""));
+          const image = byPath.get(decoded(String(attributes["src"] ?? "")));
           if (!image) return new Markdoc.Tag("img", attributes);
           const { width, height } = image;
           return new Markdoc.Tag("img", {

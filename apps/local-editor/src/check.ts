@@ -16,6 +16,7 @@ import {
   type FieldMap,
   INDEX_FILE,
   isValidSlug,
+  isWebAddress,
   MANIFEST_PATH,
   markdocImages,
   misplacedFiles,
@@ -273,16 +274,23 @@ async function checkEntry(
     const text = (await files.read(path)) ?? "";
     for (const message of markdocWarnings(text)) warning(path, message);
     for (const target of markdocImages(text)) {
-      const file = resolveMarkdocTarget(target, base);
       // An address on the web is the website's business, not a file in the content.
-      if (file === null) continue;
+      if (isWebAddress(target)) continue;
+      const file = resolveMarkdocTarget(target, base);
+      if (file === null) {
+        error(path, `The image "${target}" is outside the content root.`);
+        continue;
+      }
       let exists = false;
       try {
         exists = existsSync(within(root, file));
       } catch {
         // A path outside the content root does not exist for Mica.
       }
-      if (!exists) error(path, `The image "${target}" does not exist under the content root.`);
+      if (exists) continue;
+      // A `/path` can be a file of the website, such as one in Astro's `public/` folder.
+      if (target.startsWith("/")) warning(path, `The image "${target}" is not under the content root. It works on the website only if it is in public/, and the editor cannot show it.`);
+      else error(path, `The image "${target}" does not exist under the content root.`);
     }
   }
 }

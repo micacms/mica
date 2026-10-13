@@ -301,9 +301,31 @@ describe("tables and images", () => {
     assert.equal(toMarkdoc(doc), "| a | b |\n| --- | --- |\n| one two |  |\n");
   });
 
-  it("escapes brackets in alt text", () => {
-    const doc = { type: "doc", content: [{ type: "image", attrs: { src: "media/x.jpg", alt: "A [draft] plan" } }] };
-    assert.equal(toMarkdoc(doc), "![A \\[draft\\] plan](media/x.jpg)\n");
+  it("writes alt text as it is, because Markdoc shows it as written", () => {
+    const doc = { type: "doc", content: [{ type: "image", attrs: { src: "media/x.jpg", alt: "A *bold* plan" } }] };
+    assert.equal(toMarkdoc(doc), "![A *bold* plan](media/x.jpg)\n");
     assert.equal(roundTrip(toMarkdoc(doc)), toMarkdoc(doc));
+  });
+
+  it("encodes a path with a space, a bracket or a letter outside ASCII, and keeps it on a second pass", () => {
+    const doc = { type: "doc", content: [{ type: "image", attrs: { src: "media/Team photo (1) zürich.jpg", alt: "Team" } }] };
+    const written = toMarkdoc(doc);
+    assert.equal(written, "![Team](media/Team%20photo%20%281%29%20z%C3%BCrich.jpg)\n");
+    assert.deepEqual(unsupportedMarkdoc(written), []);
+    assert.equal(roundTrip(written), written);
+  });
+
+  it("leaves numbers in cells and at the start of a line as they are", () => {
+    const source = "| Rate | Date |\n| --- | --- |\n| 3.5 | 13.10.2026 |\n| -5 | #1 |\n\n-5 degrees and 3.5 million\n";
+    assert.equal(roundTrip(source), source);
+  });
+
+  it("keeps a table read-only when a row has more cells than the header", () => {
+    assert.deepEqual(unsupportedMarkdoc("| a |\n| --- |\n| 1 | 2 |\n"), ["a table row with more cells than the header"]);
+    assert.deepEqual(unsupportedMarkdoc("Text.\n\n| a | b |\n| --- | --- |\n| 1 | 2 |\n\nMore.\n"), []);
+  });
+
+  it("keeps an image in a list read-only", () => {
+    assert.deepEqual(unsupportedMarkdoc("- ![a](media/x.jpg)\n\n- b\n"), ["an image in a list"]);
   });
 });

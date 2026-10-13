@@ -2,30 +2,33 @@
 
 import type { Author } from "../workspace/files.js";
 import {
-  LayoutError,
-  misplacedFiles,
-  ORDER_FILE,
-  collectReferences,
+  type Collection,
   collectionEntryPath,
+  collectReferences,
+  type ContentChange,
+  type ContentSource,
   createReferenceCheck,
   entryLayout,
   entryTitle,
+  type FieldIssue,
+  type FieldMap,
   isValidSlug,
+  LayoutError,
+  markdocImages,
+  misplacedFiles,
+  ORDER_FILE,
+  type PublishResult,
   readCollection,
   readCollectionEntry,
   readOrder,
   readSingleton,
   relativizeMedia,
+  resolveMarkdocTarget,
   resolveSlugField,
+  richTextValues,
   singletonPath,
-  validateFields,
-  type Collection,
-  type ContentChange,
-  type ContentSource,
-  type FieldIssue,
-  type FieldMap,
-  type PublishResult,
   type Site,
+  validateFields,
 } from "@micacms/core";
 
 import { badRequest } from "../lib/errors.js";
@@ -310,8 +313,17 @@ export async function analyseChanges(
         reference.kind === "media" ? reference.path : def ? entryDataPath(def, reference.collection, reference.slug) : null;
       if (path && path !== dataPath && created.has(path)) needed.add(path);
     }
+    // An image in rich text needs its new file too, for example an upload to the shared folder.
+    for (const text of richTextValues(fields, data)) {
+      for (const target of markdocImages(text)) {
+        const path = resolveMarkdocTarget(target, folderOf(dataPath));
+        if (path && created.has(path)) needed.add(path);
+      }
+    }
     if (needed.size > 0) needsByPath.set(dataPath, [...needed]);
   };
+  /** The folder of a data file, from which its rich text reads a relative path. */
+  const folderOf = (dataPath: string): string => (dataPath.includes("/") ? dataPath.slice(0, dataPath.lastIndexOf("/")) : "");
 
   const validated = new Set<string>();
   // Each linked entry is looked up by its data file: only the targets that a changed document names.
@@ -328,13 +340,14 @@ export async function analyseChanges(
       const data = entriesByCollection.get(owner.collection)?.get(owner.slug);
       if (!data) continue;
 
-      addNeeds(entryDataPath(def, owner.collection, owner.slug), def.fields, data);
+      const entryData = entryDataPath(def, owner.collection, owner.slug);
+      addNeeds(entryData, def.fields, data);
       if (published) {
         const { collection, slug } = owner;
         publishedOf.set(entryDataPath(def, collection, slug), () => readCollectionEntry(published, def, collection, slug).catch(() => null));
       }
       const result = validateFields(def.fields, data);
-      const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data))];
+      const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data, folderOf(entryData)))];
       if (issues.length > 0) {
         problems.push({
           path: entryDataPath(def, owner.collection, owner.slug),
@@ -361,7 +374,7 @@ export async function analyseChanges(
           publishedOf.set(dataFile, () => readSingleton(published, def, name).catch(() => null));
         }
         const result = validateFields(def.fields, data);
-        const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data))];
+        const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data, folderOf(dataFile)))];
         if (issues.length > 0) problems.push({ path: dataPath, label: def.label, issues });
       } catch (error) {
         problems.push({

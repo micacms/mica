@@ -35,18 +35,28 @@ export function createRichTextExtensions(toolbar: readonly RichTextFeature[] = [
     TableHeader.extend({ content: "paragraph" }),
     TableCell.extend({ content: "paragraph" }),
     Image.extend({
+      addAttributes() {
+        return {
+          ...this.parent?.(),
+          // On a paste, the stored path comes back from `data-mica-src`, not from the preview address.
+          src: { default: null, parseHTML: (element) => element.getAttribute("data-mica-src") ?? element.getAttribute("src") },
+        };
+      },
       // The stored path is relative to the entry; the preview needs an address that the browser can load.
       renderHTML({ HTMLAttributes }) {
         const src = String(HTMLAttributes["src"] ?? "");
-        return ["img", mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { src: options.imageUrl?.(src) ?? src })];
+        return ["img", mergeAttributes(this.options.HTMLAttributes, HTMLAttributes, { src: options.imageUrl?.(src) ?? src, "data-mica-src": src })];
       },
     }).configure({ inline: false, allowBase64: false }),
   ];
 }
 
-/** Extension names whose typing and paste shortcuts a toolbar allows. Code has no button and always has them. */
+/**
+ * Extension names whose typing and paste shortcuts a toolbar allows. Code has no button and always has them.
+ * An image comes only from the button, which asks for a file of the media library and its alt text.
+ */
 export function inputRules(toolbar: readonly RichTextFeature[]): string[] {
-  return ["code", "codeBlock", ...toolbar];
+  return ["code", "codeBlock", ...toolbar.filter((feature) => feature !== "image")];
 }
 
 /** The schema of every rich-text field, for a check before the editor loads a document. */

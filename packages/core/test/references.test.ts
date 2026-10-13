@@ -5,6 +5,11 @@ import { describe, it } from "node:test";
 
 import {
   collectReferences,
+  createReferenceCheck,
+  defineSite,
+  collection,
+  isWebAddress,
+  memorySource,
   markdocImages,
   markdocTargets,
   media,
@@ -15,6 +20,7 @@ import {
   resolveMarkdocTarget,
   richText,
   richTextValues,
+  slug,
   text,
 } from "../dist/index.js";
 
@@ -99,5 +105,32 @@ describe("paths in rich text", () => {
     for (const target of ["https://example.com/a.jpg", "mailto:hi@example.com", "#top", "../../../etc/passwd"]) {
       assert.equal(resolveMarkdocTarget(target, "news/hello"), null, target);
     }
+  });
+});
+
+describe("images in rich text, by the shared rule", () => {
+  it("leaves out code, and reads a path in angle brackets", () => {
+    const text = "![A](media/a.jpg)\n\n```md\n![B](media/b.jpg)\n```\n\nSee `![C](media/c.jpg)` and ![D](<media/d e.jpg>)";
+    assert.deepEqual(markdocImages(text), ["media/a.jpg", "media/d e.jpg"]);
+  });
+
+  it("treats a protocol-relative address as one on the web", () => {
+    assert.equal(isWebAddress("//cdn.example.com/a.png"), true);
+    assert.equal(resolveMarkdocTarget("//cdn.example.com/a.png", "news/x"), null);
+  });
+
+  it("finds the images that exist, and reports a missing relative one but not a missing /path", async () => {
+    const site = defineSite({ collections: { news: collection({ label: "News", fields: { slug: slug(), body: richText() } }) } });
+    const source = memorySource({ "news/x/index.json": "{}", "news/x/media/a.jpg": "jpg", "media/logo.png": "png" });
+    const body = "![A](media/a.jpg) ![L](/media/logo.png) ![P](/photo.jpg) ![G](media/gone.jpg) ![U](../../../up.jpg) ![W](https://example.com/w.png)";
+    const check = createReferenceCheck(site, source);
+    const { found, issues } = await check.richTextImages(site.collections.news!.fields, { body }, "news/x");
+    assert.deepEqual(found, [{ target: "media/a.jpg", path: "news/x/media/a.jpg" }, { target: "/media/logo.png", path: "media/logo.png" }]);
+    assert.deepEqual(issues.map((issue) => issue.message), [
+      'The image "media/gone.jpg" does not exist.',
+      'The image "../../../up.jpg" is outside the content root.',
+    ]);
+    assert.equal((await check.issues(site.collections.news!.fields, { body }, "news/x")).length, 2);
+    assert.equal((await check.issues(site.collections.news!.fields, { body })).length, 0);
   });
 });

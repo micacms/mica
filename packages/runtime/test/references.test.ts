@@ -19,6 +19,7 @@ const model = defineSite({
         slug: slug({ from: "title" }),
         author: relation({ collection: "team" }),
         cover: media(),
+        body: richText(),
         sections: repeater({ fields: { contact: relation({ collection: "team" }) } }),
       },
     }),
@@ -55,6 +56,18 @@ describe("references at Publish", () => {
     const byPath = new Map(result.changes.map((change) => [change.path, change.needs]));
     assert.deepEqual(byPath.get("news/hello/index.json"), ["team/ben.json", "media/new.png"]);
     assert.equal(byPath.get("team/ben.json"), undefined);
+  });
+
+  it("brings a new file along that an image in rich text uses, and refuses a missing one", async () => {
+    const source = memorySource({
+      ...files,
+      "media/team.jpg": "jpg",
+      "news/hello/body.mdoc": "![The team](/media/team.jpg)\n\n![Gone](media/gone.jpg)\n",
+    });
+    const result = await analyseChanges(model, source, [update("news/hello/index.json"), { path: "media/team.jpg", kind: "create" }]);
+    const byPath = new Map(result.changes.map((change) => [change.path, change.needs]));
+    assert.deepEqual(byPath.get("news/hello/index.json"), ["media/team.jpg"]);
+    assert.deepEqual(messages(result), ['Article: Hello: body: The image "media/gone.jpg" does not exist.']);
   });
 
   it("publishes a URL change together with the links that follow it, both ways", async () => {

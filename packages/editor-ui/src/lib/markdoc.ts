@@ -49,15 +49,19 @@ export interface ProseMirrorNode {
  * never typed and can see in the diff, while escaping too little silently
  * changes their text. These are the ones that actually round-trip wrong.
  */
-function escapeText(text: string): string {
-  return text
-    // `<` is in the set because CommonMark passes raw HTML through. An editor
-    // who types "<script>" means those characters, and writing them unescaped
-    // would put live markup in a file the build renders.
-    .replace(/([\\`*_[\]<])/g, "\\$1")
-    // Only at the start of a line, where they would begin a block.
-    .replace(/^(\s*)([#>-])/gm, "$1\\$2")
-    .replace(/^(\s*\d+)\./gm, "$1\\.");
+function escapeText(text: string, inCell = false): string {
+  // `<` is in the set because CommonMark passes raw HTML through. An editor
+  // who types "<script>" means those characters, and writing them unescaped
+  // would put live markup in a file the build renders.
+  const inline = text.replace(/([\\`*_[\]<])/g, "\\$1");
+  // A table cell is never the start of a line in the file.
+  if (inCell) return inline;
+  return inline
+    // Only at the start of a line, where they would begin a block: `#` and a
+    // number with a dot only before a space, as a heading and a list need it;
+    // `-` except before a digit, so "-5" stays as it is.
+    .replace(/^(\s*)(>|#(?=\s|$)|-(?!\d))/gm, "$1\\$2")
+    .replace(/^(\s*\d+)\.(?=\s|$)/gm, "$1\\.");
 }
 
 /** Wraps a run of text in the delimiters for its marks. */
@@ -79,14 +83,14 @@ function applyMarks(text: string, marks: Mark[] = []): string {
   return result;
 }
 
-function inline(nodes: ProseMirrorNode[] = []): string {
+function inline(nodes: ProseMirrorNode[] = [], inCell = false): string {
   return nodes
     .map((node) => {
-      if (node.type === "hardBreak") return "\\\n";
+      if (node.type === "hardBreak") return inCell ? " " : "\\\n";
       if (node.type !== "text") return "";
       // Code spans are literal: escaping inside one would show the backslash.
       const isCode = node.marks?.some((mark) => mark.type === "code") ?? false;
-      return applyMarks(isCode ? (node.text ?? "") : escapeText(node.text ?? ""), node.marks);
+      return applyMarks(isCode ? (node.text ?? "") : escapeText(node.text ?? "", inCell), node.marks);
     })
     .join("");
 }
@@ -130,8 +134,9 @@ function block(node: ProseMirrorNode): string {
       return "---";
 
     case "image": {
-      const alt = String(node.attrs?.["alt"] ?? "").replace(/([\\[\]])/g, "\\$1");
-      return `![${alt}](${String(node.attrs?.["src"] ?? "")})`;
+      // Markdoc shows alt text as written, so it gets no escapes; the dialog refuses brackets.
+      const alt = String(node.attrs?.["alt"] ?? "");
+      return `![${alt}](${imagePath(String(node.attrs?.["src"] ?? ""))})`;
     }
 
     case "table":
@@ -173,9 +178,8 @@ function table(node: ProseMirrorNode): string {
   const rows = (node.content ?? []).map((row) =>
     (row.content ?? []).map((cell) =>
       (cell.content ?? [])
-        .map((child) => inline(child.content))
+        .map((child) => inline(child.content, true))
         .join(" ")
-        .replace(/\\\n/g, " ")
         .replace(/\|/g, "\\|"),
     ),
   );
@@ -183,6 +187,11 @@ function table(node: ProseMirrorNode): string {
   const width = Math.max(...rows.map((row) => row.length));
   const line = (cells: string[]) => `| ${Array.from({ length: width }, (_, index) => cells[index] ?? "").join(" | ")} |`;
   return [line(rows[0]!), line(Array<string>(width).fill("---")), ...rows.slice(1).map(line)].join("\n");
+}
+
+/** A path as Markdown reads it: a space, a bracket or a letter outside ASCII is percent-encoded. */
+function imagePath(src: string): string {
+  return /[\s()<>]|[^\x00-\x7f]/.test(src) ? encodeURI(src).replace(/\(/g, "%28").replace(/\)/g, "%29") : src;
 }
 
 /** ProseMirror JSON to a Markdoc document. Empty input gives an empty string. */
@@ -290,9 +299,7 @@ function fromBlocks(nodes: MarkdocNode[]): ProseMirrorNode[] {
         const inlines = node.children.flatMap((child) => (child.type === "inline" ? child.children : [child]));
         const image = loneImage(inlines);
         if (image) {
-          // Markdoc gives the alt text as written, so the escapes that the writer adds come off here.
-          const alt = String(image.attributes["alt"] ?? "").replace(/\\([\\[\]])/g, "$1");
-          result.push({ type: "image", attrs: { src: String(image.attributes["src"] ?? ""), alt } });
+          result.push({ type: "image", attrs: { src: String(image.attributes["src"] ?? ""), alt: String(image.attributes["alt"] ?? "") } });
           break;
         }
         const content = fromInline(inlines, []);
@@ -387,6 +394,17 @@ const SUPPORTED = new Set([
 
 const NAMES: Record<string, string> = { html: "HTML", comment: "a comment" };
 
+/** Whether a body row of a table has more cells than its header: Markdown drops them, and a save would lose them. */
+function widerRows(source: string, table: MarkdocNode): boolean {
+  const [first, last] = [table.lines[0], table.lines.at(-1)];
+  if (first === undefined || last === undefined) return false;
+  const cells = (line: string) =>
+    line.trim().replace(/^\|/, "").replace(/(?<!\\)\|$/, "").split(/(?<!\\)\|/).length;
+  const rows = source.split("\n").slice(first, last).filter((line) => line.trim() !== "");
+  const header = rows[0] === undefined ? 0 : cells(rows[0]);
+  return rows.slice(2).some((row) => cells(row) > header);
+}
+
 /**
  * What a stored document has that the editor cannot show, in words, such as
  * `["an image", "a {% callout %} tag"]`. Empty when the editor can load it.
@@ -405,11 +423,13 @@ export function unsupportedMarkdoc(source: string | null | undefined): string[] 
     else if (!SUPPORTED.has(node.type)) found.add(NAMES[node.type] ?? `a "${node.type}" node`);
     else if (node.type === "link" && node.attributes["title"]) found.add("a link title");
     else if ((node.type === "th" || node.type === "td") && node.attributes["align"]) found.add("a table with aligned columns");
+    else if (node.type === "table" && widerRows(source, node)) found.add("a table row with more cells than the header");
     else if (node.type === "image") {
       const paragraph = ancestors.at(-2);
       const alone = parent?.type === "inline" && paragraph?.type === "paragraph" && loneImage(parent.children) === node;
       if (node.attributes["title"]) found.add("an image title");
       else if (!alone || ancestors.some((ancestor) => ancestor.type === "table")) found.add("an image inside a line of text");
+      else if (ancestors.some((ancestor) => ancestor.type === "item")) found.add("an image in a list");
     } else if ((node.type === "list" || node.type === "fence" || node.type === "table" || node.type === "blockquote") && ancestors.some((ancestor) => ancestor.type === "table")) {
       found.add("a block inside a table");
     }

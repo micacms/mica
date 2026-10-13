@@ -12,6 +12,7 @@ import { collectReferences, resolveSlugField } from "./define.js";
 import { DOCUMENT_EXTENSION, FormatError, INDEX_FILE, entryLayout, type EntryLayout } from "./layout.js";
 import { isValidSlug } from "./slugify.js";
 import { parseEntry } from "./parse.js";
+import { isWebAddress, markdocImages, resolveMarkdocTarget, richTextDocuments } from "./rich-text.js";
 import type { Collection, FieldMap, Singleton, Site } from "./types.js";
 import type { FieldIssue } from "./validation.js";
 import type { ContentSource } from "./source.js";
@@ -464,10 +465,35 @@ export function createReferenceCheck(
     return (await directories.get(directory)!).has(path.slice(slash + 1));
   };
 
+  /**
+   * The images of the document's rich text, read from `folder`: those whose
+   * file exists, and the problems. A missing `/path` is no problem, because it
+   * can be a file of the website, such as one in Astro's `public/` folder.
+   */
+  const richTextImages = async (fields: FieldMap, data: Record<string, unknown>, folder: string) => {
+    const found: Array<{ target: string; path: string }> = [];
+    const issues: FieldIssue[] = [];
+    for (const { field, text } of richTextDocuments(fields, data)) {
+      for (const target of markdocImages(text)) {
+        if (isWebAddress(target)) continue;
+        const path = resolveMarkdocTarget(target, folder);
+        if (path === null) issues.push({ path: field, message: `The image "${target}" is outside the content root.` });
+        else if (await fileExists(path)) found.push({ target, path });
+        else if (!target.startsWith("/")) issues.push({ path: field, message: `The image "${target}" does not exist.` });
+      }
+    }
+    return { found, issues };
+  };
+
   return {
-    /** One issue for each broken relation and missing file, at the field's path. */
-    async issues(fields: FieldMap, data: Record<string, unknown>): Promise<FieldIssue[]> {
-      const issues: FieldIssue[] = [];
+    richTextImages,
+
+    /**
+     * One issue for each broken relation and missing file, at the field's path.
+     * With `folder`, the folder of the document, also each missing image in rich text.
+     */
+    async issues(fields: FieldMap, data: Record<string, unknown>, folder?: string): Promise<FieldIssue[]> {
+      const issues: FieldIssue[] = folder === undefined ? [] : (await richTextImages(fields, data, folder)).issues;
       for (const reference of collectReferences(fields, data)) {
         if (reference.kind === "relation") {
           const target = site.collections[reference.collection];
