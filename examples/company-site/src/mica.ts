@@ -346,9 +346,9 @@ export const site = defineSite({
         phone: text({
           label: "Phone",
           width: "half",
-          placeholder: "+351 21 555 0143",
+          placeholder: "+990 40 555 0143",
           pattern: "\\+[0-9 ]{7,18}",
-          patternMessage: "Use the international form, like +351 21 555 0143.",
+          patternMessage: "Use the international form, like +990 40 555 0143.",
         }),
         portrait: media({ label: "Portrait", accept: "image", alt: "required" }),
         bio: textarea({ label: "Short biography", rows: 4, maxLength: 600 }),

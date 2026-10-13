@@ -7,12 +7,13 @@
   "duration": 16,
   "tags": [
     "process",
-    "finance"
+    "finance",
+    "people"
   ],
   "location": {
-    "address": "Industrieweg 14",
-    "city": "Rotterdam",
-    "country": "Netherlands",
+    "address": "Foundry Quay 14",
+    "city": "Kestrel Bay",
+    "country": "Caldria",
     "position": {
       "lat": 51.9244,
       "lng": 4.4777
@@ -26,6 +27,10 @@
     {
       "label": "Team",
       "value": "3 consultants"
+    },
+    {
+      "label": "Approval time",
+      "value": "−60%"
     }
   ],
   "gallery": [

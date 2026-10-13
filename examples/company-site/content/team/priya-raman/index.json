@@ -3,11 +3,11 @@
   "slug": "priya-raman",
   "role": "Consultant, data",
   "email": "priya.raman@harborlane.example",
-  "phone": "+351 21 555 0145",
+  "phone": "+990 40 555 0145",
   "portrait": {
     "path": "media/portrait.jpg",
     "alt": "Priya Raman, data consultant, in a teal blouse"
   },
-  "bio": "Builds the reporting that nobody else wants to build. Joined from a software company in Bengaluru.",
+  "bio": "Builds the reporting that nobody else wants to build. Joined from a software company in Calvera, where she led a team of analysts. She designs dashboards that answer one question well, and she is happy to explain every number in them to a sceptical finance team.",
   "featured": true
 }

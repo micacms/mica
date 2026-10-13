@@ -9,7 +9,7 @@
   "capacity": 40,
   "venue": {
     "name": "Harbor Lane Studio",
-    "address": "Rua do Alecrim 27\n1200-014 Lisbon, Portugal",
+    "address": "Via dei Mercanti 27\nPC 40-217 Porto Celeste, Valdoria",
     "position": {
       "lat": 38.7098,
       "lng": -9.145
@@ -20,7 +20,7 @@
     "mateo-fernandez",
     "priya-raman"
   ],
-  "summary": "A half-day workshop on the processes that break first when a company doubles in size.",
+  "summary": "A half-day workshop on the processes that break first when a company doubles in size, and how to fix the three that matter most.",
   "tags": [
     "workshop",
     "operations"

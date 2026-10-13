@@ -7,12 +7,13 @@
   "duration": 20,
   "tags": [
     "people",
-    "process"
+    "process",
+    "software"
   ],
   "location": {
-    "address": "Vabaduse väljak 7",
-    "city": "Tallinn",
-    "country": "Estonia",
+    "address": "Corvin Square 7",
+    "city": "Halvard",
+    "country": "Norvell",
     "position": {
       "lat": 59.4339,
       "lng": 24.7436
@@ -26,6 +27,10 @@
     {
       "label": "Teams merged",
       "value": "3"
+    },
+    {
+      "label": "Average wait",
+      "value": "−40%"
     }
   ],
   "gallery": [

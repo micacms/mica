@@ -7,12 +7,13 @@
   "duration": 24,
   "tags": [
     "people",
-    "strategy"
+    "strategy",
+    "governance"
   ],
   "location": {
-    "address": "Via dell'Industria 31",
-    "city": "Bologna",
-    "country": "Italy",
+    "address": "Via dei Vetrai 31",
+    "city": "Vellano",
+    "country": "Serenza",
     "position": {
       "lat": 44.4949,
       "lng": 11.3426
@@ -26,6 +27,10 @@
     {
       "label": "Handover period",
       "value": "5 years"
+    },
+    {
+      "label": "Family members involved",
+      "value": "4"
     }
   ],
   "gallery": [

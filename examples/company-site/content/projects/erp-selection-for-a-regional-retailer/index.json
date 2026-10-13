@@ -7,12 +7,13 @@
   "duration": 12,
   "tags": [
     "software",
-    "finance"
+    "finance",
+    "process"
   ],
   "location": {
-    "address": "22 Wellington Street",
-    "city": "Leeds",
-    "country": "United Kingdom",
+    "address": "22 Millrace Lane",
+    "city": "Eastvale",
+    "country": "Morvania",
     "position": {
       "lat": 53.796,
       "lng": -1.548
@@ -26,6 +27,10 @@
     {
       "label": "Licence cost",
       "value": "−22%"
+    },
+    {
+      "label": "Requirements studied",
+      "value": "20 processes"
     }
   ],
   "gallery": [

@@ -7,12 +7,13 @@
   "duration": 10,
   "tags": [
     "finance",
-    "data"
+    "data",
+    "strategy"
   ],
   "location": {
-    "address": "8 Marina Boulevard",
-    "city": "Singapore",
-    "country": "Singapore",
+    "address": "8 Lantern Quay",
+    "city": "Marisport",
+    "country": "Marisport",
     "position": {
       "lat": 1.2806,
       "lng": 103.8545
@@ -26,6 +27,10 @@
     {
       "label": "Margin gain",
       "value": "+2.1 points"
+    },
+    {
+      "label": "Customers in scope",
+      "value": "3"
     }
   ],
   "gallery": [

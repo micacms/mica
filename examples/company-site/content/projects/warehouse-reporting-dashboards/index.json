@@ -7,12 +7,13 @@
   "duration": 8,
   "tags": [
     "data",
-    "software"
+    "software",
+    "process"
   ],
   "location": {
-    "address": "200 King Street West",
-    "city": "Toronto",
-    "country": "Canada",
+    "address": "200 Ferrier Street West",
+    "city": "Northwick",
+    "country": "Arlandia",
     "position": {
       "lat": 43.649,
       "lng": -79.3866
@@ -26,6 +27,10 @@
     {
       "label": "Report time",
       "value": "−80%"
+    },
+    {
+      "label": "Warehouses connected",
+      "value": "5"
     }
   ],
   "gallery": [
