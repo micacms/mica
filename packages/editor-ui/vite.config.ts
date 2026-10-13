@@ -2,15 +2,34 @@ import { fileURLToPath, URL } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
 import vue from "@vitejs/plugin-vue";
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
+
+import { formatNotices, packageRoot, readPackage } from "../../scripts/third-party-notices.mjs";
 
 const API_TARGET = process.env.CMS_DEV_API ?? "http://localhost:6422";
+
+/** Writes `THIRD_PARTY_NOTICES.txt` for the packages in the bundle: their licenses require it. */
+function thirdPartyNotices(): Plugin {
+  return {
+    name: "mica:third-party-notices",
+    apply: "build",
+    generateBundle() {
+      const roots = new Set<string>();
+      for (const id of this.getModuleIds()) {
+        const root = packageRoot(id.replace(/^\0/, "").split("?")[0]!);
+        if (root) roots.add(root);
+      }
+      const source = formatNotices([...roots].map(readPackage));
+      this.emitFile({ type: "asset", fileName: "THIRD_PARTY_NOTICES.txt", source });
+    },
+  };
+}
 
 export default defineConfig({
   // Served under /admin/ by the Hono app, so assets must be requested from there.
   base: "/admin/",
 
-  plugins: [vue(), tailwindcss()],
+  plugins: [vue(), tailwindcss(), thirdPartyNotices()],
 
   resolve: {
     alias: {

@@ -57,6 +57,10 @@ jobs:
       - name: Build packages
         run: node common/scripts/install-run-rush.js build --to tag:packages
 
+      # The licenses of the bundled packages require their notices; the image build writes its own.
+      - name: Assert the editor bundle carries its third-party notices
+        run: grep -q "This product includes the following third-party software" packages/editor-ui/dist/THIRD_PARTY_NOTICES.txt
+
       # The example website is included: its collection types come from files
       # in the repository, so nothing has to be running for `astro check`.
       - name: Typecheck

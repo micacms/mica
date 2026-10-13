@@ -41,6 +41,7 @@ RUN node common/scripts/install-run-rush.js install --to @micacms/self-hosted
 FROM deps AS build
 
 COPY tsconfig.base.json ./
+COPY scripts/third-party-notices.mjs scripts/third-party-notices.d.mts scripts/
 COPY packages/core packages/core
 COPY packages/runtime packages/runtime
 COPY packages/auth/oidc packages/auth/oidc
@@ -53,6 +54,9 @@ RUN node common/scripts/install-run-rush.js build --to @micacms/self-hosted
 # The app, its workspace dependencies and their production node_modules only, as
 # common/config/rush/deploy.json sets. The editor UI's toolchain stays out of the runtime image.
 RUN node common/scripts/install-run-rush.js deploy --overwrite --target-folder /deploy
+
+# The licenses of the packages in the image require their notices beside them.
+RUN node scripts/third-party-notices.mjs /deploy > /deploy/THIRD_PARTY_NOTICES.txt
 
 # A native module would be built for the build machine, not for the target.
 RUN if find /deploy -name '*.node' | grep .; then echo "A native module is in the image; build it per platform." >&2; exit 1; fi
