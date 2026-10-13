@@ -157,12 +157,41 @@ export function currentBranch(tree: GitTree): Promise<string | null> {
   return tree.git.tryRun(["rev-parse", "--abbrev-ref", "HEAD"]);
 }
 
-/** Commits waiting to be pushed, or null when there is no upstream to say. */
-export async function aheadOfUpstream(tree: GitTree): Promise<number | null> {
-  const counted = await tree.git.tryRun(["rev-list", "--count", "@{upstream}..HEAD"]);
-  if (counted === null) return null;
-  const ahead = Number(counted);
-  return Number.isFinite(ahead) ? ahead : null;
+/** The trailer that marks a commit that Mica made for a publication. */
+export const PUBLISHED_WITH_MICA = "Published-with: Mica";
+
+/** A publication's commit message: the editor's summary, and Mica's trailer. */
+export function publicationMessage(summary: string): string {
+  return `${summary}\n\n${PUBLISHED_WITH_MICA}`;
+}
+
+/** Commits on HEAD that no remote has, split into Mica's publications and other commits. */
+export interface UnpushedCommits {
+  mica: number;
+  other: number;
+}
+
+/**
+ * What a push of HEAD would send: the commits after the upstream branch, or,
+ * for a branch without one, the commits that no remote has. Null without a
+ * remote, because then nothing can be pushed and everything would count.
+ */
+export async function unpushedCommits(tree: GitTree): Promise<UnpushedCommits | null> {
+  const remotes = await tree.git.tryRun(["remote"]);
+  if (!remotes) return null;
+  // A commit can be on another remote branch and still be new to the upstream.
+  const upstream = await tree.git.tryRun(["rev-parse", "--verify", "--quiet", "@{upstream}"]);
+  const range = upstream ? [`${upstream}..HEAD`] : ["HEAD", "--not", "--remotes"];
+  // %x1e ends a commit, so a multi-line message stays one record.
+  const log = await tree.git.tryRun(["log", "--max-count=1000", "--format=%B%x1e", ...range]);
+  if (log === null) return { mica: 0, other: 0 };
+  const counted = { mica: 0, other: 0 };
+  for (const message of log.split("\x1e")) {
+    if (message.trim() === "") continue;
+    const lines = message.trim().split("\n");
+    counted[lines.includes(PUBLISHED_WITH_MICA) ? "mica" : "other"] += 1;
+  }
+  return counted;
 }
 
 /**

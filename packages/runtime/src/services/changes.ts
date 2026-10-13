@@ -28,6 +28,7 @@ import {
 
 import { badRequest } from "../lib/errors.js";
 import type { SyncStatus } from "../workspace/policy.js";
+import type { UnpushedCommits } from "../workspace/tree.js";
 
 /** Where the change happened, in words an editor recognises. */
 export type ChangeOwner =
@@ -51,6 +52,13 @@ export interface AnnotatedChange extends ContentChange {
    * saved after the review is not published unseen.
    */
   revision?: string | null;
+  /** When the file was last saved, for "changed 2 hours ago". Null for a deletion. */
+  savedAt?: string | null;
+  /**
+   * New pending files that this document uses (a linked entry, an image), so
+   * that it cannot be published without them. On the document's data file.
+   */
+  needs?: string[];
 }
 
 /** One thing that would make the staged result unpublishable. */
@@ -74,8 +82,12 @@ export interface StagingStatus {
   head: string | null;
   /** The branch a publication lands on, where the workspace knows it. */
   branch: string | null;
-  /** Commits created and not yet pushed. */
-  ahead: number | null;
+  /**
+   * Commits that no remote has, in the developer's checkout: Mica's waits for a
+   * retry, another one blocks Publish. Null for a clone that Mica keeps, or
+   * without a remote.
+   */
+  unpushed: UnpushedCommits | null;
   changes: AnnotatedChange[];
   validation: StagingValidation;
   /** Where a clone that Mica keeps stands against its remote. Null for the developer's checkout. */
@@ -92,6 +104,8 @@ export interface PublishInput {
    */
   paths: Record<string, string | null>;
   author?: Author;
+  /** Who published, for the log. */
+  editor?: string;
 }
 
 /** What the System page shows about the repository. */
@@ -108,7 +122,8 @@ export interface RepositoryInfo {
 export interface ContentStagingService {
   status(): Promise<StagingStatus>;
   publish(input: PublishInput): Promise<PublishResult>;
-  discard(paths: string[]): Promise<{ discarded: string[] }>;
+  /** `editor` names who discarded, for the log. */
+  discard(paths: string[], editor?: string): Promise<{ discarded: string[] }>;
   /** Retries the push after `committed-pending-push`. */
   push(): Promise<PublishResult>;
   /**
@@ -118,7 +133,7 @@ export interface ContentStagingService {
   compare(target: CompareTarget, against?: "head" | "origin"): Promise<Comparison>;
   /** Brings a clone that Mica keeps up to date now. Refused for the developer's checkout. */
   sync(): Promise<void>;
-  resolve(group: string, choice: "mine" | "website"): Promise<void>;
+  resolve(group: string, choice: "mine" | "website", editor?: string): Promise<void>;
   repository(): Promise<RepositoryInfo>;
 }
 
@@ -240,6 +255,19 @@ export async function analyseChanges(
     await detectRenames(model, published, source, changes, owners, entriesByCollection);
   }
 
+  const created = new Set(changes.filter((change) => change.kind === "create").map((change) => change.path));
+  const needsByPath = new Map<string, string[]>();
+  const addNeeds = (dataPath: string, fields: Collection["fields"], data: Record<string, unknown>): void => {
+    const needed = new Set<string>();
+    for (const reference of collectReferences(fields, data)) {
+      const def = reference.kind === "relation" ? model.collections[reference.collection] : undefined;
+      const path =
+        reference.kind === "media" ? reference.path : def ? entryDataPath(def, reference.collection, reference.slug) : null;
+      if (path && path !== dataPath && created.has(path)) needed.add(path);
+    }
+    if (needed.size > 0) needsByPath.set(dataPath, [...needed]);
+  };
+
   const validated = new Set<string>();
   const targets = createReferenceCheck(model, source, (name) => {
     const entries = entriesByCollection.get(name);
@@ -257,6 +285,7 @@ export async function analyseChanges(
       const data = entriesByCollection.get(owner.collection)?.get(owner.slug);
       if (!data) continue;
 
+      addNeeds(entryDataPath(def, owner.collection, owner.slug), def.fields, data);
       const result = validateFields(def.fields, data);
       const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data))];
       if (issues.length > 0) {
@@ -277,6 +306,7 @@ export async function analyseChanges(
         const data = await readSingleton(source, def, owner.name);
         if (data === null) continue;
 
+        addNeeds(dataPath, def.fields, data);
         const result = validateFields(def.fields, data);
         const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data))];
         if (issues.length > 0) problems.push({ path: dataPath, label: def.label, issues });
@@ -294,14 +324,17 @@ export async function analyseChanges(
 
   const annotated = changes.map((change, index): AnnotatedChange => {
     const owner = owners[index]!;
+    const needs = needsByPath.get(change.path);
+    const extra = needs ? { needs } : {};
     if (owner.kind === "entry") {
       const def = model.collections[owner.collection]!;
       return {
         ...change,
+        ...extra,
         owner: { ...owner, label: labelEntry(def, owner.slug, titles.get(`${owner.collection}/${owner.slug}`)) },
       };
     }
-    return { ...change, owner };
+    return { ...change, ...extra, owner };
   });
 
   return {
