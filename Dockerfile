@@ -4,15 +4,14 @@
 # No content model is baked in: the image reads `.mica/schema.json` from the content
 # repository, so one published image serves any project and a content change needs no rebuild.
 
-# The base image, pinned by digest so that a build is repeatable. Automated
-# updates move the digest (#134).
-ARG NODE_IMAGE=node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1
-
 # ---------------------------------------------------------------- deps
+# The base image is pinned by digest, in both stages, so that a build is
+# repeatable; Dependabot moves both digests together.
+#
 # Install and build run on the build machine for every target platform: the
 # server's dependencies are plain JavaScript, so their output is the same on
 # amd64 and arm64. The build stage refuses a native module below.
-FROM --platform=$BUILDPLATFORM ${NODE_IMAGE} AS deps
+FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS deps
 
 WORKDIR /app
 
@@ -62,7 +61,7 @@ RUN node scripts/third-party-notices.mjs /deploy > /deploy/THIRD_PARTY_NOTICES.t
 RUN if find /deploy -name '*.node' | grep .; then echo "A native module is in the image; build it per platform." >&2; exit 1; fi
 
 # ---------------------------------------------------------------- runtime
-FROM ${NODE_IMAGE} AS runtime
+FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS runtime
 
 # tini reaps zombies and forwards SIGTERM, so the graceful shutdown runs. Git
 # keeps the clone of the content repository that Mica edits and publishes. The
