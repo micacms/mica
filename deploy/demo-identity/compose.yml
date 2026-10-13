@@ -114,11 +114,13 @@ services:
 
   # ---------------------------------------------------------------- mica
   mica:
-    build:
-      context: ../..
-      dockerfile: Dockerfile
-    # Swap the build block for the published image to run a release instead:
-    # image: ghcr.io/micacms/mica:latest
+    # The release of this checkout (each release sets the tag). To run the code
+    # of this checkout instead, swap it for the build block below and add
+    # `--build` to `docker compose up`.
+    image: ghcr.io/micacms/mica:0.7.0
+    # build:
+    #   context: ../..
+    #   dockerfile: Dockerfile
 
     depends_on:
       seed-identity:

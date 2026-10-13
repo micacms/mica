@@ -75,11 +75,11 @@ jobs:
       - name: Build the example website
         env:
           SITE_URL: https://example.com
-        run: node common/scripts/install-run-rush.js build --to @micacms/example-muster-consulting
+        run: node common/scripts/install-run-rush.js build --to @micacms/example-company-site
 
       - name: Assert the output is self-contained
         run: |
-          if grep -rl "localhost:6422" examples/muster-consulting/dist; then
+          if grep -rl "localhost:6422" examples/company-site/dist; then
             echo "::error::The static output references the CMS."
             exit 1
           fi
@@ -88,10 +88,10 @@ jobs:
       # means someone changed a collection and did not commit the result, which
       # would leave a deployed Mica serving the previous model.
       - name: Assert the published content model is committed
-        run: git diff --exit-code examples/muster-consulting/content/.mica/schema.json
+        run: git diff --exit-code examples/company-site/content/.mica/schema.json
 
       - name: Check the example's content
-        run: node apps/local-editor/dist/cli.js check examples/muster-consulting/content
+        run: node apps/local-editor/dist/cli.js check examples/company-site/content
 
       # The public website is built here rather than only on Vercel, so that a
       # pull request fails on a broken site before it can reach main — Vercel
@@ -104,6 +104,11 @@ jobs:
 
       - name: Check the website's content
         run: node apps/local-editor/dist/cli.js check sites/micacms/content
+
+      # The starter installs the published packages, so it is not built here; its
+      # content and committed model are checked against this tree.
+      - name: Check the starter's content
+        run: node apps/local-editor/dist/cli.js check examples/starter/content
 
   docker:
     runs-on: ubuntu-latest

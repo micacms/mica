@@ -1,0 +1,21 @@
+---
+import { getCollection } from "astro:content";
+
+import Layout from "../components/Layout.astro";
+
+const posts = (await getCollection("posts")).sort((a, b) => b.data.publishDate.localeCompare(a.data.publishDate));
+---
+
+<Layout>
+  <h1>Posts</h1>
+  <ul>
+    {
+      posts.map((post) => (
+        <li>
+          <a href={`/posts/${post.data.slug}/`}>{post.data.title}</a> <small>{post.data.publishDate}</small>
+          {post.data.excerpt && <p>{post.data.excerpt}</p>}
+        </li>
+      ))
+    }
+  </ul>
+</Layout>

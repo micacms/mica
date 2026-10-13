@@ -1,0 +1,11 @@
+{
+  "title": "Hello, world",
+  "slug": "hello-world",
+  "publishDate": "2026-10-13",
+  "tags": ["mica", "first post"],
+  "cover": {
+    "path": "media/cover.jpg",
+    "alt": "A product website with a task list, shown at an angle on a dark screen"
+  },
+  "excerpt": "The first post of this site. Change it in the editor: npm run mica."
+}

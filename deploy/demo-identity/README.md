@@ -6,11 +6,13 @@ host over HTTPS.
 
 ```bash
 cp deploy/demo-identity/.env.example deploy/demo-identity/.env   # your repository and its token
-docker compose -f deploy/demo-identity/compose.yml up --build
+docker compose -f deploy/demo-identity/compose.yml up
 ```
 
 Then open <http://localhost:6422/admin/> and sign in as `alice` /
-`Alice-Demo1`.
+`Alice-Demo1`. The stack runs the published image of this checkout's release;
+to try the code of this checkout, swap the image for the build block in
+`compose.yml` and add `--build`.
 
 Two containers, and a database for the identity provider — Mica keeps none:
 
