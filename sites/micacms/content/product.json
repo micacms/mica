@@ -5,7 +5,7 @@
   "audiences": [
     {
       "title": "For editors",
-      "text": "Use clear forms, useful field labels, rich text, media, relations, and reorderable lists. Save freely: drafts stay yours until you publish. The Publish page shows what each pending change does, field by field, before it becomes one commit."
+      "text": "Use clear forms, useful field labels, rich text, media, relations, and reorderable lists. Save freely: a save is a draft until you publish. The Publish page shows what each pending change does, field by field. You choose which changes to publish, and they become one commit."
     },
     {
       "title": "For developers",

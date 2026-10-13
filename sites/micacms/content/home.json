@@ -8,7 +8,7 @@
     { "value": "0", "label": "content records in Mica", "note": "Files stay in Git" },
     { "value": "1", "label": "commit per publish", "note": "Atomic by design" },
     { "value": "16", "label": "field types", "note": "One typed model" },
-    { "value": "8", "label": "composable packages", "note": "Use only what you need" }
+    { "value": "6", "label": "composable packages", "note": "Use only what you need" }
   ],
   "problemEyebrow": "Your repository is the source of truth",
   "problemTitle": "A CMS should not become part of your website's runtime.",
