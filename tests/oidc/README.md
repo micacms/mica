@@ -37,7 +37,7 @@ node --test tests/oidc/flow.test.mjs
 docker compose -f tests/oidc/compose.yml down -v
 ```
 
-The ports are 5556 (Dex), 6422 (Mica) and 3000 (Forgejo). A one-shot
+The ports are 5556 (Dex), 6422 (Mica) and 3000 (Forgejo). When port 3000 is in use, set `FORGEJO_PORT=3001` for `docker compose` and for the tests. A one-shot
 `forgejo-seed` service creates the user `editor` and the repository
 `editor/site` from the example content. Mica uses the account password where a
 token would go, which Forgejo accepts. Run `down -v` to start again from the

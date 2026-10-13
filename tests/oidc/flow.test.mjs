@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 const MICA = "http://localhost:6422";
-const FORGEJO = "http://localhost:3000/api/v1/repos/editor/site";
+const FORGEJO = `http://localhost:${process.env.FORGEJO_PORT ?? "3000"}/api/v1/repos/editor/site`;
 const FORGEJO_AUTH = `Basic ${Buffer.from("editor:Forgejo-test-password-not-for-production").toString("base64")}`;
 
 /** Reads the Git host directly, to see what reached the repository. */
