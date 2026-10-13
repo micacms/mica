@@ -10,6 +10,42 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.6.0-rc.2] — 2026-10-13
+
+The changes after the first test of rc.1 on a real site. Images need no helper
+on the pages any more, Astro collections move to Mica with one command, and the
+editor starts with `mica start`.
+
+### Breaking
+
+- **The editor starts with `mica start`.** `mica` alone prints the help, and
+  the first word is always a command, so that a directory named like a command
+  cannot run one. Change a `"mica": "mica"` script to `"mica": "mica start"`
+  (`@micacms/editor`).
+- **Image fields are Astro images.** A `media({ accept: "image" })` field
+  reaches the pages as `ImageMetadata`, optimized like Astro's own `image()`;
+  with `alt`, it is `{ src, alt }`, so `<Image {...entry.data.cover} />` is
+  enough. Remove a glob helper such as `src/lib/media.ts`. Other media stay
+  paths (`@micacms/astro`, `@micacms/core`).
+- **No HEIC images.** An image field refuses HEIC files, because Astro cannot
+  process them (`@micacms/runtime`).
+
+### Added
+
+- **`mica import`** moves Astro content collections into Mica, from Astro's
+  data store: field by field, with `--map` for changed names, alt text and the
+  Markdown body (`@body`), and `--order` for the manual order. It converts
+  dates, references, images and the body, and lists what it did not import
+  (`@micacms/editor`).
+
+### Changed
+
+- **Publish on a new branch.** The local editor pushes a branch without an
+  upstream to `origin` and sets the upstream (`@micacms/runtime`).
+- **The setup guides** give the commands for two commits (the setup, then the
+  content) and for pushing a new branch, use `mica import`, and let the user
+  choose how to keep an existing order field (`@micacms/astro`).
+
 ## [0.6.0-rc.1] — 2026-10-13
 
 The last release with breaking changes before 1.0: the configuration names, the
