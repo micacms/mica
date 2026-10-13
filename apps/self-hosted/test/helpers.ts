@@ -126,15 +126,15 @@ export async function createHarness(
 
   const config = loadConfig({
     NODE_ENV: "test",
-    LOG_LEVEL: "silent",
+    MICA_LOG_LEVEL: "silent",
     MICA_PUBLIC_URL: TEST_ORIGIN,
-    SESSION_SECRET: "0".repeat(32),
+    MICA_SESSION_SECRET: "0".repeat(32),
     MICA_DATA_DIR: dataDir,
     MICA_REPOSITORY_URL: "https://git.example.test/acme/site.git",
     MICA_REPOSITORY_TOKEN: "unused-by-the-harness",
     MICA_OIDC_ISSUER: ISSUER,
     MICA_OIDC_CLIENT_ID: "mica",
-    MICA_ADMIT_GROUP: "mica-editors",
+    MICA_ADMIT_GROUPS: "mica-editors",
     ...overrides,
   } as NodeJS.ProcessEnv);
 
@@ -156,8 +156,8 @@ export async function createHarness(
       auth: `oidc:${new URL(ISSUER).hostname}`,
       admission: auth.admission.summary,
       dataDir: config.dataDir,
-      sessionTtlHours: config.SESSION_TTL_HOURS,
-      sessionIdleHours: config.SESSION_IDLE_HOURS,
+      sessionTtlHours: config.MICA_SESSION_TTL_HOURS,
+      sessionIdleHours: config.MICA_SESSION_IDLE_HOURS,
       generatedSecrets: config.devSecrets,
     }),
     health: { ready: () => ({ ok: true, reasons: [] }) },

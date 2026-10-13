@@ -33,7 +33,7 @@ export const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]", "::1", "0:0:
 /** The variables the runtime itself reads. Apps spread this into their schema. */
 export const runtimeEnv = {
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
-  LOG_LEVEL: z.enum(["debug", "info", "warn", "error", "silent"]).default("info"),
+  MICA_LOG_LEVEL: z.enum(["debug", "info", "warn", "error", "silent"]).default("info"),
 
   /** The listen address. The app sets the default. */
   HOST: z.string().optional(),
@@ -42,24 +42,24 @@ export const runtimeEnv = {
   /** Public origin of the CMS itself. Used for cookies, CORS and media URLs. */
   MICA_PUBLIC_URL: z.string().url().default(DEFAULT_BASE_URL),
 
-  /** The content root this Mica serves: a directory in a Git working tree. */
-  CONTENT_ROOT: z.string().default("../../examples/muster-consulting/content"),
+  /** The content root this Mica serves: a directory in a Git working tree. Each app sets it. */
+  MICA_CONTENT_ROOT: z.string(),
 
   /** `false` disables commit and push: Publish shows the pending changes read-only. */
   MICA_LOCAL_PUBLISH: bool(true),
 
-  MAX_UPLOAD_BYTES: z.coerce
+  MICA_MAX_UPLOAD_BYTES: z.coerce
     .number()
     .int()
     .positive()
     .default(25 * 1024 * 1024),
 
   /** Read the client IP from X-Forwarded-For. Only enable behind a proxy. */
-  TRUST_PROXY: bool(false),
+  MICA_TRUST_PROXY: bool(false),
   /** Extra browser origins allowed to call the admin API (dev Vite server). */
-  ADMIN_ORIGINS: z.string().optional(),
+  MICA_ADMIN_ORIGINS: z.string().optional(),
   /** Overrides where the built admin SPA is served from. */
-  ADMIN_DIR: z.string().optional(),
+  MICA_ADMIN_DIR: z.string().optional(),
 };
 
 const runtimeSchema = z.object(runtimeEnv);
@@ -73,8 +73,8 @@ export function deriveRuntime<T extends RuntimeEnv>(env: T) {
   return {
     ...env,
     isProduction: env.NODE_ENV === "production",
-    contentRoot: path.resolve(env.CONTENT_ROOT),
-    adminOrigins: list(env.ADMIN_ORIGINS),
+    contentRoot: path.resolve(env.MICA_CONTENT_ROOT),
+    adminOrigins: list(env.MICA_ADMIN_ORIGINS),
   };
 }
 

@@ -21,20 +21,20 @@ The provider must report a verified email address if you use the email or domain
 
 Register Mica as an OpenID Connect client in the console of the provider. Use the redirect URI above and copy the client ID. Then choose a rule.
 
-- Entra and Keycloak normally send a `groups` claim. Use `MICA_ADMIT_GROUP`. A Keycloak group path such as `/mica-editors` and the bare name both match.
+- Entra and Keycloak normally send a `groups` claim. Use `MICA_ADMIT_GROUPS`. A Keycloak group path such as `/mica-editors` and the bare name both match.
 - Other providers may send the groups in another claim, for example `roles`. Set the claim name:
 
 ```env
 MICA_OIDC_GROUPS_CLAIM=roles
 ```
 
-- If your provider sends no groups, use `MICA_ADMIT_DOMAIN`, `MICA_ADMIT_EMAILS`, or `MICA_ADMIT_SUBJECTS`.
+- If your provider sends no groups, use `MICA_ADMIT_DOMAINS`, `MICA_ADMIT_EMAILS`, or `MICA_ADMIT_SUBJECTS`.
 
 A change of group membership at the provider counts from the next sign-in. Keep the sessions short. See [Self-hosting](/docs/self-hosting/).
 
 ## Check the groups claim
 
-If a person signs in and sees "No access to this site", the group claim may not arrive. Set `LOG_LEVEL=debug`, restart, and sign in again. The log names the reason. Compare the claim name and the group name with the rule.
+If a person signs in and sees "No access to this site", the group claim may not arrive. Set `MICA_LOG_LEVEL=debug`, restart, and sign in again. The log names the reason. Compare the claim name and the group name with the rule.
 
 ## Next
 

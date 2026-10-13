@@ -1,6 +1,6 @@
 This page sets up sign-in with Google for a self-hosted Mica. It is the shortest path for most teams. You need the files and the repository token from [Self-hosting](/docs/self-hosting/), steps 1 and 2. Run the check from "Before the first start" on that page too.
 
-Google gives Mica the address of the person. Mica checks that address against your list. Google sends no groups claim, so you use `MICA_ADMIT_EMAILS`. For a Google Workspace organisation you can use `MICA_ADMIT_DOMAIN` with your domain.
+Google gives Mica the address of the person. Mica checks that address against your list. Google sends no groups claim, so you use `MICA_ADMIT_EMAILS`. For a Google Workspace organisation you can use `MICA_ADMIT_DOMAINS` with your domain.
 
 ## Before you start
 
@@ -47,12 +47,12 @@ MICA_ADMIT_EMAILS=alice@gmail.com,bob@example.com
 For a Google Workspace organisation, use the domain instead:
 
 ```env
-MICA_ADMIT_DOMAIN=example.com
+MICA_ADMIT_DOMAINS=example.com
 ```
 
-Mica refuses `MICA_ADMIT_DOMAIN=gmail.com` at start-up, because it would admit the public. Mica accepts only addresses that Google reports as verified.
+Mica refuses `MICA_ADMIT_DOMAINS=gmail.com` at start-up, because it would admit the public. Mica accepts only addresses that Google reports as verified.
 
-Remove or comment out the `MICA_ADMIT_GROUP` line in the example file. Google does not send groups.
+Remove or comment out the `MICA_ADMIT_GROUPS` line in the example file. Google does not send groups.
 
 ## 4. Start and sign in
 

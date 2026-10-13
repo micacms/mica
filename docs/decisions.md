@@ -118,8 +118,8 @@ content is.
 ### P2 — Access removed at the provider is revoked at the next sign-in
 
 **Decided:** who may edit a self-hosted site is decided by configuration, not by
-a table. Either a rule over provider claims (`MICA_ADMIT_GROUP`,
-`MICA_ADMIT_DOMAIN`) or an explicit list — of verified addresses
+a table. Either a rule over provider claims (`MICA_ADMIT_GROUPS`,
+`MICA_ADMIT_DOMAINS`) or an explicit list — of verified addresses
 (`MICA_ADMIT_EMAILS`) or of `(issuer, subject)` pairs (`MICA_ADMIT_SUBJECTS`).
 The server refuses to start outside local mode when
 neither is set: an OIDC deployment that admits everybody its issuer knows is a
@@ -195,7 +195,7 @@ for that case.
 
 **Decided:** a self-hosted session is the `mica_session` cookie itself:
 AES-256-GCM over the identity, the CSRF token and the expiry, with a key
-derived from `SESSION_SECRET`. There is no session table. Only the groups a
+derived from `MICA_SESSION_SECRET`. There is no session table. Only the groups a
 rule names are kept, because a cookie holds 4 KB and a provider can send
 hundreds.
 
@@ -205,12 +205,12 @@ people. A session table was the last place Mica stored who somebody is. Since
 
 **Consequence:** one session cannot be revoked on the server. Sign-out clears
 the cookie in the browser; a copy taken before that stays valid until it
-expires — at most `SESSION_TTL_HOURS`, or `SESSION_IDLE_HOURS` unused. A group
+expires — at most `MICA_SESSION_TTL_HOURS`, or `MICA_SESSION_IDLE_HOURS` unused. A group
 added to the rules counts from the next sign-in.
 
 **What contains it:** the admission rules are still re-read on every request,
 so removing somebody from them takes effect at the next request after a
-restart. Rotating `SESSION_SECRET` ends every session at once.
+restart. Rotating `MICA_SESSION_SECRET` ends every session at once.
 
 **What would change it:** a need to end one person's session within seconds
 without signing everybody out. That needs a deny list, which is server state
@@ -440,7 +440,7 @@ order, because a GitHub or GitLab 403 also contains the network pattern.
 ### P2 — Git on the server is isolated, and the token never touches the disk
 
 **Decided:** the managed clone's `git` runs with an allowlisted environment —
-never `process.env`, which holds `SESSION_SECRET` and the OIDC secret — and
+never `process.env`, which holds `MICA_SESSION_SECRET` and the OIDC secret — and
 every setting comes from `GIT_CONFIG_*`: no system or global configuration,
 hooks off, symlinks as plain files, `autocrlf` off, `.git/info/attributes`
 that switch off every filter, `ident` and encoding, only the `https`
@@ -745,6 +745,10 @@ subset of the runtime to public.
 
 **Trigger:** the first external project that depends on an internal package.
 
+**Built in 0.6 (#55):** each package README says whether it is public or
+internal; `@micacms/astro` no longer re-exports the readers of `@micacms/core`,
+and the dead exports are gone.
+
 **1.0 status:** accepted for 1.0.
 
 ---
@@ -772,7 +776,10 @@ surface.
 
 **Trigger:** an Astro major that moves to a zod major Mica does not support.
 
-**1.0 status:** accepted for 1.0; the manifest change is in #129.
+**Built in 0.6 (#129):** zod is a peer of `core` and `astro`, and `core` is a
+peer of `astro`.
+
+**1.0 status:** done.
 
 ---
 
@@ -781,8 +788,8 @@ surface.
 **Decided:** before the first release candidate, every Mica-specific variable
 gets the `MICA_` prefix, and the names are then frozen for 1.x. `NODE_ENV`,
 `PORT` and `HOST` keep their names, because they are conventions that Node
-libraries and hosting platforms already use. The old names are removed at 1.0
-with no aliases. The local editor reads no `.env` file; it reads the process
+libraries and hosting platforms already use. 0.6 removed the old names, with no
+aliases and no warning. The local editor reads no `.env` file; it reads the process
 environment, and its flags win over it.
 
 | Old | New |
@@ -807,14 +814,19 @@ deployment depends on the old names; an alias table would be code to carry
 through all of 1.x. Reading the site's `.env` gave the editor the site's
 `NODE_ENV` and secrets, and a site with `NODE_ENV=production` stopped it.
 
-**Consequence:** every 0.x deployment must rename its variables to upgrade to
-1.0. A local-editor user
+**Consequence:** every deployment must rename its variables to upgrade to 0.6.
+A local-editor user
 who kept settings in `.env` must pass them as flags or export them.
 
 **What would change it:** an adopter on 0.x who cannot rename in one step; then
 add aliases with a warning for one minor.
 
-**1.0 status:** blocker; the rename is in #57, the `.env` change in #113.
+**Built in 0.6:** the rename (#57), with a reference at
+`micacms.com/docs/configuration` that a test keeps complete, and the local
+editor reads no `.env` file, and its flags win over the environment (#113).
+The runtime has no default content root any more; each app sets it.
+
+**1.0 status:** done.
 
 ---
 
@@ -880,7 +892,7 @@ removing an Astro major is a Mica major.
 
 **Why:** the image and CI already run Node 24, and only what CI tests is
 supported. Node 22 reaches its end of life on 2027-04-30, close to 1.0. (Its
-`node:sqlite` was a second reason until 0.5.0 removed the database.) Astro 6 is in the peer range today but no test covers it. Removing an
+`node:sqlite` was a second reason until 0.5.0 removed the database.) Astro 6 was in the peer range until 0.6, with no test. Removing an
 end-of-life Node in a minor is common FOSS practice, and the alternative keeps
 an unmaintained runtime in the matrix for all of 1.x.
 
@@ -890,7 +902,10 @@ an unmaintained runtime in the matrix for all of 1.x.
 **What would change it:** an adopter that cannot leave Node 22 or Astro 6
 before 1.0; then add that line to the CI matrix rather than promise it untested.
 
-**1.0 status:** blocker; the floor is in #130, the matrix in #131.
+**Built in 0.6 (#130):** `>=24` in every `engines` field and in `rush.json`,
+and the `astro` peer range is `^7.0.0`.
+
+**1.0 status:** blocker until the CI matrix is in place (#131).
 
 ---
 
@@ -1037,7 +1052,11 @@ without Docker is not supported.
 **What would change it:** a real demand for a Docker-free server, for example
 on a Node PaaS; then add a `bin` and put it under semver.
 
-**1.0 status:** blocker; the publish change is in #129.
+**Built in 0.6 (#129):** `apps/self-hosted` is `private` and has no version
+policy, so `rush publish` skips it; `scripts/version.mjs --sync` still sets its
+version. Deprecating the versions on npm needs an npm login.
+
+**1.0 status:** done, except the deprecation.
 
 ---
 
@@ -1119,7 +1138,9 @@ changes before 1.0, with a changelog entry.
 **What would change it:** nothing in 1.x; the rule is part of the content
 format.
 
-**1.0 status:** blocker; the fix is in #59.
+**Built in 0.6 (#59).**
+
+**1.0 status:** done.
 
 ---
 

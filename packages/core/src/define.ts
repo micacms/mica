@@ -8,7 +8,6 @@
  */
 
 import type {
-  AnyField,
   Collection,
   CollectionOptions,
   FieldMap,
@@ -16,6 +15,7 @@ import type {
   SingletonOptions,
   Site,
 } from "./types.js";
+import { textPattern } from "./pattern.js";
 
 export class ModelError extends Error {
   override name = "ModelError";
@@ -158,6 +158,14 @@ function checkFields(fields: FieldMap, path: string, collectionNames: Set<string
       );
     }
 
+    if (field.kind === "text" && field.pattern !== undefined) {
+      try {
+        textPattern(field.pattern);
+      } catch (error) {
+        throw new ModelError(`Text field "${here}" has an invalid pattern: ${(error as Error).message}`);
+      }
+    }
+
     if (field.kind === "select" && field.options.length === 0) {
       throw new ModelError(`Select field "${here}" must declare at least one option.`);
     }
@@ -273,52 +281,3 @@ export function getSingleton(site: Site, name: string): Singleton | undefined {
   return site.singletons[name];
 }
 
-/** Walks every field in a map, depth-first, yielding dotted paths. */
-export function* walkFields(
-  fields: FieldMap,
-  prefix: string[] = [],
-): Generator<{ path: string[]; key: string; field: AnyField }> {
-  for (const [key, field] of Object.entries(fields)) {
-    const path = [...prefix, key];
-    yield { path, key, field };
-    if (field.kind === "object" || field.kind === "repeater") {
-      yield* walkFields(field.fields, path);
-    }
-  }
-}
-
-/** Every media id referenced by an entry payload, at any nesting depth. */
-export function collectMediaIds(fields: FieldMap, data: unknown): string[] {
-  const ids: string[] = [];
-
-  const visit = (map: FieldMap, value: unknown): void => {
-    if (value === null || typeof value !== "object") return;
-    const record = value as Record<string, unknown>;
-
-    for (const [key, field] of Object.entries(map)) {
-      const item = record[key];
-      if (item === null || item === undefined) continue;
-
-      switch (field.kind) {
-        case "media":
-          if (Array.isArray(item)) {
-            for (const id of item) if (typeof id === "string") ids.push(id);
-          } else if (typeof item === "string") {
-            ids.push(item);
-          }
-          break;
-        case "object":
-          visit(field.fields, item);
-          break;
-        case "repeater":
-          if (Array.isArray(item)) for (const row of item) visit(field.fields, row);
-          break;
-        default:
-          break;
-      }
-    }
-  };
-
-  visit(fields, data);
-  return [...new Set(ids)];
-}

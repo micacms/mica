@@ -150,6 +150,11 @@ Singletons take `label`, `description` and `fields`, and nothing else.
 
 A few that repay a closer look:
 
+**`text({ pattern })`** must match the whole value, like the HTML `pattern`
+attribute: `"[A-Z]{2}"` accepts `CH` and refuses `CHE`. Mica compiles it with
+the `u` flag, so an emoji is one character. For "contains", write `.*x.*`. An
+invalid pattern stops the model from loading.
+
 **`richText()`** is [Markdoc](https://markdoc.dev), stored in its own file and
 _absent_ from `index.json`. Readable in a diff, and it cannot inject a script
 into the built site: Markdoc escapes raw HTML and renders an undeclared

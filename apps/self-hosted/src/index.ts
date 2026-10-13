@@ -84,7 +84,7 @@ async function serve(): Promise<void> {
     throw error;
   }
 
-  const logger: Logger = createLogger({ level: config.LOG_LEVEL, pretty: !config.isProduction });
+  const logger: Logger = createLogger({ level: config.MICA_LOG_LEVEL, pretty: !config.isProduction });
   const { remote, branch, root, token, username, syncSeconds } = config.repository;
   const clean = (text: string) => redact(text, [token]);
   const authLabel = `oidc:${new URL(config.MICA_OIDC_ISSUER!).hostname}`;
@@ -213,8 +213,8 @@ async function serve(): Promise<void> {
       auth: authLabel,
       admission: auth.admission.summary,
       dataDir: config.dataDir,
-      sessionTtlHours: config.SESSION_TTL_HOURS,
-      sessionIdleHours: config.SESSION_IDLE_HOURS,
+      sessionTtlHours: config.MICA_SESSION_TTL_HOURS,
+      sessionIdleHours: config.MICA_SESSION_IDLE_HOURS,
       generatedSecrets: config.devSecrets,
     }),
 
@@ -241,7 +241,7 @@ async function serve(): Promise<void> {
   dispatcher.serve(
     createApp(ctx, {
       auth: auth.surface,
-      adminDir: config.ADMIN_DIR ?? editorUiDist(),
+      adminDir: config.MICA_ADMIN_DIR ?? editorUiDist(),
     }),
   );
   workspace.start();

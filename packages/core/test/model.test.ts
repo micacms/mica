@@ -4,7 +4,6 @@ import { describe, it } from "node:test";
 import {
   boolean,
   collection,
-  collectMediaIds,
   color,
   coordinates,
   date,
@@ -113,6 +112,20 @@ describe("validation", () => {
     rows: repeater({ fields: { label: text({ required: true }) } }),
   };
 
+  it("matches a text pattern against the whole value, by code point", () => {
+    const code = { code: text({ pattern: "[A-Z]{2}" }), mark: text({ pattern: "." }) };
+    assert.equal(validateFields(code, { code: "CH" }).ok, true);
+    assert.equal(validateFields(code, { code: "CHE" }).ok, false);
+    assert.equal(validateFields(code, { code: "xCH" }).ok, false);
+    assert.equal(validateFields(code, { mark: "😀" }).ok, true);
+  });
+
+  it("keeps an alternation inside the anchors", () => {
+    const either = { size: text({ pattern: "small|large" }) };
+    assert.equal(validateFields(either, { size: "large" }).ok, true);
+    assert.equal(validateFields(either, { size: "smaller" }).ok, false);
+  });
+
   it("normalises blank strings and missing keys to null", () => {
     const result = validateFields(fields, { title: "Ok", subtitle: "   ", year: undefined });
     assert.ok(result.ok);
@@ -161,22 +174,6 @@ describe("validation", () => {
     const result = validateFields(fields, { title: "Ok", removedField: "stale" });
     assert.ok(result.ok);
     assert.ok(!("removedField" in result.data));
-  });
-
-  it("expands media references in output mode only", () => {
-    const ref = {
-      id: "m1",
-      url: "/media/m1.jpg",
-      filename: "m1.jpg",
-      mimeType: "image/jpeg",
-      width: 10,
-      height: 10,
-      size: 100,
-      alt: null,
-    };
-    assert.ok(validateFields(fields, { title: "Ok", gallery: ["m1"] }, "storage").ok);
-    assert.ok(!validateFields(fields, { title: "Ok", gallery: ["m1"] }, "output").ok);
-    assert.ok(validateFields(fields, { title: "Ok", gallery: [ref] }, "output").ok);
   });
 
   it("accepts rich text and dates with time", () => {
@@ -260,6 +257,16 @@ describe("defineSite", () => {
         }),
       ModelError,
     );
+  });
+
+  it("rejects an invalid text pattern when the model loads", () => {
+    const site = (pattern: string) => () =>
+      defineSite({
+        collections: { news: collection({ label: "News", fields: { slug: slug(), code: text({ pattern }) } }) },
+      });
+    assert.throws(site("[A-Z"), /Text field "collections\.news\.code" has an invalid pattern/);
+    // The `u` flag refuses an escape that a plain regular expression accepts.
+    assert.throws(site("\\-"), ModelError);
   });
 
   it("rejects a slug deriving from a non-existent sibling", () => {
@@ -410,20 +417,5 @@ describe("model queries", () => {
     assert.equal(entryTitle(projects, { title: "Haus A" }), "Haus A");
     assert.equal(entryTitle(projects, { title: "   ", slug: "haus-a" }), "haus-a");
     assert.equal(entryTitle(projects, {}), "Untitled");
-  });
-
-  it("collects media ids from every nesting level", () => {
-    const ids = collectMediaIds(projects.fields, {
-      cover: "a",
-      gallery: ["b", "c"],
-      blocks: [{ image: "d" }, { image: null }],
-      seo: { ogImage: "e" },
-    });
-    assert.deepEqual(ids.sort(), ["a", "b", "c", "d", "e"]);
-  });
-
-  it("deduplicates repeated references", () => {
-    const ids = collectMediaIds(projects.fields, { cover: "a", gallery: ["a", "a"] });
-    assert.deepEqual(ids, ["a"]);
   });
 });

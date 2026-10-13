@@ -17,8 +17,8 @@ const config = {
   sessionSecret: "0".repeat(32),
   cookieSecure: false,
   admitGroups: ["mica-editors"],
-  SESSION_TTL_HOURS: 8,
-  SESSION_IDLE_HOURS: 4,
+  MICA_SESSION_TTL_HOURS: 8,
+  MICA_SESSION_IDLE_HOURS: 4,
 } as AuthConfig;
 
 const person: SessionIdentity = {

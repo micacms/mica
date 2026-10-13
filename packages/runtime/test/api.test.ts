@@ -139,7 +139,7 @@ describe("client address", () => {
   function app(trustProxy: boolean) {
     const app = new Hono<Env>();
     app.use("*", async (c, next) => {
-      c.set("ctx", { config: { TRUST_PROXY: trustProxy } } as unknown as Env["Variables"]["ctx"]);
+      c.set("ctx", { config: { MICA_TRUST_PROXY: trustProxy } } as unknown as Env["Variables"]["ctx"]);
       await next();
     });
     app.get("/ip", (c) => c.text(clientIp(c)));
@@ -154,7 +154,7 @@ describe("client address", () => {
     assert.equal(await ip(true, "203.0.113.7"), "203.0.113.7");
   });
 
-  it("ignores X-Forwarded-For without TRUST_PROXY", async () => {
+  it("ignores X-Forwarded-For without MICA_TRUST_PROXY", async () => {
     assert.notEqual(await ip(false, "203.0.113.7"), "203.0.113.7");
   });
 });
@@ -163,7 +163,7 @@ describe("request size", () => {
   let harness: TestHarness;
   before(async () => {
     // Small, so that an oversized upload is cheap to build: 10 × 1 kB + 1 MiB.
-    harness = await createHarness({ MAX_UPLOAD_BYTES: 1024 });
+    harness = await createHarness({ MICA_MAX_UPLOAD_BYTES: 1024 });
   });
   after(() => harness.close());
 

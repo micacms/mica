@@ -244,11 +244,11 @@ administration, no invitation and no People screen; this is the whole of it.
 
 ```env
 # A — a group your provider already manages. The one to grow into.
-MICA_ADMIT_GROUP=mica-editors
+MICA_ADMIT_GROUPS=mica-editors
 
 # B — every address in a domain, and only where the provider says it has
 #     verified the address.
-MICA_ADMIT_DOMAIN=example.com
+MICA_ADMIT_DOMAINS=example.com
 
 # C — these addresses, verified by the provider. The one for Google accounts.
 MICA_ADMIT_EMAILS=alice@gmail.com,bob@example.com
@@ -290,8 +290,8 @@ where self-registration is open that would let anybody claim it.
 
 ```env
 MICA_PUBLIC_URL=https://cms.example.com
-TRUST_PROXY=true
-SESSION_SECRET=…
+MICA_TRUST_PROXY=true
+MICA_SESSION_SECRET=…
 ```
 
 `MICA_PUBLIC_URL` must be exactly what the browser shows. It decides the cookie
@@ -299,14 +299,16 @@ scope, the Origin check and the redirect URI. `https://` is what turns on
 `Secure` cookies with `__Host-` names and the `Strict-Transport-Security`
 header, and in production Mica refuses to start without it, or with an
 `http://` address other than localhost. At startup, Mica warns about any
-`MICA_*` or `REPOSITORY_*` variable that it does not read, which is usually a
-typo. Generate the secret:
+`MICA_*` variable that it does not read, which is usually a typo. Every
+variable, with its default, is in the
+[configuration reference](https://micacms.com/docs/configuration/). Generate the
+secret:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-`TRUST_PROXY` makes Mica read the client address from `X-Forwarded-For` —
+`MICA_TRUST_PROXY` makes Mica read the client address from `X-Forwarded-For` —
 enable it **only** behind a proxy you control, or clients can spoof their
 address and walk past the login rate limit. Mica takes the right-most entry,
 which is the address that the proxy in front of it saw. That is correct for one
@@ -412,8 +414,8 @@ until their session ends. That is the cost of having no user database, and it
 is why sessions are hours rather than weeks:
 
 ```env
-SESSION_TTL_HOURS=8                    # absolute lifetime
-SESSION_IDLE_HOURS=4                   # and the idle window
+MICA_SESSION_TTL_HOURS=8                    # absolute lifetime
+MICA_SESSION_IDLE_HOURS=4                   # and the idle window
 ```
 
 Disabling the account at the provider is the fast path for a departure, and it
@@ -423,7 +425,7 @@ re-read on every request, so the person is refused at once.
 
 A session is an encrypted cookie, and Mica keeps no list of them. Sign-out
 clears the cookie in the browser only, and a copied cookie stays valid until it
-expires. To end every session at once, change `SESSION_SECRET` and restart.
+expires. To end every session at once, change `MICA_SESSION_SECRET` and restart.
 Everybody then signs in again.
 
 ## Build the website
@@ -611,7 +613,7 @@ Mica exits at start and lists every problem in one message.
 | "assigns Git LFS to files under the content root" | `.gitattributes` has `filter=lfs` for the content | Keep LFS out of the content root. Mica does not support it yet |
 | "The clone on the data volume is for …" | The URL or branch changed, and the clone has drafts | Start with the old configuration and publish, or copy the drafts out and delete the volume |
 | "No content model at …" | `.mica/schema.json` was never committed, or is on another branch | Build the Astro project, commit it, push to `MICA_REPOSITORY_BRANCH` |
-| Exits with "Missing required production secrets" or "nothing says who may edit this site" | `SESSION_SECRET` or an admission rule is missing | Set it ([step 4](#4-who-may-edit), [step 5](#5-the-rest-of-env)) |
+| Exits with "Missing required production secrets" or "nothing says who may edit this site" | `MICA_SESSION_SECRET` or an admission rule is missing | Set it ([step 4](#4-who-may-edit), [step 5](#5-the-rest-of-env)) |
 
 ### Authentication failed
 
@@ -657,8 +659,8 @@ Mica exits at start and lists every problem in one message.
 | Saving returns 422 | The entry does not satisfy the model | The response names the fields |
 | Publishing returns 422 | Something in the pending set no longer validates | The response names the entries and fields |
 | The disk is full | The clone grows with every media change | See "Volume size" in step 2. Publish or discard, stop, delete `MICA_DATA_DIR/repository`, start |
-| Editors signed out after a restart | `SESSION_SECRET` unset, so an ephemeral one was generated | Set it |
-| "No access to this site" after signing in | Authenticated, but not admitted | Check the group claim actually arrives — `LOG_LEVEL=debug` names the reason — or add the subject to `MICA_ADMIT_SUBJECTS`, or the address to `MICA_ADMIT_EMAILS` |
+| Editors signed out after a restart | `MICA_SESSION_SECRET` unset, so an ephemeral one was generated | Set it |
+| "No access to this site" after signing in | Authenticated, but not admitted | Check the group claim actually arrives — `MICA_LOG_LEVEL=debug` names the reason — or add the subject to `MICA_ADMIT_SUBJECTS`, or the address to `MICA_ADMIT_EMAILS` |
 | Sign-in returns to the login page with "expired" | The transaction cookie was lost — usually a `MICA_PUBLIC_URL` that does not match the browser's address | Make them identical |
 | 503, "identity provider could not be reached" | `MICA_OIDC_ISSUER` wrong, or discovery blocked | Check `<issuer>/.well-known/openid-configuration` from the container |
 | Site build succeeds but content is stale | The host built an older commit | Check CI ran on the editorial commit |

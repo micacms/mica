@@ -1,6 +1,8 @@
 # @micacms/editor-ui
 
-> **Experimental.** Pre-1.0: the API can still change without notice.
+> **Internal.** Published only because the Mica apps install it, and pinned
+> exactly by them. It has no semver promise: any release can break its API. Use
+> `@micacms/core`, `@micacms/astro` or the `@micacms/editor` CLI instead.
 
 The Mica editor SPA — the Vue administration UI, shipped as **built assets**
 in `dist/` and served by a composing app (`@micacms/editor` locally,

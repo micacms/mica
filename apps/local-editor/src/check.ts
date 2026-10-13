@@ -224,7 +224,7 @@ async function checkEntry(
 ): Promise<void> {
   const { root, files, slugs, error, warning } = context;
 
-  const result = validateFields(fields, data, "storage");
+  const result = validateFields(fields, data);
   if (!result.ok) {
     for (const issue of result.issues) error(dataPath, issue.path ? `${issue.path}: ${issue.message}` : issue.message);
   }

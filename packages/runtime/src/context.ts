@@ -103,7 +103,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
   const logger =
     options.logger ??
     createLogger({
-      level: config.LOG_LEVEL,
+      level: config.MICA_LOG_LEVEL,
       pretty: !config.isProduction,
     });
 
@@ -127,7 +127,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
     content: createContentStore(model, site.contentRepository, readOnly),
     media: createMediaService({
       files: site.contentRepository,
-      maxBytes: config.MAX_UPLOAD_BYTES,
+      maxBytes: config.MICA_MAX_UPLOAD_BYTES,
     }),
     staging: createWorkingTreeStagingService({
       model,

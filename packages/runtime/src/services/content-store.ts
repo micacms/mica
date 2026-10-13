@@ -97,7 +97,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     data: unknown,
     what: string,
   ): Record<string, unknown> => {
-    const result = validateFields(def.fields, data, "storage");
+    const result = validateFields(def.fields, data);
     if (!result.ok) {
       throw new ValidationError(
         `${what} cannot be saved until these fields are correct.`,

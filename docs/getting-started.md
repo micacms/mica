@@ -21,8 +21,8 @@ content model, and checks its work with `npx mica check`.
 
 ## Before you start
 
-- Node 22.12 or newer — `node --version`
-- An Astro 6 or 7 project — a new one (`npm create astro@latest`) or one you have
+- Node 24 or newer — `node --version`
+- An Astro 7 project — a new one (`npm create astro@latest`) or one you have
 - A Git repository for that project
 
 ## The short version

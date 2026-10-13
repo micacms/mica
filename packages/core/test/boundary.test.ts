@@ -19,15 +19,16 @@ import { describe, it } from "node:test";
 const root = new URL("..", import.meta.url).pathname;
 
 describe("the core boundary", () => {
-  it("depends on zod, and on nothing else", () => {
+  it("depends on zod as a peer, and on nothing else", () => {
     const manifest = JSON.parse(readFileSync(join(root, "package.json"), "utf8")) as {
       dependencies?: Record<string, string>;
       peerDependencies?: Record<string, string>;
       optionalDependencies?: Record<string, string>;
     };
 
-    assert.deepEqual(Object.keys(manifest.dependencies ?? {}), ["zod"]);
-    assert.equal(manifest.peerDependencies, undefined);
+    // A peer, so that a site has one zod, shared with Astro.
+    assert.equal(manifest.dependencies, undefined);
+    assert.deepEqual(Object.keys(manifest.peerDependencies ?? {}), ["zod"]);
     assert.equal(manifest.optionalDependencies, undefined);
   });
 

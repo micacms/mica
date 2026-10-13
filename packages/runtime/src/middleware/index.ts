@@ -100,7 +100,7 @@ export const MAX_JSON_BYTES = 2 * 1024 * 1024;
 
 /**
  * Refuses an oversized body before a handler reads it into memory (#148). An
- * upload may carry `MAX_FILES_PER_UPLOAD` files of `MAX_UPLOAD_BYTES`, plus
+ * upload may carry `MAX_FILES_PER_UPLOAD` files of `MICA_MAX_UPLOAD_BYTES`, plus
  * room for the multipart framing; every other request gets `MAX_JSON_BYTES`.
  */
 export function requestSizeLimit(): MiddlewareHandler<Env> {
@@ -108,7 +108,7 @@ export function requestSizeLimit(): MiddlewareHandler<Env> {
     const { config } = c.get("ctx");
     const upload = c.req.method === "POST" && c.req.path === "/api/admin/media";
     const maxSize = upload
-      ? config.MAX_UPLOAD_BYTES * MAX_FILES_PER_UPLOAD + 1024 * 1024
+      ? config.MICA_MAX_UPLOAD_BYTES * MAX_FILES_PER_UPLOAD + 1024 * 1024
       : MAX_JSON_BYTES;
 
     return bodyLimit({

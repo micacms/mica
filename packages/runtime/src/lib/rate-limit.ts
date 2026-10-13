@@ -16,8 +16,6 @@ export interface RateLimitResult {
 
 export interface RateLimiter {
   check(key: string): RateLimitResult;
-  /** Forgets a key — called after a successful login. */
-  reset(key: string): void;
   size(): number;
   stop(): void;
 }
@@ -60,10 +58,6 @@ export function createRateLimiter(options: RateLimiterOptions): RateLimiter {
       }
 
       return { allowed: true, remaining: options.limit - bucket.count, retryAfter };
-    },
-
-    reset(key) {
-      buckets.delete(key);
     },
 
     size() {

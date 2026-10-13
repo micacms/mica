@@ -105,7 +105,7 @@ export function createApp(ctx: RuntimeContext, options: CreateAppOptions = {}): 
     c.json({ error: { code: "not_found" as const, message: "No such endpoint." } }, 404),
   );
 
-  const adminDir = options.adminDir ?? ctx.config.ADMIN_DIR;
+  const adminDir = options.adminDir ?? ctx.config.MICA_ADMIN_DIR;
 
   if (adminDir && adminAssetsExist(adminDir)) {
     app.route("/admin", adminSpaRoutes(adminDir));

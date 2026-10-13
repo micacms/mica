@@ -141,10 +141,10 @@ services:
       # Development, on purpose: Mica refuses plain-HTTP OIDC discovery under NODE_ENV=production,
       # and a certificate for ZITADEL is too much for a local rig. All else is the deployed shape.
       NODE_ENV: development
-      LOG_LEVEL: debug
+      MICA_LOG_LEVEL: debug
 
       MICA_PUBLIC_URL: http://localhost:6422
-      SESSION_SECRET: demo-session-secret-0000000000000
+      MICA_SESSION_SECRET: demo-session-secret-0000000000000
 
       MICA_OIDC_ISSUER: http://localhost:8080
 

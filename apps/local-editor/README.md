@@ -1,7 +1,7 @@
 # Mica Editor
 
-> **Experimental.** Pre-1.0: the CLI, the API and the content format can still
-> change without notice. Use it at your own risk.
+> **Public.** From 1.0, semver covers the `mica` CLI (`init`, `check` and the
+> editor's flags). Pre-1.0: it can still change in a minor release.
 
 The local Mica editor: `@micacms/runtime` and `@micacms/editor-ui` composed for
 a developer's own machine. No authentication, no user, no database — the
@@ -61,14 +61,12 @@ are also `npx mica init` and `npx mica check`.
 rush update
 rush build --to tag:packages
 
-cd apps/local-editor
-cp .env.example .env
-
 rush dev                               # API on :6422, admin on :5173
 ```
 
-`CONTENT_ROOT=../../examples/muster-consulting/content` is the default, so the
-server edits the example project's content. There is nothing to seed: the
+`rush dev` reads `dev.env`, which sets
+`MICA_CONTENT_ROOT=../../examples/muster-consulting/content`, so the server edits
+the example project's content. There is nothing to seed: the
 content is already there, in Git.
 
 The server has no content model of its own. It reads one from the content
@@ -80,8 +78,10 @@ no avatar and no account menu, because there is nothing behind them.
 
 `rush dev` runs this app and the Vite dev server together. Vite
 proxies `/api` to the API; the API still needs
-`ADMIN_ORIGINS=http://localhost:5173` for its Origin check, which
-`.env.example` already sets.
+`MICA_ADMIN_ORIGINS=http://localhost:5173` for its Origin check, which
+`dev.env` sets. The published editor reads no `.env` file: the project's `.env`
+belongs to the site. Every variable is at
+<https://micacms.com/docs/configuration/>.
 
 ## What lives where
 

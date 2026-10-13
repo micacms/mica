@@ -1,7 +1,7 @@
 # @micacms/core
 
-> **Experimental.** Pre-1.0: the API and the content format can still change
-> without notice. Use it at your own risk.
+> **Public.** From 1.0, semver covers this package. Pre-1.0: the API and the
+> content format can still change in a minor release.
 
 The core of Mica — a Git-native content editor for static Astro websites: the
 content model, the format its entries take on disk, and the `ContentSource`
@@ -59,4 +59,4 @@ group. Zod is generated from the DSL, not the other way round.
 npm install @micacms/core
 ```
 
-Requires Node 22.12 or newer. Licence: MIT.
+zod 4 is a peer dependency. ESM only. Requires Node 24 or newer. Licence: MIT.

@@ -52,7 +52,7 @@ export interface TextField extends BaseField {
   kind: "text";
   minLength?: number;
   maxLength?: number;
-  /** Anchored ECMAScript regular expression source, e.g. `"[A-Z]{2}"`. */
+  /** A regular expression that must match the whole value, with the `u` flag, e.g. `"[A-Z]{2}"`. */
   pattern?: string;
   placeholder?: string;
   default?: string;

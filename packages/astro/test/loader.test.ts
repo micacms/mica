@@ -12,6 +12,7 @@ import {
   collection,
   defineSite,
   media,
+  memorySource,
   number,
   richText,
   singleton,
@@ -19,7 +20,7 @@ import {
   text,
 } from "@micacms/core";
 
-import { memorySource, micaCollections, type LoaderContext } from "../dist/index.js";
+import { micaCollections, type LoaderContext } from "../dist/index.js";
 
 const site = defineSite({
   collections: {

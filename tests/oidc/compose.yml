@@ -99,7 +99,7 @@ services:
       # Plain-HTTP discovery is allowed only outside production, and only for
       # a provider on localhost. Everything else is production-shaped.
       NODE_ENV: development
-      LOG_LEVEL: info
+      MICA_LOG_LEVEL: info
 
       MICA_PUBLIC_URL: http://localhost:6422
       MICA_OIDC_ISSUER: http://localhost:5556/dex
@@ -107,14 +107,14 @@ services:
       MICA_OIDC_CLIENT_SECRET: oidc-test-client-secret-not-for-production
 
       MICA_ADMIT_EMAILS: alice@gmail.com
-      MICA_ADMIT_DOMAIN: muster-consulting.example
+      MICA_ADMIT_DOMAINS: muster-consulting.example
 
       MICA_REPOSITORY_URL: http://localhost:3000/editor/site.git
       MICA_REPOSITORY_USERNAME: editor
       # Forgejo accepts the account password where a token would go.
       MICA_REPOSITORY_TOKEN: Forgejo-test-password-not-for-production
 
-      SESSION_SECRET: oidc-test-session-secret-00000000000
+      MICA_SESSION_SECRET: oidc-test-session-secret-00000000000
 
     healthcheck:
       test:

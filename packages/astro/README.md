@@ -1,7 +1,7 @@
 # @micacms/astro
 
-> **Experimental.** Pre-1.0: the API and the content format can still change
-> without notice. Use it at your own risk.
+> **Public.** From 1.0, semver covers this package. Pre-1.0: the API and the
+> content format can still change in a minor release.
 
 Reads a Mica content repository as Astro Content Collections, through the
 Content Layer API — and publishes the content model for Mica to read back.
@@ -97,7 +97,8 @@ collections. They ship with the package, so they match the installed version.
 ## Install
 
 ```bash
-npm install @micacms/astro
+npm install @micacms/astro @micacms/core
 ```
 
-Astro 6 or 7 is a peer dependency. Requires Node 22.12 or newer. Licence: MIT.
+Astro 7, `@micacms/core` and zod 4 are peer dependencies. npm installs zod. ESM only. Requires Node 24 or newer.
+Licence: MIT.

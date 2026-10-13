@@ -72,7 +72,7 @@ describe("over https", () => {
 describe("sign-in callback", () => {
   let harness: TestHarness;
   before(async () => {
-    harness = await createHarness({ LOGIN_MAX_ATTEMPTS: "2" });
+    harness = await createHarness({ MICA_SIGNIN_MAX_ATTEMPTS: "2" });
   });
   after(() => harness.close());
 
@@ -156,7 +156,7 @@ describe("sessions", () => {
   });
 
   it("rejects a session sealed with another secret", async () => {
-    const other = await createHarness({ SESSION_SECRET: "1".repeat(32) });
+    const other = await createHarness({ MICA_SESSION_SECRET: "1".repeat(32) });
     const foreign = await other.signIn();
     await other.close();
 
@@ -168,10 +168,10 @@ describe("admission", () => {
   // The harness admits `mica-editors` by default; clear it, or every rule would
   // pass through the group.
   const authenticated = (rules: Partial<NodeJS.ProcessEnv>) =>
-    createHarness({ MICA_ADMIT_GROUP: undefined, ...rules });
+    createHarness({ MICA_ADMIT_GROUPS: undefined, ...rules });
 
   it("admits a group the operator named, and refuses everybody else", async () => {
-    const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
+    const harness = await authenticated({ MICA_ADMIT_GROUPS: "mica-editors" });
 
     const admitted = await harness.signIn(ADMITTED);
     assert.equal((await harness.request("/api/auth/me", { session: admitted })).status, 200);
@@ -184,7 +184,7 @@ describe("admission", () => {
   });
 
   it("reports who is signed in, from the claims and not from a row", async () => {
-    const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
+    const harness = await authenticated({ MICA_ADMIT_GROUPS: "mica-editors" });
     const session = await harness.signIn(ADMITTED);
 
     const response = await harness.request("/api/auth/me", { session });
@@ -200,7 +200,7 @@ describe("admission", () => {
   });
 
   it("accepts a Keycloak group path where a bare name was configured", async () => {
-    const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
+    const harness = await authenticated({ MICA_ADMIT_GROUPS: "mica-editors" });
     const session = await harness.signIn({ ...ADMITTED, groups: ["/mica-editors"] });
 
     assert.equal((await harness.request("/api/auth/me", { session })).status, 200);
@@ -227,7 +227,7 @@ describe("admission", () => {
   });
 
   it("admits a domain only when the provider says the address is verified", async () => {
-    const harness = await authenticated({ MICA_ADMIT_DOMAIN: "example.com" });
+    const harness = await authenticated({ MICA_ADMIT_DOMAINS: "example.com" });
 
     const verified = await harness.signIn({ ...ADMITTED, groups: [] });
     assert.equal((await harness.request("/api/auth/me", { session: verified })).status, 200);
@@ -262,7 +262,7 @@ describe("admission", () => {
 
   /** Admission is read again on every request, not copied into the session at sign-in. */
   it("refuses a live session the moment the rules stop admitting it", async () => {
-    const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
+    const harness = await authenticated({ MICA_ADMIT_GROUPS: "mica-editors" });
     const session = await harness.signIn(ADMITTED);
 
     assert.equal((await harness.request("/api/auth/me", { session })).status, 200);
@@ -276,7 +276,7 @@ describe("admission", () => {
 
   /** Everybody admitted is an editor: there is no second gate behind the first. */
   it("gives every admitted person the whole editor", async () => {
-    const harness = await authenticated({ MICA_ADMIT_GROUP: "mica-editors" });
+    const harness = await authenticated({ MICA_ADMIT_GROUPS: "mica-editors" });
     const session = await harness.signIn(ADMITTED);
 
     for (const path of ["/api/admin/schema", "/api/admin/overview", "/api/admin/system"]) {

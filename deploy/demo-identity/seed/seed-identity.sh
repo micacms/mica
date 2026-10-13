@@ -79,7 +79,7 @@ umask 022
   echo "MICA_OIDC_CLIENT_SECRET='$(echo "$app" | jq -r .clientSecret)'"
   # Who may edit. Mica has no user table and no invitation screen, so this is
   # the whole of authorization — two subjects, keyed by the issuer that made
-  # them. A real deployment would normally use MICA_ADMIT_GROUP against a
+  # them. A real deployment would normally use MICA_ADMIT_GROUPS against a
   # group its provider already manages.
   echo "MICA_ADMIT_SUBJECTS='$ZITADEL_URL|$alice,$ZITADEL_URL|$bob'"
 } > "$env_file"
