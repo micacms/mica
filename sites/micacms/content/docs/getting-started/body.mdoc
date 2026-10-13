@@ -2,6 +2,21 @@ Mica adds an editing interface to an Astro project. The website keeps reading lo
 
 > Mica is experimental and pre-1.0. Its API and content format can change. Use it for work that you can update as the project changes.
 
+## Start from the starter
+
+For a new site, start from the starter: an Astro site with one collection of posts, a settings page, an image with alt text, and a CI workflow that runs `mica check`.
+
+```bash
+npm create astro@latest -- --template micacms/mica/examples/starter
+cd <your-project>
+npm install
+git init && git add -A && git commit -m "Start from the Mica starter"
+npm run dev     # the website
+npm run mica    # the editor, in a second terminal
+```
+
+Change the post in the editor and save; the website shows it at once. Publish commits the change and pushes it, once the repository has a remote.
+
 ## Set up with a coding agent
 
 Give your coding agent this prompt:
@@ -99,6 +114,15 @@ const news = await getCollection("news");
 ---
 
 {news.map((article) => <h2>{article.data.title}</h2>)}
+```
+
+A relation field holds the target's slug. `related` and `relatedAll` from `@micacms/astro/relations` return the entries, typed, and leave out a missing one with a warning in `astro dev`:
+
+```astro
+---
+import { related } from "@micacms/astro/relations";
+const author = await related("team", article.data.author);
+---
 ```
 
 ## 6. Save, then publish
