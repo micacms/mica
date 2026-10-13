@@ -1,6 +1,13 @@
 # Change Log - @micacms/editor
 
-This log was last generated on Tue, 13 Oct 2026 11:14:11 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 14:06:11 GMT and should not be manually modified.
+
+## 0.7.0
+Tue, 13 Oct 2026 14:06:11 GMT
+
+### Patches
+
+- mica check reads the slug as the file has it, and says that Mica uses the entry's name
 
 ## 0.6.0
 Tue, 13 Oct 2026 11:14:11 GMT

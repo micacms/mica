@@ -10,6 +10,104 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.7.0] — 2026-10-13
+
+The editor's daily work. Editors choose what to publish, read editing words
+instead of Git words, and see on every entry whether it is published. A form
+checks its fields while the editor types, keeps unsaved changes when the
+session ends, and shows both versions when two editors save the same entry.
+When an entry's URL changes, the links to it can follow. Files can be deleted
+from the Media view, uploads stay with their entry, and a new content model is
+used without a restart.
+
+Read Breaking before upgrading from 0.6. A save no longer checks required
+fields; Publish does. Each publication's commit ends with a
+`Published-with: Mica` line. In the local editor, Publish waits while the
+branch holds other commits that are not pushed yet.
+
+### Breaking
+
+- **Publish takes the chosen changes.** The Publish page has a checkbox for
+  each change; a change comes with the new entries and files it uses, and the
+  rest stays saved. The staging status reports `unpushed: { mica, other }`
+  instead of `ahead` (`@micacms/runtime`, `@micacms/editor-ui`).
+- **Required fields are checked at Publish, not at Save.** A half-finished
+  entry can be saved; the entry page says "Not ready to publish" and names the
+  empty fields. A new entry needs a title or a URL (`@micacms/runtime`).
+- **Mica marks its commits.** Each publication's commit ends with the trailer
+  `Published-with: Mica`. In the local editor, Publish and its retry refuse
+  while the branch holds commits that its upstream does not have and that
+  Mica did not make: push them, or move them to another branch
+  (`@micacms/runtime`).
+- **Uploads go into the entry's folder.** A file uploaded in an entry or
+  settings form goes into its own `media/` folder; the picker offers that
+  folder's files and the shared ones. Files already in the shared folder stay
+  there. Videos are refused (`@micacms/runtime`, `@micacms/editor-ui`).
+- **Slugs and sorting are typed.** A collection's own slug field is read from
+  the entry's file name and typed as `string`, never `null`; a second slug
+  field among a collection's own fields stops the build. `defaultSort.field`
+  must be a field of the collection or `"position"`. The `coordinates` options
+  `defaultCenter` and `defaultZoom` are removed (`@micacms/core`,
+  `@micacms/astro`).
+- **Validation messages name the field and the limit**, such as "Title can have
+  at most 120 characters (now 134)." The unused `coordinatesSchema` export is
+  removed (`@micacms/core`).
+- **`findReferences` also returns settings pages**, as
+  `{ kind: "entry" | "singleton", … }` (`@micacms/runtime`).
+- **`restart_required` means only a `.gitattributes` change.** A new content
+  model needs no restart (`@micacms/self-hosted`).
+
+### Added
+
+- **Delete in the Media view.** A file, or a selection, is deleted when no
+  field and no rich text uses it; the view shows where a file is used. The
+  delete waits on the Publish page, and Discard brings the file back
+  (`@micacms/runtime`, `@micacms/editor-ui`).
+- **Links follow a URL change.** The entry page names the entries and settings
+  pages that link to the entry and offers to update their links in the same
+  save (`@micacms/core`, `@micacms/runtime`, `@micacms/editor-ui`).
+- **Save conflicts show both versions**, with "Keep mine" (logged with the
+  editor) and "Use theirs" (`@micacms/runtime`, `@micacms/editor-ui`).
+- **A new content model without a restart.** Mica loads it as soon as the
+  manifest changes, in both apps; an open page asks the editor to save and
+  load it again. A model that cannot be read leaves the old one in use, and
+  the System and Publish pages say why (`@micacms/runtime`,
+  `@micacms/editor-ui`).
+- **The end of a session keeps the work.** The page offers "Sign in again" and
+  returns to the same place; forms keep unsaved changes in the browser tab and
+  offer to restore them. A warning comes five minutes before the end. Each
+  response names the session's end in `x-mica-session-expires`
+  (`@micacms/editor-ui`, `@micacms/auth-oidc`).
+- **`patternMessage`** on text fields, and a description for every builder
+  option (`@micacms/core`).
+- **`relinkReferences` and `mapMedia`** in `@micacms/core`.
+- **The log names the editor** for Publish, Discard, conflict choices, media
+  deletes and "Keep mine" (`@micacms/runtime`).
+
+### Changed
+
+- **Editing words, not Git words.** "Say what changed" instead of "commit
+  message"; Git details are only on the System page and in a closed "Details
+  for developers" section (`@micacms/editor-ui`).
+- **Publish state everywhere.** Entries and settings show "Saved · not
+  published" with Publish and Discard, lists mark new and changed entries,
+  and each change shows when it was saved (`@micacms/editor-ui`).
+- **The form checks fields in the browser** when the editor leaves them and
+  before a save; each problem links to its field, also from the Publish page
+  (`@micacms/editor-ui`).
+- **In `astro dev`, an unfinished draft is left out** with a warning, and the
+  rest of the collection loads; a build still fails (`@micacms/astro`).
+- **Dependencies refreshed**; the example site uses MapLibre 6 and sharp 0.35.
+
+### Fixed
+
+- "Today" in a date field uses the local date; a half-typed coordinate is
+  named as missing instead of 0; the list search no longer matches field
+  names; list cells show dates, choices, rich text and files readably; a
+  settings page that fails to load no longer shows an empty form
+  (`@micacms/editor-ui`).
+- `mica check` reads the slug as the file has it (`@micacms/editor`).
+
 ## [0.6.0] — 2026-10-13
 
 New configuration names, a new package shape, a new CLI and a smaller public

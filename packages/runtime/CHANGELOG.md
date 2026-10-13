@@ -1,6 +1,23 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Tue, 13 Oct 2026 11:14:11 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 14:06:11 GMT and should not be manually modified.
+
+## 0.7.0
+Tue, 13 Oct 2026 14:06:11 GMT
+
+### Minor changes
+
+- Breaking: findReferences also returns settings pages, as { kind: 'entry' | 'singleton', ... }; a save with updateLinks moves the links to a renamed entry along, and a URL change and those links are published together
+- The media usage and delete routes: a file that no field and no rich text uses can be deleted, as a pending change
+- An upload from an entry's form goes into that entry's media folder, and a new entry's uploads move with its URL at the first save; videos are refused
+- A new content model is used without a restart: the runtime checks the manifest on admin requests and before Publish, and keeps the model in use when the new one cannot be read
+- Breaking: Publish commits only the chosen changes, together with the new entries and files they use; Save no longer checks required fields, and Publish does; each publication's commit ends with the trailer 'Published-with: Mica'; the staging status reports unpublished commits as 'unpushed' instead of 'ahead'
+- The local editor's Publish refuses while the branch holds other commits that no remote has, so it never sends a developer's own commits
+
+### Patches
+
+- A save with keepMine is logged with the editor's identity
+- Publish, Discard and conflict choices are logged with the editor's identity, without content
 
 ## 0.6.0
 Tue, 13 Oct 2026 11:14:11 GMT

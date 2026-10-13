@@ -2,6 +2,26 @@
   "name": "@micacms/astro",
   "entries": [
     {
+      "version": "0.7.0",
+      "tag": "@micacms/astro_v0.7.0",
+      "date": "Tue, 13 Oct 2026 14:06:11 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Breaking: a second slug field among a collection's own fields stops the build; the setup reference says so, and names no coordinates options"
+          },
+          {
+            "comment": "In dev, an entry that fails its schema is left out with a warning, so that an unfinished draft does not stop the collection; a build still fails"
+          }
+        ],
+        "patch": [
+          {
+            "comment": "The setup reference names the patternMessage option of text fields"
+          }
+        ]
+      }
+    },
+    {
       "version": "0.6.0",
       "tag": "@micacms/astro_v0.6.0",
       "date": "Tue, 13 Oct 2026 11:14:11 GMT",

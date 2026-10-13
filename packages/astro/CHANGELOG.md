@@ -1,6 +1,18 @@
 # Change Log - @micacms/astro
 
-This log was last generated on Tue, 13 Oct 2026 11:14:11 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 14:06:11 GMT and should not be manually modified.
+
+## 0.7.0
+Tue, 13 Oct 2026 14:06:11 GMT
+
+### Minor changes
+
+- Breaking: a second slug field among a collection's own fields stops the build; the setup reference says so, and names no coordinates options
+- In dev, an entry that fails its schema is left out with a warning, so that an unfinished draft does not stop the collection; a build still fails
+
+### Patches
+
+- The setup reference names the patternMessage option of text fields
 
 ## 0.6.0
 Tue, 13 Oct 2026 11:14:11 GMT

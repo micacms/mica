@@ -1,6 +1,20 @@
 # Change Log - @micacms/core
 
-This log was last generated on Tue, 13 Oct 2026 11:14:11 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 14:06:11 GMT and should not be manually modified.
+
+## 0.7.0
+Tue, 13 Oct 2026 14:06:11 GMT
+
+### Minor changes
+
+- Breaking: a collection's own slug field is read from the entry's file name and typed as string, never null; defaultSort.field must be a field key or 'position'; the coordinates options defaultCenter and defaultZoom are removed
+- Breaking: validation messages name the field and the limit, such as 'Title can have at most 120 characters (now 134).', and the unused coordinatesSchema export is removed; text fields take an optional patternMessage
+- relinkReferences points the relations to an entry at its new URL, nested fields included
+- mapMedia applies a function to every media path in a payload, nested fields included
+
+### Patches
+
+- required accepts false; every builder option has a description
 
 ## 0.6.0
 Tue, 13 Oct 2026 11:14:11 GMT

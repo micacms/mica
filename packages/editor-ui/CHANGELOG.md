@@ -1,6 +1,24 @@
 # Change Log - @micacms/editor-ui
 
-This log was last generated on Tue, 13 Oct 2026 11:14:11 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 14:06:11 GMT and should not be manually modified.
+
+## 0.7.0
+Tue, 13 Oct 2026 14:06:11 GMT
+
+### Minor changes
+
+- A save conflict between two editors shows both versions, with 'Keep mine' and 'Use theirs'; a URL change names the entries that link to it and can update their links
+- The form checks a field when the editor leaves it and before a save; each problem in the summary moves to its field, and the problems on the Publish page link to the entry and the field
+- The Media view deletes a file or a selection when nothing uses it, and shows where a file is used; the picker in a form uploads into the form's own folder and offers only its files and the shared ones
+- A page that shows an older content model asks the editor to save and load it again; the System page names a model that cannot be read
+- When the session ends, the page stays and offers to sign in again; entry and settings forms keep their unsaved changes in the tab and offer to restore them after the sign-in; a warning comes five minutes before the end
+- Entries, settings and lists show whether a saved change is published, with Publish and Discard on the entry page; each shared media file is its own change
+- The editor uses editing words, not Git words; the technical details are in a closed 'Details for developers' section
+- The Publish page lets editors choose the changes to publish, suggests a summary ('Say what changed'), shows when each change was saved, and confirms that the website is being rebuilt
+
+### Patches
+
+- Fix 'Today' in the date field (local date), half-typed coordinates, the list search, the slug hint, list cells for dates, choices, rich text and media, a settings page that failed to load, and '0 entries' while the dashboard loads
 
 ## 0.6.0
 Tue, 13 Oct 2026 11:14:11 GMT

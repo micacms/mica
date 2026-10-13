@@ -2,6 +2,41 @@
   "name": "@micacms/runtime",
   "entries": [
     {
+      "version": "0.7.0",
+      "tag": "@micacms/runtime_v0.7.0",
+      "date": "Tue, 13 Oct 2026 14:06:11 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "A save with keepMine is logged with the editor's identity"
+          },
+          {
+            "comment": "Publish, Discard and conflict choices are logged with the editor's identity, without content"
+          }
+        ],
+        "minor": [
+          {
+            "comment": "Breaking: findReferences also returns settings pages, as { kind: 'entry' | 'singleton', ... }; a save with updateLinks moves the links to a renamed entry along, and a URL change and those links are published together"
+          },
+          {
+            "comment": "The media usage and delete routes: a file that no field and no rich text uses can be deleted, as a pending change"
+          },
+          {
+            "comment": "An upload from an entry's form goes into that entry's media folder, and a new entry's uploads move with its URL at the first save; videos are refused"
+          },
+          {
+            "comment": "A new content model is used without a restart: the runtime checks the manifest on admin requests and before Publish, and keeps the model in use when the new one cannot be read"
+          },
+          {
+            "comment": "Breaking: Publish commits only the chosen changes, together with the new entries and files they use; Save no longer checks required fields, and Publish does; each publication's commit ends with the trailer 'Published-with: Mica'; the staging status reports unpublished commits as 'unpushed' instead of 'ahead'"
+          },
+          {
+            "comment": "The local editor's Publish refuses while the branch holds other commits that no remote has, so it never sends a developer's own commits"
+          }
+        ]
+      }
+    },
+    {
       "version": "0.6.0",
       "tag": "@micacms/runtime_v0.6.0",
       "date": "Tue, 13 Oct 2026 11:14:11 GMT",

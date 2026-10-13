@@ -1,6 +1,13 @@
 # Change Log - @micacms/auth-oidc
 
-This log was last generated on Tue, 13 Oct 2026 11:14:11 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 14:06:11 GMT and should not be manually modified.
+
+## 0.7.0
+Tue, 13 Oct 2026 14:06:11 GMT
+
+### Minor changes
+
+- Each admitted response names the end of the session in the x-mica-session-expires header, so that the editor can warn without extending an idle session
 
 ## 0.6.0
 Tue, 13 Oct 2026 11:14:11 GMT
