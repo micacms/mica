@@ -21,8 +21,8 @@
     { "name": "@micacms/astro", "role": "Typed Astro Content Layer loaders" },
     { "name": "@micacms/runtime", "role": "The API server, authentication-neutral" },
     { "name": "@micacms/editor-ui", "role": "The editing interface, as built assets" },
-    { "name": "@micacms/editor", "role": "The local editor: npx @micacms/editor" },
-    { "name": "@micacms/self-hosted", "role": "The Docker image, behind OIDC, with its own Git clone" },
+    { "name": "@micacms/editor", "role": "The local editor: npx @micacms/editor start" },
+    { "name": "@micacms/self-hosted", "role": "The Docker image (not on npm), behind OIDC, with its own Git clone" },
     { "name": "@micacms/auth-oidc", "role": "OpenID Connect for deployments" },
     { "name": "Git over HTTPS", "role": "The self-hosted clone, drafts, and publish" },
     { "name": "OpenID Connect", "role": "Authentication in production" }

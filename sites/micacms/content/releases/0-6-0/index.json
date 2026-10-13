@@ -1,0 +1,8 @@
+{
+  "title": "The last breaking release before 1.0",
+  "slug": "0-6-0",
+  "version": "0.6.0",
+  "publishDate": "2026-10-13",
+  "summary": "Configuration names, package shape, CLI and API are now in their 1.0 form. Images reach Astro as images. Read Breaking before you upgrade from 0.5.",
+  "latest": true
+}
