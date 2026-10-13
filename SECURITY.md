@@ -11,7 +11,7 @@ local editor or the self-hosted image), the steps to reproduce, and the effect.
 ## What to expect
 
 Mica is a hobby project of one maintainer, maintained on a best-effort basis
-(see [GOVERNANCE.md](GOVERNANCE.md) when it exists). There are no response
+(see [GOVERNANCE.md](GOVERNANCE.md)). There are no response
 times. A valid report is fixed in the next release, as soon as the maintainer
 can.
 

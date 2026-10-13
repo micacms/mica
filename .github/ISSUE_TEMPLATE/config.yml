@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a vulnerability
+    url: https://github.com/micacms/mica/security/advisories/new
+    about: Report a security problem privately. Do not open a public issue for it. See SECURITY.md.
+  - name: Documentation
+    url: https://micacms.com/docs/
+    about: The guides and the reference, before you ask.

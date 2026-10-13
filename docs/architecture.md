@@ -274,7 +274,7 @@ Four details that matter:
 **Multi-site is not here.** One runtime serves one site, named by an explicit
 `SiteContext` rather than assumed. There are no tenant, site or membership
 tables: several sites means several processes, and a control plane that runs
-them is a separate, private product — see [`v3-arch.md`](history/v3-arch.md) §14.
+them is a separate, private product — see [GOVERNANCE.md](../GOVERNANCE.md).
 
 ---
 
