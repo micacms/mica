@@ -1569,6 +1569,47 @@ it. A slug field with `maxLength` now validates the file name too.
 
 ---
 
+### P2 — A view reads what it shows
+
+**Decided:** each view reads in proportion to what it shows, not to the size of
+the site, and a test holds it there (`runtime/test/budgets.test.ts`, 300
+entries in 3 collections and 1,000 images, with a counting file layer and a
+counting Git runner):
+
+- Opening an entry reads that entry's files (`readCollectionEntry`), and lists
+  its collection once to refuse an entry in the other layout. Its response has
+  no list `position`.
+- The free-URL check asks only whether the candidate's data file exists
+  (`stat`), then `-2`, `-3` and so on.
+- The media list, the dashboard and the System page read no file: sizes come
+  from `stat`, types from the file name (the upload chose it from the bytes),
+  and counts from a directory listing and a `stat` of each data file. One file's dimensions come from
+  `/admin/media/info`, cached by path, size and last change. The file route
+  sends an ETag and answers 304.
+- The change list reads the changed entries and, for a rename, the candidates
+  on the published side; the layout of a changed collection is one listing, and
+  a changed `_order.json` is parsed. A deletion still reads every collection,
+  because a link to the deleted entry or file can be anywhere.
+- A full collection is read eight entries at a time.
+- The editor refreshes the change list after its own writes and when the
+  window gets focus, not on every navigation.
+
+**Why:** 0.5 took the network out of reads, but opening one entry still read
+its whole collection, and the media list read every image. At a few hundred
+entries that is the difference between instant and slow.
+
+**Consequence:** the media list has no dimensions; the picker shows the size.
+A folder without an `index.json` (uploads for an entry that is not saved yet,
+or a folder that a discard left empty) is not an entry: it is not counted, and
+its URL is free.
+
+**What would change it:** a site far above the stated scale, such as the large
+hiking blog that is planned; then an index of references and of titles.
+
+**1.0 status:** accepted for 1.0 (#72, #73, #75, #76).
+
+---
+
 ### P2 — The editor speaks of saving and publishing, not of Git
 
 **Decided:** the editor's text uses editing words: "Say what changed", not
