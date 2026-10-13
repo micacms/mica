@@ -369,6 +369,31 @@ describe("publish", () => {
     assert.equal(git(bare, "rev-parse", "HEAD"), result.revision);
   });
 
+  it("pushes a new branch to origin and sets its upstream", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    const bare = temp("mica-bare-");
+    git(bare, "init", "-q", "--bare", "-b", "main");
+    git(root, "remote", "add", "origin", bare);
+    git(root, "push", "-q", "-u", "origin", "main");
+    git(root, "switch", "-q", "-c", "feature/mica");
+
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"New","slug":"haus-a"}');
+    const result = await service.publish({ message: "On a branch", paths: await reviewed(service) });
+
+    assert.equal(result.state, "published");
+    assert.equal(git(bare, "rev-parse", "feature/mica"), result.revision);
+    assert.equal(git(root, "rev-parse", "--abbrev-ref", "@{upstream}"), "origin/feature/mica");
+  });
+
+  it("names the command when a branch has no upstream and there is no origin", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"New","slug":"haus-a"}');
+    const result = await service.publish({ message: "No remote", paths: await reviewed(service) });
+
+    assert.equal(result.state, "committed-pending-push");
+    assert.match(result.pushError!, /no remote\. Add one with `git remote add origin <url>`/);
+  });
+
   it("is refused when disabled by configuration", async () => {
     const { contentRoot, service } = makeRepo({ publishEnabled: false });
     writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"No","slug":"haus-a"}');
