@@ -30,12 +30,12 @@
   ],
   "gallery": [
     {
-      "path": "/media/workspace.jpg",
-      "alt": "A dashboard with a task list on a dark screen, used to compare ERP vendors"
+      "path": "media/retail.jpg",
+      "alt": "A retailer and consultant check stock among shelves of household goods"
     },
     {
-      "path": "/media/workspace.jpg",
-      "alt": "Close-up of the task list that tracks each vendor assessment"
+      "path": "media/vendor-review.jpg",
+      "alt": "Software assessment sheets, a laptop and an inventory scanner on a desk"
     }
   ],
   "team": [

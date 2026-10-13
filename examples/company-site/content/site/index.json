@@ -19,7 +19,7 @@
   "seo": {
     "titleSuffix": "— Harbor Lane Consulting",
     "defaultDescription": "Independent consultancy for growing companies. Strategy, operations and technology projects, with clients in many countries.",
-    "defaultImage": null
+    "defaultImage": "/media/studio.jpg"
   },
   "analytics": {
     "provider": "none",

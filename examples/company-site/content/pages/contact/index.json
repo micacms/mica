@@ -2,7 +2,10 @@
   "title": "Contact",
   "slug": "contact",
   "intro": "Come by the studio, or send a message.",
-  "heroImage": null,
+  "heroImage": {
+    "path": "media/entrance.jpg",
+    "alt": "An open studio entrance with blue tiles and a potted olive tree"
+  },
   "sections": [],
   "seo": {
     "metaTitle": null,

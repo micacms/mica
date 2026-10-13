@@ -28,7 +28,12 @@
       "value": "5 years"
     }
   ],
-  "gallery": [],
+  "gallery": [
+    {
+      "path": "media/manufacturer.jpg",
+      "alt": "An older owner and a younger colleague discuss a metal part beside a lathe"
+    }
+  ],
   "team": [
     "amara-okafor",
     "lars-nilsson"

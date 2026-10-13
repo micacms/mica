@@ -28,7 +28,12 @@
       "value": "+2.1 points"
     }
   ],
-  "gallery": [],
+  "gallery": [
+    {
+      "path": "media/port.jpg",
+      "alt": "Container cranes, a cargo ship and a lorry at a working port"
+    }
+  ],
   "team": [
     "mateo-fernandez",
     "priya-raman"

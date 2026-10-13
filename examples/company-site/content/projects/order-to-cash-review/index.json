@@ -28,7 +28,12 @@
       "value": "3 consultants"
     }
   ],
-  "gallery": [],
+  "gallery": [
+    {
+      "path": "media/dispatch.jpg",
+      "alt": "Two colleagues check packing slips beside parcels in a dispatch area"
+    }
+  ],
   "team": [
     "amara-okafor",
     "mateo-fernandez"

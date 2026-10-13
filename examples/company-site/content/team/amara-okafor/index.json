@@ -4,7 +4,10 @@
   "role": "Managing partner",
   "email": "amara.okafor@harborlane.example",
   "phone": "+351 21 555 0143",
-  "portrait": null,
+  "portrait": {
+    "path": "media/portrait.jpg",
+    "alt": "Amara Okafor, managing partner, in a navy jacket"
+  },
   "bio": "Founded Harbor Lane in 2012 after a decade in industry across Lagos, London and Lisbon. Leads client work and the occasional workshop.",
   "featured": true
 }

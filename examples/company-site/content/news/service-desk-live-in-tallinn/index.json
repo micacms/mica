@@ -9,5 +9,8 @@
     "public sector"
   ],
   "excerpt": "Three support teams are now one desk. The first month brought fewer tickets, not more.",
-  "coverImage": null
+  "coverImage": {
+    "path": "/media/service-desk.jpg",
+    "alt": "Support staff work together at desks in a bright service office"
+  }
 }

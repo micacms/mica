@@ -2,14 +2,17 @@
   "title": "Services",
   "slug": "services",
   "intro": "Strategy, operations and technology projects, scoped to what a small team can deliver.",
-  "heroImage": null,
+  "heroImage": {
+    "path": "media/workshop.jpg",
+    "alt": "Three consultants review process notes together around a meeting table"
+  },
   "sections": [
     {
       "heading": "Our approach",
       "layout": "image-right",
       "image": {
         "path": "/media/workspace.jpg",
-        "alt": "A project dashboard with a task list on a dark screen, as we use it to track each engagement"
+        "alt": "Sticky notes, a process sketch and a notebook on an oak work table"
       }
     }
   ],

@@ -1,0 +1,13 @@
+{
+  "name": "Bento",
+  "slug": "bento",
+  "role": "Company dog",
+  "email": null,
+  "phone": null,
+  "portrait": {
+    "path": "media/portrait.jpg",
+    "alt": "Bento, a brown dachshund with a teal collar, sitting in the studio"
+  },
+  "bio": "Our resident dachshund. Welcomes visitors, joins the team for walks and finds the warmest spot in the studio.",
+  "featured": true
+}

@@ -4,7 +4,10 @@
   "role": "Consultant, data",
   "email": "priya.raman@harborlane.example",
   "phone": "+351 21 555 0145",
-  "portrait": null,
+  "portrait": {
+    "path": "media/portrait.jpg",
+    "alt": "Priya Raman, data consultant, in a teal blouse"
+  },
   "bio": "Builds the reporting that nobody else wants to build. Joined from a software company in Bengaluru.",
   "featured": true
 }

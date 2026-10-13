@@ -9,5 +9,8 @@
     "operations"
   ],
   "excerpt": "We asked 120 owner-led businesses where their week actually goes. The answers were not flattering.",
-  "coverImage": null
+  "coverImage": {
+    "path": "media/research.jpg",
+    "alt": "Survey reports with charts, a notebook and coffee on a research desk"
+  }
 }

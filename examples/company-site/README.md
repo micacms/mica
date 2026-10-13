@@ -12,6 +12,13 @@ that should not.
 All names, places and addresses are made up. The domain `harborlane.example`
 does not exist.
 
+The photos were made with the built-in OpenAI image model. They show fictional
+people and work scenes. See [IMAGES.md](./IMAGES.md) for the image paths and
+prompts. Images are local files; Astro processes them during the build.
+
+The team page shows five fictional people and Bento, the company dachshund.
+Bento is last in the saved team order.
+
 ## Run it
 
 ```bash
