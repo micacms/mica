@@ -1541,6 +1541,34 @@ index of references, as for the check at Publish.
 
 ---
 
+### P2 — An entry's URL is its file name
+
+**Decided:** Mica reads a collection's slug field from the entry's folder or
+file name, whatever the file holds (`withSlug` in core's reader), so the field
+is typed `string`, never `null`, in `InferCollection` and in Astro. A collection
+has one slug field among its own fields; `@micacms/astro` refuses a second
+one, because it would be typed the same and could still be empty. A slug in an
+object, a repeater or a settings page is an ordinary, nullable value: the
+pattern of one URL per language in an object ("No native multilingual content
+in 1.0") still works. `defaultSort.field` is typed as `"position"` or a field
+of the collection, and the `coordinates` options `defaultCenter` and
+`defaultZoom`, which the editor never used, are gone.
+
+**Why:** every entry has a URL, and the file name is where Mica takes it from
+for every read and write; a type that says `null` made every site check for a
+case that cannot happen. Mica itself still reads a manifest with two slug
+fields, so a site from 0.6 keeps working with a newer image.
+
+**Consequence:** a file whose slug value differs from its name is read with the
+name, and the next save writes the name into the file; `mica check` warns about
+it. A slug field with `maxLength` now validates the file name too.
+
+**What would change it:** nothing foreseen.
+
+**1.0 status:** accepted for 1.0 (#114).
+
+---
+
 ### P2 — The editor speaks of saving and publishing, not of Git
 
 **Decided:** the editor's text uses editing words: "Say what changed", not

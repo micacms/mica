@@ -28,6 +28,7 @@ import {
   INDEX_FILE,
   singletonPath,
   isFieldKind,
+  resolveSlugField,
   MANIFEST_PATH,
   readCollection,
   readSingleton,
@@ -187,6 +188,7 @@ export function micaCollections<S extends Site>(
   options: MicaCollectionsOptions = {},
 ): MicaCollections<S> {
   assertKnownKinds(site);
+  assertOneUrl(site);
 
   /**
    * Everything below is resolved on first load rather than here, because the
@@ -423,6 +425,26 @@ function assertKnownKinds(site: Site): void {
   };
   for (const [name, def] of Object.entries(site.collections)) check(def.fields, `collections.${name}`);
   for (const [name, def] of Object.entries(site.singletons)) check(def.fields, `singletons.${name}`);
+}
+
+/**
+ * A collection's own slug fields are typed as never null, because Mica fills
+ * the URL field from the file name. A second one would be typed the same and
+ * could still be null, so the site's model refuses it. (A slug in an object,
+ * such as one per language, is nullable and fine.) Mica itself still reads a
+ * manifest with two, so an older site keeps working with a newer Mica.
+ */
+function assertOneUrl(site: Site): void {
+  for (const [name, def] of Object.entries(site.collections)) {
+    const url = resolveSlugField(def);
+    const others = Object.entries(def.fields).filter(([key, field]) => field.kind === "slug" && key !== url).map(([key]) => key);
+    if (others.length > 0) {
+      throw new Error(
+        `Collection "${name}" has slug fields that are not its URL (${others.join(", ")}); its URL is "${url}". ` +
+          "An entry has one URL: use text() for the others, or put them in an object, such as one per language.",
+      );
+    }
+  }
 }
 
 /**

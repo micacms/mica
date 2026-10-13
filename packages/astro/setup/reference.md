@@ -43,9 +43,10 @@ Rules that `defineSite` enforces:
 - Collection, singleton and field names are lowerCamelCase and start with a
   letter: `news`, `teamMembers`, `publishedOn`. Not `team-members`.
 - A name is a collection or a singleton, not both.
-- Every collection has a `slug()` field. Its value is the name of the entry's
-  file or folder, and the entry's address on the website. Use one; with more,
-  the first is the slug unless `slugField` names another.
+- Every collection has one `slug()` field among its own fields. Its value is
+  the name of the entry's file or folder, and the entry's address on the
+  website. A second one there stops the build; a slug in an object (such as one
+  per language) is fine and can be empty.
 - A `relation()` names a collection of the same model.
 - A `select()` has at least one option.
 
@@ -78,7 +79,7 @@ in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
 | `relation()` | the slug of an entry | `collection` (required), `multiple` |
 | `media()` | a file path, or `{ path, alt }` with `alt` | `accept: "image" \| "document" \| "any"`, `multiple`, `max`, `alt: "required" \| "optional"` |
 | `color()` | `"#rrggbb"` | `presets`, `default` |
-| `coordinates()` | `{ "lat": 47.37, "lng": 8.54 }` | `defaultCenter`, `defaultZoom` |
+| `coordinates()` | `{ "lat": 47.37, "lng": 8.54 }` | — |
 
 There is no field for a free list of strings, such as free tags. Use
 `select({ multiple: true, options })` for a fixed list, or a `repeater()` with
@@ -104,7 +105,8 @@ content/
 ```
 
 - A slug has lowercase letters, digits and single hyphens: `hello-world`. The
-  slug field in the JSON has the same value as the folder or file name.
+  slug field in the JSON has the same value as the folder or file name. Where
+  they differ, Mica uses the name.
 - A media path in the JSON is relative to the entry's folder (`media/cover.jpg`),
   or starts with `/` and is relative to the content root (`/shared/logo.png`).
 - A rich-text field in a repeater or an object gets a dotted file name:

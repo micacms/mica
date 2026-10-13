@@ -8,7 +8,7 @@
  * same code over different sources.
  */
 
-import { collectReferences } from "./define.js";
+import { collectReferences, resolveSlugField } from "./define.js";
 import { DOCUMENT_EXTENSION, FormatError, INDEX_FILE, entryLayout, type EntryLayout } from "./layout.js";
 import { isValidSlug } from "./slugify.js";
 import { parseEntry } from "./parse.js";
@@ -98,10 +98,16 @@ export async function readCollection(
 
   for (const [position, slug] of ordered.entries()) {
     const data = await readEntry(source, def.fields, `${name}/${slug}`, entryBase(def.fields, name, slug));
-    if (data) entries.push({ slug, position, data });
+    if (data) entries.push({ slug, position, data: withSlug(def, data, slug) });
   }
 
   return entries;
+}
+
+/** The entry's URL is its file name: the slug field says the same, whatever the file holds. */
+function withSlug(def: Collection, data: Record<string, unknown>, slug: string): Record<string, unknown> {
+  const key = resolveSlugField(def);
+  return key ? { ...data, [key]: slug } : data;
 }
 
 /**
@@ -117,7 +123,8 @@ export async function readCollectionEntry(
   name: string,
   slug: string,
 ): Promise<Record<string, unknown> | null> {
-  return readEntry(source, def.fields, `${name}/${slug}`, entryBase(def.fields, name, slug));
+  const data = await readEntry(source, def.fields, `${name}/${slug}`, entryBase(def.fields, name, slug));
+  return data && withSlug(def, data, slug);
 }
 
 /**

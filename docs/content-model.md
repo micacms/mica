@@ -101,12 +101,16 @@ projects: collection({
 | `description`   | Shown above the list                                                                     |
 | `titleField`    | Field key used as the entry title. Defaults to `title`                                   |
 | `slugField`     | Field key holding the slug. Defaults to the first `slug()` field                         |
-| `defaultSort`   | `{ field, direction }` over `title`, `position`, `createdAt`, `updatedAt`, `publishedAt` |
+| `defaultSort`   | `{ field, direction }`: `field` is `"position"` or a key of the collection's own fields; TypeScript refuses another name |
 | `sortable`      | Lets editors drag entries into an order, kept in `_order.json`                           |
 
 Every collection needs a slug field: it is the entry's identity in the
 repository and its address on the website. That is the field that `slugField`
-names. If there is none, it is the first `slug()` field.
+names. If there is none, it is the first `slug()` field. A collection has one
+`slug()` field among its own fields; `@micacms/astro` refuses a second one. Mica
+reads that field from the entry's folder or file name, so its type is
+`string`, never `null`. A slug elsewhere, such as one per language in an
+object, is an ordinary value and can be `null`.
 
 Singletons take `label`, `description` and `fields`, and nothing else.
 
@@ -118,7 +122,7 @@ Singletons take `label`, `description` and `fields`, and nothing else.
 | ------------- | --------------------------------------------- |
 | `label`       | Falls back to the field key                   |
 | `description` | Help text under the input                     |
-| `required`    | Empty values are rejected                     |
+| `required`    | `true`: Publish refuses an empty value, and the type is not nullable; a draft may be saved without it. `false` is the default |
 | `listed`      | Show this field as a column in the entry list |
 | `readonly`    | Rendered, not editable                        |
 | `hidden`      | Kept in the payload, hidden from the editor   |
@@ -146,7 +150,7 @@ Singletons take `label`, `description` and `fields`, and nothing else.
 | `relation()`    | the target's slug                   | `collection` (required), `multiple`                             |
 | `media()`       | repository path, or `{ path, alt }` | `accept: "image" \| "document" \| "any"`, `multiple`, `max`, `alt` |
 | `color()`       | hex string                          | `presets`, `default`                                            |
-| `coordinates()` | `{ lat, lng }`                      | `defaultCenter`, `defaultZoom`                                  |
+| `coordinates()` | `{ lat, lng }`                      | —                                                               |
 
 A few that repay a closer look:
 

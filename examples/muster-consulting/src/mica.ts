@@ -178,8 +178,6 @@ export const site = defineSite({
             }),
             position: coordinates({
               label: "Map position",
-              defaultCenter: { lat: 47.3769, lng: 8.5417 },
-              defaultZoom: 12,
             }),
           },
         }),
@@ -272,8 +270,6 @@ export const site = defineSite({
         position: coordinates({
           label: "Map position",
           group: "Contact",
-          defaultCenter: { lat: 47.3769, lng: 8.5417 },
-          defaultZoom: 14,
         }),
         social: repeater({
           label: "Social links",
