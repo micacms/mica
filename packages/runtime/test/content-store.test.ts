@@ -139,6 +139,26 @@ describe("saving an entry", () => {
     assert.equal(entry?.data.cover, "projects/haus-a/media/photo.jpg");
   });
 
+  it("stores a media value with alt text relative to the entry, and reads it back", async () => {
+    const withAlt = defineSite({
+      collections: {
+        projects: collection({
+          label: "Projects",
+          fields: { title: text(), slug: slug({ from: "title" }), cover: media({ alt: "required" }) },
+        }),
+      },
+    });
+    const altStore = createContentStore(withAlt, contentFiles({ root }));
+    const cover = { path: "projects/haus-a/media/photo.jpg", alt: "The house from the street" };
+    await altStore.save("projects", { data: { title: "Haus A", cover } });
+
+    assert.deepEqual(JSON.parse(await read("projects/haus-a/index.json")).cover, {
+      path: "media/photo.jpg",
+      alt: "The house from the street",
+    });
+    assert.deepEqual((await altStore.get("projects", "haus-a"))?.data.cover, cover);
+  });
+
   it("keeps a media path from outside the entry pointing where it did", async () => {
     await store.save("projects", {
       data: { title: "Haus A", year: 2024, cover: "media/shared-logo.svg" },

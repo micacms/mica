@@ -62,6 +62,18 @@ function label(field: AnyField, key: string): string {
   return field.label ?? key;
 }
 
+/** `{ path, alt }`. A plain path, saved before the field asked for alt text, reads as one without alt text. */
+function mediaWithAlt(alt: "required" | "optional", name: string, options: SchemaOptions): z.ZodType {
+  const text = z.preprocess(
+    (value) => (value === undefined || (typeof value === "string" && value.trim() === "") ? null : value),
+    z.string().trim().nullable(),
+  );
+  const shape = z.object({ path: z.string().min(1), alt: text }).strip();
+  const one = z.preprocess((value) => (typeof value === "string" ? { path: value, alt: null } : value), shape);
+  if (alt === "optional" || options.enforceRequired === false) return one;
+  return one.refine((value) => value.alt !== null, { message: `${name} needs alt text.`, path: ["alt"] });
+}
+
 /** The inner schema for a field, before nullability and defaults are applied. */
 function innerSchema(
   field: AnyField,
@@ -158,7 +170,7 @@ function innerSchema(
       return coordinatesSchema;
 
     case "media": {
-      const one = z.string().min(1);
+      const one = field.alt ? mediaWithAlt(field.alt, name, options) : z.string().min(1);
       if (!field.multiple) return one;
       let list = z.array(one);
       if (field.max !== undefined) list = list.max(field.max);

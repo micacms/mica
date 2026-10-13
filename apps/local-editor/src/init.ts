@@ -28,7 +28,7 @@ export const site = defineSite({
         title: text({ label: "Title", required: true, maxLength: 120, listed: true }),
         slug: slug({ from: "title" }),
         publishedOn: date({ label: "Published on", listed: true }),
-        cover: media({ accept: "image" }),
+        cover: media({ accept: "image", alt: "required" }),
         body: richText(),
       },
     }),

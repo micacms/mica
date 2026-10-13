@@ -227,7 +227,10 @@ function mapMedia(
       const value = record[key];
 
       if (field.kind === "media") {
-        result[key] = Array.isArray(value) ? value.map(mapOne) : mapOne(value);
+        // `media({ alt })` stores `{ path, alt }`: only the path is a path.
+        const item = (one: unknown): unknown =>
+          isRecord(one) && typeof one["path"] === "string" ? { ...one, path: mapOne(one["path"]) } : mapOne(one);
+        result[key] = Array.isArray(value) ? value.map(item) : item(value);
       } else if (field.kind === "object" && isRecord(value)) {
         result[key] = visit(field.fields, value);
       } else if (field.kind === "repeater" && Array.isArray(value)) {

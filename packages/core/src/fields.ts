@@ -238,6 +238,8 @@ export interface MediaOptions extends CommonOptions {
   multiple?: true;
   accept?: "image" | "document" | "any";
   max?: number;
+  /** Stores `{ path, alt }` and asks for alt text. `"required"` refuses an empty one. */
+  alt?: "required" | "optional";
 }
 
 export function media<O extends MediaOptions>(options?: O): MediaField & O {

@@ -88,7 +88,7 @@ export const site = defineSite({
         }),
         slug: slug({ from: "title" }),
         publishedOn: date({ label: "Published on", listed: true }),
-        cover: media({ accept: "image" }),
+        cover: media({ accept: "image", alt: "required" }),
         body: richText(),
       },
     }),

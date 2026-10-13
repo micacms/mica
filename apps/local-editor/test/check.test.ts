@@ -95,6 +95,28 @@ describe("mica check", () => {
     assert.ok(errors.some((line) => line.includes('"news/hello/media/gone.jpg" does not exist')), errors.join("\n"));
   });
 
+  it("checks the file and the alt text of a media field with alt", async () => {
+    const withAlt = defineSite({
+      collections: {
+        news: collection({
+          label: "News",
+          fields: { title: text(), slug: slug({ from: "title" }), cover: media({ alt: "required" }) },
+        }),
+      },
+    });
+    write(MANIFEST_PATH, createManifest(withAlt, "test"));
+    rmSync(path.join(root, "team"), { recursive: true });
+    rmSync(path.join(root, "settings.json"));
+    rmSync(path.join(root, "news/hello/body.mdoc"));
+    write("news/hello/index.json", { title: "Hello", slug: "hello", cover: { path: "media/cover.jpg", alt: "A cover" } });
+    assert.deepEqual((await checkContent(root)).problems, []);
+
+    write("news/hello/index.json", { title: "Hello", slug: "hello", cover: { path: "media/gone.jpg", alt: null } });
+    const errors = problems(await checkContent(root), "error");
+    assert.ok(errors.some((line) => line.includes("cover.alt: cover needs alt text.")), errors.join("\n"));
+    assert.ok(errors.some((line) => line.includes('"news/hello/media/gone.jpg" does not exist')), errors.join("\n"));
+  });
+
   it("warns about a slug field that does not match the entry's name, and accepts an empty one", async () => {
     write("team/anna.json", { name: "Anna", slug: "anna-vogt" });
     assert.ok(problems(await checkContent(root), "warning").some((line) => line.includes('"anna-vogt", but the entry is named "anna"')));
@@ -162,6 +184,7 @@ describe("mica check", () => {
   it("reports JSON that does not parse, and an empty singleton", async () => {
     write("team/anna.json", "{ name: Anna");
     rmSync(path.join(root, "settings.json"));
+    rmSync(path.join(root, "news/hello/body.mdoc"));
     const report = await checkContent(root);
     assert.ok(problems(report, "error").some((line) => line.startsWith("team/anna.json: Content is not valid JSON")));
     assert.ok(problems(report, "warning").some((line) => line.startsWith('settings.json: No content for "Website" yet.')));

@@ -1227,7 +1227,12 @@ places the alt text away from the preview.
 **What would change it:** native i18n (see "No native multilingual content");
 a localized `alt` then belongs in the media value.
 
-**1.0 status:** blocker; the field is in #61, the Astro helper in #109.
+**Built in 0.6 (#61):** the option, the stored shape, the editor input, the
+Astro types, `mica check`, the guides and the `mica init` starter. A stored
+plain path reads as one without alt text, so adding the option is safe. The
+example still uses plain paths.
+
+**1.0 status:** blocker until the example uses it; the Astro helper is in #109.
 
 ---
 

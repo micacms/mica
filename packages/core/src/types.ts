@@ -177,6 +177,14 @@ export interface MediaField extends BaseField {
   accept?: "image" | "document" | "any";
   /** Maximum number of items when `multiple` is set. */
   max?: number;
+  /** Stores `{ path, alt }` and asks for alt text beside the preview. `"required"` refuses an empty one. */
+  alt?: "required" | "optional";
+}
+
+/** What a `media({ alt })` field stores for one file. */
+export interface MediaWithAlt {
+  path: string;
+  alt: string | null;
 }
 
 export interface ColorField extends BaseField {
@@ -302,6 +310,12 @@ export interface Coordinates {
 
 type Multiple<F, T> = F extends { multiple: true } ? T[] : T;
 
+// prettier-ignore
+type MediaValue<F> =
+  F extends { alt: "required" } ? { path: string; alt: string } :
+  F extends { alt: "optional" } ? MediaWithAlt :
+  string;
+
 /** The runtime value of a field, ignoring nullability. */
 // prettier-ignore
 export type FieldValue<F extends AnyField> =
@@ -317,11 +331,8 @@ export type FieldValue<F extends AnyField> =
   F extends SelectField ? Multiple<F, string> :
   F extends ColorField ? string :
   F extends CoordinatesField ? Coordinates :
-  // A path into the content repository, not a record. Media in Git is a file:
-  // there is no row carrying its dimensions, its MIME type or its alt text.
-  // Alt text that matters to an editor belongs in the model, beside the
-  // `media()` field that needs it.
-  F extends MediaField ? Multiple<F, string> :
+  // A path into the content repository; with the `alt` option, the path and its alt text.
+  F extends MediaField ? Multiple<F, MediaValue<F>> :
   F extends RelationField ? Multiple<F, string> :
   F extends ObjectField ? InferFields<F["fields"]> :
   F extends RepeaterField ? Array<InferFields<F["fields"]>> :

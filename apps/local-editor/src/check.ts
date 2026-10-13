@@ -235,7 +235,7 @@ async function checkEntry(
   visit(fields, data, [], (field, value, path) => {
     const key = path.join(".");
     if (field.kind === "media") {
-      for (const file of list(value)) {
+      for (const file of list(mediaPaths(value))) {
         let exists = false;
         try {
           exists = existsSync(within(root, file));
@@ -285,6 +285,12 @@ export function markdocWarnings(source: string): string[] {
   }
   if (/\[\^[^\]]+\]/.test(prose)) messages.push("Footnotes ([^1]) are not Markdoc: they render as plain text.");
   return messages;
+}
+
+/** The paths of a media value: a path, `{ path, alt }`, or a list of either. */
+function mediaPaths(value: unknown): unknown[] {
+  const values = Array.isArray(value) ? value : [value];
+  return values.map((item) => (item !== null && typeof item === "object" ? (item as { path?: unknown }).path : item));
 }
 
 function list(value: unknown): string[] {

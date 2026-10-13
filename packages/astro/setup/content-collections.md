@@ -79,7 +79,7 @@ Wait for the answers.
 | `z.date()`, `z.coerce.date()` | `date()` (stored as `"YYYY-MM-DD"`) |
 | `z.enum([...])` | `select({ options })` |
 | `z.array(z.enum([...]))` | `select({ multiple: true, options })` |
-| `image()` | `media({ accept: "image" })` |
+| `image()` | `media({ accept: "image", alt: "required" })`, or `media({ accept: "image" })` for a decorative image |
 | `reference("authors")` | `relation({ collection: "authors" })` |
 | `z.object({...})` | `object({ fields })` |
 | `z.array(z.object({...}))` | `repeater({ fields })` |
@@ -161,9 +161,10 @@ endpoints such as `rss.xml.js`. See
     strings gives `NaN`, and the list is then not sorted, with no error.
   - Where an API needs a `Date`, such as the RSS `pubDate`, pass
     `new Date(entry.data.pubDate)`.
-- An image was `ImageMetadata` and is now a path from the content root. Create
-  `src/lib/media.ts` from [reference.md](./reference.md#images), and use
-  `mediaImage()`.
+- An image was `ImageMetadata` and is now `{ path, alt }` (or a path, without
+  `alt`). Create `src/lib/media.ts` from [reference.md](./reference.md#images),
+  and use `mediaImage(value.path)`. Move alt text from the old frontmatter, such
+  as `coverAlt`, into `alt`.
 - A reference was `{ collection, id }` and is now a slug:
   `getEntry("authors", entry.data.author)`.
 - `entry.id` is the slug. If ids had folders, update the links, and add

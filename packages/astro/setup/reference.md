@@ -74,7 +74,7 @@ in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
 | `object()` | object | `fields` (required), `collapsible`, `collapsed` |
 | `repeater()` | array of objects | `fields` (required), `min`, `max`, `itemLabel`, `addLabel` |
 | `relation()` | the slug of an entry | `collection` (required), `multiple` |
-| `media()` | a file path | `accept: "image" \| "document" \| "any"`, `multiple`, `max` |
+| `media()` | a file path, or `{ path, alt }` with `alt` | `accept: "image" \| "document" \| "any"`, `multiple`, `max`, `alt: "required" \| "optional"` |
 | `color()` | `"#rrggbb"` | `presets`, `default` |
 | `coordinates()` | `{ "lat": 47.37, "lng": 8.54 }` | `defaultCenter`, `defaultZoom` |
 
@@ -229,16 +229,16 @@ export function mediaImage(path: string | null | undefined): ImageMetadata | und
 ---
 import { Image } from "astro:assets";
 import { mediaImage } from "../../lib/media";
-const cover = mediaImage(article.data.cover);
+const cover = article.data.cover; // media({ alt: "required" }): { path, alt }
+const image = mediaImage(cover?.path);
 ---
-{cover && <Image src={cover} alt={article.data.title} />}
+{image && <Image src={image} alt={cover.alt} />}
 ```
 
-A `media({ multiple: true })` field is an array of paths:
-`project.data.gallery.map(mediaImage)`.
-
-A media field has no alt text. Add a `text()` field for it where the image
-carries meaning. For documents such as PDF files, use
+A `media({ multiple: true })` field is an array:
+`project.data.gallery.map((item) => mediaImage(item.path))`. A `media()`
+without `alt` is a path only: use it for a decorative image, with `alt=""`. For
+documents such as PDF files, use
 `import.meta.glob("../../content/**/*.pdf", { query: "?url", import: "default", eager: true })`
 and link to the URL.
 

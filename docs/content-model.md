@@ -144,7 +144,7 @@ Singletons take `label`, `description` and `fields`, and nothing else.
 | `object()`      | nested object                       | `fields` (required), `collapsible`, `collapsed`                 |
 | `repeater()`    | array of objects                    | `fields` (required), `min`, `max`, `itemLabel`, `addLabel`      |
 | `relation()`    | the target's slug                   | `collection` (required), `multiple`                             |
-| `media()`       | repository path                     | `accept: "image" \| "document" \| "any"`, `multiple`, `max`     |
+| `media()`       | repository path, or `{ path, alt }` | `accept: "image" \| "document" \| "any"`, `multiple`, `max`, `alt` |
 | `color()`       | hex string                          | `presets`, `default`                                            |
 | `coordinates()` | `{ lat, lng }`                      | `defaultCenter`, `defaultZoom`                                  |
 
@@ -169,6 +169,13 @@ root: `projects/haus-a/media/exterior.jpg`. The file is uploaded into the entry'
 own directory, so an entry is self-contained and renaming it is a directory move.
 Astro treats it as a local asset: optimised at build time, emitted into
 `_astro/`, with nothing fetched at runtime.
+
+**`media({ alt: "required" })`** stores `{ path, alt }` and shows an alt-text
+input under the preview. `"required"` refuses an image without alt text;
+`"optional"` allows one. Use it for every image that carries meaning, because
+a path alone leads to images with `alt=""`. A `media()` without the option
+stores a plain path, for a decorative image or a document. Adding the option to
+a field with content is safe: a stored path reads as one without alt text.
 
 **`relation()`** stores the target entry's slug. Pointing at a collection that
 does not exist is caught when the model is defined, not when a page renders.

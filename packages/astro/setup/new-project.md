@@ -17,8 +17,9 @@ Ask these questions, and wait for the answers:
 3. Do entries refer to other entries? For example, an article has an author
    from the team.
 4. Should editors put a collection in a manual order?
-5. Do images need alt text that editors write? A media field has none, so
-   each image that carries meaning needs a `text()` field beside it.
+5. Which images carry meaning, and which are decorative? An image that
+   carries meaning gets `media({ alt: "required" })`, so that editors write
+   its alt text. A decorative image gets `media()`.
 6. Do they want example content, so that the pages show something at once?
 
 Suggest a model from the answers, as a short list of collections, singletons

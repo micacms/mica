@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "Add `media({ alt: \"required\" | \"optional\" })`: the field stores `{ path, alt }`, and `\"required\"` refuses an image without alt text. A `media()` without the option still stores a path. A stored path reads as one without alt text, so adding the option to a field with content is safe.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}
