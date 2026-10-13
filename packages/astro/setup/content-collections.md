@@ -13,12 +13,15 @@ entries are converted once. The website then reads them through
 - The Git working tree must be clean (`git status`). If it is not, ask the
   user to commit or stash first.
 - Ask the user whether to work on a new branch, and make it if they agree.
-- Build the website once, and copy the result to a temporary directory
-  outside the project. Step 8 compares with it.
+- Build the website once, and copy two results to a temporary directory
+  outside the project: the website, which step 8 compares with, and Astro's
+  data store, which `mica import` reads in step 6. Astro writes the store
+  again when the collections change, so this copy is the only one.
 
   ```bash
   npx astro build
   cp -r dist <temporary directory>/dist-before
+  cp node_modules/.astro/data-store.json <temporary directory>/data-store-before.json
   ```
 
 ## 2. Make an inventory
@@ -71,7 +74,7 @@ Show the inventory as a short table, and ask:
      and two entries can get the same one.
    - Make the collection `sortable: true`. Editors drag the entries into
      order, which is easier and cannot give two entries the same place. The
-     conversion turns the numbers into `_order.json`, the field goes, and each
+     import turns the numbers into `_order.json` (`--order`), the field goes, and each
      page that sorts by it sorts by `entry.data._mica.position` instead: one
      changed line per page.
 
@@ -109,51 +112,49 @@ lowerCamelCase.
 3. In `src/content.config.ts`, remove the definitions of the collections that
    Mica now manages, and add `...micaCollections(site)`. Keep the others.
 4. Run `npx astro sync`. It writes `content/.mica/schema.json`, which the
-   conversion script reads. The pages can fail now; step 7 fixes them.
+   import reads. The pages can fail now; step 7 fixes them.
 
 ## 6. Convert the entries
 
-Write a conversion script inside the project, for example
-`scripts/convert-to-mica.mjs`. Use `writeEntry` from
-[reference.md](./reference.md#write-entries-with-a-script). For each entry,
-the script:
+`mica import` reads the copy of the data store from step 1, where Astro keeps
+every entry after its own loader and schema. Each field of the Mica model takes
+the value with the same name. The command converts it to the stored form: a
+date to `"YYYY-MM-DD"` in UTC, a reference to a slug, an `image()` path to a
+copy in the entry's `media/` folder, and the Markdown body to the rich-text
+field `body`. It makes each slug from the entry id, and writes the files the
+way the editor does.
 
-1. Reads the file and its frontmatter. For YAML, use a parser that the project
-   can already import (Astro depends on `yaml`), or install one for the
-   conversion only and remove it in step 9.
-2. Makes the slug from the id: lowercase, folders and other characters turned
-   into single hyphens. Two ids must not give the same slug.
-3. Builds `data` with every field of the model, in the stored form:
-   - a date from the text in the frontmatter, as `"YYYY-MM-DD"`. Take an ISO
-     date as it is written. Parse any other text in UTC, for example
-     `` new Date(`${text} UTC`).toISOString().slice(0, 10) ``, and compare a few
-     results with the source. Never format a local-time `Date`: in a time zone
-     east of UTC, that gives the day before.
-   - a relation as the slug of the other entry;
-   - the body as a Markdoc string, changed as the user decided in step 3;
-   - the slug field equal to the slug.
-4. Copies the image of each `image()` field to
-   `content/<collection>/<slug>/media/<file>`, and stores `media/<file>` in the
-   field. The path in the frontmatter is relative to the source entry's file.
-   Body images go where the user decided in step 3.
-5. Calls `writeEntry(collection, slug, data)`.
-6. Prints a line for each entry, and a list of everything it changed or could
-   not convert.
+```bash
+npx mica import --from <temporary directory>/data-store-before.json \
+  --map blog.cover.alt=coverAlt --order team=order
+```
 
-Keep the source files. Do not delete anything in this step.
+- `--map <collection>.<field>=<key>` takes a field from another key. Use it
+  when a name changed, for the alt text of an image (`blog.cover.alt=coverAlt`),
+  and for a body that goes to a rich-text field with another name
+  (`blog.content=$body`).
+- `--order <collection>=<field>` writes the manual order of a `sortable`
+  collection from a number field, if the user chose that in step 3.
+- Names after the options import only those collections.
 
-Run the script, then:
+The command lists every key it did not import, every id that gives the same
+slug as another, and every image it did not find. Fix the model or add a
+`--map`, delete the collection's directory in `content/`, and run it again.
+Then make the changes to the bodies that the user decided in step 3 directly
+in the `.mdoc` files, and run:
 
 ```bash
 npx mica check
 ```
 
-Fix the script, not the output, until `mica check` reports 0 errors. Before
-each run, delete the converted collection's directory in `content/` (not
-`content/.mica/`), so that no file from an earlier run stays. Read every warning: "Not read" means that an
-entry or a file is lost, and a Markdoc warning means that some text does not
-render as before. If you cannot fix a warning, list it in the report with the
-reason.
+Read every warning: "Not read" means that an entry or a file is lost, and a
+Markdoc warning means that some text does not render as before. If you cannot
+fix a warning, list it in the report with the reason. Keep the source files.
+Do not delete anything in this step.
+
+If the import cannot express a conversion, for example a value that the model
+splits into two fields, write a script for that part only, with `writeEntry`
+from [reference.md](./reference.md#write-entries-with-a-script).
 
 ## 7. Change the pages
 
@@ -212,7 +213,8 @@ Ask the user before each of these:
   such as `@astrojs/mdx` when no MDX is left, and those that only the
   conversion needed. Change text in the content that describes what you
   removed.
-- Delete the conversion script, or keep it for the record.
+- Delete the temporary directory with `dist-before` and the data store copy,
+  and a conversion script if you wrote one.
 
 Then run `npx mica check` and `npx astro build` once more.
 

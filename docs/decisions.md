@@ -1272,6 +1272,31 @@ no longer justify.
 
 ---
 
+### P2 — Astro collections move to Mica with `mica import`, from Astro's data store
+
+**Decided:** `mica import` reads `node_modules/.astro/data-store.json`, which
+Astro writes after its own loaders and schemas ran, and writes each entry into
+the Mica model by field name: `--map` for a changed name, `--order` for the
+manual order. The setup guide copies the store before Mica replaces the
+collections. The importer reads the store's `devalue` format with a small
+reader of its own, not with a new dependency.
+
+**Why:** the store already holds every entry in one shape, whatever the loader
+was (`glob()`, `file()`, Markdown, JSON, YAML), with dates, references and
+image paths resolved. Reading the sources again would mean one parser per
+loader. The first agent-led migration wrote a conversion script by hand; with
+the command, the agent writes the model and the map.
+
+**Consequence:** the store is Astro's internal format. A change in a future
+Astro version can break the importer; the reader refuses a type it does not
+know, and a script with `writeEntry` stays the fallback.
+
+**What would change it:** Astro publishing an API for the content store.
+
+**Built in 0.6.**
+
+---
+
 ### P2 — Publish refuses a broken reference that it would create
 
 **Decided:** Publish refuses a change set that would leave a relation to a

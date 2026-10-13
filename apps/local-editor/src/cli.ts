@@ -35,6 +35,7 @@ import { DEFAULT_PORT, VERSION } from "@micacms/runtime";
 
 import { checkContent, formatReport } from "./check.js";
 import { formatInit, initProject, InitError } from "./init.js";
+import { formatImport, importCollections, ImportError } from "./import.js";
 import { formatMigration, migrateLayout } from "./migrate.js";
 
 export interface Options {
@@ -54,6 +55,10 @@ const USAGE = `
     $ npx @micacms/editor init                  add Mica to this Astro project
     $ npx @micacms/editor check [content dir]   check every entry against the model
     $ npx @micacms/editor migrate-layout [dir]  move entries into the layout of the model
+    $ npx @micacms/editor import [names]        move Astro collections into Mica
+        --from <file>         Astro's data store (default: node_modules/.astro/data-store.json)
+        --map <c.field=key>   take a field from another key; $body is the Markdown body
+        --order <c=field>     the initial order of a sortable collection
 
   With @micacms/editor installed in the project, \`npx mica\` is the same command.
 
@@ -176,6 +181,7 @@ export async function main(): Promise<void> {
   if (command === "init") return init(rest);
   if (command === "check") return check(rest);
   if (command === "migrate-layout") return migrate(rest);
+  if (command === "import") return importCommand(rest);
 
   const options = parse(process.argv.slice(2));
   const content = contentRoot(options, process.env);
@@ -237,6 +243,46 @@ async function migrate(argv: string[]): Promise<void> {
   const result = await migrateLayout(contentRoot(parse(argv), process.env));
   process.stdout.write(formatMigration(result));
   if (result.conflicts.length > 0) process.exit(1);
+}
+
+async function importCommand(argv: string[]): Promise<void> {
+  // `astro sync` and `astro build` write the store into node_modules; `astro dev` into .astro.
+  const found = ["node_modules/.astro/data-store.json", ".astro/data-store.json"].find((file) => existsSync(file));
+  const options = { store: found ?? "node_modules/.astro/data-store.json", map: {} as Record<string, string>, order: {} as Record<string, string>, only: [] as string[], content: undefined as string | undefined };
+  for (let index = 0; index < argv.length; index++) {
+    const flag = argv[index]!;
+    const value = (): string => {
+      const next = argv[++index];
+      if (next === undefined || next.startsWith("-")) fail(`${flag} needs a value.`);
+      return next!;
+    };
+    const pair = (text: string): [string, string] => {
+      const at = text.indexOf("=");
+      if (at < 1) fail(`${flag} takes name=value, for example team.image.alt=alt.`);
+      return [text.slice(0, at), text.slice(at + 1)];
+    };
+    if (flag === "--from") options.store = value();
+    else if (flag === "--content" || flag === "-c") options.content = value();
+    else if (flag === "--map") { const [to, from] = pair(value()); options.map[to] = from; }
+    else if (flag === "--order") { const [name, field] = pair(value()); options.order[name] = field; }
+    else if (flag.startsWith("-")) fail(`Unknown option "${flag}".`);
+    else options.only.push(flag);
+  }
+  try {
+    const result = await importCollections({
+      root: contentRoot({ content: options.content }, process.env),
+      project: process.cwd(),
+      store: path.resolve(options.store),
+      map: options.map,
+      order: options.order,
+      only: options.only,
+    });
+    process.stdout.write(formatImport(result));
+  } catch (error) {
+    if (!(error instanceof ImportError)) throw error;
+    report(error.message, []);
+    process.exit(1);
+  }
 }
 
 // Only when this file *is* the command. Importing it, as the tests do, must
