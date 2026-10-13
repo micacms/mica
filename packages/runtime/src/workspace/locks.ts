@@ -6,7 +6,7 @@
  *
  * Both wait, they do not refuse. Take `remote` first, then `tree`, so two
  * operations never wait on each other. No network call may run while `tree` is
- * held: a slow push must not block autosave.
+ * held: a slow push must not block a save.
  */
 
 import type { ContentFiles } from "./files.js";

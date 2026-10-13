@@ -2,6 +2,6 @@
   "title": "Self-hosting",
   "slug": "self-hosting",
   "section": "operate",
-  "summary": "Run one Mica container for editors: repository token, sign-in, who may edit, sessions, drafts, backups, and upgrades.",
-  "readTime": 15
+  "summary": "Run one Mica container for editors: repository token, sign-in, who may edit, drafts, the site build, backups, upgrades, and troubleshooting.",
+  "readTime": 20
 }

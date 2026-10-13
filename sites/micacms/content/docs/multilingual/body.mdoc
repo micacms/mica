@@ -1,0 +1,92 @@
+The model of Mica has no language setting. A site in several languages uses one of two patterns. Both work with the current version and need no extra code in Mica.
+
+| Pattern | Use it for | Limits |
+| --- | --- | --- |
+| One field per language | Pages and settings that exist in each language. | The form shows all languages. |
+| One collection per language | News or other content that is different in each language. | The editor does not connect a text with its translation. |
+
+## One field per language
+
+Put the languages in an `object()`. The translations of a page stay in one entry, so they do not drift apart.
+
+```ts
+import { collection, object, richText, slug, text } from "@micacms/core";
+
+pages: collection({
+  label: "Pages",
+  fields: {
+    // The slug of the entry: the same for each language.
+    slug: slug(),
+    title: object({ label: "Title", fields: { de: text({ label: "Deutsch", required: true }), en: text({ label: "English" }) } }),
+    body: object({ label: "Text", fields: { de: richText({ label: "Deutsch" }), en: richText({ label: "English" }) } }),
+    // A URL for each language, when the URLs must differ.
+    url: object({ label: "URL", fields: { de: slug({ label: "Deutsch" }), en: slug({ label: "English" }) } }),
+  },
+}),
+```
+
+Mica stores the text in `index.json` and the rich text in one file for each language:
+
+```text
+content/pages/about/index.json   { "title": { "de": "Über uns", "en": "About us" }, "url": { "de": "ueber-uns", "en": "about-us" } }
+content/pages/about/body.de.mdoc
+content/pages/about/body.en.mdoc
+```
+
+The slug of an entry is unique, because it is the name of its folder. A URL in the `url` object is not checked: neither `npx mica check` nor Astro finds two pages with the same English URL, and Astro then builds only one of them. Keep these URLs unique.
+
+### Alt text in several languages
+
+`media({ alt })` holds one alt text. Keep `media()` without `alt`, and put an object for the alt text next to it:
+
+```ts
+image: media({ label: "Image", accept: "image" }),
+imageAlt: object({ label: "Alt text", fields: { de: text({ label: "Deutsch" }), en: text({ label: "English" }) } }),
+```
+
+### The pages
+
+Tell Astro the languages in `astro.config.mjs`. With `prefixDefaultLocale`, each language has its prefix, also the default one (`/de/…`), as the page below expects:
+
+```js
+export default defineConfig({
+  i18n: { locales: ["de", "en"], defaultLocale: "de", routing: { prefixDefaultLocale: true } },
+});
+```
+
+Make one page for each entry and language, for example in `src/pages/[lang]/[slug].astro`:
+
+```astro
+---
+import { getCollection } from "astro:content";
+import { renderRichText } from "@micacms/astro";
+
+export async function getStaticPaths() {
+  const pages = await getCollection("pages");
+  return (["de", "en"] as const).flatMap((lang) =>
+    pages.map((page) => ({ params: { lang, slug: page.data.url?.[lang] ?? page.id }, props: { page, lang } })),
+  );
+}
+
+const { page, lang } = Astro.props;
+---
+<h1>{page.data.title[lang] ?? page.data.title.de}</h1>
+<Fragment set:html={renderRichText(page.data.body?.[lang])} />
+```
+
+A missing translation shows the default language here. Choose what your site does: show the default language, or make no page.
+
+## One collection per language
+
+Give each language its own collection:
+
+```ts
+newsDe: collection({ label: "News (Deutsch)", fields: { title: text({ required: true }), slug: slug({ from: "title" }), body: richText() } }),
+newsEn: collection({ label: "News (English)", fields: { title: text({ required: true }), slug: slug({ from: "title" }), body: richText() } }),
+```
+
+Each collection is a list of its own in the editor, with its own folder, URLs and order. When a text has a translation, a `relation()` field can name it.
+
+## Later versions
+
+A later version of Mica can add a `localized` option. Mica's decisions fix its storage now: it stores what the first pattern stores today, `body.de.mdoc` included. A site that uses the first pattern can then change to the option with no change to its files. See the decision "No native multilingual content in 1.0" in [decisions.md](https://github.com/micacms/mica/blob/main/docs/decisions.md).

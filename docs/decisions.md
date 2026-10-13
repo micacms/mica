@@ -15,7 +15,7 @@ Priorities:
 
 An entry marked **v3 — pending** is decided and not yet built. It constrains new
 work from now on, and the code still shows the old shape. The phase that closes
-it is named in the entry; the phases are in [`v3-plan.md`](v3-plan.md). A note
+it is named in the entry; the phases are in [`v3-plan.md`](history/v3-plan.md). A note
 marked **built in Phase A** records what the code now does, and what the entry
 therefore costs in practice.
 
@@ -254,12 +254,12 @@ collide, or a customer who asks who published what.
 
 **Built in Phase B.** One draft workspace per site, either shape. Within it,
 concurrent sessions still check per-document revisions against the *draft*, so
-one browser cannot silently overwrite a colleague's newer autosave; publishing
+one browser cannot silently overwrite a colleague's newer save; publishing
 takes the whole set, whoever presses the button.
 
 **Changed in 0.5.0:** both apps keep the pending set as uncommitted files in a
 working tree. Publish commits exactly the paths the editor reviewed; a
-colleague's later autosave on another entry stays a draft instead of joining
+colleague's later save on another entry stays a draft instead of joining
 the publication. That is the server half of a selection (#98).
 
 **Changed in 0.7.0:** the Publish page selects what to publish (#98), so a
@@ -275,7 +275,7 @@ The log names who published, discarded or chose a version at a conflict
 
 **Decided:** the local editor commits and pushes by running `git`, not by
 linking a JavaScript Git implementation. On by default;
-`MICA_LOCAL_PUBLISH=false` reduces local mode to autosave plus a read-only view
+`MICA_LOCAL_PUBLISH=false` reduces local mode to saving plus a read-only view
 of the changes.
 
 **Why:** credentials. A developer's push already works because of their SSH
@@ -349,7 +349,7 @@ default, stops startup.
 **Why:** a server has no developer behind it. Local publishing needs the
 `git` binary, credentials, a writable checkout owned by the right user, and
 somebody to resolve a diverged branch by hand. The image has none of these, so
-a working tree there could autosave but never publish. Supplying them would be
+a working tree there could save but never publish. Supplying them would be
 a second credential path next to `REPOSITORY_TOKEN`, and `git` would run the
 hooks and configuration of whatever repository is mounted.
 
@@ -399,7 +399,7 @@ in the plan), or LFS first.
 **Built in 0.5.0.** `apps/self-hosted/src/workspace/` (clone, sync, push,
 credentials, isolation), on the runtime's `workspace/` (runner, tree, locks,
 owner policy). The plan and its reviews are in
-[`git-workspace-plan.md`](git-workspace-plan.md).
+[`git-workspace-plan.md`](history/git-workspace-plan.md).
 
 **1.0 status:** accepted for 1.0.
 
@@ -1995,7 +1995,7 @@ Explicitly not built. Everything in this section is after 1.0.
   product boundary and not a feature limit. The tables that once anticipated
   this are deleted in Phase A rather than kept as an unused schema; the
   capability belongs to the private Cloud control plane described in
-  [`v3-arch.md`](v3-arch.md) §14, which consumes published Mica releases and
+  [`v3-arch.md`](history/v3-arch.md) §14, which consumes published Mica releases and
   never enters this repository.
 - **P2** — A per-editor draft instead of one shared change set. "One shared
   pending change set per site" above records what that costs today.
@@ -2020,6 +2020,10 @@ without a break.
   whose pages are composed of sections of different kinds.
 - **A branch switcher.** One Mica serves one branch. Trigger: a team that needs
   to edit more than one branch from one deployment.
+- **A `renamedFrom` field option.** Reading an old key as a fallback would keep
+  two names alive in the files for good. The rename recipe on the website
+  (`packages/core/recipes/rename-field.mjs`, run by CI) makes the rename one
+  commit instead. Trigger: a site where a script cannot run, or many renames.
 - Decided elsewhere in this file: native multilingual content, a draft preview,
   and inserting images in rich text.
 
@@ -2099,7 +2103,7 @@ knowing the reasoning stops someone reintroducing the problem.
   bytes are ever served without a session, the public media route this
   decision forbids has come back.
 - **Publishing is not a webhook.** A push is the trigger. An in-process queue
-  cannot survive a crash, and the repository's CI already solves this. Autosave
+  cannot survive a crash, and the repository's CI already solves this. A save
   is not a trigger either: the successful remote branch update is, which is the
   point of separating the two.
 - **Rich text is Markdoc, never HTML.** The editor converts at the boundary and

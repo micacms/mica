@@ -1,0 +1,105 @@
+This page lists the commands of `@micacms/editor` (the local editor) and of the self-hosted image. A command or option without a version exists since 0.2.0.
+
+## The local editor
+
+Run each command with `npx @micacms/editor <command>`. When `@micacms/editor` is installed in the project, `npx mica <command>` is the same. `npx @micacms/editor --help` shows the same list.
+
+The content root is the path that you give, or `MICA_CONTENT_ROOT`, or `./content`, in this order.
+
+### start
+
+```bash
+npx mica start [content dir]
+```
+
+Opens the editor on this machine. It has no sign-in, and it listens only on loopback.
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `-c`, `--content <dir>` | `./content` | The content root. A path without a flag does the same. |
+| `-p`, `--port <number>` | `PORT`, else `6422` | The port to listen on. |
+| `--host <address>` | `HOST`, else `127.0.0.1` | The address to bind. |
+| `--open`, `--no-open` | open in an interactive terminal, not in CI | Opens the browser, or does not. |
+| `-h`, `--help` | | Shows the help. |
+| `-v`, `--version` | | Shows the version. |
+
+`start` stops with exit code 64 when the content directory does not exist, and with 78 when `.mica/schema.json` is missing. Run `npx astro sync` to write the model.
+
+### init
+
+Added in 0.5.0.
+
+```bash
+npx mica init
+```
+
+Adds Mica to the Astro project in the current directory. It writes a starter model in `src/mica.ts` and the collections in `src/content.config.ts`. Then it tells you which scripts (`mica`, `check`) to set in `package.json`. It never overwrites a file. It takes no options.
+
+### check
+
+Added in 0.5.0.
+
+```bash
+npx mica check [content dir]
+```
+
+Checks every entry against the model: fields that do not validate, missing media, relations to entries that do not exist, entries in the wrong layout, and files that Mica does not read. It prints each problem. Use it in CI.
+
+### migrate-layout
+
+Added in 0.6.0.
+
+```bash
+npx mica migrate-layout [content dir]
+```
+
+Moves the entries that a model change left in the other layout: a file entry (`<slug>.json`) becomes a folder entry (`<slug>/index.json`), or the reverse. See [Change the model](/docs/model-changes/).
+
+### import
+
+Added in 0.6.0.
+
+```bash
+npx mica import [names] [options]
+```
+
+Moves Astro content collections into Mica, from Astro's data store. Without names, it imports every collection that the model defines. See [Add Mica to an existing site](/docs/existing-site/).
+
+| Option | Effect |
+| --- | --- |
+| `--from <file>` | Astro's data store. Default: `node_modules/.astro/data-store.json`, else `.astro/data-store.json`. |
+| `-c`, `--content <dir>` | The content root. |
+| `--map <c.field=key>` | Takes a Mica field from another key. `@body` is the Markdown body. Use it more than once. |
+| `--order <c=field>` | The first order of a sortable collection, by a field. |
+
+### Exit codes
+
+| Code | Meaning |
+| --- | --- |
+| `0` | Done. `check` found no error. |
+| `1` | `check` found an error or no model, `migrate-layout` found a conflict, `import` failed, or `start` could not start, for example because the port is in use. |
+| `64` | Wrong use: an unknown command or option, a missing value, no content directory, or `init` cannot run here. |
+| `78` | Configuration: `start` found no content model, a model that it cannot read, entries in the wrong layout, or a setting that the local editor does not allow, such as a `HOST` that is not on this computer. |
+
+## The self-hosted image
+
+Without a command, or with `serve`, the image serves the editor. `check` tests the configuration. Another command exits with 64.
+
+### check
+
+Added in 0.5.0.
+
+```bash
+docker compose run --rm mica check
+```
+
+Tests the configuration in a temporary clone, while the server can run:
+
+- the configuration loads;
+- the token can read the branch;
+- the token may push (a dry run, which cannot see branch protection or server hooks);
+- the content model at `.mica/schema.json` loads;
+- Git LFS is not used under the content root;
+- the data volume.
+
+It prints one line for each check, `ok` or `FAIL`, and exits with 0 when all pass, 1 when a check fails, and 78 when the configuration does not load. The settings are in [Configuration](/docs/configuration/). The endpoints are in [Health endpoints](/docs/reference-health/).

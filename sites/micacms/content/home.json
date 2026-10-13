@@ -1,14 +1,14 @@
 {
   "heroEyebrow": "A focused CMS for Astro teams",
   "heroTitle": "Give editors forms. Keep everything in Git.",
-  "heroSummary": "Mica turns your content model into a clean editing interface. Editors draft in peace, review what changed, and publish one commit of readable JSON, Markdoc, and media. Your Astro build stays static and independent.",
+  "heroSummary": "Mica turns your content model into a clean editing interface. Editors save drafts, review what changed, and publish one commit of readable JSON, Markdoc, and media. Your Astro build stays static and independent.",
   "primaryCta": { "label": "Start in five minutes", "href": "/docs/getting-started/" },
   "secondaryCta": { "label": "View on GitHub", "href": "https://github.com/micacms/mica" },
   "stats": [
     { "value": "0", "label": "content records in Mica", "note": "Files stay in Git" },
     { "value": "1", "label": "commit per publish", "note": "Atomic by design" },
-    { "value": "16", "label": "field types", "note": "One typed model" },
-    { "value": "6", "label": "composable packages", "note": "Use only what you need" }
+    { "value": "17", "label": "field types", "note": "One typed model" },
+    { "value": "2", "label": "packages in your site", "note": "Plus the editor as a dev tool" }
   ],
   "problemEyebrow": "Your repository is the source of truth",
   "problemTitle": "A CMS should not become part of your website's runtime.",
@@ -28,7 +28,7 @@
     },
     {
       "title": "Ship",
-      "text": "Drafts stay with the editor until Publish turns them into one commit. Your existing CI runs Astro and sends static files to any host.",
+      "text": "Saved changes are drafts that every editor of the site sees. Publish turns the changes that you choose into one commit. Your existing CI runs Astro and sends static files to any host.",
       "detail": "publish → astro build"
     }
   ],

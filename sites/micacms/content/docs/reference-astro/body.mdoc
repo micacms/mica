@@ -1,0 +1,89 @@
+`@micacms/astro` connects the model to Astro's content layer. It reads the files during the build and needs no server, no token and no network. An item without a version exists since 0.2.0.
+
+## micaCollections(site, options)
+
+```ts
+// src/content.config.ts
+import { micaCollections } from "@micacms/astro";
+import { site } from "./mica";
+
+export const collections = micaCollections(site);
+```
+
+It gives one Astro collection for each collection and for each singleton of the model. A singleton is a collection with one entry, whose id is the singleton's name. The build also writes the model to `<content root>/.mica/schema.json`. Commit that file: the editor reads the model from it.
+
+| Option | Type | Default | Effect |
+| --- | --- | --- | --- |
+| `root` | `string` | `defineSite({ root })`, else `./content` | The content root. A relative path starts at the Astro project. Use an absolute path for content in a different checkout. |
+| `publishModel` | `false` | on | `false` does not write `.mica/schema.json`. Use it only for a project that nobody edits with Mica. |
+| `debounceMs` | `number` | `100` | In `astro dev`, the wait after a file change before Mica reloads. One save changes several files. |
+| `strict` | `boolean` | `false` | Added in 0.6.0. Stops the build at a relation to a missing entry or at a missing media file. Without it, the build shows a warning. A missing image stops the build in all cases. |
+
+You can put ordinary Astro collections next to the Mica collections:
+
+```ts
+export const collections = { ...micaCollections(site), glossary };
+```
+
+## The data of an entry
+
+`entry.id` is the slug, which is also the folder or file name in the repository. Each entry of a collection has `data._mica`:
+
+| Key | Meaning |
+| --- | --- |
+| `id`, `slug` | The slug. |
+| `collection` | The name of the collection. |
+| `position` | The place in the collection's order: the order in `_order.json` when there is one, then the other slugs in alphabetical order. |
+
+There are no dates in `_mica`, because in Git a date is commit data. Add a `date()` field when editors must see or set a date.
+
+`defaultSort` changes only the list in the editor. Sort the entries on your page yourself, for example by `data._mica.position`. See [Recipes](/docs/recipes/).
+
+## Media
+
+| Field | Value in Astro |
+| --- | --- |
+| `media({ accept: "image" })` | Since 0.6.0, an image (`ImageMetadata`), ready for `<Image src={...} />`. |
+| `media({ accept: "image", alt: "required" })` or `"optional"` | Added in 0.6.0. `{ src, alt }`, so `<Image {...entry.data.cover} />` is enough. A missing optional alt text is `""`. |
+| `media()` with another `accept` | The path of the file, as a string, or `{ path, alt }` with `alt`. |
+| `multiple: true` | A list of the values above. |
+
+## Relations
+
+A relation stores the slug of the target entry, which is also its id in Astro. Added in 0.8.0: `@micacms/astro/relations` gives two functions for your pages.
+
+```ts
+import { related, relatedAll } from "@micacms/astro/relations";
+
+const author = await related("team", article.data.author);
+const people = await relatedAll("team", project.data.team);
+```
+
+- `related(collection, slug)` gives the entry, or `undefined` when the field is empty or the entry does not exist.
+- `relatedAll(collection, slugs)` gives the entries in the order that the editor chose, and leaves out the entries that do not exist.
+
+In `astro dev`, a missing entry shows a warning. Use them only in pages and components: they import `astro:content`.
+
+## Rich text
+
+A `richText()` field is Markdoc, in a `.mdoc` file beside the entry. The functions run during the build.
+
+| Function | Gives |
+| --- | --- |
+| `renderRichText(source, options?)` | An HTML string. An empty source gives `""`. |
+| `transformRichText(source, options?)` | Markdoc's render tree, to render with your own components. |
+| `validateRichText(source, options?)` | Markdoc's list of problems, for a strict build. `renderRichText` does not stop at a problem. |
+
+`options.config` is a Markdoc configuration. Add your own tags there; a tag that the configuration does not declare gives no output. Raw HTML in the source is not rendered. See [Recipes](/docs/recipes/) for a custom tag.
+
+## Types
+
+```ts
+import type { CollectionDocument, SingletonDocument } from "@micacms/astro";
+import type { site } from "./mica";
+
+type Project = CollectionDocument<typeof site, "projects">;
+type Settings = SingletonDocument<typeof site, "settings">;
+```
+
+`getCollection` and `getEntry` also give these types, because the schema comes from the model.

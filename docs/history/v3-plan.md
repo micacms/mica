@@ -1,3 +1,5 @@
+> Historical: this plan is finished. It names packages and tools that no longer exist. The current design is in [architecture.md](../architecture.md) and [decisions.md](../decisions.md).
+
 # Mica v3 — Refactoring Plan
 
 > Superseded in part by [git-workspace-plan.md](git-workspace-plan.md) (0.5.0): the
@@ -42,9 +44,9 @@ is the only reduction.
 `v3-arch.md` §11 splits connectors into three packages so that
 `npx @micacms/editor` does not download provider code.
 
-[`packages/connectors/package.json`](../packages/connectors/package.json) has
+[`packages/connectors/package.json`](../../packages/connectors/package.json) has
 one dependency: `@micacms/model`. The GitHub and GitLab connectors use plain
-`fetch` through [`http.ts`](../packages/connectors/src/http.ts). There are no
+`fetch` through [`http.ts`](../../packages/connectors/src/http.ts). There are no
 provider SDKs. The split therefore saves about 600 lines of dependency-free
 TypeScript, and costs three manifests, three build configurations and three
 release entries.
@@ -55,7 +57,7 @@ or responsibility boundary". This split has none of the three.
 Split when a connector gains a real dependency. Not before.
 
 The OIDC split *is* taken, for the opposite reason:
-[`packages/editor/package.json`](../packages/editor/package.json) depends on
+[`packages/editor/package.json`](../../packages/editor/package.json) depends on
 `openid-client`, which pulls `jose`. A local install pays for that today.
 
 ### 2.2 Conflicts stay per path
@@ -63,7 +65,7 @@ The OIDC split *is* taken, for the opposite reason:
 `v3-arch.md` §10.2 stages against one `baseRevision`, and §10.6 blocks Publish
 when the branch has moved at all.
 
-[`connector.ts:53`](../packages/connectors/src/connector.ts#L53) already keys
+[`connector.ts:53`](../../packages/connectors/src/connector.ts#L53) already keys
 expectations per path, and says why: two editors working on different entries
 must never block each other.
 
@@ -77,7 +79,7 @@ path in the change set moved.
 
 ### 2.3 Local publish is opt-out
 
-[`local.ts:1`](../packages/connectors/src/local.ts#L1) states that the local
+[`local.ts:1`](../../packages/connectors/src/local.ts#L1) states that the local
 connector is deliberately not a Git client, because the developer already has
 better tools. That reasoning holds for *credentials*, not for *convenience*.
 
@@ -93,7 +95,7 @@ reimplement all three, which is the part `local.ts` is right to refuse.
 ### 2.4 Admission: a claim rule plus an explicit list
 
 OIDC states who a person is. It does not state whether that person may edit
-this site. Today [`middleware/index.ts:141`](../packages/editor/src/server/middleware/index.ts#L141)
+this site. Today [`middleware/index.ts:141`](../../packages/editor/src/server/middleware/index.ts#L141)
 answers that from the `memberships` table, re-read on every request.
 
 With the table gone, admission is configuration. Both forms are supported:
@@ -112,7 +114,7 @@ provider, and Mica is not touched. B is the escape hatch for a deployment with
 no groups, and for the first sign-in before a group exists.
 
 The list keys on `(issuer, subject)` and never on email, for the reason
-[`migrations.ts:150`](../packages/editor/src/server/db/migrations.ts#L150)
+[`migrations.ts:150`](../../packages/editor/src/server/db/migrations.ts#L150)
 already gives: an email is a display attribute a provider may let a person
 change, and rebinding an account to whoever holds an address today is how
 account takeover happens.
@@ -124,7 +126,7 @@ admits every person its issuer knows is a misconfiguration, not a default.
 effective at session refresh. Two things contain it: a modest session lifetime
 (8 hours, not 30 days), and re-checking admission on the refresh path against
 claims stored on the session row. Recorded in
-[`decisions.md`](decisions.md) as a P1 trade-off; the trigger that brings the
+[`decisions.md`](../decisions.md) as a P1 trade-off; the trigger that brings the
 table back is a customer who must cut access within seconds.
 
 ### 2.5 The database becomes one table
@@ -141,14 +143,14 @@ SQLite no longer earns its place through authentication. It earns it in Phase B,
 as the self-hosted draft store.
 
 **The migration chain is reset**, not extended. A fifth migration would drop six
-tables the first four just built. [`migrations.ts:1`](../packages/editor/src/server/db/migrations.ts#L1)
+tables the first four just built. [`migrations.ts:1`](../../packages/editor/src/server/db/migrations.ts#L1)
 makes migrations append-only, which is correct while deployments exist. None do.
 This is the one moment the rule can be broken cleanly. After Phase A it applies
 again.
 
 ### 2.6 `sites/micacms` is not an example
 
-It is the production website. [`vercel.json`](../vercel.json) hardcodes
+It is the production website. [`vercel.json`](../../vercel.json) hardcodes
 `@micacms/site`, `sites/micacms/dist` and an `ignoreCommand` path. Moving it
 breaks the live deployment and mislabels a product site as sample code.
 
@@ -163,7 +165,7 @@ remote build cache. The cache and phased builds are what Rush is best at.
 
 Changesets covers every stated need with roughly one configuration file, is the
 convention in pnpm workspace projects, and replaces
-[`scripts/version.mjs`](../scripts/version.mjs) directly.
+[`scripts/version.mjs`](../../scripts/version.mjs) directly.
 
 > **Superseded (2026-08-30).** The repository migrated to Rush after all — the
 > whole monorepo, not only releases — and with pnpm workspaces gone, Changesets
@@ -187,8 +189,8 @@ Phase 5 restores the self-hosted path. Between them `main` has no working
 authenticated deployment, for three phases.
 
 Phase 5 is further mis-described as new work.
-[`services/oidc.ts`](../packages/editor/src/server/services/oidc.ts) is 267
-lines and [`routes/auth.ts`](../packages/editor/src/server/routes/auth.ts) is
+[`services/oidc.ts`](../../packages/editor/src/server/services/oidc.ts) is 267
+lines and [`routes/auth.ts`](../../packages/editor/src/server/routes/auth.ts) is
 239. OIDC exists. It moves and shrinks.
 
 **Rule for this plan:** file moves are mechanical and can happen at any time.
@@ -224,7 +226,7 @@ against, so there is nothing else to look them up in.
 
 **A2 — Admission policy.** *(done)*
 Add `MICA_ADMIT_GROUP`, `MICA_ADMIT_DOMAIN` and `MICA_ADMIT_SUBJECTS` to
-[`config.ts`](../packages/editor/src/server/config.ts). Refuse to start outside
+[`config.ts`](../../packages/editor/src/server/config.ts). Refuse to start outside
 local mode when none is set. Replace `requireAuth`'s membership lookup with
 `requireAccess`, setting an `AccessContext` that carries the admitted identity.
 Store the claims the rules need on the session row.
@@ -251,13 +253,13 @@ Remove `repositories/{users,identities,memberships,sites}.ts`,
 script from both manifests. `stores/auth.ts` becomes `stores/session.ts`: it
 holds an identity that may be null rather than a user that may not be.
 
-[`sign-in.ts:22`](../packages/editor/src/server/services/sign-in.ts#L22) is the
+[`sign-in.ts:22`](../../packages/editor/src/server/services/sign-in.ts#L22) is the
 one to read before deleting: it creates a `developer@localhost` user row and
 grants it a membership. That is the synthetic local user `v3-arch.md` §17
 forbids, and it goes with the tables.
 
 **A4 — `SiteContext`.** *(done)*
-Replace `siteId` lookups in [`context.ts`](../packages/editor/src/server/context.ts)
+Replace `siteId` lookups in [`context.ts`](../../packages/editor/src/server/context.ts)
 with the explicit `SiteContext` of §8, built from configuration. `ctx.site` is
 now `{ id, model, contentRepository }`, and the connector is built from the
 environment alone — the stored `repository_connections` row was the multi-site
@@ -266,8 +268,8 @@ model arriving early.
 **A5 — Environment names.** *(done)*
 Rename to the `MICA_*` shape of §7.5 while nothing external depends on the old
 names. `CMS_BASE_URL` becomes `MICA_PUBLIC_URL`; `OIDC_*` becomes `MICA_OIDC_*`.
-Update `.env.example`, [`docker-compose.yml`](../docker-compose.yml),
-[`e2e/`](../e2e), [`demo/`](../demo) and [`self-hosting.md`](self-hosting.md).
+Update `.env.example`, [`docker-compose.yml`](../../docker-compose.yml),
+[`e2e/`](../../e2e), [`demo/`](../../demo) and [`self-hosting.md`](../self-hosting.md).
 
 Only those two families. `REPOSITORY_*`, `CONTENT_ROOT`, `DATA_DIR` and
 `SESSION_*` keep their names — §7.5 names four variables, and renaming the rest
@@ -293,12 +295,12 @@ six lines. §6.3 requires it.
 - Local mode creates no user row, and shows no identity chrome. ✔
 - E2E against Keycloak passes with a group claim. — the realm now carries the
   group and the mapper, and `MICA_ADMIT_GROUP` is set; the run itself is still
-  manual, which is the standing gap in [`decisions.md`](decisions.md).
+  manual, which is the standing gap in [`decisions.md`](../decisions.md).
 
 **Actual size:** the source is −2,231 lines and +1,270 across 42 files — a net
 loss of about 960, close to the estimate. The deployment files and the guides
 are a further +501/−225, most of it the admission chapter in
-[`self-hosting.md`](self-hosting.md) and the Keycloak group the e2e rig needed.
+[`self-hosting.md`](../self-hosting.md) and the Keycloak group the e2e rig needed.
 
 ---
 
@@ -383,7 +385,7 @@ Publish page is where Published happens.
 
 **B7 — Draft media.** *(done)*
 Unpublished media must be visible in the editor before it reaches the
-repository. [`decisions.md`](decisions.md) settles that Mica serves no public
+repository. [`decisions.md`](../decisions.md) settles that Mica serves no public
 media route, and that decision holds. No new route was needed: the existing
 authenticated admin media route reads through the staged overlay, so pending
 uploads are served from the draft store behind the same session as everything
@@ -400,7 +402,7 @@ else, and nothing is reachable signed out.
 - Publication clears only what was published. ✔
 - Unpublished media renders in the editor and is unreachable when signed out. ✔
 
-**Phase B is complete.** The standing gap from [`decisions.md`](decisions.md)
+**Phase B is complete.** The standing gap from [`decisions.md`](../decisions.md)
 applies to it in full: no browser test drives "sign in, edit, publish", so the
 Publish page is verified by the API tests beneath it and by hand.
 
@@ -408,7 +410,7 @@ Publish page is verified by the API tests beneath it and by hand.
 refuse to publish, name the drift, require a restart. Both staging
 implementations compare the manifest's revision against the one recorded at
 startup, immediately before publishing. Recorded in
-[`decisions.md`](decisions.md).
+[`decisions.md`](../decisions.md).
 
 ---
 
@@ -510,7 +512,7 @@ unauthenticated surface has no login route to disable; and proves a run
 writes into the content directory and nowhere else, with no database
 appearing. The loopback refusals are config tests beside it. The one §6.4
 check that remains manual is driving a real browser through the rendered UI —
-the same standing gap [`decisions.md`](decisions.md) records for everything
+the same standing gap [`decisions.md`](../decisions.md) records for everything
 else.
 
 **C6 — Verify the entry point.** *(done)*
@@ -546,9 +548,9 @@ business-site example. `sites/micacms` **stays**. `demo/` to
 `deploy/demo-identity`. Root Compose files to `deploy/self-hosted`. `e2e/` to
 `tests/e2e/`.
 
-Update [`vercel.json`](../vercel.json), the three workflows in
-[`.github/workflows/`](../.github/workflows), the root manifest scripts,
-[`AGENTS.md`](../AGENTS.md) and the docs. Preserve history where practical.
+Update [`vercel.json`](../../vercel.json), the three workflows in
+[`.github/workflows/`](../../.github/workflows), the root manifest scripts,
+[`AGENTS.md`](../../AGENTS.md) and the docs. Preserve history where practical.
 
 > **Done, with the plan's second option.** The example moved to
 > `examples/muster-consulting` — the named business-site example — because the
@@ -569,7 +571,7 @@ Update [`vercel.json`](../vercel.json), the three workflows in
 **D2 — Changesets.**
 Adopt Changesets with `fixed` grouping over the published packages, keeping one
 lockstep version. Mark `examples/`, `deploy/` and `tests/` private. Add
-`changeset status` to CI. Retire [`scripts/version.mjs`](../scripts/version.mjs)
+`changeset status` to CI. Retire [`scripts/version.mjs`](../../scripts/version.mjs)
 only when the release path is proven end to end.
 
 > **Done.** One `fixed` group holds all nine published packages (the eight of

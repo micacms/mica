@@ -1,3 +1,5 @@
+> Historical: this plan is finished. It names packages and tools that no longer exist. The current design is in [architecture.md](../architecture.md) and [decisions.md](../decisions.md).
+
 # Mica CMS Technical Architecture
 
 > Superseded in part by [git-workspace-plan.md](git-workspace-plan.md) (0.5.0): the

@@ -103,7 +103,7 @@ export const collections = {
 
 Mica edits the ones in the model and does not know the others exist.
 
-Full walkthrough: **[docs/getting-started.md](./docs/getting-started.md)**.
+Full walkthrough: **[micacms.com/docs/getting-started](https://micacms.com/docs/getting-started/)**.
 
 ---
 
@@ -148,8 +148,8 @@ npx @micacms/editor start # reads ./content, opens the editor on localhost:6422/
 
 |                 |                                                                                                                                                                                               |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Locally**     | The command above. Loopback only, no identity provider, no account, no user at all, no sign-in screen, nothing written into your repository — see [getting-started](./docs/getting-started.md) |
-| **On a server** | One container, an OIDC provider, a token for the repository, and a Git clone on its volume — see [self-hosting](./docs/self-hosting.md). [`deploy/demo-identity/`](./deploy/demo-identity/README.md) runs that whole shape on your machine |
+| **Locally**     | The command above. Loopback only, no identity provider, no account, no user at all, no sign-in screen, nothing written into your repository — see [getting started](https://micacms.com/docs/getting-started/) |
+| **On a server** | One container, an OIDC provider, a token for the repository, and a Git clone on its volume — see [self-hosting](https://micacms.com/docs/self-hosting/). [`deploy/demo-identity/`](./deploy/demo-identity/README.md) runs that whole shape on your machine |
 
 Deployed, Mica authenticates with **OpenID Connect** and nothing else. No
 passwords, no reset flow, no MFA enrolment, no passkeys, and no breach
@@ -179,12 +179,10 @@ sites/
 examples/
 ├── company-site/       a complete site to read: every field kind, content, templates
 └── starter/            the minimal starter for `npm create astro --template`
-docs/
-├── getting-started.md   add Mica to an Astro project, and run it locally
-├── content-model.md     every field type, and the layout it produces on disk
-├── self-hosting.md      deploy it: Docker, OIDC, repository, CI, backups
+docs/                    for contributors; the user guides are on micacms.com/docs
 ├── architecture.md      what Mica is, and why it is shaped this way
-└── decisions.md         accepted trade-offs and known gaps
+├── decisions.md         accepted trade-offs and known gaps
+└── history/             finished plans, kept for their reasons
 deploy/
 ├── self-hosted/         the reference deployment: compose.yml + .env.example
 └── demo-identity/       the deployed shape on your machine: Mica + ZITADEL
@@ -271,9 +269,9 @@ GitHub release
 whose notes are the `CHANGELOG.md` section for that version. Write that section
 first: the release fails without it.
 
-The container image is built and pushed by the same workflow once the
-repository variable `PUBLISH_IMAGE` is `true` and `DOCKERHUB_USERNAME` /
-`DOCKERHUB_TOKEN` exist.
+The same workflow builds the container image and pushes it to GHCR
+(`ghcr.io/<owner>/<repo>`). It uses `GITHUB_TOKEN`, so no other secret or
+variable is needed.
 
 Accepted trade-offs and known gaps are in [docs/decisions.md](./docs/decisions.md),
 each with what was decided, why, and what would change it. What each release

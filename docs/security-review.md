@@ -43,7 +43,7 @@ is based on.
 
 | # | Severity | Finding | Evidence | Fix | Issue |
 | --- | --- | --- | --- | --- | --- |
-| N1 | medium | No `Strict-Transport-Security` header, and the proxy example does not add one. | `packages/runtime/src/middleware/index.ts:58-68`; `docs/self-hosting.md:227-234` | Send HSTS when `MICA_PUBLIC_URL` is `https://`. | #147 |
+| N1 | medium | No `Strict-Transport-Security` header, and the proxy example does not add one. | `packages/runtime/src/middleware/index.ts:58-68`; `sites/micacms/content/docs/self-hosting/body.mdoc` | Send HSTS when `MICA_PUBLIC_URL` is `https://`. | #147 |
 | N2 | medium | Production starts with an `http://` public URL, and the cookies are then sent without `Secure`. | `packages/auth/oidc/src/config.ts:96`; `apps/self-hosted/src/config.ts:74-105` | Refuse a non-`https://` public URL in production, unless it is loopback. | #147 |
 | N3 | low | An upload is read fully into memory before its size is checked. No route has a body limit. Only an admitted editor can reach it. | `packages/runtime/src/routes/admin-media.ts:32`; `packages/runtime/src/services/media.ts:87` | Hono `bodyLimit` on uploads and on JSON routes. | #148 |
 | N4 | low | Cookie names have no `__Host-` or `__Secure-` prefix. | `packages/auth/oidc/src/session.ts:30-31`; `packages/auth/oidc/src/oidc.ts:37` | Prefix the names when the cookies are `Secure`. | #147 |
@@ -169,7 +169,7 @@ The idle and absolute timeouts are implemented
 
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
-| 8.1.1 | Authorization rules documented | Pass | `packages/auth/oidc/src/admission.ts:1-29`; `docs/self-hosting.md:236-252` | |
+| 8.1.1 | Authorization rules documented | Pass | `packages/auth/oidc/src/admission.ts:1-29`; `sites/micacms/content/docs/self-hosting/body.mdoc` | |
 | 8.2.1 | Function-level access control | Pass | `packages/runtime/src/app.ts:136`; `packages/auth/oidc/src/gate.ts:53-86` | |
 | 8.2.2 | Data-level access (IDOR) | Pass | `packages/runtime/src/app.ts:133-135` | One site and one role, by design. |
 | 8.3.1 | Enforced on the server | Pass | `packages/auth/oidc/src/gate.ts:63` | Admission is checked on every request. |
@@ -210,7 +210,7 @@ The levels in this chapter are approximate; several requirements can be level
 
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
-| 12.1.1 | Current TLS versions only | N/A | `docs/self-hosting.md:225-234` | The operator's proxy terminates TLS. |
+| 12.1.1 | Current TLS versions only | N/A | `sites/micacms/content/docs/self-hosting/body.mdoc` | The operator's proxy terminates TLS. |
 | 12.2.1 | TLS for all client connections | Partial | `packages/auth/oidc/src/config.ts:96` | N2. `MICA_REPOSITORY_URL` accepts only `https://`, and `http://` only with `NODE_ENV=development` on loopback (`apps/self-hosted/src/workspace/credentials.ts`, `parseRemote`). |
 | 12.2.2 | Publicly trusted certificates | N/A | — | The proxy holds the certificate. |
 
@@ -251,9 +251,9 @@ only. No test, scanner or live attack was run.
 | --- | --- | --- | --- |
 | Repository-controlled Git behaviour: hooks, filters, `.gitattributes`, symlinks, other protocols, submodules | Pass | `apps/self-hosted/src/workspace/isolation.ts` (`managedEnvironment`, `writeIsolationAttributes`); `apps/self-hosted/src/workspace/clone.ts` | Closed by the isolation settings (D7). No system or global Git configuration. `core.hooksPath` is `/dev/null`. `core.symlinks` is `false`, so a symlink is a plain file. `info/attributes` turns off text conversion, `ident`, filters and re-encoding. Only the HTTPS protocol is allowed (`http` only in development, on loopback). Submodules are never fetched. The isolation attributes are written before the first checkout. |
 | Credential leak to another host, to a file, to a log or to the editor | Pass | `apps/self-hosted/src/workspace/credentials.ts` (`parseRemote`, `redact`); `apps/self-hosted/src/workspace/isolation.ts` (`HELPER`); `apps/self-hosted/src/workspace/failures.ts` | The token is not in the URL (a URL with credentials is refused). A credential helper scoped to the configured host and port answers `get` only and reads the token from the environment of that one process. The environment of `git` is an allowlist (`PATH`, `HOME`, `LC_ALL`, the `GIT_CONFIG_*` set, the token), so `MICA_SESSION_SECRET` and the OIDC secret do not reach it. `redact` removes credentials from URLs and the token value from logs, errors and the host's messages. The token is never written to `.git/config`. |
-| Disk use: a clone that grows without limit | Partial | `apps/self-hosted/src/workspace/managed.ts` (`describe`, `sizeOf`); `docs/self-hosting.md` | The volume needs about twice the content, and `.git` grows with every upstream media change. The System page shows the clone size. There is no quota. Git LFS under the content root is refused. The operator sizes the volume and can shrink it by cloning again. |
+| Disk use: a clone that grows without limit | Partial | `apps/self-hosted/src/workspace/managed.ts` (`describe`, `sizeOf`); `sites/micacms/content/docs/self-hosting/body.mdoc` | The volume needs about twice the content, and `.git` grows with every upstream media change. The System page shows the clone size. There is no quota. Git LFS under the content root is refused. The operator sizes the volume and can shrink it by cloning again. |
 | Path or option injection through the branch or the content root | Pass | `apps/self-hosted/src/config.ts` (`isBranchName`, the root check); `packages/runtime/src/workspace/tree.ts` | A branch name cannot start with `-` or contain `..`. The root cannot contain `.` or `..` segments. `--` comes before every path, and Git reads paths literally. |
-| A second process writes to the volume | Accepted | `docs/self-hosting.md` | One Mica per volume. Mica has no lock file, because a stale lock after a crash would block the restart. `check` never writes to an existing clone. |
+| A second process writes to the volume | Accepted | `sites/micacms/content/docs/self-hosting/body.mdoc` | One Mica per volume. Mica has no lock file, because a stale lock after a crash would block the restart. `check` never writes to an existing clone. |
 
 ## Next review
 

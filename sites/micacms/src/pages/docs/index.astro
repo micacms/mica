@@ -1,13 +1,10 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import PageHeader from "@/components/PageHeader.astro";
-import { getDocs } from "@/lib/content";
+import { DOC_SECTIONS, getDocs } from "@/lib/content";
 const docs = await getDocs();
-const sections = [
-  { key: "start", label: "Start here" },
-  { key: "build", label: "Build" },
-  { key: "operate", label: "Operate" },
-];
+// A section with no page yet is not shown.
+const sections = DOC_SECTIONS.filter((section) => docs.some((doc) => doc.data.section === section.key));
 ---
 
 <BaseLayout title="Documentation" description="Learn how to add Mica to Astro, define content, and run the editor.">

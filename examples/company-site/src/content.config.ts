@@ -14,7 +14,8 @@
 
 import { micaCollections } from "@micacms/astro";
 import { glob } from "astro/loaders";
-import { defineCollection, z } from "astro:content";
+import { defineCollection } from "astro:content";
+import { z } from "astro/zod";
 
 import { site } from "./mica";
 
