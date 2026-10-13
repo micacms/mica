@@ -378,7 +378,7 @@ function plural(count: number, one: string, many: string): string {
   </PageHeader>
 
   <div class="mx-auto max-w-3xl space-y-5 px-4 py-6 sm:px-6">
-    <p v-if="loading" class="text-sm text-muted">Loading…</p>
+    <p v-if="loading" role="status" class="text-sm text-muted">Loading…</p>
 
     <template v-else-if="status">
       <div v-if="published" role="status" class="rounded-md border border-success/15 bg-success-soft p-4">

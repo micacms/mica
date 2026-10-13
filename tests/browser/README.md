@@ -20,6 +20,11 @@ can do the same by clicking.
   the old head, by the editor who pressed Publish;
 - signs out, and the admin API refuses the browser.
 
+A second test runs [axe](https://github.com/dequelabs/axe-core) on every view
+of the editor, and on the open relation picker and link dialog. A serious or
+critical finding fails it (#108). A third test ends a session while a form has
+changes, and checks that the changes come back after the next sign-in.
+
 ## Run it
 
 ```bash
@@ -36,7 +41,7 @@ It has no `test` script, so `rush test` does not run it: it needs the stack.
 A failed run keeps a screenshot and a trace in `test-results/`; open the trace
 with `./node_modules/.bin/playwright show-trace`.
 
-The test uses one of the 10 sign-in attempts per 15 minutes. The
+Each run uses four of the 10 sign-in attempts per 15 minutes. The
 [OIDC test](../oidc/README.md#run-it) says when to restart the `mica` service.
 
 ## What it does not check

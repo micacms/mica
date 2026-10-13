@@ -21,7 +21,7 @@ const props = defineProps<
 const emit = defineEmits<{ "update:modelValue": [Record<string, unknown>[]] }>();
 
 const field = computed(() => props.field as RepeaterField);
-const { label, error } = useField(props);
+const { label, error, locked } = useField(props);
 
 const collapsed = ref(new Set<number>());
 
@@ -128,7 +128,7 @@ function toggle(index: number): void {
             <button
               type="button"
               class="btn-ghost px-1.5 py-1"
-              :disabled="disabled || index === 0"
+              :disabled="locked || index === 0"
               @click="move(index, -1)"
             >
               <ArrowUp :size="16" aria-hidden="true" />
@@ -138,7 +138,7 @@ function toggle(index: number): void {
             <button
               type="button"
               class="btn-ghost px-1.5 py-1"
-              :disabled="disabled || index === rows.length - 1"
+              :disabled="locked || index === rows.length - 1"
               @click="move(index, 1)"
             >
               <ArrowDown :size="16" aria-hidden="true" />
@@ -148,7 +148,7 @@ function toggle(index: number): void {
             <button
               type="button"
               class="btn-ghost px-1.5 py-1"
-              :disabled="disabled || atMax"
+              :disabled="locked || atMax"
               @click="duplicate(index)"
             >
               <Copy :size="16" aria-hidden="true" />
@@ -158,7 +158,7 @@ function toggle(index: number): void {
             <button
               type="button"
               class="btn-ghost px-1.5 py-1 hover:text-danger"
-              :disabled="disabled || atMin"
+              :disabled="locked || atMin"
               @click="remove(index)"
             >
               <Trash2 :size="16" aria-hidden="true" />
@@ -189,7 +189,7 @@ function toggle(index: number): void {
     <button
       type="button"
       class="btn-secondary mt-2"
-      :disabled="disabled || field.readonly || atMax"
+      :disabled="locked || atMax"
       @click="add"
     >
       <Plus :size="16" aria-hidden="true" />

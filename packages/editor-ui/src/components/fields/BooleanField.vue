@@ -9,7 +9,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [boolean] }>();
 
 const field = computed(() => props.field as BooleanField);
-const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 
 const checked = computed(() => props.modelValue === true);
 </script>
@@ -20,15 +20,19 @@ const checked = computed(() => props.modelValue === true);
          without any ARIA work of our own. -->
     <label
       :for="inputId"
-      class="flex cursor-pointer items-start gap-3 rounded-sm border border-line bg-raised p-3 transition hover:bg-canvas has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60"
+      :class="[
+        'flex items-start gap-3 rounded-sm border border-line bg-raised p-3 transition',
+        locked ? 'cursor-default bg-subtle' : 'cursor-pointer hover:bg-canvas',
+      ]"
     >
       <input
         :id="inputId"
         type="checkbox"
         :checked="checked"
-        :disabled="disabled || field.readonly"
+        :aria-readonly="locked || undefined"
         :aria-describedby="describedBy"
         class="mt-0.5 h-4 w-4 shrink-0 rounded-sm border-line text-accent focus:ring-ink/20"
+        @click="locked && $event.preventDefault()"
         @change="emit('update:modelValue', ($event.target as HTMLInputElement).checked)"
       />
       <span class="min-w-0">

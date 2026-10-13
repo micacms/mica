@@ -1845,6 +1845,30 @@ review is after 1.0.
 
 ---
 
+### P3 — axe checks every view, and no audit before 1.0
+
+**Decided:** the editor aims at WCAG 2.2 AA. The browser test runs axe
+(`@axe-core/playwright`, a development dependency of `tests/browser` only) on
+every view and on the open relation picker and link dialog; a serious or
+critical finding fails CI. Minor and moderate findings do not. There is no
+independent audit and no test with screen reader users before 1.0. The
+website's accessibility page states the target, the checks and the known gaps.
+
+**Why:** a rule-based check on every pull request stops the regressions that a
+machine can see, at no cost per change. An audit does not fit a hobby project,
+as with the security review.
+
+**Consequence:** axe finds only a part of the problems. Keyboard and screen
+reader use is designed in (labels, focus, live regions, dialogs) but checked
+by hand only. Mica does not claim conformance.
+
+**What would change it:** an adopter with an accessibility duty who funds or
+offers an audit, or a report from a person who uses assistive technology.
+
+**1.0 status:** done for the automated checks (#108); the audit is after 1.0.
+
+---
+
 ### P3 — A generated file is committed to the content repository
 
 **Decided:** `content/.mica/schema.json` is build output, and it is committed.
@@ -2006,7 +2030,8 @@ without a break.
   ([`tests/browser/`](../tests/browser/README.md)). Collections, media,
   discard, conflicts and the local editor are covered by the API tests and by
   hand. Add a path when a regression reaches the UI unseen.
-  **1.0 status:** after 1.0; #108 adds accessibility checks on every view.
+  **1.0 status:** after 1.0. The accessibility check (#108) visits every
+  view, but it edits nothing.
 - **P2** — The group claim is verified by hand, not by CI. CI runs the real
   image against Dex on every pull request ([`tests/oidc/`](../tests/oidc/README.md)):
   sign-in, the email and domain rules, a refusal, CSRF and an edit. Dex's

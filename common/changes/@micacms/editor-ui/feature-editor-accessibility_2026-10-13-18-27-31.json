@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "Accessibility: every page has its own title, a skip link and focus on the heading after navigation; the menu drawer, dialogs and upload controls work with the keyboard; read-only fields stay focusable; the Publish page labels Before and After",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor-ui",
+  "email": "alexander@muedespacher.ch"
+}

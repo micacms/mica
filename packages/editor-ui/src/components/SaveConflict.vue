@@ -23,10 +23,14 @@ const emit = defineEmits<{ keep: []; take: [] }>();
 <template>
   <div role="alert" class="mb-5 rounded-md border border-warning/15 bg-warning-soft p-4">
     <p class="text-sm font-medium text-warning">Somebody else saved this while you were editing</p>
-    <p v-if="state === 'loading'" class="mt-1 text-xs text-muted">Loading their version…</p>
+    <p v-if="state === 'loading'" role="status" class="mt-1 text-xs text-muted">Loading their version…</p>
     <template v-else-if="state === 'loaded' && theirs">
       <p class="mt-1 text-xs text-muted">Your changes are not saved yet. Their saved version, then yours:</p>
-      <ChangeComparison :comparison="{ before: theirs, after: mine }" :fields="fields" />
+      <ChangeComparison
+        :comparison="{ before: theirs, after: mine }"
+        :fields="fields"
+        :labels="{ before: 'Their version', after: 'Your version' }"
+      />
       <div class="mt-2.5 flex flex-wrap gap-2">
         <button type="button" class="btn-secondary" :disabled="busy" @click="emit('keep')">Keep mine</button>
         <button type="button" class="btn-ghost" :disabled="busy" @click="emit('take')">Use theirs</button>

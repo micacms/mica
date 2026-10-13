@@ -214,7 +214,7 @@ async function copyPath(path: string): Promise<void> {
     title="Media"
     :subtitle="`${items.length} file${items.length === 1 ? '' : 's'} · ${formatBytes(totalBytes)}`"
   >
-    <label class="btn-primary cursor-pointer">
+    <label class="btn-primary focus-within-ring cursor-pointer">
       <input
         ref="fileInput"
         type="file"
@@ -267,7 +267,7 @@ async function copyPath(path: string): Promise<void> {
       <p class="mt-1.5 text-xs text-muted">Remove the file there first, then delete it here.</p>
     </div>
 
-    <p v-if="loading" class="py-12 text-center text-sm text-muted">Loading…</p>
+    <p v-if="loading" role="status" class="py-12 text-center text-sm text-muted">Loading…</p>
 
     <div v-else-if="matching.length === 0" class="card px-4 py-12 text-center">
       <p class="text-sm font-medium">
@@ -287,7 +287,7 @@ async function copyPath(path: string): Promise<void> {
             <li v-for="item in files" :key="item.path" class="relative">
               <input
                 type="checkbox"
-                class="absolute left-2 top-2 z-10 h-4 w-4"
+                class="absolute left-1.5 top-1.5 z-10 size-6 cursor-pointer"
                 :checked="chosen.has(item.path)"
                 :aria-label="`Select ${item.filename}`"
                 @change="toggleChosen(item.path)"

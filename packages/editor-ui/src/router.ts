@@ -1,5 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router";
 
+import { pageChanged } from "@/lib/announce";
+import { forgetEntryOptions } from "@/lib/entry-options";
 import { useSession } from "@/stores/session";
 import { useSchema } from "@/stores/schema";
 
@@ -94,7 +96,11 @@ router.beforeEach(async (to) => {
   return true;
 });
 
-router.afterEach((to) => {
+router.afterEach((to, from, failure) => {
+  if (failure) return;
+  // A page with a header sets a fuller title when it appears.
   const title = typeof to.meta.title === "string" ? to.meta.title : null;
   document.title = title ? `${title} · Mica` : "Mica";
+  if (from.matched.length > 0 && to.path !== from.path) pageChanged();
+  forgetEntryOptions();
 });

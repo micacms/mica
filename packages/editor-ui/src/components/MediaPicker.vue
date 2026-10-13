@@ -248,7 +248,7 @@ const folderOf = (path: string): string => {
           </p>
           <label
             v-else
-            class="mb-4 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-line-strong bg-canvas/50 px-4 py-6 text-center transition hover:border-ink/40"
+            class="focus-within-ring mb-4 flex cursor-pointer flex-col items-center justify-center gap-1 rounded-md border border-dashed border-line-strong bg-canvas/50 px-4 py-6 text-center transition hover:border-ink/40"
           >
             <input
               ref="fileInput"
@@ -268,7 +268,7 @@ const folderOf = (path: string): string => {
             </span>
           </label>
 
-          <p v-if="loading" class="py-8 text-center text-sm text-muted">Loading…</p>
+          <p v-if="loading" role="status" class="py-8 text-center text-sm text-muted">Loading…</p>
 
           <p v-else-if="items.length === 0" class="py-8 text-center text-sm text-muted">
             {{ search ? `Nothing matches "${search}".` : "No files yet." }}

@@ -13,7 +13,7 @@
  * the editor, and moves there when the packages split.
  */
 
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   Files,
@@ -26,6 +26,7 @@ import {
   SlidersHorizontal,
 } from "@lucide/vue";
 
+import { announcement } from "@/lib/announce";
 import { useSchema } from "@/stores/schema";
 import { useSession } from "@/stores/session";
 import { useStaging } from "@/stores/staging";
@@ -74,6 +75,35 @@ function signInAgain(): void {
 }
 
 const menuOpen = ref(false);
+const drawer = ref<HTMLElement | null>(null);
+const menuButton = ref<HTMLButtonElement | null>(null);
+
+// Below this width the sidebar is a drawer; closed, it must leave the tab order.
+const wide = window.matchMedia("(min-width: 1024px)");
+const isWide = ref(wide.matches);
+const onWidth = (event: MediaQueryListEvent) => (isWide.value = event.matches);
+wide.addEventListener("change", onWidth);
+onUnmounted(() => wide.removeEventListener("change", onWidth));
+
+const drawerHidden = computed(() => !isWide.value && !menuOpen.value);
+
+watch(menuOpen, async (open) => {
+  if (isWide.value) return;
+  await nextTick();
+  if (open) drawer.value?.querySelector<HTMLElement>("a, button")?.focus();
+  else if (drawer.value?.contains(document.activeElement)) menuButton.value?.focus();
+});
+
+function skipToContent(): void {
+  document.getElementById("main")?.focus();
+}
+
+function onDrawerKeydown(event: KeyboardEvent): void {
+  if (event.key === "Escape" && menuOpen.value) {
+    menuOpen.value = false;
+    menuButton.value?.focus();
+  }
+}
 
 // On a phone the sidebar is an overlay; navigating must dismiss it.
 watch(
@@ -111,6 +141,10 @@ async function signOut(): Promise<void> {
 </script>
 
 <template>
+  <!-- Moves the focus in code: a "#main" in the address would load the page again. -->
+  <a href="#main" class="skip-link" @click.prevent="skipToContent">Skip to the content</a>
+  <p class="sr-only" aria-live="polite" aria-atomic="true">{{ announcement }}</p>
+
   <div class="flex min-h-full">
     <!-- Backdrop for the mobile overlay -->
     <div
@@ -122,10 +156,13 @@ async function signOut(): Promise<void> {
 
     <aside
       id="main-navigation"
+      ref="drawer"
+      :inert="drawerHidden"
       :class="[
         'fixed inset-y-0 left-0 z-30 flex w-[220px] shrink-0 flex-col border-r border-creme/10 bg-aubergine text-creme transition-transform lg:static lg:translate-x-0',
         menuOpen ? 'translate-x-0' : '-translate-x-full',
       ]"
+      @keydown="onDrawerKeydown"
     >
       <div class="flex h-14 items-center border-b border-creme/10 px-3">
         <img src="/brand/micacms-wordmark-light.svg" alt="micacms" class="h-5 w-auto" />
@@ -217,6 +254,7 @@ async function signOut(): Promise<void> {
         class="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur lg:hidden"
       >
         <button
+          ref="menuButton"
           type="button"
           class="btn-ghost -ml-1 px-2"
           :aria-expanded="menuOpen"
@@ -229,7 +267,7 @@ async function signOut(): Promise<void> {
         <img src="/brand/micacms-wordmark.svg" alt="micacms" class="h-5 w-auto" />
       </header>
 
-      <main class="min-w-0 flex-1 bg-surface">
+      <main id="main" tabindex="-1" class="min-w-0 flex-1 bg-surface focus:outline-none">
         <div v-if="session.ended.value" role="alert" class="flex flex-wrap items-center gap-3 border-b border-line bg-danger-soft px-4 py-2.5 text-sm sm:px-6">
           <span class="min-w-0 flex-1">
             Your session ended, so Mica cannot save. Your changes stay in this tab: sign in again, and you can restore them.
@@ -254,6 +292,11 @@ async function signOut(): Promise<void> {
 
 <style scoped>
 @reference "../style.css";
+
+.skip-link {
+  @apply sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-50 focus:rounded-md
+    focus:bg-raised focus:px-3 focus:py-2 focus:text-sm focus:font-medium focus:text-ink focus:shadow-lg;
+}
 
 .nav-heading {
   @apply px-2 pb-1.5 font-mono text-[10px] font-medium uppercase tracking-[.08em] text-creme/60;

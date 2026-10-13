@@ -53,7 +53,7 @@ onMounted(async () => {
   />
 
   <div class="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6">
-    <p v-if="loading" class="text-sm text-muted">Loading…</p>
+    <p v-if="loading" role="status" class="text-sm text-muted">Loading…</p>
 
     <template v-else-if="overview">
       <section aria-labelledby="content-heading">

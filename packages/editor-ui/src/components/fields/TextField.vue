@@ -12,7 +12,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
 
 const field = computed(() => props.field as TextField | EmailField | UrlField);
-const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 
 const inputType = computed(() =>
   field.value.kind === "email" ? "email" : field.value.kind === "url" ? "url" : "text",
@@ -53,7 +53,7 @@ function onInput(event: Event): void {
       :placeholder="'placeholder' in field ? field.placeholder : undefined"
       :maxlength="maxLength ?? undefined"
       :required="field.required"
-      :disabled="disabled || field.readonly"
+      :readonly="locked"
       :aria-invalid="error ? 'true' : undefined"
       :aria-describedby="describedBy"
       :class="['input', error && 'input-invalid']"

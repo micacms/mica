@@ -32,18 +32,18 @@ const props = defineProps<
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
 
 const field = computed(() => props.field as SlugField);
-const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked: readOnly } = useField(props);
 
 const value = computed(() => (typeof props.modelValue === "string" ? props.modelValue : ""));
 
 // Once the editor edits the URL directly, stop following the title.
-const locked = ref(value.value !== "");
+const custom = ref(value.value !== "");
 let pending: ReturnType<typeof setTimeout> | undefined;
 
 watch(
   () => props.source,
   (source) => {
-    if (locked.value || !field.value.from || !props.collection) return;
+    if (custom.value || !field.value.from || !props.collection) return;
     if (!source?.trim()) {
       emit("update:modelValue", null);
       return;
@@ -53,7 +53,7 @@ watch(
     pending = setTimeout(async () => {
       try {
         const { slug } = await api.entries.suggestSlug(props.collection!, source, props.exceptSlug);
-        if (!locked.value) emit("update:modelValue", slug || null);
+        if (!custom.value) emit("update:modelValue", slug || null);
       } catch {
         // A failed suggestion is not worth interrupting typing over; the
         // server derives the slug again on save.
@@ -63,13 +63,13 @@ watch(
 );
 
 function onInput(event: Event): void {
-  locked.value = true;
+  custom.value = true;
   const next = (event.target as HTMLInputElement).value;
   emit("update:modelValue", next === "" ? null : next);
 }
 
 function unlock(): void {
-  locked.value = false;
+  custom.value = false;
   emit("update:modelValue", null);
   // Re-derive immediately from the current title.
   if (props.source?.trim() && props.collection) {
@@ -102,7 +102,7 @@ function unlock(): void {
         type="text"
         :value="value"
         :maxlength="field.maxLength ?? 96"
-        :disabled="disabled || field.readonly"
+        :readonly="readOnly"
         :aria-invalid="error ? 'true' : undefined"
         :aria-describedby="describedBy"
         :class="['input rounded-l-none font-mono text-[13px]', error && 'input-invalid']"
@@ -111,17 +111,17 @@ function unlock(): void {
         @input="onInput"
       />
       <button
-        v-if="locked && field.from"
+        v-if="custom && field.from"
         type="button"
         class="btn-ghost ml-2 shrink-0 whitespace-nowrap"
-        :disabled="disabled"
+        :disabled="readOnly"
         @click="unlock"
       >
         Reset
       </button>
     </div>
 
-    <p v-if="!locked && field.from" class="field-hint">
+    <p v-if="!custom && field.from" class="field-hint">
       Made from the {{ (sourceLabel ?? field.from).toLowerCase() }}. Change it to set your own.
     </p>
   </FieldShell>

@@ -10,7 +10,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [number | null] }>();
 
 const field = computed(() => props.field as NumberField);
-const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 
 const value = computed(() => (typeof props.modelValue === "number" ? String(props.modelValue) : ""));
 
@@ -48,7 +48,7 @@ function onInput(event: Event): void {
         :max="field.max"
         :step="field.step ?? (field.integer ? 1 : 'any')"
         :required="field.required"
-        :disabled="disabled || field.readonly"
+        :readonly="locked"
         :aria-invalid="error ? 'true' : undefined"
         :aria-describedby="describedBy"
         :class="['input', field.unit && 'pr-12', error && 'input-invalid']"

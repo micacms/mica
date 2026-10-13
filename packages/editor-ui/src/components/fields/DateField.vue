@@ -11,7 +11,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
 
 const field = computed(() => props.field as DateField);
-const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 
 /**
  * `datetime-local` has no timezone, but the model stores an ISO timestamp with
@@ -73,7 +73,7 @@ function setToday(): void {
         :min="field.min"
         :max="field.max"
         :required="field.required"
-        :disabled="disabled || field.readonly"
+        :readonly="locked"
         :aria-invalid="error ? 'true' : undefined"
         :aria-describedby="describedBy"
         :class="['input', error && 'input-invalid']"
@@ -82,7 +82,7 @@ function setToday(): void {
       <button
         type="button"
         class="btn-secondary shrink-0"
-        :disabled="disabled || field.readonly"
+        :disabled="locked"
         @click="setToday"
       >
         Today

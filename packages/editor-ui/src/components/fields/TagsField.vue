@@ -17,7 +17,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string[]] }>();
 
 const field = computed(() => props.field as TagsField);
-const { inputId, label, error: ownError, describedBy: ownDescribedBy, hintId, errorId } = useField(props);
+const { inputId, label, error: ownError, describedBy: ownDescribedBy, hintId, errorId, locked } = useField(props);
 
 /** The list's own problem, or one of a single tag (`tags.2`), which names the tag in its message. */
 const error = computed(
@@ -32,7 +32,6 @@ const tags = computed<string[]>(() =>
   Array.isArray(props.modelValue) ? props.modelValue.filter((tag): tag is string => typeof tag === "string") : [],
 );
 const draft = ref("");
-const locked = computed(() => props.disabled || !!field.value.readonly);
 const full = computed(() => field.value.max !== undefined && tags.value.length >= field.value.max);
 const listId = `${inputId}-suggestions`;
 
@@ -55,7 +54,7 @@ function remove(index: number): void {
 
 function onKeydown(event: KeyboardEvent): void {
   // Enter that ends an input method's composition is not the end of a tag.
-  if (event.isComposing) return;
+  if (event.isComposing || locked.value) return;
   if (event.key === "Enter" || event.key === ",") {
     event.preventDefault();
     add();
@@ -98,7 +97,7 @@ function onKeydown(event: KeyboardEvent): void {
         :list="field.suggestions?.length ? listId : undefined"
         :maxlength="field.maxLength"
         :placeholder="full ? '' : 'Add a tag'"
-        :disabled="locked || full"
+        :readonly="locked || full"
         :aria-invalid="error ? 'true' : undefined"
         :aria-describedby="describedBy"
         @keydown="onKeydown"

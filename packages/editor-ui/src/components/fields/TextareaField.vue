@@ -10,7 +10,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
 
 const field = computed(() => props.field as TextareaField);
-const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 
 const value = computed(() => (typeof props.modelValue === "string" ? props.modelValue : ""));
 
@@ -41,7 +41,7 @@ function onInput(event: Event): void {
       :placeholder="field.placeholder"
       :maxlength="field.maxLength"
       :required="field.required"
-      :disabled="disabled || field.readonly"
+      :readonly="locked"
       :aria-invalid="error ? 'true' : undefined"
       :aria-describedby="describedBy"
       :class="['input resize-y', error && 'input-invalid']"

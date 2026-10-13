@@ -10,7 +10,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
 
 const field = computed(() => props.field as ColorField);
-const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 
 const value = computed(() => (typeof props.modelValue === "string" ? props.modelValue : ""));
 
@@ -36,7 +36,7 @@ function emitValue(next: string): void {
       <input
         type="color"
         :value="swatchValue"
-        :disabled="disabled || field.readonly"
+        :disabled="locked"
         :aria-label="`${label} colour picker`"
         class="h-9.5 w-12 shrink-0 cursor-pointer rounded-sm border border-line bg-raised p-1"
         @input="emitValue(($event.target as HTMLInputElement).value)"
@@ -47,7 +47,7 @@ function emitValue(next: string): void {
         :value="value"
         placeholder="#1a2b3c"
         spellcheck="false"
-        :disabled="disabled || field.readonly"
+        :readonly="locked"
         :aria-invalid="error ? 'true' : undefined"
         :aria-describedby="describedBy"
         :class="['input font-mono text-[13px] uppercase', error && 'input-invalid']"
@@ -61,7 +61,7 @@ function emitValue(next: string): void {
         :key="preset"
         type="button"
         :title="preset"
-        :disabled="disabled || field.readonly"
+        :disabled="locked"
         :aria-pressed="value.toLowerCase() === preset.toLowerCase()"
         :class="[
           'h-7 w-7 rounded-full border transition',

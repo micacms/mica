@@ -1,13 +1,39 @@
 <script setup lang="ts">
+import { computed, onMounted, ref, watch, watchEffect } from "vue";
+import { useRoute } from "vue-router";
 import { ChevronLeft } from "@lucide/vue";
 
-defineProps<{
+import { pageArrived } from "@/lib/announce";
+
+const props = defineProps<{
   title: string;
   subtitle?: string | null;
   /** Rendered as a back link above the title. */
   back?: { name: string; params?: Record<string, string> } | null;
   backLabel?: string;
+  /** While true, the title is not final, so the page is announced later. */
+  loading?: boolean;
 }>();
+
+const route = useRoute();
+const heading = ref<HTMLElement | null>(null);
+
+// A fixed route title wins ("Overview" over a greeting); else the page and the collection it belongs to.
+const pageTitle = computed(() => {
+  const fixed = typeof route.meta.title === "string" ? route.meta.title : null;
+  return (fixed ? [fixed] : [props.title, props.back ? props.backLabel : null]).filter(Boolean).join(" · ");
+});
+
+watchEffect(() => {
+  document.title = `${pageTitle.value} · Mica`;
+});
+
+function arrive(): void {
+  if (!props.loading && heading.value) pageArrived(heading.value, pageTitle.value);
+}
+
+onMounted(arrive);
+watch(() => props.loading, arrive, { flush: "post" });
 </script>
 
 <template>
@@ -23,7 +49,9 @@ defineProps<{
           {{ backLabel ?? "Back" }}
         </RouterLink>
 
-        <h1 class="truncate font-display text-2xl font-normal leading-8 tracking-tight">{{ title }}</h1>
+        <h1 ref="heading" tabindex="-1" class="truncate font-display text-2xl font-normal leading-8 tracking-tight">
+          {{ title }}
+        </h1>
         <p v-if="subtitle" class="mt-1 truncate text-xs text-muted">{{ subtitle }}</p>
       </div>
 

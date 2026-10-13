@@ -25,6 +25,12 @@ export interface UseField {
   describedBy: ComputedRef<string | undefined>;
   hintId: string;
   errorId: string;
+  /**
+   * The value cannot change: the field is read-only, or the whole form is.
+   * Controls stay focusable then (`readonly`, `aria-readonly`), so a screen
+   * reader can still read them; `disabled` would take them out of reach.
+   */
+  locked: ComputedRef<boolean>;
 }
 
 export function useField(props: FieldProps): UseField {
@@ -46,7 +52,9 @@ export function useField(props: FieldProps): UseField {
     return parts.length > 0 ? parts.join(" ") : undefined;
   });
 
-  return { inputId, label, error, describedBy, hintId, errorId };
+  const locked = computed(() => !!props.disabled || !!props.field.readonly);
+
+  return { inputId, label, error, describedBy, hintId, errorId, locked };
 }
 
 function lastSegment(path: string): string {

@@ -15,11 +15,16 @@ import type { FieldMap } from "@micacms/core";
 import type { Comparison } from "@/api";
 import { compareRows } from "@/lib/compare";
 
-const props = defineProps<{
-  comparison: Comparison;
-  /** The owning document's fields; null for an order comparison. */
-  fields: FieldMap | null;
-}>();
+const props = withDefaults(
+  defineProps<{
+    comparison: Comparison;
+    /** The owning document's fields; null for an order comparison. */
+    fields: FieldMap | null;
+    /** The visible names of the two sides. */
+    labels?: { before: string; after: string };
+  }>(),
+  { labels: () => ({ before: "Before", after: "After" }) },
+);
 
 const mode = computed<"created" | "deleted" | "changed">(() => {
   if (props.comparison.before === null) return "created";
@@ -114,13 +119,13 @@ const moved = computed(() => {
               v-if="mode !== 'created'"
               class="max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-sm border border-danger/15 bg-danger-soft/60 p-2"
             >
-              <span class="sr-only">Before: </span>{{ row.before }}
+              <span class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted">{{ labels.before }}</span>{{ row.before }}
             </div>
             <div
               v-if="mode !== 'deleted'"
               class="max-h-48 overflow-y-auto whitespace-pre-wrap break-words rounded-sm border border-success/15 bg-success-soft/60 p-2"
             >
-              <span class="sr-only">After: </span>{{ row.after }}
+              <span class="mb-1 block text-[11px] font-medium uppercase tracking-wide text-muted">{{ labels.after }}</span>{{ row.after }}
             </div>
           </dd>
         </div>

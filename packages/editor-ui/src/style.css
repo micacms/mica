@@ -227,10 +227,19 @@ img.ProseMirror-separator {
   @apply mt-1.5 text-xs font-normal text-danger;
 }
 
+/* A label that wraps a hidden file input shows the input's keyboard focus. */
+@utility focus-within-ring {
+  &:has(:focus-visible) {
+    outline: 2px solid var(--mica-focus);
+    outline-offset: 2px;
+  }
+}
+
 @utility input {
   @apply block min-h-[38px] w-full rounded-md border border-line bg-surface px-3 py-2 text-sm text-ink
     transition placeholder:text-muted/70
-    disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted;
+    disabled:cursor-not-allowed disabled:bg-subtle disabled:text-muted
+    [&[readonly]]:bg-subtle [&[readonly]]:text-muted;
   transition-duration: var(--mica-duration-instant);
   transition-timing-function: var(--mica-ease);
 }

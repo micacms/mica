@@ -14,14 +14,16 @@
  * be readable in a diff and safe to render into a static site.
  */
 
-import { computed, onBeforeUnmount, watch } from "vue";
+import { computed, onBeforeUnmount, ref, watch } from "vue";
 
 import { EditorContent, useEditor } from "@tiptap/vue-3";
 
 import type { RichTextFeature, RichTextField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
+import InputDialog from "@/components/InputDialog.vue";
 import { useField, type FieldProps } from "@/composables/useField";
+import { linkProblem } from "@/lib/links";
 import {
   equivalentMarkdoc,
   fromMarkdoc,
@@ -35,7 +37,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
 
 const field = computed(() => props.field as RichTextField);
-const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 
 const DEFAULT_TOOLBAR: RichTextFeature[] = [
   "bold",
@@ -73,9 +75,22 @@ function list(items: string[]): string {
   return items.length < 2 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
 }
 
+function textboxAttributes(): Record<string, string> {
+  const attributes: Record<string, string> = {
+    id: inputId,
+    role: "textbox",
+    "aria-multiline": "true",
+    "aria-labelledby": `${inputId}-label`,
+  };
+  if (describedBy.value) attributes["aria-describedby"] = describedBy.value;
+  if (error.value) attributes["aria-invalid"] = "true";
+  if (locked.value) attributes["aria-readonly"] = "true";
+  return attributes;
+}
+
 const editor = useEditor({
   content: readOnlyReason.value ? "" : fromMarkdoc(source.value),
-  editable: !(props.disabled || field.value.readonly || readOnlyReason.value),
+  editable: !(locked.value || readOnlyReason.value),
   // The base styles are in style.css; an injected <style> tag would break the CSP.
   injectCSS: false,
 
@@ -84,12 +99,8 @@ const editor = useEditor({
   enablePasteRules: inputRules(toolbar.value),
 
   editorProps: {
-    attributes: {
-      id: inputId,
-      role: "textbox",
-      "aria-multiline": "true",
-      "aria-label": label.value,
-    },
+    // A function, so that ProseMirror reads the current hint, error and state at each update.
+    attributes: () => textboxAttributes(),
   },
 
   onUpdate({ editor: instance }) {
@@ -136,34 +147,45 @@ watch(
   },
 );
 
-watch(
-  () => props.disabled,
-  (isDisabled) => editor.value?.setEditable(!(isDisabled || field.value.readonly || readOnlyReason.value)),
-);
+watch([locked, readOnlyReason], ([isLocked, reason]) => editor.value?.setEditable(!(isLocked || reason)));
 
-watch(readOnlyReason, (reason) => editor.value?.setEditable(!(props.disabled || field.value.readonly || reason)));
+// A new hint or error arrives without an edit; ProseMirror reads the attributes only at an update.
+watch([describedBy, error, locked], () => {
+  const dom = editor.value?.view.dom;
+  if (!dom) return;
+  for (const name of ["aria-describedby", "aria-invalid", "aria-readonly"]) dom.removeAttribute(name);
+  for (const [name, value] of Object.entries(textboxAttributes())) dom.setAttribute(name, value);
+});
 
 onBeforeUnmount(() => editor.value?.destroy());
 
+const linkDialog = ref({ open: false, href: "", error: null as string | null, existing: false });
+
 function toggleLink(): void {
+  const existing = editor.value?.getAttributes("link").href as string | undefined;
+  linkDialog.value = { open: true, href: existing ?? "https://", error: null, existing: !!existing };
+}
+
+function applyLink(): void {
   const instance = editor.value;
+  const href = linkDialog.value.href.trim();
   if (!instance) return;
-
-  const existing = instance.getAttributes("link").href as string | undefined;
-  const href = window.prompt("Link address", existing ?? "https://");
-
-  if (href === null) return;
   if (href === "") {
-    instance.chain().focus().extendMarkRange("link").unsetLink().run();
+    removeLink();
     return;
   }
-
-  if (!/^(https?:|mailto:|tel:|\/)/i.test(href)) {
-    window.alert("Links must start with http://, https://, mailto:, tel: or /");
+  const problem = linkProblem(href);
+  if (problem) {
+    linkDialog.value.error = problem;
     return;
   }
-
+  linkDialog.value.open = false;
   instance.chain().focus().extendMarkRange("link").setLink({ href }).run();
+}
+
+function removeLink(): void {
+  linkDialog.value.open = false;
+  editor.value?.chain().focus().extendMarkRange("link").unsetLink().run();
 }
 
 interface ToolbarButton {
@@ -257,6 +279,7 @@ const buttons = computed<ToolbarButton[]>(() => {
 
 <template>
   <FieldShell
+    as="text"
     :input-id="inputId"
     :label="label"
     :description="field.description"
@@ -273,7 +296,8 @@ const buttons = computed<ToolbarButton[]>(() => {
       <pre
         :id="inputId"
         class="max-h-96 overflow-auto px-3 py-2 text-xs whitespace-pre-wrap"
-        :aria-label="label"
+        tabindex="0"
+        :aria-labelledby="`${inputId}-label`"
         :aria-describedby="describedBy"
       >{{ source }}</pre>
     </div>
@@ -297,7 +321,7 @@ const buttons = computed<ToolbarButton[]>(() => {
           :title="button.label"
           :aria-label="button.label"
           :aria-pressed="button.isActive()"
-          :disabled="disabled || field.readonly"
+          :disabled="locked"
           :class="[
             'h-7 min-w-7 rounded px-1.5 text-xs font-semibold transition',
             button.isActive()
@@ -310,7 +334,23 @@ const buttons = computed<ToolbarButton[]>(() => {
         </button>
       </div>
 
-      <EditorContent :editor="editor" :aria-describedby="describedBy" />
+      <EditorContent :editor="editor" />
     </div>
+
+    <InputDialog
+      v-model="linkDialog.href"
+      :open="linkDialog.open"
+      title="Link"
+      label="Link address"
+      type="url"
+      hint="A web address, an email (mailto:), a phone number (tel:), or a page of this website (/about)."
+      :error="linkDialog.error"
+      @confirm="applyLink"
+      @cancel="linkDialog.open = false"
+    >
+      <template v-if="linkDialog.existing" #extra>
+        <button type="button" class="btn-ghost mr-auto" @click="removeLink">Remove link</button>
+      </template>
+    </InputDialog>
   </FieldShell>
 </template>
