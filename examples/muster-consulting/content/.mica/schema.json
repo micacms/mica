@@ -210,12 +210,7 @@
             },
             "position": {
               "kind": "coordinates",
-              "label": "Map position",
-              "defaultCenter": {
-                "lat": 47.3769,
-                "lng": 8.5417
-              },
-              "defaultZoom": 12
+              "label": "Map position"
             }
           }
         },
@@ -422,12 +417,7 @@
         "position": {
           "kind": "coordinates",
           "label": "Map position",
-          "group": "Contact",
-          "defaultCenter": {
-            "lat": 47.3769,
-            "lng": 8.5417
-          },
-          "defaultZoom": 14
+          "group": "Contact"
         },
         "social": {
           "kind": "repeater",

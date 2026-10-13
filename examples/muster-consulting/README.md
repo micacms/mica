@@ -35,7 +35,7 @@ from the repository root points at this project's `content/` by default.
 - **pages** — standalone pages (About, Services, Contact) with a rich-text body
 - **projects** — reference work, with a gallery and a location
 - **news** — articles, with a cover image
-- **team** — people, a flat collection with no rich text, so one file each
+- **team** — people, with a portrait, so each person is a folder with an `index.json`
 - **site**, **navigation**, **theme** — singletons for settings, menus and
   colours
 
