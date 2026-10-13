@@ -124,8 +124,6 @@ What cannot move as it is, with the options to propose:
 - Ids with folders, or ids that are not slugs. They become flat slugs, so the
   URL can change. Options: keep the URL with Astro `redirects`, or accept the
   new URL.
-- A free list of strings, such as tags. See
-  [reference.md](./reference.md#the-content-model).
 - Headings lose their `id` and code blocks lose their highlighting, unless the
   website adds them. See
   [reference.md](./reference.md#what-markdoc-renders-differently-from-astros-markdown).
@@ -146,6 +144,7 @@ Wait for the answer. Change the proposal until the user agrees.
 | `z.date()`, `z.coerce.date()` | `date()` (stored as `"YYYY-MM-DD"`) |
 | `z.enum([...])` | `select({ options })` |
 | `z.array(z.enum([...]))` | `select({ multiple: true, options })` |
+| `z.array(z.string())` | `tags()`, for a free list such as tags or keywords |
 | `image()` | `media({ accept: "image", alt: "required" })`, or `media({ accept: "image" })` for a decorative image |
 | `reference("authors")` | `relation({ collection: "authors" })` |
 | `z.object({...})` | `object({ fields })` |

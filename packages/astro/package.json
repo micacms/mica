@@ -31,6 +31,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./relations": {
+      "types": "./dist/relations.d.ts",
+      "default": "./dist/relations.js"
     }
   },
   "files": [

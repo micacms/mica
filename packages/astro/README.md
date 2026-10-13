@@ -79,6 +79,24 @@ file of a media field that is not an image, is a warning in the build log.
 build, as with Astro's own `image()`. An entry in the other layout always fails the build, with the
 files and `npx mica migrate-layout`.
 
+## Relations
+
+A relation field stores the target's slug, which is also its id in Astro.
+`@micacms/astro/relations` resolves it, typed by the site's collections:
+
+```astro
+---
+import { related, relatedAll } from "@micacms/astro/relations";
+
+const author = await related("team", article.data.author);
+const team = await relatedAll("team", project.data.team);
+---
+```
+
+A missing target is left out, and `astro dev` warns about it. To show a relation
+from the other side, filter the other collection:
+`(await getCollection("projects")).filter((project) => project.data.team.includes(person.id))`.
+
 ## Mixing with your own collections
 
 The return value is a plain object:

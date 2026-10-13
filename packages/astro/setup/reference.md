@@ -80,10 +80,10 @@ in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
 | `media()` | a file path, or `{ path, alt }` with `alt` | `accept: "image" \| "document" \| "any"`, `multiple`, `max`, `alt: "required" \| "optional"` |
 | `color()` | `"#rrggbb"` | `presets`, `default` |
 | `coordinates()` | `{ "lat": 47.37, "lng": 8.54 }` | — |
+| `tags()` | `["design", "web"]` | `max`, `maxLength`, `suggestions`, `default` |
 
-There is no field for a free list of strings, such as free tags. Use
-`select({ multiple: true, options })` for a fixed list, or a `repeater()` with
-one `text()` field. Ask the user which one.
+For a free list of strings, such as tags or keywords, use `tags()`. For a fixed
+list of choices, use `select({ multiple: true, options })`.
 
 ## The files on disk
 
