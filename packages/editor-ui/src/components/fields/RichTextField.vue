@@ -14,16 +14,19 @@
  * be readable in a diff and safe to render into a static site.
  */
 
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, inject, onBeforeUnmount, ref, watch } from "vue";
 
 import { EditorContent, useEditor } from "@tiptap/vue-3";
 
 import type { RichTextFeature, RichTextField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
+import { api, type MediaItem } from "@/api";
 import InputDialog from "@/components/InputDialog.vue";
+import MediaPicker from "@/components/MediaPicker.vue";
 import { useField, type FieldProps } from "@/composables/useField";
 import { linkProblem } from "@/lib/links";
+import { MEDIA_FOLDER } from "@/lib/media-folder";
 import {
   equivalentMarkdoc,
   fromMarkdoc,
@@ -88,19 +91,32 @@ function textboxAttributes(): Record<string, string> {
   return attributes;
 }
 
+/** The folder of the entry, such as `news/hello`, where its `media/` folder is. Null for a new entry without a URL. */
+const mediaFolder = inject(MEDIA_FOLDER, undefined);
+const pickerFolder = computed(() => mediaFolder?.value ?? null);
+const entryFolder = computed(() => pickerFolder.value?.path.replace(/\/media$/, "") ?? null);
+
+/** A path as rich text stores it: from the entry's folder, or from the content root with `/`. */
+function imageUrl(src: string): string | null {
+  if (src.startsWith("/")) return api.media.url(src.slice(1));
+  return entryFolder.value ? api.media.url(`${entryFolder.value}/${src}`) : null;
+}
+
 const editor = useEditor({
   content: readOnlyReason.value ? "" : fromMarkdoc(source.value),
   editable: !(locked.value || readOnlyReason.value),
   // The base styles are in style.css; an injected <style> tag would break the CSP.
   injectCSS: false,
 
-  extensions: createRichTextExtensions(toolbar.value),
+  extensions: createRichTextExtensions(toolbar.value, { imageUrl }),
   enableInputRules: inputRules(toolbar.value),
   enablePasteRules: inputRules(toolbar.value),
 
   editorProps: {
     // A function, so that ProseMirror reads the current hint, error and state at each update.
     attributes: () => textboxAttributes(),
+    // An image must be a file in the media library: one pasted from another page would point elsewhere.
+    transformPastedHTML: (html) => html.replace(/<img\b[^>]*>/gi, ""),
   },
 
   onUpdate({ editor: instance }) {
@@ -141,8 +157,8 @@ watch(
     const current = instance.isEmpty ? "" : toMarkdoc(instance.getJSON() as ProseMirrorNode);
 
     if (!equivalentMarkdoc(incoming, current)) {
-      // `false` suppresses the update event, so this does not loop back.
-      instance.commands.setContent(fromMarkdoc(incoming), false);
+      // No update event, so this does not loop back.
+      instance.commands.setContent(fromMarkdoc(incoming), { emitUpdate: false });
     }
   },
 );
@@ -187,6 +203,59 @@ function removeLink(): void {
   linkDialog.value.open = false;
   editor.value?.chain().focus().extendMarkRange("link").unsetLink().run();
 }
+
+/* Images: the picker gives a file, then the dialog asks for its alt text. */
+
+const pickerOpen = ref(false);
+const imageDialog = ref({ open: false, src: "", alt: "", error: null as string | null, editing: false });
+
+function chooseImage(): void {
+  const instance = editor.value;
+  if (instance?.isActive("image")) {
+    const { src, alt } = instance.getAttributes("image") as { src?: string; alt?: string };
+    imageDialog.value = { open: true, src: src ?? "", alt: alt ?? "", error: null, editing: true };
+    return;
+  }
+  pickerOpen.value = true;
+}
+
+function onImageChosen(items: MediaItem[]): void {
+  const item = items[0];
+  if (!item) return;
+  // The entry's own files are stored from its folder, so the path stays right when its URL changes.
+  const folder = entryFolder.value;
+  const src = folder && item.path.startsWith(`${folder}/`) ? item.path.slice(folder.length + 1) : `/${item.path}`;
+  imageDialog.value = { open: true, src, alt: "", error: null, editing: false };
+}
+
+function applyImage(): void {
+  const { src, editing } = imageDialog.value;
+  const alt = imageDialog.value.alt.trim();
+  if (alt === "") {
+    imageDialog.value.error = "Describe what the image shows, for people who cannot see it.";
+    return;
+  }
+  imageDialog.value.open = false;
+  const chain = editor.value?.chain().focus();
+  if (editing) chain?.updateAttributes("image", { alt }).run();
+  else chain?.setImage({ src, alt }).run();
+}
+
+/* Tables: a button inserts one; inside a table, a second row of buttons changes its rows and columns. */
+
+const inTable = computed(() => editor.value?.isActive("table") ?? false);
+
+const tableActions = computed(() => {
+  const instance = editor.value;
+  if (!instance) return [];
+  return [
+    { label: "Add a row below", glyph: "+ Row", run: () => instance.chain().focus().addRowAfter().run() },
+    { label: "Add a column to the right", glyph: "+ Column", run: () => instance.chain().focus().addColumnAfter().run() },
+    { label: "Delete this row", glyph: "− Row", run: () => instance.chain().focus().deleteRow().run() },
+    { label: "Delete this column", glyph: "− Column", run: () => instance.chain().focus().deleteColumn().run() },
+    { label: "Delete the table", glyph: "Delete table", run: () => instance.chain().focus().deleteTable().run() },
+  ];
+});
 
 interface ToolbarButton {
   feature: RichTextFeature;
@@ -271,6 +340,22 @@ const buttons = computed<ToolbarButton[]>(() => {
       isActive: () => false,
       run: () => instance.chain().focus().setHorizontalRule().run(),
     },
+    {
+      feature: "table",
+      label: "Table",
+      glyph: "▦",
+      isActive: () => instance.isActive("table"),
+      run: () => {
+        if (!instance.isActive("table")) instance.chain().focus().insertTable({ rows: 3, cols: 2, withHeaderRow: true }).run();
+      },
+    },
+    {
+      feature: "image",
+      label: "Image",
+      glyph: "▣",
+      isActive: () => instance.isActive("image"),
+      run: chooseImage,
+    },
   ];
 
   return all.filter((button) => enabled(button.feature));
@@ -334,8 +419,47 @@ const buttons = computed<ToolbarButton[]>(() => {
         </button>
       </div>
 
+      <div
+        v-if="inTable && !locked"
+        class="flex flex-wrap items-center gap-0.5 border-b border-line bg-canvas/60 px-1.5 py-1"
+        role="toolbar"
+        :aria-label="`${label} table`"
+      >
+        <button
+          v-for="action in tableActions"
+          :key="action.label"
+          type="button"
+          :title="action.label"
+          :aria-label="action.label"
+          class="h-7 rounded px-1.5 text-xs font-medium text-muted transition hover:bg-raised hover:text-ink"
+          @click="action.run()"
+        >
+          {{ action.glyph }}
+        </button>
+      </div>
+
       <EditorContent :editor="editor" />
     </div>
+
+    <MediaPicker
+      :open="pickerOpen"
+      accept="image"
+      :folder="pickerFolder"
+      @close="pickerOpen = false"
+      @choose="onImageChosen"
+    />
+
+    <InputDialog
+      v-model="imageDialog.alt"
+      :open="imageDialog.open"
+      :title="imageDialog.editing ? 'Alt text' : 'Add the image'"
+      label="Alt text"
+      hint="Say what the image shows, in one sentence. Screen readers read it, and search engines use it."
+      :error="imageDialog.error"
+      :confirm-label="imageDialog.editing ? 'Apply' : 'Add the image'"
+      @confirm="applyImage"
+      @cancel="imageDialog.open = false"
+    />
 
     <InputDialog
       v-model="linkDialog.href"

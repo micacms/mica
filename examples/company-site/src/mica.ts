@@ -93,6 +93,8 @@ export const site = defineSite({
             "blockquote",
             "link",
             "horizontalRule",
+            "table",
+            "image",
           ],
         }),
         sections: repeater({
@@ -196,7 +198,10 @@ export const site = defineSite({
             "strategy",
           ],
         }),
-        description: richText({ label: "Description" }),
+        description: richText({
+          label: "Description",
+          toolbar: ["bold", "italic", "heading", "bulletList", "orderedList", "link", "image"],
+        }),
         location: object({
           label: "Location",
           fields: {

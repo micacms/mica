@@ -91,3 +91,14 @@ describe("a custom tag, as the recipes page shows it", () => {
     );
   });
 });
+
+describe("images in rich text", () => {
+  it("uses the address, width and height that Astro made, and leaves other images as they are", () => {
+    const images = [{ path: "media/plan.png", src: { src: "/_astro/plan.hash.png", width: 800, height: 600 } }];
+    const html = renderRichText("![A plan](media/plan.png)\n\n![Web](https://example.com/a.png)", { images });
+    assert.equal(
+      html,
+      '<article><p><img src="/_astro/plan.hash.png" alt="A plan" width="800" height="600" loading="lazy" decoding="async"></p><p><img src="https://example.com/a.png" alt="Web"></p></article>',
+    );
+  });
+});

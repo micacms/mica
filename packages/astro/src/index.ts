@@ -44,7 +44,7 @@ import { fileSystemSource } from "@micacms/core/node";
 import type { ImageMetadata } from "astro";
 import { z } from "zod";
 
-import { imagePathsFromEntry } from "./images.js";
+import { imagePathsFromEntry, richTextImages } from "./images.js";
 import { manifestFor } from "./manifest.js";
 import { DEFAULT_CONTENT_ROOT, resolveContentRoot } from "./root.js";
 
@@ -99,14 +99,27 @@ export interface MicaMeta {
   collection: string;
   /** Index in the collection's order, manual when `_order.json` says so. */
   position: number;
+  /** The images in the entry's rich text, for `renderRichText(text, { images })`. */
+  images: RichTextImage[];
 }
 
-const metaSchema = z.object({
-  id: z.string(),
-  slug: z.string(),
-  collection: z.string(),
-  position: z.number(),
-});
+/** An image in rich text: the path as Markdoc writes it, and the image that Astro made of it. */
+export interface RichTextImage {
+  path: string;
+  src: ImageMetadata;
+}
+
+/** Astro's `image()` resolves each `src`, as it does for an image field. */
+const imagesSchema = (image: () => z.ZodType) => z.array(z.object({ path: z.string(), src: image() }));
+
+const metaSchema = (image: () => z.ZodType) =>
+  z.object({
+    id: z.string(),
+    slug: z.string(),
+    collection: z.string(),
+    position: z.number(),
+    images: imagesSchema(image),
+  });
 
 /** What a document looks like inside Astro: the payload plus `_mica`. */
 export type AstroDocument<T> = T & { _mica: MicaMeta };
@@ -290,7 +303,7 @@ export function micaCollections<S extends Site>(
   for (const [name, def] of Object.entries(site.collections) as [string, Collection][]) {
     collections[name] = {
       type: "content_layer",
-      schema: ({ image }) => fieldsSchema(def.fields, { image }).extend({ _mica: metaSchema }),
+      schema: ({ image }) => fieldsSchema(def.fields, { image }).extend({ _mica: metaSchema(image) }),
       loader: {
         name: `mica:${name}`,
         load: async (context) => {
@@ -303,14 +316,16 @@ export function micaCollections<S extends Site>(
             context.store.clear();
 
             for (const entry of entries) {
-              const meta: MicaMeta = {
+              const file = entryFile(context, def.fields, name, entry.slug);
+              // `images` holds paths here; the schema's `image()` makes them images.
+              const meta = {
                 id: entry.slug,
                 slug: entry.slug,
                 collection: name,
                 position: entry.position,
+                images: richTextImages(def.fields, entry.data, file.inContent),
               };
 
-              const file = entryFile(context, def.fields, name, entry.slug);
               const data = await draftTolerant(context, `${name}/${entry.slug}`, () =>
                 context.parseData({
                   id: entry.slug,
@@ -348,7 +363,7 @@ export function micaCollections<S extends Site>(
   for (const [name, def] of Object.entries(site.singletons) as [string, Singleton][]) {
     collections[name] = {
       type: "content_layer",
-      schema: ({ image }) => fieldsSchema(def.fields, { image }),
+      schema: ({ image }) => fieldsSchema(def.fields, { image }).extend({ _mica: z.object({ images: imagesSchema(image) }) }),
       loader: {
         name: `mica:${name}`,
         load: async (context) => {
@@ -370,7 +385,10 @@ export function micaCollections<S extends Site>(
             const parsed = await draftTolerant(context, name, () =>
               context.parseData({
                 id: name,
-                data: imagePathsFromEntry(def.fields, data, file.inContent),
+                data: {
+                  ...imagePathsFromEntry(def.fields, data, file.inContent),
+                  _mica: { images: richTextImages(def.fields, data, file.inContent) },
+                },
                 ...(file.inProject ? { filePath: file.inProject } : {}),
               }),
             );
@@ -526,7 +544,7 @@ export type CollectionDocument<
 export type SingletonDocument<
   S extends Site,
   K extends keyof S["singletons"],
-> = InferSingleton<S["singletons"][K], ImageMetadata>;
+> = InferSingleton<S["singletons"][K], ImageMetadata> & { _mica: { images: RichTextImage[] } };
 
 export { manifestFor } from "./manifest.js";
 export { DEFAULT_CONTENT_ROOT, resolveContentRoot };

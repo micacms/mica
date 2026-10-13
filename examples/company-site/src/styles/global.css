@@ -168,6 +168,25 @@
   @apply font-semibold text-ink;
 }
 
+.prose-cms img {
+  @apply my-8 h-auto w-full;
+  border-radius: var(--radius-theme);
+}
+
+/* A wide table scrolls on its own, so the page does not. */
+.prose-cms table {
+  @apply my-8 block w-full overflow-x-auto border-collapse text-sm;
+}
+
+.prose-cms th,
+.prose-cms td {
+  @apply border-b border-line py-2.5 pr-6 text-left align-top;
+}
+
+.prose-cms th {
+  @apply font-semibold text-ink;
+}
+
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

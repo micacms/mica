@@ -233,8 +233,10 @@ describe("unsupportedMarkdoc", () => {
   });
 
   it("names what the editor cannot show", () => {
-    assert.deepEqual(unsupportedMarkdoc("![A house](media/house.jpg)\n"), ["an image"]);
-    assert.deepEqual(unsupportedMarkdoc("| a | b |\n| - | - |\n| 1 | 2 |\n"), ["a table"]);
+    assert.deepEqual(unsupportedMarkdoc("Text ![A house](media/house.jpg) more\n"), ["an image inside a line of text"]);
+    assert.deepEqual(unsupportedMarkdoc('![A house](media/house.jpg "Title")\n'), ["an image title"]);
+    assert.deepEqual(unsupportedMarkdoc("| a | b |\n| :- | - |\n| 1 | 2 |\n"), ["a table with aligned columns"]);
+    assert.deepEqual(unsupportedMarkdoc("| a |\n| --- |\n| ![x](media/x.jpg) |\n"), ["an image inside a line of text"]);
     assert.deepEqual(unsupportedMarkdoc("{% callout %}\nCareful.\n{% /callout %}\n"), ["a {% callout %} tag"]);
     assert.deepEqual(unsupportedMarkdoc("# Title {% #intro %}\n"), ["an attribute such as {% .class %}"]);
     assert.deepEqual(unsupportedMarkdoc('[x](https://example.com "Title")\n'), ["a link title"]);
@@ -263,5 +265,45 @@ describe("equivalentMarkdoc", () => {
   it("still sees a real edit", () => {
     assert.equal(equivalentMarkdoc("Hello\n", "Hello there\n"), false);
     assert.equal(equivalentMarkdoc("Hello\n", null), false);
+  });
+});
+
+describe("tables and images", () => {
+  const samples = {
+    "a table": "| Option | Default |\n| --- | --- |\n| `root` | **./content** |\n| [Link](/docs/) | a \\| b |\n",
+    "a table with an empty cell": "| A | B |\n| --- | --- |\n| 1 |  |\n",
+    "an image on its own line": "Before.\n\n![A house by the sea](media/house.jpg)\n\nAfter.\n",
+    "an image from the shared folder": "![Logo](/media/logo.png)\n",
+  };
+
+  for (const [name, source] of Object.entries(samples)) {
+    it(`loads and writes back ${name} unchanged, with nothing unsupported`, () => {
+      assert.deepEqual(unsupportedMarkdoc(source), []);
+      assert.equal(roundTrip(source), source);
+      assert.doesNotThrow(() => richTextSchema.nodeFromJSON(fromMarkdoc(source)));
+    });
+  }
+
+  it("writes a header row for a table that has none, and one line per cell", () => {
+    const cell = (type: string, ...content: ProseMirrorNode[]) => ({ type, content: [{ type: "paragraph", content }] });
+    const doc = {
+      type: "doc",
+      content: [
+        {
+          type: "table",
+          content: [
+            { type: "tableRow", content: [cell("tableCell", text("a")), cell("tableCell", text("b"))] },
+            { type: "tableRow", content: [cell("tableCell", text("one"), { type: "hardBreak" }, text("two"))] },
+          ],
+        },
+      ],
+    };
+    assert.equal(toMarkdoc(doc), "| a | b |\n| --- | --- |\n| one two |  |\n");
+  });
+
+  it("escapes brackets in alt text", () => {
+    const doc = { type: "doc", content: [{ type: "image", attrs: { src: "media/x.jpg", alt: "A [draft] plan" } }] };
+    assert.equal(toMarkdoc(doc), "![A \\[draft\\] plan](media/x.jpg)\n");
+    assert.equal(roundTrip(toMarkdoc(doc)), toMarkdoc(doc));
   });
 });

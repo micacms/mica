@@ -3,7 +3,20 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { collectReferences, media, object, relation, relinkReferences, repeater, text } from "../dist/index.js";
+import {
+  collectReferences,
+  markdocImages,
+  markdocTargets,
+  media,
+  object,
+  relation,
+  relinkReferences,
+  repeater,
+  resolveMarkdocTarget,
+  richText,
+  richTextValues,
+  text,
+} from "../dist/index.js";
 
 const fields = {
   title: text(),
@@ -62,5 +75,29 @@ describe("relinkReferences", () => {
 
   it("returns null when nothing pointed at the old slug", () => {
     assert.equal(relinkReferences(fields, { author: "ben", others: [], steps: [] }, "team", "anna", "x"), null);
+  });
+});
+
+describe("paths in rich text", () => {
+  it("finds the images and links of every rich-text value, nested ones included", () => {
+    const model = { body: richText(), sections: repeater({ fields: { text: richText() } }) };
+    const texts = richTextValues(model, { body: "![A](media/a.jpg)", sections: [{ text: "[Prices](/media/prices.pdf)" }] });
+    assert.deepEqual(texts.flatMap(markdocTargets), ["media/a.jpg", "/media/prices.pdf"]);
+  });
+
+  it("finds the images, and not the links", () => {
+    assert.deepEqual(markdocImages("![A \\] b](media/a.jpg)\n\n[Link](/media/b.pdf) ![](</media/c.png>)"), ["media/a.jpg", "/media/c.png"]);
+  });
+
+  it("reads a path from the document's folder, or from the content root with a slash", () => {
+    assert.equal(resolveMarkdocTarget("media/a.jpg", "news/hello"), "news/hello/media/a.jpg");
+    assert.equal(resolveMarkdocTarget("/media/logo.png", "news/hello"), "media/logo.png");
+    assert.equal(resolveMarkdocTarget("./media/../media/a%20b.jpg", "news/hello"), "news/hello/media/a b.jpg");
+  });
+
+  it("is not a content path for an address, an anchor, or a path above the content root", () => {
+    for (const target of ["https://example.com/a.jpg", "mailto:hi@example.com", "#top", "../../../etc/passwd"]) {
+      assert.equal(resolveMarkdocTarget(target, "news/hello"), null, target);
+    }
   });
 });

@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "The rich-text toolbar options \"table\" and \"image\", and the shared rules for paths in rich text (markdocImages, markdocTargets, resolveMarkdocTarget, richTextValues)",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

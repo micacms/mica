@@ -30,7 +30,7 @@ const next = features[(currentIndex + 1) % features.length];
           </p>
         ))}
       </aside>
-      <RichText text={entry.data.detail} />
+      <RichText text={entry.data.detail} images={entry.data._mica.images} />
     </div>
   </section>
 

@@ -8,24 +8,26 @@ import { existsSync } from "node:fs";
 import { relative } from "node:path";
 
 import {
+  type AnyField,
+  type ContentSource,
   DOCUMENT_EXTENSION,
   documentPath,
   entryLayout,
+  type FieldMap,
   INDEX_FILE,
   isValidSlug,
   MANIFEST_PATH,
+  markdocImages,
   misplacedFiles,
   ORDER_FILE,
+  type PathSegment,
   readCollectionEntry,
   readSingleton,
+  resolveMarkdocTarget,
   resolveSlugField,
   singletonPath,
-  validateFields,
-  type AnyField,
-  type ContentSource,
-  type FieldMap,
-  type PathSegment,
   type Site,
+  validateFields,
 } from "@micacms/core";
 import { within } from "@micacms/core/node";
 import { contentFiles, loadSchema, readOnlyParts } from "@micacms/runtime";
@@ -268,7 +270,20 @@ async function checkEntry(
       warning(path, "Not read: no rich-text field has this name.");
       continue;
     }
-    for (const message of markdocWarnings((await files.read(path)) ?? "")) warning(path, message);
+    const text = (await files.read(path)) ?? "";
+    for (const message of markdocWarnings(text)) warning(path, message);
+    for (const target of markdocImages(text)) {
+      const file = resolveMarkdocTarget(target, base);
+      // An address on the web is the website's business, not a file in the content.
+      if (file === null) continue;
+      let exists = false;
+      try {
+        exists = existsSync(within(root, file));
+      } catch {
+        // A path outside the content root does not exist for Mica.
+      }
+      if (!exists) error(path, `The image "${target}" does not exist under the content root.`);
+    }
   }
 }
 

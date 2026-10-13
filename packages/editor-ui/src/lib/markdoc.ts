@@ -12,10 +12,11 @@
  * So the conversion happens here, at the boundary, and nothing above it has to
  * know that two representations exist.
  *
- * Only the nodes the editor can show are handled. Stored Markdoc with any other
- * node — an image, a table, a `{% tag %}` — is found by `unsupportedMarkdoc`
- * first, and the field shows it read-only instead of converting it, because a
- * conversion would drop it.
+ * Only the nodes the editor can show are handled: also a pipe table, and an
+ * image on a line of its own. Stored Markdoc with any other node — an image
+ * inside a line of text, a table with aligned columns, a `{% tag %}` — is found
+ * by `unsupportedMarkdoc` first, and the field shows it read-only instead of
+ * converting it, because a conversion would drop it.
  */
 
 import Markdoc, { type Node as MarkdocNode } from "@markdoc/markdoc";
@@ -128,6 +129,14 @@ function block(node: ProseMirrorNode): string {
     case "horizontalRule":
       return "---";
 
+    case "image": {
+      const alt = String(node.attrs?.["alt"] ?? "").replace(/([\\[\]])/g, "\\$1");
+      return `![${alt}](${String(node.attrs?.["src"] ?? "")})`;
+    }
+
+    case "table":
+      return table(node);
+
     case "codeBlock": {
       const language = String(node.attrs?.["language"] ?? "");
       const text = node.content?.map((child) => child.text ?? "").join("") ?? "";
@@ -154,6 +163,26 @@ function block(node: ProseMirrorNode): string {
       // losing its shape.
       return node.content ? blocks(node.content) : "";
   }
+}
+
+/**
+ * A pipe table. The first row is the header, as Markdown requires. A cell is
+ * one line, so a line break in it becomes a space, and `|` gets a backslash.
+ */
+function table(node: ProseMirrorNode): string {
+  const rows = (node.content ?? []).map((row) =>
+    (row.content ?? []).map((cell) =>
+      (cell.content ?? [])
+        .map((child) => inline(child.content))
+        .join(" ")
+        .replace(/\\\n/g, " ")
+        .replace(/\|/g, "\\|"),
+    ),
+  );
+  if (rows.length === 0) return "";
+  const width = Math.max(...rows.map((row) => row.length));
+  const line = (cells: string[]) => `| ${Array.from({ length: width }, (_, index) => cells[index] ?? "").join(" | ")} |`;
+  return [line(rows[0]!), line(Array<string>(width).fill("---")), ...rows.slice(1).map(line)].join("\n");
 }
 
 /** ProseMirror JSON to a Markdoc document. Empty input gives an empty string. */
@@ -258,11 +287,34 @@ function fromBlocks(nodes: MarkdocNode[]): ProseMirrorNode[] {
 
       case "paragraph": {
         // Markdoc wraps a paragraph's inlines in an `inline` node.
-        const content = fromInline(
-          node.children.flatMap((child) => (child.type === "inline" ? child.children : [child])),
-          [],
-        );
+        const inlines = node.children.flatMap((child) => (child.type === "inline" ? child.children : [child]));
+        const image = loneImage(inlines);
+        if (image) {
+          // Markdoc gives the alt text as written, so the escapes that the writer adds come off here.
+          const alt = String(image.attributes["alt"] ?? "").replace(/\\([\\[\]])/g, "$1");
+          result.push({ type: "image", attrs: { src: String(image.attributes["src"] ?? ""), alt } });
+          break;
+        }
+        const content = fromInline(inlines, []);
         result.push({ type: "paragraph", ...(content.length ? { content } : {}) });
+        break;
+      }
+
+      case "table": {
+        const rows = node.children.flatMap((part) => part.children.filter((row) => row.type === "tr"));
+        result.push({
+          type: "table",
+          content: rows.map((row, index) => ({
+            type: "tableRow",
+            content: row.children.map((cell) => {
+              const content = fromInline(cell.children.flatMap((child) => (child.type === "inline" ? child.children : [child])), []);
+              return {
+                type: index === 0 ? "tableHeader" : "tableCell",
+                content: [{ type: "paragraph", ...(content.length ? { content } : {}) }],
+              };
+            }),
+          })),
+        });
         break;
       }
 
@@ -320,15 +372,20 @@ function fromBlocks(nodes: MarkdocNode[]): ProseMirrorNode[] {
   return result;
 }
 
+/** The image of a paragraph that holds nothing else, which the editor shows as an image block. */
+function loneImage(inlines: MarkdocNode[]): MarkdocNode | undefined {
+  const meaningful = inlines.filter((node) => !(node.type === "text" && String(node.attributes["content"] ?? "").trim() === ""));
+  return meaningful.length === 1 && meaningful[0]!.type === "image" ? meaningful[0] : undefined;
+}
+
 /** The Markdoc node types that the editor can show and write back unchanged. */
 const SUPPORTED = new Set([
   "document", "paragraph", "inline", "text", "softbreak", "hardbreak", "strong", "em", "s", "code",
   "link", "heading", "blockquote", "hr", "fence", "list", "item",
+  "table", "thead", "tbody", "tr", "th", "td", "image",
 ]);
 
-const TABLE = new Set(["table", "thead", "tbody", "tr", "th", "td"]);
-
-const NAMES: Record<string, string> = { image: "an image", html: "HTML", comment: "a comment" };
+const NAMES: Record<string, string> = { html: "HTML", comment: "a comment" };
 
 /**
  * What a stored document has that the editor cannot show, in words, such as
@@ -338,20 +395,30 @@ export function unsupportedMarkdoc(source: string | null | undefined): string[] 
   if (!source?.trim()) return [];
   const found = new Set<string>();
 
-  const visit = (node: MarkdocNode): void => {
+  // `ancestors` is the path from the document down to the parent of `node`.
+  const visit = (node: MarkdocNode, ancestors: MarkdocNode[]): void => {
+    const parent = ancestors.at(-1);
     if (node.type === "document" && node.attributes["frontmatter"]) found.add("front matter");
     // A variable or a function, such as `{% $name %}`, is a text node without a string.
     if (node.type === "text" && typeof node.attributes["content"] !== "string") found.add("a variable such as {% $name %}");
     if (node.type === "tag") found.add(`a {% ${node.tag ?? ""} %} tag`);
-    else if (TABLE.has(node.type)) found.add("a table");
     else if (!SUPPORTED.has(node.type)) found.add(NAMES[node.type] ?? `a "${node.type}" node`);
     else if (node.type === "link" && node.attributes["title"]) found.add("a link title");
+    else if ((node.type === "th" || node.type === "td") && node.attributes["align"]) found.add("a table with aligned columns");
+    else if (node.type === "image") {
+      const paragraph = ancestors.at(-2);
+      const alone = parent?.type === "inline" && paragraph?.type === "paragraph" && loneImage(parent.children) === node;
+      if (node.attributes["title"]) found.add("an image title");
+      else if (!alone || ancestors.some((ancestor) => ancestor.type === "table")) found.add("an image inside a line of text");
+    } else if ((node.type === "list" || node.type === "fence" || node.type === "table" || node.type === "blockquote") && ancestors.some((ancestor) => ancestor.type === "table")) {
+      found.add("a block inside a table");
+    }
     if (node.annotations.length > 0) found.add("an attribute such as {% .class %}");
     if (node.errors.length > 0) found.add("Markdoc that does not parse");
-    for (const child of node.children) visit(child);
+    for (const child of node.children) visit(child, [...ancestors, node]);
   };
 
-  visit(Markdoc.parse(source));
+  visit(Markdoc.parse(source), []);
   return [...found];
 }
 

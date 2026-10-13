@@ -88,7 +88,11 @@ export type RichTextFeature =
   | "orderedList"
   | "blockquote"
   | "link"
-  | "horizontalRule";
+  | "horizontalRule"
+  /** A table with a header row; each cell holds one line of text. Stored as a Markdown pipe table. */
+  | "table"
+  /** An image from the media library, with alt text, on a line of its own. */
+  | "image";
 
 export interface NumberField extends BaseField {
   kind: "number";

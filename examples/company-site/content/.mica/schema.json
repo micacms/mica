@@ -52,7 +52,9 @@
             "orderedList",
             "blockquote",
             "link",
-            "horizontalRule"
+            "horizontalRule",
+            "table",
+            "image"
           ]
         },
         "sections": {
@@ -217,7 +219,16 @@
         },
         "description": {
           "kind": "richText",
-          "label": "Description"
+          "label": "Description",
+          "toolbar": [
+            "bold",
+            "italic",
+            "heading",
+            "bulletList",
+            "orderedList",
+            "link",
+            "image"
+          ]
         },
         "location": {
           "kind": "object",

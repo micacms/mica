@@ -262,7 +262,21 @@ describe("collections", () => {
       slug: "haus-b",
       collection: "projects",
       position: 1,
+      images: [],
     });
+  });
+
+  it("gives the images of the rich text to image(), as paths from the entry's file", async () => {
+    const collections = build({
+      "projects/haus-a/description.mdoc": "![Plan](media/plan.png)\n\n![Logo](/shared/logo.png)\n\n![Web](https://example.com/a.png)\n",
+    });
+    const context = createContext(collections.projects.schema);
+    await collections.projects.loader.load(context);
+
+    assert.deepEqual((context.entries.get("haus-a")?._mica as { images: unknown }).images, [
+      { path: "media/plan.png", src: "./media/plan.png" },
+      { path: "/shared/logo.png", src: "../../shared/logo.png" },
+    ]);
   });
 
   it("orders entries alphabetically when nothing says otherwise", async () => {

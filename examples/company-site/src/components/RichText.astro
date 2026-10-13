@@ -8,16 +8,18 @@
  * styles cover, rather than whatever an editor's clipboard happened to contain.
  */
 
-import { renderRichText } from "@micacms/astro";
+import { renderRichText, type RichTextImage } from "@micacms/astro";
 
 interface Props {
   /** Markdoc source, as stored in the entry's `.mdoc` sidecar. */
   text: string | null;
+  /** The entry's images, `entry.data._mica.images`, so that an image in the text has a real address. */
+  images?: RichTextImage[];
   class?: string;
 }
 
-const { text, class: className } = Astro.props;
-const html = renderRichText(text);
+const { text, images, class: className } = Astro.props;
+const html = renderRichText(text, { images });
 ---
 
 {html && <div class:list={["prose-cms", className]} set:html={html} />}

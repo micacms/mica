@@ -95,6 +95,13 @@ describe("mica check", () => {
     assert.ok(errors.some((line) => line.includes('"news/hello/media/gone.jpg" does not exist')), errors.join("\n"));
   });
 
+  it("reports an image in rich text whose file is missing, and accepts one from the shared folder or the web", async () => {
+    write("media/logo.png", "png");
+    write("news/hello/body.mdoc", "![Cover](media/cover.jpg)\n\n![Logo](/media/logo.png)\n\n![Web](https://example.com/a.png)\n\n![Gone](media/gone.jpg)\n");
+    const errors = problems(await checkContent(root), "error");
+    assert.deepEqual(errors, ['news/hello/body.mdoc: The image "media/gone.jpg" does not exist under the content root.']);
+  });
+
   it("checks the file and the alt text of a media field with alt", async () => {
     const withAlt = defineSite({
       collections: {

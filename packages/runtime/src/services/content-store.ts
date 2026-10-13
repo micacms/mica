@@ -5,41 +5,43 @@
  */
 
 import { createHash } from "node:crypto";
-import { posix } from "node:path";
 
 import {
+  type Collection,
+  collectionEntryPath,
+  collectionSlugs,
+  collectReferences,
+  type ContentEntry,
   ContentPathError,
   DOCUMENT_EXTENSION,
-  INDEX_FILE,
-  ORDER_FILE,
-  collectionEntryPath,
   entryFiles,
   entryLayout,
   entryTitle,
+  type FieldIssue,
+  type FieldMap,
+  INDEX_FILE,
   isValidSlug,
-  collectReferences,
-  readCollection,
-  collectionSlugs,
-  mapMedia,
   LayoutError,
+  mapMedia,
+  markdocTargets,
   misplacedFiles,
+  ORDER_FILE,
+  readCollection,
   readCollectionEntry,
   readSingleton,
   relativizeMedia,
   relinkReferences,
+  resolveMarkdocTarget,
   resolveSlugField,
   resolveTitleField,
+  richTextValues,
   serializeEntry,
+  type Singleton,
   singletonPath,
+  type Site,
   slugify,
   validateFields,
   withDefaults,
-  type Collection,
-  type ContentEntry,
-  type FieldIssue,
-  type FieldMap,
-  type Singleton,
-  type Site,
 } from "@micacms/core";
 
 import { ConflictError, FilesError, type ContentFiles, type FileChange } from "../workspace/files.js";
@@ -567,7 +569,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
         }
         for (const text of richTextValues(fields, data)) {
           for (const target of markdocTargets(text)) {
-            const path = resolveTarget(target, folder);
+            const path = resolveMarkdocTarget(target, folder);
             if (path && wanted.has(path)) found.add(path);
           }
         }
@@ -609,51 +611,6 @@ export type ContentStore = ReturnType<typeof createContentStore>;
 /** Whether a save is a URL change whose links should follow. */
 function previousLinks(input: SaveEntryInput, slug: string): boolean {
   return input.updateLinks === true && input.slug !== undefined && input.slug !== slug;
-}
-
-/** Every rich-text value in a payload, nested fields included. */
-function richTextValues(fields: FieldMap, data: Record<string, unknown>): string[] {
-  const found: string[] = [];
-  const isRecord = (value: unknown): value is Record<string, unknown> =>
-    value !== null && typeof value === "object" && !Array.isArray(value);
-  const visit = (map: FieldMap, record: Record<string, unknown>) => {
-    for (const [key, field] of Object.entries(map)) {
-      const value = record[key];
-      if (field.kind === "richText" && typeof value === "string") found.push(value);
-      else if (field.kind === "object" && isRecord(value)) visit(field.fields, value);
-      else if (field.kind === "repeater" && Array.isArray(value)) for (const row of value) if (isRecord(row)) visit(field.fields, row);
-    }
-  };
-  visit(fields, data);
-  return found;
-}
-
-/**
- * The targets of the images and links in Markdoc: `![alt](media/x.jpg)`,
- * `[Price list](/media/prices.pdf)`, a reference `[x]: media/x.jpg`, and a tag
- * attribute such as `{% figure src="media/x.jpg" %}`.
- */
-function markdocTargets(text: string): string[] {
-  const inline = [...text.matchAll(/\]\(\s*<?([^)\s>]+)/g)].map((match) => match[1]!);
-  const references = [...text.matchAll(/^\s{0,3}\[[^\]]+\]:\s*<?([^\s>]+)/gm)].map((match) => match[1]!);
-  const attributes = [...text.matchAll(/\{%[^%]*%\}/g)].flatMap((tag) =>
-    [...tag[0].matchAll(/\b[\w-]+\s*=\s*"([^"]+)"/g)].map((match) => match[1]!),
-  );
-  return [...inline, ...references, ...attributes];
-}
-
-/** A rich-text target as a content path: from the content root with `/`, else from the document's folder. */
-function resolveTarget(target: string, folder: string): string | null {
-  if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#")) return null;
-  let decoded: string;
-  try {
-    decoded = decodeURI(target.split(/[?#]/)[0]!);
-  } catch {
-    return null;
-  }
-  const joined = decoded.startsWith("/") ? decoded.slice(1) : folder === "" ? decoded : `${folder}/${decoded}`;
-  const normal = posix.normalize(joined);
-  return normal.startsWith("..") ? null : normal;
 }
 
 /** Whether a field map has a relation to `collection`, nested fields included. */

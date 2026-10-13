@@ -1,8 +1,9 @@
 ---
-import { renderRichText } from "@micacms/astro";
-interface Props { text: string | null; class?: string; }
-const { text, class: className } = Astro.props;
-const html = renderRichText(text);
+import { renderRichText, type RichTextImage } from "@micacms/astro";
+// `images`: the entry's `_mica.images`, so that an image in the text has a real address.
+interface Props { text: string | null; images?: RichTextImage[]; class?: string; }
+const { text, images, class: className } = Astro.props;
+const html = renderRichText(text, { images });
 ---
 
 {html && <div class:list={[

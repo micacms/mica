@@ -118,9 +118,14 @@ What cannot move as it is, with the options to propose:
   HTML inside code blocks or inline code: that is text.
 - Footnotes (`[^1]`). Markdoc shows them as text. Options: a normal paragraph
   or a link. Remove the `[^1]` markers from the text too.
-- Images in a body (`![](./photo.jpg)`). The rich-text editor has no images.
-  Options: a `media()` field or a `repeater()` with images, or files in
-  `public/` with absolute URLs, which Astro does not optimize.
+- Images in a body (`![](./photo.jpg)`). The editor shows an image on a line
+  of its own, with its file in the entry's `media/` folder (`media/photo.jpg`)
+  or the shared one (`/media/photo.jpg`): move the file and change the path.
+  An image inside a line of text makes the field read-only. Other options: a
+  `media()` field or a `repeater()` with images. The pages pass
+  `entry.data._mica.images` to `renderRichText`.
+- Tables with aligned columns (`| :--- |`). The editor keeps them read-only.
+  Remove the alignment, or keep the field read-only.
 - Ids with folders, or ids that are not slugs. They become flat slugs, so the
   URL can change. Options: keep the URL with Astro `redirects`, or accept the
   new URL.

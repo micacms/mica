@@ -45,7 +45,7 @@ const sectionLabel = DOC_SECTIONS.find((section) => section.key === entry.data.s
           <Icon name="clock" size={13} /> {entry.data.readTime} min read
         </span>
       </header>
-      <RichText text={entry.data.body} />
+      <RichText text={entry.data.body} images={entry.data._mica.images} />
       <nav class="mt-14 grid grid-cols-2 gap-4 border-t border-line pt-7" aria-label="Documentation pages">
         {previous ? (
           <a class="card p-4 transition hover:bg-canvas" href={`/docs/${previous.id}/`}>
