@@ -115,7 +115,7 @@ class RemoteFailure extends Error {
 const MAX_PUSH_TRIES = 3;
 
 /** Failures that a successful fetch ends. */
-const REACHABILITY = new Set<SyncProblem["code"]>(["auth", "network", "repo_not_found", "unknown"]);
+const REACHABILITY = new Set<SyncProblem["code"]>(["auth", "network", "repo_not_found", "branch_not_found", "unknown"]);
 
 export function createManagedWorkspace(options: ManagedWorkspaceOptions): ManagedWorkspace {
   const { git, layout, locks, logger, branch, root } = options;
