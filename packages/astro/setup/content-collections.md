@@ -132,7 +132,7 @@ npx mica import --from <temporary directory>/data-store-before.json \
 - `--map <collection>.<field>=<key>` takes a field from another key. Use it
   when a name changed, for the alt text of an image (`blog.cover.alt=coverAlt`),
   and for a body that goes to a rich-text field with another name
-  (`blog.content=$body`).
+  (`blog.content=@body`). `--map` does not reach into the rows of a repeater.
 - `--order <collection>=<field>` writes the manual order of a `sortable`
   collection from a number field, if the user chose that in step 3.
 - Names after the options import only those collections.

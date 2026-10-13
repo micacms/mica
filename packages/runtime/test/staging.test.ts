@@ -394,6 +394,16 @@ describe("publish", () => {
     assert.match(result.pushError!, /no remote\. Add one with `git remote add origin <url>`/);
   });
 
+  it("names the push command when the remote is not called origin", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    git(root, "remote", "add", "upstream", temp("mica-bare-"));
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"New","slug":"haus-a"}');
+    const result = await service.publish({ message: "Other remote", paths: await reviewed(service) });
+
+    assert.equal(result.state, "committed-pending-push");
+    assert.match(result.pushError!, /git push -u upstream HEAD/);
+  });
+
   it("is refused when disabled by configuration", async () => {
     const { contentRoot, service } = makeRepo({ publishEnabled: false });
     writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"No","slug":"haus-a"}');

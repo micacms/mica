@@ -76,7 +76,8 @@ export interface MicaCollectionsOptions {
   debounceMs?: number;
   /**
    * Fails the build on a relation to a missing entry or a missing media file.
-   * Without it, the build logs a warning for each and goes on.
+   * Without it, the build logs a warning for each and goes on; a missing image
+   * file fails the build either way, because Astro cannot import it.
    */
   strict?: boolean;
 }

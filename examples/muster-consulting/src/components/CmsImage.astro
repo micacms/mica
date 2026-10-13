@@ -1,11 +1,10 @@
 ---
 /**
- * Renders a content media reference as an optimised, static image.
+ * Renders an image field as an optimised, static image.
  *
- * The reference is a path into the content repository, so the file is on disk
- * when the build runs and `astro:assets` treats it as a local asset: it is
- * re-encoded and emitted into `_astro/`. Nothing a visitor loads points at a
- * CMS, and no origin has to be allowlisted for it to work.
+ * Mica's loader gives each image field as Astro's own image, so `astro:assets`
+ * re-encodes it and emits it into `_astro/`. Nothing a visitor loads points at
+ * a CMS, and no origin has to be allowlisted for it to work.
  *
  * The alt text comes with the value of a `media({ alt })` field. A page that
  * shows the image as decoration, such as a card next to its title, passes
@@ -39,7 +38,8 @@ const {
   priority = false,
 } = Astro.props;
 
-const image = media && "src" in media && typeof media.src === "object" ? media.src : (media as ImageMetadata | null);
+// `{ src, alt }` from an alt-text field; an ImageMetadata's own `src` is a string.
+const image = media && "src" in media && typeof media.src !== "string" ? media.src : (media as ImageMetadata | null);
 ---
 
 {

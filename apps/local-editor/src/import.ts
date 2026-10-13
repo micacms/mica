@@ -27,6 +27,9 @@ import { contentFiles, loadSchema } from "@micacms/runtime";
 
 import { unflatten } from "./devalue.js";
 
+/** The `--map` value for the Markdown body. Not `$body`: a shell would expand it. */
+export const BODY = "@body";
+
 /** Astro's marker for a path that `image()` resolves against the entry's file. */
 const IMAGE_MARKER = "__ASTRO_IMAGE_";
 
@@ -37,7 +40,7 @@ export interface ImportOptions {
   project: string;
   /** Astro's data store from before Mica replaced the collections: `node_modules/.astro/data-store.json`. */
   store: string;
-  /** `collection.targetField` (dots for nested fields and `.alt`) → source key; `$body` is the Markdown body. */
+  /** `collection.targetField` (dots for fields in an object, and `.alt`) → source key; `@body` is the Markdown body. Not inside repeater rows. */
   map?: Record<string, string>;
   /** Collection → the number field that gives the initial manual order. */
   order?: Record<string, string>;
@@ -62,6 +65,16 @@ export class ImportError extends Error {
 }
 
 export async function importCollections(options: ImportOptions): Promise<ImportResult> {
+  try {
+    return await importAll(options);
+  } catch (error) {
+    // Any refusal reads as one, not as a stack trace.
+    if (error instanceof ImportError) throw error;
+    throw new ImportError((error as Error).message, { cause: error });
+  }
+}
+
+async function importAll(options: ImportOptions): Promise<ImportResult> {
   const site = await loadSchema(contentFiles({ root: options.root }));
   const astro = readStore(options.store);
   const result: ImportResult = { imported: [], problems: [] };
@@ -75,20 +88,30 @@ export async function importCollections(options: ImportOptions): Promise<ImportR
   }
   if (names.length === 0) throw new ImportError("No Astro collection has the name of a Mica collection or singleton.");
 
+  // Before the first write, so that a refusal leaves nothing half done.
+  for (const name of names) {
+    const fields = (site.singletons[name] ?? site.collections[name]!).fields;
+    const target = site.singletons[name] ? singletonPath(fields, name) : name;
+    if (existsSync(within(options.root, target))) {
+      throw new ImportError(`${target} exists in the content root. Delete it to import "${name}" again.`);
+    }
+    if (!site.singletons[name]) {
+      const empty = astro.get(name)!.find((entry) => slugify(entry.id.replace(/\//g, "-")) === "");
+      if (empty) throw new ImportError(`${name}: the id "${empty.id}" gives no slug. Rename the entry first.`);
+    }
+  }
+
   for (const name of names) {
     const entries = astro.get(name)!;
     const singleton = site.singletons[name];
     const fields = (singleton ?? site.collections[name]!).fields;
-    const target = singleton ? singletonPath(fields, name) : name;
-    if (existsSync(within(options.root, target))) {
-      throw new ImportError(`${target} exists in the content root. Delete it to import "${name}" again.`);
-    }
     if (singleton && entries.length !== 1) {
       result.problems.push(`${name}: a singleton takes one entry, and the collection has ${entries.length}. Not imported.`);
       continue;
     }
 
     const used = new Set<string>();
+    let bodyTaken = false;
     const slugs = new Map<string, string>();
     const written: Array<{ slug: string; source: StoredEntry }> = [];
 
@@ -101,8 +124,9 @@ export async function importCollections(options: ImportOptions): Promise<ImportR
       slugs.set(slug, entry.id);
 
       const base = singleton ? singletonPath(fields, name) : collectionEntryPath(fields, name, slug);
-      const context: Context = { options, map, name, entry, base, slug, used, problems: result.problems, copies: [] };
+      const context: Context = { options, map, name, entry, base, slug, used, problems: result.problems, copies: [], body: false };
       const data = convertFields(fields, entry.data, "", context, singleton ? undefined : slug);
+      bodyTaken ||= context.body;
 
       const check = validateFields(fields, data);
       if (!check.ok) {
@@ -124,13 +148,19 @@ export async function importCollections(options: ImportOptions): Promise<ImportR
       const def = site.collections[name];
       if (!def?.sortable) result.problems.push(`${name}: --order needs a collection with \`sortable: true\`.`);
       else {
-        const position = (item: { source: StoredEntry }) => Number(item.source.data[orderField] ?? Number.POSITIVE_INFINITY);
+        const position = (item: { source: StoredEntry }) => {
+          const value = Number(item.source.data[orderField]);
+          return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
+        };
         const order = [...written].sort((a, b) => position(a) - position(b)).map((item) => item.slug);
         await writeFile(within(options.root, `${name}/_order.json`), `${JSON.stringify(order, null, 2)}\n`);
         used.add(orderField);
       }
     }
 
+    if (!bodyTaken && entries.some((entry) => entry.body?.trim())) {
+      result.problems.push(`${name}: not imported: the Markdown body. The model has no rich-text field \`body\`; map one with --map ${name}.<field>=@body.`);
+    }
     const left = new Set(entries.flatMap((entry) => Object.keys(entry.data)).filter((key) => !used.has(key)));
     if (left.size > 0) result.problems.push(`${name}: not imported: ${[...left].join(", ")}. Map them with --map, or leave them out.`);
     result.imported.push({ name, entries: written.length });
@@ -150,6 +180,8 @@ interface Context {
   used: Set<string>;
   problems: string[];
   copies: Array<{ from: string; to: string }>;
+  /** Whether a field took the Markdown body. */
+  body: boolean;
 }
 
 function convertFields(
@@ -174,7 +206,10 @@ function convertFields(
 /** The source value for a target field: mapped, else the key of the same name. */
 function read(source: Record<string, unknown>, at: string, key: string, context: Context): unknown {
   const mapped = context.map[`${context.name}.${at}`];
-  if (mapped === "$body") return context.entry.body;
+  if (mapped === BODY) {
+    context.body = true;
+    return context.entry.body?.trim() || null;
+  }
   if (mapped !== undefined) {
     context.used.add(mapped.split(".")[0]!);
     return mapped.split(".").reduce<unknown>((value, part) => (isRecord(value) ? value[part] : undefined), context.entry.data);
@@ -188,9 +223,13 @@ function convert(field: AnyField, value: unknown, at: string, context: Context):
   switch (field.kind) {
     case "richText":
       // The body goes to the rich-text field named `body`, unless a map says otherwise.
-      return value ?? (at === "body" && !(`${context.name}.body` in context.map) ? context.entry.body?.trim() || null : null);
+      if (value == null && at === "body" && !(`${context.name}.body` in context.map) && context.entry.body?.trim()) {
+        context.body = true;
+        return context.entry.body.trim();
+      }
+      return value ?? null;
     case "date":
-      return toDate(value, where, context);
+      return toDate(value, where, context, field.includeTime === true);
     case "relation": {
       const one = (item: unknown) => (isRecord(item) ? slugify(String(item["id"] ?? "")) : typeof item === "string" ? slugify(item) : null);
       return field.multiple ? (Array.isArray(value) ? value.map(one).filter(Boolean) : []) : one(value);
@@ -207,8 +246,11 @@ function convert(field: AnyField, value: unknown, at: string, context: Context):
       if (field.multiple) return Array.isArray(value) ? value.map((item, index) => one(item, index)).filter((item) => item !== null) : [];
       return one(value);
     }
-    case "object":
-      return isRecord(value) ? convertFields(field.fields, value, at, context) : null;
+    case "object": {
+      // A map can fill an object from flat keys, for example `blog.seo.title=metaTitle`.
+      const mapped = Object.keys(context.map).some((key) => key.startsWith(`${context.name}.${at}.`));
+      return isRecord(value) || mapped ? convertFields(field.fields, isRecord(value) ? value : {}, at, context) : null;
+    }
     case "repeater":
       return Array.isArray(value)
         ? value.map((row, index) => (isRecord(row) ? convertFields(field.fields, row, `${at}.${index}`, { ...context, map: {} }) : {}))
@@ -224,17 +266,23 @@ function convert(field: AnyField, value: unknown, at: string, context: Context):
   }
 }
 
-/** A date as `YYYY-MM-DD`, in UTC: a local-time date would give the day before east of UTC. */
-function toDate(value: unknown, where: string, context: Context): string | null {
+/**
+ * A date as `YYYY-MM-DD` in UTC (a local-time date would give the day before
+ * east of UTC), or a full ISO timestamp for `date({ includeTime: true })`.
+ */
+function toDate(value: unknown, where: string, context: Context, withTime: boolean): string | null {
   if (value == null || value === "") return null;
-  if (value instanceof Date) return Number.isNaN(value.getTime()) ? null : value.toISOString().slice(0, 10);
-  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
-  const parsed = new Date(`${String(value)} UTC`);
+  const parsed =
+    value instanceof Date
+      ? value
+      : typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)
+        ? new Date(value.length === 10 ? `${value}T00:00:00Z` : value)
+        : new Date(`${String(value)} UTC`);
   if (Number.isNaN(parsed.getTime())) {
     context.problems.push(`${where}: "${String(value)}" is not a date.`);
     return null;
   }
-  return parsed.toISOString().slice(0, 10);
+  return withTime ? parsed.toISOString() : parsed.toISOString().slice(0, 10);
 }
 
 /** Copies a media file into the entry's `media/` folder, and gives the stored path. */

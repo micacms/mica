@@ -11,6 +11,7 @@ import {
   createManifest,
   date,
   defineSite,
+  object,
   MANIFEST_PATH,
   media,
   relation,
@@ -52,6 +53,8 @@ const site = defineSite({
         title: text({ required: true }),
         slug: slug({ from: "title" }),
         published: date(),
+        updated: date({ includeTime: true }),
+        seo: object({ fields: { title: text() } }),
         author: relation({ collection: "team" }),
         cover: media({ accept: "image", alt: "required" }),
         body: richText(),
@@ -126,6 +129,8 @@ describe("mica import", () => {
       title: "Second",
       slug: "2026-second-post",
       published: "2026-02-01",
+      updated: null,
+      seo: { title: null },
       author: "anna",
       cover: { path: "media/photo.jpg", alt: "A photo" },
     });
@@ -154,5 +159,35 @@ describe("mica import", () => {
     write("content/blog/old.json", "{}");
     const from = store({ blog: [{ id: "a", data: { title: "A" } }] });
     await assert.rejects(importCollections({ root, project, store: from, only: ["blog"] }), /content root\. Delete it/);
+  });
+});
+
+describe("mica import, edge cases", () => {
+  it("keeps the time of a date with time, fills an object from a flat key, and maps the body", async () => {
+    const from = store({
+      blog: [{ id: "a", data: { title: "A", updated: new Date("2026-03-05T10:00:00Z"), metaTitle: "Meta" }, body: "Text.", filePath: "src/content/blog/a.md" }],
+    });
+    const result = await importCollections({ root, project, store: from, only: ["blog"], map: { "blog.seo.title": "metaTitle" } });
+    const a = JSON.parse(readFileSync(path.join(root, "blog/a/index.json"), "utf8"));
+    assert.equal(a.updated, "2026-03-05T10:00:00.000Z");
+    assert.deepEqual(a.seo, { title: "Meta" });
+    assert.deepEqual(result.problems, []);
+  });
+
+  it("names a body that no field took", async () => {
+    const plain = defineSite({ collections: { notes: collection({ label: "Notes", fields: { title: text(), slug: slug({ from: "title" }) } }) } });
+    write(`content/${MANIFEST_PATH}`, createManifest(plain, "test"));
+    const from = store({ notes: [{ id: "a", data: { title: "A" }, body: "Lost?", filePath: "src/content/notes/a.md" }] });
+    const result = await importCollections({ root, project, store: from });
+    assert.ok(result.problems.some((line) => line.includes("not imported: the Markdown body")), result.problems.join("\n"));
+  });
+
+  it("refuses an id that gives no slug, before it writes anything", async () => {
+    const from = store({
+      team: [{ id: "anna", data: { name: "Anna" } }],
+      blog: [{ id: "---", data: { title: "A" } }],
+    });
+    await assert.rejects(importCollections({ root, project, store: from }), /the id "---" gives no slug/);
+    assert.ok(!existsSync(path.join(root, "team")));
   });
 });

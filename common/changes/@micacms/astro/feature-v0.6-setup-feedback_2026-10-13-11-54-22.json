@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@micacms/astro",
-      "comment": "Breaking: a `media({ accept: \"image\" })` field reaches Astro as an Astro image (`ImageMetadata`, optimized like `image()`), and with `alt` as `{ src, alt }`, so `<Image {...entry.data.cover} />` needs no helper. Other media stay paths. `CollectionDocument` and `SingletonDocument` have the image types.",
+      "comment": "Breaking: a `media({ accept: \"image\" })` field reaches Astro as an Astro image (`ImageMetadata`, optimized like `image()`), and with `alt` as `{ src, alt }`, so `<Image {...entry.data.cover} />` needs no helper. Other media stay paths. `CollectionDocument` and `SingletonDocument` have the image types. `AstroCollectionConfig.schema` is now a function that takes Astro's `image()`.",
       "type": "minor"
     }
   ],

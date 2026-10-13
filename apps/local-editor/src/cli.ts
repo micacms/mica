@@ -57,7 +57,7 @@ const USAGE = `
     $ npx @micacms/editor migrate-layout [dir]  move entries into the layout of the model
     $ npx @micacms/editor import [names]        move Astro collections into Mica
         --from <file>         Astro's data store (default: node_modules/.astro/data-store.json)
-        --map <c.field=key>   take a field from another key; $body is the Markdown body
+        --map <c.field=key>   take a field from another key; @body is the Markdown body
         --order <c=field>     the initial order of a sortable collection
 
   With @micacms/editor installed in the project, \`npx mica\` is the same command.
@@ -258,7 +258,7 @@ async function importCommand(argv: string[]): Promise<void> {
     };
     const pair = (text: string): [string, string] => {
       const at = text.indexOf("=");
-      if (at < 1) fail(`${flag} takes name=value, for example team.image.alt=alt.`);
+      if (at < 1 || at === text.length - 1) fail(`${flag} takes name=value, for example team.image.alt=alt.`);
       return [text.slice(0, at), text.slice(at + 1)];
     };
     if (flag === "--from") options.store = value();
