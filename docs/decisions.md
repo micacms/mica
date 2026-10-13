@@ -929,7 +929,12 @@ native arm64 runners for free, so neither costs QEMU or money.
 **What would change it:** a Windows defect class that costs more than it
 serves; then document WSL instead of native Windows.
 
-**1.0 status:** blocker; the matrix is in #131, the image build in #132.
+**Built in 0.6 (#132):** the release builds `linux/amd64` and `linux/arm64`.
+Install and build run once, natively on the build machine, because the
+server's dependencies are plain JavaScript; the build refuses a native module.
+Only the small runtime stage runs under emulation.
+
+**1.0 status:** blocker until the CI matrix is in place (#131).
 
 ---
 
