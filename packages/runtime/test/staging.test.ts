@@ -297,7 +297,7 @@ describe("publish", () => {
     const { root, contentRoot, service } = makeRepo();
     writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Reviewed","slug":"haus-a"}');
     const paths = await reviewed(service);
-    // Another editor's autosave after the review.
+    // Another editor's save after the review.
     writeFileSync(join(contentRoot, "projects/haus-c.json"), '{"title":"Haus C","slug":"haus-c"}');
 
     await service.publish({ message: "Publish A", paths });

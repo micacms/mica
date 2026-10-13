@@ -2,21 +2,33 @@ This page sets up the self-hosted editor for editors who are not developers. It 
 
 > Mica is pre-1.0. Test upgrades and keep the version fixed in production.
 
+Mica keeps its own Git clone of your content repository on its data volume. A save is a file in that clone that Git has not committed yet. **Publish** commits the chosen files as one commit and pushes it over HTTPS. The push starts your normal site build. There is no database, no content API, no read token, and no build webhook. Mica uses no API of your Git host: it uses Git over HTTPS.
+
+To see it run first, [`deploy/demo-identity`](https://github.com/micacms/mica/tree/main/deploy/demo-identity) starts Mica and an identity provider on your machine with two commands.
+
 ## What you need
 
 - A server with Docker and Docker Compose, and a reverse proxy that gives you HTTPS. Example: `https://cms.example.com`.
-- A content repository on a Git host that you reach over HTTPS. github.com and gitlab.com are tested every week. Other hosts should work. It must contain the content model at `content/.mica/schema.json`. Your Astro build writes that file, and you commit it.
+- A content repository on a Git host that you reach over HTTPS. It must contain the content model at `content/.mica/schema.json`. Your Astro build writes that file, and you commit it.
 - An OpenID Connect provider. Mica keeps no passwords. If you have none, use Google: [Sign in with Google](/docs/sign-in-with-google/).
+
+The Git hosts:
+
+- **Supported, tested every week:** github.com and gitlab.com.
+- **Tested in CI:** Forgejo.
+- **Expected to work, not tested:** Bitbucket, Gitea, GitHub Enterprise Server, and self-managed GitLab.
+
+Any Git host that serves HTTPS and accepts a token as the password should work. On a host that is not tested, run the check and one real publication before editors depend on it. A host with a private certificate authority is not supported yet.
 
 Before the first start, do these steps in this order. The self-hosted editor clones the branch of your repository. It needs the model in that branch:
 
 1. Build the site once (`npx astro build`). This writes `content/.mica/schema.json`.
-2. Commit the content root, `content/`, with `.mica/schema.json`. Push it to the branch that Mica uses.
+2. Commit the content root, `content/`, with `.mica/schema.json`. Push it to the branch that Mica uses. A model without the content gives an editor with empty collections.
 3. Make the token (step 2 below).
-4. Run the check: `docker compose run --rm mica check`. It tests read access, push rights with a dry run, and the model. A dry run does not test branch protection. Fix each error that it reports.
+4. Run the check: `docker compose run --rm mica check`. It is described in "The check command" below. Fix each error that it reports.
 5. Start Mica (step 6 below), sign in, and open each collection once.
 
-Self-hosted Mica keeps its own Git clone on its data volume. It talks to your Git host over HTTPS. SSH remotes are not supported yet. Git LFS under the content root is refused for now. To edit a checkout on your machine, use the local editor.
+SSH remotes are not supported yet. Git LFS under the content root is refused for now. To edit a checkout on your machine, use the local editor.
 
 ## 1. Get the two files
 
@@ -32,9 +44,15 @@ curl -o .env https://raw.githubusercontent.com/micacms/mica/main/deploy/self-hos
 
 Mica clones your repository and pushes to it over HTTPS. Make a token for that one repository.
 
-For GitHub, make a fine-grained personal access token for that one repository with **Contents: read and write**. Give it nothing else.
+For GitHub, make a fine-grained personal access token for that one repository with **Contents: read and write**. Give it nothing else. In GitHub: Settings → Developer settings → Personal access tokens → Fine-grained tokens.
 
-For GitLab, make a project access token with the scopes **`read_repository`** and **`write_repository`**. Give it a role that may push to the branch. GitLab protects the default branch: if `MICA_REPOSITORY_BRANCH` is protected, give the token the **Maintainer** role. The **Developer** role cannot push to a protected branch. Give the token a short expiry.
+For GitLab, make a project access token with the scopes **`read_repository`** and **`write_repository`**. Mica does not use the GitLab API, so it does not need the `api` scope. Give the token a role that may push to the branch. GitLab protects the default branch, and the **Developer** role cannot push to a protected branch. Do one of these:
+
+- Give the token the **Maintainer** role.
+- Let Developers push to the branch: Settings → Repository → Protected branches.
+- Use a branch that is not protected.
+
+Use a project access token, not a personal one, and give it a short expiry.
 
 ```env
 MICA_REPOSITORY_URL=https://github.com/acme/website.git
@@ -43,13 +61,13 @@ MICA_REPOSITORY_BRANCH=main
 MICA_REPOSITORY_ROOT=content
 ```
 
-- `MICA_REPOSITORY_URL` is the HTTPS clone URL. Do not put credentials in it.
-- `MICA_REPOSITORY_TOKEN` is the password for Git over HTTPS. Mica gives it only to this host and never writes it into the clone.
+- `MICA_REPOSITORY_URL` is the HTTPS clone URL. Do not put credentials in it: Mica refuses `https://user:token@host/…`. Plain `http://` works only with `NODE_ENV=development` and a loopback host, for tests.
+- `MICA_REPOSITORY_TOKEN` is the password for Git over HTTPS. Mica gives it only to this host and never writes it into the clone or a log. Mica reads it at the start, so a new token needs a restart.
 - `MICA_REPOSITORY_BRANCH` defaults to `main`.
-- `MICA_REPOSITORY_ROOT` defaults to `content`. Mica writes only below the root, even if the token can write more.
+- `MICA_REPOSITORY_ROOT` defaults to `content`. Mica reads and writes only below the root, even if the token can write more. Thus nobody can use the token through Mica to change the website's source, its CI configuration, or its dependencies.
 - `MICA_REPOSITORY_USERNAME` is optional. The default depends on the host: `x-access-token` for GitHub, `oauth2` for GitLab, and `mica` for other hosts.
 - `MICA_REPOSITORY_SYNC_SECONDS` is optional. It sets how often Mica fetches the branch. The default is 60.
-- `MICA_DATA_DIR` is optional. It sets where Mica keeps its clone. The image uses the `/data` volume.
+- `MICA_DATA_DIR` is optional. It sets where Mica keeps its clone: in `MICA_DATA_DIR/repository`. The image uses the `/data` volume.
 
 ## 3. Connect the sign-in
 
@@ -64,7 +82,7 @@ MICA_OIDC_CLIENT_SECRET=
 - `MICA_OIDC_ISSUER` must equal the `issuer` that the provider publishes at `<issuer>/.well-known/openid-configuration`.
 - Omit `MICA_OIDC_CLIENT_SECRET` for a public client that uses PKCE.
 - Register one redirect URI with the provider: `<MICA_PUBLIC_URL>/api/auth/callback`.
-- Mica asks for the scopes `openid profile email`. PKCE, state, and nonce are verified.
+- Mica asks for the scopes `openid profile email`. PKCE, state, and nonce are verified. The email address identifies an editor to the other editors.
 
 Step by step: [Sign in with Google](/docs/sign-in-with-google/) or [Other sign-in providers](/docs/other-providers/).
 
@@ -81,10 +99,12 @@ MICA_ADMIT_SUBJECTS=https://auth.example.com|a1b2c3
 
 Each rule is a comma-separated list. One rule is enough.
 
-- **Group:** the usual choice. Put a person in the group at your provider to add an editor. The claim name is `groups`. If your provider uses another name, set `MICA_OIDC_GROUPS_CLAIM`. A Keycloak path such as `/mica-editors` and the bare name both match.
+- **Group:** the usual choice. Put a person in the group at your provider to add an editor. The claim name is `groups`. If your provider uses another name, set `MICA_OIDC_GROUPS_CLAIM`. A Keycloak path such as `/mica-editors` and the bare name both match. Google sends no groups claim.
 - **Domain:** every address in a domain, but only addresses that the provider verified. Mica refuses a public domain such as `gmail.com` at start-up.
 - **Emails:** these addresses, if the provider verified them. The comparison ignores case. Use this rule for Google accounts. One cost: if an organisation gives the address of a former editor to a new person, that person gets access. Gmail never reuses an address.
-- **Subjects:** `issuer|subject` pairs. This is the strictest rule. A subject is never reassigned.
+- **Subjects:** `issuer|subject` pairs. This is the strictest rule. A subject is never reassigned. The subject is the `sub` claim in the ID token. Your provider's console shows it as the user ID.
+
+The email and domain rules need `email_verified` from the provider. If the provider does not send it, Mica refuses the person: an address that nobody verified is only what the person typed.
 
 Everybody that a rule admits is an editor. There are no roles, no user table, and no invitations.
 
@@ -97,7 +117,7 @@ MICA_SESSION_SECRET=
 ```
 
 - `MICA_PUBLIC_URL` must be exactly what the browser shows. `https://` turns on Secure cookies. Mica refuses plain-HTTP discovery in production.
-- Set `MICA_TRUST_PROXY=true` only behind a proxy that you control.
+- Set `MICA_TRUST_PROXY=true` only behind a proxy that you control. Mica then uses the last address in `X-Forwarded-For`, which is the address that the proxy saw. This is correct for one proxy, such as Caddy or nginx. Behind a CDN and a proxy, all clients have the address of the CDN.
 - `MICA_SESSION_SECRET` must have at least 32 characters. Make one:
 
 ```bash
@@ -114,6 +134,10 @@ cms.example.com {
 }
 ```
 
+Publish answers after Git has pushed the commit. A large push, for example with new images, can take longer than a short proxy timeout. Set the read timeout of the proxy to a few minutes. In nginx, increase `proxy_read_timeout`.
+
+Open only ports 80 and 443 in the firewall. Only the editors' browsers connect to Mica. The website build never connects to it.
+
 ## 6. Start and check
 
 ```bash
@@ -122,19 +146,87 @@ docker compose logs mica
 curl -s https://cms.example.com/ready
 ```
 
-You should see a start-up line that names the rule in force, and `/ready` should answer with `"status": "ok"`. Open `https://cms.example.com/admin/` and sign in.
+You should see a start-up line that names the rule in force, and `/ready` should answer with `"status": "ok"`. Open `https://cms.example.com/admin/` and sign in. The System page shows the rule under "Who may edit".
 
-If the container stops, read the log. Run `docker compose run --rm mica check` to see the cause. Mica stops at start-up when the repository URL or the token is missing, when it cannot make its first clone, when an old setting is in use, when no admission rule is set, or when the repository has no content model at `.mica/schema.json`. When the token cannot push, Mica starts and logs a warning, and `check` names the cause.
+At the first start, Mica clones the repository. Until the clone and the model are ready, `/ready` answers 503 with the reason `cloning`.
 
-## Drafts, sync, and the data volume
+Mica stops at start-up, and lists every problem in one message, when:
 
-A save is a draft. Drafts are files in the Git clone on the `/data` volume. All editors see them. On the Publish page, an editor chooses which saved changes to publish now, and the others stay saved. **Publish** commits the chosen changes as one commit and pushes it over HTTPS. The editor's summary ("Say what changed") is the commit message. The editor is the author of the commit. Mica is the committer, and the message ends with the trailer `Published-with: Mica`. The push starts your site build, and the website build needs no CMS address and no token.
+- the repository URL or the token is missing, or the URL has credentials or is not HTTPS;
+- it cannot make its first clone;
+- the repository has no content model at `.mica/schema.json`;
+- the content root uses Git LFS;
+- the clone on the volume is for another URL or branch and holds drafts (the message names the files);
+- no admission rule is set, or an old setting is in use.
+
+When the token cannot push, Mica starts and logs a warning, and `check` names the cause. When a clone exists, a network or token problem does not stop Mica: editors can continue, the System page shows the sync error, and Mica tries again.
+
+## The check command
+
+`check` tells you if this configuration can serve the repository. It needs no browser, so you or a coding agent can run it from a shell:
+
+```bash
+docker compose run --rm mica check                   # before the first start
+docker compose exec mica node dist/index.js check    # while Mica runs
+```
+
+It tests the configuration, read access, push rights with a dry run, the content model, Git LFS, and the data volume. It works in a temporary directory and never writes to the clone, so you can run it while Mica runs. A dry run does not see branch protection, server hooks, or other rules of the host. The first real publication shows such a refusal. [Command line](/docs/reference-cli/) gives the exit codes.
+
+## Drafts, sync, and publish
+
+A save is a draft. Drafts are files in the Git clone on the `/data` volume. All editors see them. On the Publish page, an editor chooses which saved changes to publish now, and the others stay saved. **Publish** commits the chosen changes as one commit: an `index.json`, its rich-text files, and its images together, so the repository never holds half an entry. The editor's summary ("Say what changed") is the commit message. The editor is the author of the commit. Mica (`Mica CMS <mica@localhost>`) is the committer, and the message ends with the trailer `Published-with: Mica`. Mica never forces a push.
 
 Mica logs `Published` (with the commit and the number of files), `Discarded` (with the paths) and `Conflict resolved` (with the entry and the choice). Each line names the editor's email address. The content is never logged.
 
-Mica syncs with the branch on its own. It fetches and fast-forwards. It never merges. If somebody changes an entry on the website while an editor has a draft of that entry, this is a conflict. The editor chooses **Keep my version** or **Use the website's version**.
+What Mica does with the repository:
 
-The volume holds the clone and the unpublished drafts. If you lose it, unpublished work is gone. Nobody is signed out, and everything published is in the repository.
+- **It clones** the branch into `MICA_DATA_DIR/repository` at the first start. The clone has one branch, and Git downloads only the files of the current tree.
+- **It syncs** at each interval: it fetches the branch and fast-forwards. It never merges, rebases, or stashes. Developers can push to the branch as before.
+- **It finds conflicts.** If somebody changes an entry on the website while an editor has a draft of that entry, this is a conflict. The editor sees it on the Overview, on the Publish page, and on the entry, and chooses **Keep my version** or **Use the website's version**. While a conflict exists, Mica does not fast-forward and Publish waits.
+- **It tries again.** If the branch moved during a publication, Mica removes its commit, catches up, makes the commit again with the same author and message, and pushes. It tries three times. If the host cannot be reached, the publication stays committed in Mica, and the Publish page shows "Published in Mica, not on the website yet". Mica sends it later.
+- **A refused push turns the publication back into drafts.** If the host refuses the push, for example because of a protected branch, a server hook, or a token that cannot write, the changes are saved drafts again. The Publish page and the System page show the reason of the host. Nothing is lost.
+- **It uses a new model at once.** See "Upgrades and model changes" below.
+
+The volume:
+
+- Mount the volume at `MICA_DATA_DIR` (`/data` in the image), never at its `repository` folder. Mica makes a new clone next to the old one and renames it, and a mount point cannot be renamed.
+- Run one Mica for each volume. Mica has no lock file, so it cannot stop a second container on the same volume.
+- Make the volume about twice the size of the content: the objects in `.git` and the files. `.git` grows with each media change from the website. To make it smaller, publish or discard all drafts, stop Mica, delete `MICA_DATA_DIR/repository`, and start Mica. Mica clones again.
+
+The volume holds the clone and the unpublished drafts. If you lose it, unpublished work is gone. Nobody is signed out, and everything published is in the repository. Tell editors to publish often: the drafts are not an archive.
+
+## Build the website
+
+The build reads the repository. It needs no token, no CMS address, and no network access to Mica. Each Publish is a commit, and the push starts the build. A save starts nothing.
+
+```yaml
+# .github/workflows/build.yml
+name: Build website
+on:
+  push:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24 }
+      - run: npm ci
+      - run: npx astro build
+      # The model in the commit must be the one that the build wrote.
+      - run: git diff --exit-code content/.mica/schema.json
+      # Every entry must agree with the model (needs @micacms/editor as a dev dependency).
+      - run: npx mica check
+      # Then upload dist/ to your host.
+```
+
+If your host builds from the repository, for example Vercel, Netlify, or Cloudflare Pages, you do not need this workflow.
+
+Editors commit more frequently than developers. To keep expensive CI jobs away from content commits, filter them with `paths-ignore: ["content/**"]`, and give the site build the opposite filter.
+
+`MICA_REPOSITORY_BRANCH` can be any branch. A second Mica, with its own volume, on `MICA_REPOSITORY_BRANCH=staging` gives editors a staging site. You then review and merge that branch like any other change. Mica itself has no approval step.
 
 ## Sessions and removal of access
 
@@ -147,30 +239,104 @@ MICA_SESSION_IDLE_HOURS=4
 
 - A session ends after 8 hours, or after 4 hours without use. While a session is in use, Mica issues the cookie again every 5 minutes.
 - Five minutes before a session ends, the editor warns and offers to stay signed in. When a session has ended, the page stays open and offers to sign in again. The entry and settings forms keep their unsaved changes in the browser tab (`sessionStorage`), and after the sign-in the form offers to restore them.
-- Sign-out clears the cookie in the browser only.
+- Sign-out clears the cookie in the browser only. A copied cookie stays valid until it expires.
 - Mica re-reads the rules on each request. The rules live in `.env`, so restart the container after a change. The change then counts at once.
 - A change at your provider, for example removal from a group, counts from the next sign-in.
 - To remove a person at once, take them out of the rules and restart. To end all sessions, change `MICA_SESSION_SECRET` and restart.
 
+## Health
+
+`GET /health` answers while the process runs. The image's health check uses it, so a problem at the Git host does not restart the container. `GET /ready` reports the clone, with reason codes such as `sync_failing` or `restart_required`. It answers 503 only while there is no clone. Point an uptime monitor at `/ready`, and alert on `reasons`, not on the status code. `/ready` does not check the identity provider: a short outage of the provider must stop new sign-ins only. [Health endpoints](/docs/reference-health/) lists every code.
+
 ## Backups
 
-The repository is the content backup, with the history of every publish. For unpublished work, back up the `/data` volume. First publish all drafts, or stop the container. Then copy the volume.
+The repository is the content backup, with the history of every publish. Any clone is a full copy. To keep your own copy, mirror it on a schedule:
 
-## Upgrades
+```bash
+git clone --mirror https://github.com/acme/website.git
+git --git-dir=website.git remote update --prune
+```
 
-The image tag in `compose.yml` is the version. Change it, then run:
+To restore, clone. There is nothing to import, and you do not need Mica to read the files.
+
+For unpublished work, back up the `/data` volume. First publish all drafts, or stop the container. Then copy the volume. A copy made during a Git write can be inconsistent. For the drafts only, copy the content root of the clone: `MICA_DATA_DIR/repository/<MICA_REPOSITORY_ROOT>`.
+
+Do not run `git fetch` or `git push` through `docker compose exec`: that shell has no credentials and none of Mica's isolation. Use it only for `GIT_OPTIONAL_LOCKS=0 git status` and `git diff`. Without that variable, `git status` can lock the index and make a Mica commit fail.
+
+## Upgrades and model changes
+
+The image tag in `compose.yml` is the version. Read the [changelog](https://github.com/micacms/mica/blob/main/CHANGELOG.md) first. Pin a version, not `latest`, so that an upgrade is a decision. Change the tag, then run:
 
 ```bash
 docker compose pull && docker compose up -d
 ```
 
-Read the changelog first, and pin a version.
+When you change the content model, run the Astro build, commit `.mica/schema.json`, and push. Mica brings the change in with its next sync and uses the new model at once; editors see a notice to load the page again. The image holds no model, so a model change never needs a new image. If the new model cannot be read, Mica keeps the old one, logs a warning, and the System page names the problem.
 
-When you change the content model, run the Astro build, commit `.mica/schema.json`, and push. Mica brings the change in with its next sync and uses the new model at once; editors see a notice to load the page again. If the new model cannot be read, Mica keeps the old one, logs a warning, and the System page names the problem. Only a change to `.gitattributes` needs a restart:
+Only a change to a `.gitattributes` file that applies under the content root needs a restart. Until then, the System page shows "Restart needed", `/ready` has `restart_required`, editors can save, and Publish waits. Drafts stay in the clone during the restart.
 
 ```bash
 docker compose restart mica
 ```
+
+## Verify the image
+
+The image is built for `linux/amd64` and `linux/arm64`. Docker pulls the one for your host. The license notices are in `/app/THIRD_PARTY_NOTICES.txt` for the server and in `/app/packages/editor-ui/dist/THIRD_PARTY_NOTICES.txt` for the editor.
+
+From 0.4.0, each image has a keyless [cosign](https://docs.sigstore.dev/) signature from the release workflow of the Mica repository, an SBOM, and build provenance. To verify an image before you run it:
+
+```bash
+cosign verify ghcr.io/micacms/mica:<version> \
+  --certificate-identity-regexp '^https://github.com/micacms/mica/\.github/workflows/release\.yml@refs/tags/v' \
+  --certificate-oidc-issuer https://token.actions.githubusercontent.com
+
+docker buildx imagetools inspect ghcr.io/micacms/mica:<version> --format '{{ json .SBOM }}'
+```
+
+The compose file hardens the container: a read-only root file system, `/tmp` in memory, no Linux capabilities, `no-new-privileges`, and a 512 MB memory limit. Only the `/data` volume is writable.
+
+## Troubleshooting
+
+The System page and the log show the message of the Git host, without the token.
+
+**Mica stops at the start.** Read `docker compose logs mica`, and run `docker compose run --rm mica check`. The message lists each problem:
+
+- "`MICA_REPOSITORY_URL` contains credentials": remove them, and set `MICA_REPOSITORY_TOKEN`.
+- "must be an https:// URL": use the HTTPS URL. SSH is not supported yet.
+- "assigns Git LFS to files under the content root": keep LFS out of the content root.
+- "The clone on the data volume is for …": the URL or the branch changed, and the clone holds drafts. Start with the old configuration and publish, or copy the drafts out and delete the volume.
+- No content model: build the Astro project, commit `.mica/schema.json`, and push it to `MICA_REPOSITORY_BRANCH`.
+- "Missing required production secrets" or "Nothing says who may edit this site": set `MICA_SESSION_SECRET` or an admission rule.
+
+**The repository refused the token** (`/ready` has `auth_failed`). The token is wrong, expired, or revoked. Make a new token, put it in `.env`, and restart. If `MICA_REPOSITORY_USERNAME` is set to an empty value, remove it.
+
+**The token can read but not write** (`/ready` has `write_forbidden`). On GitLab, add `write_repository`. On GitHub, give Contents: read and write.
+
+**`check` passes, but a publication is refused.** A protected branch, a server hook, or required signed commits can cause this. The System page shows the reason of the host. On GitLab, use the Maintainer role, or let Developers push. The changes are drafts again: publish again after the fix.
+
+**The repository does not exist, or the token cannot see it.** The URL is wrong, or the token is for a different repository. The host gives the same answer for both.
+
+**The repository cannot be reached** (`/ready` has `sync_failing`). The host is down, DNS fails, or the container has no outgoing HTTPS. Run `curl -I <url>` on the server. Mica tries again at each sync.
+
+**`/ready` stays at `cloning`.** The first clone cannot finish, because of the network or a very large repository. Read the log. A large clone can take minutes.
+
+**"A newer content model cannot be read"** on the System page. The pushed `.mica/schema.json` is not valid, or it comes from a newer `@micacms/astro` than the image. Correct the model and push again, or upgrade the image.
+
+**"Read-only in this version of Mica"** on a collection. The site uses a field type from a newer `@micacms/astro` than the image. Upgrade the image to that version or newer.
+
+**"Some of these changes were edited while they were being published".** A colleague saved one of the files during the publication. Look at the changes again, then publish.
+
+**The disk is full.** The clone grows with each media change. See "The volume" above.
+
+**Editors are signed out after a restart.** `MICA_SESSION_SECRET` is not set, so Mica made a temporary one. Set it.
+
+**"That account has no access to this site" after the sign-in.** The person signed in, but no rule admits them. Set `MICA_LOG_LEVEL=debug`, restart, and sign in again: the log gives the reason. Make sure that the groups claim arrives, or add the person to `MICA_ADMIT_EMAILS` or `MICA_ADMIT_SUBJECTS`.
+
+**"That sign-in attempt expired or was not started here".** The browser lost the sign-in cookie. Usually `MICA_PUBLIC_URL` is not the address in the browser. Make them the same.
+
+**"The identity provider could not be reached".** `MICA_OIDC_ISSUER` is wrong, or the container cannot reach the provider. Open `<issuer>/.well-known/openid-configuration` from the container.
+
+**The website shows old content.** The host built an older commit. Make sure that CI ran on the commit of the publication.
 
 ## Next
 

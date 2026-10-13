@@ -1,0 +1,7 @@
+{
+  "title": "Health endpoints",
+  "slug": "reference-health",
+  "section": "reference",
+  "summary": "What /health and /ready of a self-hosted Mica answer, and how to use them in a container platform.",
+  "readTime": 2
+}

@@ -19,7 +19,7 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 - `MICA_REPOSITORY_ROOT`: the content root in the repository. Mica writes only below it. Default: `content`.
 - `MICA_REPOSITORY_USERNAME`: the Git user name for the token. Default: `x-access-token` on GitHub, `oauth2` on GitLab, `mica` on other hosts.
 - `MICA_REPOSITORY_SYNC_SECONDS`: how often Mica fetches the branch, from 5 to 86400. Default: `60`.
-- `MICA_DATA_DIR`: where Mica keeps its clone. Default in the image: `/data`, the volume.
+- `MICA_DATA_DIR`: where Mica keeps its clone, in the folder `repository`. Default: `./data`. The image sets `/data`, the volume.
 
 ## Self-hosted image: sign-in and sessions
 

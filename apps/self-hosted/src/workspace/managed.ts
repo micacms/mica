@@ -411,7 +411,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       }
       await options.revalidate?.(paths);
       await locks.tree.write(async () => {
-        // An autosave that landed since would otherwise be published unseen.
+        // A save that landed since would otherwise be published unseen.
         const changed = await changedSince(revision, paths);
         if (changed.length > 0) {
           throw new ApiError(

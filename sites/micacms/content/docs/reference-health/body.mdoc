@@ -1,0 +1,46 @@
+A self-hosted Mica answers two public endpoints. Neither one needs a sign-in, and neither one names the repository, the branch or the uptime. `/ready` was added in 0.4.0, and its `reasons` in 0.5.0. The local editor answers both; its `/ready` has no `reasons`.
+
+## /health
+
+```bash
+curl -s https://cms.example.com/health
+```
+
+```json
+{ "status": "ok" }
+```
+
+`/health` checks only that the process answers. It does no input or output, so a problem at the Git host does not restart the container. Use it as the liveness check of your platform, for example the Docker `HEALTHCHECK` (the image has one).
+
+## /ready
+
+```bash
+curl -s https://cms.example.com/ready
+```
+
+```json
+{ "status": "ok", "repository": "ok", "reasons": [] }
+```
+
+`/ready` tells whether editors can work. It answers with HTTP 200 when `status` is `ok`, and with 503 when it is `error`. Mica keeps a result for 30 seconds, so many requests do not cause many checks.
+
+| Key | Values | Meaning |
+| --- | --- | --- |
+| `status` | `ok`, `error` | `ok`: the site can be edited. |
+| `repository` | `ok`, `unavailable` | Whether Mica can use its clone. |
+| `reasons` | a list of codes | Why somebody should look, also when `status` is `ok`. |
+
+The reason codes:
+
+| Code | Meaning | What to do |
+| --- | --- | --- |
+| `cloning` | The first clone runs. `/ready` answers 503 until it is done. | Wait. |
+| `auth_failed` | The Git host refused the token. | Renew the token. |
+| `write_forbidden` | The token cannot push. | Give the token write access, or check branch protection. |
+| `branch_not_found` | The branch does not exist at the Git host (0.6.0). | Create the branch, or correct `MICA_REPOSITORY_BRANCH`. |
+| `sync_failing` | Another sync problem. | Read the log, and run `docker compose run --rm mica check`. |
+| `restart_required` | `.gitattributes` changed at the Git host. Mica keeps the old version of the branch until a restart checks it. | Restart the container. |
+
+While a sync fails, editors can still edit and save: their work is in the clone. Publish works again when the Git host accepts the push.
+
+Use `/ready` for a readiness check or for monitoring, not for a restart. See [Self-hosting](/docs/self-hosting/) and [Command line](/docs/reference-cli/).

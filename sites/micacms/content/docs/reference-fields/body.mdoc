@@ -1,0 +1,72 @@
+Import the builders from `@micacms/core`. Each builder gives plain data, so the editor can read the model from `.mica/schema.json`. An item without a version exists since 0.2.0.
+
+## Options of every field
+
+| Option | Effect |
+| --- | --- |
+| `label` | The label in the editor. Default: the key, as words. |
+| `description` | Help text below the field. |
+| `required` | An empty value cannot be published. Editors can save it before that. |
+| `listed` | Shows the value as a column in the list of a collection. |
+| `readonly` | The editor shows the value, but cannot change it. |
+| `hidden` | Mica keeps the value, but the editor does not show it. |
+| `group` | Fields with the same group show in one box. |
+| `width` | `"full"`, `"half"` or `"third"` of the form row. |
+
+## The builders
+
+| Builder | Stores | Options |
+| --- | --- | --- |
+| `text()` | A string. | `minLength`, `maxLength`, `placeholder`, `default`, `pattern` (a regular expression; since 0.6.0 it must match the whole value, with the `u` flag), `patternMessage` (0.7.0). |
+| `textarea()` | A string with line breaks. | `minLength`, `maxLength`, `rows`, `placeholder`, `default`. |
+| `richText()` | Markdoc, in a `<key>.mdoc` file beside the entry. | `toolbar`: a list from `bold`, `italic`, `strike`, `heading`, `bulletList`, `orderedList`, `blockquote`, `link`, `horizontalRule`. Also `maxLength`, `default`. |
+| `number()` | A number. | `min`, `max`, `step`, `integer`, `unit` (shown in the field, for example `"m²"`), `default`. |
+| `boolean()` | `true` or `false`, never empty. | `default`. |
+| `date()` | `"2026-10-13"`, or with `includeTime` a date and time with its offset. | `includeTime`, `min`, `max`, `default`. |
+| `email()` | An email address. | `placeholder`, `default`. |
+| `url()` | A web address. | `placeholder`, `default`. |
+| `slug()` | Lower-case letters, digits and hyphens. | `from`: the key of the field that gives the slug while the editor types. `maxLength`. |
+| `select({ options })` | The `value` of the choice, or a list with `multiple`. | `options`: a list of `{ label, value }`. `multiple`, `default`. |
+| `object({ fields })` | An object with the given fields. | `fields`, `collapsible`, `collapsed`. |
+| `repeater({ fields })` | A list of objects. | `fields`, `min`, `max`, `itemLabel` (the key that names a row), `addLabel`. |
+| `relation({ collection })` | The slug of an entry, or a list with `multiple`. | `collection`, `multiple`. |
+| `media()` | The path of a file, or `{ path, alt }` with `alt`. A list with `multiple`. | `accept`: `"image"`, `"document"` or `"any"`. `multiple`, `max`, `alt`: `"required"` or `"optional"` (0.6.0). |
+| `color()` | A hex colour, for example `"#0f766e"`. | `presets`: colours to choose from. `default`. |
+| `coordinates()` | `{ lat, lng }`. | None. |
+| `tags()` | A list of short words, never null: no tags is `[]`. | `max`, `maxLength`, `suggestions`, `default`. Added in 0.8.0. |
+
+## The slug of a collection
+
+The first `slug()` among the fields of a collection is the entry's slug. It is also the name of the entry's file or folder, so it is never empty. A second `slug()` among the same fields stops the build. A `slug()` in an object or in a singleton is an ordinary value, for example one URL for each language.
+
+## Where an entry is stored
+
+The fields of a collection decide its layout. Without `richText()` and `media()` fields, each entry is one `<slug>.json` file. With one of them, also inside an `object()` or a `repeater()`, each entry is a folder `<slug>/` with `index.json`, the `.mdoc` files and the entry's media. When a model change moves a collection from one layout to the other, run `npx mica migrate-layout`. See [Change the model](/docs/model-changes/).
+
+## Collections and singletons
+
+```ts
+import { collection, defineSite, singleton, slug, text } from "@micacms/core";
+
+export const site = defineSite({
+  root: "./content",
+  collections: {
+    news: collection({ label: "News", fields: { title: text({ required: true }), slug: slug({ from: "title" }) } }),
+  },
+  singletons: {
+    settings: singleton({ label: "Website", fields: { tagline: text() } }),
+  },
+});
+```
+
+| Option of `collection()` | Effect |
+| --- | --- |
+| `label`, `labelSingular` | The names in the editor, for example "News" and "Article". |
+| `description` | Text below the title of the list. |
+| `fields` | The fields. |
+| `titleField` | The key that names an entry in lists. Default: `title`, else the first `text()`, else the slug. |
+| `slugField` | The key of the slug. Default: the first `slug()`. |
+| `defaultSort` | `{ field, direction }` for the list in the editor. `field` is a field of the collection or `"position"`. It does not sort your pages. |
+| `sortable` | Editors can put the entries in an order. Mica keeps it in `_order.json`. |
+
+`singleton()` takes `label`, `description` and `fields`. `defineSite()` takes `root`, `collections` and `singletons`.

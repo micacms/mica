@@ -1,5 +1,5 @@
 /**
- * The staging service on a Git working tree. Autosave has already written the
+ * The staging service on a Git working tree. Save has already written the
  * files; Publish commits the reviewed paths.
  *
  *   - Every Git operation is limited to an explicit path set, so other work in

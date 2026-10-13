@@ -1,0 +1,64 @@
+Mica is small on purpose. This page tells you what it does, what it does not do, and how to work without the missing parts. Read it before you choose Mica.
+
+## What Mica does
+
+- It gives editors forms for the content model that you write in TypeScript.
+- It keeps the content as JSON, Markdoc and media files in your Git repository. It has no database.
+- It saves changes as files that are not committed yet, and Publish makes one commit of the changes that the editor chooses.
+- It runs on your machine with `npx`, with no sign-in, or as one container behind your identity provider.
+- Your Astro build reads the files. The website does not call Mica.
+
+One Mica serves one site and one branch.
+
+## What Mica does not do
+
+| Not in Mica | How to work without it |
+| --- | --- |
+| A preview of changes before Publish | With the local editor, run `astro dev` next to it. For a self-hosted Mica, point a second Mica at a `staging` branch, and let your host build that branch. |
+| Roles | Each editor that your identity provider admits can do everything, Publish included. Admit only the people who may publish. For a review step, use a staging branch. |
+| Approval workflows | Point a second Mica at a `staging` branch. Review and merge it on your Git host. |
+| Scheduled publishing | Publish to a branch, and let a scheduled CI job merge it. |
+| History and undo in the editor | Git has the history. See "Undo a publish" at the end of this page. |
+| Languages as a setting | Use one of the two patterns in [Several languages](/docs/multilingual/). |
+| Images and tables in rich text | Editors cannot add them. A rich-text field that has one already is read-only in the editor. Use a `media()` field, or a `repeater()` with text and image fields. |
+| A page builder with blocks of different kinds | A `repeater()` has one shape for each item. Use a `select()` in the item for its kind, or several repeaters. |
+| A branch switcher | Run one Mica for each branch. |
+| Rename of a media file | Upload the file again, and change the entries that use it. |
+| More than one site | Run one Mica for each site. |
+
+Mica also has no content API, no GraphQL, no build webhook, no media server and no plugins. A push starts your build.
+
+Most of these can come in a later version without a breaking change. The reasons are in [decisions.md](https://github.com/micacms/mica/blob/main/docs/decisions.md), under "Deferred scope".
+
+## Compared with other editors
+
+The table compares Mica with other editors that keep content in Git. It shows what their documentation said in October 2026. These products change often, so read their documentation before you decide.
+
+| | Mica | Decap CMS | TinaCMS | Keystatic | Pages CMS | CloudCannon |
+| --- | --- | --- | --- | --- | --- | --- |
+| Content as files in your Git repository | Yes | Yes | Yes | Yes | Yes, GitHub only | Yes |
+| Runs with no service of the vendor | Yes | Yes, with your own OAuth setup | Yes, with your own database and sign-in | Yes, with your own GitHub App | Yes, with PostgreSQL and your own GitHub App | No |
+| Needs a database | No | No | Yes, as an index | No | Yes, for users and sessions | Vendor cloud |
+| Licence | MIT | MIT | Apache-2.0 | MIT | MIT | Proprietary |
+| Model written in | TypeScript | YAML or JavaScript | TypeScript | TypeScript | YAML | YAML or JSON, or a UI |
+| Preview while editing | No | Yes | Yes | Partly | No | Yes |
+| Editing on the page | No | No | Yes | No | No | Yes |
+| Languages as a setting | No | Yes | Partly | Not documented | Not documented | Partly |
+| Roles | No | No | Paid plans | No | Partly | Paid plans |
+| Review before publishing | With a staging branch | Yes | Paid plans | Branches | Branches | Paid plans |
+| Package for Astro | Yes | No | Yes | Yes | No | Yes |
+
+Mica is for a team that wants the content model in code, the content in Git with no database, and an editor that it can run itself with one container. If you need on-page editing, a preview of drafts or roles today, one of the other products fits better.
+
+## Undo a publish
+
+Each publish is one commit with the line `Published-with: Mica`. To undo it, revert that commit on your machine:
+
+```bash
+git pull
+git log --oneline --grep "Published-with: Mica"
+git revert <commit>
+git push
+```
+
+The push starts your build, as a publish does. A self-hosted Mica gets the revert at its next sync, and editors see it in the editor. A revert undoes the whole publish. To undo only one entry, change it in the editor and publish again.

@@ -32,6 +32,15 @@ export async function getFeatures() {
   );
 }
 
+/** The sections of the documentation, in the order the index and the sidebar show them. */
+export const DOC_SECTIONS = [
+  { key: "start", label: "Start here" },
+  { key: "build", label: "Build" },
+  { key: "edit", label: "Edit" },
+  { key: "operate", label: "Operate" },
+  { key: "reference", label: "Reference" },
+] as const;
+
 export async function getDocs() {
   return [...(await getCollection("docs"))].sort(
     (a, b) => a.data._mica.position - b.data._mica.position,

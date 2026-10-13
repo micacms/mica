@@ -453,7 +453,7 @@ function assertOneUrl(site: Site): void {
  * Mica holds no content model: the Astro project is the only place a collection
  * is defined, and this is how it says so. The file goes *inside the content
  * root* so that it travels to Mica the way content does — through Git and the
- * repository connector — with nothing to mount and no second channel to keep in
+ * repository — with nothing to mount and no second channel to keep in
  * step. Commit it.
  *
  * Done from a loader rather than an integration because this is the moment both

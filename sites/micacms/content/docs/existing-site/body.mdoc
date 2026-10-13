@@ -1,0 +1,109 @@
+This guide is for an Astro site that has content already, usually Markdown files in Astro content collections. You convert the entries once. After that, the website reads them through `micaCollections()`, and the pages change only a little. A coding agent can do these steps for you: give it [micacms.com/setup.md](https://micacms.com/setup.md).
+
+Start on a clean working tree and a new branch, so that `git diff` shows each change.
+
+## 1. Keep a copy of the old site
+
+```bash
+npx astro build
+cp -r dist ../dist-before
+cp node_modules/.astro/data-store.json ../data-store-before.json
+```
+
+The data store has every entry after Astro's own loader and schema. `mica import` reads it in step 4. Astro writes it again when the collections change, so keep this copy.
+
+## 2. Write the model
+
+Install the packages and run `npx mica init`, as in [Getting started](/docs/getting-started/). Then write one Mica collection for each Astro collection that editors will change. Give it the same name, so that `getCollection("blog")` in your pages keeps working.
+
+| Astro schema | Mica field |
+| --- | --- |
+| `z.string()` | `text()`, or `textarea()` for long plain text |
+| `z.string().url()`, `.email()` | `url()`, `email()` |
+| `z.number()` | `number()` |
+| `z.boolean()` | `boolean()` |
+| `z.date()`, `z.coerce.date()` | `date()`, stored as `"2026-01-15"` |
+| `z.enum([...])` | `select({ options })` |
+| `z.array(z.enum([...]))` | `select({ multiple: true, options })` |
+| `z.array(z.string())` | `tags()` |
+| `image()` | `media({ accept: "image", alt: "required" })` |
+| `reference("authors")` | `relation({ collection: "authors" })` |
+| `z.object({...})` | `object({ fields })` |
+| `z.array(z.object({...}))` | `repeater({ fields })` |
+| `.optional()` | the field without `required: true` |
+| the Markdown body | `richText()`, usually named `body` |
+| the entry id | a `slug()` field |
+
+All options are on [Fields](/docs/reference-fields/).
+
+## 3. Mica collections next to Astro collections
+
+A collection that only developers change, such as documentation, can stay an ordinary Astro collection. Put both in one `src/content.config.ts`:
+
+```ts
+import { defineCollection } from "astro:content";
+import { glob } from "astro/loaders";
+import { micaCollections } from "@micacms/astro";
+import { site } from "./mica";
+
+const glossary = defineCollection({ loader: glob({ pattern: "*.md", base: "./src/glossary" }) });
+
+export const collections = { ...micaCollections(site), glossary };
+```
+
+Remove the old definitions of the collections that Mica now has. Use different names: when two collections have the same name, the last one is used, and Astro does not warn. Then run `npx astro sync`. It writes `content/.mica/schema.json`, which the import reads.
+
+## 4. Import the entries
+
+```bash
+npx mica import --from ../data-store-before.json --map blog.cover.alt=coverAlt --order team=order
+```
+
+Each field of the model takes the value with the same name. The command converts the value: a date to `"2026-01-15"`, a reference to a slug, an image to a copy in the entry's `media/` folder, and the Markdown body to the rich-text field `body`. It makes each slug from the entry id.
+
+- `--map <collection>.<field>=<key>` takes a field from another key: a renamed field, the alt text of an image (`blog.cover.alt=coverAlt`), or the body for a rich-text field with another name (`blog.content=@body`). It does not reach into the rows of a repeater.
+- `--order <collection>=<field>` makes the order of a `sortable` collection from a number field. Then the pages sort by `data._mica.position`, and the number field can go.
+- Names after the options import only those collections.
+
+The command lists each key that it did not import, each id that gives the same slug as another, and each image that it did not find. Fix the model or add a `--map`, delete the collection's folder in `content/`, and run it again.
+
+## 5. What does not move as it is
+
+- **MDX components in a body.** Markdoc does not run them. Use a [Markdoc tag](/docs/recipes/), a field, or keep that collection in Astro.
+- **Raw HTML in a body.** Markdoc does not render it. Use Markdown, a Markdoc tag, or remove it.
+- **Footnotes, images and tables in a body.** Markdoc shows a footnote as text. An image or a table makes the whole rich-text field read-only in the editor, so editors cannot change that text. Use a paragraph and a link instead of a footnote, a `media()` field or a `repeater()` for images, and fields for a table.
+- **Ids with folders** (`2024/hello`). They become flat slugs, so the URL can change. Keep the old URL with Astro `redirects`.
+- **Heading ids and code highlighting.** Markdoc does not add them. Add them in your rich-text component if your pages use them.
+
+## 6. Change the pages, then compare
+
+- Replace `<Content />` from `render(entry)` with the HTML of `renderRichText(entry.data.body)`.
+- Format and sort dates from the text `"2026-01-15"`.
+- Read an image with alt text as `{ src, alt }`: `<Image {...entry.data.cover} />`.
+- Sort a sortable collection by `data._mica.position`.
+
+Run `npx mica check` and `npx astro build`, and compare `dist` with `../dist-before`. Visitors should see no difference, except what you decided to change.
+
+## Content in a separate repository
+
+The website can read its content from a second repository. Then editors and their commits stay out of the code repository. This setup is not part of Mica's tests.
+
+- **Content repository.** It has the `content/` folder, with `content/.mica/schema.json`. Point the self-hosted Mica at it. The default `MICA_REPOSITORY_ROOT` is `content`.
+- **Website repository.** It has the model and the pages. Its CI checks out the content repository inside the project, and the model uses that path:
+
+```yaml
+- uses: actions/checkout@v4
+- uses: actions/checkout@v4
+  with:
+    repository: your-org/site-content
+    path: site-content
+    token: ${{ secrets.CONTENT_TOKEN }}
+```
+
+```ts
+export const site = defineSite({ root: "./site-content/content", collections: { /* … */ } });
+```
+
+- **Model changes.** The build writes `.mica/schema.json` into the content checkout. After a model change, run `npx astro sync` with the content repository checked out at `./site-content`, and commit `schema.json` in the content repository. Until then, the editor shows the old model.
+- **The build.** A publish pushes to the content repository, so the website does not build by itself. Let the content repository's CI start the website's workflow, for example with `gh workflow run`, or build the website on a schedule.
+- **The local editor.** Run `npx mica start ./site-content/content`.

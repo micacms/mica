@@ -1,8 +1,10 @@
-One model defines the editor screens, validation rules, Astro collections, TypeScript types, and file layout.
+One model defines the editor screens, validation rules, Astro collections, TypeScript types, and file layout. Because there is only one model, these five things cannot disagree.
+
+The model is a plain TypeScript module, `src/mica.ts` by convention. It imports nothing from Astro, so a script or a test can read it without a build system. A field carries editorial meaning that a validator cannot: `text({ label: "Title", maxLength: 120 })` has a label, a width, and a group. Mica makes the Zod validators from the model, never the other way.
 
 ## Collections and singletons
 
-A collection contains many entries. Each collection has one slug field that identifies an entry in the repository and on the website. A singleton is one settings document, such as navigation or site metadata.
+A collection contains many entries. Each collection has one slug field that identifies an entry in the repository and on the website. A singleton is one settings document, such as navigation or site metadata. It has no slug and no list.
 
 ```ts
 export const site = defineSite({
@@ -22,36 +24,82 @@ export const site = defineSite({
 });
 ```
 
+`root` is where the content is. It is relative to the Astro project root, like Astro's own `glob({ base })`, and not relative to `src/mica.ts` or to the directory where the build starts. The default is `./content`. Mica uses an absolute path as it is: use one when the content is in a separate repository that CI checks out in a different location.
+
+A collection has one `slug()` field. Mica reads the slug from the name of the entry's folder or file, so the slug is never empty. [Field reference](/docs/reference-fields/) lists the options of `collection()` and `singleton()`, such as `labelSingular`, `defaultSort`, and `sortable`.
+
+## Becoming Astro collections
+
+```ts
+// src/content.config.ts
+import { micaCollections } from "@micacms/astro";
+import { site } from "./mica";
+
+export const collections = micaCollections(site);
+```
+
+You do not change `astro.config`. The loaders find the content root, write the model to `content/.mica/schema.json` for the editor, and reload in `astro dev` when an entry is saved.
+
+### Collections that Mica does not edit
+
+`micaCollections` returns a plain object. Put your own Astro collections beside it:
+
+```ts
+import { defineCollection } from "astro:content";
+import { glob } from "astro/loaders";
+import { z } from "astro/zod";
+
+const glossary = defineCollection({
+  loader: glob({ pattern: "**/*.md", base: "./src/glossary" }),
+  schema: z.object({ term: z.string() }),
+});
+
+export const collections = { ...micaCollections(site), glossary };
+```
+
+Only the collections in the model go to the editor. Editors see the content that they must edit, and nothing else. Pages read both kinds with `getCollection`. Give each collection a different name: if two names are the same, the last one in the object wins, and nothing tells you.
+
 ## Field types
 
-Mica includes text, textarea, rich text, number, boolean, date, email, URL, slug, select, object, repeater, relation, media, color, coordinates, and tags fields. A tags field is a free list of short words, such as keywords, stored as a list of strings; `suggestions` offers words while the editor types.
+Mica includes text, textarea, rich text, number, boolean, date, email, URL, slug, select, object, repeater, relation, media, color, coordinates, and tags fields. [Field reference](/docs/reference-fields/) gives the options of each type. A tags field is a free list of short words, such as keywords, stored as a list of strings; `suggestions` offers words while the editor types.
 
-Each field can include an editor label, help text, group, width, visibility, and required state. Specific fields add rules such as length, number range, accepted media, or select options.
+Each field can include an editor label, help text, group, width, list column, and required state. A field can also be read-only, or hidden from the editor. Specific fields add rules such as length, number range, accepted media, or select options.
 
-A media field with `alt: "required"` or `alt: "optional"` stores `{ path, alt }`, and the editor shows an alt-text input under each image. Use it for every image that carries meaning. A media field without `alt` stores only the path, for a decorative image or a document. In Astro, a media field with `accept: "image"` is an Astro image (`ImageMetadata`), optimized at build time, and `{ src, alt }` with `alt`: `<Image {...entry.data.cover} />` needs no helper.
+A required field can be empty in a saved draft, so an editor can save work that is not complete. Publish refuses the draft until the field has a value. Each validation message names the field by its label and gives the limit, for example "Title can have at most 120 characters (now 134)."
+
+A rich-text field is [Markdoc](https://markdoc.dev) in its own `.mdoc` file beside the entry. It is not in `index.json`. Markdoc escapes raw HTML and shows an undeclared `{% tag %}` as nothing, so rich text cannot add a script to the website.
+
+A media field holds a path. In the file, the path is relative to the entry's folder, for example `media/exterior.jpg`. A path that starts with `/`, for example `/media/logo.png`, is relative to the content root.
+
+A media field with `alt: "required"` or `alt: "optional"` stores `{ path, alt }`, and the editor shows an alt-text input under each image. Use it for every image that carries meaning. A media field without `alt` stores only the path, for a decorative image or a document. You can add `alt` to a field that has content: Mica reads each stored path as an image without alt text. With `"required"`, the build fails until each of these images has alt text. In Astro, a media field with `accept: "image"` is an Astro image (`ImageMetadata`), optimized at build time, and `{ src, alt }` with `alt`: `<Image {...entry.data.cover} />` needs no helper.
 
 A file uploaded in an entry's form goes into that entry's own `media/` folder, so the entry keeps its files when its URL changes, and loses them when it is deleted. A file uploaded in the Media view goes into the shared `media/` folder, for a logo or another file that many entries use. The picker in a form offers the entry's own files and the shared ones. Mica does not keep videos: put them on a video service and link to them. The Media view deletes a file only when no field and no rich text uses it, and the delete waits on the Publish page like any other change.
 
+A relation field stores the slug of the target entry. `defineSite` refuses a relation to a collection that does not exist, so the error shows before a page renders.
+
 ## The file layout
 
-Entries with only structured fields use one JSON file. Rich text and media need a directory with an `index.json` file.
+The fields decide the layout, so all entries of a collection have the same layout. Entries with only structured fields use one JSON file. Rich text and media need a directory with an `index.json` file.
 
 ```text
 content/
-├── projects/
+├── .mica/schema.json        the model, written by the Astro build
+├── projects/                rich text and media: a folder for each entry
 │   ├── _order.json
 │   └── house-a/
-│       ├── index.json
-│       ├── summary.mdoc
+│       ├── index.json       the structured fields
+│       ├── summary.mdoc     one file for each rich-text field
 │       └── media/exterior.jpg
-└── navigation.json
+├── team/                    structured fields only: one file for each entry
+│   └── anna-vogt.json
+└── navigation.json          a singleton
 ```
 
 Keys stay in model order. A repeat save of the same values gives the same bytes. This keeps the Git diff focused.
 
 ## Change the model
 
-Run an Astro build after each model change and commit the new `.mica/schema.json`. A new required field makes old entries invalid until an editor adds the value. The build reports this problem before deployment.
+Run an Astro build after each model change and commit the new `.mica/schema.json` with the model. The website uses the new model at once. `astro check` finds a template that uses an old field name; `astro build` does not check types. Mica reads the new model without a restart: an open page tells the editor to save and load the page again. A new required field makes old entries invalid until an editor adds the value. The build reports this problem before deployment. Some changes need more steps: see [Model changes](/docs/model-changes/).
 
 The first rich-text or media field in a collection or singleton changes its layout from `<slug>.json` to `<slug>/index.json`. Removing the last such field changes it back. The existing files do not move, so the build fails and the local editor refuses to start, and both name the files. Run `npx mica migrate-layout`: it moves each entry, and lists the rich-text and media files that it removes because no field reads them any more. Run `npx mica check`, and commit the result with the model change.
 

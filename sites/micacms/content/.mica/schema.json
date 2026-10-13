@@ -130,8 +130,16 @@
               "value": "build"
             },
             {
+              "label": "Edit",
+              "value": "edit"
+            },
+            {
               "label": "Operate",
               "value": "operate"
+            },
+            {
+              "label": "Reference",
+              "value": "reference"
             }
           ]
         },

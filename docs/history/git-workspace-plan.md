@@ -1,3 +1,5 @@
+> Historical: this plan is finished. It names packages and tools that no longer exist. The current design is in [architecture.md](../architecture.md) and [decisions.md](../decisions.md).
+
 # Mica on a Git working tree — Refactoring Plan
 
 Status: implemented on `refactor/git-workspace` (section 16); approved (section 14)

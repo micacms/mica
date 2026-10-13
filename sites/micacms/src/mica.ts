@@ -74,7 +74,9 @@ export const site = defineSite({
           options: [
             { label: "Start", value: "start" },
             { label: "Build", value: "build" },
+            { label: "Edit", value: "edit" },
             { label: "Operate", value: "operate" },
+            { label: "Reference", value: "reference" },
           ],
         }),
         summary: textarea({ label: "Summary", required: true, rows: 2, maxLength: 200 }),

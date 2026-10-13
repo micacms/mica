@@ -9,6 +9,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import Markdoc from "@markdoc/markdoc";
+
 import { renderRichText, validateRichText } from "../dist/index.js";
 
 describe("renderRichText", () => {
@@ -63,5 +65,29 @@ describe("renderRichText", () => {
     });
 
     assert.match(html, /<aside>.*Careful\..*<\/aside>/s);
+  });
+});
+
+describe("a custom tag, as the recipes page shows it", () => {
+  // The configuration on micacms.com/docs/recipes/; change both together.
+  const config = {
+    tags: {
+      callout: {
+        render: "aside",
+        attributes: { type: { type: String, default: "note", matches: ["note", "warning"] } },
+        transform(node: Markdoc.Node, config: Markdoc.Config) {
+          const attributes = node.transformAttributes(config);
+          return new Markdoc.Tag("aside", { class: `callout callout-${attributes.type}` }, node.transformChildren(config));
+        },
+      },
+    },
+  };
+
+  it("renders the tag that the configuration declares, and nothing for another", () => {
+    const source = '{% callout type="warning" %}\nBook a time **before** you visit.\n{% /callout %}\n\n{% gallery /%}';
+    assert.equal(
+      renderRichText(source, { config }),
+      '<article><aside class="callout callout-warning"><p>Book a time <strong>before</strong> you visit.</p></aside></article>',
+    );
   });
 });

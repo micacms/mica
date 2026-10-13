@@ -1,0 +1,155 @@
+The model is code, and the content is files. When you change the model, some changes also need a change to the files. Mica does not change the content for you. Change the model and the content in one commit: Git is the undo.
+
+## Which changes are safe
+
+| Change | Safe | What to do |
+| --- | --- | --- |
+| Add a field that is not required | Yes | Nothing. Old entries have no value. |
+| Change a label, a description, `listed`, `group`, `width` or a limit | Yes | Nothing. Run `npx mica check`: a new limit can make an old value wrong. |
+| Add an option to a `select()` | Yes | Nothing. |
+| Remove a field | Yes | Nothing. The value stays in the file until the next save of that entry. |
+| Add a required field | No | `npx mica check` reports each old entry without a value, and an editor cannot publish a change to it before it has one. Give them a value with `fill-field.mjs`, or let editors do it. |
+| Rename a field | No | The editor and Astro do not see the old key, so the value seems to be lost. It is still in the file. Use `rename-field.mjs`. For a rich-text field, it renames the `.mdoc` file. |
+| Change `text()` or `textarea()` to `richText()` | No | The value moves from the JSON file to a `.mdoc` file. Run `npx mica migrate-layout`, then `text-to-rich-text.mjs`. |
+| Change a field to another kind | No | The old values do not validate. `npx mica check` lists them. Change them by hand, or change one of the scripts. |
+| Change the `value` of a `select()` option | No | Like a rename of a value. `npx mica check` lists the entries. |
+| Add the first `richText()` or `media()` field to a collection, or remove the last one | No | The entries change from files to folders, or the reverse. Run `npx mica migrate-layout`. |
+| Rename a collection | No | Rename its folder with `git mv content/old content/new`, and change each `relation({ collection })` that names it. |
+
+## The steps
+
+1. If editors use a self-hosted Mica, publish or discard their pending changes first. A saved change has the old shape.
+2. Change the model in `src/mica.ts`.
+3. Run `npx astro sync`. It writes the new model to `content/.mica/schema.json` first. After a layout change or a new required field, it then stops with an error about the old entries. That is expected: the next steps fix them.
+4. Run `npx mica migrate-layout` if the layout changed.
+5. Run the script for your change.
+6. Run `npx mica check`. It must show no errors.
+7. Commit the model, `.mica/schema.json` and the content together.
+
+## The scripts
+
+Copy a script into your project, for example to `scripts/`, and run it with Node. Each script uses only `@micacms/core`, which your project already has. It reads the model from `.mica/schema.json`, and it finds each entry, in either layout.
+
+The scripts change the top-level fields of the entries of one collection. For a singleton or a field in an `object()`, change the script. A script stops with a message when the collection does not exist, or when a rename would overwrite a value. Mica's CI runs each script on test content, so the scripts on this page work with the current version.
+
+### Rename a field
+
+```bash
+node scripts/rename-field.mjs content team title role
+```
+
+```js
+// Renames a top-level field in every entry of a collection, also a rich-text field and its .mdoc file.
+// Change the model and run `npx astro sync` first. node rename-field.mjs <content root> <collection> <old key> <new key>
+import { existsSync } from "node:fs";
+import { readFile, rename, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
+import { collectionEntryPath, collectionSlugs, documentName, entryLayout, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
+import { fileSystemSource } from "@micacms/core/node";
+
+const [root, collection, from, to] = process.argv.slice(2);
+const manifest = JSON.parse(await readFile(join(root, MANIFEST_PATH), "utf8"));
+const def = manifest.collections[collection];
+if (!def) throw new Error(`The model has no collection "${collection}".`);
+
+for (const slug of await collectionSlugs(fileSystemSource(root), def, collection)) {
+  const base = join(root, collectionEntryPath(def.fields, collection, slug));
+  if (def.fields[to]?.kind === "richText") {
+    // Rich text is a file beside index.json, not a key in it.
+    const [old, renamed] = [join(base, documentName([from])), join(base, documentName([to]))];
+    if (existsSync(renamed)) throw new Error(`${renamed} exists already.`);
+    if (existsSync(old)) await rename(old, renamed);
+    continue;
+  }
+  const file = entryLayout(def.fields) === "file" ? base : join(base, INDEX_FILE);
+  const data = JSON.parse(await readFile(file, "utf8"));
+  if (!(from in data)) continue;
+  if (to in data) throw new Error(`${file} has "${to}" already.`);
+  // The key keeps its place, so the diff shows one changed line.
+  const renamed = Object.fromEntries(Object.entries(data).map(([key, value]) => [key === from ? to : key, value]));
+  await writeFile(file, `${JSON.stringify(renamed, null, 2)}\n`);
+}
+```
+
+### Move text to rich text
+
+```bash
+npx mica migrate-layout
+node scripts/text-to-rich-text.mjs content news summary
+```
+
+```js
+// Moves a text value out of index.json into the field's .mdoc file, after text() became richText().
+// Run `npx mica migrate-layout` first. node text-to-rich-text.mjs <content root> <collection> <key>
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
+import { collectionEntryPath, collectionSlugs, documentName, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
+import { fileSystemSource } from "@micacms/core/node";
+
+const [root, collection, key] = process.argv.slice(2);
+const manifest = JSON.parse(await readFile(join(root, MANIFEST_PATH), "utf8"));
+const def = manifest.collections[collection];
+if (!def) throw new Error(`The model has no collection "${collection}".`);
+
+// Markdoc reads these characters as markup, and a list or a rule at the start of a line; a backslash keeps them as text.
+const escape = (line) =>
+  line
+    .replace(/[\\`*_{}[\]<>#|~]/g, "\\$&")
+    .replace(/^([-+])/, "\\$1")
+    .replace(/^(\d+)([.)])/, "$1\\$2");
+
+for (const slug of await collectionSlugs(fileSystemSource(root), def, collection)) {
+  const base = join(root, collectionEntryPath(def.fields, collection, slug));
+  const file = join(base, INDEX_FILE);
+  const data = JSON.parse(await readFile(file, "utf8"));
+  const value = data[key];
+  if (typeof value !== "string") continue;
+  delete data[key];
+  // Each line of the old text becomes a paragraph.
+  const paragraphs = value.split(/\r?\n/).map((line) => escape(line.trim())).filter(Boolean);
+  if (paragraphs.length > 0) await writeFile(join(base, documentName([key])), `${paragraphs.join("\n\n")}\n`);
+  await writeFile(file, `${JSON.stringify(data, null, 2)}\n`);
+}
+```
+
+Each line of the old text becomes a paragraph. Characters that Markdoc reads as markup, such as `*` and `#`, and a list marker or a rule at the start of a line, get a backslash, so they stay text. Look at the result in the editor.
+
+### Give a field a value
+
+```bash
+node scripts/fill-field.mjs content team role '"Consultant"'
+```
+
+```js
+// Gives a top-level field a value in every entry of a collection that has none, for example after a new required field.
+// Change the model and run `npx astro sync` first. node fill-field.mjs <content root> <collection> <key> <value as JSON>
+import { readFile, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
+import { collectionEntryPath, collectionSlugs, entryLayout, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
+import { fileSystemSource } from "@micacms/core/node";
+
+const [root, collection, key, json] = process.argv.slice(2);
+const value = JSON.parse(json);
+const manifest = JSON.parse(await readFile(join(root, MANIFEST_PATH), "utf8"));
+const def = manifest.collections[collection];
+if (!def) throw new Error(`The model has no collection "${collection}".`);
+if (def.fields[key]?.kind === "richText") throw new Error(`"${key}" is rich text, which is a file: write it in the editor.`);
+
+for (const slug of await collectionSlugs(fileSystemSource(root), def, collection)) {
+  const base = collectionEntryPath(def.fields, collection, slug);
+  const file = join(root, entryLayout(def.fields) === "file" ? base : `${base}/${INDEX_FILE}`);
+  const data = JSON.parse(await readFile(file, "utf8"));
+  if (data[key] !== undefined && data[key] !== null && data[key] !== "") continue;
+  data[key] = value;
+  await writeFile(file, `${JSON.stringify(data, null, 2)}\n`);
+}
+```
+
+The value is JSON: a text in double quotes, a number, `true`, or a list. The script does not fill a rich-text field, because rich text is a file: write it in the editor.
+
+## There is no automatic rename
+
+Mica has no `renamedFrom` option that reads an old key. A rename with the script is one commit, and after it the files and the model agree. See [Fields](/docs/reference-fields/) and [Command line](/docs/reference-cli/).

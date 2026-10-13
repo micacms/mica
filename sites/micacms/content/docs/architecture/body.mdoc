@@ -4,7 +4,7 @@ Mica follows one constraint: Git is the source of truth. Losing the Mica server 
 
 The model is a plain TypeScript module. Astro imports it to create typed collections. An Astro build also writes the model as data to `.mica/schema.json`.
 
-Mica reads that model from the repository and generates its navigation, tables, and forms. A save lands in a draft workspace: your checkout, or the Git clone of the self-hosted editor. All editors see the drafts. In the local editor it is your checkout: autosave writes files, and Publish makes a Git commit with your own `git`. In the self-hosted editor it is a Git clone on the data volume, and a draft is a file in that clone. Publish commits the changes that the editor chooses as one commit and pushes it over HTTPS. The push starts the existing site build.
+Mica reads that model from the repository and generates its navigation, tables, and forms. A save lands in a draft workspace: your checkout, or the Git clone of the self-hosted editor. All editors see the drafts. In the local editor it is your checkout: the Save button writes files, and Publish makes a Git commit with your own `git`. In the self-hosted editor it is a Git clone on the data volume, and a draft is a file in that clone. Publish commits the changes that the editor chooses as one commit and pushes it over HTTPS. The push starts the existing site build.
 
 The website never calls Mica. Mica never needs to know where the website is hosted. They meet in the repository.
 
@@ -15,6 +15,8 @@ The website never calls Mica. Mica never needs to know where the website is host
 - `@micacms/runtime` is the API server, with no authentication of its own. It also contains the file access for the local editor and the Git clone.
 - `@micacms/editor-ui` is the editing interface, shipped as built assets.
 - `@micacms/auth-oidc` is the OpenID Connect gate for deployments.
+
+A website installs `@micacms/core` and `@micacms/astro`, and `@micacms/editor` as a development tool. These are the public packages. The other packages are internal: the two applications install them.
 
 Two applications compose them. `@micacms/editor` is the local one: loopback only, no authentication, no user, no database, and it refuses to run in production. `@micacms/self-hosted` is the Docker image, behind OpenID Connect, with its own Git clone on the data volume. It fetches and fast-forwards on its own, and never merges. It pushes to any Git host over HTTPS. Git history shows the editor as author and Mica as committer.
 

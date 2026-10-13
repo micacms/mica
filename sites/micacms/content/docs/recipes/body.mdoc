@@ -1,0 +1,138 @@
+Each recipe names where its code comes from: the [example site](https://github.com/micacms/mica/tree/main/examples/company-site), which Mica's CI builds, a test that CI runs, the [starter](https://github.com/micacms/mica/tree/main/examples/starter), or an Astro option.
+
+## Show an image with its alt text
+
+Give the field `alt`. Astro then gets `{ src, alt }`, and Astro's `<Image>` takes both.
+
+```ts
+heroImage: media({ label: "Hero image", accept: "image", alt: "required" }),
+```
+
+```astro
+---
+import { Image } from "astro:assets";
+const { heroImage } = page.data;
+---
+{heroImage && <Image {...heroImage} widths={[800, 1200, 1800]} sizes="92vw" />}
+```
+
+From `src/mica.ts` and `src/pages/[...slug].astro` of the example. With `alt: "required"`, an editor cannot publish an image without alt text. Use `"optional"` for an image that is only decoration: an empty alt text is `""`.
+
+## Show related entries
+
+A relation stores the slug of the other entry. `@micacms/astro/relations` gets the entries.
+
+```astro
+---
+import { related, relatedAll } from "@micacms/astro/relations";
+const writer = await related("team", article.data.author);
+const members = await relatedAll("team", project.data.team);
+---
+{writer && <a href={`/team/${writer.id}/`}>{writer.data.name}</a>}
+```
+
+From `src/pages/news/[slug].astro` and `src/pages/projects/[slug].astro` of the example. To show a relation from the other side, for example the projects of one person, filter the other collection:
+
+```ts
+const projects = (await getCollection("projects")).filter((project) => project.data.team.includes(member.id));
+```
+
+## Use the order of the editor
+
+When a collection is `sortable`, editors put its entries in an order. Each entry has its place in `data._mica.position`. Astro does not sort by it, so sort on your page:
+
+```ts
+export async function getTeam() {
+  const items = await getCollection("team");
+  return [...items].sort((a, b) => a.data._mica.position - b.data._mica.position);
+}
+```
+
+From `src/lib/content.ts` of the example. `defaultSort` changes only the list in the editor, not your pages.
+
+## Read the settings
+
+A singleton is an Astro collection with one entry. The collection and the entry have the name of the singleton.
+
+```ts
+const settings = (await getEntry("site", "site"))?.data;
+```
+
+The example reads each singleton once for each build, in `src/lib/content.ts`, and stops the build with a clear message when the settings are not saved yet.
+
+## Add your own rich-text tag
+
+Declare the tag in a Markdoc configuration, and give it to `renderRichText`. A tag that the configuration does not declare gives no output.
+
+```ts
+import Markdoc from "@markdoc/markdoc";
+import { renderRichText } from "@micacms/astro";
+
+const config = {
+  tags: {
+    callout: {
+      render: "aside",
+      attributes: { type: { type: String, default: "note", matches: ["note", "warning"] } },
+      transform(node: Markdoc.Node, config: Markdoc.Config) {
+        const attributes = node.transformAttributes(config);
+        return new Markdoc.Tag("aside", { class: `callout callout-${attributes.type}` }, node.transformChildren(config));
+      },
+    },
+  },
+};
+
+const html = renderRichText(entry.data.body, { config });
+```
+
+```markdoc {% process=false %}
+{% callout type="warning" %}
+Book a time **before** you visit.
+{% /callout %}
+```
+
+The test `packages/astro/test/richtext.test.ts` renders this configuration. The editor cannot show a tag that it does not know, so it shows a rich-text field with such a tag read-only. Add the tag in the `.mdoc` file, and use it for content that changes seldom. The same is true for an image or a table in rich text.
+
+## Check the content in CI
+
+```yaml
+- run: npm ci
+# Every entry as Mica and the website read it: fields, media, links and layout.
+- run: npx mica check
+- run: npm run build
+# The build writes the model. A difference means that src/mica.ts changed and content/.mica/schema.json was not committed.
+- run: git diff --exit-code content/.mica/schema.json
+```
+
+From `.github/workflows/check.yml` of the starter, which runs in each new site. `mica check` stops the job at an error. The last step finds a model change without its `schema.json`: the editor would show the old model.
+
+## Change the URL of an entry
+
+The slug is the URL. When an editor changes it, Mica offers to update the links in other entries (on by default), and it tells the editor that old links from outside need a redirect. Add the redirect in `astro.config.mjs`:
+
+```js
+export default defineConfig({
+  redirects: {
+    "/news/old-name/": "/news/new-name/",
+  },
+});
+```
+
+`redirects` is an [Astro option](https://docs.astro.build/en/reference/configuration-reference/#redirects). On a static host, Astro writes a small page that sends the visitor on. Some hosts can also use a redirect file.
+
+## Questions
+
+**Can two editors work at the same time?** Yes. All editors of a site see the saved changes. When two editors change the same entry, the second save shows both versions, and the editor chooses.
+
+**Where are the changes before Publish?** They are files in the working tree that are not committed: in your checkout for the local editor, or in the clone on the data volume for a self-hosted Mica.
+
+**Does Mica need a database?** No. Git holds the content and its history.
+
+**Can I use Mica without Astro?** The content is JSON, Markdoc and media files, so other tools can read it. Mica gives a loader for Astro only.
+
+**How do I undo a publish?** Revert the commit with Git. See [Scope](/docs/scope/).
+
+**Why can I not rename a media file?** An entry finds a file by its path, so a rename changes each entry that uses it. Upload the file again and change the entries. You can delete a file when no entry uses it.
+
+**Can I see a page before I publish it?** Not in Mica. See [Scope](/docs/scope/).
+
+**Is there more than one language?** See [Several languages](/docs/multilingual/).

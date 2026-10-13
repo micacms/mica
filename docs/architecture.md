@@ -161,7 +161,7 @@ There is one shared pending change set per site — not one per editor, and no
 approval queue. In both apps the draft workspace is a **Git working tree**, and
 a save writes its files. What differs is who owns the tree:
 
-- **The developer's checkout** (the local editor). Autosave writes it, which is
+- **The developer's checkout** (the local editor). Save writes it, which is
   what lets the Astro dev server hot-reload it. Publish commits exactly the
   reviewed paths and pushes with the developer's own Git. Mica never fetches or
   merges there.
@@ -212,7 +212,7 @@ and the token is never on disk.
 
 **Locks.** Saves, commits, discards and fast-forwards share one tree, so they
 take a read/write lock; fetch and push take a separate queue, and no network
-call happens while the tree is locked. A slow push never blocks an autosave.
+call happens while the tree is locked. A slow push never blocks a save.
 
 **Concurrency.** Every read carries an opaque `revision` (a content hash);
 every save sends back the one it was based on. A mismatch is a 409, and the
@@ -274,7 +274,7 @@ Four details that matter:
 **Multi-site is not here.** One runtime serves one site, named by an explicit
 `SiteContext` rather than assumed. There are no tenant, site or membership
 tables: several sites means several processes, and a control plane that runs
-them is a separate, private product — see [`v3-arch.md`](v3-arch.md) §14.
+them is a separate, private product — see [`v3-arch.md`](history/v3-arch.md) §14.
 
 ---
 
