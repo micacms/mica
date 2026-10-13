@@ -12,7 +12,13 @@ import { describe, it } from "node:test";
 
 import { getSchema } from "@tiptap/core";
 
-import { equivalentMarkdoc, fromMarkdoc, toMarkdoc, type ProseMirrorNode } from "../src/lib/markdoc.js";
+import {
+  equivalentMarkdoc,
+  fromMarkdoc,
+  toMarkdoc,
+  unsupportedMarkdoc,
+  type ProseMirrorNode,
+} from "../src/lib/markdoc.js";
 import { createRichTextExtensions } from "../src/lib/rich-text-extensions.js";
 
 /** Markdoc in, Markdoc out, through the editor's representation. */
@@ -171,11 +177,46 @@ describe("round trips", () => {
 describe("Tiptap schema", () => {
   it("accepts inline and fenced code from stored Markdoc", () => {
     const parsed = fromMarkdoc("Run `rush build`.\n\n```ts\nconst ready = true;\n```\n");
-    const schema = getSchema(createRichTextExtensions([]));
+    const schema = getSchema(createRichTextExtensions());
 
     assert.doesNotThrow(() => schema.nodeFromJSON(parsed));
     assert.equal(parsed.content?.[0]?.content?.[1]?.marks?.[0]?.type, "code");
     assert.equal(parsed.content?.[1]?.type, "codeBlock");
+  });
+});
+
+describe("stored Markdoc that a toolbar does not offer", () => {
+  // The schema is the same for every toolbar, so one check covers them all.
+  const schema = getSchema(createRichTextExtensions());
+  const samples = [
+    "# Title\n\n#### Small heading\n",
+    "- one\n- two\n\n1. first\n2. second\n",
+    "> A quote\n\n---\n\n~~gone~~ and [a link](https://example.com)\n",
+  ];
+
+  for (const sample of samples) {
+    it(`loads and writes back ${JSON.stringify(sample.slice(0, 20))} unchanged`, () => {
+      const parsed = fromMarkdoc(sample);
+      assert.doesNotThrow(() => schema.nodeFromJSON(parsed).check());
+      assert.equal(toMarkdoc(parsed), sample);
+      assert.deepEqual(unsupportedMarkdoc(sample), []);
+    });
+  }
+});
+
+describe("unsupportedMarkdoc", () => {
+  it("names what the editor cannot show", () => {
+    assert.deepEqual(unsupportedMarkdoc("![A house](media/house.jpg)\n"), ["an image"]);
+    assert.deepEqual(unsupportedMarkdoc("| a | b |\n| - | - |\n| 1 | 2 |\n"), ["a table"]);
+    assert.deepEqual(unsupportedMarkdoc("{% callout %}\nCareful.\n{% /callout %}\n"), ["a {% callout %} tag"]);
+    assert.deepEqual(unsupportedMarkdoc("# Title {% #intro %}\n"), ["an attribute such as {% .class %}"]);
+    assert.deepEqual(unsupportedMarkdoc('[x](https://example.com "Title")\n'), ["a link title"]);
+  });
+
+  it("finds nothing in plain text, code, or an empty field", () => {
+    assert.deepEqual(unsupportedMarkdoc("Run `rush build`.\n\n```ts\nconst a = 1;\n```\n"), []);
+    assert.deepEqual(unsupportedMarkdoc(null), []);
+    assert.deepEqual(unsupportedMarkdoc("  \n"), []);
   });
 });
 

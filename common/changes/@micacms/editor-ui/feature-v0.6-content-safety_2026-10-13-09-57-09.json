@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "A rich-text field never opens empty and never drops Markdoc: stored text with a node that the editor cannot show (an image, a table, a `{% tag %}`, an attribute, a link title), or text that the editor refuses, opens read-only with the reason and the source. The toolbar option now limits only the buttons, so a stored heading in a field without heading buttons still loads.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor-ui",
+  "email": "alexander@muedespacher.ch"
+}

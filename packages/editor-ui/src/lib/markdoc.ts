@@ -12,9 +12,10 @@
  * So the conversion happens here, at the boundary, and nothing above it has to
  * know that two representations exist.
  *
- * Only the nodes the field DSL can enable are handled. That is not a gap: the
- * editor's schema is built from the same list, so a node outside it cannot be
- * produced in the first place.
+ * Only the nodes the editor can show are handled. Stored Markdoc with any other
+ * node — an image, a table, a `{% tag %}` — is found by `unsupportedMarkdoc`
+ * first, and the field shows it read-only instead of converting it, because a
+ * conversion would drop it.
  */
 
 import Markdoc, { type Node as MarkdocNode } from "@markdoc/markdoc";
@@ -309,6 +310,38 @@ function fromBlocks(nodes: MarkdocNode[]): ProseMirrorNode[] {
   }
 
   return result;
+}
+
+/** The Markdoc node types that the editor can show and write back unchanged. */
+const SUPPORTED = new Set([
+  "document", "paragraph", "inline", "text", "softbreak", "hardbreak", "strong", "em", "s", "code",
+  "link", "heading", "blockquote", "hr", "fence", "list", "item",
+]);
+
+const TABLE = new Set(["table", "thead", "tbody", "tr", "th", "td"]);
+
+const NAMES: Record<string, string> = { image: "an image", html: "HTML", comment: "a comment" };
+
+/**
+ * What a stored document has that the editor cannot show, in words, such as
+ * `["an image", "a {% callout %} tag"]`. Empty when the editor can load it.
+ */
+export function unsupportedMarkdoc(source: string | null | undefined): string[] {
+  if (!source?.trim()) return [];
+  const found = new Set<string>();
+
+  const visit = (node: MarkdocNode): void => {
+    if (node.type === "tag") found.add(`a {% ${node.tag ?? ""} %} tag`);
+    else if (TABLE.has(node.type)) found.add("a table");
+    else if (!SUPPORTED.has(node.type)) found.add(NAMES[node.type] ?? `a "${node.type}" node`);
+    else if (node.type === "link" && node.attributes["title"]) found.add("a link title");
+    if (node.annotations.length > 0) found.add("an attribute such as {% .class %}");
+    if (node.errors.length > 0) found.add("Markdoc that does not parse");
+    for (const child of node.children) visit(child);
+  };
+
+  visit(Markdoc.parse(source));
+  return [...found];
 }
 
 /** A Markdoc document as ProseMirror JSON the editor can load. */
