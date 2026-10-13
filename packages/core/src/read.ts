@@ -8,10 +8,12 @@
  * same code over different sources.
  */
 
+import { collectReferences } from "./define.js";
 import { DOCUMENT_EXTENSION, FormatError, INDEX_FILE, entryLayout, type EntryLayout } from "./layout.js";
 import { isValidSlug } from "./slugify.js";
 import { parseEntry } from "./parse.js";
-import type { Collection, FieldMap, Singleton } from "./types.js";
+import type { Collection, FieldMap, Singleton, Site } from "./types.js";
+import type { FieldIssue } from "./validation.js";
 import type { ContentSource } from "./source.js";
 
 /**
@@ -367,4 +369,62 @@ async function readDocuments(
   }
 
   return documents;
+}
+
+/* ------------------------------------------------------------------ *
+ * References
+ * ------------------------------------------------------------------ */
+
+/**
+ * Finds the relations and media paths of a document that point at nothing in
+ * `source`. Caches what it reads, so one check per build or per publication
+ * reads each target once. `knownSlugs` gives the slugs of a collection that the
+ * caller has already read.
+ */
+export function createReferenceCheck(
+  site: Site,
+  source: ContentSource,
+  knownSlugs: (collection: string) => ReadonlySet<string> | undefined = () => undefined,
+) {
+  const entries = new Map<string, Promise<boolean>>();
+  const directories = new Map<string, Promise<Set<string>>>();
+
+  const entryExists = (collection: string, slug: string): Promise<boolean> => {
+    const known = knownSlugs(collection);
+    if (known) return Promise.resolve(known.has(slug));
+    const key = `${collection}/${slug}`;
+    if (!entries.has(key)) {
+      const def = site.collections[collection]!;
+      entries.set(key, readCollectionEntry(source, def, collection, slug).then((data) => data !== null, () => false));
+    }
+    return entries.get(key)!;
+  };
+
+  const fileExists = async (path: string): Promise<boolean> => {
+    const slash = path.lastIndexOf("/");
+    const directory = slash === -1 ? "" : path.slice(0, slash);
+    if (!directories.has(directory)) {
+      const names = source.list(directory).then((items) => new Set(items.map((item) => item.name)), () => new Set<string>());
+      directories.set(directory, names);
+    }
+    return (await directories.get(directory)!).has(path.slice(slash + 1));
+  };
+
+  return {
+    /** One issue for each broken relation and missing file, at the field's path. */
+    async issues(fields: FieldMap, data: Record<string, unknown>): Promise<FieldIssue[]> {
+      const issues: FieldIssue[] = [];
+      for (const reference of collectReferences(fields, data)) {
+        if (reference.kind === "relation") {
+          const target = site.collections[reference.collection];
+          if (target && !(await entryExists(reference.collection, reference.slug))) {
+            issues.push({ path: reference.field, message: `Links to "${reference.slug}" in ${target.label}, which does not exist.` });
+          }
+        } else if (!(await fileExists(reference.path))) {
+          issues.push({ path: reference.field, message: `The file "${reference.path}" does not exist.` });
+        }
+      }
+      return issues;
+    },
+  };
 }

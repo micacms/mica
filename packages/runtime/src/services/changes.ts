@@ -3,7 +3,9 @@
 import type { Author } from "../workspace/files.js";
 import {
   ORDER_FILE,
+  collectReferences,
   collectionEntryPath,
+  createReferenceCheck,
   entryLayout,
   entryTitle,
   isValidSlug,
@@ -18,6 +20,7 @@ import {
   type ContentChange,
   type ContentSource,
   type FieldIssue,
+  type FieldMap,
   type PublishResult,
   type Site,
 } from "@micacms/core";
@@ -233,6 +236,10 @@ export async function analyseChanges(
   }
 
   const validated = new Set<string>();
+  const targets = createReferenceCheck(model, source, (name) => {
+    const entries = entriesByCollection.get(name);
+    return entries ? new Set(entries.keys()) : undefined;
+  });
 
   for (const owner of owners) {
     if (owner.kind === "entry") {
@@ -246,11 +253,12 @@ export async function analyseChanges(
       if (!data) continue;
 
       const result = validateFields(def.fields, data);
-      if (!result.ok) {
+      const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data))];
+      if (issues.length > 0) {
         problems.push({
           path: entryDataPath(def, owner.collection, owner.slug),
           label: labelEntry(def, owner.slug, titles.get(key)),
-          issues: result.issues,
+          issues,
         });
       }
     }
@@ -265,9 +273,8 @@ export async function analyseChanges(
         if (data === null) continue;
 
         const result = validateFields(def.fields, data);
-        if (!result.ok) {
-          problems.push({ path: dataPath, label: def.label, issues: result.issues });
-        }
+        const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data))];
+        if (issues.length > 0) problems.push({ path: dataPath, label: def.label, issues });
       } catch (error) {
         problems.push({
           path: (error as { path?: string }).path ?? dataPath,
@@ -277,6 +284,8 @@ export async function analyseChanges(
       }
     }
   }
+
+  problems.push(...(await brokenByRemoval(model, source, changes, owners, entriesByCollection, titles)));
 
   const annotated = changes.map((change, index): AnnotatedChange => {
     const owner = owners[index]!;
@@ -490,6 +499,70 @@ function canonical(value: unknown): string {
     const record = entry as Record<string, unknown>;
     return Object.fromEntries(Object.keys(record).sort().map((key) => [key, record[key]]));
   });
+}
+
+/**
+ * Entries and files that the change set removes while another entry still
+ * points at them. Publishing them would break a link or an image on the site.
+ */
+async function brokenByRemoval(
+  model: Site,
+  source: ContentSource,
+  changes: ContentChange[],
+  owners: ChangeOwner[],
+  entriesByCollection: Map<string, Map<string, Record<string, unknown>>>,
+  titles: Map<string, string>,
+): Promise<StagingProblem[]> {
+  const removedEntries = new Map<string, { collection: string; slug: string }>();
+  const removedFiles = new Set<string>();
+  changes.forEach((change, index) => {
+    const owner = owners[index]!;
+    if (change.kind !== "delete") return;
+    if (owner.kind === "entry" && !entriesByCollection.get(owner.collection)?.has(owner.slug)) {
+      removedEntries.set(`${owner.collection}/${owner.slug}`, { collection: owner.collection, slug: owner.slug });
+    } else {
+      removedFiles.add(change.path);
+    }
+  });
+  if (removedEntries.size === 0 && removedFiles.size === 0) return [];
+
+  const linkedFrom = new Map<string, string[]>();
+  const note = (target: string, from: string) => linkedFrom.set(target, [...(linkedFrom.get(target) ?? []), from]);
+
+  const scan = (label: string, fields: FieldMap, data: Record<string, unknown>) => {
+    for (const reference of collectReferences(fields, data)) {
+      const target = reference.kind === "relation" ? `${reference.collection}/${reference.slug}` : reference.path;
+      if (removedEntries.has(target) || removedFiles.has(target)) note(target, label);
+    }
+  };
+
+  for (const [name, def] of Object.entries(model.collections)) {
+    let entries = entriesByCollection.get(name);
+    if (!entries) {
+      try {
+        entries = new Map((await readCollection(source, def, name)).map((entry) => [entry.slug, entry.data]));
+      } catch {
+        continue; // An unreadable collection is reported where it is changed.
+      }
+    }
+    for (const [slug, data] of entries) scan(labelEntry(def, slug, entryTitle(def, data)), def.fields, data);
+  }
+  for (const [name, def] of Object.entries(model.singletons)) {
+    const data = await readSingleton(source, def, name).catch(() => null);
+    if (data) scan(def.label, def.fields, data);
+  }
+
+  const problems: StagingProblem[] = [];
+  for (const [target, from] of linkedFrom) {
+    const entry = removedEntries.get(target);
+    const def = entry ? model.collections[entry.collection]! : null;
+    problems.push({
+      path: entry && def ? entryDataPath(def, entry.collection, entry.slug) : target,
+      label: entry && def ? labelEntry(def, entry.slug, titles.get(target)) : target,
+      issues: [{ path: "", message: `Still linked from ${from.join(", ")}. Remove those links first, or publish them together.` }],
+    });
+  }
+  return problems;
 }
 
 function labelEntry(def: Collection, slug: string, title: string | undefined): string {

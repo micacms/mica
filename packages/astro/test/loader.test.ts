@@ -311,6 +311,30 @@ describe("collections", () => {
     );
   });
 
+  it("warns about a missing media file, and goes on", async () => {
+    const collections = build();
+    const context = createContext(collections.projects.schema);
+
+    await collections.projects.loader.load(context);
+    assert.equal(context.entries.size, 2);
+    assert.ok(
+      context.logs.includes('warn: projects/haus-a: cover: The file "projects/haus-a/media/exterior.jpg" does not exist.'),
+      context.logs.join("\n"),
+    );
+
+    const present = build({ "projects/haus-a/media/exterior.jpg": "jpeg" });
+    const quiet = createContext(present.projects.schema);
+    await present.projects.loader.load(quiet);
+    assert.ok(!quiet.logs.some((line) => line.startsWith("warn:")), quiet.logs.join("\n"));
+  });
+
+  it("fails the build on a missing file with strict", async () => {
+    const collections = micaCollections(site, { source: memorySource(files), strict: true });
+    const context = createContext(collections.projects.schema);
+
+    await assert.rejects(() => collections.projects.loader.load(context), /Broken references:\n {2}projects\/haus-a: cover/);
+  });
+
   it("fails the build when an entry is in the other layout, instead of hiding it", async () => {
     const collections = build({ "projects/haus-c.json": JSON.stringify({ title: "Haus C", slug: "haus-c" }) });
     const context = createContext(collections.projects.schema);

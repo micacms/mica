@@ -1264,6 +1264,30 @@ no longer justify.
 
 ---
 
+### P2 — Publish refuses a broken reference that it would create
+
+**Decided:** Publish refuses a change set that would leave a relation to a
+missing entry or a media path to a missing file: a changed document that links
+to nothing, or a deleted entry or file that another document still uses. The
+problem names the field and the entries. A broken reference in a document that
+the change set does not touch does not block Publish. The Astro loaders warn
+about every broken reference, and fail the build with `strict: true`.
+
+**Why:** a broken link or a missing image on the site is silent loss, and
+Publish is the last point where Mica can stop it. Refusing references that
+were already broken would let one old mistake block every publication.
+
+**Consequence:** deleting an entry, or changing its URL, needs the links to it
+changed first, until #70 updates them. The check reads every collection when
+the change set deletes something.
+
+**What would change it:** a site with so many entries that the scan at a
+deletion is slow; then index the references.
+
+**Built in 0.6 (#69, #111).**
+
+---
+
 ### P2 — Media reach Astro as paths, with a supported helper
 
 **Decided:** a media value stays a path string in Astro (or `{ path, alt }`

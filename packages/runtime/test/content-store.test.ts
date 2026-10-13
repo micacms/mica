@@ -15,6 +15,7 @@ import {
   media,
   number,
   relation,
+  repeater,
   richText,
   singleton,
   slug,
@@ -405,5 +406,30 @@ describe("singletons", () => {
 
     assert.deepEqual(await files("about"), ["index.json", "intro.mdoc"]);
     assert.equal((await store.getSingleton("about")).intro, "Hello.");
+  });
+});
+
+describe("findReferences", () => {
+  it("finds an entry that links from a nested field", async () => {
+    const nested = defineSite({
+      collections: {
+        team: collection({ label: "Team", fields: { name: text(), slug: slug({ from: "name" }) } }),
+        events: collection({
+          label: "Events",
+          fields: {
+            title: text(),
+            slug: slug({ from: "title" }),
+            talks: repeater({ fields: { speaker: relation({ collection: "team" }) } }),
+          },
+        }),
+      },
+    });
+    const nestedStore = createContentStore(nested, contentFiles({ root }));
+    await nestedStore.save("team", { data: { name: "Anna" } });
+    await nestedStore.save("events", { data: { title: "Meetup", talks: [{ speaker: "anna" }] } });
+
+    assert.deepEqual(await nestedStore.findReferences("team", "anna"), [
+      { collection: "events", slug: "meetup", title: "Meetup" },
+    ]);
   });
 });

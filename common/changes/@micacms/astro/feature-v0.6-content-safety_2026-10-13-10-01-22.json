@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/astro",
+      "comment": "The loaders warn about a relation to a missing entry and a missing media file. `micaCollections(site, { strict: true })` fails the build instead.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

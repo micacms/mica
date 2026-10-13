@@ -16,6 +16,7 @@ import {
   entryLayout,
   entryTitle,
   isValidSlug,
+  collectReferences,
   readCollection,
   readSingleton,
   relativizeMedia,
@@ -399,17 +400,11 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       const results: Array<{ collection: string; slug: string; title: string }> = [];
 
       for (const [name, def] of Object.entries(site.collections)) {
-        const keys = Object.entries(def.fields)
-          .filter(([, field]) => field.kind === "relation" && field.collection === collectionName)
-          .map(([key]) => key);
-
-        if (keys.length === 0) continue;
-
         for (const entry of await readCollection(workspace, def, name)) {
-          const points = keys.some((key) => {
-            const value = entry.data[key];
-            return Array.isArray(value) ? value.includes(slug) : value === slug;
-          });
+          const points = collectReferences(def.fields, entry.data).some(
+            (reference) =>
+              reference.kind === "relation" && reference.collection === collectionName && reference.slug === slug,
+          );
           if (points) {
             results.push({ collection: name, slug: entry.slug, title: entryTitle(def, entry.data) });
           }
