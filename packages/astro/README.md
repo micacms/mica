@@ -97,9 +97,8 @@ collections. They ship with the package, so they match the installed version.
 ## Install
 
 ```bash
-npm install @micacms/astro
+npm install @micacms/astro @micacms/core
 ```
 
-Astro 7, `@micacms/core` and zod 4 are peer dependencies: install `@micacms/core`
-beside this package, and npm installs zod. ESM only. Requires Node 24 or newer.
+Astro 7, `@micacms/core` and zod 4 are peer dependencies. npm installs zod. ESM only. Requires Node 24 or newer.
 Licence: MIT.

@@ -79,11 +79,11 @@ describe("unknown variables", () => {
   it("names MICA_ variables that nothing reads, and only those", () => {
     const config = loadConfig({
       ...base,
-      MICA_ADMIT_GROUP: "typo-for-group",
+      MICA_ADMIT_GRUOPS: "typo-for-groups",
       MICA_OIDC_ISSUER: "https://auth.example.com",
       UNRELATED_VARIABLE: "x",
     });
-    assert.deepEqual(config.unknownVariables, ["MICA_ADMIT_GROUP"]);
+    assert.deepEqual(config.unknownVariables, ["MICA_ADMIT_GRUOPS"]);
   });
 });
 

@@ -10,6 +10,7 @@
 import { z } from "zod";
 
 import type { AnyField, FieldMap } from "./types.js";
+import { textPattern } from "./pattern.js";
 import { isValidSlug } from "./slugify.js";
 
 export interface SchemaOptions {
@@ -59,11 +60,6 @@ function blankIsEmpty(field: AnyField): boolean {
 
 function label(field: AnyField, key: string): string {
   return field.label ?? key;
-}
-
-/** A text field's `pattern`, compiled: it must match the whole value, and counts code points. */
-export function textPattern(pattern: string): RegExp {
-  return new RegExp(`^(?:${pattern})$`, "u");
 }
 
 /** The inner schema for a field, before nullability and defaults are applied. */

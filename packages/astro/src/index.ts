@@ -245,9 +245,6 @@ export function micaCollections<S extends Site>(
   for (const [name, def] of Object.entries(site.collections) as [string, Collection][]) {
     collections[name] = {
       type: "content_layer",
-      // `storage` rather than `output`: a media reference is a path into the
-      // repository at rest and a path into the repository once loaded. There
-      // is no expansion step left to tell the two apart.
       schema: fieldsSchema(def.fields).extend({ _mica: metaSchema }),
       loader: {
         name: `mica:${name}`,

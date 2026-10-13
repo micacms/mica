@@ -145,16 +145,24 @@ export function shouldOpenBrowser(options: Options, env: NodeJS.ProcessEnv): boo
   return Boolean(process.stdout.isTTY) && !env["CI"];
 }
 
+/** A variable's value, with a blank one counted as not set. */
+const set = (value: string | undefined): string | undefined => (value?.trim() ? value : undefined);
+
+/** The content root: the flag or path, else `MICA_CONTENT_ROOT`, else `./content`. */
+export function contentRoot(options: Options, env: NodeJS.ProcessEnv): string {
+  return path.resolve(options.content ?? set(env["MICA_CONTENT_ROOT"]) ?? "./content");
+}
+
 /** What the server reads: a flag wins over the environment, and the environment over a default. */
 export function serverEnvironment(options: Options, env: NodeJS.ProcessEnv, content: string): Record<string, string> {
-  const port = options.port ?? env["PORT"] ?? String(DEFAULT_PORT);
+  const port = options.port ?? set(env["PORT"]) ?? String(DEFAULT_PORT);
   return {
     // The checks ran on this path, so it is the one the server gets.
     MICA_CONTENT_ROOT: content,
-    HOST: options.host ?? env["HOST"] ?? "127.0.0.1",
+    HOST: options.host ?? set(env["HOST"]) ?? "127.0.0.1",
     PORT: port,
     // It must agree with the port: it scopes the cookie and the Origin check.
-    MICA_PUBLIC_URL: (!options.port && env["MICA_PUBLIC_URL"]) || `http://localhost:${port}`,
+    MICA_PUBLIC_URL: (!options.port && set(env["MICA_PUBLIC_URL"])) || `http://localhost:${port}`,
     // A person, not a log collector: one banner instead of startup log lines.
     MICA_CLI: "true",
     MICA_OPEN: String(shouldOpenBrowser(options, env)),
@@ -167,7 +175,7 @@ export async function main(): Promise<void> {
   if (command === "check") return check(rest);
 
   const options = parse(process.argv.slice(2));
-  const content = path.resolve(options.content ?? process.env["MICA_CONTENT_ROOT"] ?? "./content");
+  const content = contentRoot(options, process.env);
 
   if (!existsSync(content)) {
     report(`There is no content directory at ${content}.`, [
@@ -216,7 +224,7 @@ function init(argv: string[]): void {
 }
 
 async function check(argv: string[]): Promise<void> {
-  const root = path.resolve(parse(argv).content ?? "./content");
+  const root = contentRoot(parse(argv), process.env);
   const result = await checkContent(root);
   process.stdout.write(formatReport(result, root));
   if (result.problems.some((problem) => problem.level === "error")) process.exit(1);

@@ -18,7 +18,7 @@ import { MANIFEST_PATH } from "@micacms/core";
 
 import { DEFAULT_PORT } from "@micacms/runtime";
 
-import { parse, serverEnvironment, shouldOpenBrowser } from "../src/cli.js";
+import { contentRoot, parse, serverEnvironment, shouldOpenBrowser } from "../src/cli.js";
 
 const CLI = path.resolve(import.meta.dirname, "../src/cli.ts");
 
@@ -43,6 +43,13 @@ describe("arguments", () => {
     assert.equal(parse([]).content, undefined);
   });
 
+  it("takes the content root from the path, else MICA_CONTENT_ROOT, else ./content", () => {
+    const env = { MICA_CONTENT_ROOT: "/from/env" };
+    assert.equal(contentRoot({ content: "/from/flag" }, env), path.resolve("/from/flag"));
+    assert.equal(contentRoot({}, env), path.resolve("/from/env"));
+    assert.equal(contentRoot({}, { MICA_CONTENT_ROOT: "" }), path.resolve("./content"));
+  });
+
   it("lets a flag win over the environment, and the environment over a default", () => {
     const env = { PORT: "3000", HOST: "localhost", MICA_PUBLIC_URL: "http://localhost:3000" };
     const flagged = serverEnvironment({ port: "7000", open: false }, env, "/site/content");
@@ -50,6 +57,10 @@ describe("arguments", () => {
     assert.equal(flagged["MICA_PUBLIC_URL"], "http://localhost:7000");
     assert.equal(flagged["HOST"], "localhost");
     assert.equal(flagged["MICA_CONTENT_ROOT"], "/site/content");
+
+    const blank = serverEnvironment({ open: false }, { PORT: " ", MICA_PUBLIC_URL: "" }, "/site/content");
+    assert.equal(blank["PORT"], String(DEFAULT_PORT));
+    assert.equal(blank["MICA_PUBLIC_URL"], `http://localhost:${DEFAULT_PORT}`);
 
     const plain = serverEnvironment({ open: false }, {}, "/site/content");
     assert.equal(plain["PORT"], String(DEFAULT_PORT));

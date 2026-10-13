@@ -15,7 +15,7 @@ import type {
   SingletonOptions,
   Site,
 } from "./types.js";
-import { textPattern } from "./validation.js";
+import { textPattern } from "./pattern.js";
 
 export class ModelError extends Error {
   override name = "ModelError";

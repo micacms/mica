@@ -75,7 +75,7 @@
     },
     // Not published: it ships only as the image. No version policy, so
     // `rush publish` skips it; `scripts/version.mjs --sync` still gives it the
-    // release version, because the image tag is derived from it.
+    // release version, which the release workflow checks against the tag.
     {
       "packageName": "@micacms/self-hosted",
       "projectFolder": "apps/self-hosted",
