@@ -1,0 +1,42 @@
+{
+  "title": "Service desk consolidation",
+  "slug": "service-desk-consolidation",
+  "year": 2024,
+  "category": "public-sector",
+  "code": "HL-103",
+  "duration": 20,
+  "tags": [
+    "people",
+    "process"
+  ],
+  "location": {
+    "address": "Vabaduse väljak 7",
+    "city": "Tallinn",
+    "country": "Estonia",
+    "position": {
+      "lat": 59.4339,
+      "lng": 24.7436
+    }
+  },
+  "facts": [
+    {
+      "label": "Tickets per month",
+      "value": "2,400"
+    },
+    {
+      "label": "Teams merged",
+      "value": "3"
+    }
+  ],
+  "gallery": [
+    {
+      "path": "/media/workspace.jpg",
+      "alt": "A ticket board with a task list on a dark screen"
+    }
+  ],
+  "team": [
+    "amara-okafor",
+    "lars-nilsson"
+  ],
+  "featured": true
+}

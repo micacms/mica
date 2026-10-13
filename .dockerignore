@@ -27,5 +27,5 @@ common/deploy
 # Rush, though, must see every manifest rush.json lists — the three below are
 # manifests only, never content.
 !sites/micacms/package.json
-!examples/muster-consulting/package.json
+!examples/company-site/package.json
 !tests/browser/package.json

@@ -1,0 +1,37 @@
+{
+  "title": "Order-to-cash review",
+  "slug": "order-to-cash-review",
+  "year": 2025,
+  "category": "operations",
+  "code": "HL-101",
+  "duration": 16,
+  "tags": [
+    "process",
+    "finance"
+  ],
+  "location": {
+    "address": "Industrieweg 14",
+    "city": "Rotterdam",
+    "country": "Netherlands",
+    "position": {
+      "lat": 51.9244,
+      "lng": 4.4777
+    }
+  },
+  "facts": [
+    {
+      "label": "Lead time",
+      "value": "−35%"
+    },
+    {
+      "label": "Team",
+      "value": "3 consultants"
+    }
+  ],
+  "gallery": [],
+  "team": [
+    "amara-okafor",
+    "mateo-fernandez"
+  ],
+  "featured": true
+}

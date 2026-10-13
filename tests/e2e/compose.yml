@@ -90,7 +90,7 @@ services:
     volumes:
       - forgejo-data:/data
       - ../oidc/forgejo-seed.sh:/seed.sh:ro
-      - ../../examples/muster-consulting/content:/seed:ro
+      - ../../examples/company-site/content:/seed:ro
 
   # ---------------------------------------------------------------- mica
   mica:

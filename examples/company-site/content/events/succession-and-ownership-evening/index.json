@@ -1,0 +1,29 @@
+{
+  "title": "Succession and ownership: an evening in Bologna",
+  "slug": "succession-and-ownership-evening",
+  "startsAt": "2027-02-04T17:00:00+01:00",
+  "endsAt": "2027-02-04T20:00:00+01:00",
+  "format": [
+    "in-person",
+    "online"
+  ],
+  "capacity": 60,
+  "venue": {
+    "name": "Sala Borsa Meeting Room",
+    "address": "Piazza del Nettuno 3\n40124 Bologna, Italy",
+    "position": {
+      "lat": 44.4938,
+      "lng": 11.343
+    }
+  },
+  "registrationUrl": "https://harborlane.example/register/succession-evening",
+  "speakers": [
+    "amara-okafor",
+    "lars-nilsson"
+  ],
+  "summary": "A talk and open discussion for owners of family companies. You can join in person or online.",
+  "tags": [
+    "workshop",
+    "strategy"
+  ]
+}

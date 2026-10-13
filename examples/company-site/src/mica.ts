@@ -38,6 +38,7 @@ import {
   select,
   singleton,
   slug,
+  tags,
   text,
   textarea,
   url,
@@ -56,7 +57,7 @@ export const site = defineSite({
     pages: collection({
       label: "Pages",
       labelSingular: "Page",
-      description: "Standalone pages such as About, Services or Contact.",
+      description: "Standalone pages such as About us, Services or Contact.",
       defaultSort: { field: "position", direction: "asc" },
       sortable: true,
       fields: {
@@ -69,7 +70,7 @@ export const site = defineSite({
         slug: slug({
           label: "URL",
           from: "title",
-          description: "The address of the page, e.g. /about.",
+          description: "The address of the page, e.g. /about-us.",
         }),
         intro: textarea({
           label: "Introduction",
@@ -136,7 +137,7 @@ export const site = defineSite({
     projects: collection({
       label: "Projects",
       labelSingular: "Project",
-      description: "Reference projects shown in the portfolio.",
+      description: "Client projects shown in the portfolio.",
       defaultSort: { field: "year", direction: "desc" },
       fields: {
         title: text({
@@ -159,11 +160,35 @@ export const site = defineSite({
           width: "half",
           listed: true,
           options: [
-            { label: "Residential", value: "residential" },
-            { label: "Commercial", value: "commercial" },
-            { label: "Public", value: "public" },
-            { label: "Renovation", value: "renovation" },
+            { label: "Strategy", value: "strategy" },
+            { label: "Operations", value: "operations" },
+            { label: "Technology", value: "technology" },
+            { label: "Public sector", value: "public-sector" },
           ],
+        }),
+        // Read-only: the editor shows the value, and nobody can change it there.
+        // The pattern still applies when the file is checked.
+        code: text({
+          label: "Project number",
+          readonly: true,
+          width: "half",
+          pattern: "[A-Z]{2}-[0-9]{3}",
+          patternMessage:
+            "Use two capital letters, a hyphen and three digits, like HL-104.",
+        }),
+        duration: number({
+          label: "Duration",
+          integer: true,
+          min: 1,
+          unit: "weeks",
+          width: "half",
+        }),
+        // Tags are free words. Suggestions help the editor to stay consistent.
+        tags: tags({
+          label: "Tags",
+          max: 6,
+          maxLength: 24,
+          suggestions: ["process", "finance", "data", "software", "people", "strategy"],
         }),
         description: richText({ label: "Description" }),
         location: object({
@@ -171,11 +196,7 @@ export const site = defineSite({
           fields: {
             address: text({ label: "Address" }),
             city: text({ label: "City", width: "half" }),
-            postalCode: text({
-              label: "Postal code",
-              width: "half",
-              maxLength: 12,
-            }),
+            country: text({ label: "Country", width: "half" }),
             position: coordinates({
               label: "Map position",
             }),
@@ -227,9 +248,88 @@ export const site = defineSite({
           collection: "team",
           width: "half",
         }),
+        relatedProject: relation({
+          label: "Related project",
+          collection: "projects",
+          description: "The article links to this project's page.",
+        }),
+        tags: tags({
+          label: "Tags",
+          max: 5,
+          maxLength: 24,
+          suggestions: ["research", "careers", "case study", "operations"],
+        }),
         excerpt: textarea({ label: "Teaser", rows: 3, maxLength: 300 }),
         coverImage: media({ label: "Cover image", accept: "image", alt: "required" }),
         body: richText({ label: "Article" }),
+      },
+    }),
+
+    events: collection({
+      label: "Events",
+      labelSingular: "Event",
+      description: "Workshops and talks, in person or online.",
+      defaultSort: { field: "startsAt", direction: "desc" },
+      fields: {
+        title: text({
+          label: "Title",
+          required: true,
+          maxLength: 120,
+          listed: true,
+        }),
+        slug: slug({ label: "URL", from: "title" }),
+        startsAt: date({
+          label: "Starts",
+          includeTime: true,
+          required: true,
+          listed: true,
+          width: "half",
+        }),
+        endsAt: date({ label: "Ends", includeTime: true, width: "half" }),
+        format: select({
+          label: "Format",
+          multiple: true,
+          width: "half",
+          options: [
+            { label: "In person", value: "in-person" },
+            { label: "Online", value: "online" },
+          ],
+        }),
+        capacity: number({
+          label: "Capacity",
+          integer: true,
+          min: 1,
+          unit: "seats",
+          width: "half",
+        }),
+        venue: object({
+          label: "Venue",
+          group: "Where",
+          fields: {
+            name: text({ label: "Name" }),
+            address: textarea({ label: "Address", rows: 2 }),
+            position: coordinates({ label: "Map position" }),
+          },
+        }),
+        registrationUrl: url({
+          label: "Registration link",
+          group: "Where",
+          placeholder: "https://harborlane.example/register/...",
+        }),
+        speakers: relation({
+          label: "Speakers",
+          collection: "team",
+          multiple: true,
+        }),
+        summary: textarea({ label: "Summary", rows: 3, maxLength: 300 }),
+        body: richText({ label: "Programme" }),
+        tags: tags({
+          label: "Tags",
+          max: 5,
+          maxLength: 24,
+          suggestions: ["workshop", "webinar", "operations", "technology"],
+          default: ["event"],
+        }),
       },
     }),
 
@@ -243,7 +343,13 @@ export const site = defineSite({
         slug: slug({ label: "URL", from: "name" }),
         role: text({ label: "Role", listed: true, width: "half" }),
         email: email({ label: "Email", width: "half" }),
-        phone: text({ label: "Phone", width: "half" }),
+        phone: text({
+          label: "Phone",
+          width: "half",
+          placeholder: "+351 21 555 0143",
+          pattern: "\\+[0-9 ]{7,18}",
+          patternMessage: "Use the international form, like +351 21 555 0143.",
+        }),
         portrait: media({ label: "Portrait", accept: "image", alt: "required" }),
         bio: textarea({ label: "Short biography", rows: 4, maxLength: 600 }),
         featured: boolean({ label: "Show on the team page", default: false }),
@@ -298,7 +404,7 @@ export const site = defineSite({
           fields: {
             titleSuffix: text({
               label: "Title suffix",
-              description: 'Appended to every page title, e.g. " — Muster AG".',
+              description: 'Appended to every page title, e.g. " — Harbor Lane Consulting".',
             }),
             defaultDescription: textarea({
               label: "Default description",

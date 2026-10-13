@@ -1,0 +1,37 @@
+{
+  "title": "Pricing review for a logistics group",
+  "slug": "pricing-review-for-a-logistics-group",
+  "year": 2023,
+  "category": "strategy",
+  "code": "HL-106",
+  "duration": 10,
+  "tags": [
+    "finance",
+    "data"
+  ],
+  "location": {
+    "address": "8 Marina Boulevard",
+    "city": "Singapore",
+    "country": "Singapore",
+    "position": {
+      "lat": 1.2806,
+      "lng": 103.8545
+    }
+  },
+  "facts": [
+    {
+      "label": "Routes analysed",
+      "value": "4,000"
+    },
+    {
+      "label": "Margin gain",
+      "value": "+2.1 points"
+    }
+  ],
+  "gallery": [],
+  "team": [
+    "mateo-fernandez",
+    "priya-raman"
+  ],
+  "featured": false
+}

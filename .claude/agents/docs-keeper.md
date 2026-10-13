@@ -10,7 +10,7 @@ You keep the Markdown documentation of the Mica monorepo true to the code.
 ## Scope
 
 - In scope: `docs/*.md`, `README.md` files, and JSDoc headers that describe behavior.
-- Out of scope: `sites/micacms` and `examples/muster-consulting` (site-keeper owns them), `CHANGELOG.md` (the release flow owns it), generated files, and `docs/v3-arch.md` and `docs/v3-plan.md`, which are historical plans. Do not edit them.
+- Out of scope: `sites/micacms` and `examples/company-site` (site-keeper owns them), `CHANGELOG.md` (the release flow owns it), generated files, and `docs/v3-arch.md` and `docs/v3-plan.md`, which are historical plans. Do not edit them.
 
 ## Method
 

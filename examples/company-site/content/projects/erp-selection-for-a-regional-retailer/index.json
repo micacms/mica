@@ -1,0 +1,46 @@
+{
+  "title": "ERP selection for a regional retailer",
+  "slug": "erp-selection-for-a-regional-retailer",
+  "year": 2025,
+  "category": "technology",
+  "code": "HL-102",
+  "duration": 12,
+  "tags": [
+    "software",
+    "finance"
+  ],
+  "location": {
+    "address": "22 Wellington Street",
+    "city": "Leeds",
+    "country": "United Kingdom",
+    "position": {
+      "lat": 53.796,
+      "lng": -1.548
+    }
+  },
+  "facts": [
+    {
+      "label": "Vendors assessed",
+      "value": "9"
+    },
+    {
+      "label": "Licence cost",
+      "value": "−22%"
+    }
+  ],
+  "gallery": [
+    {
+      "path": "/media/workspace.jpg",
+      "alt": "A dashboard with a task list on a dark screen, used to compare ERP vendors"
+    },
+    {
+      "path": "/media/workspace.jpg",
+      "alt": "Close-up of the task list that tracks each vendor assessment"
+    }
+  ],
+  "team": [
+    "priya-raman",
+    "mateo-fernandez"
+  ],
+  "featured": true
+}

@@ -1,0 +1,92 @@
+---
+import { Image } from "astro:assets";
+import { getCollection, type CollectionEntry } from "astro:content";
+
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { formatDateTime, getEventsOf, getProjectsOf } from "@/lib/content";
+
+export async function getStaticPaths() {
+  const team = await getCollection("team");
+  return team.map((member) => ({
+    params: { slug: member.id },
+    props: { member },
+  }));
+}
+
+interface Props {
+  member: CollectionEntry<"team">;
+}
+
+const { member } = Astro.props;
+const { name, role, email, phone, portrait, bio } = member.data;
+
+// Relations shown from the other side: projects and events name the person,
+// the person does not name them. So the page asks each collection and filters.
+const projects = await getProjectsOf(member.id);
+const events = await getEventsOf(member.id);
+---
+
+<BaseLayout title={name} description={bio}>
+  <div class="container-page pb-8 pt-14 sm:pt-20">
+    <a href="/team/" class="text-sm text-muted hover:text-primary">← Team</a>
+
+    <div class="mt-6 grid gap-10 md:grid-cols-[16rem_1fr]">
+      {
+        portrait && (
+          <div class="aspect-3/4 overflow-hidden bg-sunken" style="border-radius: var(--radius-theme)">
+            <Image {...portrait} class="h-full w-full object-cover" widths={[320, 640]} sizes="16rem" />
+          </div>
+        )
+      }
+
+      <div class:list={[!portrait && "md:col-span-2"]}>
+        <h1 class="text-3xl font-semibold tracking-tight sm:text-5xl">{name}</h1>
+        {role && <p class="mt-2 text-lg text-muted">{role}</p>}
+        {bio && <p class="mt-5 max-w-2xl text-pretty">{bio}</p>}
+
+        <p class="mt-5 space-y-0.5 text-sm">
+          {email && <a href={`mailto:${email}`} class="block text-primary hover:underline">{email}</a>}
+          {phone && (
+            <a href={`tel:${phone.replace(/\s/g, "")}`} class="block text-muted hover:text-primary">{phone}</a>
+          )}
+        </p>
+
+        {
+          projects.length > 0 && (
+            <section class="mt-10">
+              <h2 class="text-xs font-semibold uppercase tracking-wider text-muted">Projects</h2>
+              <ul class="mt-3 divide-y divide-line border-t border-line text-sm">
+                {projects.map((project) => (
+                  <li class="py-2.5">
+                    <a href={`/projects/${project.id}/`} class="font-medium hover:text-primary">
+                      {project.data.title}
+                    </a>
+                    <span class="text-muted"> · {project.data.year}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+
+        {
+          events.length > 0 && (
+            <section class="mt-10">
+              <h2 class="text-xs font-semibold uppercase tracking-wider text-muted">Events</h2>
+              <ul class="mt-3 divide-y divide-line border-t border-line text-sm">
+                {events.map((event) => (
+                  <li class="py-2.5">
+                    <a href={`/events/${event.id}/`} class="font-medium hover:text-primary">
+                      {event.data.title}
+                    </a>
+                    <span class="block text-muted">{formatDateTime(event.data.startsAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+      </div>
+    </div>
+  </div>
+</BaseLayout>

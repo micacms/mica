@@ -8,7 +8,7 @@
       "name": "pages",
       "label": "Pages",
       "labelSingular": "Page",
-      "description": "Standalone pages such as About, Services or Contact.",
+      "description": "Standalone pages such as About us, Services or Contact.",
       "defaultSort": {
         "field": "position",
         "direction": "asc"
@@ -26,7 +26,7 @@
           "kind": "slug",
           "label": "URL",
           "from": "title",
-          "description": "The address of the page, e.g. /about."
+          "description": "The address of the page, e.g. /about-us."
         },
         "intro": {
           "kind": "textarea",
@@ -134,7 +134,7 @@
       "name": "projects",
       "label": "Projects",
       "labelSingular": "Project",
-      "description": "Reference projects shown in the portfolio.",
+      "description": "Client projects shown in the portfolio.",
       "defaultSort": {
         "field": "year",
         "direction": "desc"
@@ -168,21 +168,51 @@
           "listed": true,
           "options": [
             {
-              "label": "Residential",
-              "value": "residential"
+              "label": "Strategy",
+              "value": "strategy"
             },
             {
-              "label": "Commercial",
-              "value": "commercial"
+              "label": "Operations",
+              "value": "operations"
             },
             {
-              "label": "Public",
-              "value": "public"
+              "label": "Technology",
+              "value": "technology"
             },
             {
-              "label": "Renovation",
-              "value": "renovation"
+              "label": "Public sector",
+              "value": "public-sector"
             }
+          ]
+        },
+        "code": {
+          "kind": "text",
+          "label": "Project number",
+          "readonly": true,
+          "width": "half",
+          "pattern": "[A-Z]{2}-[0-9]{3}",
+          "patternMessage": "Use two capital letters, a hyphen and three digits, like HL-104."
+        },
+        "duration": {
+          "kind": "number",
+          "label": "Duration",
+          "integer": true,
+          "min": 1,
+          "unit": "weeks",
+          "width": "half"
+        },
+        "tags": {
+          "kind": "tags",
+          "label": "Tags",
+          "max": 6,
+          "maxLength": 24,
+          "suggestions": [
+            "process",
+            "finance",
+            "data",
+            "software",
+            "people",
+            "strategy"
           ]
         },
         "description": {
@@ -202,11 +232,10 @@
               "label": "City",
               "width": "half"
             },
-            "postalCode": {
+            "country": {
               "kind": "text",
-              "label": "Postal code",
-              "width": "half",
-              "maxLength": 12
+              "label": "Country",
+              "width": "half"
             },
             "position": {
               "kind": "coordinates",
@@ -290,6 +319,24 @@
           "collection": "team",
           "width": "half"
         },
+        "relatedProject": {
+          "kind": "relation",
+          "label": "Related project",
+          "collection": "projects",
+          "description": "The article links to this project's page."
+        },
+        "tags": {
+          "kind": "tags",
+          "label": "Tags",
+          "max": 5,
+          "maxLength": 24,
+          "suggestions": [
+            "research",
+            "careers",
+            "case study",
+            "operations"
+          ]
+        },
         "excerpt": {
           "kind": "textarea",
           "label": "Teaser",
@@ -305,6 +352,127 @@
         "body": {
           "kind": "richText",
           "label": "Article"
+        }
+      }
+    },
+    "events": {
+      "type": "collection",
+      "layout": "directory",
+      "name": "events",
+      "label": "Events",
+      "labelSingular": "Event",
+      "description": "Workshops and talks, in person or online.",
+      "defaultSort": {
+        "field": "startsAt",
+        "direction": "desc"
+      },
+      "fields": {
+        "title": {
+          "kind": "text",
+          "label": "Title",
+          "required": true,
+          "maxLength": 120,
+          "listed": true
+        },
+        "slug": {
+          "kind": "slug",
+          "label": "URL",
+          "from": "title"
+        },
+        "startsAt": {
+          "kind": "date",
+          "label": "Starts",
+          "includeTime": true,
+          "required": true,
+          "listed": true,
+          "width": "half"
+        },
+        "endsAt": {
+          "kind": "date",
+          "label": "Ends",
+          "includeTime": true,
+          "width": "half"
+        },
+        "format": {
+          "kind": "select",
+          "label": "Format",
+          "multiple": true,
+          "width": "half",
+          "options": [
+            {
+              "label": "In person",
+              "value": "in-person"
+            },
+            {
+              "label": "Online",
+              "value": "online"
+            }
+          ]
+        },
+        "capacity": {
+          "kind": "number",
+          "label": "Capacity",
+          "integer": true,
+          "min": 1,
+          "unit": "seats",
+          "width": "half"
+        },
+        "venue": {
+          "kind": "object",
+          "label": "Venue",
+          "group": "Where",
+          "fields": {
+            "name": {
+              "kind": "text",
+              "label": "Name"
+            },
+            "address": {
+              "kind": "textarea",
+              "label": "Address",
+              "rows": 2
+            },
+            "position": {
+              "kind": "coordinates",
+              "label": "Map position"
+            }
+          }
+        },
+        "registrationUrl": {
+          "kind": "url",
+          "label": "Registration link",
+          "group": "Where",
+          "placeholder": "https://harborlane.example/register/..."
+        },
+        "speakers": {
+          "kind": "relation",
+          "label": "Speakers",
+          "collection": "team",
+          "multiple": true
+        },
+        "summary": {
+          "kind": "textarea",
+          "label": "Summary",
+          "rows": 3,
+          "maxLength": 300
+        },
+        "body": {
+          "kind": "richText",
+          "label": "Programme"
+        },
+        "tags": {
+          "kind": "tags",
+          "label": "Tags",
+          "max": 5,
+          "maxLength": 24,
+          "suggestions": [
+            "workshop",
+            "webinar",
+            "operations",
+            "technology"
+          ],
+          "default": [
+            "event"
+          ]
         }
       }
     },
@@ -345,7 +513,10 @@
         "phone": {
           "kind": "text",
           "label": "Phone",
-          "width": "half"
+          "width": "half",
+          "placeholder": "+351 21 555 0143",
+          "pattern": "\\+[0-9 ]{7,18}",
+          "patternMessage": "Use the international form, like +351 21 555 0143."
         },
         "portrait": {
           "kind": "media",
@@ -470,7 +641,7 @@
             "titleSuffix": {
               "kind": "text",
               "label": "Title suffix",
-              "description": "Appended to every page title, e.g. \" — Muster AG\"."
+              "description": "Appended to every page title, e.g. \" — Harbor Lane Consulting\"."
             },
             "defaultDescription": {
               "kind": "textarea",

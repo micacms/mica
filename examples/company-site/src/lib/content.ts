@@ -86,6 +86,32 @@ export async function getFeaturedTeam() {
     .sort((a, b) => a.data._mica.position - b.data._mica.position);
 }
 
+/** Events with the upcoming ones first (soonest first), then the past ones (latest first). */
+export async function getEvents(now = new Date()) {
+  const items = await getCollection("events");
+  const time = (item: (typeof items)[number]) => new Date(item.data.startsAt ?? 0).getTime();
+  const upcoming = items.filter((item) => time(item) >= now.getTime()).sort((a, b) => time(a) - time(b));
+  const past = items.filter((item) => time(item) < now.getTime()).sort((a, b) => time(b) - time(a));
+  return { upcoming, past };
+}
+
+/**
+ * A relation seen from the other side. A project names its team, and the team
+ * member does not name the project, so the page asks the collection and filters.
+ */
+export async function getProjectsOf(memberSlug: string) {
+  const items = await getProjects();
+  return items.filter((item) => item.data.team.includes(memberSlug));
+}
+
+/** The events in which a team member speaks, soonest first. */
+export async function getEventsOf(memberSlug: string) {
+  const items = await getCollection("events");
+  return items
+    .filter((item) => item.data.speakers.includes(memberSlug))
+    .sort((a, b) => (a.data.startsAt ?? "").localeCompare(b.data.startsAt ?? ""));
+}
+
 export async function getPages() {
   const items = await getCollection("pages");
   return [...items].sort(
@@ -97,12 +123,49 @@ export async function getPages() {
  * Presentation helpers
  * ------------------------------------------------------------------ */
 
+/** Labels for the `category` options of a project. */
+export const CATEGORY_LABELS: Record<string, string> = {
+  strategy: "Strategy",
+  operations: "Operations",
+  technology: "Technology",
+  "public-sector": "Public sector",
+};
+
+/** Labels for the `format` options of an event. */
+export const FORMAT_LABELS: Record<string, string> = {
+  "in-person": "In person",
+  online: "Online",
+};
+
 /** Formats an ISO date for display, in the site's locale. */
-export function formatDate(iso: string | null, locale = "de-CH"): string {
+export function formatDate(iso: string | null, locale = "en"): string {
   if (!iso) return "";
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return "";
   return new Intl.DateTimeFormat(locale, { dateStyle: "long" }).format(date);
+}
+
+/**
+ * Formats a date with time as the wall clock of its own offset.
+ *
+ * A stored value like `2026-11-12T18:30:00+00:00` names its time zone. Showing
+ * it in the zone of the build machine would change the hour, so the offset is
+ * applied by hand and the zone is named in the text.
+ */
+export function formatDateTime(iso: string | null, locale = "en"): string {
+  if (!iso) return "";
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "";
+  const match = iso.match(/([+-])(\d{2}):(\d{2})$/);
+  const offset = match ? (match[1] === "-" ? -1 : 1) * (Number(match[2]) * 60 + Number(match[3])) : 0;
+  const shifted = new Date(date.getTime() + offset * 60_000);
+  const text = new Intl.DateTimeFormat(locale, {
+    dateStyle: "long",
+    timeStyle: "short",
+    hourCycle: "h23",
+    timeZone: "UTC",
+  }).format(shifted);
+  return `${text} (UTC${match ? `${match[1]}${match[2]}:${match[3]}` : "+00:00"})`;
 }
 
 /**

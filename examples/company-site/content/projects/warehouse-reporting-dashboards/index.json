@@ -1,0 +1,41 @@
+{
+  "title": "Warehouse reporting dashboards",
+  "slug": "warehouse-reporting-dashboards",
+  "year": 2024,
+  "category": "technology",
+  "code": "HL-104",
+  "duration": 8,
+  "tags": [
+    "data",
+    "software"
+  ],
+  "location": {
+    "address": "200 King Street West",
+    "city": "Toronto",
+    "country": "Canada",
+    "position": {
+      "lat": 43.649,
+      "lng": -79.3866
+    }
+  },
+  "facts": [
+    {
+      "label": "Spreadsheets replaced",
+      "value": "11"
+    },
+    {
+      "label": "Report time",
+      "value": "−80%"
+    }
+  ],
+  "gallery": [
+    {
+      "path": "/media/workspace.jpg",
+      "alt": "Warehouse dashboard with a task list on a dark screen"
+    }
+  ],
+  "team": [
+    "priya-raman"
+  ],
+  "featured": true
+}

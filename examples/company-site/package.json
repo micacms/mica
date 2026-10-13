@@ -1,8 +1,8 @@
 {
-  "name": "@micacms/example-muster-consulting",
+  "name": "@micacms/example-company-site",
   "version": "0.0.1",
   "private": true,
-  "description": "Example Astro site: a small consultancy website edited through Mica.",
+  "description": "Example Astro site: Harbor Lane Consulting, a company website edited through Mica.",
   "type": "module",
   "scripts": {
     "astro": "astro",

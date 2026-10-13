@@ -2,20 +2,16 @@
 import { Image } from "astro:assets";
 import type { CollectionEntry } from "astro:content";
 
+import TagList from "@/components/TagList.astro";
+import { CATEGORY_LABELS } from "@/lib/content";
+
 interface Props {
   project: CollectionEntry<"projects">;
   priority?: boolean;
 }
 
 const { project, priority = false } = Astro.props;
-const { title, year, category, gallery, location } = project.data;
-
-const CATEGORY_LABELS: Record<string, string> = {
-  residential: "Residential",
-  commercial: "Commercial",
-  public: "Public",
-  renovation: "Renovation",
-};
+const { title, year, category, gallery, location, tags } = project.data;
 
 const cover = gallery[0] ?? null;
 ---
@@ -27,7 +23,7 @@ const cover = gallery[0] ?? null;
         cover ? (
           <Image
             src={cover.src}
-            alt=""
+            alt={cover.alt}
             class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
             widths={[400, 800, 1200]}
             sizes="(min-width: 1024px) 380px, (min-width: 640px) 45vw, 90vw"
@@ -51,4 +47,7 @@ const cover = gallery[0] ?? null;
       </p>
     </div>
   </a>
+  <div class="mt-2">
+    <TagList tags={tags} />
+  </div>
 </article>

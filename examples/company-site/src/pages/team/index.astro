@@ -47,7 +47,7 @@ const team = await getFeaturedTeam();
               )}
 
               <h2 class="mt-4 font-semibold tracking-tight">
-                {member.data.name}
+                <a href={`/team/${member.id}/`} class="hover:text-primary">{member.data.name}</a>
               </h2>
               {member.data.role && (
                 <p class="text-sm text-muted">{member.data.role}</p>

@@ -1,6 +1,7 @@
 ---
 import { Image } from "astro:assets";
 import PageIntro from "@/components/PageIntro.astro";
+import TagList from "@/components/TagList.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { formatDate, getNews } from "@/lib/content";
 
@@ -29,7 +30,7 @@ const articles = await getNews();
                   >
                     <Image
                       src={article.data.coverImage.src}
-                      alt=""
+                      alt={article.data.coverImage.alt}
                       class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                       widths={[320, 640]}
                       sizes="(min-width: 640px) 192px, 92vw"
@@ -56,6 +57,9 @@ const articles = await getNews();
                   </span>
                 </div>
               </a>
+              <div class="pb-8 sm:pl-[13.25rem]">
+                <TagList tags={article.data.tags} />
+              </div>
             </li>
           ))}
         </ul>

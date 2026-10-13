@@ -1,9 +1,18 @@
 {
   "title": "Services",
   "slug": "services",
-  "intro": "Strategy, operations and digital projects; scoped to what a small team can deliver...",
+  "intro": "Strategy, operations and technology projects, scoped to what a small team can deliver.",
   "heroImage": null,
-  "sections": [],
+  "sections": [
+    {
+      "heading": "Our approach",
+      "layout": "image-right",
+      "image": {
+        "path": "/media/workspace.jpg",
+        "alt": "A project dashboard with a task list on a dark screen, as we use it to track each engagement"
+      }
+    }
+  ],
   "seo": {
     "metaTitle": null,
     "metaDescription": null,

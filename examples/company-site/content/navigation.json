@@ -11,6 +11,11 @@
       "children": []
     },
     {
+      "label": "Events",
+      "href": "/events",
+      "children": []
+    },
+    {
       "label": "Team",
       "href": "/team",
       "children": []
@@ -28,13 +33,13 @@
   ],
   "footer": [
     {
-      "label": "Imprint",
-      "href": "/imprint"
+      "label": "Legal notice",
+      "href": "/legal"
     },
     {
       "label": "Privacy",
       "href": "/privacy"
     }
   ],
-  "footerNote": "© Muster Consulting AG"
+  "footerNote": "© Harbor Lane Consulting"
 }

@@ -30,7 +30,7 @@ COPY packages/editor-ui/package.json packages/editor-ui/
 COPY apps/local-editor/package.json apps/local-editor/
 COPY apps/self-hosted/package.json apps/self-hosted/
 COPY sites/micacms/package.json sites/micacms/
-COPY examples/muster-consulting/package.json examples/muster-consulting/
+COPY examples/company-site/package.json examples/company-site/
 COPY tests/browser/package.json tests/browser/
 
 # Installs only the closure the image needs. `rush install` never updates the committed lockfile.

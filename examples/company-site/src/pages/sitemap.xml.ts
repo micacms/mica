@@ -12,10 +12,12 @@ import { getCollection } from "astro:content";
 export const GET: APIRoute = async ({ site }) => {
   const origin = (site ?? new URL("http://localhost:4321")).origin;
 
-  const [pages, projects, news] = await Promise.all([
+  const [pages, projects, news, events, team] = await Promise.all([
     getCollection("pages"),
     getCollection("projects"),
     getCollection("news"),
+    getCollection("events"),
+    getCollection("team"),
   ]);
 
   /**
@@ -31,9 +33,12 @@ export const GET: APIRoute = async ({ site }) => {
     { path: "/", lastmod: null },
     { path: "/projects/", lastmod: null },
     { path: "/news/", lastmod: null },
+    { path: "/events/", lastmod: null },
     { path: "/team/", lastmod: null },
     ...pages.map((page) => ({ path: `/${page.id}/`, lastmod: null })),
     ...projects.map((item) => ({ path: `/projects/${item.id}/`, lastmod: null })),
+    ...events.map((item) => ({ path: `/events/${item.id}/`, lastmod: null })),
+    ...team.map((item) => ({ path: `/team/${item.id}/`, lastmod: null })),
     // News is the one collection with an editorial date, so it is the one
     // place a truthful `lastmod` is available.
     ...news.map((item) => ({ path: `/news/${item.id}/`, lastmod: item.data.publishDate })),

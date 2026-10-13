@@ -2,7 +2,14 @@
 import { Image } from "astro:assets";
 import ProjectCard from "@/components/ProjectCard.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { formatDate, getNews, getProjects, getSiteSettings } from "@/lib/content";
+import {
+  formatDate,
+  formatDateTime,
+  getEvents,
+  getNews,
+  getProjects,
+  getSiteSettings,
+} from "@/lib/content";
 
 const settings = await getSiteSettings();
 
@@ -12,6 +19,7 @@ const allProjects = await getProjects();
 const showcase = (featured.length > 0 ? featured : allProjects).slice(0, 3);
 
 const news = (await getNews()).slice(0, 3);
+const upcomingEvents = (await getEvents()).upcoming.slice(0, 3);
 ---
 
 <BaseLayout>
@@ -57,6 +65,39 @@ const news = (await getNews()).slice(0, 3);
   }
 
   {
+    upcomingEvents.length > 0 && (
+      <section class="container-page mt-20" aria-labelledby="events-heading">
+        <div class="flex items-end justify-between gap-4 border-t border-line pt-10">
+          <h2 id="events-heading" class="text-2xl font-semibold tracking-tight">
+            Upcoming events
+          </h2>
+          <a href="/events/" class="shrink-0 text-sm font-medium text-primary hover:underline">
+            All events →
+          </a>
+        </div>
+
+        <ul class="mt-8 grid gap-8 sm:grid-cols-3">
+          {upcomingEvents.map((event) => (
+            <li>
+              <a href={`/events/${event.id}/`} class="group block">
+                <time datetime={event.data.startsAt} class="text-xs text-muted">
+                  {formatDateTime(event.data.startsAt)}
+                </time>
+                <h3 class="mt-1 font-semibold tracking-tight group-hover:text-primary">
+                  {event.data.title}
+                </h3>
+                {event.data.summary && (
+                  <p class="mt-1.5 text-sm text-muted">{event.data.summary}</p>
+                )}
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    )
+  }
+
+  {
     news.length > 0 && (
       <section class="container-page mt-20" aria-labelledby="news-heading">
         <div class="flex items-end justify-between gap-4 border-t border-line pt-10">
@@ -79,7 +120,7 @@ const news = (await getNews()).slice(0, 3);
                   >
                     <Image
                       src={article.data.coverImage.src}
-                      alt=""
+                      alt={article.data.coverImage.alt}
                       class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                       widths={[400, 800]}
                       sizes="(min-width: 640px) 30vw, 90vw"

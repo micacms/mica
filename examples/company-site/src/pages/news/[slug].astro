@@ -1,8 +1,10 @@
 ---
 import { Image } from "astro:assets";
-import { getCollection, getEntry, type CollectionEntry } from "astro:content";
+import { related } from "@micacms/astro/relations";
+import { getCollection, type CollectionEntry } from "astro:content";
 
 import RichText from "@/components/RichText.astro";
+import TagList from "@/components/TagList.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { formatDate, toPlainText } from "@/lib/content";
 
@@ -19,9 +21,10 @@ interface Props {
 }
 
 const { article } = Astro.props;
-const { title, publishDate, excerpt, coverImage, body, author } = article.data;
+const { title, publishDate, excerpt, coverImage, body, author, relatedProject, tags } = article.data;
 
-const writer = author ? await getEntry("team", author) : undefined;
+const writer = await related("team", author);
+const project = await related("projects", relatedProject);
 ---
 
 <BaseLayout
@@ -37,8 +40,16 @@ const writer = author ? await getEntry("team", author) : undefined;
 
       <p class="mt-3 text-sm text-muted">
         {publishDate && <time datetime={publishDate}>{formatDate(publishDate)}</time>}
-        {writer && <span>{publishDate ? " · " : ""}by {writer.data.name}</span>}
+        {
+          writer && (
+            <span>
+              {publishDate ? " · " : ""}by{" "}
+              <a href={`/team/${writer.id}/`} class="hover:text-primary">{writer.data.name}</a>
+            </span>
+          )
+        }
       </p>
+      <div class="mt-3"><TagList tags={tags} /></div>
 
       {excerpt && <p class="mt-5 text-lg text-muted text-pretty">{excerpt}</p>}
     </div>
@@ -62,6 +73,17 @@ const writer = author ? await getEntry("team", author) : undefined;
 
     <div class="container-prose pb-8">
       <RichText text={body} />
+
+      {
+        project && (
+          <p class="mt-8 border-t border-line pt-4 text-sm">
+            Related project:{" "}
+            <a href={`/projects/${project.id}/`} class="font-medium text-primary hover:underline">
+              {project.data.title}
+            </a>
+          </p>
+        )
+      }
     </div>
   </article>
 </BaseLayout>
