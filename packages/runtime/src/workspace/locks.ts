@@ -97,6 +97,7 @@ export function lockedFiles(
     read: (path) => tree.read(() => files.read(path)),
     list: (path) => tree.read(() => files.list(path)),
     readBinary: (path) => tree.read(() => files.readBinary(path)),
+    stat: (path) => tree.read(() => files.stat(path)),
     revision: (path) => tree.read(() => files.revision(path)),
     apply: (input) => tree.write(() => files.apply(input)),
   };

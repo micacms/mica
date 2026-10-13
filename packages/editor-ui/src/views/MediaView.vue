@@ -51,10 +51,24 @@ function toggleChosen(path: string): void {
 const usedBy = ref<Referrer[] | null>(null);
 /** Why the use cannot be checked, such as a collection that cannot be read. */
 const usageProblem = ref<string | null>(null);
+/** The selected file's dimensions: the list does not read files, so it has none. */
+const dimensions = ref<{ width: number; height: number } | null>(null);
+
 watch(selected, async (item) => {
   usedBy.value = null;
   usageProblem.value = null;
+  dimensions.value = null;
   if (!item) return;
+  if (isImage(item)) {
+    void api.media.info(item.path).then(
+      (info) => {
+        if (selected.value?.path === item.path && info.width && info.height) {
+          dimensions.value = { width: info.width, height: info.height };
+        }
+      },
+      () => {},
+    );
+  }
   try {
     const { uses, unreadable } = await api.media.usage([item.path]);
     // A slower answer for a file selected before must not show for this one.
@@ -335,9 +349,9 @@ async function copyPath(path: string): Promise<void> {
             <dt>Type</dt>
             <dd>{{ selected.mimeType }}</dd>
           </div>
-          <div v-if="selected.width" class="flex justify-between gap-3">
+          <div v-if="dimensions" class="flex justify-between gap-3">
             <dt>Dimensions</dt>
-            <dd>{{ selected.width }} × {{ selected.height }}</dd>
+            <dd>{{ dimensions.width }} × {{ dimensions.height }}</dd>
           </div>
           <div class="flex justify-between gap-3">
             <dt>Size</dt>

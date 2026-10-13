@@ -117,6 +117,7 @@ describe("locked files", () => {
     const files: ContentFiles = {
       ...source,
       readBinary: async () => null,
+      stat: async () => null,
       revision: async () => null,
       apply: async () => {
         order.push("save");

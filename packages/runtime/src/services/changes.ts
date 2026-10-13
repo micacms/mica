@@ -3,6 +3,7 @@
 import type { Author } from "../workspace/files.js";
 import {
   LayoutError,
+  misplacedFiles,
   ORDER_FILE,
   collectReferences,
   collectionEntryPath,
@@ -12,6 +13,7 @@ import {
   isValidSlug,
   readCollection,
   readCollectionEntry,
+  readOrder,
   readSingleton,
   relativizeMedia,
   resolveSlugField,
@@ -223,33 +225,74 @@ export async function analyseChanges(
 ): Promise<{ changes: AnnotatedChange[]; validation: StagingValidation }> {
   const owners = changes.map((change) => classifyPath(model, change.path));
 
-  const collectionsToRead = new Set<string>();
-  for (const owner of owners) {
-    if (owner.kind === "entry" || owner.kind === "order") collectionsToRead.add(owner.collection);
-  }
-
   const problems: StagingProblem[] = [];
   const titles = new Map<string, string>();
-  const entriesByCollection = new Map<string, Map<string, Record<string, unknown>>>();
+  /**
+   * The changed entries, as the source has them; null for one the change set
+   * removes. Only these are read: the rest of a collection is not opened (#76).
+   */
+  const entriesByCollection = new Map<string, Map<string, Record<string, unknown> | null>>();
 
-  for (const name of collectionsToRead) {
-    const def = model.collections[name]!;
-    try {
-      const entries = await readCollection(source, def, name);
-      const bySlug = new Map(entries.map((entry) => [entry.slug, entry.data]));
-      entriesByCollection.set(name, bySlug);
-      for (const [slug, data] of bySlug) titles.set(`${name}/${slug}`, entryTitle(def, data));
-    } catch (error) {
-      // An unreadable collection, possibly from an untouched file, is a problem
-      // at the path it names.
-      const path = (error as { path?: string }).path ?? name;
-      problems.push({
-        path,
-        label: def.label,
-        issues: [{ path: "", message: (error as Error).message }],
-      });
-    }
+  const collectionsChanged = new Set<string>();
+  const ordersChanged = new Set<string>();
+  for (const owner of owners) {
+    if (owner.kind === "entry" || owner.kind === "order") collectionsChanged.add(owner.collection);
+    if (owner.kind === "order") ordersChanged.add(owner.collection);
   }
+  // A changed order file must still parse: the website's build reads it.
+  await Promise.all(
+    [...ordersChanged].map(async (name) => {
+      try {
+        await readOrder(source, name);
+      } catch (error) {
+        const def = model.collections[name]!;
+        const path = (error as { path?: string }).path ?? `${name}/${ORDER_FILE}`;
+        problems.push({ path, label: `${def.label}: order`, issues: [{ path: "", message: (error as Error).message }] });
+      }
+    }),
+  );
+  // An entry in the other layout is lost content: name it where the collection changes.
+  await Promise.all(
+    [...collectionsChanged].map(async (name) => {
+      const def = model.collections[name]!;
+      const misplaced = await misplacedFiles(source, def.fields, name, "collection").catch(() => []);
+      if (misplaced.length === 0) return;
+      const error = new LayoutError(misplaced, name, entryLayout(def.fields));
+      problems.push({ path: misplaced[0]!, label: def.label, issues: [{ path: "", message: error.message }] });
+    }),
+  );
+
+  const slugsToRead = new Map<string, Set<string>>();
+  for (const owner of owners) {
+    if (owner.kind !== "entry") continue;
+    const slugs = slugsToRead.get(owner.collection) ?? new Set<string>();
+    slugsToRead.set(owner.collection, slugs);
+    slugs.add(owner.slug);
+  }
+  await Promise.all(
+    [...slugsToRead].flatMap(([name, slugs]) => {
+      const def = model.collections[name]!;
+      const read = new Map<string, Record<string, unknown> | null>();
+      entriesByCollection.set(name, read);
+      return [...slugs].map(async (slug) => {
+        try {
+          const data = await readCollectionEntry(source, def, name, slug);
+          read.set(slug, data);
+          if (data) titles.set(`${name}/${slug}`, entryTitle(def, data));
+        } catch (error) {
+          // An unreadable entry is a problem at the path it names.
+          read.set(slug, null);
+          problems.push({
+            path: (error as { path?: string }).path ?? entryDataPath(def, name, slug),
+            label: def.label,
+            issues: [{ path: "", message: (error as Error).message }],
+          });
+        }
+      });
+    }),
+  );
+  // The reads ran in parallel; the problems come out in the same order every time.
+  problems.sort((a, b) => a.path.localeCompare(b.path));
 
   if (published) {
     await detectRenames(model, published, source, changes, owners, entriesByCollection);
@@ -271,10 +314,8 @@ export async function analyseChanges(
   };
 
   const validated = new Set<string>();
-  const targets = createReferenceCheck(model, source, (name) => {
-    const entries = entriesByCollection.get(name);
-    return entries ? new Set(entries.keys()) : undefined;
-  });
+  // Each linked entry is looked up by its data file: only the targets that a changed document names.
+  const targets = createReferenceCheck(model, source);
 
   for (const owner of owners) {
     if (owner.kind === "entry") {
@@ -443,7 +484,8 @@ async function detectRenames(
   source: ContentSource,
   changes: ContentChange[],
   owners: ChangeOwner[],
-  staged: Map<string, Map<string, Record<string, unknown>>>,
+  /** The changed entries as staged; null for a removed one. */
+  staged: Map<string, Map<string, Record<string, unknown> | null>>,
 ): Promise<void> {
   const kinds = new Map<string, Map<string, Set<ContentChange["kind"]>>>();
   owners.forEach((owner, index) => {
@@ -461,25 +503,22 @@ async function detectRenames(
 
     const only = (kind: ContentChange["kind"]) =>
       [...bySlug].filter(([, set]) => set.size === 1 && set.has(kind)).map(([slug]) => slug);
-    const deleted = only("delete").filter((slug) => !after.has(slug));
-    const created = only("create").filter((slug) => after.has(slug));
+    const deleted = only("delete").filter((slug) => !after.get(slug));
+    const created = only("create").filter((slug) => after.get(slug));
     if (deleted.length === 0 || created.length === 0) continue;
 
+    // Only the candidates are read on the published side, not the collection.
     const def = model.collections[name]!;
-    let before: Map<string, Record<string, unknown>>;
-    try {
-      const entries = await readCollection(published, def, name);
-      before = new Map(entries.map((entry) => [entry.slug, entry.data]));
-    } catch {
-      continue;
-    }
+    const publishedEntry = (slug: string) => readCollectionEntry(published, def, name, slug).catch(() => null);
+    const before = new Map<string, Record<string, unknown> | null>();
+    await Promise.all([...deleted, ...created].map(async (slug) => before.set(slug, await publishedEntry(slug))));
 
     const candidates: Array<{ from: string; to: string; score: number }> = [];
     for (const from of deleted) {
       const old = before.get(from);
       if (!old) continue;
       for (const to of created) {
-        if (before.has(to)) continue;
+        if (before.get(to)) continue;
         const score = similarity(def, onDisk(def, name, from, old), onDisk(def, name, to, after.get(to)!));
         if (score >= RENAME_SIMILARITY) candidates.push({ from, to, score });
       }
@@ -594,7 +633,8 @@ async function brokenByRemoval(
   source: ContentSource,
   changes: ContentChange[],
   owners: ChangeOwner[],
-  entriesByCollection: Map<string, Map<string, Record<string, unknown>>>,
+  /** The changed entries as staged; null for a removed one. */
+  entriesByCollection: Map<string, Map<string, Record<string, unknown> | null>>,
   titles: Map<string, string>,
 ): Promise<StagingProblem[]> {
   const removedEntries = new Map<string, { collection: string; slug: string; renamedTo?: string }>();
@@ -605,7 +645,7 @@ async function brokenByRemoval(
     if (owner.kind === "entry") {
       // A URL change removes the old slug: links to it break as with a delete.
       const gone = owner.renamedFrom ?? owner.slug;
-      if (!entriesByCollection.get(owner.collection)?.has(gone)) {
+      if (!entriesByCollection.get(owner.collection)?.get(gone)) {
         const renamedTo = owner.renamedFrom ? owner.slug : undefined;
         removedEntries.set(`${owner.collection}/${gone}`, { collection: owner.collection, slug: gone, ...(renamedTo ? { renamedTo } : {}) });
         return;
@@ -626,16 +666,15 @@ async function brokenByRemoval(
     }
   };
 
+  // Only a removal reads the whole site: what links to the removed entry or file can be anywhere.
   for (const [name, def] of Object.entries(model.collections)) {
-    let entries = entriesByCollection.get(name);
-    if (!entries) {
-      try {
-        entries = new Map((await readCollection(source, def, name)).map((entry) => [entry.slug, entry.data]));
-      } catch {
-        continue; // An unreadable collection is reported where it is changed.
-      }
+    let entries: Awaited<ReturnType<typeof readCollection>>;
+    try {
+      entries = await readCollection(source, def, name);
+    } catch {
+      continue; // An unreadable collection is reported where it is changed.
     }
-    for (const [slug, data] of entries) scan(labelEntry(def, slug, entryTitle(def, data)), def.fields, data);
+    for (const { slug, data } of entries) scan(labelEntry(def, slug, entryTitle(def, data)), def.fields, data);
   }
   for (const [name, def] of Object.entries(model.singletons)) {
     const data = await readSingleton(source, def, name).catch(() => null);

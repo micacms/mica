@@ -106,6 +106,7 @@ async function move(index: number, direction: -1 | 1): Promise<void> {
       props.collection,
       next.map((entry) => entry.slug),
     );
+    void staging.refresh();
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not save the new order.");
     await load();

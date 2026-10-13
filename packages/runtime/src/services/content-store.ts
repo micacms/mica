@@ -19,7 +19,10 @@ import {
   isValidSlug,
   collectReferences,
   readCollection,
+  collectionSlugs,
   mapMedia,
+  LayoutError,
+  misplacedFiles,
   readCollectionEntry,
   readSingleton,
   relativizeMedia,
@@ -29,7 +32,6 @@ import {
   serializeEntry,
   singletonPath,
   slugify,
-  uniqueSlug,
   validateFields,
   withDefaults,
   type Collection,
@@ -307,10 +309,16 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     return moves;
   };
 
-  /** Slugs already taken in a collection, so a new one can be made unique. */
-  const takenSlugs = async (def: Collection, name: string, except?: string): Promise<string[]> => {
-    const entries = await readCollection(workspace, def, name);
-    return entries.map((entry) => entry.slug).filter((slug) => slug !== except);
+  /** Whether an entry has this URL: its data file exists. A folder with only uploads is not one. */
+  const entryExists = async (def: Collection, name: string, slug: string): Promise<boolean> =>
+    (await workspace.stat(dataPath(def, name, slug))) !== null;
+
+  /** The first free URL from `base` (`base`, `base-2`, …), checking candidates rather than reading the collection. */
+  const freeSlug = async (def: Collection, name: string, base: string, except?: string): Promise<string> => {
+    for (let suffix = 1; ; suffix++) {
+      const candidate = suffix === 1 ? base : `${base}-${suffix}`;
+      if (candidate === except || !(await entryExists(def, name, candidate))) return candidate;
+    }
   };
 
   return {
@@ -318,9 +326,23 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       return readCollection(workspace, requireCollection(collectionName), collectionName);
     },
 
-    async get(collectionName: string, slug: string): Promise<ContentEntry | null> {
-      const entries = await this.list(collectionName);
-      return entries.find((entry) => entry.slug === slug) ?? null;
+    /** How many entries a collection has, from one directory listing: for counts, not for lists. */
+    async count(collectionName: string): Promise<number> {
+      const def = requireCollection(collectionName);
+      const names = await collectionSlugs(workspace, def, collectionName);
+      const exists = await Promise.all(names.map((slug) => entryExists(def, collectionName, slug)));
+      return exists.filter(Boolean).length;
+    },
+
+    /** One entry, without opening the rest of its collection. Refuses, like the list, while entries sit in the other layout. */
+    async get(collectionName: string, slug: string): Promise<Omit<ContentEntry, "position"> | null> {
+      const def = requireCollection(collectionName);
+      // A file system that ignores case would otherwise open `News-42` as `news-42`.
+      if (!isValidSlug(slug)) return null;
+      const misplaced = await misplacedFiles(workspace, def.fields, collectionName, "collection");
+      if (misplaced.length > 0) throw new LayoutError(misplaced, collectionName, entryLayout(def.fields));
+      const data = await readCollectionEntry(workspace, def, collectionName, slug);
+      return data ? { slug, data } : null;
     },
 
     /** The revision an editor must send back with a save of this entry. */
@@ -354,7 +376,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       const slug =
         requested === input.slug
           ? requested
-          : uniqueSlug(requested, await takenSlugs(def, collectionName, input.slug));
+          : await freeSlug(def, collectionName, requested, input.slug);
 
       data[slugKey] = slug;
       const base = collectionEntryPath(def.fields, collectionName, slug);
@@ -526,7 +548,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     /** Slug the server would assign, so the editor's URL preview matches it. */
     async suggestSlug(collectionName: string, source: string, except?: string): Promise<string> {
       const def = requireCollection(collectionName);
-      return uniqueSlug(slugify(source), await takenSlugs(def, collectionName, except));
+      return freeSlug(def, collectionName, slugify(source), except);
     },
 
     /**

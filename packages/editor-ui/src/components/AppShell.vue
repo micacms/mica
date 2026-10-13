@@ -75,18 +75,22 @@ function signInAgain(): void {
 
 const menuOpen = ref(false);
 
-// On a phone the sidebar is an overlay; navigating must dismiss it. The badge
-// refreshes on the same signal: navigation is when an editor looks at the
-// sidebar again, and one small request per page keeps it honest enough.
+// On a phone the sidebar is an overlay; navigating must dismiss it.
 watch(
   () => route.fullPath,
   () => {
     menuOpen.value = false;
-    void staging.refresh();
   },
 );
 
-onMounted(() => void staging.refresh());
+// The badge refreshes when a view saves, discards or publishes, and when the editor
+// comes back to the window, where a colleague's work may have changed it (#76).
+const refreshOnFocus = () => void staging.refresh();
+onMounted(() => {
+  void staging.refresh();
+  window.addEventListener("focus", refreshOnFocus);
+});
+onUnmounted(() => window.removeEventListener("focus", refreshOnFocus));
 
 const initials = computed(() => {
   const source = session.identity.value?.name || session.identity.value?.email || "";

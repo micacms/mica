@@ -253,6 +253,14 @@ describe("status", () => {
     assert.equal(byPath.get("projects/haus-a.json")?.savedAt, null);
   });
 
+  it("names an order file that does not parse", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/_order.json"), '["haus-a",]');
+    const status = await service.status();
+    assert.equal(status.validation.ok, false);
+    assert.match(status.validation.problems[0]!.issues[0]!.message, /_order\.json is not valid JSON/);
+  });
+
   it("invalid staged content is named, and blocks nothing else", async () => {
     const { contentRoot, service } = makeRepo();
     writeFileSync(

@@ -94,14 +94,70 @@ export async function readCollection(
   const slugs = await listSlugs(source, def.fields, name);
   const ordered = await applyOrder(source, name, slugs);
 
+  // Eight at a time: a disk or a Git object store answers in parallel, and a
+  // limit keeps a large collection from opening every file at once.
+  const read = await mapLimit(ordered, 8, (slug) =>
+    readEntry(source, def.fields, `${name}/${slug}`, entryBase(def.fields, name, slug)),
+  );
   const entries: ContentEntry[] = [];
-
-  for (const [position, slug] of ordered.entries()) {
-    const data = await readEntry(source, def.fields, `${name}/${slug}`, entryBase(def.fields, name, slug));
+  ordered.forEach((slug, position) => {
+    const data = read[position];
     if (data) entries.push({ slug, position, data: withSlug(def, data, slug) });
-  }
-
+  });
   return entries;
+}
+
+/**
+ * A collection's manual order as its `_order.json` lists it, or null when there
+ * is none. Throws `ContentReadError` for a file that is not a JSON array.
+ */
+export async function readOrder(source: ContentSource, name: string): Promise<unknown[] | null> {
+  const path = `${name}/${ORDER_FILE}`;
+  const raw = await source.read(path);
+  if (raw === null) return null;
+
+  let listed: unknown;
+  try {
+    listed = JSON.parse(raw);
+  } catch (error) {
+    throw new ContentReadError(`${path} is not valid JSON.`, path, { cause: error });
+  }
+  if (!Array.isArray(listed)) throw new ContentReadError(`${path} must be an array of slugs.`, path);
+  return listed;
+}
+
+/**
+ * `fn` over `items`, at most `limit` at a time, with the results in order.
+ * After a failure no new item starts, and the error of the first failing item
+ * in list order is thrown, so the same broken entry is named every time.
+ */
+async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<R[]> {
+  const results = new Array<R>(items.length);
+  const errors = new Map<number, unknown>();
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length && errors.size === 0) {
+      const index = next++;
+      try {
+        results[index] = await fn(items[index]!);
+      } catch (error) {
+        errors.set(index, error);
+      }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  if (errors.size > 0) throw errors.get(Math.min(...errors.keys()));
+  return results;
+}
+
+/**
+ * The names in a collection's directory that can be entries, from one listing,
+ * without reading any entry. In the folder layout, a folder without an
+ * `index.json` (an upload for an entry that is not saved yet, or one that a
+ * discard left empty) is listed too: check the data file before counting it.
+ */
+export async function collectionSlugs(source: ContentSource, def: Collection, name: string): Promise<string[]> {
+  return listSlugs(source, def.fields, name);
 }
 
 /** The entry's URL is its file name: the slug field says the same, whatever the file holds. */
@@ -189,20 +245,8 @@ async function applyOrder(
   name: string,
   slugs: string[],
 ): Promise<string[]> {
-  const path = `${name}/${ORDER_FILE}`;
-  const raw = await source.read(path);
-  if (raw === null) return slugs;
-
-  let listed: unknown;
-  try {
-    listed = JSON.parse(raw);
-  } catch (error) {
-    throw new ContentReadError(`${path} is not valid JSON.`, path, { cause: error });
-  }
-
-  if (!Array.isArray(listed)) {
-    throw new ContentReadError(`${path} must be an array of slugs.`, path);
-  }
+  const listed = await readOrder(source, name);
+  if (listed === null) return slugs;
 
   const available = new Set(slugs);
   const ordered = listed.filter(

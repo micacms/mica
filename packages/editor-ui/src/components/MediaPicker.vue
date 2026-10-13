@@ -19,6 +19,7 @@ import { X } from "@lucide/vue";
 
 import { api, ApiError, type MediaItem } from "@/api";
 import { SHARED_MEDIA, type MediaFolder } from "@/lib/media-folder";
+import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
 const props = withDefaults(
@@ -143,6 +144,8 @@ async function upload(files: FileList | File[] | null): Promise<void> {
       accept: props.accept,
       ...(props.folder ? { directory: props.folder.path, newEntry: props.folder.isNew } : {}),
     });
+    // An upload is a pending change of its own, even before the form is saved.
+    void useStaging().refresh();
 
     if (!props.multiple) {
       if (uploaded[0]) emit("choose", [uploaded[0]]);
