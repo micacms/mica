@@ -9,8 +9,10 @@
 
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
-const LICENSE_FILE = /^(licen[cs]e|copying|notice)(\.(md|txt|markdown))?$/i;
+// LICENSE, LICENSE.md, LICENSE-MIT, COPYING, NOTICE, MIT-LICENSE, …
+const LICENSE_FILE = /^((licen[cs]e|copying|notice)([-._][\w.-]*)?|[\w.-]+-licen[cs]e(\.\w+)?)$/i;
 
 /** The MIT text, for a package that declares MIT and ships no license file. */
 const MIT = (holder) => `MIT License
@@ -35,6 +37,23 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.`;
 
+/** The ISC text, for a package that declares ISC and ships no license file. */
+const ISC = (holder) => `ISC License
+
+Copyright (c) ${holder}
+
+Permission to use, copy, modify, and/or distribute this software for any
+purpose with or without fee is hereby granted, provided that the above
+copyright notice and this permission notice appear in all copies.
+
+THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.`;
+
 /** The folder of the npm package that holds `file`, or null outside node_modules. */
 export function packageRoot(file) {
   const parts = file.split(/[\\/]/);
@@ -54,10 +73,11 @@ export function readPackage(folder) {
     .filter((file) => LICENSE_FILE.test(file))
     .sort()
     .map((file) => readFileSync(path.join(folder, file), "utf8").trim());
-  // npm requires no license file; MIT requires its text with the notice.
-  if (texts.length === 0 && license === "MIT") {
+  // npm requires no license file; MIT and ISC require their text with the notice.
+  const template = { MIT, ISC }[license];
+  if (texts.length === 0 && template) {
     const holder = typeof author === "string" ? author : (author?.name ?? `the authors of ${name}`);
-    texts.push(`(No license file in the package; the MIT text, with the author from its package.json.)\n\n${MIT(holder)}`);
+    texts.push(`(No license file in the package; the ${license} text, with the author from its package.json.)\n\n${template(holder)}`);
   }
   return { name, version, license: typeof license === "string" ? license : "see the license text", texts };
 }
@@ -94,15 +114,11 @@ function packageFolders(root) {
   return found;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const root = process.argv[2];
   if (!root || !statSync(root).isDirectory()) {
     process.stderr.write("Usage: node scripts/third-party-notices.mjs <folder>\n");
     process.exit(64);
   }
-  const intro =
-    "The image also contains Alpine Linux packages, among them git (GPL-2.0-only) and\n" +
-    "tini (MIT). Their license texts are in /usr/share/licenses where the package\n" +
-    "installs them, and their sources are at https://gitlab.alpinelinux.org/alpine/aports.\n\n";
-  process.stdout.write(formatNotices(packageFolders(root).map(readPackage), intro));
+  process.stdout.write(formatNotices(packageFolders(root).map(readPackage)));
 }

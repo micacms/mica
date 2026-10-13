@@ -15,6 +15,10 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    # A new digest of node:24-alpine, not a new Node major: that is a decision.
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
     groups:
       base-image:
         patterns: ["*"]

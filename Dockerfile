@@ -89,6 +89,14 @@ RUN mkdir -p /data && chown -R node:node /data
 COPY --from=build --chown=node:node /deploy ./
 RUN node create-links.js create
 
+# The system software has its notices too: apk knows each package's license.
+COPY scripts/licenses/GPL-2.0.txt /app/licenses/GPL-2.0.txt
+RUN { printf '\n%s\n%s\n%s\n\n' \
+      "System software in the image. Node.js is MIT, with the licenses of its bundled parts at" \
+      "https://github.com/nodejs/node/blob/v24.x/LICENSE. The Alpine Linux packages and their licenses" \
+      "follow; their sources are at https://gitlab.alpinelinux.org/alpine/aports, and the GPL-2.0 text is in /app/licenses/GPL-2.0.txt."; \
+      apk list --installed; } >> /app/THIRD_PARTY_NOTICES.txt
+
 USER node
 WORKDIR /app/apps/self-hosted
 

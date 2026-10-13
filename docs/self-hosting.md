@@ -511,7 +511,8 @@ version rather than tracking `latest`, so an upgrade is a decision.
 
 ## Verifying the image
 
-The image carries the license notices of the software in it:
+The image is built for `linux/amd64` and `linux/arm64`; Docker pulls the one
+that matches the host. It carries the license notices of the software in it:
 `/app/THIRD_PARTY_NOTICES.txt` for the server and
 `/app/packages/editor-ui/dist/THIRD_PARTY_NOTICES.txt` for the editor UI.
 

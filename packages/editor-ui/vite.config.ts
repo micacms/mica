@@ -19,7 +19,13 @@ function thirdPartyNotices(): Plugin {
         const root = packageRoot(id.replace(/^\0/, "").split("?")[0]!);
         if (root) roots.add(root);
       }
-      const source = formatNotices([...roots].map(readPackage));
+      // In the bundle, but not as modules: Tailwind's CSS, and the helpers that Vite and the Vue plugin inline.
+      for (const name of ["tailwindcss", "vite", "@vitejs/plugin-vue"]) {
+        const root = packageRoot(fileURLToPath(import.meta.resolve(name)));
+        if (root) roots.add(root);
+      }
+      const intro = "The Inter font is under the SIL Open Font License: fonts/InterVariable-LICENSE.txt.\n\n";
+      const source = formatNotices([...roots].map(readPackage), intro);
       this.emitFile({ type: "asset", fileName: "THIRD_PARTY_NOTICES.txt", source });
     },
   };

@@ -125,6 +125,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # The release builds amd64 and arm64 after npm is published; a failure
+      # there would cost a patch release, so both build here first.
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
+      - name: Build the CMS image for amd64 and arm64
+        uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha
+
       # Fails on a critical vulnerability that has a fix. One without a fix is
       # listed, not fatal: it would block every pull request until upstream acts.
       - name: Scan the CMS image
