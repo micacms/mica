@@ -6,7 +6,7 @@
  * full; then nothing is kept, and the form works as before.
  */
 
-import { onUnmounted, ref, watch, type ComputedRef, type Ref } from "vue";
+import { onUnmounted, ref, toRaw, watch, type ComputedRef, type Ref } from "vue";
 
 import { useSession } from "@/stores/session";
 
@@ -75,8 +75,10 @@ export function useKeptChanges(
     /** Puts the kept values back, with the revision they were based on. */
     restore(): void {
       if (!offered.value) return;
-      values.value = structuredClone(offered.value.values);
-      revision.value = offered.value.revision;
+      // The ref holds a reactive proxy, which `structuredClone` cannot copy.
+      const kept = toRaw(offered.value);
+      values.value = structuredClone(kept.values);
+      revision.value = kept.revision;
       offered.value = null;
     },
     /** After a save or a discard, or when the editor declines: nothing to keep. */
