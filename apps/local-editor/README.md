@@ -22,7 +22,7 @@ localhost:6422
 ## Running it against a project
 
 ```bash
-npx @micacms/editor --content ./content
+npx @micacms/editor start --content ./content
 ```
 
 The published package carries the API and the built admin, so this is one
@@ -45,6 +45,7 @@ keeps Publish out of the editor entirely).
 npx @micacms/editor init     # add Mica to the Astro project in this directory
 npx @micacms/editor check    # check every entry against the model
 npx @micacms/editor migrate-layout   # move entries after a layout change
+npx @micacms/editor import           # move Astro collections into Mica
 ```
 
 `init` writes a starter `src/mica.ts` and `src/content.config.ts`, and never

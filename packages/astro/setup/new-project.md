@@ -18,8 +18,11 @@ Ask these questions, and wait for the answers:
    from the team.
 4. Should editors put a collection in a manual order?
 5. Which images carry meaning, and which are decorative? An image that
-   carries meaning gets `media({ alt: "required" })`, so that editors write
-   its alt text. A decorative image gets `media()`.
+   carries meaning gets `media({ accept: "image", alt: "required" })`, so that
+   editors write its alt text. A decorative image gets
+   `media({ accept: "image" })`. `accept: "image"` makes the field an Astro
+   image on the pages; without it, the field is a path, for a PDF or another
+   file.
 6. Do they want example content, so that the pages show something at once?
 
 Suggest a model from the answers, as a short list of collections, singletons

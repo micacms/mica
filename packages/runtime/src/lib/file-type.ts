@@ -77,14 +77,8 @@ function isSvg(bytes: Uint8Array): boolean {
   return false;
 }
 
-const IMAGE_TYPES = new Set([
-  "image/jpeg",
-  "image/png",
-  "image/gif",
-  "image/webp",
-  "image/avif",
-  "image/heic",
-]);
+// No HEIC: Astro's image service cannot read it, so a site could not show it.
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
 
 const DOCUMENT_TYPES = new Set(["application/pdf"]);
 

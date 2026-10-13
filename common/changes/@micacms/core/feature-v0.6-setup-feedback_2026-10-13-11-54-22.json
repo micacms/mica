@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "`fieldsSchema` and `validateFields` take an `image` resolver for `media({ accept: \"image\" })`, and the inference types take the image type as a second parameter.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

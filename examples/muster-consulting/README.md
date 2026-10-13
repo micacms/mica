@@ -27,7 +27,7 @@ from the repository root points at this project's `content/` by default.
 | `content/.mica/schema.json` | The model, published by the build for Mica to read |
 | `astro.config.mjs` | Note what is *not* in it: nothing of Mica |
 | `src/lib/content.ts` | Typed helpers over the generated collections |
-| `src/lib/images.ts` | Turning a media reference into a build-time asset |
+| `src/lib/images.ts` | An absolute URL of an image, for the social-sharing meta tags |
 | `src/components/RichText.astro` | Rendering a Markdoc field |
 
 ## The model, in one line each

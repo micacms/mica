@@ -311,14 +311,26 @@ export interface Coordinates {
 type Multiple<F, T> = F extends { multiple: true } ? T[] : T;
 
 // prettier-ignore
-type MediaValue<F> =
+type StoredMedia<F> =
   F extends { alt: "required" } ? { path: string; alt: string } :
   F extends { alt: "optional" } ? MediaWithAlt :
   string;
 
+/**
+ * `Img` is the type of an image that a site framework resolves, such as Astro's
+ * `ImageMetadata`. With it, `media({ accept: "image" })` is that image, and
+ * with `alt`, `{ src, alt }`. Without it (`never`), every media value is stored.
+ */
+// prettier-ignore
+type MediaValue<F, Img> =
+  [Img] extends [never] ? StoredMedia<F> :
+  F extends { accept: "image"; alt: "required" | "optional" } ? { src: Img; alt: string } :
+  F extends { accept: "image" } ? Img :
+  StoredMedia<F>;
+
 /** The runtime value of a field, ignoring nullability. */
 // prettier-ignore
-export type FieldValue<F extends AnyField> =
+export type FieldValue<F extends AnyField, Img = never> =
   F extends TextField ? string :
   F extends TextareaField ? string :
   F extends RichTextField ? string :
@@ -332,10 +344,10 @@ export type FieldValue<F extends AnyField> =
   F extends ColorField ? string :
   F extends CoordinatesField ? Coordinates :
   // A path into the content repository; with the `alt` option, the path and its alt text.
-  F extends MediaField ? Multiple<F, MediaValue<F>> :
+  F extends MediaField ? Multiple<F, MediaValue<F, Img>> :
   F extends RelationField ? Multiple<F, string> :
-  F extends ObjectField ? InferFields<F["fields"]> :
-  F extends RepeaterField ? Array<InferFields<F["fields"]>> :
+  F extends ObjectField ? InferFields<F["fields"], Img> :
+  F extends RepeaterField ? Array<InferFields<F["fields"], Img>> :
   never;
 
 /**
@@ -351,16 +363,16 @@ type NeverNull<F extends AnyField> =
   F extends { required: true } ? true :
   false;
 
-export type InferField<F extends AnyField> = NeverNull<F> extends true
-  ? FieldValue<F>
-  : FieldValue<F> | null;
+export type InferField<F extends AnyField, Img = never> = NeverNull<F> extends true
+  ? FieldValue<F, Img>
+  : FieldValue<F, Img> | null;
 
-export type InferFields<M extends FieldMap> = {
-  [K in keyof M]: InferField<M[K]>;
+export type InferFields<M extends FieldMap, Img = never> = {
+  [K in keyof M]: InferField<M[K], Img>;
 };
 
-export type InferCollection<C extends Collection> = InferFields<C["fields"]>;
-export type InferSingleton<S extends Singleton> = InferFields<S["fields"]>;
+export type InferCollection<C extends Collection, Img = never> = InferFields<C["fields"], Img>;
+export type InferSingleton<S extends Singleton, Img = never> = InferFields<S["fields"], Img>;
 
 /** `{ projects: {...}, news: {...} }` — data shapes keyed by collection name. */
 export type InferSiteCollections<S extends Site> = {

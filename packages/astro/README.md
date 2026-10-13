@@ -68,9 +68,15 @@ Astro hands a loader exactly what they require:
   loader watches its own directory and coalesces the burst of writes that saving
   one entry produces (`debounceMs`, 100 ms by default).
 
-The loaders also check references: a relation to a missing entry, or a media
-path to a missing file, is a warning in the build log. `strict: true` makes it
-fail the build. An entry in the other layout always fails the build, with the
+Image fields reach Astro as Astro images: a `media({ accept: "image" })` field
+is `ImageMetadata`, optimised like Astro's own `image()`, and with `alt` it is
+`{ src, alt }` — `<Image {...entry.data.cover} />` needs no helper. Other media
+stay paths from the content root.
+
+The loaders also check references: a relation to a missing entry, or a missing
+file of a media field that is not an image, is a warning in the build log.
+`strict: true` makes it fail the build. A missing image file always fails the
+build, as with Astro's own `image()`. An entry in the other layout always fails the build, with the
 files and `npx mica migrate-layout`.
 
 ## Mixing with your own collections

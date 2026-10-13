@@ -99,6 +99,6 @@ export function portInUse(port: number, host: string, useColor: boolean): string
     `\n  ${c.bold(`Port ${port} is already in use on ${host}.`)}\n\n` +
     `  Something else is listening there — another Mica, most likely.\n` +
     `  Stop it, or give this one a different port:\n\n` +
-    `    npx @micacms/editor --port ${port + 1}\n\n`
+    `    npx @micacms/editor start --port ${port + 1}\n\n`
   );
 }

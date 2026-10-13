@@ -33,7 +33,7 @@ npm install --save-dev @micacms/editor
 npx mica init            # writes a starter src/mica.ts and src/content.config.ts
 npx astro sync           # writes content/.mica/schema.json
 npx mica check           # checks every entry against the model
-npx mica                 # opens the editor
+npx mica start           # opens the editor
 ```
 
 `mica init` also names the scripts that `package.json` does not have yet:
@@ -153,7 +153,7 @@ repository, so commit it after each model change. Every build rewrites it.
 ## 5. Run Mica
 
 ```bash
-npx @micacms/editor
+npx @micacms/editor start
 ```
 
 ```
@@ -166,7 +166,7 @@ npx @micacms/editor
 
 The command reads `./content`, listens on loopback, and opens your browser on
 the editor. Give it a different content root with
-`npx @micacms/editor ./site/content`, keep the browser shut with `--no-open`, and
+`npx @micacms/editor start ./site/content`, keep the browser shut with `--no-open`, and
 see `--help` for the rest. Port 6422 is Mica's own, so `astro dev` can run
 beside it.
 
@@ -251,7 +251,7 @@ stays a `git push` away from a static host. See [self-hosting.md](./self-hosting
 Run step 4, and commit the file to the branch Mica reads.
 
 **"Port 6422 is already in use".**
-Another Mica, most likely. Stop it, or run `npx @micacms/editor --port 6423`.
+Another Mica, most likely. Stop it, or run `npx @micacms/editor start --port 6423`.
 
 **The admin shows collections you removed, or misses one you added.**
 The model in the repository is stale. Re-run the build, commit, and restart

@@ -1272,6 +1272,31 @@ no longer justify.
 
 ---
 
+### P2 — Astro collections move to Mica with `mica import`, from Astro's data store
+
+**Decided:** `mica import` reads `node_modules/.astro/data-store.json`, which
+Astro writes after its own loaders and schemas ran, and writes each entry into
+the Mica model by field name: `--map` for a changed name, `--order` for the
+manual order. The setup guide copies the store before Mica replaces the
+collections. The importer reads the store's `devalue` format with a small
+reader of its own, not with a new dependency.
+
+**Why:** the store already holds every entry in one shape, whatever the loader
+was (`glob()`, `file()`, Markdown, JSON, YAML), with dates, references and
+image paths resolved. Reading the sources again would mean one parser per
+loader. The first agent-led migration wrote a conversion script by hand; with
+the command, the agent writes the model and the map.
+
+**Consequence:** the store is Astro's internal format. A change in a future
+Astro version can break the importer; the reader refuses a type it does not
+know, and a script with `writeEntry` stays the fallback.
+
+**What would change it:** Astro publishing an API for the content store.
+
+**Built in 0.6.**
+
+---
+
 ### P2 — Publish refuses a broken reference that it would create
 
 **Decided:** Publish refuses a change set that would leave a relation to a
@@ -1296,30 +1321,32 @@ deletion is slow; then index the references.
 
 ---
 
-### P2 — Media reach Astro as paths, with a supported helper
+### P2 — Images reach Astro as Astro images; other media as paths
 
-**Decided:** a media value stays a path string in Astro (or `{ path, alt }`
-with the alt option). `@micacms/astro` ships `resolveMedia(path)` and a
-`<MicaImage>` component from an uncompiled `.astro` subpath. They resolve both
-path forms, use the alt text when there is one, and warn in development, or
-fail the build if the site asks, when a file is missing. The integration
-generates the `import.meta.glob` for the configured content root.
+**Decided:** in Astro, a `media({ accept: "image" })` field is what Astro's own
+`image()` gives: `ImageMetadata`, optimized at build time. With `alt`, it is
+`{ src, alt }`, ready for `<Image {...value} />`. The loader rewrites each path
+from the content root to a path from the entry's file, which is what `image()`
+resolves against, and hands Astro its `image()` through the schema function.
+Core stays free of Astro: `fieldsSchema(fields, { image })` takes the resolver,
+and the inference types take the image type as a parameter. Other media, such
+as PDF files, stay paths from the content root.
 
-**Why:** a `media()` field can hold a PDF as well as an image, and Astro's
-`image()` handles images only. `image()` resolves paths relative to the entry
-file, so the shared `/media/` form would need special handling, and switching
-to `ImageMetadata` would change the value type for every site. Today each site
-copies the example's glob map, which hard-codes `/content/` and renders nothing
-for a missing file.
+**Why:** a site that moves from Astro collections to Mica keeps its image code,
+and no site needs a helper of its own. The first agent-led migration had to
+write a glob map (`src/lib/media.ts`) and change a component; the earlier plan,
+a `<MicaImage>` component, would have needed an Astro integration in
+`astro.config` as well.
 
-**Consequence:** a site that wants Astro's image optimization goes through the
-helper, not `image()` in the schema. A missing file is a warning unless the
-site turns on the build failure.
+**Consequence:** a page that used a media path for an image now gets the image;
+0.6 changed that once. A missing image file fails the build, as with Astro's
+`image()`. The stored form does not change.
 
-**What would change it:** Astro's `image()` resolving arbitrary roots and
-non-image files; then offer `ImageMetadata` as an opt-in.
+**What would change it:** a second site framework whose image resolver cannot
+take a path relative to the entry file.
 
-**1.0 status:** should for 1.0; the helper is in #109.
+**Built in 0.6.** Replaces "Media reach Astro as paths, with a supported
+helper"; #109 is done by it.
 
 ---
 

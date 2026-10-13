@@ -116,6 +116,17 @@ describe("running it", () => {
     assert.match(result.stdout, /no sign-in here/i);
   });
 
+  it("prints the help without a command, and refuses a word that is no command", () => {
+    const help = run([]);
+    assert.equal(help.status, 0);
+    assert.match(help.stdout, /npx @micacms\/editor start/);
+
+    // A directory named like a command must not run it: a path needs `start`.
+    const word = run(["./site"]);
+    assert.equal(word.status, 64);
+    assert.match(word.stderr, /Unknown command "\.\/site"\. To open the editor: npx @micacms\/editor start/);
+  });
+
   it("prints its version", () => {
     const result = run(["--version"]);
 
@@ -124,26 +135,26 @@ describe("running it", () => {
   });
 
   it("refuses an option it does not know", () => {
-    const result = run(["--reposit0ry", "github"]);
+    const result = run(["start", "--reposit0ry", "github"]);
 
     assert.equal(result.status, 64, "EX_USAGE");
     assert.match(result.stderr, /Unknown option/);
   });
 
   it("names the directory it could not find", () => {
-    const result = run(["--content", "./definitely-not-here"]);
+    const result = run(["start", "--content", "./definitely-not-here"]);
 
     assert.equal(result.status, 64);
     assert.match(result.stderr, /definitely-not-here/);
     // And says what that directory is, rather than only that it is missing.
-    assert.match(result.stderr, /npx @micacms\/editor \.\/path\/to\/content/);
+    assert.match(result.stderr, /npx @micacms\/editor start \.\/path\/to\/content/);
   });
 
   it("says how to publish a model when the project has not", () => {
     const project = mkdtempSync(path.join(tmpdir(), "mica-cli-"));
     mkdirSync(path.join(project, "content"));
 
-    const result = run([], project);
+    const result = run(["start"], project);
 
     assert.equal(result.status, 78, "EX_CONFIG");
     assert.match(result.stderr, /no content model/i);
@@ -156,7 +167,7 @@ describe("running it", () => {
     mkdirSync(path.join(project, "content", path.dirname(MANIFEST_PATH)), { recursive: true });
     writeFileSync(path.join(project, "content", MANIFEST_PATH), "{ truncated");
 
-    const result = run([], project);
+    const result = run(["start"], project);
 
     // From here the server takes over: it reports the broken model itself,
     // which is what proves the CLI hands off rather than duplicating the checks.

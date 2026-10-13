@@ -1,5 +1,5 @@
 ---
-import CmsImage from "@/components/CmsImage.astro";
+import { Image } from "astro:assets";
 import PageIntro from "@/components/PageIntro.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { getFeaturedTeam } from "@/lib/content";
@@ -23,12 +23,13 @@ const team = await getFeaturedTeam();
                   class="aspect-3/4 overflow-hidden bg-sunken"
                   style="border-radius: var(--radius-theme)"
                 >
-                  <CmsImage
-                    media={member.data.portrait}
+                  <Image
+                    {...member.data.portrait}
                     class="h-full w-full object-cover"
                     widths={[320, 640]}
                     sizes="(min-width: 1024px) 360px, (min-width: 640px) 45vw, 90vw"
-                    priority={index < 3}
+                    loading={index < 3 ? "eager" : "lazy"}
+                    fetchpriority={index < 3 ? "high" : "auto"}
                   />
                 </div>
               ) : (

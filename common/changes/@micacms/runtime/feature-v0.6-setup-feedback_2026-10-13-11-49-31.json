@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "Publish in the local editor pushes a new branch to `origin` and sets its upstream; without a remote, the message names the command.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

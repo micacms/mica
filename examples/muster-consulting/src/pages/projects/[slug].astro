@@ -1,7 +1,7 @@
 ---
+import { Image } from "astro:assets";
 import { getCollection, getEntry, type CollectionEntry } from "astro:content";
 
-import CmsImage from "@/components/CmsImage.astro";
 import LocationMap from "@/components/LocationMap.astro";
 import RichText from "@/components/RichText.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
@@ -50,7 +50,7 @@ const addressLines = [location?.address, [location?.postalCode, location?.city].
 <BaseLayout
   title={title}
   description={toPlainText(description)}
-  image={cover?.path}
+  image={cover?.src}
 >
   <article>
     <div class="container-page pb-10 pt-14 sm:pt-20">
@@ -70,12 +70,13 @@ const addressLines = [location?.address, [location?.postalCode, location?.city].
       cover && (
         <div class="container-page">
           <div class="overflow-hidden bg-sunken" style="border-radius: var(--radius-theme)">
-            <CmsImage
-              media={cover}
+            <Image
+              {...cover}
               class="w-full object-cover"
               widths={[800, 1200, 1800]}
               sizes="(min-width: 1152px) 1120px, 92vw"
-              priority
+              loading="eager"
+              fetchpriority="high"
             />
           </div>
         </div>
@@ -138,8 +139,8 @@ const addressLines = [location?.address, [location?.postalCode, location?.city].
           <div class="grid gap-4 sm:grid-cols-2">
             {rest.map((image) => (
               <div class="overflow-hidden bg-sunken" style="border-radius: var(--radius-theme)">
-                <CmsImage
-                  media={image}
+                <Image
+                  {...image}
                   class="w-full object-cover"
                   widths={[600, 1000]}
                   sizes="(min-width: 640px) 45vw, 92vw"

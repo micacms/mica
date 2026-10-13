@@ -18,10 +18,15 @@
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 import {
+  collectionEntryPath,
   createReferenceCheck,
+  entryLayout,
   fieldsSchema,
+  INDEX_FILE,
+  singletonPath,
   isFieldKind,
   MANIFEST_PATH,
   readCollection,
@@ -35,8 +40,10 @@ import {
   type Site,
 } from "@micacms/core";
 import { fileSystemSource } from "@micacms/core/node";
+import type { ImageMetadata } from "astro";
 import { z } from "zod";
 
+import { imagePathsFromEntry } from "./images.js";
 import { manifestFor } from "./manifest.js";
 import { DEFAULT_CONTENT_ROOT, resolveContentRoot } from "./root.js";
 
@@ -69,7 +76,8 @@ export interface MicaCollectionsOptions {
   debounceMs?: number;
   /**
    * Fails the build on a relation to a missing entry or a missing media file.
-   * Without it, the build logs a warning for each and goes on.
+   * Without it, the build logs a warning for each and goes on; a missing image
+   * file fails the build either way, because Astro cannot import it.
    */
   strict?: boolean;
 }
@@ -115,12 +123,13 @@ export interface AstroCollectionConfig<T = unknown> {
   type: "content_layer";
   loader: ContentLoader;
   /**
-   * Typed as `ZodType<T>` rather than a bare `ZodObject`, because Astro derives
-   * `CollectionEntry<"projects">["data"]` from `z.infer` of whatever this is.
-   * Left generic, every field in every template would degrade to `any` — and
-   * the point of the shared model is that renaming a field breaks the build.
+   * A function, so that Astro hands in its `image()`. Its result is typed as
+   * `ZodType<T>` because Astro derives `CollectionEntry<"projects">["data"]`
+   * from it: left generic, every field in every template would degrade to
+   * `any`, and the point of the shared model is that renaming a field breaks
+   * the build.
    */
-  schema: z.ZodType<T>;
+  schema: (context: { image: () => z.ZodType }) => z.ZodType<T>;
 }
 
 /** The subset of Astro's `Loader` contract this package uses. */
@@ -132,7 +141,7 @@ export interface ContentLoader {
 export interface LoaderContext {
   store: {
     clear(): void;
-    set(entry: { id: string; data: Record<string, unknown>; digest?: string }): boolean;
+    set(entry: { id: string; data: Record<string, unknown>; digest?: string; filePath?: string }): boolean;
     keys(): string[];
   };
   logger: {
@@ -161,16 +170,16 @@ export interface LoaderContext {
   parseData(input: {
     id: string;
     data: Record<string, unknown>;
+    /** The entry's file, from the project root: Astro's `image()` resolves paths against it. */
+    filePath?: string;
   }): Promise<Record<string, unknown>>;
   generateDigest(data: Record<string, unknown> | string): string;
 }
 
 export type MicaCollections<S extends Site> = {
-  [K in keyof S["collections"]]: AstroCollectionConfig<
-    AstroDocument<InferCollection<S["collections"][K]>>
-  >;
+  [K in keyof S["collections"]]: AstroCollectionConfig<CollectionDocument<S, K>>;
 } & {
-  [K in keyof S["singletons"]]: AstroCollectionConfig<InferSingleton<S["singletons"][K]>>;
+  [K in keyof S["singletons"]]: AstroCollectionConfig<SingletonDocument<S, K>>;
 };
 
 export function micaCollections<S extends Site>(
@@ -202,6 +211,18 @@ export function micaCollections<S extends Site>(
       options.publishModel === false || options.source
         ? Promise.resolve()
         : publishModel(site, rootFor(context), context.logger));
+
+  /** An entry's data file, from the content root and, outside tests, from the project root. */
+  const entryFile = (context: LoaderContext, fields: FieldMap, name: string, slug?: string) => {
+    const base = slug === undefined ? singletonPath(fields, name) : collectionEntryPath(fields, name, slug);
+    const inContent = entryLayout(fields) === "directory" ? `${base}/${INDEX_FILE}` : base;
+    const project = context.config?.root;
+    const inProject =
+      project && !options.source
+        ? relative(fileURLToPath(project), join(rootFor(context), inContent)).split(sep).join("/")
+        : undefined;
+    return { inContent, inProject };
+  };
 
   /** Warns about broken relations and missing files, or fails the build with `strict`. */
   const checkReferences = async (
@@ -267,7 +288,7 @@ export function micaCollections<S extends Site>(
   for (const [name, def] of Object.entries(site.collections) as [string, Collection][]) {
     collections[name] = {
       type: "content_layer",
-      schema: fieldsSchema(def.fields).extend({ _mica: metaSchema }),
+      schema: ({ image }) => fieldsSchema(def.fields, { image }).extend({ _mica: metaSchema }),
       loader: {
         name: `mica:${name}`,
         load: async (context) => {
@@ -287,11 +308,18 @@ export function micaCollections<S extends Site>(
                 position: entry.position,
               };
 
+              const file = entryFile(context, def.fields, name, entry.slug);
               const data = await context.parseData({
                 id: entry.slug,
-                data: { ...entry.data, _mica: meta },
+                data: { ...imagePathsFromEntry(def.fields, entry.data, file.inContent), _mica: meta },
+                ...(file.inProject ? { filePath: file.inProject } : {}),
               });
-              context.store.set({ id: entry.slug, data, digest: context.generateDigest(data) });
+              context.store.set({
+                id: entry.slug,
+                data,
+                digest: context.generateDigest(data),
+                ...(file.inProject ? { filePath: file.inProject } : {}),
+              });
             }
 
             await checkReferences(
@@ -315,7 +343,7 @@ export function micaCollections<S extends Site>(
   for (const [name, def] of Object.entries(site.singletons) as [string, Singleton][]) {
     collections[name] = {
       type: "content_layer",
-      schema: fieldsSchema(def.fields),
+      schema: ({ image }) => fieldsSchema(def.fields, { image }),
       loader: {
         name: `mica:${name}`,
         load: async (context) => {
@@ -333,8 +361,18 @@ export function micaCollections<S extends Site>(
             }
 
             await checkReferences(context, source, [{ label: name, fields: def.fields, data }]);
-            const parsed = await context.parseData({ id: name, data });
-            context.store.set({ id: name, data: parsed, digest: context.generateDigest(parsed) });
+            const file = entryFile(context, def.fields, name);
+            const parsed = await context.parseData({
+              id: name,
+              data: imagePathsFromEntry(def.fields, data, file.inContent),
+              ...(file.inProject ? { filePath: file.inProject } : {}),
+            });
+            context.store.set({
+              id: name,
+              data: parsed,
+              digest: context.generateDigest(parsed),
+              ...(file.inProject ? { filePath: file.inProject } : {}),
+            });
           };
 
           await publish(context);
@@ -439,13 +477,13 @@ async function guard<T>(
 export type CollectionDocument<
   S extends Site,
   K extends keyof S["collections"],
-> = AstroDocument<InferCollection<S["collections"][K]>>;
+> = AstroDocument<InferCollection<S["collections"][K], ImageMetadata>>;
 
 /** The document type for one singleton. */
 export type SingletonDocument<
   S extends Site,
   K extends keyof S["singletons"],
-> = InferSingleton<S["singletons"][K]>;
+> = InferSingleton<S["singletons"][K], ImageMetadata>;
 
 export { manifestFor } from "./manifest.js";
 export { DEFAULT_CONTENT_ROOT, resolveContentRoot };

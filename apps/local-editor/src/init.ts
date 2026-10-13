@@ -128,15 +128,15 @@ export function initProject(project: string): InitResult {
       : "Replace the starter model in src/mica.ts (news, settings) with the website's model.",
     "Write the model to content/.mica/schema.json: npx astro sync",
     "Check the content: npx mica check",
-    "When the content is in place, open the editor in a browser: npx mica",
+    "When the content is in place, open the editor in a browser: npx mica start",
   );
   return result;
 }
 
-/** `npm run mica` opens the editor; `npm run check` checks the content, and the types when `@astrojs/check` is there. */
+/** `npm run mica` opens the editor (`mica start`); `npm run check` checks the content, and the types when `@astrojs/check` is there. */
 function scriptsToSet(scripts: Record<string, string>, astroCheck: boolean): string[] {
   const missing: string[] = [];
-  if (!scripts["mica"]) missing.push(`"mica": "mica"`);
+  if (!scripts["mica"]) missing.push(`"mica": "mica start"`);
   // Without @astrojs/check, `astro check` asks to install it, and a script cannot answer.
   const check = scripts["check"];
   if (!check) missing.push(`"check": "${astroCheck ? "mica check && astro check" : "mica check"}"`);

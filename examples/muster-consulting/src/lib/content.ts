@@ -8,15 +8,15 @@
 
 import { getCollection, getEntry } from "astro:content";
 
-import type { InferSingleton } from "@micacms/core";
+import type { SingletonDocument } from "@micacms/astro";
 
 import type { site } from "../mica";
 
 type Model = typeof site;
 
-export type SiteSettings = InferSingleton<Model["singletons"]["site"]>;
-export type Navigation = InferSingleton<Model["singletons"]["navigation"]>;
-export type Theme = InferSingleton<Model["singletons"]["theme"]>;
+export type SiteSettings = SingletonDocument<Model, "site">;
+export type Navigation = SingletonDocument<Model, "navigation">;
+export type Theme = SingletonDocument<Model, "theme">;
 
 /**
  * One fetch per singleton per build. Astro's content store is already cached,

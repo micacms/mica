@@ -22,6 +22,12 @@ export interface SchemaOptions {
    * check is relaxed, and publishing re-validates strictly.
    */
   enforceRequired?: boolean;
+  /**
+   * Resolves an image path the way a site framework does, such as Astro's
+   * `image()`. `media({ accept: "image" })` then gives the resolved image, and
+   * with `alt`, `{ src, alt }`, ready for an image component.
+   */
+  image?: () => z.ZodType;
 }
 
 export const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
@@ -63,21 +69,33 @@ function label(field: AnyField, key: string): string {
 }
 
 /** A path. `{ path, alt }`, saved while the field had the `alt` option, reads as its path. */
-const plainMedia = z.preprocess(
-  (value) => (value !== null && typeof value === "object" && "path" in value ? (value as { path: unknown }).path : value),
-  z.string().min(1),
-);
+function plainMedia(path: z.ZodType): z.ZodType {
+  return z.preprocess(
+    (value) => (value !== null && typeof value === "object" && "path" in value ? (value as { path: unknown }).path : value),
+    path,
+  );
+}
 
 /** `{ path, alt }`. A plain path, saved before the field asked for alt text, reads as one without alt text. */
-function mediaWithAlt(alt: "required" | "optional", name: string, options: SchemaOptions): z.ZodType {
+function mediaWithAlt(
+  alt: "required" | "optional",
+  name: string,
+  options: SchemaOptions,
+  path: z.ZodType,
+  resolved: boolean,
+): z.ZodType {
   const text = z.preprocess(
     (value) => (value === undefined || (typeof value === "string" && value.trim() === "") ? null : value),
     z.string().trim().nullable(),
   );
-  const shape = z.object({ path: z.string().min(1), alt: text }).strip();
-  const one = z.preprocess((value) => (typeof value === "string" ? { path: value, alt: null } : value), shape);
-  if (alt === "optional" || options.enforceRequired === false) return one;
-  return one.refine((value) => value.alt !== null, { message: `${name} needs alt text.`, path: ["alt"] });
+  const shape = z.object({ path, alt: text }).strip();
+  const lifted = z.preprocess((value) => (typeof value === "string" ? { path: value, alt: null } : value), shape);
+  const one =
+    alt === "optional" || options.enforceRequired === false
+      ? lifted
+      : lifted.refine((value) => value.alt !== null, { message: `${name} needs alt text.`, path: ["alt"] });
+  // A resolved image goes to an image component: `{ src, alt }`, and "" for no alt text.
+  return resolved ? one.transform((value) => ({ src: value.path, alt: value.alt ?? "" })) : one;
 }
 
 /** The inner schema for a field, before nullability and defaults are applied. */
@@ -176,7 +194,9 @@ function innerSchema(
       return coordinatesSchema;
 
     case "media": {
-      const one = field.alt ? mediaWithAlt(field.alt, name, options) : plainMedia;
+      const image = field.accept === "image" ? options.image?.() : undefined;
+      const path = image ?? z.string().min(1);
+      const one = field.alt ? mediaWithAlt(field.alt, name, options, path, image !== undefined) : plainMedia(path);
       if (!field.multiple) return one;
       let list = z.array(one);
       if (field.max !== undefined) list = list.max(field.max);

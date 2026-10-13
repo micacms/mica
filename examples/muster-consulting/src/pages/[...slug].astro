@@ -1,7 +1,7 @@
 ---
+import { Image } from "astro:assets";
 import { getCollection, type CollectionEntry } from "astro:content";
 
-import CmsImage from "@/components/CmsImage.astro";
 import LocationMap from "@/components/LocationMap.astro";
 import RichText from "@/components/RichText.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
@@ -44,7 +44,7 @@ const SECTION_LAYOUTS: Record<string, string> = {
 <BaseLayout
   title={seo?.metaTitle ?? title}
   description={seo?.metaDescription ?? intro ?? toPlainText(body)}
-  image={seo?.ogImage ?? heroImage?.path}
+  image={seo?.ogImage ?? heroImage?.src}
   noindex={seo?.noindex ?? false}
 >
   <div class="container-page pb-10 pt-14 sm:pt-20">
@@ -58,12 +58,13 @@ const SECTION_LAYOUTS: Record<string, string> = {
     heroImage && (
       <div class="container-page mb-12">
         <div class="overflow-hidden bg-sunken" style="border-radius: var(--radius-theme)">
-          <CmsImage
-            media={heroImage}
+          <Image
+            {...heroImage}
             class="w-full object-cover"
             widths={[800, 1200, 1800]}
             sizes="(min-width: 1152px) 1120px, 92vw"
-            priority
+            loading="eager"
+            fetchpriority="high"
           />
         </div>
       </div>
@@ -97,8 +98,8 @@ const SECTION_LAYOUTS: Record<string, string> = {
 
             {section.image && (
               <figure class="overflow-hidden bg-sunken" style="border-radius: var(--radius-theme)">
-                <CmsImage
-                  media={section.image}
+                <Image
+                  {...section.image}
                   class="w-full object-cover"
                   widths={[600, 1000]}
                   sizes="(min-width: 1024px) 45vw, 92vw"

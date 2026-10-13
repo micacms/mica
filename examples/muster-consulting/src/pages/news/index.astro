@@ -1,5 +1,5 @@
 ---
-import CmsImage from "@/components/CmsImage.astro";
+import { Image } from "astro:assets";
 import PageIntro from "@/components/PageIntro.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { formatDate, getNews } from "@/lib/content";
@@ -27,8 +27,8 @@ const articles = await getNews();
                     class="aspect-4/3 overflow-hidden bg-sunken"
                     style="border-radius: var(--radius-theme)"
                   >
-                    <CmsImage
-                      media={article.data.coverImage}
+                    <Image
+                      src={article.data.coverImage.src}
                       alt=""
                       class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                       widths={[320, 640]}
