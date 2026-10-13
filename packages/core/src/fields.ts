@@ -93,6 +93,8 @@ export interface TextOptions extends CommonOptions {
   maxLength?: number;
   /** A regular expression that must match the whole value, with the `u` flag. */
   pattern?: string;
+  /** What the editor reads when the value does not match `pattern`. */
+  patternMessage?: string;
   placeholder?: string;
   default?: string;
 }

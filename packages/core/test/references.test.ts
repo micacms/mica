@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { collectReferences, media, object, relation, repeater, text } from "../dist/index.js";
+import { collectReferences, media, object, relation, relinkReferences, repeater, text } from "../dist/index.js";
 
 const fields = {
   title: text(),
@@ -37,5 +37,30 @@ describe("collectReferences", () => {
 
   it("finds nothing in an empty payload", () => {
     assert.deepEqual(collectReferences(fields, {}), []);
+  });
+});
+
+describe("relinkReferences", () => {
+  const fields = {
+    author: relation({ collection: "team" }),
+    others: relation({ collection: "team", multiple: true }),
+    place: relation({ collection: "places" }),
+    meta: object({ fields: { editor: relation({ collection: "team" }) } }),
+    steps: repeater({ fields: { contact: relation({ collection: "team" }) } }),
+  };
+
+  it("points every relation to the old slug at the new one, nested fields included", () => {
+    const data = { author: "anna", others: ["ben", "anna"], place: "anna", meta: { editor: "anna" }, steps: [{ contact: "anna" }, { contact: "ben" }] };
+    assert.deepEqual(relinkReferences(fields, data, "team", "anna", "anna-meier"), {
+      author: "anna-meier",
+      others: ["ben", "anna-meier"],
+      place: "anna",
+      meta: { editor: "anna-meier" },
+      steps: [{ contact: "anna-meier" }, { contact: "ben" }],
+    });
+  });
+
+  it("returns null when nothing pointed at the old slug", () => {
+    assert.equal(relinkReferences(fields, { author: "ben", others: [], steps: [] }, "team", "anna", "x"), null);
   });
 });

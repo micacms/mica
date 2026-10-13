@@ -322,3 +322,39 @@ export function collectReferences(fields: FieldMap, data: Record<string, unknown
   visit(fields, data, "");
   return found;
 }
+
+/**
+ * The payload with every relation to `collection`/`from` pointing at `to`
+ * instead, nested fields included: the links that follow an entry's new URL.
+ * Returns null when nothing pointed at `from`.
+ */
+export function relinkReferences(
+  fields: FieldMap,
+  data: Record<string, unknown>,
+  collection: string,
+  from: string,
+  to: string,
+): Record<string, unknown> | null {
+  let changed = false;
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    value !== null && typeof value === "object" && !Array.isArray(value);
+
+  const visit = (map: FieldMap, record: Record<string, unknown>): Record<string, unknown> => {
+    const next: Record<string, unknown> = { ...record };
+    for (const [key, field] of Object.entries(map)) {
+      const value = record[key];
+      if (field.kind === "relation" && field.collection === collection) {
+        const swap = (slug: unknown) => (slug === from ? ((changed = true), to) : slug);
+        next[key] = Array.isArray(value) ? value.map(swap) : swap(value);
+      } else if (field.kind === "object" && isRecord(value)) {
+        next[key] = visit(field.fields, value);
+      } else if (field.kind === "repeater" && Array.isArray(value)) {
+        next[key] = value.map((row) => (isRecord(row) ? visit(field.fields, row) : row));
+      }
+    }
+    return next;
+  };
+
+  const result = visit(fields, data);
+  return changed ? result : null;
+}

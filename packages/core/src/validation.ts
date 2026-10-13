@@ -33,11 +33,6 @@ export interface SchemaOptions {
 export const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
-export const coordinatesSchema = z.object({
-  lat: z.number().min(-90).max(90),
-  lng: z.number().min(-180).max(180),
-});
-
 /* ------------------------------------------------------------------ */
 
 /** Kinds whose empty state is a value, not null. */
@@ -66,6 +61,20 @@ function blankIsEmpty(field: AnyField): boolean {
 
 function label(field: AnyField, key: string): string {
   return field.label ?? key;
+}
+
+/** A length limit in words an editor reads, with the current length: "Title can have at most 120 characters (now 134)." */
+function lengthLimit(name: string, limit: "least" | "most", count: number) {
+  const verb = limit === "least" ? "needs at least" : "can have at most";
+  return (issue: { input?: unknown }): string => {
+    const now = typeof issue.input === "string" ? ` (now ${issue.input.length})` : "";
+    return `${name} ${verb} ${count} character${count === 1 ? "" : "s"}${now}.`;
+  };
+}
+
+/** A list limit: "Gallery allows at most 5 items." */
+function countLimit(name: string, limit: "least" | "most", count: number, noun: string): string {
+  return `${name} ${limit === "least" ? "needs at least" : "allows at most"} ${count} ${noun}${count === 1 ? "" : "s"}.`;
 }
 
 /** A path. `{ path, alt }`, saved while the field had the `alt` option, reads as its path. */
@@ -108,37 +117,39 @@ function innerSchema(
 
   switch (field.kind) {
     case "text": {
-      let schema = z.string().trim();
-      if (field.minLength !== undefined) schema = schema.min(field.minLength);
-      if (field.maxLength !== undefined) schema = schema.max(field.maxLength);
-      if (field.pattern) schema = schema.regex(textPattern(field.pattern), `${name} has an invalid format.`);
+      let schema = z.string({ error: `${name} must be text.` }).trim();
+      if (field.minLength !== undefined) schema = schema.min(field.minLength, { error: lengthLimit(name, "least", field.minLength) });
+      if (field.maxLength !== undefined) schema = schema.max(field.maxLength, { error: lengthLimit(name, "most", field.maxLength) });
+      if (field.pattern) {
+        schema = schema.regex(textPattern(field.pattern), field.patternMessage ?? `${name} does not have the expected form.`);
+      }
       return schema;
     }
 
     case "textarea": {
-      let schema = z.string();
-      if (field.minLength !== undefined) schema = schema.min(field.minLength);
-      if (field.maxLength !== undefined) schema = schema.max(field.maxLength);
+      let schema = z.string({ error: `${name} must be text.` });
+      if (field.minLength !== undefined) schema = schema.min(field.minLength, { error: lengthLimit(name, "least", field.minLength) });
+      if (field.maxLength !== undefined) schema = schema.max(field.maxLength, { error: lengthLimit(name, "most", field.maxLength) });
       return schema;
     }
 
     case "richText": {
-      let schema = z.string();
-      // maxLength counts the HTML source; generous limits are the point here.
-      if (field.maxLength !== undefined) schema = schema.max(field.maxLength);
+      let schema = z.string({ error: `${name} must be text.` });
+      // maxLength counts the Markdoc source; generous limits are the point here.
+      if (field.maxLength !== undefined) schema = schema.max(field.maxLength, { error: lengthLimit(name, "most", field.maxLength) });
       return schema;
     }
 
     case "number": {
-      let schema = z.number({ error: `${name} must be a number.` }).finite();
-      if (field.integer) schema = schema.int();
-      if (field.min !== undefined) schema = schema.min(field.min);
-      if (field.max !== undefined) schema = schema.max(field.max);
+      let schema = z.number({ error: `${name} must be a number.` }).finite({ error: `${name} must be a number.` });
+      if (field.integer) schema = schema.int({ error: `${name} must be a whole number.` });
+      if (field.min !== undefined) schema = schema.min(field.min, { error: `${name} must be at least ${field.min}.` });
+      if (field.max !== undefined) schema = schema.max(field.max, { error: `${name} must be at most ${field.max}.` });
       return schema;
     }
 
     case "boolean":
-      return z.boolean();
+      return z.boolean({ error: `${name} must be yes or no.` });
 
     case "date": {
       const schema = field.includeTime
@@ -176,7 +187,7 @@ function innerSchema(
         .string()
         .trim()
         .toLowerCase()
-        .max(field.maxLength ?? 96)
+        .max(field.maxLength ?? 96, { error: lengthLimit(name, "most", field.maxLength ?? 96) })
         .refine(isValidSlug, `${name} may only contain lowercase letters, numbers and hyphens.`);
 
     case "select": {
@@ -184,37 +195,42 @@ function innerSchema(
       const one = z.string().refine((value) => values.includes(value), {
         message: `${name} must be one of: ${values.join(", ")}.`,
       });
-      return field.multiple ? z.array(one) : one;
+      return field.multiple ? z.array(one, { error: `${name} must be a list.` }) : one;
     }
 
     case "color":
       return z.string().trim().regex(HEX_COLOR, `${name} must be a hex colour such as #1a2b3c.`);
 
-    case "coordinates":
-      return coordinatesSchema;
+    case "coordinates": {
+      const axis = (word: string, limit: number) => {
+        const range = `${name}: the ${word} must be between -${limit} and ${limit}.`;
+        return z.number({ error: `${name}: the ${word} must be a number.` }).min(-limit, { error: range }).max(limit, { error: range });
+      };
+      return z.object({ lat: axis("latitude", 90), lng: axis("longitude", 180) }, { error: `${name} needs a latitude and a longitude.` });
+    }
 
     case "media": {
       const image = field.accept === "image" ? options.image?.() : undefined;
-      const path = image ?? z.string().min(1);
+      const path = image ?? z.string({ error: `${name} must be a file path.` }).min(1, { error: `${name} must be a file path.` });
       const one = field.alt ? mediaWithAlt(field.alt, name, options, path, image !== undefined) : plainMedia(path);
       if (!field.multiple) return one;
-      let list = z.array(one);
-      if (field.max !== undefined) list = list.max(field.max);
+      let list = z.array(one, { error: `${name} must be a list of files.` });
+      if (field.max !== undefined) list = list.max(field.max, { error: countLimit(name, "most", field.max, "file") });
       return list;
     }
 
     case "relation": {
-      const one = z.string().min(1);
-      return field.multiple ? z.array(one) : one;
+      const one = z.string({ error: `${name} must name an entry.` }).min(1, { error: `${name} must name an entry.` });
+      return field.multiple ? z.array(one, { error: `${name} must be a list of entries.` }) : one;
     }
 
     case "object":
       return fieldsSchema(field.fields, options);
 
     case "repeater": {
-      let list = z.array(fieldsSchema(field.fields, options));
-      if (field.min !== undefined) list = list.min(field.min, `${name} needs at least ${field.min} entries.`);
-      if (field.max !== undefined) list = list.max(field.max, `${name} allows at most ${field.max} entries.`);
+      let list = z.array(fieldsSchema(field.fields, options), { error: `${name} must be a list.` });
+      if (field.min !== undefined) list = list.min(field.min, { error: countLimit(name, "least", field.min, "item") });
+      if (field.max !== undefined) list = list.max(field.max, { error: countLimit(name, "most", field.max, "item") });
       return list;
     }
 

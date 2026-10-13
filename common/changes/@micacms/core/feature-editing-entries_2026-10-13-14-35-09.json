@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "Breaking: validation messages name the field and the limit, such as 'Title can have at most 120 characters (now 134).', and the unused coordinatesSchema export is removed; text fields take an optional patternMessage",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

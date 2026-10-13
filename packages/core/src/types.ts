@@ -54,6 +54,8 @@ export interface TextField extends BaseField {
   maxLength?: number;
   /** A regular expression that must match the whole value, with the `u` flag, e.g. `"[A-Z]{2}"`. */
   pattern?: string;
+  /** What the editor reads when the value does not match `pattern`, e.g. "Use two capital letters, like CH." */
+  patternMessage?: string;
   placeholder?: string;
   default?: string;
 }
