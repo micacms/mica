@@ -1,6 +1,11 @@
 {
   "main": [
     {
+      "label": "Services",
+      "href": "/services",
+      "children": []
+    },
+    {
       "label": "Projects",
       "href": "/projects",
       "children": []
