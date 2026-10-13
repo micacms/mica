@@ -64,7 +64,16 @@ Show the inventory as a short table, and ask:
    - Headings lose their `id` and code blocks lose their highlighting, unless
      the website adds them. See
      [reference.md](./reference.md#what-markdoc-renders-differently-from-astros-markdown).
-4. Should editors put a collection in a manual order?
+4. Should editors put a collection in a manual order? If a collection has a
+   number field that only sorts it, such as `order`, give the user the choice
+   and the reason:
+   - Keep it as a `number()` field. No page changes. Editors type numbers,
+     and two entries can get the same one.
+   - Make the collection `sortable: true`. Editors drag the entries into
+     order, which is easier and cannot give two entries the same place. The
+     conversion turns the numbers into `_order.json`, the field goes, and each
+     page that sorts by it sorts by `entry.data._mica.position` instead: one
+     changed line per page.
 
 Wait for the answers.
 
