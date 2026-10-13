@@ -9,6 +9,7 @@
     "build": "astro build",
     "dev": "astro dev",
     "mica": "mica --port 3000",
+    "check": "mica check && astro check",
     "preview": "astro preview",
     "typecheck": "astro check"
   },

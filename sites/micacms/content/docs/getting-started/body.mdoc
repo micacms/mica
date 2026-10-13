@@ -78,12 +78,13 @@ npm install --save-dev @micacms/editor
 ```json
 {
   "scripts": {
-    "mica": "mica"
+    "mica": "mica",
+    "check": "mica check && astro check"
   }
 }
 ```
 
-`npm run mica` then starts the same editor, at the version your lockfile holds, for everyone who works on the project.
+`npm run mica` then starts the same editor, at the version your lockfile holds, for everyone who works on the project. `npm run check` checks the content and the types. Without `@astrojs/check` in the project, use `"check": "mica check"`.
 
 With the editor installed, `npx mica init` writes a starter `src/mica.ts` and `src/content.config.ts` and never overwrites a file. `npx mica check` checks every entry against the model and exits with an error code when it finds a problem. Run it in CI, or after a change to the content files.
 
