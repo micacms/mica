@@ -1,0 +1,8 @@
+{
+  "title": "Self-hosted Mica on a Git clone",
+  "slug": "0-5-0",
+  "version": "0.5.0",
+  "publishDate": "2026-10-13",
+  "summary": "The self-hosted Mica keeps its own Git clone and uses no database or provider API. A coding agent can set Mica up. Read Breaking before you upgrade.",
+  "latest": true
+}

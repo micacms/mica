@@ -1,0 +1,45 @@
+The self-hosted Mica keeps its own Git clone of the content repository. It no longer uses a SQLite database or the GitHub and GitLab APIs. Both apps now work the same way: a draft is an uncommitted file in a Git working tree, and Publish commits the reviewed files. Any Git host over HTTPS should work.
+
+## Breaking
+
+**There is no upgrade path from 0.4.** Mica 0.5 does not read the 0.4 draft database. Publish or discard every draft on 0.4 first. Then set up 0.5 from the new `deploy/self-hosted/compose.yml` and `.env.example`.
+
+**New repository configuration.** Set `MICA_REPOSITORY_URL` (the HTTPS clone URL) and `MICA_REPOSITORY_TOKEN`. Optional: `MICA_REPOSITORY_USERNAME`, `MICA_REPOSITORY_BRANCH`, `MICA_REPOSITORY_ROOT` and `MICA_REPOSITORY_SYNC_SECONDS`. `MICA_DATA_DIR` replaces `DATA_DIR`. Mica does not read `REPOSITORY`, `REPOSITORY_*` and `DATABASE_PATH` any more.
+
+**A narrower token.** GitLab needs only `read_repository` and `write_repository`, not `api`. GitHub needs Contents: read and write.
+
+**`@micacms/connectors` is removed.** Its file layer is in `@micacms/runtime` as `contentFiles` and `ContentFiles`. Core no longer exports the draft-store and repository-port types.
+
+**The manifest changes once.** `.mica/schema.json` now names `@micacms/astro` without a version and records the `layout` of each collection. Build the site and commit the file. A self-hosted Mica restarts once for it. After that, a package update does not change the file.
+
+## Added
+
+**Set up Mica with a coding agent.** Give the agent this prompt: "Read https://micacms.com/setup.md and set up Mica in this project." The guides that it follows ship in `@micacms/astro/setup/`.
+
+**`mica check`** checks every entry against the model and exits with 1 on an error. Run it in CI with `npx mica check`.
+
+**`mica init`** writes a starter `src/mica.ts` and `src/content.config.ts`. It never overwrites a file.
+
+**Conflicts with the website.** When a change on the website touches an entry that has a draft, the editor sees a conflict. The editor chooses "Keep my version" or "Use the website's version", with a comparison of the two.
+
+**The `check` command of the image** tests the configuration, the token and the push rights in a temporary clone: `docker compose run --rm mica check`.
+
+**Sync state** shows on the Publish, Dashboard and System pages. `/ready` gives reason codes.
+
+## Changed
+
+**A field type from a newer `@micacms/astro` no longer stops Mica.** Only the collection or singleton that uses it is read-only, with a message that names the upgrade. Everything else stays editable.
+
+**Publish commits only the reviewed files**, with the editor as author. It refuses a file that changed after the review.
+
+**A refused push turns back into drafts** and shows the reason of the host. A push that fails on the network or on authentication stays committed and is pushed again later.
+
+**Git on the server is isolated.** It has no hooks, filters or symlinks, and uses HTTPS only. The token goes only to the configured host.
+
+## Fixed
+
+A save that failed between writing its temporary file and renaming it left the temporary file in the content directory.
+
+## Known gaps
+
+Git LFS under the content root is refused, and SSH remotes are not supported yet. A file that `.gitignore` hides under the content root is not shown and not published.
