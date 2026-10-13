@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "Breaking: removed exports that nothing used: `collectMediaIds`, `walkFields`, `mediaRefSchema`, `collectionSchema`, `singletonSchema` and the `SchemaMode` type. `fieldsSchema` and `validateFields` no longer take a mode: pass the options as the second or third argument.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

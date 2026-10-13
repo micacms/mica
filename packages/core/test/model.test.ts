@@ -4,7 +4,6 @@ import { describe, it } from "node:test";
 import {
   boolean,
   collection,
-  collectMediaIds,
   color,
   coordinates,
   date,
@@ -175,22 +174,6 @@ describe("validation", () => {
     const result = validateFields(fields, { title: "Ok", removedField: "stale" });
     assert.ok(result.ok);
     assert.ok(!("removedField" in result.data));
-  });
-
-  it("expands media references in output mode only", () => {
-    const ref = {
-      id: "m1",
-      url: "/media/m1.jpg",
-      filename: "m1.jpg",
-      mimeType: "image/jpeg",
-      width: 10,
-      height: 10,
-      size: 100,
-      alt: null,
-    };
-    assert.ok(validateFields(fields, { title: "Ok", gallery: ["m1"] }, "storage").ok);
-    assert.ok(!validateFields(fields, { title: "Ok", gallery: ["m1"] }, "output").ok);
-    assert.ok(validateFields(fields, { title: "Ok", gallery: [ref] }, "output").ok);
   });
 
   it("accepts rich text and dates with time", () => {
@@ -434,20 +417,5 @@ describe("model queries", () => {
     assert.equal(entryTitle(projects, { title: "Haus A" }), "Haus A");
     assert.equal(entryTitle(projects, { title: "   ", slug: "haus-a" }), "haus-a");
     assert.equal(entryTitle(projects, {}), "Untitled");
-  });
-
-  it("collects media ids from every nesting level", () => {
-    const ids = collectMediaIds(projects.fields, {
-      cover: "a",
-      gallery: ["b", "c"],
-      blocks: [{ image: "d" }, { image: null }],
-      seo: { ogImage: "e" },
-    });
-    assert.deepEqual(ids.sort(), ["a", "b", "c", "d", "e"]);
-  });
-
-  it("deduplicates repeated references", () => {
-    const ids = collectMediaIds(projects.fields, { cover: "a", gallery: ["a", "a"] });
-    assert.deepEqual(ids, ["a"]);
   });
 });

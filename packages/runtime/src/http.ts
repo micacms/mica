@@ -44,10 +44,3 @@ export function actorOf(c: Context<Env>): { id: string; email: string; name: str
   const identity = c.get("access")?.identity;
   return identity ? { id: identity.subject, email: identity.email, name: identity.name } : null;
 }
-
-/** Parses a positive integer query parameter, falling back when absent. */
-export function intParam(value: string | undefined, fallback: number, max: number): number {
-  const parsed = Number(value);
-  if (!Number.isFinite(parsed) || parsed < 0) return fallback;
-  return Math.min(Math.floor(parsed), max);
-}

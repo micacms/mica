@@ -27,7 +27,7 @@ export {
   type RuntimeEnv,
 } from "./config.js";
 export { startServer, type StartServerOptions } from "./server.js";
-export { actorOf, clientIp, intParam, type Env } from "./http.js";
+export { actorOf, clientIp, type Env } from "./http.js";
 export { checkSchema, loadSchema, readOnlyParts, SchemaError, schemaFingerprint, schemaOrigin } from "./schema.js";
 export {
   allowedOrigins,
@@ -45,7 +45,6 @@ export {
   forbidden,
   notFound,
   unauthenticated,
-  validationFailed,
   type ApiErrorBody,
   type ErrorCode,
 } from "./lib/errors.js";

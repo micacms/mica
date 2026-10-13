@@ -1,7 +1,7 @@
 # Mica Editor
 
-> **Experimental.** Pre-1.0: the CLI, the API and the content format can still
-> change without notice. Use it at your own risk.
+> **Public.** From 1.0, semver covers the `mica` CLI (`init`, `check` and the
+> editor's flags). Pre-1.0: it can still change in a minor release.
 
 The local Mica editor: `@micacms/runtime` and `@micacms/editor-ui` composed for
 a developer's own machine. No authentication, no user, no database — the

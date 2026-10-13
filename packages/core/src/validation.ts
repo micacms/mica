@@ -4,18 +4,13 @@
  * Zod is an implementation detail: the DSL is the public API because a field
  * descriptor carries editorial semantics (labels, groups, widths, presets) that
  * a validator cannot express. This module projects descriptors onto Zod for the
- * two shapes the system actually stores and serves.
- *
- *   storage — what lives in `entries.data`: media and relations are plain ids.
- *   output  — what the content API returns: media ids are expanded to objects.
+ * stored shape: media and relations are paths and slugs.
  */
 
 import { z } from "zod";
 
-import type { AnyField, Collection, FieldMap, Singleton } from "./types.js";
+import type { AnyField, FieldMap } from "./types.js";
 import { isValidSlug } from "./slugify.js";
-
-export type SchemaMode = "storage" | "output";
 
 export interface SchemaOptions {
   /**
@@ -30,17 +25,6 @@ export interface SchemaOptions {
 
 export const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/;
-
-export const mediaRefSchema = z.object({
-  id: z.string(),
-  url: z.string(),
-  filename: z.string(),
-  mimeType: z.string(),
-  width: z.number().nullable(),
-  height: z.number().nullable(),
-  size: z.number(),
-  alt: z.string().nullable(),
-});
 
 export const coordinatesSchema = z.object({
   lat: z.number().min(-90).max(90),
@@ -85,7 +69,6 @@ export function textPattern(pattern: string): RegExp {
 /** The inner schema for a field, before nullability and defaults are applied. */
 function innerSchema(
   field: AnyField,
-  mode: SchemaMode,
   key: string,
   options: SchemaOptions,
 ): z.ZodType {
@@ -179,7 +162,7 @@ function innerSchema(
       return coordinatesSchema;
 
     case "media": {
-      const one = mode === "output" ? mediaRefSchema : z.string().min(1);
+      const one = z.string().min(1);
       if (!field.multiple) return one;
       let list = z.array(one);
       if (field.max !== undefined) list = list.max(field.max);
@@ -192,10 +175,10 @@ function innerSchema(
     }
 
     case "object":
-      return fieldsSchema(field.fields, mode, options);
+      return fieldsSchema(field.fields, options);
 
     case "repeater": {
-      let list = z.array(fieldsSchema(field.fields, mode, options));
+      let list = z.array(fieldsSchema(field.fields, options));
       if (field.min !== undefined) list = list.min(field.min, `${name} needs at least ${field.min} entries.`);
       if (field.max !== undefined) list = list.max(field.max, `${name} allows at most ${field.max} entries.`);
       return list;
@@ -213,12 +196,11 @@ function innerSchema(
  */
 function fieldSchema(
   field: AnyField,
-  mode: SchemaMode,
   key: string,
   options: SchemaOptions,
 ): z.ZodType {
   const name = label(field, key);
-  const inner = innerSchema(field, mode, key, options);
+  const inner = innerSchema(field, key, options);
 
   const normalise = (value: unknown): unknown => {
     if (value === undefined) return null;
@@ -255,32 +237,15 @@ function fieldSchema(
  */
 export function fieldsSchema(
   fields: FieldMap,
-  mode: SchemaMode = "storage",
   options: SchemaOptions = {},
 ): z.ZodObject<z.ZodRawShape> {
   // Built as a mutable record: Zod 4's `ZodRawShape` is readonly, and it is the
   // shape `z.object` accepts rather than the one a caller assembles.
   const shape: Record<string, z.ZodType> = {};
   for (const [key, field] of Object.entries(fields)) {
-    shape[key] = fieldSchema(field, mode, key, options);
+    shape[key] = fieldSchema(field, key, options);
   }
   return z.object(shape).strip();
-}
-
-export function collectionSchema(
-  def: Collection,
-  mode: SchemaMode = "storage",
-  options: SchemaOptions = {},
-): z.ZodObject<z.ZodRawShape> {
-  return fieldsSchema(def.fields, mode, options);
-}
-
-export function singletonSchema(
-  def: Singleton,
-  mode: SchemaMode = "storage",
-  options: SchemaOptions = {},
-): z.ZodObject<z.ZodRawShape> {
-  return fieldsSchema(def.fields, mode, options);
 }
 
 /* ------------------------------------------------------------------ *
@@ -308,10 +273,9 @@ export function toIssues(error: z.ZodError): FieldIssue[] {
 export function validateFields<T = Record<string, unknown>>(
   fields: FieldMap,
   data: unknown,
-  mode: SchemaMode = "storage",
   options: SchemaOptions = {},
 ): ValidationResult<T> {
-  const result = fieldsSchema(fields, mode, options).safeParse(data);
+  const result = fieldsSchema(fields, options).safeParse(data);
   if (result.success) return { ok: true, data: result.data as T };
   return { ok: false, issues: toIssues(result.error) };
 }

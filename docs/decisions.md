@@ -745,6 +745,10 @@ subset of the runtime to public.
 
 **Trigger:** the first external project that depends on an internal package.
 
+**Built in 0.6 (#55):** each package README says whether it is public or
+internal; `@micacms/astro` no longer re-exports the readers of `@micacms/core`,
+and the dead exports are gone.
+
 **1.0 status:** accepted for 1.0.
 
 ---

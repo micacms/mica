@@ -245,7 +245,7 @@ export async function analyseChanges(
       const data = entriesByCollection.get(owner.collection)?.get(owner.slug);
       if (!data) continue;
 
-      const result = validateFields(def.fields, data, "storage");
+      const result = validateFields(def.fields, data);
       if (!result.ok) {
         problems.push({
           path: entryDataPath(def, owner.collection, owner.slug),
@@ -264,7 +264,7 @@ export async function analyseChanges(
         const data = await readSingleton(source, def, owner.name);
         if (data === null) continue;
 
-        const result = validateFields(def.fields, data, "storage");
+        const result = validateFields(def.fields, data);
         if (!result.ok) {
           problems.push({ path: dataPath, label: def.label, issues: result.issues });
         }

@@ -12,7 +12,6 @@ export type ErrorCode =
   | "bad_request"
   | "validation_failed"
   | "unauthenticated"
-  | "invalid_credentials"
   | "forbidden"
   | "not_found"
   | "conflict"
@@ -27,7 +26,6 @@ const STATUS: Record<ErrorCode, number> = {
   bad_request: 400,
   validation_failed: 422,
   unauthenticated: 401,
-  invalid_credentials: 401,
   forbidden: 403,
   not_found: 404,
   conflict: 409,
@@ -84,5 +82,3 @@ export const forbidden = (message = "You do not have access to this resource.") 
   new ApiError("forbidden", message);
 export const notFound = (message = "Not found.") => new ApiError("not_found", message);
 export const conflict = (message: string) => new ApiError("conflict", message);
-export const validationFailed = (issues: FieldIssue[], message = "The content is not valid.") =>
-  new ApiError("validation_failed", message, { issues });

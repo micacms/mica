@@ -1,6 +1,8 @@
 # @micacms/runtime
 
-> **Experimental.** Pre-1.0: the API can still change without notice.
+> **Internal.** Published only because the Mica apps install it, and pinned
+> exactly by them. It has no semver promise: any release can break its API. Use
+> `@micacms/core`, `@micacms/astro` or the `@micacms/editor` CLI instead.
 
 The single-site Mica runtime: the Hono API, application services, the content
 files and the Git working-tree code (Git runner, locks, owner policy), deliberately **authentication-neutral**. It answers "who is

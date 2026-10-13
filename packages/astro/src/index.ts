@@ -248,7 +248,7 @@ export function micaCollections<S extends Site>(
       // `storage` rather than `output`: a media reference is a path into the
       // repository at rest and a path into the repository once loaded. There
       // is no expansion step left to tell the two apart.
-      schema: fieldsSchema(def.fields, "storage").extend({ _mica: metaSchema }),
+      schema: fieldsSchema(def.fields).extend({ _mica: metaSchema }),
       loader: {
         name: `mica:${name}`,
         load: async (context) => {
@@ -291,7 +291,7 @@ export function micaCollections<S extends Site>(
   for (const [name, def] of Object.entries(site.singletons) as [string, Singleton][]) {
     collections[name] = {
       type: "content_layer",
-      schema: fieldsSchema(def.fields, "storage"),
+      schema: fieldsSchema(def.fields),
       loader: {
         name: `mica:${name}`,
         load: async (context) => {
@@ -430,20 +430,3 @@ export {
   validateRichText,
   type RichTextOptions,
 } from "./richtext.js";
-
-/**
- * Re-exported for convenience, so a project that only depends on this package
- * can still build a source or read a collection. They are defined in
- * `@micacms/core`, where the Mica server can reach them too.
- */
-export {
-  ContentReadError,
-  ContentSourceError,
-  ORDER_FILE,
-  memorySource,
-  readCollection,
-  readSingleton,
-  type ContentSource,
-  type DirectoryEntry,
-} from "@micacms/core";
-export { fileSystemSource } from "@micacms/core/node";

@@ -1,6 +1,8 @@
 # @micacms/auth-oidc
 
-> **Experimental.** Pre-1.0: the API can still change without notice.
+> **Internal.** Published only because the Mica apps install it, and pinned
+> exactly by them. It has no semver promise: any release can break its API. Use
+> `@micacms/core`, `@micacms/astro` or the `@micacms/editor` CLI instead.
 
 The server-only OIDC gate for Mica: the authorization code flow with PKCE,
 sessions in an encrypted cookie, admission rules over provider claims, and the middleware
