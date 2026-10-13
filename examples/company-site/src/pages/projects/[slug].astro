@@ -3,7 +3,6 @@ import { Image } from "astro:assets";
 import { relatedAll } from "@micacms/astro/relations";
 import { getCollection, type CollectionEntry } from "astro:content";
 
-import LocationMap from "@/components/LocationMap.astro";
 import RichText from "@/components/RichText.astro";
 import TagList from "@/components/TagList.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
@@ -167,19 +166,6 @@ const addressLines = [location?.address, [location?.city, location?.country].fil
               </div>
             ))}
           </div>
-        </div>
-      )
-    }
-
-    {
-      location?.position && (
-        <div class="container-page mt-20">
-          <LocationMap
-            position={location.position}
-            label={title}
-            address={addressLines}
-            zoom={15}
-          />
         </div>
       )
     }

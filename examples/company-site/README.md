@@ -19,6 +19,11 @@ prompts. Images are local files; Astro processes them during the build.
 The team page shows five fictional people and Bento, the company dachshund.
 Bento is last in the saved team order.
 
+The Contact page uses a generated city map of Porto Celeste, Valdoria, with
+street and district labels. It has no title and shows the wider harbour area.
+Its street plan is fictional. The map and directions use the page's extra
+sections.
+
 ## Run it
 
 ```bash
@@ -40,15 +45,15 @@ To check the content without a browser, run `rushx check`. It runs
 
 ## What to look at
 
-| File | Content |
-| --- | --- |
-| `src/mica.ts` | The whole content model: five collections, three singletons |
-| `src/content.config.ts` | The model becomes collections, beside one that Mica does not own |
-| `src/glossary/` | Markdown for that other collection, which the developers maintain |
-| `content/` | The entries: JSON, Markdoc and images |
-| `content/.mica/schema.json` | The model, published by the build for Mica to read |
-| `src/lib/content.ts` | Typed helpers over the collections, and the relations seen from the other side |
-| `src/lib/images.ts` | An absolute URL of an image, for the social-sharing meta tags |
+| File                        | Content                                                                        |
+| --------------------------- | ------------------------------------------------------------------------------ |
+| `src/mica.ts`               | The whole content model: five collections, three singletons                    |
+| `src/content.config.ts`     | The model becomes collections, beside one that Mica does not own               |
+| `src/glossary/`             | Markdown for that other collection, which the developers maintain              |
+| `content/`                  | The entries: JSON, Markdoc and images                                          |
+| `content/.mica/schema.json` | The model, published by the build for Mica to read                             |
+| `src/lib/content.ts`        | Typed helpers over the collections, and the relations seen from the other side |
+| `src/lib/images.ts`         | An absolute URL of an image, for the social-sharing meta tags                  |
 
 ## The model in one line each
 
@@ -70,47 +75,46 @@ the file name says otherwise.
 
 ### Field kinds
 
-| Feature | Model | Example content | Page that shows it |
-| --- | --- | --- | --- |
-| `text` with `pattern` and `patternMessage` | `projects.code`, `team.phone` | `projects/*/index.json` | `src/pages/projects/[slug].astro` |
-| `textarea` | `news.excerpt`, `events.summary` | `news/*/index.json` | `src/pages/news/index.astro` |
-| `richText` (Markdoc) | `pages.body`, `projects.description`, `events.body` | `pages/about-us/body.mdoc` | `src/components/RichText.astro` |
-| `number` with `unit` | `projects.duration` (weeks), `events.capacity` (seats) | `projects/*/index.json` | `src/pages/projects/[slug].astro` |
-| `boolean` | `projects.featured`, `team.featured` | `projects/*/index.json` | `src/pages/index.astro` |
-| `date` | `news.publishDate` | `news/*/index.json` | `src/pages/news/[slug].astro` |
-| `date` with `includeTime` | `events.startsAt`, `events.endsAt` | `events/*/index.json` | `src/pages/events/[slug].astro` |
-| `email` | `team.email`, `site.email` | `team/*/index.json` | `src/pages/team/[slug].astro` |
-| `url` | `events.registrationUrl`, `site.social` | `events/*/index.json` | `src/pages/events/[slug].astro` |
-| `slug` | every collection | the folder name of each entry | all `[slug].astro` pages |
-| `select` | `projects.category` | `projects/*/index.json` | `src/components/ProjectCard.astro` |
-| `select` with `multiple` | `events.format` | `events/*/index.json` | `src/pages/events/[slug].astro` |
-| `object` | `projects.location`, `events.venue`, `pages.seo` | `projects/*/index.json` | `src/pages/projects/[slug].astro` |
-| `repeater` | `projects.facts`, `pages.sections`, `navigation.main` | `pages/services/index.json` | `src/pages/[...slug].astro` |
-| `relation` | `news.author`, `news.relatedProject` | `news/*/index.json` | `src/pages/news/[slug].astro` |
-| `relation` with `multiple` | `projects.team`, `events.speakers` | `events/*/index.json` | `src/pages/events/[slug].astro` |
-| `media` with `alt: "required"` | `news.coverImage`, `team.portrait` | `news/we-are-hiring-a-junior-consultant/index.json` | `src/pages/news/[slug].astro` |
-| `media` with `multiple` (gallery) | `projects.gallery` | `projects/erp-selection-for-a-regional-retailer/index.json` | `src/pages/projects/[slug].astro` |
-| `color` | `theme.primaryColor`, `theme.accentColor` | `theme.json` | `src/layouts/BaseLayout.astro` |
-| `coordinates` | `projects.location.position`, `events.venue.position`, `site.position` | `events/*/index.json` | `src/components/LocationMap.astro` |
-| `tags` with `max`, `maxLength`, `suggestions`, `default` | `projects.tags`, `news.tags`, `events.tags` (with `default`) | `events/*/index.json` | `src/components/TagList.astro` |
+| Feature                                                  | Model                                                        | Example content                                             | Page that shows it                 |
+| -------------------------------------------------------- | ------------------------------------------------------------ | ----------------------------------------------------------- | ---------------------------------- |
+| `text` with `pattern` and `patternMessage`               | `projects.code`, `team.phone`                                | `projects/*/index.json`                                     | `src/pages/projects/[slug].astro`  |
+| `textarea`                                               | `news.excerpt`, `events.summary`                             | `news/*/index.json`                                         | `src/pages/news/index.astro`       |
+| `richText` (Markdoc)                                     | `pages.body`, `projects.description`, `events.body`          | `pages/about-us/body.mdoc`                                  | `src/components/RichText.astro`    |
+| `number` with `unit`                                     | `projects.duration` (weeks), `events.capacity` (seats)       | `projects/*/index.json`                                     | `src/pages/projects/[slug].astro`  |
+| `boolean`                                                | `projects.featured`, `team.featured`                         | `projects/*/index.json`                                     | `src/pages/index.astro`            |
+| `date`                                                   | `news.publishDate`                                           | `news/*/index.json`                                         | `src/pages/news/[slug].astro`      |
+| `date` with `includeTime`                                | `events.startsAt`, `events.endsAt`                           | `events/*/index.json`                                       | `src/pages/events/[slug].astro`    |
+| `email`                                                  | `team.email`, `site.email`                                   | `team/*/index.json`                                         | `src/pages/team/[slug].astro`      |
+| `url`                                                    | `events.registrationUrl`, `site.social`                      | `events/*/index.json`                                       | `src/pages/events/[slug].astro`    |
+| `slug`                                                   | every collection                                             | the folder name of each entry                               | all `[slug].astro` pages           |
+| `select`                                                 | `projects.category`                                          | `projects/*/index.json`                                     | `src/components/ProjectCard.astro` |
+| `select` with `multiple`                                 | `events.format`                                              | `events/*/index.json`                                       | `src/pages/events/[slug].astro`    |
+| `object`                                                 | `projects.location`, `events.venue`, `pages.seo`             | `projects/*/index.json`                                     | `src/pages/projects/[slug].astro`  |
+| `repeater`                                               | `projects.facts`, `pages.sections`, `navigation.main`        | `pages/services/index.json`                                 | `src/pages/[...slug].astro`        |
+| `relation`                                               | `news.author`, `news.relatedProject`                         | `news/*/index.json`                                         | `src/pages/news/[slug].astro`      |
+| `relation` with `multiple`                               | `projects.team`, `events.speakers`                           | `events/*/index.json`                                       | `src/pages/events/[slug].astro`    |
+| `media` with `alt: "required"`                           | `news.coverImage`, `team.portrait`                           | `news/we-are-hiring-a-junior-consultant/index.json`         | `src/pages/news/[slug].astro`      |
+| `media` with `multiple` (gallery)                        | `projects.gallery`                                           | `projects/erp-selection-for-a-regional-retailer/index.json` | `src/pages/projects/[slug].astro`  |
+| `color`                                                  | `theme.primaryColor`, `theme.accentColor`                    | `theme.json`                                                | `src/layouts/BaseLayout.astro`     |
+| `tags` with `max`, `maxLength`, `suggestions`, `default` | `projects.tags`, `news.tags`, `events.tags` (with `default`) | `events/*/index.json`                                       | `src/components/TagList.astro`     |
 
 ### Editor features
 
-| Feature | Where it is used |
-| --- | --- |
-| Manual order (`sortable`, `_order.json`) | `pages` and `team` in `src/mica.ts`; `content/pages/_order.json` and `content/team/_order.json` |
-| Settings with a media folder | the `site` singleton: `content/site/index.json` is a folder entry because the singleton has a `logo` media field |
-| A URL that other entries link to | the `slug` of a project: `content/news/our-2026-sme-operations-benchmark/body.mdoc` links to `/projects/order-to-cash-review/` |
-| A read-only field | `projects.code` (Project number) in `src/mica.ts` |
-| Groups and widths | `site` (group "Contact"), `events.venue` (group "Where"), `width: "half"` on many fields |
-| Collapsible objects | `pages.seo`, `site.analytics` |
-| Tags | `projects.tags`, `news.tags`, `events.tags`; shown with `src/components/TagList.astro` |
-| Relations from both sides | forward: `src/pages/events/[slug].astro` uses `relatedAll`; reverse: `src/pages/team/[slug].astro` uses `getProjectsOf` and `getEventsOf` in `src/lib/content.ts` |
-| Alt text | every `media` field with `alt: "required"`; the `alt` is passed to `<Image>` in `src/pages/news/[slug].astro` |
-| Astro images | `<Image {...coverImage} />` in `src/pages/news/[slug].astro`, and the first gallery image in `src/pages/projects/[slug].astro` |
-| Relation helper | `related` and `relatedAll` from `@micacms/astro/relations` in the news, project and event pages |
-| Rich text in a repeater | `content/pages/services/sections.0.text.mdoc` |
-| A collection that Mica does not own | `src/glossary/`, defined in `src/content.config.ts` |
+| Feature                                  | Where it is used                                                                                                                                                  |
+| ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Manual order (`sortable`, `_order.json`) | `pages` and `team` in `src/mica.ts`; `content/pages/_order.json` and `content/team/_order.json`                                                                   |
+| Settings with a media folder             | the `site` singleton: `content/site/index.json` is a folder entry because the singleton has a `logo` media field                                                  |
+| A URL that other entries link to         | the `slug` of a project: `content/news/our-2026-sme-operations-benchmark/body.mdoc` links to `/projects/order-to-cash-review/`                                    |
+| A read-only field                        | `projects.code` (Project number) in `src/mica.ts`                                                                                                                 |
+| Groups and widths                        | `site` (group "Contact"), `events.venue` (group "Where"), `width: "half"` on many fields                                                                          |
+| Collapsible objects                      | `pages.seo`, `site.analytics`                                                                                                                                     |
+| Tags                                     | `projects.tags`, `news.tags`, `events.tags`; shown with `src/components/TagList.astro`                                                                            |
+| Relations from both sides                | forward: `src/pages/events/[slug].astro` uses `relatedAll`; reverse: `src/pages/team/[slug].astro` uses `getProjectsOf` and `getEventsOf` in `src/lib/content.ts` |
+| Alt text                                 | every `media` field with `alt: "required"`; the `alt` is passed to `<Image>` in `src/pages/news/[slug].astro`                                                     |
+| Astro images                             | `<Image {...coverImage} />` in `src/pages/news/[slug].astro`, and the first gallery image in `src/pages/projects/[slug].astro`                                    |
+| Relation helper                          | `related` and `relatedAll` from `@micacms/astro/relations` in the news, project and event pages                                                                   |
+| Rich text in a repeater                  | `content/pages/services/sections.0.text.mdoc`                                                                                                                     |
+| A collection that Mica does not own      | `src/glossary/`, defined in `src/content.config.ts`                                                                                                               |
 
 ## Making it yours
 

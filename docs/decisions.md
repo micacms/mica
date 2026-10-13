@@ -694,8 +694,8 @@ pass (#72).
 `47.3769, 8.5417` and an "open in OpenStreetMap" link.
 
 **Why:** a slippy map needs a tile provider. Embedding one would make the admin
-depend on a third-party endpoint at runtime. MapLibre belongs on the *frontend*,
-which is where it lives.
+depend on a third-party endpoint at runtime. A map belongs on the website, if the
+website wants one.
 
 **Consequence:** editors pick coordinates elsewhere and paste them.
 

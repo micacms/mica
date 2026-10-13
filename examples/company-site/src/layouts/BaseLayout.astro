@@ -101,13 +101,6 @@ const analytics = settings.analytics;
         address: settings.address
           ? { "@type": "PostalAddress", streetAddress: settings.address.replace(/\n/g, ", ") }
           : undefined,
-        geo: settings.position
-          ? {
-              "@type": "GeoCoordinates",
-              latitude: settings.position.lat,
-              longitude: settings.position.lng,
-            }
-          : undefined,
         sameAs: settings.social.map((link) => link.url),
       })}
     />

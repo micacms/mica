@@ -6,7 +6,16 @@
     "path": "media/entrance.jpg",
     "alt": "An open studio entrance with blue tiles and a potted olive tree"
   },
-  "sections": [],
+  "sections": [
+    {
+      "heading": "Find the studio",
+      "layout": "full",
+      "image": {
+        "path": "media/city-map.jpg",
+        "alt": "City map of fictional Porto Celeste, with Harbor Lane at Via dei Mercanti 27 near Piazza delle Vele, plus Porto Vecchio, Borgo Alto, San Telmo, Parco degli Olivi and Stazione Centrale"
+      }
+    }
+  ],
   "seo": {
     "metaTitle": null,
     "metaDescription": null,

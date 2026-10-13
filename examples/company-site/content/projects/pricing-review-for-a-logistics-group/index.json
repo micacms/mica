@@ -13,11 +13,7 @@
   "location": {
     "address": "8 Lantern Quay",
     "city": "Marisport",
-    "country": "Marisport",
-    "position": {
-      "lat": 1.2806,
-      "lng": 103.8545
-    }
+    "country": "Marisport"
   },
   "facts": [
     {

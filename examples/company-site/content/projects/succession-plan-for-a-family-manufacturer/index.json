@@ -13,11 +13,7 @@
   "location": {
     "address": "Via dei Vetrai 31",
     "city": "Vellano",
-    "country": "Serenza",
-    "position": {
-      "lat": 44.4949,
-      "lng": 11.3426
-    }
+    "country": "Serenza"
   },
   "facts": [
     {

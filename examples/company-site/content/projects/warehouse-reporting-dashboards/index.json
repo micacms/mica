@@ -13,11 +13,7 @@
   "location": {
     "address": "200 Ferrier Street West",
     "city": "Northwick",
-    "country": "Arlandia",
-    "position": {
-      "lat": 43.649,
-      "lng": -79.3866
-    }
+    "country": "Arlandia"
   },
   "facts": [
     {

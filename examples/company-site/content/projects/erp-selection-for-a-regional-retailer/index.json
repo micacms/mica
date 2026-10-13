@@ -13,11 +13,7 @@
   "location": {
     "address": "22 Millrace Lane",
     "city": "Eastvale",
-    "country": "Morvania",
-    "position": {
-      "lat": 53.796,
-      "lng": -1.548
-    }
+    "country": "Morvania"
   },
   "facts": [
     {

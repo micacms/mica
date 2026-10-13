@@ -13,11 +13,7 @@
   "location": {
     "address": "Corvin Square 7",
     "city": "Halvard",
-    "country": "Norvell",
-    "position": {
-      "lat": 59.4339,
-      "lng": 24.7436
-    }
+    "country": "Norvell"
   },
   "facts": [
     {

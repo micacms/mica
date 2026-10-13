@@ -10,11 +10,7 @@
   "capacity": 60,
   "venue": {
     "name": "Sala Aurora Meeting Room",
-    "address": "Piazza delle Cisterne 3\nVL 62-310 Vellano, Serenza",
-    "position": {
-      "lat": 44.4938,
-      "lng": 11.343
-    }
+    "address": "Piazza delle Cisterne 3\nVL 62-310 Vellano, Serenza"
   },
   "registrationUrl": "https://harborlane.example/register/succession-evening",
   "speakers": [

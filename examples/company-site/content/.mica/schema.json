@@ -236,10 +236,6 @@
               "kind": "text",
               "label": "Country",
               "width": "half"
-            },
-            "position": {
-              "kind": "coordinates",
-              "label": "Map position"
             }
           }
         },
@@ -430,10 +426,6 @@
               "kind": "textarea",
               "label": "Address",
               "rows": 2
-            },
-            "position": {
-              "kind": "coordinates",
-              "label": "Map position"
             }
           }
         },
@@ -583,11 +575,6 @@
           "kind": "textarea",
           "label": "Opening hours",
           "rows": 3,
-          "group": "Contact"
-        },
-        "position": {
-          "kind": "coordinates",
-          "label": "Map position",
           "group": "Contact"
         },
         "social": {

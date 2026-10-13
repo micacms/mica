@@ -208,3 +208,17 @@ Style: professional editorial animal portrait photography, realistic fur and ana
 Constraints: single dachshund, no people, no costume, no human pose, no text, no logos, no watermark, no collage.
 ```
 
+
+### `pages/contact/media/city-map.jpg`
+
+```text
+Use case: infographic-diagram
+Asset type: city street map for the Contact page of a fictional consulting company.
+Input image: edit target showing the current fictional studio location and local street names.
+Primary request: redesign this as a real-looking flat 2D city street map, zoomed out to show several kilometres of the imaginary city Porto Celeste. Remove the large title and country name completely. The entire image must be map, edge to edge, with only geographic labels printed directly on it.
+Composition: landscape 4:3. Show a substantially wider urban area: dozens of street blocks, several distinct districts, the full old harbour, an inland railway station, a large park, a river crossing and a stretch of coastal road. The studio is one small marked point within this wider city, not the whole subject. Keep the studio and nearby tram square around the central area; water should occupy about a quarter of the map near the lower-right. Extend the invented street network well beyond the previous neighbourhood.
+Style: familiar professional digital street-map cartography viewed straight from above, flat 2D. Small subdued beige building footprints and city blocks, thin white minor roads with subtle grey outlines, slightly wider pale-gold main roads, pale teal-blue water, muted light-green parks, thin grey railway line. Dark slate sans-serif labels with a fine white halo. Clear, precise and practical. No 3D buildings, perspective, rooftops, watercolor, shadows, scenic illustration, ships or decorative drawing.
+Labels: use only these exact geographic labels, at consistent readable map-label sizes and placed on the corresponding streets, districts or landmarks: "Via dei Mercanti", "Harbor Lane", "27", "Piazza delle Vele", "Porto Vecchio", "Borgo Alto", "San Telmo", "Parco degli Olivi", "Stazione Centrale". The Harbor Lane pin must still be on Via dei Mercanti near Piazza delle Vele. Put Borgo Alto and San Telmo in other districts and the station and park further inland. Use a small simple rust-red location pin at the studio. Do not show "Porto Celeste" or "Valdoria" anywhere; they would act as a title in this image.
+Constraints: entirely invented geography; no title, heading, subtitle, legend, map key, info panel, address card, banner, border, compass, scale bar, provider branding, logo, watermark or interface controls. No real place names or coordinates. No extra writing or decorative text. All important labels inside the central 85 percent so they survive the website's 4:3 crop.
+```
+

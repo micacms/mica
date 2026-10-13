@@ -9,8 +9,7 @@
   "capacity": 300,
   "venue": {
     "name": "Online",
-    "address": "Video call. The link arrives after registration.",
-    "position": null
+    "address": "Video call. The link arrives after registration."
   },
   "registrationUrl": "https://harborlane.example/register/erp-webinar",
   "speakers": [

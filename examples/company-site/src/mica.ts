@@ -25,7 +25,6 @@ import {
   boolean,
   collection,
   color,
-  coordinates,
   date,
   defineSite,
   email,
@@ -188,7 +187,14 @@ export const site = defineSite({
           label: "Tags",
           max: 6,
           maxLength: 24,
-          suggestions: ["process", "finance", "data", "software", "people", "strategy"],
+          suggestions: [
+            "process",
+            "finance",
+            "data",
+            "software",
+            "people",
+            "strategy",
+          ],
         }),
         description: richText({ label: "Description" }),
         location: object({
@@ -197,9 +203,6 @@ export const site = defineSite({
             address: text({ label: "Address" }),
             city: text({ label: "City", width: "half" }),
             country: text({ label: "Country", width: "half" }),
-            position: coordinates({
-              label: "Map position",
-            }),
           },
         }),
         facts: repeater({
@@ -260,7 +263,11 @@ export const site = defineSite({
           suggestions: ["research", "careers", "case study", "operations"],
         }),
         excerpt: textarea({ label: "Teaser", rows: 3, maxLength: 300 }),
-        coverImage: media({ label: "Cover image", accept: "image", alt: "required" }),
+        coverImage: media({
+          label: "Cover image",
+          accept: "image",
+          alt: "required",
+        }),
         body: richText({ label: "Article" }),
       },
     }),
@@ -308,7 +315,6 @@ export const site = defineSite({
           fields: {
             name: text({ label: "Name" }),
             address: textarea({ label: "Address", rows: 2 }),
-            position: coordinates({ label: "Map position" }),
           },
         }),
         registrationUrl: url({
@@ -350,7 +356,11 @@ export const site = defineSite({
           pattern: "\\+[0-9 ]{7,18}",
           patternMessage: "Use the international form, like +990 40 555 0143.",
         }),
-        portrait: media({ label: "Portrait", accept: "image", alt: "required" }),
+        portrait: media({
+          label: "Portrait",
+          accept: "image",
+          alt: "required",
+        }),
         bio: textarea({ label: "Short biography", rows: 4, maxLength: 600 }),
         featured: boolean({ label: "Show on the team page", default: false }),
       },
@@ -371,10 +381,6 @@ export const site = defineSite({
         openingHours: textarea({
           label: "Opening hours",
           rows: 3,
-          group: "Contact",
-        }),
-        position: coordinates({
-          label: "Map position",
           group: "Contact",
         }),
         social: repeater({
@@ -404,7 +410,8 @@ export const site = defineSite({
           fields: {
             titleSuffix: text({
               label: "Title suffix",
-              description: 'Appended to every page title, e.g. " — Harbor Lane Consulting".',
+              description:
+                'Appended to every page title, e.g. " — Harbor Lane Consulting".',
             }),
             defaultDescription: textarea({
               label: "Default description",

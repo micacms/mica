@@ -13,11 +13,7 @@
   "location": {
     "address": "Foundry Quay 14",
     "city": "Kestrel Bay",
-    "country": "Caldria",
-    "position": {
-      "lat": 51.9244,
-      "lng": 4.4777
-    }
+    "country": "Caldria"
   },
   "facts": [
     {

@@ -6,10 +6,6 @@
   "email": "hello@harborlane.example",
   "phone": "+990 40 555 0100",
   "openingHours": "Monday to Friday, 09:00–17:30",
-  "position": {
-    "lat": 38.7098,
-    "lng": -9.145
-  },
   "social": [
     {
       "platform": "linkedin",

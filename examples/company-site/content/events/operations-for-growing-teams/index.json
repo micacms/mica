@@ -9,11 +9,7 @@
   "capacity": 40,
   "venue": {
     "name": "Harbor Lane Studio",
-    "address": "Via dei Mercanti 27\nPC 40-217 Porto Celeste, Valdoria",
-    "position": {
-      "lat": 38.7098,
-      "lng": -9.145
-    }
+    "address": "Via dei Mercanti 27\nPC 40-217 Porto Celeste, Valdoria"
   },
   "registrationUrl": "https://harborlane.example/register/operations-workshop",
   "speakers": [
