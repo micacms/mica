@@ -49,6 +49,8 @@ Keys stay in model order. A repeat save of the same values gives the same bytes.
 
 Run an Astro build after each model change and commit the new `.mica/schema.json`. A new required field makes old entries invalid until an editor adds the value. The build reports this problem before deployment.
 
+The first rich-text or media field in a collection or singleton changes its layout from `<slug>.json` to `<slug>/index.json`. Removing the last such field changes it back. The existing files do not move, and Mica and the website do not read them. Run `npx mica check`: it names each file in the wrong layout. Move those files before you commit.
+
 ## Next
 
 Read [Architecture](/docs/architecture/) to see how the model, the repository, and the editors fit together.

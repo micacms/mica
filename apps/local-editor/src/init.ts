@@ -77,7 +77,11 @@ export function initProject(project: string): InitResult {
   if (!existsSync(manifest)) {
     throw new InitError(`There is no package.json in ${project}. Create an Astro project first: npm create astro@latest`);
   }
-  let pkg: { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+  let pkg: {
+    dependencies?: Record<string, string>;
+    devDependencies?: Record<string, string>;
+    scripts?: Record<string, string>;
+  };
   try {
     pkg = JSON.parse(readFileSync(manifest, "utf8")) as typeof pkg;
   } catch (cause) {
@@ -116,6 +120,8 @@ export function initProject(project: string): InitResult {
   const missing = ["@micacms/astro", "@micacms/core"].filter((name) => !dependencies[name]);
   if (missing.length > 0) result.next.push(`Install the packages: npm install ${missing.join(" ")}`);
   if (!dependencies["@micacms/editor"]) result.next.push("Install the editor: npm install --save-dev @micacms/editor");
+  const scripts = scriptsToSet(pkg.scripts ?? {}, Boolean(dependencies["@astrojs/check"]));
+  if (scripts.length > 0) result.next.push(`Set in "scripts" in package.json:\n\n${scripts.map((line) => `  ${line}`).join(",\n")}`);
   result.next.push(
     model
       ? "Add the website's collections and singletons to the model in src/mica.ts."
@@ -125,6 +131,17 @@ export function initProject(project: string): InitResult {
     "When the content is in place, open the editor in a browser: npx mica",
   );
   return result;
+}
+
+/** `npm run mica` opens the editor; `npm run check` checks the content, and the types when `@astrojs/check` is there. */
+function scriptsToSet(scripts: Record<string, string>, astroCheck: boolean): string[] {
+  const missing: string[] = [];
+  if (!scripts["mica"]) missing.push(`"mica": "mica"`);
+  // Without @astrojs/check, `astro check` asks to install it, and a script cannot answer.
+  const check = scripts["check"];
+  if (!check) missing.push(`"check": "${astroCheck ? "mica check && astro check" : "mica check"}"`);
+  else if (!check.includes("mica check")) missing.push(`"check": ${JSON.stringify(`mica check && ${check}`)}`);
+  return missing;
 }
 
 function existingFile(project: string, candidates: string[]): string | undefined {

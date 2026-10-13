@@ -61,6 +61,25 @@ describe("mica init", () => {
     assert.throws(() => initProject(project), InitError);
   });
 
+  it("names the scripts to add, with astro check only when @astrojs/check is installed", () => {
+    const step = () => initProject(project).next.find((line) => line.includes('"scripts"'));
+    assert.match(step()!, /"mica": "mica",\n {2}"check": "mica check"$/);
+
+    rmSync(path.join(project, "src"), { recursive: true });
+    write("package.json", JSON.stringify({ dependencies: { astro: "^6.0.0" }, devDependencies: { "@astrojs/check": "^0.9.4" } }));
+    assert.match(step()!, /"check": "mica check && astro check"/);
+  });
+
+  it("keeps the project's scripts, and puts mica check in front of its own check", () => {
+    const step = () => initProject(project).next.find((line) => line.includes('"scripts"'));
+    write("package.json", JSON.stringify({ dependencies: { astro: "^6.0.0" }, scripts: { mica: "mica --port 3000", check: "astro check" } }));
+    assert.match(step()!, /^Set in "scripts" in package\.json:\n\n {2}"check": "mica check && astro check"$/);
+
+    rmSync(path.join(project, "src"), { recursive: true });
+    write("package.json", JSON.stringify({ dependencies: { astro: "^6.0.0" }, scripts: { mica: "mica", check: "mica check" } }));
+    assert.equal(step(), undefined);
+  });
+
   it("refuses a directory that is not an Astro project", () => {
     write("package.json", JSON.stringify({ dependencies: { react: "^19.0.0" } }));
     assert.throws(() => initProject(project), InitError);

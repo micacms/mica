@@ -36,6 +36,10 @@ npx mica check           # checks every entry against the model
 npx mica                 # opens the editor
 ```
 
+`mica init` also names the scripts that `package.json` does not have yet:
+`npm run mica` opens the editor, and `npm run check` runs `mica check`, followed
+by `astro check` when `@astrojs/check` is installed.
+
 The steps below write the two files by hand.
 
 ---

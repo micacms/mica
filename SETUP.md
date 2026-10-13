@@ -74,4 +74,4 @@ Read `node_modules/@micacms/astro/setup/<guide>` from the table in step 2, and
 follow it from start to end. Every guide ends with `finish.md`.
 
 When you are done, tell the user what you did, which decisions they made, and
-how to open the editor: `npx mica`.
+how to open the editor, as the guide says.

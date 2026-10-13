@@ -47,7 +47,8 @@ npx @micacms/editor check    # check every entry against the model
 ```
 
 `init` writes a starter `src/mica.ts` and `src/content.config.ts`, and never
-overwrites a file. `check` reads every entry the way Mica and the
+overwrites a file. It also names the `mica` and `check` scripts that
+`package.json` does not have yet. `check` reads every entry the way Mica and the
 website read it, and reports what they would skip or refuse: fields that do
 not validate, missing media, relations to entries that do not exist, slugs
 that do not match their file names, and files that are not read at all. It
