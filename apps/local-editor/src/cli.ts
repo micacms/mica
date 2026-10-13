@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `npx @micacms/editor` — Mica against a project on this machine.
+ * `npx @micacms/editor start` — Mica against a project on this machine.
  *
  * The point of this file is that adopting Mica should not mean adopting this
  * repository. Everything it does is set environment variables and hand over to
@@ -51,7 +51,7 @@ const USAGE = `
   mica — edit your Astro project's content, on this machine
 
   Usage
-    $ npx @micacms/editor [content directory]   open the editor
+    $ npx @micacms/editor start [content dir]   open the editor
     $ npx @micacms/editor init                  add Mica to this Astro project
     $ npx @micacms/editor check [content dir]   check every entry against the model
     $ npx @micacms/editor migrate-layout [dir]  move entries into the layout of the model
@@ -62,7 +62,7 @@ const USAGE = `
 
   With @micacms/editor installed in the project, \`npx mica\` is the same command.
 
-  Options
+  Options of start
     -c, --content <dir>   The content root (default: ./content)
     -p, --port <number>   Port to listen on (default: ${DEFAULT_PORT})
         --host <address>  Address to bind (default: 127.0.0.1)
@@ -116,7 +116,7 @@ export function parse(argv: string[]): Options {
         process.exit(0);
 
       default:
-        // A bare path is the content root, so `npx @micacms/editor ./site/content`
+        // A bare path is the content root, so `npx @micacms/editor start ./site/content`
         // does what it looks like it does.
         if (!flag.startsWith("-")) options.content = flag;
         else fail(`Unknown option "${flag}".`);
@@ -138,7 +138,7 @@ function report(title: string, lines: string[]): void {
 }
 
 function fail(message: string): never {
-  report(message, ["Run `npx @micacms/editor --help` to see every option."]);
+  report(message, ["Run `npx @micacms/editor --help` to see every command and option."]);
   process.exit(64); // EX_USAGE
 }
 
@@ -182,8 +182,12 @@ export async function main(): Promise<void> {
   if (command === "check") return check(rest);
   if (command === "migrate-layout") return migrate(rest);
   if (command === "import") return importCommand(rest);
+  // The first word is always a command, so that a directory named `init` is not one.
+  if (command === undefined || command === "-h" || command === "--help") return void process.stdout.write(`${USAGE}\n`);
+  if (command === "-v" || command === "--version") return void process.stdout.write(`${VERSION}\n`);
+  if (command !== "start") fail(`Unknown command "${command}". To open the editor: npx @micacms/editor start`);
 
-  const options = parse(process.argv.slice(2));
+  const options = parse(rest);
   const content = contentRoot(options, process.env);
 
   if (!existsSync(content)) {
@@ -191,7 +195,7 @@ export async function main(): Promise<void> {
       "Mica edits the directory your Astro project publishes content into —",
       "the `root` in your `defineSite({ root: \"./content\" })`.",
       "",
-      "  npx @micacms/editor ./path/to/content",
+      "  npx @micacms/editor start ./path/to/content",
       "",
       "If this is a new project, create the directory and Mica writes the first",
       "entry into it.",

@@ -5,7 +5,7 @@
 Add two scripts to `package.json`, so that the user has short commands:
 
 ```json
-"mica": "mica",
+"mica": "mica start",
 "check": "mica check && astro check"
 ```
 

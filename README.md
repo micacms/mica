@@ -143,7 +143,7 @@ it cannot inject a script into the built site.
 ## Running it
 
 ```bash
-npx @micacms/editor       # reads ./content, opens the editor on localhost:6422/admin/
+npx @micacms/editor start # reads ./content, opens the editor on localhost:6422/admin/
 ```
 
 |                 |                                                                                                                                                                                               |

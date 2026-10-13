@@ -11,7 +11,7 @@ The guides link here. Read the section that a step names.
 | `npx mica check` | Checks every entry against `content/.mica/schema.json`. Exit code 1 on an error |
 | `npx mica import` | Moves Astro collections into Mica, from Astro's data store. See [content-collections.md](./content-collections.md#6-convert-the-entries) |
 | `npx mica migrate-layout` | Moves entries into the layout of the model, after the first or the last rich-text or media field of a collection was added or removed |
-| `npx mica` | Opens the editor in the browser. Only for the user; do not run it yourself |
+| `npx mica start` | Opens the editor in the browser. Only for the user; do not run it yourself |
 
 `mica check` reads the model from `content/.mica/schema.json`. After every
 change to `src/mica.ts`, run `npx astro sync` before `npx mica check`.

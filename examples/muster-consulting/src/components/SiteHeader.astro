@@ -1,7 +1,7 @@
 ---
+import { Image } from "astro:assets";
 /** Header and main menu, both driven by the `navigation` singleton. */
 
-import CmsImage from "@/components/CmsImage.astro";
 import { getNavigation, getSiteSettings } from "@/lib/content";
 
 const settings = await getSiteSettings();
@@ -19,7 +19,7 @@ const isCurrent = (href: string): boolean => {
     <a href="/" class="flex shrink-0 items-center gap-2.5" aria-label={settings.companyName}>
       {
         settings.logo ? (
-          <CmsImage media={settings.logo} alt={settings.companyName} class="h-8 w-auto" widths={[96, 192]} sizes="96px" />
+          <Image src={settings.logo} alt={settings.companyName} class="h-8 w-auto" widths={[96, 192]} sizes="96px" />
         ) : (
           <span class="text-base font-semibold tracking-tight">{settings.companyName}</span>
         )

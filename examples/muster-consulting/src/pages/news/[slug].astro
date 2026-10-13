@@ -1,7 +1,7 @@
 ---
+import { Image } from "astro:assets";
 import { getCollection, getEntry, type CollectionEntry } from "astro:content";
 
-import CmsImage from "@/components/CmsImage.astro";
 import RichText from "@/components/RichText.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { formatDate, toPlainText } from "@/lib/content";
@@ -47,12 +47,13 @@ const writer = author ? await getEntry("team", author) : undefined;
       coverImage && (
         <div class="container-page mb-10">
           <div class="overflow-hidden bg-sunken" style="border-radius: var(--radius-theme)">
-            <CmsImage
-              media={coverImage}
+            <Image
+              {...coverImage}
               class="w-full object-cover"
               widths={[800, 1200, 1800]}
               sizes="(min-width: 1152px) 1120px, 92vw"
-              priority
+              loading="eager"
+              fetchpriority="high"
             />
           </div>
         </div>

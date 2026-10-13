@@ -22,7 +22,7 @@ localhost:6422
 ## Running it against a project
 
 ```bash
-npx @micacms/editor --content ./content
+npx @micacms/editor start --content ./content
 ```
 
 The published package carries the API and the built admin, so this is one

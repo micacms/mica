@@ -21,4 +21,4 @@ who may edit. `docker compose run --rm mica check` tests the token, the push
 rights and the content model before the first start. The server refuses to start without the last one — a deployment
 that admits everybody its issuer knows is a misconfiguration, not a default.
 
-Running Mica on your own machine needs none of this: `npx @micacms/editor`.
+Running Mica on your own machine needs none of this: `npx @micacms/editor start`.

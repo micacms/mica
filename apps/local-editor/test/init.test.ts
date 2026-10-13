@@ -63,7 +63,7 @@ describe("mica init", () => {
 
   it("names the scripts to add, with astro check only when @astrojs/check is installed", () => {
     const step = () => initProject(project).next.find((line) => line.includes('"scripts"'));
-    assert.match(step()!, /"mica": "mica",\n {2}"check": "mica check"$/);
+    assert.match(step()!, /"mica": "mica start",\n {2}"check": "mica check"$/);
 
     rmSync(path.join(project, "src"), { recursive: true });
     write("package.json", JSON.stringify({ dependencies: { astro: "^7.0.0" }, devDependencies: { "@astrojs/check": "^0.9.4" } }));

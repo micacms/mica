@@ -62,7 +62,7 @@ export const collections = micaCollections(site);
 ## 4. Start Mica
 
 ```bash
-npx @micacms/editor
+npx @micacms/editor start
 ```
 
 The command prints the address and opens your browser on `http://localhost:6422/admin/`.
@@ -78,7 +78,7 @@ npm install --save-dev @micacms/editor
 ```json
 {
   "scripts": {
-    "mica": "mica",
+    "mica": "mica start",
     "check": "mica check && astro check"
   }
 }
