@@ -21,7 +21,12 @@ export class ModelError extends Error {
   override name = "ModelError";
 }
 
-export function collection<O extends CollectionOptions>(options: O): Collection & O {
+/** What a collection's list can be sorted by: `"position"` (the order editors arrange) or one of its fields. */
+export type SortableBy<O extends CollectionOptions> = "position" | Extract<keyof O["fields"], string>;
+
+export function collection<O extends CollectionOptions>(
+  options: O & { defaultSort?: { field: SortableBy<O>; direction: "asc" | "desc" } },
+): Collection & O {
   return { type: "collection", name: "", ...options } as Collection & O;
 }
 
@@ -99,6 +104,7 @@ function assertValidSite(site: Site): void {
         `Collection "${name}" declares slugField "${def.slugField}" which is not a field.`,
       );
     }
+
     if (def.titleField && !def.fields[def.titleField]) {
       throw new ModelError(
         `Collection "${name}" declares titleField "${def.titleField}" which is not a field.`,

@@ -293,6 +293,7 @@ describe("defineSite", () => {
           collections: {
             news: collection({
               label: "News",
+              // @ts-expect-error -- the types refuse it too; a model read from a manifest has no types.
               defaultSort: { field: "publishedAt", direction: "desc" },
               fields: { title: text(), slug: slug(), publishDate: date() },
             }),
@@ -308,7 +309,7 @@ describe("defineSite", () => {
   it("accepts a default sort by a declared field, or by hand-arranged position", () => {
     const fields = { title: text(), slug: slug(), publishDate: date() };
 
-    for (const field of ["publishDate", "title", "position"]) {
+    for (const field of ["publishDate", "title", "position"] as const) {
       assert.doesNotThrow(() =>
         defineSite({
           collections: {

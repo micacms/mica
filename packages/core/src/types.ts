@@ -198,9 +198,6 @@ export interface ColorField extends BaseField {
 
 export interface CoordinatesField extends BaseField {
   kind: "coordinates";
-  /** Initial map centre when the field is empty. */
-  defaultCenter?: { lat: number; lng: number };
-  defaultZoom?: number;
 }
 
 export type AnyField =
@@ -354,26 +351,30 @@ export type FieldValue<F extends AnyField, Img = never> =
 
 /**
  * Booleans, repeaters and multi-value fields always have a concrete empty
- * representation, so they are never null. Everything else is nullable unless
+ * representation, so they are never null. A collection's own slug field is the
+ * entry's file name (`Url`), so it is never null either; a slug elsewhere, such
+ * as one per language in an object, can be. Everything else is nullable unless
  * declared `required: true`.
  */
 // prettier-ignore
-type NeverNull<F extends AnyField> =
+type NeverNull<F extends AnyField, Url extends boolean> =
   F extends BooleanField ? true :
   F extends RepeaterField ? true :
   F extends { multiple: true } ? true :
   F extends { required: true } ? true :
+  F extends SlugField ? Url :
   false;
 
-export type InferField<F extends AnyField, Img = never> = NeverNull<F> extends true
+/** `Url`: the field is among a collection's own fields, where a slug is the entry's URL. */
+export type InferField<F extends AnyField, Img = never, Url extends boolean = false> = NeverNull<F, Url> extends true
   ? FieldValue<F, Img>
   : FieldValue<F, Img> | null;
 
-export type InferFields<M extends FieldMap, Img = never> = {
-  [K in keyof M]: InferField<M[K], Img>;
+export type InferFields<M extends FieldMap, Img = never, Url extends boolean = false> = {
+  [K in keyof M]: InferField<M[K], Img, Url>;
 };
 
-export type InferCollection<C extends Collection, Img = never> = InferFields<C["fields"], Img>;
+export type InferCollection<C extends Collection, Img = never> = InferFields<C["fields"], Img, true>;
 export type InferSingleton<S extends Singleton, Img = never> = InferFields<S["fields"], Img>;
 
 /** `{ projects: {...}, news: {...} }` — data shapes keyed by collection name. */
