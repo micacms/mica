@@ -1,9 +1,10 @@
 {
   "protocolVersion": 1,
-  "generatedBy": "@micacms/astro@0.0.1",
+  "generatedBy": "@micacms/astro",
   "collections": {
     "features": {
       "type": "collection",
+      "layout": "directory",
       "name": "features",
       "label": "Features",
       "labelSingular": "Feature",
@@ -92,6 +93,7 @@
     },
     "docs": {
       "type": "collection",
+      "layout": "directory",
       "name": "docs",
       "label": "Documentation",
       "labelSingular": "Document",
@@ -166,6 +168,7 @@
     },
     "releases": {
       "type": "collection",
+      "layout": "directory",
       "name": "releases",
       "label": "Releases",
       "labelSingular": "Release",
@@ -222,6 +225,7 @@
   "singletons": {
     "site": {
       "type": "singleton",
+      "layout": "file",
       "name": "site",
       "label": "Website",
       "description": "Product identity, links, and default metadata.",
@@ -285,6 +289,7 @@
     },
     "navigation": {
       "type": "singleton",
+      "layout": "file",
       "name": "navigation",
       "label": "Navigation",
       "description": "Header and footer navigation.",
@@ -348,6 +353,7 @@
     },
     "home": {
       "type": "singleton",
+      "layout": "file",
       "name": "home",
       "label": "Home page",
       "description": "All editorial content for the main marketing page.",
@@ -543,6 +549,7 @@
     },
     "product": {
       "type": "singleton",
+      "layout": "file",
       "name": "product",
       "label": "Product page",
       "description": "Editorial content for the detailed product page.",
@@ -605,6 +612,7 @@
     },
     "imprint": {
       "type": "singleton",
+      "layout": "directory",
       "name": "imprint",
       "label": "Imprint",
       "description": "The legal notice: who is responsible for the website, and how to reach them.",

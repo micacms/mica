@@ -1,9 +1,10 @@
 {
   "protocolVersion": 1,
-  "generatedBy": "@micacms/astro@0.0.1",
+  "generatedBy": "@micacms/astro",
   "collections": {
     "pages": {
       "type": "collection",
+      "layout": "directory",
       "name": "pages",
       "label": "Pages",
       "labelSingular": "Page",
@@ -127,6 +128,7 @@
     },
     "projects": {
       "type": "collection",
+      "layout": "directory",
       "name": "projects",
       "label": "Projects",
       "labelSingular": "Project",
@@ -257,6 +259,7 @@
     },
     "news": {
       "type": "collection",
+      "layout": "directory",
       "name": "news",
       "label": "News",
       "labelSingular": "Article",
@@ -308,6 +311,7 @@
     },
     "team": {
       "type": "collection",
+      "layout": "directory",
       "name": "team",
       "label": "Team",
       "labelSingular": "Team member",
@@ -366,6 +370,7 @@
   "singletons": {
     "site": {
       "type": "singleton",
+      "layout": "directory",
       "name": "site",
       "label": "Website",
       "description": "Company details, contact information and default SEO.",
@@ -525,6 +530,7 @@
     },
     "navigation": {
       "type": "singleton",
+      "layout": "file",
       "name": "navigation",
       "label": "Navigation",
       "description": "Main menu and footer links.",
@@ -599,6 +605,7 @@
     },
     "theme": {
       "type": "singleton",
+      "layout": "file",
       "name": "theme",
       "label": "Theme",
       "description": "Colours and typography for the public website.",
