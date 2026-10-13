@@ -19,7 +19,9 @@ import {
   repeater,
   singleton,
   slug,
+  tags,
   text,
+  defaultValues,
   type InferCollection,
   type InferSingleton,
 } from "../dist/index.js";
@@ -42,6 +44,7 @@ const projects = collection({
     lead: relation({ collection: "team" }),
     meta: object({ fields: { note: text(), slugDe: slug() } }),
     steps: repeater({ fields: { label: text({ required: true }) } }),
+    keywords: tags({ suggestions: ["web"] }),
   },
 });
 
@@ -59,6 +62,8 @@ describe("inferred entry types", () => {
     expectType<Equal<Project["lead"], string | null>>();
     expectType<Equal<Project["meta"], { note: string | null; slugDe: string | null } | null>>();
     expectType<Equal<Project["steps"], Array<{ label: string }>>>();
+    expectType<Equal<Project["keywords"], string[]>>();
+    assert.deepEqual(defaultValues(projects.fields)["keywords"], []);
     assert.ok(projects);
   });
 

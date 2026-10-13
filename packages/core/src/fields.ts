@@ -27,6 +27,7 @@ import type {
   SelectField,
   SelectOption,
   SlugField,
+  TagsField,
   TextField,
   TextareaField,
   UrlField,
@@ -58,6 +59,7 @@ export const FIELD_KINDS = [
   "media",
   "color",
   "coordinates",
+  "tags",
 ] as const satisfies readonly FieldKind[];
 
 // The converse direction: a kind removed from this list but still in the union
@@ -328,6 +330,22 @@ export function color<O extends ColorOptions>(options?: O): ColorField & O {
 }
 
 export type CoordinatesOptions = CommonOptions;
+
+export interface TagsOptions extends CommonOptions {
+  /** The most tags. */
+  max?: number;
+  /** The most characters of one tag. */
+  maxLength?: number;
+  /** Tags the editor is offered while typing; others are allowed too. */
+  suggestions?: string[];
+  /** The tags of a new entry. */
+  default?: string[];
+}
+
+/** A free list of short words, such as tags or keywords, in the order the editor gave them. Never null: empty is `[]`. */
+export function tags<O extends TagsOptions>(options?: O): TagsField & O {
+  return make("tags", options) as TagsField & O;
+}
 
 /** A place, stored as `{ lat, lng }`. */
 export function coordinates<O extends CoordinatesOptions>(options?: O): CoordinatesField & O {
