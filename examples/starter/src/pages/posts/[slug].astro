@@ -1,0 +1,23 @@
+---
+import { Image } from "astro:assets";
+import { getCollection, type CollectionEntry } from "astro:content";
+
+import Layout from "../../components/Layout.astro";
+import RichText from "../../components/RichText.astro";
+
+export async function getStaticPaths() {
+  return (await getCollection("posts")).map((post) => ({ params: { slug: post.data.slug }, props: { post } }));
+}
+
+const { post } = Astro.props as { post: CollectionEntry<"posts"> };
+const { title, publishDate, tags, cover, body } = post.data;
+---
+
+<Layout title={title}>
+  <article>
+    <h1>{title}</h1>
+    <p><small>{publishDate}{tags.length > 0 && ` · ${tags.join(", ")}`}</small></p>
+    {cover && <Image {...cover} width={800} />}
+    <RichText text={body} />
+  </article>
+</Layout>

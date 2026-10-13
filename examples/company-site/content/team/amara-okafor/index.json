@@ -1,0 +1,13 @@
+{
+  "name": "Amara Okafor",
+  "slug": "amara-okafor",
+  "role": "Managing partner",
+  "email": "amara.okafor@harborlane.example",
+  "phone": "+990 40 555 0143",
+  "portrait": {
+    "path": "media/portrait.jpg",
+    "alt": "Amara Okafor, managing partner, in a navy jacket"
+  },
+  "bio": "Founded Harbor Lane in 2012 after a decade in industry across Essenmouth, Thornbury and Porto Celeste. She leads client work, follows every new engagement closely and still runs the occasional workshop. Her favourite part of a project is the first week, when the team is still listening and nothing has been decided yet.",
+  "featured": true
+}

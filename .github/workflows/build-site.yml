@@ -13,7 +13,7 @@ on:
     paths:
       # The content directory is what editors change. The rest is what
       # developers change. Both need a rebuild; nothing else does.
-      - "examples/muster-consulting/**"
+      - "examples/company-site/**"
       - "packages/**"
       - "rush.json"
       - "common/config/rush/**"
@@ -52,7 +52,7 @@ jobs:
           key: rush-${{ runner.os }}-${{ hashFiles('rush.json', 'common/config/rush/pnpm-lock.yaml') }}
           restore-keys: rush-${{ runner.os }}-
 
-      - run: node common/scripts/install-run-rush.js install --to @micacms/example-muster-consulting
+      - run: node common/scripts/install-run-rush.js install --to @micacms/example-company-site
 
       # No CMS_URL and no token: the content is in this checkout. The build
       # cannot be broken by the CMS being down, slow, or mid-deploy. `--to`
@@ -60,18 +60,18 @@ jobs:
       - name: Build the website
         env:
           SITE_URL: ${{ vars.SITE_URL }}
-        run: node common/scripts/install-run-rush.js build --to @micacms/example-muster-consulting
+        run: node common/scripts/install-run-rush.js build --to @micacms/example-company-site
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: website
-          path: examples/muster-consulting/dist
+          path: examples/company-site/dist
           retention-days: 7
 
       # Replace with whatever hosts the site. The build above is
       # provider-agnostic; only this step is not.
       #
       # - name: Deploy
-      #   run: npx wrangler pages deploy examples/muster-consulting/dist --project-name=example
+      #   run: npx wrangler pages deploy examples/company-site/dist --project-name=example
       #   env:
       #     CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

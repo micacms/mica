@@ -1,0 +1,186 @@
+---
+import { Image } from "astro:assets";
+import ProjectCard from "@/components/ProjectCard.astro";
+import SectionHeader from "@/components/SectionHeader.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import {
+  dateBadge,
+  formatDate,
+  formatDateTime,
+  getEvents,
+  getNews,
+  getProjects,
+  getSiteSettings,
+} from "@/lib/content";
+
+const settings = await getSiteSettings();
+
+const featured = await getProjects({ featuredOnly: true });
+const allProjects = await getProjects();
+// An empty "featured" list should not produce an empty homepage.
+const showcase = (featured.length > 0 ? featured : allProjects).slice(0, 3);
+
+const news = (await getNews()).slice(0, 3);
+const upcomingEvents = (await getEvents()).upcoming.slice(0, 3);
+
+// The default sharing image is the company's own picture, so it doubles as the homepage image.
+const heroImage = settings.seo?.defaultImage ?? null;
+---
+
+<BaseLayout>
+  <section class="container-page grid items-center gap-12 pb-20 pt-16 sm:pt-24 lg:grid-cols-[1.1fr_1fr] lg:gap-16 lg:pb-28">
+    <div>
+      <p class="eyebrow text-accent">{settings.companyName}</p>
+      <h1 class="mt-4 text-4xl font-semibold leading-[1.05] sm:text-6xl">
+        {settings.tagline ?? settings.companyName}
+      </h1>
+      {
+        settings.seo?.defaultDescription && (
+          <p class="mt-6 max-w-xl text-lg text-muted text-pretty sm:text-xl">
+            {settings.seo.defaultDescription}
+          </p>
+        )
+      }
+
+      <div class="mt-10 flex flex-wrap gap-3">
+        <a href="/projects/" class="btn-solid">See our work</a>
+        <a href="/contact/" class="btn-outline">Get in touch</a>
+      </div>
+    </div>
+
+    {
+      heroImage && (
+        <div class="relative isolate">
+          <div class="absolute -inset-3 -z-10 translate-x-6 translate-y-6 bg-primary/10" style="border-radius: var(--radius-theme)" aria-hidden="true" />
+          <div class="media-frame aspect-4/3 shadow-xl shadow-ink/10 lg:aspect-5/4">
+            <Image
+              src={heroImage}
+              alt=""
+              class="h-full w-full object-cover"
+              widths={[600, 900, 1200]}
+              sizes="(min-width: 1024px) 520px, 92vw"
+              loading="eager"
+              fetchpriority="high"
+            />
+          </div>
+        </div>
+      )
+    }
+  </section>
+
+  {
+    showcase.length > 0 && (
+      <section class="border-t border-line bg-sunken py-20 sm:py-24" aria-labelledby="projects-heading">
+        <div class="container-page">
+          <SectionHeader id="projects-heading" eyebrow="Our work" title="Selected projects" href="/projects/" linkLabel="All projects" />
+
+          <div class="mt-12 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
+            {showcase.map((project) => (
+              <ProjectCard project={project} />
+            ))}
+          </div>
+        </div>
+      </section>
+    )
+  }
+
+  {
+    upcomingEvents.length > 0 && (
+      <section class="container-page mt-20 sm:mt-24" aria-labelledby="events-heading">
+        <SectionHeader id="events-heading" eyebrow="Meet us" title="Upcoming events" href="/events/" linkLabel="All events" />
+
+        <ul class="mt-12 grid gap-6 md:grid-cols-3">
+          {upcomingEvents.map((event) => {
+            const badge = dateBadge(event.data.startsAt);
+            return (
+              <li>
+                <a href={`/events/${event.id}/`} class="card-surface group flex h-full gap-5 p-6 transition hover:border-primary/40 hover:shadow-lg hover:shadow-ink/5">
+                  {badge && (
+                    <div class="flex w-14 shrink-0 flex-col items-center self-start border border-line py-2 text-center" style="border-radius: var(--radius-theme)" aria-hidden="true">
+                      <span class="text-[11px] font-semibold uppercase tracking-wider text-accent">{badge.month}</span>
+                      <span class="text-2xl font-semibold leading-none">{badge.day}</span>
+                    </div>
+                  )}
+                  <div>
+                    <time datetime={event.data.startsAt} class="text-xs text-muted">
+                      {formatDateTime(event.data.startsAt)}
+                    </time>
+                    <h3 class="mt-1.5 font-semibold leading-snug group-hover:text-primary">
+                      {event.data.title}
+                    </h3>
+                    {event.data.summary && (
+                      <p class="mt-2 text-sm text-muted text-pretty">{event.data.summary}</p>
+                    )}
+                  </div>
+                </a>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
+    )
+  }
+
+  {
+    news.length > 0 && (
+      <section class="container-page mt-20 sm:mt-24" aria-labelledby="news-heading">
+        <SectionHeader id="news-heading" eyebrow="Journal" title="Latest news" href="/news/" linkLabel="All news" />
+
+        <div class="mt-12 grid gap-x-8 gap-y-12 md:grid-cols-3">
+          {news.map((article) => (
+            <article>
+              <a href={`/news/${article.id}/`} class="group block">
+                {article.data.coverImage && (
+                  <div class="media-frame mb-5 aspect-3/2">
+                    <Image
+                      src={article.data.coverImage.src}
+                      alt={article.data.coverImage.alt}
+                      class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                      widths={[400, 800]}
+                      sizes="(min-width: 768px) 30vw, 92vw"
+                    />
+                  </div>
+                )}
+
+                {article.data.publishDate && (
+                  <time datetime={article.data.publishDate} class="text-xs font-medium text-muted">
+                    {formatDate(article.data.publishDate)}
+                  </time>
+                )}
+                <h3 class="mt-1.5 text-lg font-semibold leading-snug group-hover:text-primary">
+                  {article.data.title}
+                </h3>
+                {article.data.excerpt && (
+                  <p class="mt-2 text-sm text-muted text-pretty">{article.data.excerpt}</p>
+                )}
+              </a>
+            </article>
+          ))}
+        </div>
+      </section>
+    )
+  }
+
+  <section class="container-page mt-24 sm:mt-32" aria-labelledby="contact-heading">
+    <div class="relative overflow-hidden bg-primary px-8 py-14 text-white sm:px-14 sm:py-16" style="border-radius: var(--radius-theme)">
+      <div class="absolute -right-24 -top-24 size-72 rounded-full bg-white/10" aria-hidden="true" />
+      <div class="absolute -bottom-32 right-24 size-64 rounded-full bg-accent/30" aria-hidden="true" />
+      <div class="relative max-w-2xl">
+        <h2 id="contact-heading" class="text-3xl font-semibold sm:text-4xl">Have a project in mind?</h2>
+        <p class="mt-4 text-lg text-white/85 text-pretty">
+          Tell us where you are and where you want to go. The first conversation is free.
+        </p>
+        <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
+          <a href="/contact/" class="inline-flex items-center justify-center bg-white px-5 py-3 text-sm font-medium text-primary shadow-sm transition hover:-translate-y-px hover:shadow-md" style="border-radius: var(--radius-theme)">
+            Get in touch
+          </a>
+          {settings.email && (
+            <a href={`mailto:${settings.email}`} class="text-sm font-medium text-white/90 underline decoration-white/40 underline-offset-4 hover:decoration-white">
+              {settings.email}
+            </a>
+          )}
+        </div>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

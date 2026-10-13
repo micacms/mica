@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/astro",
+      "comment": "@micacms/astro/relations: related() and relatedAll() resolve relation fields with the site's types and warn in dev about a missing target; the setup reference names tags()",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

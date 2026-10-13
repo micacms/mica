@@ -22,7 +22,8 @@ export type FieldKind =
   | "relation"
   | "media"
   | "color"
-  | "coordinates";
+  | "coordinates"
+  | "tags";
 
 /** Options shared by every field type. */
 export interface BaseFieldOptions {
@@ -200,6 +201,18 @@ export interface CoordinatesField extends BaseField {
   kind: "coordinates";
 }
 
+/** A free list of short words, such as tags or keywords. Stored as a list of strings. */
+export interface TagsField extends BaseField {
+  kind: "tags";
+  /** The most tags. */
+  max?: number;
+  /** The most characters of one tag. */
+  maxLength?: number;
+  /** Tags the editor is offered while typing; others are allowed too. */
+  suggestions?: string[];
+  default?: string[];
+}
+
 export type AnyField =
   | TextField
   | TextareaField
@@ -216,7 +229,8 @@ export type AnyField =
   | RelationField
   | MediaField
   | ColorField
-  | CoordinatesField;
+  | CoordinatesField
+  | TagsField;
 
 export type FieldMap = Record<string, AnyField>;
 
@@ -342,6 +356,7 @@ export type FieldValue<F extends AnyField, Img = never> =
   F extends SelectField ? Multiple<F, string> :
   F extends ColorField ? string :
   F extends CoordinatesField ? Coordinates :
+  F extends TagsField ? string[] :
   // A path into the content repository; with the `alt` option, the path and its alt text.
   F extends MediaField ? Multiple<F, MediaValue<F, Img>> :
   F extends RelationField ? Multiple<F, string> :
@@ -360,6 +375,7 @@ export type FieldValue<F extends AnyField, Img = never> =
 type NeverNull<F extends AnyField, Url extends boolean> =
   F extends BooleanField ? true :
   F extends RepeaterField ? true :
+  F extends TagsField ? true :
   F extends { multiple: true } ? true :
   F extends { required: true } ? true :
   F extends SlugField ? Url :

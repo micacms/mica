@@ -37,7 +37,7 @@ const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Kinds whose empty state is a value, not null. */
 function neverNull(field: AnyField): boolean {
-  if (field.kind === "boolean" || field.kind === "repeater") return true;
+  if (field.kind === "boolean" || field.kind === "repeater" || field.kind === "tags") return true;
   return "multiple" in field && field.multiple === true;
 }
 
@@ -234,6 +234,21 @@ function innerSchema(
       return list;
     }
 
+    case "tags": {
+      let one = z.string({ error: `${name}: a tag must be text.` }).trim().min(1, { error: `${name}: a tag cannot be empty.` });
+      if (field.maxLength !== undefined) one = one.max(field.maxLength, { error: lengthLimit(`${name}: a tag`, "most", field.maxLength) });
+      let list = z.array(one, { error: `${name} must be a list of tags.` });
+      if (field.max !== undefined) list = list.max(field.max, { error: countLimit(name, "most", field.max, "tag") });
+      return list.superRefine((values, ctx) => {
+        const seen = new Set<string>();
+        for (const value of values) {
+          const key = value.toLowerCase();
+          if (seen.has(key)) ctx.addIssue({ code: "custom", message: `${name} has the tag "${value}" twice.` });
+          seen.add(key);
+        }
+      });
+    }
+
     // A kind from a newer @micacms/astro: its value is kept as it is. Mica makes the collection read-only.
     default:
       return z.unknown();
@@ -262,7 +277,14 @@ function fieldSchema(
   if (neverNull(field)) {
     // A missing multi-value field is an empty list; a missing boolean is its default.
     const fallback: unknown = field.kind === "boolean" ? (field.default ?? false) : [];
-    return z.preprocess((value) => (normalise(value) === null ? fallback : value), inner);
+    // A required list needs one value; a boolean is never empty.
+    const filled =
+      field.required && options.enforceRequired !== false && field.kind !== "boolean"
+        ? inner.refine((value) => !Array.isArray(value) || value.length > 0, {
+            message: `${name} needs at least one ${field.kind === "tags" ? "tag" : field.kind === "repeater" ? "item" : "value"}.`,
+          })
+        : inner;
+    return z.preprocess((value) => (normalise(value) === null ? fallback : value), filled);
   }
 
   if (field.required && options.enforceRequired !== false) {

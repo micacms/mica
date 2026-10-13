@@ -1,0 +1,80 @@
+{
+  "protocolVersion": 1,
+  "generatedBy": "@micacms/astro",
+  "collections": {
+    "posts": {
+      "type": "collection",
+      "layout": "directory",
+      "name": "posts",
+      "label": "Posts",
+      "labelSingular": "Post",
+      "defaultSort": {
+        "field": "publishDate",
+        "direction": "desc"
+      },
+      "fields": {
+        "title": {
+          "kind": "text",
+          "label": "Title",
+          "required": true,
+          "maxLength": 120,
+          "listed": true
+        },
+        "slug": {
+          "kind": "slug",
+          "label": "URL",
+          "from": "title"
+        },
+        "publishDate": {
+          "kind": "date",
+          "label": "Date",
+          "required": true,
+          "listed": true,
+          "width": "half"
+        },
+        "tags": {
+          "kind": "tags",
+          "label": "Tags",
+          "width": "half"
+        },
+        "cover": {
+          "kind": "media",
+          "label": "Cover image",
+          "accept": "image",
+          "alt": "required"
+        },
+        "excerpt": {
+          "kind": "textarea",
+          "label": "Teaser",
+          "rows": 3,
+          "maxLength": 300
+        },
+        "body": {
+          "kind": "richText",
+          "label": "Text"
+        }
+      }
+    }
+  },
+  "singletons": {
+    "site": {
+      "type": "singleton",
+      "layout": "file",
+      "name": "site",
+      "label": "Website",
+      "fields": {
+        "title": {
+          "kind": "text",
+          "label": "Site name",
+          "required": true
+        },
+        "description": {
+          "kind": "textarea",
+          "label": "Description",
+          "rows": 2,
+          "maxLength": 160
+        }
+      }
+    }
+  }
+}

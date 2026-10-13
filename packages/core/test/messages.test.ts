@@ -13,6 +13,7 @@ import {
   richText,
   select,
   slug,
+  tags,
   text,
   textarea,
   validateFields,
@@ -75,6 +76,16 @@ describe("validation messages", () => {
       "Gallery allows at most 1 file.",
       "Steps needs at least 2 items.",
     ]);
+  });
+
+  it("name the tag limits and a tag given twice", () => {
+    const fields = { keywords: tags({ label: "Keywords", max: 2, maxLength: 5 }) };
+    assert.deepEqual(messages(fields, { keywords: ["design"] }), ["Keywords: a tag can have at most 5 characters (now 6)."]);
+    assert.deepEqual(messages(fields, { keywords: ["a", "b", "c"] }), ["Keywords allows at most 2 tags."]);
+    assert.deepEqual(messages(fields, { keywords: ["Web", "web"] }), ['Keywords has the tag "web" twice.']);
+    assert.deepEqual(messages(fields, { keywords: [" "] }), ["Keywords: a tag cannot be empty."]);
+    assert.deepEqual(messages({ topics: tags({ label: "Topics", required: true }) }, { topics: [] }), ["Topics needs at least one tag."]);
+    assert.deepEqual(validateFields({ topics: tags({ required: true }) }, { topics: [] }, { enforceRequired: false }).ok, true);
   });
 
   it("name the field for coordinates, relations and choices", () => {

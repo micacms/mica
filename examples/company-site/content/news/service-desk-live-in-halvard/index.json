@@ -1,0 +1,16 @@
+{
+  "title": "Service desk live in Halvard",
+  "slug": "service-desk-live-in-halvard",
+  "publishDate": "2024-11-04",
+  "author": "amara-okafor",
+  "relatedProject": "service-desk-consolidation",
+  "tags": [
+    "case study",
+    "public sector"
+  ],
+  "excerpt": "Three support teams are now one desk. The first month brought fewer tickets, not more.",
+  "coverImage": {
+    "path": "/media/service-desk.jpg",
+    "alt": "Support staff work together at desks in a bright service office"
+  }
+}

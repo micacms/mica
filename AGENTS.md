@@ -68,7 +68,7 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `validator` (Haiku): run the gates and report only failures — after a code change.
 - `reviewer` (Opus): read-only review against these rules and the design docs — before a commit or a PR.
 - `docs-keeper` (Sonnet): fix documentation that disagrees with the code.
-- `site-keeper` (Sonnet): update `sites/micacms` and `examples/muster-consulting` after a release or a relevant change.
+- `site-keeper` (Sonnet): update `sites/micacms` and `examples/company-site` after a release or a relevant change.
 - `release-prep` (Sonnet): prepare a release in the background. It never commits, tags or pushes; the `/release` skill stays the interactive flow.
 
 ## Git and pull requests
@@ -95,7 +95,8 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `apps/local-editor`: the `npx @micacms/editor` composition — loopback, no auth, no database.
 - `apps/self-hosted`: the Docker composition — runtime and UI behind OIDC, on a Git clone that it keeps, syncs and pushes itself.
 - `sites/micacms`: public Mica website, and the canonical user documentation (`content/docs`).
-- `examples/muster-consulting`: example website and evolving reference project.
+- `examples/company-site`: example website and evolving reference project.
+- `examples/starter`: the minimal starter for `npm create astro -- --template micacms/mica/examples/starter`. It installs the published packages, so it is not a Rush project; each release sets its versions.
 - `SETUP.md`: the entry point for a coding agent that sets up Mica in a user's project, served at `micacms.com/setup.md`. Keep it valid for every version; version-specific steps go in `packages/astro/setup/`.
 - `docs`: architecture and decision documentation for contributors. The user guides move to `sites/micacms` (#117).
 - `deploy/self-hosted`: the reference deployment — the Compose file and its `.env.example`.

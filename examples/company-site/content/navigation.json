@@ -1,0 +1,45 @@
+{
+  "main": [
+    {
+      "label": "Projects",
+      "href": "/projects",
+      "children": []
+    },
+    {
+      "label": "News",
+      "href": "/news",
+      "children": []
+    },
+    {
+      "label": "Events",
+      "href": "/events",
+      "children": []
+    },
+    {
+      "label": "Team",
+      "href": "/team",
+      "children": []
+    },
+    {
+      "label": "About us",
+      "href": "/about-us",
+      "children": []
+    },
+    {
+      "label": "Contact",
+      "href": "/contact",
+      "children": []
+    }
+  ],
+  "footer": [
+    {
+      "label": "Legal notice",
+      "href": "/legal"
+    },
+    {
+      "label": "Privacy",
+      "href": "/privacy"
+    }
+  ],
+  "footerNote": "© Harbor Lane Consulting"
+}

@@ -34,6 +34,11 @@ export const MANIFESTS = [
   { file: "apps/local-editor/package.json", pattern: VERSION_FIELD },
   { file: "apps/self-hosted/package.json", pattern: VERSION_FIELD },
   { file: "deploy/self-hosted/compose.yml", pattern: IMAGE_TAG },
+  { file: "deploy/demo-identity/compose.yml", pattern: IMAGE_TAG },
+  // The starter installs the published packages; it follows each release.
+  { file: "examples/starter/package.json", pattern: /^(\s*"@micacms\/astro":\s*"\^)([^"]+)(")/m },
+  { file: "examples/starter/package.json", pattern: /^(\s*"@micacms\/core":\s*"\^)([^"]+)(")/m },
+  { file: "examples/starter/package.json", pattern: /^(\s*"@micacms\/editor":\s*"\^)([^"]+)(")/m },
 ];
 
 const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
@@ -114,7 +119,7 @@ function main(argv) {
   const notes = changelogSection(version);
   const lines = [
     "",
-    `  Set ${MANIFESTS.length} files to ${version}.`,
+    `  Set ${new Set(MANIFESTS.map((entry) => entry.file)).size} files to ${version}.`,
     "",
     notes
       ? `  CHANGELOG.md has a [${version}] section. Good.`

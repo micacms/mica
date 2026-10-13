@@ -1,0 +1,13 @@
+{
+  "name": "Lars Nilsson",
+  "slug": "lars-nilsson",
+  "role": "Consultant, public sector",
+  "email": "lars.nilsson@harborlane.example",
+  "phone": "+990 40 555 0146",
+  "portrait": {
+    "path": "media/portrait.jpg",
+    "alt": "Lars Nilsson, public sector consultant, wearing glasses and a grey overshirt"
+  },
+  "bio": "Helps public bodies and family companies to change how they work, one team at a time. Before he joined Harbor Lane, he spent eight years in local government, where he led two service reforms. He likes clear plans, honest timetables and a good conversation over coffee with the people who will live with the change.",
+  "featured": true
+}

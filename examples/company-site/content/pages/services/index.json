@@ -1,0 +1,35 @@
+{
+  "title": "Services",
+  "slug": "services",
+  "intro": "Strategy, operations and technology projects, scoped to what a small team can deliver.",
+  "heroImage": {
+    "path": "media/workshop.jpg",
+    "alt": "Three consultants review process notes together around a meeting table"
+  },
+  "sections": [
+    {
+      "heading": "Our approach",
+      "layout": "image-right",
+      "image": {
+        "path": "/media/workspace.jpg",
+        "alt": "Sticky notes, a process sketch and a notebook on an oak work table"
+      }
+    },
+    {
+      "heading": "Engagement models",
+      "layout": "full",
+      "image": null
+    },
+    {
+      "heading": "After the handover",
+      "layout": "full",
+      "image": null
+    }
+  ],
+  "seo": {
+    "metaTitle": null,
+    "metaDescription": null,
+    "ogImage": null,
+    "noindex": false
+  }
+}

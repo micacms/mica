@@ -1,0 +1,182 @@
+@import "tailwindcss";
+
+/**
+ * Design tokens (TRD §17).
+ *
+ * Each token reads a `--theme-*` custom property with a sensible fallback. The
+ * layout writes those properties from the CMS `theme` singleton, so an editor
+ * changing the accent colour changes every utility that references it — with no
+ * Tailwind rebuild and no arbitrary CSS in the CMS.
+ */
+@theme {
+  --color-primary: var(--theme-primary, #1f2937);
+  --color-accent: var(--theme-accent, #0ea5e9);
+
+  /* Warm neutrals: they sit well beside any primary colour an editor picks. */
+  --color-ink: #1c1917;
+  --color-muted: #57534e;
+  --color-line: #e7e5e4;
+  --color-canvas: #ffffff;
+  --color-sunken: #f6f5f3;
+
+  --font-sans: var(--theme-font), ui-sans-serif, system-ui, sans-serif;
+
+  --radius-theme: var(--theme-radius, 0.5rem);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.02em;
+    text-wrap: balance;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--color-primary) 20%, transparent);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+  }
+
+  /* Editors supply landscape and portrait images alike; never let one overflow. */
+  img,
+  video {
+    max-width: 100%;
+    height: auto;
+  }
+}
+
+@utility container-page {
+  @apply mx-auto w-full max-w-6xl px-5 sm:px-8;
+}
+
+@utility container-prose {
+  @apply mx-auto w-full max-w-2xl px-5 sm:px-8;
+}
+
+@utility btn-solid {
+  @apply inline-flex items-center justify-center gap-2 bg-primary px-5 py-3 text-sm
+    font-medium text-white shadow-sm transition hover:-translate-y-px hover:shadow-md;
+  border-radius: var(--radius-theme);
+}
+
+@utility btn-outline {
+  @apply inline-flex items-center justify-center gap-2 border border-line bg-canvas px-5 py-3
+    text-sm font-medium transition hover:border-primary hover:text-primary;
+  border-radius: var(--radius-theme);
+}
+
+@utility card-surface {
+  @apply border border-line bg-canvas;
+  border-radius: var(--radius-theme);
+}
+
+/* Small uppercase label above a heading or a group of facts. */
+@utility eyebrow {
+  @apply text-xs font-semibold tracking-[0.14em] uppercase;
+}
+
+/* An image frame with the theme's corners; the image inside fills it. */
+@utility media-frame {
+  @apply overflow-hidden bg-sunken;
+  border-radius: var(--radius-theme);
+}
+
+/* Arrow links that move a little on hover, like "All projects →". */
+@utility link-arrow {
+  @apply inline-flex items-center gap-1.5 text-sm font-medium text-primary;
+
+  & > span {
+    @apply transition-transform;
+  }
+
+  &:hover > span,
+  :where(.group):hover & > span {
+    @apply translate-x-0.5;
+  }
+}
+
+/**
+ * Rich-text output.
+ *
+ * The CMS constrains the editor to these nodes, so this is the complete list —
+ * there is no way for an editor to produce markup with no styles behind it.
+ */
+.prose-cms {
+  @apply text-base leading-[1.75] text-ink/85 sm:text-[17px];
+}
+
+.prose-cms > * + * {
+  @apply mt-5;
+}
+
+.prose-cms h2 {
+  @apply mt-12 text-2xl font-semibold text-ink sm:text-[1.7rem];
+}
+
+.prose-cms h3 {
+  @apply mt-9 text-lg font-semibold text-ink sm:text-xl;
+}
+
+.prose-cms h2 + *,
+.prose-cms h3 + * {
+  @apply mt-3;
+}
+
+.prose-cms li::marker {
+  @apply text-accent;
+}
+
+.prose-cms ul {
+  @apply list-disc space-y-1 pl-5;
+}
+
+.prose-cms ol {
+  @apply list-decimal space-y-1 pl-5;
+}
+
+.prose-cms blockquote {
+  @apply my-8 border-l-2 border-accent pl-6 text-xl leading-snug text-ink;
+}
+
+.prose-cms a {
+  @apply text-primary underline decoration-accent/50 underline-offset-2 hover:decoration-accent;
+}
+
+.prose-cms hr {
+  @apply my-10 border-t border-line;
+}
+
+.prose-cms strong {
+  @apply font-semibold text-ink;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

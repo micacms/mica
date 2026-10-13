@@ -1,0 +1,43 @@
+{
+  "title": "Order-to-cash review",
+  "slug": "order-to-cash-review",
+  "year": 2025,
+  "category": "operations",
+  "code": "HL-101",
+  "duration": 16,
+  "tags": [
+    "process",
+    "finance",
+    "people"
+  ],
+  "location": {
+    "address": "Foundry Quay 14",
+    "city": "Kestrel Bay",
+    "country": "Caldria"
+  },
+  "facts": [
+    {
+      "label": "Lead time",
+      "value": "−35%"
+    },
+    {
+      "label": "Team",
+      "value": "3 consultants"
+    },
+    {
+      "label": "Approval time",
+      "value": "−60%"
+    }
+  ],
+  "gallery": [
+    {
+      "path": "media/dispatch.jpg",
+      "alt": "Two colleagues check packing slips beside parcels in a dispatch area"
+    }
+  ],
+  "team": [
+    "amara-okafor",
+    "mateo-fernandez"
+  ],
+  "featured": true
+}

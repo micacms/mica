@@ -42,6 +42,9 @@ export function defaultValue(field: AnyField): unknown {
     case "slug":
     case "coordinates":
       return null;
+
+    case "tags":
+      return field.default ? [...field.default] : [];
   }
 }
 

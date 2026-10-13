@@ -1,0 +1,138 @@
+---
+/**
+ * The page shell.
+ *
+ * Reads the `site` and `theme` singletons and turns them into meta tags and CSS
+ * custom properties. Both are build-time reads — the rendered page is plain
+ * HTML with no runtime dependency on the CMS.
+ */
+
+import SiteFooter from "@/components/SiteFooter.astro";
+import SiteHeader from "@/components/SiteHeader.astro";
+import { getSiteSettings, getTheme } from "@/lib/content";
+import { toStaticUrl } from "@/lib/images";
+import "@/styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string | null;
+  /** Social sharing image. */
+  image?: ImageMetadata | null;
+  noindex?: boolean;
+}
+
+const { title, description, image, noindex = false } = Astro.props;
+
+const settings = await getSiteSettings();
+const theme = await getTheme();
+
+// Text fields are trimmed by the model, so a suffix like " — Company" arrives
+// without its leading space; join explicitly rather than relying on the editor
+// to leave whitespace that validation would strip anyway.
+const pageTitle = title
+  ? [title, settings.seo?.titleSuffix].filter(Boolean).join(" ")
+  : [settings.companyName, settings.tagline].filter(Boolean).join(" — ");
+
+const metaDescription =
+  description ?? settings.seo?.defaultDescription ?? settings.tagline ?? "";
+
+const socialImage = await toStaticUrl(image ?? settings.seo?.defaultImage, Astro.site);
+const favicon = await toStaticUrl(settings.logo, Astro.site, { maxWidth: 64 });
+const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
+
+const FONT_STACKS: Record<string, string> = {
+  sans: 'ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+  serif: 'ui-serif, Georgia, Cambria, "Times New Roman", serif',
+  grotesque: '"Helvetica Neue", Helvetica, Arial, sans-serif',
+};
+
+const RADII: Record<string, string> = {
+  none: "0px",
+  sm: "0.25rem",
+  md: "0.5rem",
+  lg: "1rem",
+};
+
+// Only the four tokens the theme singleton exposes — the CMS cannot inject
+// arbitrary CSS.
+const themeVars = [
+  `--theme-primary:${theme.primaryColor ?? "#1f2937"}`,
+  `--theme-accent:${theme.accentColor ?? "#0ea5e9"}`,
+  `--theme-font:${FONT_STACKS[theme.fontFamily ?? "sans"] ?? FONT_STACKS.sans}`,
+  `--theme-radius:${RADII[theme.borderRadius ?? "md"] ?? RADII.md}`,
+].join(";");
+
+const analytics = settings.analytics;
+---
+
+<!doctype html>
+<html lang="en" style={themeVars}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+
+    <title>{pageTitle}</title>
+    {metaDescription && <meta name="description" content={metaDescription} />}
+    <link rel="canonical" href={canonical} />
+    {noindex && <meta name="robots" content="noindex, nofollow" />}
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={pageTitle} />
+    {metaDescription && <meta property="og:description" content={metaDescription} />}
+    <meta property="og:url" content={canonical} />
+    <meta property="og:site_name" content={settings.companyName} />
+    {socialImage && <meta property="og:image" content={socialImage} />}
+    <meta name="twitter:card" content={socialImage ? "summary_large_image" : "summary"} />
+
+    {favicon && <link rel="icon" href={favicon} />}
+
+    {/* Structured data helps a company show up correctly in search. */}
+    <script
+      type="application/ld+json"
+      set:html={JSON.stringify({
+        "@context": "https://schema.org",
+        "@type": "ProfessionalService",
+        name: settings.companyName,
+        description: metaDescription || undefined,
+        url: canonical,
+        email: settings.email || undefined,
+        telephone: settings.phone || undefined,
+        address: settings.address
+          ? { "@type": "PostalAddress", streetAddress: settings.address.replace(/\n/g, ", ") }
+          : undefined,
+        sameAs: settings.social.map((link) => link.url),
+      })}
+    />
+
+    {
+      /* Analytics is opt-in from the CMS and always a plain script tag — no
+         tag manager, nothing that could rewrite the page. */
+      analytics?.provider === "plausible" && analytics.scriptUrl && (
+        <script defer data-domain={analytics.siteId} src={analytics.scriptUrl} is:inline />
+      )
+    }
+    {
+      analytics?.provider === "matomo" && analytics.scriptUrl && (
+        <script defer src={analytics.scriptUrl} data-site-id={analytics.siteId} is:inline />
+      )
+    }
+  </head>
+
+  <body class="flex min-h-screen flex-col">
+    <a
+      href="#main"
+      class="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:bg-primary focus:px-4 focus:py-2 focus:text-white"
+    >
+      Skip to content
+    </a>
+
+    <SiteHeader />
+
+    <main id="main" class="flex-1">
+      <slot />
+    </main>
+
+    <SiteFooter />
+  </body>
+</html>

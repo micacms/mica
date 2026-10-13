@@ -1,0 +1,47 @@
+{
+  "title": "ERP selection for a regional retailer",
+  "slug": "erp-selection-for-a-regional-retailer",
+  "year": 2025,
+  "category": "technology",
+  "code": "HL-102",
+  "duration": 12,
+  "tags": [
+    "software",
+    "finance",
+    "process"
+  ],
+  "location": {
+    "address": "22 Millrace Lane",
+    "city": "Eastvale",
+    "country": "Morvania"
+  },
+  "facts": [
+    {
+      "label": "Vendors assessed",
+      "value": "9"
+    },
+    {
+      "label": "Licence cost",
+      "value": "−22%"
+    },
+    {
+      "label": "Requirements studied",
+      "value": "20 processes"
+    }
+  ],
+  "gallery": [
+    {
+      "path": "media/retail.jpg",
+      "alt": "A retailer and consultant check stock among shelves of household goods"
+    },
+    {
+      "path": "media/vendor-review.jpg",
+      "alt": "Software assessment sheets, a laptop and an inventory scanner on a desk"
+    }
+  ],
+  "team": [
+    "priya-raman",
+    "mateo-fernandez"
+  ],
+  "featured": true
+}

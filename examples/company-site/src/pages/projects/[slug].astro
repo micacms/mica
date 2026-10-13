@@ -1,0 +1,173 @@
+---
+import { Image } from "astro:assets";
+import { relatedAll } from "@micacms/astro/relations";
+import { getCollection, type CollectionEntry } from "astro:content";
+
+import RichText from "@/components/RichText.astro";
+import TagList from "@/components/TagList.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { CATEGORY_LABELS, toPlainText } from "@/lib/content";
+
+/**
+ * One page per published project. `entry.id` is the CMS slug, so the URL the
+ * editor sees in the admin is exactly the URL that gets built.
+ */
+export async function getStaticPaths() {
+  const projects = await getCollection("projects");
+  return projects.map((project) => ({
+    params: { slug: project.id },
+    props: { project },
+  }));
+}
+
+interface Props {
+  project: CollectionEntry<"projects">;
+}
+
+const { project } = Astro.props;
+const { title, year, category, code, duration, tags, description, location, facts, gallery, team } =
+  project.data;
+
+// Relations are stored as slugs. `relatedAll` resolves them in the editor's
+// order, and a member that was deleted drops out instead of breaking the build.
+const members = await relatedAll("team", team);
+
+const cover = gallery[0] ?? null;
+const rest = gallery.slice(1);
+
+const addressLines = [location?.address, [location?.city, location?.country].filter(Boolean).join(", ")]
+  .filter(Boolean)
+  .join("\n");
+---
+
+<BaseLayout
+  title={title}
+  description={toPlainText(description)}
+  image={cover?.src}
+>
+  <article>
+    <div class="container-page pb-12 pt-16 sm:pt-24">
+      <a href="/projects/" class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> All projects</a>
+
+      <div class="mt-4 max-w-3xl">
+        <h1 class="text-4xl font-semibold sm:text-5xl lg:text-6xl">{title}</h1>
+        <p class="mt-4 text-lg text-muted">
+          {[category ? CATEGORY_LABELS[category] : null, location?.city, year]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
+        <div class="mt-5"><TagList tags={tags} /></div>
+      </div>
+    </div>
+
+    {
+      cover && (
+        <div class="container-page">
+          <div class="media-frame">
+            <Image
+              {...cover}
+              class="aspect-16/9 w-full object-cover lg:aspect-2/1"
+              widths={[800, 1200, 1800]}
+              sizes="(min-width: 1152px) 1120px, 92vw"
+              loading="eager"
+              fetchpriority="high"
+            />
+          </div>
+        </div>
+      )
+    }
+
+    <div class="container-page mt-16 grid gap-12 lg:grid-cols-[1fr_20rem] lg:gap-16">
+      <div>
+        <RichText text={description} />
+      </div>
+
+      <aside class="space-y-8 self-start bg-sunken p-6 sm:p-8 lg:sticky lg:top-28" style="border-radius: var(--radius-theme)">
+        {
+          facts.length > 0 && (
+            <div>
+              <h2 class="eyebrow text-muted">Key facts</h2>
+              <dl class="mt-3 divide-y divide-line border-t border-line text-sm">
+                {facts.map((fact) => (
+                  <div class="flex justify-between gap-4 py-2.5">
+                    <dt class="text-muted">{fact.label}</dt>
+                    <dd class="text-right font-medium">{fact.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )
+        }
+
+        {
+          (code || duration) && (
+            <div>
+              <h2 class="eyebrow text-muted">Project</h2>
+              <dl class="mt-3 divide-y divide-line border-t border-line text-sm">
+                {code && (
+                  <div class="flex justify-between gap-4 py-2.5">
+                    <dt class="text-muted">Number</dt>
+                    <dd class="text-right font-medium">{code}</dd>
+                  </div>
+                )}
+                {duration && (
+                  <div class="flex justify-between gap-4 py-2.5">
+                    <dt class="text-muted">Duration</dt>
+                    <dd class="text-right font-medium">{duration} weeks</dd>
+                  </div>
+                )}
+              </dl>
+            </div>
+          )
+        }
+
+        {
+          addressLines && (
+            <div>
+              <h2 class="eyebrow text-muted">Location</h2>
+              <address class="mt-3 whitespace-pre-line text-sm not-italic">{addressLines}</address>
+            </div>
+          )
+        }
+
+        {
+          members.length > 0 && (
+            <div>
+              <h2 class="eyebrow text-muted">Team</h2>
+              <ul class="mt-3 space-y-2 text-sm">
+                {members.map((member) => (
+                  <li>
+                    <a href={`/team/${member.id}/`} class="font-medium hover:text-primary">
+                      {member.data.name}
+                    </a>
+                    {member.data.role && <span class="block text-muted">{member.data.role}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )
+        }
+      </aside>
+    </div>
+
+    {
+      rest.length > 0 && (
+        <div class="container-page mt-20">
+          <h2 class="sr-only">Gallery</h2>
+          <div class="grid gap-4 sm:grid-cols-2 sm:gap-6">
+            {rest.map((image) => (
+              <div class="media-frame">
+                <Image
+                  {...image}
+                  class="aspect-4/3 w-full object-cover"
+                  widths={[600, 1000]}
+                  sizes="(min-width: 640px) 45vw, 92vw"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )
+    }
+  </article>
+</BaseLayout>

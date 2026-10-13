@@ -257,6 +257,15 @@ function convert(field: AnyField, value: unknown, at: string, context: Context):
         : [];
     case "select":
       return field.multiple ? (Array.isArray(value) ? value : []) : (value ?? null);
+    case "tags": {
+      // Astro sites keep tags as a list, or sometimes as one comma-separated string.
+      const list = Array.isArray(value) ? value : typeof value === "string" ? value.split(",") : [];
+      // Validation refuses a tag twice in any case: keep the first spelling.
+      const seen = new Set<string>();
+      return list
+        .map((tag) => String(tag).trim())
+        .filter((tag) => tag !== "" && !seen.has(tag.toLowerCase()) && seen.add(tag.toLowerCase()));
+    }
     case "boolean":
       return typeof value === "boolean" ? value : (field.default ?? false);
     case "number":

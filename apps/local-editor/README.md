@@ -68,7 +68,7 @@ rush dev                               # API on :6422, admin on :5173
 ```
 
 `rush dev` reads `dev.env`, which sets
-`MICA_CONTENT_ROOT=../../examples/muster-consulting/content`, so the server edits
+`MICA_CONTENT_ROOT=../../examples/company-site/content`, so the server edits
 the example project's content. There is nothing to seed: the
 content is already there, in Git.
 

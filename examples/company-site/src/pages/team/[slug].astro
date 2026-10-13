@@ -1,0 +1,92 @@
+---
+import { Image } from "astro:assets";
+import { getCollection, type CollectionEntry } from "astro:content";
+
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { formatDateTime, getEventsOf, getProjectsOf } from "@/lib/content";
+
+export async function getStaticPaths() {
+  const team = await getCollection("team");
+  return team.map((member) => ({
+    params: { slug: member.id },
+    props: { member },
+  }));
+}
+
+interface Props {
+  member: CollectionEntry<"team">;
+}
+
+const { member } = Astro.props;
+const { name, role, email, phone, portrait, bio } = member.data;
+
+// Relations shown from the other side: projects and events name the person,
+// the person does not name them. So the page asks each collection and filters.
+const projects = await getProjectsOf(member.id);
+const events = await getEventsOf(member.id);
+---
+
+<BaseLayout title={name} description={bio}>
+  <div class="container-page pb-8 pt-16 sm:pt-24">
+    <a href="/team/" class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> Team</a>
+
+    <div class="mt-8 grid gap-10 md:grid-cols-[18rem_1fr] lg:gap-16">
+      {
+        portrait && (
+          <div class="media-frame aspect-4/5 self-start shadow-xl shadow-ink/10">
+            <Image {...portrait} class="h-full w-full object-cover" widths={[320, 640]} sizes="18rem" />
+          </div>
+        )
+      }
+
+      <div class:list={[!portrait && "md:col-span-2"]}>
+        <h1 class="text-4xl font-semibold sm:text-5xl">{name}</h1>
+        {role && <p class="eyebrow mt-3 text-accent">{role}</p>}
+        {bio && <p class="mt-6 max-w-2xl text-lg leading-relaxed text-ink/85 text-pretty">{bio}</p>}
+
+        <p class="mt-6 space-y-0.5 text-sm">
+          {email && <a href={`mailto:${email}`} class="block text-primary hover:underline">{email}</a>}
+          {phone && (
+            <a href={`tel:${phone.replace(/\s/g, "")}`} class="block text-muted hover:text-primary">{phone}</a>
+          )}
+        </p>
+
+        {
+          projects.length > 0 && (
+            <section class="mt-12 max-w-2xl">
+              <h2 class="eyebrow text-muted">Projects</h2>
+              <ul class="mt-3 divide-y divide-line border-t border-line text-sm">
+                {projects.map((project) => (
+                  <li class="py-2.5">
+                    <a href={`/projects/${project.id}/`} class="font-medium hover:text-primary">
+                      {project.data.title}
+                    </a>
+                    <span class="text-muted"> · {project.data.year}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+
+        {
+          events.length > 0 && (
+            <section class="mt-12 max-w-2xl">
+              <h2 class="eyebrow text-muted">Events</h2>
+              <ul class="mt-3 divide-y divide-line border-t border-line text-sm">
+                {events.map((event) => (
+                  <li class="py-2.5">
+                    <a href={`/events/${event.id}/`} class="font-medium hover:text-primary">
+                      {event.data.title}
+                    </a>
+                    <span class="block text-muted">{formatDateTime(event.data.startsAt)}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )
+        }
+      </div>
+    </div>
+  </div>
+</BaseLayout>

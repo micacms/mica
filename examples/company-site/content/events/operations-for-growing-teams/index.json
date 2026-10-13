@@ -1,0 +1,24 @@
+{
+  "title": "Operations for growing teams",
+  "slug": "operations-for-growing-teams",
+  "startsAt": "2026-09-17T09:00:00+01:00",
+  "endsAt": "2026-09-17T13:00:00+01:00",
+  "format": [
+    "in-person"
+  ],
+  "capacity": 40,
+  "venue": {
+    "name": "Harbor Lane Studio",
+    "address": "Via dei Mercanti 27\nPC 40-217 Porto Celeste, Valdoria"
+  },
+  "registrationUrl": "https://harborlane.example/register/operations-workshop",
+  "speakers": [
+    "mateo-fernandez",
+    "priya-raman"
+  ],
+  "summary": "A half-day workshop on the processes that break first when a company doubles in size, and how to fix the three that matter most.",
+  "tags": [
+    "workshop",
+    "operations"
+  ]
+}

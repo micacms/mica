@@ -1,0 +1,43 @@
+{
+  "title": "Service desk consolidation",
+  "slug": "service-desk-consolidation",
+  "year": 2024,
+  "category": "public-sector",
+  "code": "HL-103",
+  "duration": 20,
+  "tags": [
+    "people",
+    "process",
+    "software"
+  ],
+  "location": {
+    "address": "Corvin Square 7",
+    "city": "Halvard",
+    "country": "Norvell"
+  },
+  "facts": [
+    {
+      "label": "Tickets per month",
+      "value": "2,400"
+    },
+    {
+      "label": "Teams merged",
+      "value": "3"
+    },
+    {
+      "label": "Average wait",
+      "value": "−40%"
+    }
+  ],
+  "gallery": [
+    {
+      "path": "/media/service-desk.jpg",
+      "alt": "Support staff work together at desks in a bright service office"
+    }
+  ],
+  "team": [
+    "amara-okafor",
+    "lars-nilsson"
+  ],
+  "featured": true
+}

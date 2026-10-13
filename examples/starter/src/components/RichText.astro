@@ -1,0 +1,12 @@
+---
+import { renderRichText } from "@micacms/astro";
+
+interface Props {
+  text: string | null;
+}
+
+// Markdoc to HTML at build time; raw HTML in the text is escaped.
+const html = renderRichText(Astro.props.text);
+---
+
+{html && <div set:html={html} />}

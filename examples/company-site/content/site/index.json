@@ -1,0 +1,25 @@
+{
+  "companyName": "Harbor Lane Consulting",
+  "logo": null,
+  "tagline": "Practical advice for growing companies",
+  "address": "Via dei Mercanti 27\nPC 40-217 Porto Celeste, Valdoria",
+  "email": "hello@harborlane.example",
+  "phone": "+990 40 555 0100",
+  "openingHours": "Monday to Friday, 09:00–17:30",
+  "social": [
+    {
+      "platform": "linkedin",
+      "url": "https://www.linkedin.com/company/harborlane-example"
+    }
+  ],
+  "seo": {
+    "titleSuffix": "— Harbor Lane Consulting",
+    "defaultDescription": "Independent consultancy for growing companies. Strategy, operations and technology projects, with clients in many countries.",
+    "defaultImage": "/media/studio.jpg"
+  },
+  "analytics": {
+    "provider": "none",
+    "siteId": null,
+    "scriptUrl": null
+  }
+}

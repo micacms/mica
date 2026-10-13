@@ -1,0 +1,106 @@
+---
+import { getNavigation, getSiteSettings } from "@/lib/content";
+
+const settings = await getSiteSettings();
+const navigation = await getNavigation();
+
+const SOCIAL_LABELS: Record<string, string> = {
+  linkedin: "LinkedIn",
+  instagram: "Instagram",
+  facebook: "Facebook",
+  youtube: "YouTube",
+  x: "X",
+};
+---
+
+<footer class="mt-24 bg-ink text-white/70 sm:mt-32">
+  <div class="container-page grid gap-12 py-16 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:py-20">
+    <div>
+      <p class="text-lg font-semibold tracking-tight text-white">{settings.companyName}</p>
+      {settings.tagline && <p class="mt-2 max-w-xs text-sm text-pretty">{settings.tagline}</p>}
+      <a href="/contact/" class="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-white hover:underline">
+        Start a conversation <span aria-hidden="true">→</span>
+      </a>
+    </div>
+
+    <div>
+      <h2 class="eyebrow text-white/50">Contact</h2>
+      <address class="mt-4 space-y-1.5 text-sm not-italic">
+        {settings.address && <p class="whitespace-pre-line">{settings.address}</p>}
+        {
+          settings.phone && (
+            <p class="pt-2">
+              <a href={`tel:${settings.phone.replace(/\s/g, "")}`} class="hover:text-white">
+                {settings.phone}
+              </a>
+            </p>
+          )
+        }
+        {
+          settings.email && (
+            <p>
+              <a href={`mailto:${settings.email}`} class="hover:text-white">
+                {settings.email}
+              </a>
+            </p>
+          )
+        }
+      </address>
+    </div>
+
+    {
+      settings.openingHours && (
+        <div>
+          <h2 class="eyebrow text-white/50">Opening hours</h2>
+          <p class="mt-4 whitespace-pre-line text-sm">{settings.openingHours}</p>
+        </div>
+      )
+    }
+
+    <div>
+      <h2 class="eyebrow text-white/50">More</h2>
+      <ul class="mt-4 space-y-1.5 text-sm">
+        {
+          navigation.footer.map((item) => (
+            <li>
+              <a href={item.href} class="hover:text-white">
+                {item.label}
+              </a>
+            </li>
+          ))
+        }
+        {/* Not in the navigation singleton: this page is the developers' to
+            maintain, like the collection behind it. */}
+        <li><a href="/glossary/" class="hover:text-white">Glossary</a></li>
+      </ul>
+
+      {
+        settings.social.length > 0 && (
+          <ul class="mt-6 flex flex-wrap gap-2 text-sm">
+            {settings.social.map((link) => (
+              <li>
+                <a
+                  href={link.url}
+                  rel="noopener noreferrer me"
+                  target="_blank"
+                  class="inline-block rounded-full border border-white/20 px-3 py-1 transition hover:border-white/60 hover:text-white"
+                >
+                  {link.platform ? (SOCIAL_LABELS[link.platform] ?? link.platform) : link.url}
+                </a>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </div>
+  </div>
+
+  <div class="border-t border-white/10">
+    <div class="container-page flex flex-wrap items-center justify-between gap-2 py-6 text-xs text-white/60">
+      <p>{navigation.footerNote ?? `© ${new Date().getFullYear()} ${settings.companyName}`}</p>
+      <p>
+        <a href="/sitemap.xml" class="hover:text-white">Sitemap</a>
+      </p>
+    </div>
+  </div>
+</footer>

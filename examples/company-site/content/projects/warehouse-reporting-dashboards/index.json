@@ -1,0 +1,42 @@
+{
+  "title": "Warehouse reporting dashboards",
+  "slug": "warehouse-reporting-dashboards",
+  "year": 2024,
+  "category": "technology",
+  "code": "HL-104",
+  "duration": 8,
+  "tags": [
+    "data",
+    "software",
+    "process"
+  ],
+  "location": {
+    "address": "200 Ferrier Street West",
+    "city": "Northwick",
+    "country": "Arlandia"
+  },
+  "facts": [
+    {
+      "label": "Spreadsheets replaced",
+      "value": "11"
+    },
+    {
+      "label": "Report time",
+      "value": "−80%"
+    },
+    {
+      "label": "Warehouses connected",
+      "value": "5"
+    }
+  ],
+  "gallery": [
+    {
+      "path": "media/warehouse.jpg",
+      "alt": "A warehouse manager and a consultant review a tablet beside storage racks"
+    }
+  ],
+  "team": [
+    "priya-raman"
+  ],
+  "featured": true
+}

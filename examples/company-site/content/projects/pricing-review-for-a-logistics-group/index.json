@@ -1,0 +1,43 @@
+{
+  "title": "Pricing review for a logistics group",
+  "slug": "pricing-review-for-a-logistics-group",
+  "year": 2023,
+  "category": "strategy",
+  "code": "HL-106",
+  "duration": 10,
+  "tags": [
+    "finance",
+    "data",
+    "strategy"
+  ],
+  "location": {
+    "address": "8 Lantern Quay",
+    "city": "Marisport",
+    "country": "Marisport"
+  },
+  "facts": [
+    {
+      "label": "Routes analysed",
+      "value": "4,000"
+    },
+    {
+      "label": "Margin gain",
+      "value": "+2.1 points"
+    },
+    {
+      "label": "Customers in scope",
+      "value": "3"
+    }
+  ],
+  "gallery": [
+    {
+      "path": "media/port.jpg",
+      "alt": "Container cranes, a cargo ship and a lorry at a working port"
+    }
+  ],
+  "team": [
+    "mateo-fernandez",
+    "priya-raman"
+  ],
+  "featured": false
+}

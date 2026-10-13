@@ -1,0 +1,25 @@
+{
+  "title": "Succession and ownership: an evening in Vellano",
+  "slug": "succession-and-ownership-evening",
+  "startsAt": "2027-02-04T17:00:00+01:00",
+  "endsAt": "2027-02-04T20:00:00+01:00",
+  "format": [
+    "in-person",
+    "online"
+  ],
+  "capacity": 60,
+  "venue": {
+    "name": "Sala Aurora Meeting Room",
+    "address": "Piazza delle Cisterne 3\nVL 62-310 Vellano, Serenza"
+  },
+  "registrationUrl": "https://harborlane.example/register/succession-evening",
+  "speakers": [
+    "amara-okafor",
+    "lars-nilsson"
+  ],
+  "summary": "A talk and open discussion for owners of family companies on how to plan a five-year handover. Join us in person or online.",
+  "tags": [
+    "workshop",
+    "strategy"
+  ]
+}

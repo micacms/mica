@@ -1,0 +1,24 @@
+{
+  "title": "Choosing an ERP without regret",
+  "slug": "choosing-an-erp-without-regret",
+  "startsAt": "2026-11-12T18:30:00+00:00",
+  "endsAt": "2026-11-12T19:30:00+00:00",
+  "format": [
+    "online"
+  ],
+  "capacity": 300,
+  "venue": {
+    "name": "Online",
+    "address": "Video call. The link arrives after registration."
+  },
+  "registrationUrl": "https://harborlane.example/register/erp-webinar",
+  "speakers": [
+    "priya-raman",
+    "mateo-fernandez"
+  ],
+  "summary": "A one-hour webinar on how to write requirements, shortlist vendors and negotiate a fair contract. Based on our [retail ERP project](/projects/erp-selection-for-a-regional-retailer/).",
+  "tags": [
+    "webinar",
+    "technology"
+  ]
+}

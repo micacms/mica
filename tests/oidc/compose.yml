@@ -67,7 +67,7 @@ services:
     volumes:
       - forgejo-data:/data
       - ./forgejo-seed.sh:/seed.sh:ro
-      - ../../examples/muster-consulting/content:/seed:ro
+      - ../../examples/company-site/content:/seed:ro
 
   mica:
     image: micacms/editor:ci
@@ -107,7 +107,7 @@ services:
       MICA_OIDC_CLIENT_SECRET: oidc-test-client-secret-not-for-production
 
       MICA_ADMIT_EMAILS: alice@gmail.com
-      MICA_ADMIT_DOMAINS: muster-consulting.example
+      MICA_ADMIT_DOMAINS: harborlane.example
       # The flow test and the browser tests sign in about ten times from one address.
       MICA_SIGNIN_MAX_ATTEMPTS: "50"
 

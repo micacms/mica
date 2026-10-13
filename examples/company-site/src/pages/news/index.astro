@@ -1,0 +1,68 @@
+---
+import { Image } from "astro:assets";
+import PageIntro from "@/components/PageIntro.astro";
+import TagList from "@/components/TagList.astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import { formatDate, getNews } from "@/lib/content";
+
+const articles = await getNews();
+---
+
+<BaseLayout title="News" description="Updates from our practice.">
+  <PageIntro eyebrow="Journal" title="News" lead="Updates from our practice." />
+
+  <div class="container-page pb-8">
+    {
+      articles.length === 0 ? (
+        <p class="text-muted">Nothing published yet.</p>
+      ) : (
+        <ul class="divide-y divide-line border-t border-line">
+          {articles.map((article) => (
+            <li>
+              <a
+                href={`/news/${article.id}/`}
+                class="group grid gap-6 pt-10 pb-4 sm:grid-cols-[16rem_1fr] sm:items-start sm:gap-10"
+              >
+                {article.data.coverImage ? (
+                  <div
+                    class="media-frame aspect-4/3"
+                  >
+                    <Image
+                      src={article.data.coverImage.src}
+                      alt={article.data.coverImage.alt}
+                      class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+                      widths={[320, 640]}
+                      sizes="(min-width: 640px) 256px, 92vw"
+                    />
+                  </div>
+                ) : (
+                  <div class="hidden sm:block" />
+                )}
+
+                <div>
+                  {article.data.publishDate && (
+                    <time datetime={article.data.publishDate} class="text-xs font-medium text-muted">
+                      {formatDate(article.data.publishDate)}
+                    </time>
+                  )}
+                  <h2 class="mt-1.5 text-2xl font-semibold group-hover:text-primary">
+                    {article.data.title}
+                  </h2>
+                  {article.data.excerpt && (
+                    <p class="mt-2 text-muted text-pretty">{article.data.excerpt}</p>
+                  )}
+                  <span class="link-arrow mt-4">
+                    Read more <span aria-hidden="true">→</span>
+                  </span>
+                </div>
+              </a>
+              <div class="pb-10 sm:pl-[18.5rem]">
+                <TagList tags={article.data.tags} />
+              </div>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </div>
+</BaseLayout>

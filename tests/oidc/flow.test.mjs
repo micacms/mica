@@ -115,7 +115,7 @@ describe("signing in through Dex", () => {
 
   it("admits an address in an admitted domain", async () => {
     const bob = new Browser();
-    await bob.signIn("bob@muster-consulting.example");
+    await bob.signIn("bob@harborlane.example");
     assert.equal((await bob.api("/api/auth/me")).status, 200);
   });
 

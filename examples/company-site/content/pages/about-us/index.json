@@ -1,0 +1,27 @@
+{
+  "title": "About us",
+  "slug": "about-us",
+  "intro": "An independent consultancy for growing companies, working from Porto Celeste since 2012.",
+  "heroImage": {
+    "path": "/media/studio.jpg",
+    "alt": "A bright consulting studio with an oak meeting table, plants and views over Porto Celeste"
+  },
+  "sections": [
+    {
+      "heading": "Who we work with",
+      "layout": "full",
+      "image": null
+    },
+    {
+      "heading": "Our studio",
+      "layout": "full",
+      "image": null
+    }
+  ],
+  "seo": {
+    "metaTitle": null,
+    "metaDescription": null,
+    "ogImage": null,
+    "noindex": false
+  }
+}
