@@ -10,6 +10,89 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.6.0-rc.1] — 2026-10-13
+
+The last release with breaking changes before 1.0: the configuration names, the
+package shape and the public API are now in their 1.0 form. Mica also stops
+losing content without an error: an entry in the wrong layout, rich text that
+the editor cannot show, and a broken link or image at Publish are all named
+now. Images can carry alt text, and the image runs on arm64.
+
+Read Breaking before upgrading. A self-hosted Mica needs its `.env` renamed; a
+site needs Node 24, Astro 7 and `@micacms/core` installed beside
+`@micacms/astro`.
+
+### Breaking
+
+- **Every configuration variable starts with `MICA_`.** Rename in `.env`:
+  `SESSION_SECRET`, `SESSION_TTL_HOURS` and `SESSION_IDLE_HOURS` to
+  `MICA_SESSION_*`; `LOGIN_MAX_ATTEMPTS` and `LOGIN_WINDOW_MS` to
+  `MICA_SIGNIN_MAX_ATTEMPTS` and `MICA_SIGNIN_WINDOW_MS`; `TRUST_PROXY`,
+  `MAX_UPLOAD_BYTES`, `LOG_LEVEL`, `ADMIN_ORIGINS` and `ADMIN_DIR` to their
+  `MICA_` names; `MICA_ADMIT_GROUP` and `MICA_ADMIT_DOMAIN` to
+  `MICA_ADMIT_GROUPS` and `MICA_ADMIT_DOMAINS`. The old names are not read.
+  Every variable is at https://micacms.com/docs/configuration/
+  (`@micacms/runtime`, `@micacms/auth-oidc`, `@micacms/self-hosted`).
+- **The local editor reads no `.env` file**, and a flag wins over the
+  environment. `MICA_CONTENT_ROOT` sets the content root when no path is given
+  (`@micacms/editor`).
+- **Node 24 and Astro 7.** Every package requires Node 24 or newer;
+  `@micacms/astro` requires Astro 7.
+- **`@micacms/core` and zod are peer dependencies** of `@micacms/astro`, and zod
+  of `@micacms/core`: install `@micacms/astro @micacms/core`, and npm installs
+  zod (`@micacms/astro`, `@micacms/core`).
+- **A text `pattern` must match the whole value**, with the `u` flag. An
+  invalid pattern stops the model from loading. For "contains", write `.*x.*`
+  (`@micacms/core`).
+- **An entry in the other layout is an error, not hidden.** The first rich-text
+  or media field of a collection, or the removal of the last one, changes where
+  its entries are stored. Until the files move, the build fails, the local
+  editor refuses to start, and both name the files. `npx mica migrate-layout`
+  moves them (`@micacms/core`, `@micacms/astro`, `@micacms/runtime`,
+  `@micacms/editor`).
+- **Smaller public API.** `@micacms/astro` no longer re-exports the readers of
+  `@micacms/core`; import them from `@micacms/core`. Core no longer exports
+  `collectMediaIds`, `walkFields`, `mediaRefSchema`, `collectionSchema`,
+  `singletonSchema` and `SchemaMode`, and `fieldsSchema` and `validateFields`
+  take no mode. Each package README says whether it is public or internal
+  (`@micacms/core`, `@micacms/astro`, `@micacms/runtime`).
+- **`@micacms/self-hosted` is no longer on npm.** It ships only as the image
+  `ghcr.io/micacms/mica`.
+
+### Added
+
+- **Alt text on media fields.** `media({ alt: "required" | "optional" })`
+  stores `{ path, alt }`, with an alt-text input under each image. A stored
+  plain path reads as one without alt text; with `"required"`, the build fails
+  until each such image has it (`@micacms/core`, `@micacms/editor-ui`).
+- **`mica migrate-layout`** moves the entries that a layout change left behind,
+  and removes only the rich-text and media files that nothing uses any more
+  (`@micacms/editor`).
+- **References are checked.** Publish refuses a change that would leave a
+  broken relation or a missing file on the site, including a deleted or
+  renamed entry that other entries still link to. The Astro loaders warn about
+  each broken reference; `micaCollections(site, { strict: true })` fails the
+  build instead (`@micacms/runtime`, `@micacms/astro`).
+- **A configuration reference** at https://micacms.com/docs/configuration/.
+- **`npm run mica` and `npm run check`.** The setup guides and `mica init` add
+  the scripts; `check` runs `astro check` too when `@astrojs/check` is
+  installed (`@micacms/editor`, `@micacms/astro`).
+- **The image runs on amd64 and arm64.** It carries third-party license
+  notices, and the editor bundle ships them too (`@micacms/editor-ui`,
+  `@micacms/self-hosted`).
+
+### Changed
+
+- **Rich text never opens empty and never drops Markdoc.** Text with something
+  the editor cannot show — an image, a table, a `{% tag %}`, front matter, a
+  variable — opens read-only with the reason and the source. The `toolbar`
+  option limits what an editor can add, not what loads (`@micacms/editor-ui`).
+- **A missing branch has its own message**, and `/ready` reports
+  `branch_not_found` (`@micacms/self-hosted`).
+- **The image is smaller:** npm, npx, corepack and yarn are gone, and the base
+  image is pinned by digest (`@micacms/self-hosted`).
+- **A release that failed part of the way can run again.**
+
 ## [0.5.0] — 2026-10-13
 
 The self-hosted Mica keeps its own Git clone of the content repository. It no
