@@ -91,7 +91,7 @@ const make = <K extends string, O extends object>(kind: K, options?: O): { kind:
 export interface TextOptions extends CommonOptions {
   minLength?: number;
   maxLength?: number;
-  /** ECMAScript regular expression source. Applied unanchored. */
+  /** A regular expression that must match the whole value, with the `u` flag. */
   pattern?: string;
   placeholder?: string;
   default?: string;

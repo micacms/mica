@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "Breaking: a text field's `pattern` must now match the whole value, and is compiled with the `u` flag. An invalid pattern stops the model from loading. For \"contains\", write `.*x.*`.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

@@ -16,6 +16,7 @@ import type {
   SingletonOptions,
   Site,
 } from "./types.js";
+import { textPattern } from "./validation.js";
 
 export class ModelError extends Error {
   override name = "ModelError";
@@ -156,6 +157,14 @@ function checkFields(fields: FieldMap, path: string, collectionNames: Set<string
       throw new ModelError(
         `Slug field "${here}" derives from "${field.from}", which is not a sibling field.`,
       );
+    }
+
+    if (field.kind === "text" && field.pattern !== undefined) {
+      try {
+        textPattern(field.pattern);
+      } catch (error) {
+        throw new ModelError(`Text field "${here}" has an invalid pattern: ${(error as Error).message}`);
+      }
     }
 
     if (field.kind === "select" && field.options.length === 0) {

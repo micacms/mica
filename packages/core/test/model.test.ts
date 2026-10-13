@@ -113,6 +113,20 @@ describe("validation", () => {
     rows: repeater({ fields: { label: text({ required: true }) } }),
   };
 
+  it("matches a text pattern against the whole value, by code point", () => {
+    const code = { code: text({ pattern: "[A-Z]{2}" }), mark: text({ pattern: "." }) };
+    assert.equal(validateFields(code, { code: "CH" }).ok, true);
+    assert.equal(validateFields(code, { code: "CHE" }).ok, false);
+    assert.equal(validateFields(code, { code: "xCH" }).ok, false);
+    assert.equal(validateFields(code, { mark: "😀" }).ok, true);
+  });
+
+  it("keeps an alternation inside the anchors", () => {
+    const either = { size: text({ pattern: "small|large" }) };
+    assert.equal(validateFields(either, { size: "large" }).ok, true);
+    assert.equal(validateFields(either, { size: "smaller" }).ok, false);
+  });
+
   it("normalises blank strings and missing keys to null", () => {
     const result = validateFields(fields, { title: "Ok", subtitle: "   ", year: undefined });
     assert.ok(result.ok);
@@ -260,6 +274,16 @@ describe("defineSite", () => {
         }),
       ModelError,
     );
+  });
+
+  it("rejects an invalid text pattern when the model loads", () => {
+    const site = (pattern: string) => () =>
+      defineSite({
+        collections: { news: collection({ label: "News", fields: { slug: slug(), code: text({ pattern }) } }) },
+      });
+    assert.throws(site("[A-Z"), /Text field "collections\.news\.code" has an invalid pattern/);
+    // The `u` flag refuses an escape that a plain regular expression accepts.
+    assert.throws(site("\\-"), ModelError);
   });
 
   it("rejects a slug deriving from a non-existent sibling", () => {

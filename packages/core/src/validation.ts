@@ -77,6 +77,11 @@ function label(field: AnyField, key: string): string {
   return field.label ?? key;
 }
 
+/** A text field's `pattern`, compiled: it must match the whole value, and counts code points. */
+export function textPattern(pattern: string): RegExp {
+  return new RegExp(`^(?:${pattern})$`, "u");
+}
+
 /** The inner schema for a field, before nullability and defaults are applied. */
 function innerSchema(
   field: AnyField,
@@ -91,9 +96,7 @@ function innerSchema(
       let schema = z.string().trim();
       if (field.minLength !== undefined) schema = schema.min(field.minLength);
       if (field.maxLength !== undefined) schema = schema.max(field.maxLength);
-      if (field.pattern) {
-        schema = schema.regex(new RegExp(field.pattern), `${name} has an invalid format.`);
-      }
+      if (field.pattern) schema = schema.regex(textPattern(field.pattern), `${name} has an invalid format.`);
       return schema;
     }
 
