@@ -28,7 +28,7 @@ Mica includes text, textarea, rich text, number, boolean, date, email, URL, slug
 
 Each field can include an editor label, help text, group, width, visibility, and required state. Specific fields add rules such as length, number range, accepted media, or select options.
 
-A media field with `alt: "required"` or `alt: "optional"` stores `{ path, alt }`, and the editor shows an alt-text input under each image. Use it for every image that carries meaning. A media field without `alt` stores only the path, for a decorative image or a document.
+A media field with `alt: "required"` or `alt: "optional"` stores `{ path, alt }`, and the editor shows an alt-text input under each image. Use it for every image that carries meaning. A media field without `alt` stores only the path, for a decorative image or a document. In Astro, a media field with `accept: "image"` is an Astro image (`ImageMetadata`), optimized at build time, and `{ src, alt }` with `alt`: `<Image {...entry.data.cover} />` needs no helper.
 
 ## The file layout
 

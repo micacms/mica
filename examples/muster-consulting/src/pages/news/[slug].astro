@@ -27,7 +27,7 @@ const writer = author ? await getEntry("team", author) : undefined;
 <BaseLayout
   title={title}
   description={excerpt ?? toPlainText(body)}
-  image={coverImage?.path}
+  image={coverImage?.src}
 >
   <article>
     <div class="container-prose pb-8 pt-14 sm:pt-20">

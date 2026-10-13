@@ -44,7 +44,7 @@ const SECTION_LAYOUTS: Record<string, string> = {
 <BaseLayout
   title={seo?.metaTitle ?? title}
   description={seo?.metaDescription ?? intro ?? toPlainText(body)}
-  image={seo?.ogImage ?? heroImage?.path}
+  image={seo?.ogImage ?? heroImage?.src}
   noindex={seo?.noindex ?? false}
 >
   <div class="container-page pb-10 pt-14 sm:pt-20">

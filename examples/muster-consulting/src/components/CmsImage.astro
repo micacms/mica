@@ -13,13 +13,12 @@
  */
 
 import { Image } from "astro:assets";
-import type { MediaWithAlt } from "@micacms/core";
 
-import { isVector, resolveMedia } from "@/lib/images";
+import { isVector } from "@/lib/images";
 
 interface Props {
-  /** A media value, as the loader emits it: a content-root-relative path, or `{ path, alt }`. */
-  media: string | MediaWithAlt | null;
+  /** An image field, as the loader gives it: an image, or `{ src, alt }` with alt text. */
+  media: ImageMetadata | { src: ImageMetadata; alt: string } | null;
   /** Overrides the value's alt text; "" for a decorative image. */
   alt?: string;
   class?: string;
@@ -32,7 +31,7 @@ interface Props {
 
 const {
   media,
-  alt = typeof media === "object" ? (media?.alt ?? "") : "",
+  alt = media && "alt" in media ? media.alt : "",
   class: className,
   widths,
   sizes,
@@ -40,7 +39,7 @@ const {
   priority = false,
 } = Astro.props;
 
-const image = resolveMedia(typeof media === "object" ? media?.path : media);
+const image = media && "src" in media && typeof media.src === "object" ? media.src : (media as ImageMetadata | null);
 ---
 
 {

@@ -16,8 +16,8 @@ import "@/styles/global.css";
 interface Props {
   title?: string;
   description?: string | null;
-  /** Social sharing image, as a content-root-relative path. */
-  image?: string | null;
+  /** Social sharing image. */
+  image?: ImageMetadata | null;
   noindex?: boolean;
 }
 

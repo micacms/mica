@@ -8,6 +8,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { z } from "zod";
+
 import {
   collection,
   defineSite,
@@ -70,7 +72,11 @@ const files: Record<string, string> = {
  * `parseData` really applies the collection schema, so a payload the model
  * would reject fails here rather than at build time.
  */
-function createContext(schema: { parseAsync(data: unknown): Promise<unknown> }) {
+/** Astro hands in `image()`; here a path stays a path, so a test can see where it points. */
+const image = () => z.string();
+
+function createContext(schemaOf: (context: { image: () => z.ZodType }) => z.ZodType) {
+  const schema = schemaOf({ image });
   const store = new Map<string, Record<string, unknown>>();
   const meta = new Map<string, string>();
   const logs: string[] = [];

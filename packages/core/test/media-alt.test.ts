@@ -3,6 +3,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
+import { z } from "zod";
+
 import {
   collection,
   defineSite,
@@ -89,5 +91,23 @@ describe("media with alt text", () => {
     const back = relativizeMedia(fields, entry!.data, "projects/haus");
     assert.deepEqual(back["cover"], { path: "media/a.jpg", alt: "A house" });
     assert.deepEqual(back["gallery"], [{ path: "/shared/b.jpg", alt: null }]);
+  });
+});
+
+describe("an image that the site framework resolves", () => {
+  // Stands in for Astro's `image()`.
+  const image = () => z.string().transform((path) => ({ resolved: path }));
+  const images = { cover: media({ accept: "image", alt: "required" }), logo: media({ accept: "image" }), file: media() };
+
+  it("gives the image, and { src, alt } with alt text; other media stay paths", () => {
+    const result = validateFields(images, { cover: { path: "./media/a.jpg", alt: "A house" }, logo: "./logo.png", file: "media/a.pdf" }, { image });
+    assert.ok(result.ok);
+    assert.deepEqual(result.data["cover"], { src: { resolved: "./media/a.jpg" }, alt: "A house" });
+    assert.deepEqual(result.data["logo"], { resolved: "./logo.png" });
+    assert.equal(result.data["file"], "media/a.pdf");
+  });
+
+  it("still refuses a required image without alt text", () => {
+    assert.equal(validateFields(images, { cover: { path: "./media/a.jpg", alt: "" } }, { image }).ok, false);
   });
 });

@@ -170,10 +170,12 @@ endpoints such as `rss.xml.js`. See
     strings gives `NaN`, and the list is then not sorted, with no error.
   - Where an API needs a `Date`, such as the RSS `pubDate`, pass
     `new Date(entry.data.pubDate)`.
-- An image was `ImageMetadata` and is now `{ path, alt }` (or a path, without
-  `alt`). Create `src/lib/media.ts` from [reference.md](./reference.md#images),
-  and use `mediaImage(value.path)`. Move alt text from the old frontmatter, such
-  as `coverAlt`, into `alt`.
+- An `image()` field is still `ImageMetadata` with `media({ accept: "image" })`,
+  so its pages do not change. With `alt`, the value is `{ src, alt }`: use
+  `entry.data.cover.src` where the page used `entry.data.cover`, and
+  `entry.data.cover.alt` in place of the old alt-text field, or spread it:
+  `<Image {...entry.data.cover} />`. See
+  [reference.md](./reference.md#images).
 - A reference was `{ collection, id }` and is now a slug:
   `getEntry("authors", entry.data.author)`.
 - `entry.id` is the slug. If ids had folders, update the links, and add

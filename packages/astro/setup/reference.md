@@ -208,41 +208,24 @@ const settings = await getEntry("settings", "settings");
 
 ### Images
 
-On disk, a media field holds `media/cover.jpg`. In `entry.data`, the loader
-gives the path from the content root: `news/hello-world/media/cover.jpg`. Astro can only optimize an image that the
-build imports, so collect the images with `import.meta.glob`:
-
-```ts
-// src/lib/media.ts — the glob path is relative to this file
-import type { ImageMetadata } from "astro";
-
-const images = import.meta.glob<{ default: ImageMetadata }>(
-  "../../content/**/*.{jpeg,jpg,png,webp,avif,gif}",
-  { eager: true },
-);
-
-/** The image for a Mica media path, or undefined when the file is not there. */
-export function mediaImage(path: string | null | undefined): ImageMetadata | undefined {
-  return path ? images[`../../content/${path}`]?.default : undefined;
-}
-```
+A `media({ accept: "image" })` field reaches Astro as an image that Astro
+optimizes, the same as `image()` in an Astro collection: `ImageMetadata`. With
+`alt`, it is `{ src, alt }`. No helper is needed:
 
 ```astro
 ---
 import { Image } from "astro:assets";
-import { mediaImage } from "../../lib/media";
-const cover = article.data.cover; // media({ alt: "required" }): { path, alt }
-const image = mediaImage(cover?.path);
+const { cover } = article.data; // media({ accept: "image", alt: "required" })
 ---
-{image && <Image src={image} alt={cover.alt} />}
+{cover && <Image {...cover} />}
 ```
 
-A `media({ multiple: true })` field is an array:
-`project.data.gallery.map((item) => mediaImage(item.path))`. A `media()`
-without `alt` is a path only: use it for a decorative image, with `alt=""`. For
-documents such as PDF files, use
-`import.meta.glob("../../content/**/*.pdf", { query: "?url", import: "default", eager: true })`
-and link to the URL.
+- Without `alt`, the field is the image itself: `<Image src={logo} alt="" />`.
+- A `media({ accept: "image", multiple: true })` field is an array of them.
+- On disk, the field still holds `media/cover.jpg`, or `{ path, alt }`.
+- A `media()` without `accept: "image"`, for example a PDF, is a path from the
+  content root: `news/hello-world/media/plan.pdf`. To link to it, use
+  `import.meta.glob("../../content/**/*.pdf", { query: "?url", import: "default", eager: true })`.
 
 ### What Markdoc renders differently from Astro's Markdown
 

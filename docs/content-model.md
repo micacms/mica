@@ -170,8 +170,11 @@ directory, like `media/exterior.jpg`, or it starts with `/` for a file elsewhere
 in the content root. The website and the editor read it relative to the content
 root: `projects/haus-a/media/exterior.jpg`. The file is uploaded into the entry's
 own directory, so an entry is self-contained and renaming it is a directory move.
-Astro treats it as a local asset: optimised at build time, emitted into
-`_astro/`, with nothing fetched at runtime.
+In Astro, a `media({ accept: "image" })` field is an image, as with Astro's
+`image()`: `ImageMetadata`, optimised at build time and emitted into `_astro/`,
+with nothing fetched at runtime. With `alt` it is `{ src, alt }`, so
+`<Image {...entry.data.cover} />` is enough. Other media stay paths from the
+content root.
 
 **`media({ alt: "required" })`** stores `{ path, alt }` and shows an alt-text
 input under the preview. `"required"` refuses an image without alt text;
