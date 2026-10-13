@@ -146,6 +146,7 @@ MICA_SESSION_IDLE_HOURS=4
 ```
 
 - A session ends after 8 hours, or after 4 hours without use. While a session is in use, Mica issues the cookie again every 5 minutes.
+- Five minutes before a session ends, the editor warns and offers to stay signed in. When a session has ended, the page stays open and offers to sign in again. The entry and settings forms keep their unsaved changes in the browser tab (`sessionStorage`), and after the sign-in the form offers to restore them.
 - Sign-out clears the cookie in the browser only.
 - Mica re-reads the rules on each request. The rules live in `.env`, so restart the container after a change. The change then counts at once.
 - A change at your provider, for example removal from a group, counts from the next sign-in.
@@ -165,7 +166,7 @@ docker compose pull && docker compose up -d
 
 Read the changelog first, and pin a version.
 
-When you change the content model, run the Astro build, commit `.mica/schema.json`, push, and restart:
+When you change the content model, run the Astro build, commit `.mica/schema.json`, and push. Mica brings the change in with its next sync and uses the new model at once; editors see a notice to load the page again. If the new model cannot be read, Mica keeps the old one, logs a warning, and the System page names the problem. Only a change to `.gitattributes` needs a restart:
 
 ```bash
 docker compose restart mica

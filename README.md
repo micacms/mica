@@ -115,7 +115,7 @@ already connected to, and generates its navigation, tables and forms from it.
 
 That is the entire coupling. The Mica image contains no content model — only
 the field types that interpret one — so one image serves every project, and
-changing the model is a commit plus a restart rather than a rebuild.
+changing the model is a commit, which Mica loads by itself, rather than a rebuild.
 
 ---
 

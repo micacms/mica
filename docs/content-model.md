@@ -176,8 +176,12 @@ the reason.
 **`media()`** holds a path. In the file it is relative to the entry's
 directory, like `media/exterior.jpg`, or it starts with `/` for a file elsewhere
 in the content root. The website and the editor read it relative to the content
-root: `projects/haus-a/media/exterior.jpg`. The file is uploaded into the entry's
-own directory, so an entry is self-contained and renaming it is a directory move.
+root: `projects/haus-a/media/exterior.jpg`. A file uploaded in an entry's form
+goes into the entry's own directory, so an entry is self-contained and renaming
+it is a directory move. A file uploaded in the Media view goes into the shared
+`media/` folder and is stored as `/media/x.jpg`. The picker offers the entry's
+own files and the shared ones. Videos are refused. The Media view deletes a
+file that no field and no rich text uses.
 In Astro, a `media({ accept: "image" })` field is an image, as with Astro's
 `image()`: `ImageMetadata`, optimised at build time and emitted into `_astro/`,
 with nothing fetched at runtime. With `alt` it is `{ src, alt }`, so
@@ -239,7 +243,8 @@ git commit -am "Add an architect field to projects"
 ```
 
 The website picks it up immediately — a typo in a template is a build error.
-Mica picks it up when it restarts.
+Mica picks it up too, without a restart: an open page asks the editor to save
+and load it again.
 
 Adding a **required** field to a collection that already has entries makes
 those entries invalid until they are edited. The website build is where you

@@ -108,6 +108,8 @@ services:
 
       MICA_ADMIT_EMAILS: alice@gmail.com
       MICA_ADMIT_DOMAINS: muster-consulting.example
+      # The flow test and the browser tests sign in about ten times from one address.
+      MICA_SIGNIN_MAX_ATTEMPTS: "50"
 
       MICA_REPOSITORY_URL: http://localhost:3000/editor/site.git
       MICA_REPOSITORY_USERNAME: editor

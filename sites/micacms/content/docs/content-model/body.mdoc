@@ -30,6 +30,8 @@ Each field can include an editor label, help text, group, width, visibility, and
 
 A media field with `alt: "required"` or `alt: "optional"` stores `{ path, alt }`, and the editor shows an alt-text input under each image. Use it for every image that carries meaning. A media field without `alt` stores only the path, for a decorative image or a document. In Astro, a media field with `accept: "image"` is an Astro image (`ImageMetadata`), optimized at build time, and `{ src, alt }` with `alt`: `<Image {...entry.data.cover} />` needs no helper.
 
+A file uploaded in an entry's form goes into that entry's own `media/` folder, so the entry keeps its files when its URL changes, and loses them when it is deleted. A file uploaded in the Media view goes into the shared `media/` folder, for a logo or another file that many entries use. The picker in a form offers the entry's own files and the shared ones. Mica does not keep videos: put them on a video service and link to them. The Media view deletes a file only when no field and no rich text uses it, and the delete waits on the Publish page like any other change.
+
 ## The file layout
 
 Entries with only structured fields use one JSON file. Rich text and media need a directory with an `index.json` file.

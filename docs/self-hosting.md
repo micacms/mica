@@ -159,11 +159,10 @@ authority is not supported yet.
   page and on the entry, and chooses per entry: **Keep my version** (the
   draft replaces the website's version when it is published) or **Use the
   website's version** (Mica discards the draft).
-- **A model change upstream waits for a restart.** When `.mica/schema.json`
-  changes on the branch, Mica stops the fast-forward and shows "restart
-  required". Editors can go on saving with the model that is loaded.
-  Publish waits. Restart the container ([Changing the content
-  model](#changing-the-content-model)).
+- **A model change upstream is used at once.** When `.mica/schema.json`
+  changes on the branch, Mica fast-forwards and loads the new model. A model
+  that cannot be read leaves the old one in use, and the System page says why.
+  Only a `.gitattributes` change waits for a restart.
 - **A publication is one commit.** The signed-in editor is the author. Mica
   (`Mica CMS <mica@localhost>`) is the committer. Mica pushes the commit to the
   branch and never forces.
@@ -478,14 +477,17 @@ review of its own.
 ## Changing the content model
 
 In the project: edit the model, `astro build`, commit `.mica/schema.json`, push.
-Mica sees the change at its next sync and stops the fast-forward. The editor
-shows "restart required", and `/ready` carries `restart_required`. Then:
+Mica sees the change at its next sync, fast-forwards, and uses the new model at
+once. An open page asks the editor to save and load it again. A model that
+cannot be read leaves the old one in use; the log and the System page name the
+problem. Only a `.gitattributes` change holds the fast-forward: the editor
+shows "restart required", `/ready` carries `restart_required`, and then:
 
 ```bash
 docker compose restart mica
 ```
 
-The restart fast-forwards the clone and then loads the new model. The image
+The image
 holds no model — only the field types that interpret one — so it never needs
 rebuilding for a content or model change. Deploy the matching website build at
 the same time: adding a required field makes existing entries invalid until
@@ -557,7 +559,7 @@ view shows both to editors):
   | `auth_failed` | The host refused the token. Fix the token and restart. |
   | `branch_not_found` | `MICA_REPOSITORY_BRANCH` does not exist in the repository. Push it, or fix the name and restart. |
   | `write_forbidden` | The token can read but not write. Publish is refused. |
-  | `restart_required` | The content model changed on the branch. Restart Mica. |
+  | `restart_required` | A `.gitattributes` file changed on the branch. Restart Mica. (A content model change needs no restart.) |
 
   Point an uptime monitor at it, and alert on `reasons`, not on the status
   code. The result is cached for 30 seconds.
@@ -656,7 +658,8 @@ Mica exits at start and lists every problem in one message.
 
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
-| "The content model changed on the website"; `/ready` has `restart_required` | `.mica/schema.json` or a `.gitattributes` changed on the branch | `docker compose restart mica` |
+| "The way the website stores its files changed"; `/ready` has `restart_required` | A `.gitattributes` changed on the branch | `docker compose restart mica` |
+| "A newer content model cannot be read" on the System page; Publish waits | The pushed `.mica/schema.json` is not valid, or is from a newer `@micacms/astro` | Fix the model and push again, or update the image |
 | "Read-only in this version of Mica" on a collection | The site uses a field type from a newer `@micacms/astro` than the image | Change the image tag in `compose.yml` to that version or newer, then `docker compose pull && docker compose up -d` |
 
 ### Other
