@@ -44,3 +44,9 @@ export function actorOf(c: Context<Env>): { id: string; email: string; name: str
   const identity = c.get("access")?.identity;
   return identity ? { id: identity.subject, email: identity.email, name: identity.name } : null;
 }
+
+/** Who did it, for the log: the signed-in editor's email, else their subject. None in the local editor. */
+export function editorOf(c: Context<Env>): string | undefined {
+  const actor = actorOf(c);
+  return actor ? actor.email || actor.id : undefined;
+}

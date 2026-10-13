@@ -11,7 +11,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 import { ApiError, badRequest, notFound } from "../lib/errors.js";
-import type { Env } from "../http.js";
+import { editorOf, type Env } from "../http.js";
 
 const saveSchema = z.object({
   data: z.record(z.string(), z.unknown()),
@@ -21,6 +21,10 @@ const saveSchema = z.object({
    * exist, so two parallel creates cannot overwrite.
    */
   revision: z.string().nullable().optional(),
+  /** The editor saw that a colleague saved since, and chose to save over it. Logged. */
+  keepMine: z.boolean().optional(),
+  /** On a URL change: other entries and settings pages that link here follow the new URL. */
+  updateLinks: z.boolean().optional(),
 });
 
 const reorderSchema = z.object({ slugs: z.array(z.string().min(1)).max(2000) });
@@ -140,8 +144,15 @@ export function adminContentRoutes(): Hono<Env> {
         data: parsed.data.data,
         slug: c.req.param("slug"),
         expectedRevision: parsed.data.revision,
+        ...(parsed.data.updateLinks ? { updateLinks: true } : {}),
       }),
     );
+    if (parsed.data.keepMine) {
+      c.get("ctx").logger.info("Kept own version over a newer save", {
+        entry: `${c.req.param("collection")}/${c.req.param("slug")}`,
+        editor: editorOf(c),
+      });
+    }
 
     return c.json(saved);
   });
@@ -182,13 +193,16 @@ export function adminContentRoutes(): Hono<Env> {
 
   app.put("/singletons/:name", async (c) => {
     const { content } = c.get("ctx").services;
-    const body = (await jsonBody(c)) as { data?: unknown; revision?: string | null };
+    const body = (await jsonBody(c)) as { data?: unknown; revision?: string | null; keepMine?: boolean };
 
     const saved = await handled(() =>
       content.saveSingleton(c.req.param("name"), body?.data ?? {}, {
         expectedRevision: body?.revision,
       }),
     );
+    if (body?.keepMine === true) {
+      c.get("ctx").logger.info("Kept own version over a newer save", { singleton: c.req.param("name"), editor: editorOf(c) });
+    }
 
     return c.json(saved);
   });

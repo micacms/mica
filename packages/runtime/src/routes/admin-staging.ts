@@ -8,7 +8,7 @@
 import { Hono } from "hono";
 import { z } from "zod";
 
-import { actorOf, type Env } from "../http.js";
+import { actorOf, editorOf, type Env } from "../http.js";
 import { ApiError, badRequest } from "../lib/errors.js";
 import { ConflictError } from "../workspace/files.js";
 
@@ -50,12 +50,6 @@ async function handled<T>(run: () => Promise<T>): Promise<T> {
     if (error instanceof ConflictError) throw new ApiError("conflict", error.message);
     throw error;
   }
-}
-
-/** Who did it, for the log: the signed-in editor's email, else their subject. None in the local editor. */
-function editorOf(c: Parameters<typeof actorOf>[0]): string | undefined {
-  const actor = actorOf(c);
-  return actor ? actor.email || actor.id : undefined;
 }
 
 export function adminStagingRoutes(): Hono<Env> {

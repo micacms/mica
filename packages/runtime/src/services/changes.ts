@@ -257,6 +257,8 @@ export async function analyseChanges(
 
   const created = new Set(changes.filter((change) => change.kind === "create").map((change) => change.path));
   const needsByPath = new Map<string, string[]>();
+  /** How to read each changed document as the website has it, by its data file. */
+  const publishedOf = new Map<string, () => Promise<Record<string, unknown> | null>>();
   const addNeeds = (dataPath: string, fields: Collection["fields"], data: Record<string, unknown>): void => {
     const needed = new Set<string>();
     for (const reference of collectReferences(fields, data)) {
@@ -286,6 +288,10 @@ export async function analyseChanges(
       if (!data) continue;
 
       addNeeds(entryDataPath(def, owner.collection, owner.slug), def.fields, data);
+      if (published) {
+        const { collection, slug } = owner;
+        publishedOf.set(entryDataPath(def, collection, slug), () => readCollectionEntry(published, def, collection, slug).catch(() => null));
+      }
       const result = validateFields(def.fields, data);
       const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data))];
       if (issues.length > 0) {
@@ -306,7 +312,13 @@ export async function analyseChanges(
         const data = await readSingleton(source, def, owner.name);
         if (data === null) continue;
 
-        addNeeds(dataPath, def.fields, data);
+        // The data file, not the folder: a folder-layout singleton's change is `<name>/index.json`.
+        const dataFile = entryLayout(def.fields) === "directory" ? `${dataPath}/index.json` : dataPath;
+        addNeeds(dataFile, def.fields, data);
+        if (published) {
+          const name = owner.name;
+          publishedOf.set(dataFile, () => readSingleton(published, def, name).catch(() => null));
+        }
         const result = validateFields(def.fields, data);
         const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data))];
         if (issues.length > 0) problems.push({ path: dataPath, label: def.label, issues });
@@ -317,6 +329,32 @@ export async function analyseChanges(
           issues: [{ path: "", message: (error as Error).message }],
         });
       }
+    }
+  }
+
+  // A URL change and the links that follow it are published together, both ways. A
+  // document follows when the website's version of it links to the old URL; a new
+  // draft that links to the new URL only needs the change, and does not hold it back.
+  const renamed = new Map(
+    owners.flatMap((owner) =>
+      owner.kind === "entry" && owner.renamedFrom
+        ? [[entryDataPath(model.collections[owner.collection]!, owner.collection, owner.slug), owner] as const]
+        : [],
+    ),
+  );
+  for (const [document, needed] of [...needsByPath]) {
+    for (const path of needed) {
+      const target = renamed.get(path);
+      if (!target || target.kind !== "entry") continue;
+      const before = await publishedOf.get(document)?.();
+      const fields = before && fieldsOfDocument(model, document);
+      const linkedBefore =
+        before &&
+        fields &&
+        collectReferences(fields, before).some(
+          (reference) => reference.kind === "relation" && reference.collection === target.collection && reference.slug === target.renamedFrom,
+        );
+      if (linkedBefore) needsByPath.set(path, [...new Set([...(needsByPath.get(path) ?? []), document])]);
     }
   }
 
@@ -341,6 +379,14 @@ export async function analyseChanges(
     changes: annotated,
     validation: { ok: problems.length === 0, problems },
   };
+}
+
+/** The fields of the entry or singleton whose data file is `path`. */
+function fieldsOfDocument(model: Site, path: string): Collection["fields"] | null {
+  const owner = classifyPath(model, path);
+  if (owner.kind === "entry") return model.collections[owner.collection]?.fields ?? null;
+  if (owner.kind === "singleton") return model.singletons[owner.name]?.fields ?? null;
+  return null;
 }
 
 /** Which piece of content a file belongs to, read from the model's path layout. */

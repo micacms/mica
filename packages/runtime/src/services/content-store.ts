@@ -18,8 +18,10 @@ import {
   isValidSlug,
   collectReferences,
   readCollection,
+  readCollectionEntry,
   readSingleton,
   relativizeMedia,
+  relinkReferences,
   resolveSlugField,
   resolveTitleField,
   serializeEntry,
@@ -63,7 +65,14 @@ export interface SaveEntryInput {
   slug?: string;
   /** The revision `slug` had when the editor opened it. Absent writes unconditionally. */
   expectedRevision?: string | null;
+  /** On a URL change: point the relations in other entries and settings at the new URL, in the same write. */
+  updateLinks?: boolean;
 }
+
+/** An entry or settings page that links to an entry. `readOnly`: this build cannot change its links. */
+export type Referrer =
+  | { kind: "entry"; collection: string; slug: string; title: string; readOnly?: true }
+  | { kind: "singleton"; name: string; title: string; readOnly?: true };
 
 export interface SavedEntry {
   slug: string;
@@ -72,6 +81,8 @@ export interface SavedEntry {
   revision: string;
   /** True when the save moved the entry's files. */
   renamed: boolean;
+  /** How many other entries and settings pages now link to the new URL. */
+  relinked: number;
 }
 
 /** `readOnly` comes from `readOnlyParts`: its collections and singletons are read, never written. */
@@ -216,6 +227,56 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     return { type: "write", path, contents: `${JSON.stringify(order, null, 2)}\n` };
   };
 
+  /** Entries and settings pages whose relations point at `collection`/`slug`, with what a relink needs. */
+  const referrers = async (collection: string, slug: string) => {
+    const found: Array<{
+      referrer: Referrer;
+      fields: FieldMap;
+      base: string;
+      dataFile: string;
+      /** Reads the data again, so that a relink starts from what is on disk now. */
+      read: () => Promise<Record<string, unknown> | null>;
+    }> = [];
+    const readOnlyMark = (key: string) => (readOnly.has(key) ? { readOnly: true as const } : {});
+    const points = (fields: FieldMap, data: Record<string, unknown>) =>
+      collectReferences(fields, data).some(
+        (reference) => reference.kind === "relation" && reference.collection === collection && reference.slug === slug,
+      );
+
+    for (const [name, def] of Object.entries(site.collections)) {
+      if (!linksTo(def.fields, collection)) continue;
+      for (const entry of await readCollection(workspace, def, name)) {
+        if (!points(def.fields, entry.data)) continue;
+        found.push({
+          referrer: {
+            kind: "entry",
+            collection: name,
+            slug: entry.slug,
+            title: entryTitle(def, entry.data),
+            ...readOnlyMark(`collections.${name}`),
+          },
+          fields: def.fields,
+          base: collectionEntryPath(def.fields, name, entry.slug),
+          dataFile: dataPath(def, name, entry.slug),
+          read: () => readCollectionEntry(workspace, def, name, entry.slug),
+        });
+      }
+    }
+    for (const [name, def] of Object.entries(site.singletons)) {
+      if (!linksTo(def.fields, collection)) continue;
+      const data = await readSingleton(workspace, def, name);
+      if (!data || !points(def.fields, data)) continue;
+      found.push({
+        referrer: { kind: "singleton", name, title: def.label, ...readOnlyMark(`singletons.${name}`) },
+        fields: def.fields,
+        base: singletonPath(def.fields, name),
+        dataFile: singletonDataPath(def, name),
+        read: () => readSingleton(workspace, def, name),
+      });
+    }
+    return found;
+  };
+
   /** Slugs already taken in a collection, so a new one can be made unique. */
   const takenSlugs = async (def: Collection, name: string, except?: string): Promise<string[]> => {
     const entries = await readCollection(workspace, def, name);
@@ -266,6 +327,9 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
           : uniqueSlug(requested, await takenSlugs(def, collectionName, input.slug));
 
       data[slugKey] = slug;
+      // An entry that links to itself follows its own new URL.
+      const own = previousLinks(input, slug) ? relinkReferences(def.fields, data, collectionName, input.slug!, slug) : null;
+      if (own) Object.assign(data, own);
 
       const base = collectionEntryPath(def.fields, collectionName, slug);
       const previousBase =
@@ -300,19 +364,47 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
         changes.push(...(await staleDocuments(base, new Set(Object.keys(serialized.documents)))));
       }
 
+      // Only the data file of each referrer changes; its rich text and media stay as they are.
+      // A read-only part is left alone: this build may not write it.
+      let relinked = 0;
+      const referrerRevisions: Record<string, string | null> = {};
+      if (previousLinks(input, slug)) {
+        for (const found of await referrers(collectionName, input.slug!)) {
+          if (found.referrer.readOnly) continue;
+          if (found.referrer.kind === "entry" && found.referrer.collection === collectionName && found.referrer.slug === input.slug) continue;
+          // The revision before the read: a save in between makes the write refuse, not overwrite it.
+          const revision = await workspace.revision(found.dataFile);
+          const current = await found.read();
+          const next = current && relinkReferences(found.fields, current, collectionName, input.slug!, slug);
+          if (!next) continue;
+          const written = entryFiles(found.fields, found.base, serializeEntry(found.fields, mediaForDisk(found.fields, next, found.base)));
+          changes.push({ type: "write", path: found.dataFile, contents: written[found.dataFile]! });
+          referrerRevisions[found.dataFile] = revision;
+          relinked += 1;
+        }
+      }
+
       const title = entryTitle(def, data);
-      await workspace.apply({
-        changes,
-        expect: await expectDocument(
-          input.expectedRevision,
-          dataPath(def, collectionName, input.slug ?? slug),
-          folderOf(def.fields, previousBase ?? base),
-        ),
-      });
+      const expected = await expectDocument(
+        input.expectedRevision,
+        dataPath(def, collectionName, input.slug ?? slug),
+        folderOf(def.fields, previousBase ?? base),
+      );
+      try {
+        await workspace.apply({
+          changes,
+          expect: relinked > 0 ? { ...expected, ...referrerRevisions } : expected,
+        });
+      } catch (error) {
+        if (error instanceof ConflictError && error.paths.some((path) => path in referrerRevisions)) {
+          throw new ConflictError("An entry or page that links here changed while you saved. Save again.", error.paths);
+        }
+        throw error;
+      }
 
       const revision = await revisionAfterWrite(dataPath(def, collectionName, slug), folderOf(def.fields, base));
 
-      return { slug, title, revision, renamed: previousBase !== null };
+      return { slug, title, revision, renamed: previousBase !== null, relinked };
     },
 
     async remove(
@@ -397,29 +489,20 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       return uniqueSlug(slugify(source), await takenSlugs(def, collectionName, except));
     },
 
-    /** Entries pointing at `slug`, so the editor can warn before a delete. */
-    async findReferences(collectionName: string, slug: string) {
-      const results: Array<{ collection: string; slug: string; title: string }> = [];
-
-      for (const [name, def] of Object.entries(site.collections)) {
-        if (!linksTo(def.fields, collectionName)) continue;
-        for (const entry of await readCollection(workspace, def, name)) {
-          const points = collectReferences(def.fields, entry.data).some(
-            (reference) =>
-              reference.kind === "relation" && reference.collection === collectionName && reference.slug === slug,
-          );
-          if (points) {
-            results.push({ collection: name, slug: entry.slug, title: entryTitle(def, entry.data) });
-          }
-        }
-      }
-
-      return results;
+    /** Entries and settings pages that link to `slug`: the warning before a delete or a URL change. */
+    async findReferences(collectionName: string, slug: string): Promise<Referrer[]> {
+      requireCollection(collectionName);
+      return (await referrers(collectionName, slug)).map((found) => found.referrer);
     },
   };
 }
 
 export type ContentStore = ReturnType<typeof createContentStore>;
+
+/** Whether a save is a URL change whose links should follow. */
+function previousLinks(input: SaveEntryInput, slug: string): boolean {
+  return input.updateLinks === true && input.slug !== undefined && input.slug !== slug;
+}
 
 /** Whether a field map has a relation to `collection`, nested fields included. */
 function linksTo(fields: FieldMap, collection: string): boolean {

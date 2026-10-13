@@ -53,6 +53,7 @@ const site = defineSite({
   },
   singletons: {
     theme: singleton({ label: "Theme", fields: { primaryColor: text() } }),
+    home: singleton({ label: "Home", fields: { owner: relation({ collection: "team" }) } }),
     about: singleton({ label: "About", fields: { intro: richText() } }),
   },
 });
@@ -363,7 +364,7 @@ describe("deleting an entry", () => {
     await store.save("projects", { data: { title: "Haus A", lead: "anna-vogt" } });
 
     const references = await store.findReferences("team", "anna-vogt");
-    assert.deepEqual(references, [{ collection: "projects", slug: "haus-a", title: "Haus A" }]);
+    assert.deepEqual(references, [{ kind: "entry", collection: "projects", slug: "haus-a", title: "Haus A" }]);
   });
 });
 
@@ -439,7 +440,79 @@ describe("findReferences", () => {
     await nestedStore.save("events", { data: { title: "Meetup", talks: [{ speaker: "anna" }] } });
 
     assert.deepEqual(await nestedStore.findReferences("team", "anna"), [
-      { collection: "events", slug: "meetup", title: "Meetup" },
+      { kind: "entry", collection: "events", slug: "meetup", title: "Meetup" },
     ]);
+  });
+});
+
+describe("a URL change with its links", () => {
+  const setUp = async () => {
+    await store.save("team", { data: { name: "Anna" } });
+    await store.save("projects", { data: { title: "Haus A", lead: "anna", description: "Body." } });
+    await store.saveSingleton("home", { owner: "anna" });
+    return store.revisionOf("team", "anna");
+  };
+
+  it("points the links in other entries and settings at the new URL, and leaves their other files alone", async () => {
+    const revision = await setUp();
+    const body = await read("projects/haus-a/description.mdoc");
+
+    const saved = await store.save("team", {
+      slug: "anna",
+      data: { name: "Anna", slug: "anna-meier" },
+      expectedRevision: revision,
+      updateLinks: true,
+    });
+
+    assert.equal(saved.relinked, 2);
+    assert.equal(JSON.parse(await read("projects/haus-a/index.json")).lead, "anna-meier");
+    assert.equal(JSON.parse(await read("home.json")).owner, "anna-meier");
+    assert.equal(await read("projects/haus-a/description.mdoc"), body);
+  });
+
+  it("leaves the links as they are without the option", async () => {
+    const revision = await setUp();
+    const saved = await store.save("team", { slug: "anna", data: { name: "Anna", slug: "anna-meier" }, expectedRevision: revision });
+
+    assert.equal(saved.relinked, 0);
+    assert.equal(JSON.parse(await read("projects/haus-a/index.json")).lead, "anna");
+    assert.deepEqual(await store.findReferences("team", "anna"), [
+      { kind: "entry", collection: "projects", slug: "haus-a", title: "Haus A" },
+      { kind: "singleton", name: "home", title: "Home" },
+    ]);
+  });
+
+  it("leaves a read-only referrer alone, and names it as read-only", async () => {
+    const revision = await setUp();
+    const readOnly = new Map([["collections.projects", "Upgrade Mica to edit it."]]);
+    const guarded = createContentStore(site, contentFiles({ root }), readOnly);
+
+    const references = await guarded.findReferences("team", "anna");
+    assert.deepEqual(references[0], { kind: "entry", collection: "projects", slug: "haus-a", title: "Haus A", readOnly: true });
+
+    const saved = await guarded.save("team", { slug: "anna", data: { name: "Anna", slug: "anna-meier" }, expectedRevision: revision, updateLinks: true });
+    assert.equal(saved.relinked, 1);
+    assert.equal(JSON.parse(await read("projects/haus-a/index.json")).lead, "anna");
+  });
+
+  it("refuses, and writes nothing, when a referrer changes during the save", async () => {
+    const revision = await setUp();
+    const files = contentFiles({ root });
+    // A colleague saves the referrer between the read and the write.
+    const racing: typeof files = {
+      ...files,
+      async apply(input) {
+        await writeFile(join(root, "home.json"), JSON.stringify({ owner: "anna", note: "colleague" }));
+        return files.apply(input);
+      },
+    };
+    const raced = createContentStore(site, racing);
+
+    await assert.rejects(
+      raced.save("team", { slug: "anna", data: { name: "Anna", slug: "anna-meier" }, expectedRevision: revision, updateLinks: true }),
+      /An entry or page that links here changed while you saved/,
+    );
+    assert.equal(JSON.parse(await read("team/anna.json")).slug, "anna");
+    assert.equal(JSON.parse(await read("home.json")).note, "colleague");
   });
 });

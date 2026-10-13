@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "A save with keepMine is logged with the editor's identity",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}
