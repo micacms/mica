@@ -2,6 +2,18 @@
   "name": "@micacms/self-hosted",
   "entries": [
     {
+      "version": "0.5.0",
+      "tag": "@micacms/self-hosted_v0.5.0",
+      "date": "Tue, 13 Oct 2026 04:44:02 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Keep a Git clone of the content repository on the data volume instead of a SQLite draft store and the GitHub and GitLab APIs. Configure it with `MICA_REPOSITORY_URL` and `MICA_REPOSITORY_TOKEN` instead of `REPOSITORY`, `REPOSITORY_*`, `DATA_DIR` and `DATABASE_PATH`, check a setup with the `check` command, and resolve conflicts with changes made on the website. Any Git host over HTTPS should work; GitLab needs only `read_repository` and `write_repository`."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.4.0",
       "tag": "@micacms/self-hosted_v0.4.0",
       "date": "Sun, 11 Oct 2026 15:57:57 GMT",

@@ -2,6 +2,24 @@
   "name": "@micacms/core",
   "entries": [
     {
+      "version": "0.5.0",
+      "tag": "@micacms/core_v0.5.0",
+      "date": "Tue, 13 Oct 2026 04:44:02 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "The manifest records the `layout` of each collection and singleton, and `ProtocolManifest` types it."
+          },
+          {
+            "comment": "Keep the value of a field kind that this build does not know when validating, instead of failing."
+          },
+          {
+            "comment": "Remove the draft-store and repository-port types (`DraftStore`, `memoryDraftStore`, `RepositoryConnector`, `CommitInput`, `Change`, `checkCommitPaths`, `ConnectorError`, `ConflictError`). The working tree's files and their errors are in `@micacms/runtime` now."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.4.0",
       "tag": "@micacms/core_v0.4.0",
       "date": "Sun, 11 Oct 2026 15:57:57 GMT",

@@ -1,6 +1,11 @@
 # Change Log - @micacms/auth-oidc
 
-This log was last generated on Sun, 11 Oct 2026 15:57:57 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 04:44:02 GMT and should not be manually modified.
+
+## 0.5.0
+Tue, 13 Oct 2026 04:44:02 GMT
+
+_Version update only_
 
 ## 0.4.0
 Sun, 11 Oct 2026 15:57:57 GMT

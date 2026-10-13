@@ -10,6 +10,91 @@ seven published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.5.0] — 2026-10-13
+
+The self-hosted Mica keeps its own Git clone of the content repository. It no
+longer uses a SQLite database or the GitHub and GitLab APIs. Both apps now
+work the same way: a draft is an uncommitted file in a Git working tree, and
+Publish commits the reviewed files. Any Git host over HTTPS should work. A
+coding agent can now set Mica up from one prompt.
+
+A self-hosted Mica needs a new configuration, so read Breaking before
+upgrading. There is no upgrade path from 0.4: publish or discard every draft
+on 0.4 first, then set up 0.5 from the new `deploy/self-hosted/compose.yml`
+and `.env.example`.
+
+### Breaking
+
+- **New repository configuration.** Set `MICA_REPOSITORY_URL` (the HTTPS clone
+  URL) and `MICA_REPOSITORY_TOKEN`. Optional: `MICA_REPOSITORY_USERNAME`,
+  `_BRANCH`, `_ROOT` and `_SYNC_SECONDS`. `MICA_DATA_DIR` replaces `DATA_DIR`.
+  `REPOSITORY`, `REPOSITORY_*` and `DATABASE_PATH` are not read any more
+  (`@micacms/self-hosted`).
+- **No upgrade from 0.4.** Mica 0.5 does not read the 0.4 draft database.
+- **A narrower token.** GitLab needs only `read_repository` and
+  `write_repository`, not `api`. GitHub needs Contents: read and write.
+- **`@micacms/connectors` is removed.** Its file layer is in `@micacms/runtime`
+  as `contentFiles` and `ContentFiles`. Core no longer exports the draft-store
+  and repository-port types (`@micacms/core`, `@micacms/runtime`).
+- **The manifest changes once.** `.mica/schema.json` now names
+  `@micacms/astro` without a version and records each collection's `layout`.
+  Build the site and commit the file; a self-hosted Mica restarts once for it.
+  After that, a package update no longer changes the file (`@micacms/astro`,
+  `@micacms/core`).
+
+### Added
+
+- **Set up Mica with a coding agent.** Give the agent the prompt "Read
+  https://micacms.com/setup.md and set up Mica in this project." The guides it
+  follows ship in `@micacms/astro/setup/`: a new or empty Astro project, and a
+  project with Astro content collections (`@micacms/astro`).
+- **`mica check`** checks every entry against the model and exits with 1 on an
+  error: fields that do not validate, missing media, relations to entries that
+  do not exist, entries in the wrong layout, and files that Mica does not read.
+  Run it in CI with `npx mica check` (`@micacms/editor`).
+- **`mica init`** writes a starter `src/mica.ts` and `src/content.config.ts`,
+  and never overwrites a file (`@micacms/editor`).
+- **Conflicts with the website.** When a change on the website touches an
+  entry that has a draft, the editor sees a conflict and chooses "Keep my
+  version" or "Use the website's version", with a comparison of the two
+  (`@micacms/editor-ui`, `@micacms/self-hosted`).
+- **The `check` command of the image** tests a configuration, the token and
+  the push rights in a temporary clone: `docker compose run --rm mica check`
+  (`@micacms/self-hosted`).
+- **Sync state** on the Publish, Dashboard and System pages, and reason codes
+  on `/ready` (`@micacms/editor-ui`, `@micacms/runtime`).
+
+### Changed
+
+- **A field type from a newer `@micacms/astro` no longer stops Mica.** Only
+  the collection or singleton that uses it is read-only, with a message that
+  names the upgrade; everything else stays editable. In the site's own model,
+  an unknown field type fails the build (`@micacms/runtime`,
+  `@micacms/editor-ui`, `@micacms/astro`).
+- **Publish commits only the reviewed files**, with the editor as author, and
+  refuses a file that changed after the review (`@micacms/runtime`).
+- **A refused push turns back into drafts** and shows the host's reason. A
+  push that fails on the network or on authentication stays committed and is
+  pushed again later (`@micacms/self-hosted`).
+- **Git on the server is isolated**: no hooks, filters or symlinks, HTTPS
+  only, and the token goes only to the configured host. The image now
+  contains `git` and `tini` (`@micacms/self-hosted`).
+- The loader logs name any collection or singleton correctly, and the source
+  maps contain their sources, so an Astro build no longer warns about missing
+  source files (`@micacms/astro`).
+
+### Fixed
+
+- A save that failed between writing its temporary file and renaming it left
+  the temporary file in the content directory (`@micacms/runtime`).
+
+### Known gaps
+
+- Git LFS under the content root is refused, and SSH remotes are not
+  supported yet.
+- A file that `.gitignore` hides under the content root is not shown and not
+  published.
+
 ## [0.5.0-rc.2] — 2026-10-12
 
 The second release candidate, published under the npm tag `next` and as the

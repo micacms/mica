@@ -1,6 +1,14 @@
 # Change Log - @micacms/editor-ui
 
-This log was last generated on Sun, 11 Oct 2026 15:57:57 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 04:44:02 GMT and should not be manually modified.
+
+## 0.5.0
+Tue, 13 Oct 2026 04:44:02 GMT
+
+### Minor changes
+
+- Show a notice on a read-only collection or singleton and hide its save, delete and new buttons; show a placeholder for a field type that needs a newer Mica.
+- Show changes made on the website to an entry with a draft, and let editors keep their version or take the website's. Show the clone's sync state, publish the reviewed changes, and remove the database from the System page.
 
 ## 0.4.0
 Sun, 11 Oct 2026 15:57:57 GMT

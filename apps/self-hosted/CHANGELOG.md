@@ -1,6 +1,13 @@
 # Change Log - @micacms/self-hosted
 
-This log was last generated on Sun, 11 Oct 2026 15:57:57 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 04:44:02 GMT and should not be manually modified.
+
+## 0.5.0
+Tue, 13 Oct 2026 04:44:02 GMT
+
+### Minor changes
+
+- Keep a Git clone of the content repository on the data volume instead of a SQLite draft store and the GitHub and GitLab APIs. Configure it with `MICA_REPOSITORY_URL` and `MICA_REPOSITORY_TOKEN` instead of `REPOSITORY`, `REPOSITORY_*`, `DATA_DIR` and `DATABASE_PATH`, check a setup with the `check` command, and resolve conflicts with changes made on the website. Any Git host over HTTPS should work; GitLab needs only `read_repository` and `write_repository`.
 
 ## 0.4.0
 Sun, 11 Oct 2026 15:57:57 GMT

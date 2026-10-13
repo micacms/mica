@@ -2,6 +2,24 @@
   "name": "@micacms/astro",
   "entries": [
     {
+      "version": "0.5.0",
+      "tag": "@micacms/astro_v0.5.0",
+      "date": "Tue, 13 Oct 2026 04:44:02 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Ship setup guides for coding agents in `setup/`: a new or empty Astro project, and a project with content collections. https://micacms.com/setup.md sends an agent to them."
+          },
+          {
+            "comment": "The published manifest names `@micacms/astro` without a version, so a package update no longer changes it, and it records each collection's layout."
+          },
+          {
+            "comment": "`micaCollections()` refuses a field kind it does not know, so a typo in the model fails the build instead of making the collection read-only in Mica."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.4.0",
       "tag": "@micacms/astro_v0.4.0",
       "date": "Sun, 11 Oct 2026 15:57:57 GMT",

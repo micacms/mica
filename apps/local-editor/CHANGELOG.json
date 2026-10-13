@@ -2,6 +2,24 @@
   "name": "@micacms/editor",
   "entries": [
     {
+      "version": "0.5.0",
+      "tag": "@micacms/editor_v0.5.0",
+      "date": "Tue, 13 Oct 2026 04:44:02 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Add `mica init`, which adds Mica to an Astro project without overwriting a file, and `mica check`, which checks every entry against the model and exits with 1 on an error."
+          },
+          {
+            "comment": "`mica check` reports a field kind from a newer `@micacms/astro` as an error, and checks the rest of the content."
+          },
+          {
+            "comment": "Publish only the changes the developer reviewed, and refuse a file that was saved again after the review. Saves, commits and discards no longer interleave."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.4.0",
       "tag": "@micacms/editor_v0.4.0",
       "date": "Sun, 11 Oct 2026 15:57:57 GMT",

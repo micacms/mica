@@ -2,6 +2,21 @@
   "name": "@micacms/editor-ui",
   "entries": [
     {
+      "version": "0.5.0",
+      "tag": "@micacms/editor-ui_v0.5.0",
+      "date": "Tue, 13 Oct 2026 04:44:02 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Show a notice on a read-only collection or singleton and hide its save, delete and new buttons; show a placeholder for a field type that needs a newer Mica."
+          },
+          {
+            "comment": "Show changes made on the website to an entry with a draft, and let editors keep their version or take the website's. Show the clone's sync state, publish the reviewed changes, and remove the database from the System page."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.4.0",
       "tag": "@micacms/editor-ui_v0.4.0",
       "date": "Sun, 11 Oct 2026 15:57:57 GMT",

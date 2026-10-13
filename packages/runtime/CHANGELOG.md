@@ -1,6 +1,14 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Sun, 11 Oct 2026 15:57:57 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 04:44:02 GMT and should not be manually modified.
+
+## 0.5.0
+Tue, 13 Oct 2026 04:44:02 GMT
+
+### Minor changes
+
+- A field kind from a newer `@micacms/astro` no longer stops Mica: only its collection or singleton becomes read-only, writes and publications of it are refused with the reason, and `/admin/schema` reports it as `readOnly`.
+- Edit and publish on a Git working tree in both apps. The content files (`contentFiles`, `ContentFiles` with `apply()`) and the content store move here from `@micacms/connectors`; Publish commits exactly the reviewed paths and refuses a file saved again after the review; an owner policy lets an app keep its own clone in step. The SQLite driver, the draft store and the provider connectors are removed, and `/ready` reports reason codes.
 
 ## 0.4.0
 Sun, 11 Oct 2026 15:57:57 GMT

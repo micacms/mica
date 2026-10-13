@@ -1,6 +1,15 @@
 # Change Log - @micacms/core
 
-This log was last generated on Sun, 11 Oct 2026 15:57:57 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 04:44:02 GMT and should not be manually modified.
+
+## 0.5.0
+Tue, 13 Oct 2026 04:44:02 GMT
+
+### Minor changes
+
+- The manifest records the `layout` of each collection and singleton, and `ProtocolManifest` types it.
+- Keep the value of a field kind that this build does not know when validating, instead of failing.
+- Remove the draft-store and repository-port types (`DraftStore`, `memoryDraftStore`, `RepositoryConnector`, `CommitInput`, `Change`, `checkCommitPaths`, `ConnectorError`, `ConflictError`). The working tree's files and their errors are in `@micacms/runtime` now.
 
 ## 0.4.0
 Sun, 11 Oct 2026 15:57:57 GMT

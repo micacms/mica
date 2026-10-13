@@ -1,6 +1,15 @@
 # Change Log - @micacms/astro
 
-This log was last generated on Sun, 11 Oct 2026 15:57:57 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 04:44:02 GMT and should not be manually modified.
+
+## 0.5.0
+Tue, 13 Oct 2026 04:44:02 GMT
+
+### Minor changes
+
+- Ship setup guides for coding agents in `setup/`: a new or empty Astro project, and a project with content collections. https://micacms.com/setup.md sends an agent to them.
+- The published manifest names `@micacms/astro` without a version, so a package update no longer changes it, and it records each collection's layout.
+- `micaCollections()` refuses a field kind it does not know, so a typo in the model fails the build instead of making the collection read-only in Mica.
 
 ## 0.4.0
 Sun, 11 Oct 2026 15:57:57 GMT
