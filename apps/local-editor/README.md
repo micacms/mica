@@ -44,6 +44,7 @@ keeps Publish out of the editor entirely).
 ```bash
 npx @micacms/editor init     # add Mica to the Astro project in this directory
 npx @micacms/editor check    # check every entry against the model
+npx @micacms/editor migrate-layout   # move entries after a layout change
 ```
 
 `init` writes a starter `src/mica.ts` and `src/content.config.ts`, and never

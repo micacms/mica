@@ -6,7 +6,7 @@
 
 import { ReadOnlyError, ValidationError } from "../services/content-store.js";
 import { ConflictError } from "../workspace/files.js";
-import { collectionEntryPath, compareEntries, entryTitle, singletonPath } from "@micacms/core";
+import { collectionEntryPath, compareEntries, entryTitle, LayoutError, singletonPath } from "@micacms/core";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -36,7 +36,9 @@ async function handled<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await run();
   } catch (error) {
-    if (error instanceof ConflictError || error instanceof ReadOnlyError) throw new ApiError("conflict", error.message);
+    if (error instanceof ConflictError || error instanceof ReadOnlyError || error instanceof LayoutError) {
+      throw new ApiError("conflict", error.message);
+    }
     if (error instanceof ValidationError) {
       throw new ApiError("validation_failed", error.message, { issues: error.issues });
     }

@@ -105,7 +105,7 @@ export async function checkContent(root: string): Promise<CheckReport> {
     const dataPath = directory ? `${base}/${INDEX_FILE}` : base;
     const otherLayout = directory ? `${name}.json` : `${name}/${INDEX_FILE}`;
     if ((await readText(files, otherLayout)) !== null) {
-      error(otherLayout, `Not read: "${def.label}" is stored as ${dataPath}, because ${directory ? "it has" : "it has no"} rich text or media.`);
+      error(otherLayout, `Not read: "${def.label}" is stored as ${dataPath}, because ${directory ? "it has" : "it has no"} rich text or media. Run \`npx mica migrate-layout\`.`);
     }
 
     const data = await readOrReport(() => readSingleton(files, def, name), dataPath, error);
@@ -151,11 +151,11 @@ async function entrySlugs(
 
     // An entry in the other layout is lost content, not a stray file: the model gained or lost rich text or media.
     if (directory && item.type === "file" && item.name.endsWith(".json")) {
-      error(path, `Not read: entries of "${name}" are folders with ${INDEX_FILE}, because it has rich text or media.`);
+      error(path, `Not read: entries of "${name}" are folders with ${INDEX_FILE}, because it has rich text or media. Run \`npx mica migrate-layout\`.`);
       continue;
     }
     if (!directory && item.type === "directory" && (await readText(files, `${path}/${INDEX_FILE}`)) !== null) {
-      error(path, `Not read: entries of "${name}" are <slug>.json files, because it has no rich text or media.`);
+      error(path, `Not read: entries of "${name}" are <slug>.json files, because it has no rich text or media. Run \`npx mica migrate-layout\`.`);
       continue;
     }
 

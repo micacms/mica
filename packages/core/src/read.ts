@@ -8,7 +8,7 @@
  * same code over different sources.
  */
 
-import { DOCUMENT_EXTENSION, FormatError, INDEX_FILE, entryLayout } from "./layout.js";
+import { DOCUMENT_EXTENSION, FormatError, INDEX_FILE, entryLayout, type EntryLayout } from "./layout.js";
 import { isValidSlug } from "./slugify.js";
 import { parseEntry } from "./parse.js";
 import type { Collection, FieldMap, Singleton } from "./types.js";
@@ -42,6 +42,42 @@ export class ContentReadError extends Error {
   ) {
     super(message, options);
   }
+}
+
+/**
+ * Entries stored in the layout that the fields do not give. A model change
+ * moved them, and the files did not follow: reading on would hide them.
+ */
+export class LayoutError extends ContentReadError {
+  override name = "LayoutError";
+  constructor(
+    readonly paths: string[],
+    name: string,
+    layout: EntryLayout,
+  ) {
+    const shown = paths.length > 5 ? [...paths.slice(0, 5), `and ${paths.length - 5} more`] : paths;
+    super(
+      `"${name}" is stored as ${layout === "directory" ? "folders with index.json" : ".json files"}, ` +
+        `but these files are in the other layout: ${shown.join(", ")}. ` +
+        "Run `npx mica migrate-layout`, check the result, and commit it.",
+      paths[0]!,
+    );
+  }
+}
+
+/**
+ * The files of a collection or singleton that are in the other layout, for a
+ * check before anything reads them, and for `mica migrate-layout`.
+ */
+export async function misplacedFiles(
+  source: ContentSource,
+  fields: FieldMap,
+  name: string,
+  kind: "collection" | "singleton",
+): Promise<string[]> {
+  if (kind === "collection") return (await scanCollection(source, fields, name)).misplaced;
+  const other = entryLayout(fields) === "directory" ? `${name}.json` : `${name}/${INDEX_FILE}`;
+  return (await source.read(other)) === null ? [] : [other];
 }
 
 /* ------------------------------------------------------------------ *
@@ -86,33 +122,49 @@ export async function readCollectionEntry(
  * Slugs present in a collection directory.
  *
  * The layout decides what to look at: directory-shaped entries are directories,
- * file-shaped ones are `.json` files. Anything that does not match — a stray
- * README, the order file, a directory without an `index.json` — is skipped
- * rather than rejected, because a content repository belongs to its owner and
- * may hold things Mica did not put there.
+ * file-shaped ones are `.json` files. An entry in the other layout is an error,
+ * because skipping it would hide a page. Anything else — a stray README, the
+ * order file, a directory without an `index.json` — is skipped, because a
+ * content repository belongs to its owner and may hold things Mica did not put
+ * there.
  */
 async function listSlugs(
   source: ContentSource,
   fields: FieldMap,
   name: string,
 ): Promise<string[]> {
-  const directoryLayout = entryLayout(fields) === "directory";
-  const items = await source.list(name);
-  const slugs: string[] = [];
+  const { slugs, misplaced } = await scanCollection(source, fields, name);
+  if (misplaced.length > 0) throw new LayoutError(misplaced, name, entryLayout(fields));
+  return slugs;
+}
 
-  for (const item of items) {
+/** The slugs in the collection's layout, and the entries in the other one. */
+async function scanCollection(
+  source: ContentSource,
+  fields: FieldMap,
+  name: string,
+): Promise<{ slugs: string[]; misplaced: string[] }> {
+  const directoryLayout = entryLayout(fields) === "directory";
+  const slugs: string[] = [];
+  const misplaced: string[] = [];
+
+  for (const item of await source.list(name)) {
+    const jsonSlug = item.type === "file" && item.name.endsWith(".json") ? item.name.slice(0, -".json".length) : null;
+
     if (directoryLayout) {
-      if (item.type !== "directory") continue;
-      if (isValidSlug(item.name)) slugs.push(item.name);
+      if (item.type === "directory" && isValidSlug(item.name)) slugs.push(item.name);
+      else if (jsonSlug !== null && item.name !== ORDER_FILE && isValidSlug(jsonSlug)) misplaced.push(`${name}/${item.name}`);
       continue;
     }
 
-    if (item.type !== "file" || !item.name.endsWith(".json")) continue;
-    const slug = item.name.slice(0, -".json".length);
-    if (isValidSlug(slug)) slugs.push(slug);
+    if (jsonSlug !== null && isValidSlug(jsonSlug)) slugs.push(jsonSlug);
+    else if (item.type === "directory" && isValidSlug(item.name)) {
+      const index = `${name}/${item.name}/${INDEX_FILE}`;
+      if ((await source.read(index)) !== null) misplaced.push(index);
+    }
   }
 
-  return slugs;
+  return { slugs, misplaced };
 }
 
 /**
@@ -168,7 +220,11 @@ export async function readSingleton(
   def: Singleton,
   name: string,
 ): Promise<Record<string, unknown> | null> {
-  return readEntry(source, def.fields, name, entryBase(def.fields, name));
+  const data = await readEntry(source, def.fields, name, entryBase(def.fields, name));
+  if (data !== null) return data;
+  const misplaced = await misplacedFiles(source, def.fields, name, "singleton");
+  if (misplaced.length > 0) throw new LayoutError(misplaced, name, entryLayout(def.fields));
+  return null;
 }
 
 /* ------------------------------------------------------------------ *

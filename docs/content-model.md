@@ -233,9 +233,11 @@ says.
 The exception is a change of layout. The first `richText()` or `media()` field
 in a collection changes where Mica and the website look for its entries: in
 `<slug>/index.json`, not in `<slug>.json`. Removing the last such field changes
-it back. A singleton changes the same way. The files do not move, so Mica and
-the website do not read the existing entries. Run `npx mica check`: it names
-each file in the wrong layout. Move those files before you commit.
+it back. A singleton changes the same way. The files do not move, so the build
+fails and Mica refuses to start, and both name the files. Run
+`npx mica migrate-layout`: it moves each entry, and lists the rich-text and
+media files that it removes because no field reads them any more. Run
+`npx mica check`, and commit the result with the model change.
 
 Removing a field leaves its value in the files until each entry is saved again.
 Nothing reads it, and the next save drops it.

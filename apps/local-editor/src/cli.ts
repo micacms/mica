@@ -35,6 +35,7 @@ import { DEFAULT_PORT, VERSION } from "@micacms/runtime";
 
 import { checkContent, formatReport } from "./check.js";
 import { formatInit, initProject, InitError } from "./init.js";
+import { formatMigration, migrateLayout } from "./migrate.js";
 
 export interface Options {
   /** Undefined means "not given": `MICA_CONTENT_ROOT`, else `./content`. */
@@ -52,6 +53,7 @@ const USAGE = `
     $ npx @micacms/editor [content directory]   open the editor
     $ npx @micacms/editor init                  add Mica to this Astro project
     $ npx @micacms/editor check [content dir]   check every entry against the model
+    $ npx @micacms/editor migrate-layout [dir]  move entries into the layout of the model
 
   With @micacms/editor installed in the project, \`npx mica\` is the same command.
 
@@ -173,6 +175,7 @@ export async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   if (command === "init") return init(rest);
   if (command === "check") return check(rest);
+  if (command === "migrate-layout") return migrate(rest);
 
   const options = parse(process.argv.slice(2));
   const content = contentRoot(options, process.env);
@@ -228,6 +231,12 @@ async function check(argv: string[]): Promise<void> {
   const result = await checkContent(root);
   process.stdout.write(formatReport(result, root));
   if (result.problems.some((problem) => problem.level === "error")) process.exit(1);
+}
+
+async function migrate(argv: string[]): Promise<void> {
+  const result = await migrateLayout(contentRoot(parse(argv), process.env));
+  process.stdout.write(formatMigration(result));
+  if (result.conflicts.length > 0) process.exit(1);
 }
 
 // Only when this file *is* the command. Importing it, as the tests do, must

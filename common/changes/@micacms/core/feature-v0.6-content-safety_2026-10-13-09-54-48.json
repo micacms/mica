@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "Breaking: an entry in the other layout is now an error (`LayoutError`), not hidden. A model change that adds the first, or removes the last, rich-text or media field changes where entries are stored; until the files move, the reader names them. `misplacedFiles` lists them.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

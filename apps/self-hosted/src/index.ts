@@ -15,6 +15,7 @@ import {
   createRuntimeContext,
   createWorkspaceLocks,
   GitError,
+  layoutProblems,
   loadSchema,
   SchemaError,
   schemaFingerprint,
@@ -63,7 +64,10 @@ function createDispatcher() {
 
 async function readModel(config: SelfHostedConfig, files: ContentFiles): Promise<Site> {
   try {
-    return await loadSchema(files);
+    const model = await loadSchema(files);
+    const misplaced = await layoutProblems(files, model);
+    if (misplaced.length > 0) refuse(misplaced.join("\n\n"));
+    return model;
   } catch (error) {
     if (error instanceof SchemaError) {
       refuse(

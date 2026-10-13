@@ -311,6 +311,13 @@ describe("collections", () => {
     );
   });
 
+  it("fails the build when an entry is in the other layout, instead of hiding it", async () => {
+    const collections = build({ "projects/haus-c.json": JSON.stringify({ title: "Haus C", slug: "haus-c" }) });
+    const context = createContext(collections.projects.schema);
+
+    await assert.rejects(() => collections.projects.loader.load(context), /projects\/haus-c\.json.*migrate-layout/);
+  });
+
   it("fails the build when an entry does not satisfy the model", async () => {
     const collections = build({ "projects/haus-a/index.json": JSON.stringify({ slug: "haus-a" }) });
     const context = createContext(collections.projects.schema);
