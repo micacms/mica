@@ -5,7 +5,13 @@
 # repository, so one published image serves any project and a content change needs no rebuild.
 
 # ---------------------------------------------------------------- deps
-FROM node:24-alpine AS deps
+# The base image is pinned by digest, in both stages, so that a build is
+# repeatable; Dependabot moves both digests together.
+#
+# Install and build run on the build machine for every target platform: the
+# server's dependencies are plain JavaScript, so their output is the same on
+# amd64 and arm64. The build stage refuses a native module below.
+FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS deps
 
 WORKDIR /app
 
@@ -34,6 +40,7 @@ RUN node common/scripts/install-run-rush.js install --to @micacms/self-hosted
 FROM deps AS build
 
 COPY tsconfig.base.json ./
+COPY scripts/third-party-notices.mjs scripts/third-party-notices.d.mts scripts/
 COPY packages/core packages/core
 COPY packages/runtime packages/runtime
 COPY packages/auth/oidc packages/auth/oidc
@@ -47,12 +54,21 @@ RUN node common/scripts/install-run-rush.js build --to @micacms/self-hosted
 # common/config/rush/deploy.json sets. The editor UI's toolchain stays out of the runtime image.
 RUN node common/scripts/install-run-rush.js deploy --overwrite --target-folder /deploy
 
+# The licenses of the packages in the image require their notices beside them.
+RUN node scripts/third-party-notices.mjs /deploy > /deploy/THIRD_PARTY_NOTICES.txt
+
+# A native module would be built for the build machine, not for the target.
+RUN if find /deploy -name '*.node' | grep .; then echo "A native module is in the image; build it per platform." >&2; exit 1; fi
+
 # ---------------------------------------------------------------- runtime
-FROM node:24-alpine AS runtime
+FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS runtime
 
 # tini reaps zombies and forwards SIGTERM, so the graceful shutdown runs. Git
-# keeps the clone of the content repository that Mica edits and publishes.
-RUN apk add --no-cache tini git
+# keeps the clone of the content repository that Mica edits and publishes. The
+# package managers are not needed at run time, so they go.
+RUN apk add --no-cache tini git \
+ && rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack /opt/yarn-* \
+      /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
 ENV NODE_ENV=production \
     MICA_DATA_DIR=/data \
@@ -72,6 +88,14 @@ RUN mkdir -p /data && chown -R node:node /data
 # nothing depends on Docker preserving link targets across COPY --from.
 COPY --from=build --chown=node:node /deploy ./
 RUN node create-links.js create
+
+# The system software has its notices too: apk knows each package's license.
+COPY scripts/licenses/GPL-2.0.txt /app/licenses/GPL-2.0.txt
+RUN { printf '\n%s\n%s\n%s\n\n' \
+      "System software in the image. Node.js is MIT, with the licenses of its bundled parts at" \
+      "https://github.com/nodejs/node/blob/v24.x/LICENSE. The Alpine Linux packages and their licenses" \
+      "follow; their sources are at https://gitlab.alpinelinux.org/alpine/aports, and the GPL-2.0 text is in /app/licenses/GPL-2.0.txt."; \
+      apk list --installed; } >> /app/THIRD_PARTY_NOTICES.txt
 
 USER node
 WORKDIR /app/apps/self-hosted

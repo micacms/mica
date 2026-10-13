@@ -103,3 +103,11 @@ release as a pre-release.
   weeks of release candidates" in `docs/decisions.md`). A fix gives `rc.N+1`.
 - The final release is a normal release: `rush version-bump` bumps
   `X.Y.Z-rc.N` to `X.Y.Z` and consumes the change files.
+
+## A release that failed part of the way
+
+Do not move the tag and do not bump again. Open the failed run and use
+"Re-run failed jobs": `rush publish` skips every package whose version is
+already on npm, the GitHub release step updates an existing release, and the
+image job pushes the same tags again. Only when the commit itself is wrong:
+fix it on `main` and release the next patch version.

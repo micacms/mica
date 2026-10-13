@@ -21,6 +21,11 @@ describe("classifyFailure", () => {
     assert.equal(classifyFailure("remote: HTTP Basic: Access denied.\nfatal: Authentication failed"), "auth");
   });
 
+  it("reads a missing branch, as clone and as fetch say it", () => {
+    assert.equal(classifyFailure("fatal: Remote branch nope not found in upstream origin"), "branch_not_found");
+    assert.equal(classifyFailure("fatal: couldn't find remote ref refs/heads/nope"), "branch_not_found");
+  });
+
   it("reads a missing repository and an unreachable host", () => {
     assert.equal(classifyFailure("remote: Repository not found.\nfatal: repository 'x' not found"), "repo_not_found");
     assert.equal(

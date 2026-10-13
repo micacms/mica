@@ -511,6 +511,11 @@ version rather than tracking `latest`, so an upgrade is a decision.
 
 ## Verifying the image
 
+The image is built for `linux/amd64` and `linux/arm64`; Docker pulls the one
+that matches the host. It carries the license notices of the software in it:
+`/app/THIRD_PARTY_NOTICES.txt` for the server and
+`/app/packages/editor-ui/dist/THIRD_PARTY_NOTICES.txt` for the editor UI.
+
 From 0.4.0, every image is signed with a keyless
 [cosign](https://docs.sigstore.dev/) signature from this repository's release
 workflow, and carries an SBOM and build provenance. To check an image before
@@ -550,6 +555,7 @@ view shows both to editors):
   | --- | --- |
   | `sync_failing` | The last sync failed (the host is unreachable, or the repository is not found). Mica tries again. |
   | `auth_failed` | The host refused the token. Fix the token and restart. |
+  | `branch_not_found` | `MICA_REPOSITORY_BRANCH` does not exist in the repository. Push it, or fix the name and restart. |
   | `write_forbidden` | The token can read but not write. Publish is refused. |
   | `restart_required` | The content model changed on the branch. Restart Mica. |
 
@@ -634,6 +640,7 @@ Mica exits at start and lists every problem in one message.
 | Symptom | Likely cause | Fix |
 | --- | --- | --- |
 | "The repository does not exist, or the token cannot see it" | A wrong URL, or a token for another repository. The host gives the same answer for both | Check the URL and the token's repository |
+| "The branch does not exist in the repository"; `/ready` has `branch_not_found` | `MICA_REPOSITORY_BRANCH` names a branch that is not pushed, or has a typo | Push the branch, or fix `MICA_REPOSITORY_BRANCH` and restart |
 | "The repository cannot be reached"; `/ready` has `sync_failing` | The host is down, DNS fails, or the container has no outbound HTTPS | Check from the host: `curl -I <url>`. Mica tries again at each sync. A publication waits as "Published in Mica, not yet sent to the website" and Mica pushes it later |
 | The first start fails and `/ready` stays at `cloning` | The clone cannot finish: network, or a very large repository | Read `docker compose logs mica`. A large clone can take minutes |
 

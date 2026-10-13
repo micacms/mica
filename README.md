@@ -232,6 +232,20 @@ mandatory cloud services.
 | `rush test`             | the tests of every package, with real Git on temporary repos     |
 | `rush typecheck`        | every package, including `.vue` and `.astro`                     |
 
+### Updating dependencies
+
+Dependabot opens pull requests for the GitHub Actions and the image's base
+(`.github/dependabot.yml`). It cannot update the Rush lockfile, so npm packages
+are updated by hand:
+
+```bash
+rush update --full     # newest versions inside the ranges in each package.json
+rush build && rush typecheck && rush test
+```
+
+A new major version is a change to the range in `package.json`, then
+`rush update`. Commit the lockfile with it.
+
 ### Releasing
 
 Everything here ships together under one version. A pull request that changes

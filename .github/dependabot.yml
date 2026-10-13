@@ -1,0 +1,24 @@
+# Automated updates for the GitHub Actions and the image's base (#134). npm
+# packages are not here: Dependabot cannot update the Rush lockfile
+# (common/config/rush/pnpm-lock.yaml). See "Updating dependencies" in README.md.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+    # A new digest of node:24-alpine, not a new Node major: that is a decision.
+    ignore:
+      - dependency-name: node
+        update-types: ["version-update:semver-major"]
+    groups:
+      base-image:
+        patterns: ["*"]

@@ -5,9 +5,11 @@
  * access".
  */
 
-export type FailureClass = "write_forbidden" | "auth" | "repo_not_found" | "network" | "unknown";
+export type FailureClass = "write_forbidden" | "auth" | "repo_not_found" | "branch_not_found" | "network" | "unknown";
 
 const PATTERNS: Array<[FailureClass, RegExp]> = [
+  // `clone --branch` and `fetch` say it differently.
+  ["branch_not_found", /Remote branch \S+ not found|couldn't find remote ref/i],
   ["write_forbidden", /\b403\b|remote: Forbidden|not allowed to upload code/i],
   ["auth", /Authentication failed|Invalid username or token|HTTP Basic: Access denied|\b401\b/i],
   [
@@ -31,6 +33,8 @@ export function describeFailure(kind: FailureClass): string {
       return "The repository refused the token. It may be wrong, expired or revoked.";
     case "repo_not_found":
       return "The repository does not exist, or the token cannot see it.";
+    case "branch_not_found":
+      return "The branch does not exist in the repository. Check MICA_REPOSITORY_BRANCH, or push the branch first.";
     case "network":
       return "The repository cannot be reached.";
     default:

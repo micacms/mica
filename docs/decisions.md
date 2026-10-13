@@ -920,16 +920,22 @@ carries `git` for both.
 the local editor runs `git` and handles file paths, which is where Windows
 differs. Only a CI job keeps that working. Cheap arm64 servers are common at
 the hosts that the self-hosting guide suggests, and Apple Silicon runs an
-amd64 image only under emulation. A public repository gets Windows, macOS and
-native arm64 runners for free, so neither costs QEMU or money.
+amd64 image only under emulation. A public repository gets Windows and macOS
+runners for free.
 
 **Consequence:** the first Windows run will find path defects to fix before
-1.0. Each release builds the image twice.
+1.0. The image's install and build run once; only its small runtime stage runs
+twice, once under QEMU.
 
 **What would change it:** a Windows defect class that costs more than it
 serves; then document WSL instead of native Windows.
 
-**1.0 status:** blocker; the matrix is in #131, the image build in #132.
+**Built in 0.6 (#132):** the release builds `linux/amd64` and `linux/arm64`.
+Install and build run once, natively on the build machine, because the
+server's dependencies are plain JavaScript; the build refuses a native module.
+Only the small runtime stage runs under emulation.
+
+**1.0 status:** blocker until the CI matrix is in place (#131).
 
 ---
 

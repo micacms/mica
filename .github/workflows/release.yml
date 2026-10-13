@@ -87,6 +87,8 @@ jobs:
       # `shouldPublish` in rush.json, rewriting `workspace:*` ranges to the
       # real versions as pnpm used to. npm reads provenance from the
       # environment, so the flag survives Rush standing between us and it.
+      # It skips a package whose version is already on npm, so a release that
+      # failed part of the way can run again ("Re-run failed jobs").
       # A pre-release (`v0.5.0-rc.1`) goes under `next`, so `npm install`
       # keeps getting the last release.
       - name: Publish to npm
@@ -119,7 +121,13 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           case "$GITHUB_REF_NAME" in *-*) prerelease=--prerelease ;; *) prerelease= ;; esac
-          gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md $prerelease
+          # A re-run after a partial failure: Rush skipped the packages already on
+          # npm, and this updates the release instead of failing on it.
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            gh release edit "$GITHUB_REF_NAME" --notes-file release-notes.md
+          else
+            gh release create "$GITHUB_REF_NAME" --title "$GITHUB_REF_NAME" --notes-file release-notes.md $prerelease
+          fi
 
   # The image carries the same version. Separate job so a registry outage cannot
   # un-publish npm.
@@ -135,6 +143,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Emulation for the arm64 runtime stage; install and build run natively.
+      - uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3
 
       # A buildx builder with the docker-container driver: the default docker
       # driver cannot attach the SBOM and provenance attestations below.
@@ -159,6 +170,7 @@ jobs:
         id: build
         with:
           context: .
+          platforms: linux/amd64,linux/arm64
           push: true
           # An SBOM and full build provenance, attached to the image (#133).
           sbom: true

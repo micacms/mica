@@ -228,9 +228,12 @@ async function serve(): Promise<void> {
         const state = workspace.state();
         const reasons: string[] = [];
         if (state.error) {
-          reasons.push(
-            state.error.code === "auth" ? "auth_failed" : state.error.code === "write_forbidden" ? "write_forbidden" : "sync_failing",
-          );
+          const reason: Record<string, string> = {
+            auth: "auth_failed",
+            write_forbidden: "write_forbidden",
+            branch_not_found: "branch_not_found",
+          };
+          reasons.push(reason[state.error.code] ?? "sync_failing");
         }
         if (state.restartRequired) reasons.push("restart_required");
         return { ok: true, reasons };
