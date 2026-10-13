@@ -21,7 +21,6 @@ Ask the user before you:
 
 - Add or replace a production or development dependency.
 - Make a breaking change to a public API, CLI, content format, or repository protocol.
-- Change `examples/muster-consulting` or its contents.
 - Take another action that can break compatibility or cause data loss.
 
 ## Architecture rules
@@ -69,7 +68,7 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `validator` (Haiku): run the gates and report only failures — after a code change.
 - `reviewer` (Opus): read-only review against these rules and the design docs — before a commit or a PR.
 - `docs-keeper` (Sonnet): fix documentation that disagrees with the code.
-- `site-keeper` (Sonnet): update `sites/micacms` and `examples/muster-consulting` after a release or a relevant change. A change in `examples/muster-consulting` needs the user's approval.
+- `site-keeper` (Sonnet): update `sites/micacms` and `examples/muster-consulting` after a release or a relevant change.
 - `release-prep` (Sonnet): prepare a release in the background. It never commits, tags or pushes; the `/release` skill stays the interactive flow.
 
 ## Git and pull requests
