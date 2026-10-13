@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor",
+      "comment": "mica check reads the slug as the file has it, and says that Mica uses the entry's name",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

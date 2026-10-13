@@ -90,9 +90,10 @@ export async function checkContent(root: string): Promise<CheckReport> {
 
       const data = await readOrReport(() => readCollectionEntry(files, def, name, slug), dataPath, error);
       if (!data) continue;
-      const stored = slugField ? data[slugField] : undefined;
+      // The reader puts the name into the slug field, so the file itself shows a mismatch.
+      const stored = slugField ? rawField(await files.read(dataPath), slugField) : undefined;
       if (typeof stored === "string" && stored !== "" && stored !== slug) {
-        warning(dataPath, `${slugField} is "${stored}", but the entry is named "${slug}". The next save in the editor renames the entry.`);
+        warning(dataPath, `${slugField} is "${stored}", but the entry is named "${slug}". Mica uses the name; the next save writes it into the file.`);
       }
       await checkEntry(context, def.fields, data, dataPath, base);
     }
@@ -380,4 +381,14 @@ export function formatReport(report: CheckReport, root: string): string {
   if (report.problems.length > 0) lines.push("");
   lines.push(`${errors} ${errors === 1 ? "error" : "errors"}, ${warnings} ${warnings === 1 ? "warning" : "warnings"}.`);
   return `${lines.join("\n")}\n`;
+}
+
+/** One top-level value of a JSON file as written, or undefined when it cannot be read. */
+function rawField(text: string | null, key: string): unknown {
+  try {
+    const parsed: unknown = text === null ? null : JSON.parse(text);
+    return parsed !== null && typeof parsed === "object" ? (parsed as Record<string, unknown>)[key] : undefined;
+  } catch {
+    return undefined;
+  }
 }

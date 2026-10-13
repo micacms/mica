@@ -52,8 +52,9 @@ npx @micacms/editor import           # move Astro collections into Mica
 overwrites a file. It also names the `mica` and `check` scripts that
 `package.json` does not have yet. `check` reads every entry the way Mica and the
 website read it, and reports what they would skip or refuse: fields that do
-not validate, missing media, relations to entries that do not exist, slugs
-that do not match their file names, and files that are not read at all. It
+not validate, missing media, relations to entries that do not exist, slug
+values in a file that differ from its name (Mica uses the name), and files
+that are not read at all. It
 exits with 1 on an error, so it fits in CI. With the package installed, both
 are also `npx mica init` and `npx mica check`.
 
