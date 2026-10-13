@@ -4,7 +4,7 @@ Mica follows one constraint: Git is the source of truth. Losing the Mica server 
 
 The model is a plain TypeScript module. Astro imports it to create typed collections. An Astro build also writes the model as data to `.mica/schema.json`.
 
-Mica reads that model from the repository and generates its navigation, tables, and forms. A save lands in a draft workspace that only the editor sees. In the local editor it is your checkout: autosave writes files, and Publish makes a Git commit with your own `git`. In the self-hosted editor it is a Git clone on the data volume, and a draft is a file in that clone. Publish commits the drafts as one commit and pushes it over HTTPS. An explicit Publish writes everything pending to the repository as one commit, and the push starts the existing site build.
+Mica reads that model from the repository and generates its navigation, tables, and forms. A save lands in a draft workspace: your checkout, or the Git clone of the self-hosted editor. All editors see the drafts. In the local editor it is your checkout: autosave writes files, and Publish makes a Git commit with your own `git`. In the self-hosted editor it is a Git clone on the data volume, and a draft is a file in that clone. Publish commits the changes that the editor chooses as one commit and pushes it over HTTPS. The push starts the existing site build.
 
 The website never calls Mica. Mica never needs to know where the website is hosted. They meet in the repository.
 
@@ -22,7 +22,7 @@ See [Choose how to run Mica](/docs/choose-how-to-run/) for how to pick one.
 
 ## Atomic changes
 
-An entry can include JSON, rich text, and many media files. A publish writes everything pending in one commit or writes nothing. A stale revision gives a conflict response and leaves the editor's changes in the form.
+An entry can include JSON, rich text, and many media files. A publish writes the chosen changes in one commit or writes nothing. A stale revision gives a conflict response and leaves the editor's changes in the form.
 
 ## Deliberate limits
 
