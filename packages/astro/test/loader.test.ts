@@ -16,6 +16,7 @@ import {
   media,
   memorySource,
   number,
+  object,
   richText,
   singleton,
   slug,
@@ -143,6 +144,20 @@ describe("micaCollections", () => {
       },
     });
     assert.throws(() => micaCollections(site), /"collections\.notes\.body" has the unknown kind "txet"/);
+  });
+
+  it("refuses a second slug field in a collection's own fields, and accepts one per language in an object", () => {
+    const twice = defineSite({
+      collections: { pages: collection({ label: "Pages", fields: { title: text(), slug: slug(), other: slug() } }) },
+    });
+    assert.throws(() => micaCollections(twice), /slug fields that are not its URL \(other\); its URL is "slug"/);
+
+    const languages = defineSite({
+      collections: {
+        pages: collection({ label: "Pages", fields: { title: text(), slug: slug(), urls: object({ fields: { de: slug(), fr: slug() } }) } }),
+      },
+    });
+    assert.doesNotThrow(() => micaCollections(languages));
   });
 });
 
