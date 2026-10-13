@@ -104,8 +104,9 @@ projects: collection({
 | `defaultSort`   | `{ field, direction }` over `title`, `position`, `createdAt`, `updatedAt`, `publishedAt` |
 | `sortable`      | Lets editors drag entries into an order, kept in `_order.json`                           |
 
-Every collection needs exactly one `slug()` field: it is the entry's identity in
-the repository and its address on the website.
+Every collection needs a slug field: it is the entry's identity in the
+repository and its address on the website. That is the field that `slugField`
+names, else the first `slug()` field.
 
 Singletons take `label`, `description` and `fields`, and nothing else.
 
@@ -156,9 +157,11 @@ into the built site: Markdoc escapes raw HTML and renders an undeclared
 `italic`, `strike`, `heading`, `bulletList`, `orderedList`, `blockquote`,
 `link`, `horizontalRule`.
 
-**`media()`** holds a path relative to the content root, like
-`projects/haus-a/media/exterior.jpg`. The file is uploaded into the entry's own
-directory, so an entry is self-contained and renaming it is a directory move.
+**`media()`** holds a path. In the file it is relative to the entry's
+directory, like `media/exterior.jpg`, or it starts with `/` for a file elsewhere
+in the content root. The website and the editor read it relative to the content
+root: `projects/haus-a/media/exterior.jpg`. The file is uploaded into the entry's
+own directory, so an entry is self-contained and renaming it is a directory move.
 Astro treats it as a local asset: optimised at build time, emitted into
 `_astro/`, with nothing fetched at runtime.
 
@@ -211,8 +214,15 @@ Mica picks it up when it restarts.
 
 Adding a **required** field to a collection that already has entries makes
 those entries invalid until they are edited. The website build is where you
-find out, which is the right place. There is no migration to write: entries are
-JSON files validated against whatever the model currently says.
+find out, which is the right place. For most changes there is no migration to
+write: entries are JSON files validated against whatever the model currently
+says.
+
+The exception is a change of layout. The first `richText()` or `media()` field
+in a collection moves its entries from `<slug>.json` to `<slug>/index.json`, and
+removing the last one moves them back. The existing entries stay in the old
+layout, and Mica and the website do not read them. Run `npx mica check`: it
+names each entry in the wrong layout. Move those files before you commit.
 
 Removing a field leaves its value in the files until each entry is saved again.
 Nothing reads it, and the next save drops it.
