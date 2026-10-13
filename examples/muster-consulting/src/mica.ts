@@ -80,6 +80,7 @@ export const site = defineSite({
         heroImage: media({
           label: "Hero image",
           accept: "image",
+          alt: "required",
         }),
         body: richText({
           label: "Content",
@@ -101,7 +102,7 @@ export const site = defineSite({
           fields: {
             heading: text({ label: "Heading", required: true }),
             text: richText({ label: "Text" }),
-            image: media({ label: "Image", accept: "image" }),
+            image: media({ label: "Image", accept: "image", alt: "required" }),
             layout: select({
               label: "Layout",
               options: [
@@ -195,6 +196,7 @@ export const site = defineSite({
         gallery: media({
           label: "Images",
           accept: "image",
+          alt: "required",
           multiple: true,
           description: "The first image is used as the preview.",
         }),
@@ -228,7 +230,7 @@ export const site = defineSite({
           width: "half",
         }),
         excerpt: textarea({ label: "Teaser", rows: 3, maxLength: 300 }),
-        coverImage: media({ label: "Cover image", accept: "image" }),
+        coverImage: media({ label: "Cover image", accept: "image", alt: "required" }),
         body: richText({ label: "Article" }),
       },
     }),
@@ -244,7 +246,7 @@ export const site = defineSite({
         role: text({ label: "Role", listed: true, width: "half" }),
         email: email({ label: "Email", width: "half" }),
         phone: text({ label: "Phone", width: "half" }),
-        portrait: media({ label: "Portrait", accept: "image" }),
+        portrait: media({ label: "Portrait", accept: "image", alt: "required" }),
         bio: textarea({ label: "Short biography", rows: 4, maxLength: 600 }),
         featured: boolean({ label: "Show on the team page", default: false }),
       },

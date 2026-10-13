@@ -44,7 +44,7 @@ const SECTION_LAYOUTS: Record<string, string> = {
 <BaseLayout
   title={seo?.metaTitle ?? title}
   description={seo?.metaDescription ?? intro ?? toPlainText(body)}
-  image={seo?.ogImage ?? heroImage}
+  image={seo?.ogImage ?? heroImage?.path}
   noindex={seo?.noindex ?? false}
 >
   <div class="container-page pb-10 pt-14 sm:pt-20">
@@ -99,7 +99,6 @@ const SECTION_LAYOUTS: Record<string, string> = {
               <figure class="overflow-hidden bg-sunken" style="border-radius: var(--radius-theme)">
                 <CmsImage
                   media={section.image}
-                  alt=""
                   class="w-full object-cover"
                   widths={[600, 1000]}
                   sizes="(min-width: 1024px) 45vw, 92vw"

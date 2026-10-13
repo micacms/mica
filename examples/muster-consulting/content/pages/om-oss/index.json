@@ -2,7 +2,10 @@
   "title": "Om oss",
   "slug": "om-oss",
   "intro": "An independent consultancy for owner-led businesses, working out of Zürich since 2009.",
-  "heroImage": "media/ui-camera-1786368318319.png",
+  "heroImage": {
+    "path": "media/ui-camera-1786368318319.png",
+    "alt": "A product website with a task list, shown at an angle on a dark screen"
+  },
   "sections": [],
   "seo": {
     "metaTitle": null,
