@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { collection, defineSite, media, memorySource, relation, repeater, slug, text, type ContentChange } from "@micacms/core";
+import { collection, defineSite, media, memorySource, relation, repeater, richText, singleton, slug, text, type ContentChange } from "@micacms/core";
 
 import { analyseChanges } from "../src/services/changes.js";
 import { overlaySource } from "../src/workspace/tree.js";
@@ -55,6 +55,42 @@ describe("references at Publish", () => {
     const byPath = new Map(result.changes.map((change) => [change.path, change.needs]));
     assert.deepEqual(byPath.get("news/hello/index.json"), ["team/ben.json", "media/new.png"]);
     assert.equal(byPath.get("team/ben.json"), undefined);
+  });
+
+  it("publishes a URL change together with the links that follow it, both ways", async () => {
+    const { "team/anna.json": _old, ...rest } = files;
+    const source = memorySource({
+      ...rest,
+      "team/anna-meier.json": JSON.stringify({ name: "Anna", slug: "anna-meier" }),
+      "news/hello/index.json": JSON.stringify({ title: "Hello", slug: "hello", author: "anna-meier", cover: "/media/logo.png", sections: [] }),
+    });
+    const result = await analyseChanges(
+      model,
+      source,
+      [remove("team/anna.json"), { path: "team/anna-meier.json", kind: "create" }, update("news/hello/index.json")],
+      memorySource(files),
+    );
+    const byPath = new Map(result.changes.map((change) => [change.path, change.needs]));
+    assert.deepEqual(byPath.get("news/hello/index.json"), ["team/anna-meier.json"]);
+    assert.deepEqual(byPath.get("team/anna-meier.json"), ["news/hello/index.json"]);
+  });
+
+  it("does not hold a URL change back for a new draft that links to the new URL", async () => {
+    const { "team/anna.json": _old, ...rest } = files;
+    const source = memorySource({
+      ...rest,
+      "team/anna-meier.json": JSON.stringify({ name: "Anna", slug: "anna-meier" }),
+      "news/draft/index.json": JSON.stringify({ title: "Draft", slug: "draft", author: "anna-meier", sections: [] }),
+    });
+    const result = await analyseChanges(
+      model,
+      source,
+      [remove("team/anna.json"), { path: "team/anna-meier.json", kind: "create" }, { path: "news/draft/index.json", kind: "create" }],
+      memorySource(files),
+    );
+    const byPath = new Map(result.changes.map((change) => [change.path, change.needs]));
+    assert.deepEqual(byPath.get("news/draft/index.json"), ["team/anna-meier.json"]);
+    assert.equal(byPath.get("team/anna-meier.json"), undefined);
   });
 
   it("accepts a changed entry whose links and files exist", async () => {
@@ -150,5 +186,30 @@ describe("overlaySource", () => {
     assert.equal(await overlay.read("team/c.json"), "c");
     assert.deepEqual((await overlay.list("team")).map((item) => item.name).sort(), ["b.json", "c.json"]);
     assert.deepEqual(await overlay.list("news"), [{ name: "new", type: "directory" }]);
+  });
+});
+
+describe("a settings page in a folder", () => {
+  it("is tied to the URL change that its links follow, by its data file", async () => {
+    const site = defineSite({
+      collections: model.collections,
+      singletons: { about: singleton({ label: "About", fields: { intro: richText(), owner: relation({ collection: "team" }) } }) },
+    });
+    const published = memorySource({ ...files, "about/index.json": JSON.stringify({ owner: "anna" }) });
+    const { "team/anna.json": _old, ...rest } = files;
+    const source = memorySource({
+      ...rest,
+      "team/anna-meier.json": JSON.stringify({ name: "Anna", slug: "anna-meier" }),
+      "about/index.json": JSON.stringify({ owner: "anna-meier" }),
+    });
+    const result = await analyseChanges(
+      site,
+      source,
+      [remove("team/anna.json"), { path: "team/anna-meier.json", kind: "create" }, update("about/index.json")],
+      published,
+    );
+    const byPath = new Map(result.changes.map((change) => [change.path, change.needs]));
+    assert.deepEqual(byPath.get("about/index.json"), ["team/anna-meier.json"]);
+    assert.deepEqual(byPath.get("team/anna-meier.json"), ["about/index.json"]);
   });
 });

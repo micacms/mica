@@ -26,7 +26,7 @@ import {
 import { createApp } from "../src/app.js";
 import { createRuntimeContext, type RuntimeContext } from "../src/context.js";
 import type { RuntimeConfig } from "../src/config.js";
-import { createLogger } from "../src/lib/logger.js";
+import { createLogger, type Logger } from "../src/lib/logger.js";
 
 export const TEST_ORIGIN = "http://localhost:6422";
 
@@ -103,7 +103,7 @@ export interface TestHarness {
 
 export async function createHarness(
   overrides: Partial<RuntimeConfig> = {},
-  options: { site?: Site } = {},
+  options: { site?: Site; logger?: Logger } = {},
 ): Promise<TestHarness> {
   const contentRoot = mkdtempSync(join(tmpdir(), "mica-runtime-test-"));
   const config = testConfig(contentRoot, overrides);
@@ -112,7 +112,7 @@ export async function createHarness(
     config,
     model: options.site ?? testSite,
     files: contentFiles({ root: contentRoot }),
-    logger: createLogger({ level: "silent", pretty: false }),
+    logger: options.logger ?? createLogger({ level: "silent", pretty: false }),
     operational: () => ({ auth: "none — test harness" }),
   });
 

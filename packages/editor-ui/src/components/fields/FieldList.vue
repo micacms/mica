@@ -12,7 +12,7 @@ import { computed } from "vue";
 import type { AnyField, FieldIssue, FieldMap } from "@micacms/core";
 
 import FieldRenderer from "./FieldRenderer.vue";
-import { widthClass } from "@/composables/useField";
+import { humanise, widthClass } from "@/composables/useField";
 
 const props = defineProps<{
   fields: FieldMap;
@@ -61,6 +61,12 @@ function update(key: string, value: unknown): void {
   emit("update:modelValue", { ...props.modelValue, [key]: value });
 }
 
+/** A slug field's hint names the sibling it follows by its label. */
+function sourceLabelFor(field: AnyField): string | undefined {
+  if (field.kind !== "slug" || !field.from) return undefined;
+  return props.fields[field.from]?.label ?? humanise(field.from);
+}
+
 /** Slug fields follow a sibling; hand them its current value. */
 function sourceFor(field: AnyField): string | null {
   if (field.kind !== "slug" || !field.from) return null;
@@ -78,7 +84,7 @@ function sourceFor(field: AnyField): string | null {
         </legend>
 
         <div class="mt-3 grid grid-cols-12 gap-x-4 gap-y-5">
-          <div v-for="entry in group.entries" :key="entry.key" :class="widthClass(entry.field)">
+          <div v-for="entry in group.entries" :key="entry.key" :class="widthClass(entry.field)" :data-field-path="childPath(entry.key)">
             <FieldRenderer
               :field="entry.field"
               :path="childPath(entry.key)"
@@ -88,6 +94,7 @@ function sourceFor(field: AnyField): string | null {
               :collection="collection"
               :entry-slug="entrySlug"
               :source="sourceFor(entry.field)"
+              :source-label="sourceLabelFor(entry.field)"
               @update:model-value="update(entry.key, $event)"
             />
           </div>
@@ -95,7 +102,7 @@ function sourceFor(field: AnyField): string | null {
       </fieldset>
 
       <div v-else class="grid grid-cols-12 gap-x-4 gap-y-5">
-        <div v-for="entry in group.entries" :key="entry.key" :class="widthClass(entry.field)">
+        <div v-for="entry in group.entries" :key="entry.key" :class="widthClass(entry.field)" :data-field-path="childPath(entry.key)">
           <FieldRenderer
             :field="entry.field"
             :path="childPath(entry.key)"
@@ -105,6 +112,7 @@ function sourceFor(field: AnyField): string | null {
             :collection="collection"
             :entry-slug="entrySlug"
             :source="sourceFor(entry.field)"
+              :source-label="sourceLabelFor(entry.field)"
             @update:model-value="update(entry.key, $event)"
           />
         </div>

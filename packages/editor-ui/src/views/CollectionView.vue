@@ -59,9 +59,18 @@ const matching = computed(() => {
     (entry) =>
       entry.title.toLowerCase().includes(term) ||
       entry.slug.includes(term) ||
-      JSON.stringify(entry.data).toLowerCase().includes(term),
+      searchableText(entry.data).includes(term),
   );
 });
+
+/** The values of an entry, without its field names: "title" must not match every entry. */
+function searchableText(value: unknown): string {
+  if (typeof value === "string") return value.toLowerCase();
+  if (typeof value === "number") return String(value);
+  if (Array.isArray(value)) return value.map(searchableText).join(" ");
+  if (value !== null && typeof value === "object") return Object.values(value).map(searchableText).join(" ");
+  return "";
+}
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -198,7 +207,7 @@ const canReorder = computed(
                 :key="column"
                 class="hidden px-4 py-2.5 text-muted md:table-cell"
               >
-                {{ previewValue(entry.data[column]) }}
+                {{ previewValue(entry.data[column], definition.fields[column]) }}
               </td>
 
               <td v-if="canReorder" class="px-2 py-2.5">

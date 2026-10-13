@@ -6,25 +6,30 @@
  * changing it moves the entry, and the route follows.
  */
 
-import { computed, onMounted, ref } from "vue";
-import { useRouter } from "vue-router";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
+import { useRoute, useRouter } from "vue-router";
 
-import { defaultValues, type FieldIssue } from "@micacms/core";
+import { defaultValues } from "@micacms/core";
 
-import { api, ApiError, type EntryDetail } from "@/api";
+import { api, ApiError, type EntryDetail, type Referrer } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FieldList from "@/components/fields/FieldList.vue";
+import IssueSummary from "@/components/IssueSummary.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PendingNotice from "@/components/PendingNotice.vue";
 import type { Edit } from "@/lib/edits";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
+import SaveConflict from "@/components/SaveConflict.vue";
+import { fieldPathOf, useFormIssues } from "@/composables/useFormIssues";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
+import { focusField } from "@/lib/focus";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
 const props = defineProps<{ collection: string; slug?: string }>();
 
+const route = useRoute();
 const router = useRouter();
 const schema = useSchema();
 const staging = useStaging();
@@ -34,10 +39,11 @@ const definition = computed(() => schema.collection(props.collection));
 
 const entry = ref<EntryDetail | null>(null);
 const values = ref<Record<string, unknown>>({});
-const issues = ref<FieldIssue[]>([]);
 const loading = ref(true);
 const saving = ref(false);
-const conflict = ref(false);
+/** A colleague saved since this form opened: their version, for the comparison. */
+const conflict = ref<"none" | "loading" | "loaded" | "missing">("none");
+const theirs = ref<EntryDetail | null>(null);
 const confirmDelete = ref(false);
 
 /** This entry was changed on the website while it has a draft here: Mica's own clone only. */
@@ -47,13 +53,40 @@ const websiteConflict = computed(() =>
       item.target?.kind === "entry" && item.target.collection === props.collection && item.target.slug === props.slug,
   ),
 );
-const references = ref<Array<{ collection: string; title: string }>>([]);
+const references = ref<string[]>([]);
+
+/** An entry or settings page that links here, as the editor knows it: "Haus A (Projects)". */
+function describeReferrer(item: Referrer): string {
+  return item.kind === "entry" ? `${item.title} (${schema.collection(item.collection)?.label ?? item.collection})` : item.title;
+}
+
+/** The URL in the form, when it differs from the saved one: the links to this entry must follow. */
+const newSlug = computed(() => {
+  const value = values.value[definition.value?.slugField ?? ""];
+  return typeof value === "string" ? value.trim() : "";
+});
+const urlChanging = computed(() => !!props.slug && newSlug.value !== "" && newSlug.value !== props.slug);
+const linkers = ref<Referrer[] | null>(null);
+const updateLinks = ref(true);
+
+watch(urlChanging, async (changing) => {
+  if (!changing || linkers.value !== null || !props.slug) return;
+  try {
+    linkers.value = (await api.entries.references(props.collection, props.slug)).references;
+  } catch {
+    // The notice is a courtesy; Publish refuses a broken link in any case.
+    linkers.value = [];
+  }
+});
 
 /**
  * The version this form was opened against; `null` on a new entry, so a
  * duplicate slug is a conflict.
  */
 const revision = ref<string | null>(null);
+
+const form = useFormIssues(() => definition.value?.fields, values);
+const issues = form.issues;
 
 const unsaved = useUnsavedChanges(values);
 const dirty = unsaved.dirty;
@@ -95,8 +128,11 @@ function setBaseline(detail: EntryDetail): void {
   entry.value = detail;
   values.value = structuredClone(detail.data);
   revision.value = detail.revision;
-  issues.value = [];
-  conflict.value = false;
+  form.reset();
+  conflict.value = "none";
+  theirs.value = null;
+  linkers.value = null;
+  updateLinks.value = true;
   unsaved.markClean();
 }
 
@@ -127,14 +163,45 @@ onMounted(async () => {
   } finally {
     loading.value = false;
   }
+
+  // From a problem on the Publish page: go to its field.
+  if (typeof route.query.field === "string") {
+    const field = route.query.field;
+    await nextTick();
+    focusField(field);
+  }
 });
 
-async function save(): Promise<void> {
-  if (definition.value?.readOnly) return;
-  saving.value = true;
-  issues.value = [];
+/** Checks a field when the editor leaves it. */
+function onLeave(event: FocusEvent): void {
+  const path = fieldPathOf(event.target);
+  if (path) form.leave(path);
+}
 
-  const payload = { data: values.value, revision: revision.value };
+/** Shows the problems and moves to the first one. */
+async function showIssues(): Promise<void> {
+  await nextTick();
+  if (issues.value[0]) focusField(issues.value[0].path);
+}
+
+/** `keepMine`: save over the colleague's version that the conflict showed. */
+async function save(options: { keepMine?: boolean } = {}): Promise<void> {
+  if (definition.value?.readOnly) return;
+  if (!form.checkAll()) {
+    toast.error("Some fields need attention before you can save.");
+    await showIssues();
+    return;
+  }
+  saving.value = true;
+
+  const keepMine = options.keepMine === true && theirs.value !== null;
+  const payload = {
+    data: values.value,
+    revision: keepMine ? theirs.value!.revision : revision.value,
+    ...(keepMine ? { keepMine } : {}),
+    // Also before the list has loaded, or when it failed: the server finds the links itself.
+    ...(urlChanging.value && updateLinks.value ? { updateLinks: true } : {}),
+  };
 
   try {
     const saved = props.slug
@@ -144,7 +211,10 @@ async function save(): Promise<void> {
     // The server derives and de-duplicates the slug and can move the entry:
     // re-open at what it decided.
     unsaved.markClean();
-    toast.success(saved.renamed ? `Saved as “${saved.slug}”.` : "Saved.");
+    toast.success(
+      saved.renamed ? `Saved as “${saved.slug}”.` : "Saved.",
+      saved.relinked > 0 ? `Updated the links in ${saved.relinked} other entr${saved.relinked === 1 ? "y or page" : "ies or pages"}.` : undefined,
+    );
     void staging.refresh();
 
     if (saved.slug !== props.slug) {
@@ -157,18 +227,15 @@ async function save(): Promise<void> {
 
     await open(saved.slug);
   } catch (error) {
-    if (error instanceof ApiError && error.status === 409) {
-      // The form keeps the editor's work; a reload is their decision.
-      conflict.value = true;
-      toast.error("This entry was changed while you were editing it — by a colleague or on the website.");
+    if (error instanceof ApiError && error.status === 409 && !props.slug) {
+      toast.error("An entry with this URL exists already. Change the URL, then save.");
+    } else if (error instanceof ApiError && error.status === 409) {
+      // The form keeps the editor's work; which version stays is their decision.
+      await showConflict(props.slug!, error.message);
     } else if (error instanceof ApiError && error.issues.length > 0) {
-      issues.value = error.issues;
+      form.set(error.issues);
       toast.error(error.message, `${error.issues.length} field(s) need attention.`);
-      requestAnimationFrame(() => {
-        document
-          .querySelector('[aria-invalid="true"], .field-error')
-          ?.scrollIntoView({ behavior: "smooth", block: "center" });
-      });
+      await showIssues();
     } else {
       toast.error(error instanceof ApiError ? error.message : "Could not save this entry.");
     }
@@ -177,14 +244,31 @@ async function save(): Promise<void> {
   }
 }
 
-/** Takes the saved version, discarding this form's edits. */
-async function reload(): Promise<void> {
+async function showConflict(slug: string, message: string): Promise<void> {
+  conflict.value = "loading";
+  try {
+    theirs.value = await api.entries.get(props.collection, slug);
+    conflict.value = "loaded";
+    // This entry is as it was: what changed is an entry or page whose links were to follow.
+    if (theirs.value.revision === revision.value) {
+      conflict.value = "none";
+      theirs.value = null;
+      toast.error(message);
+    }
+  } catch {
+    theirs.value = null;
+    conflict.value = "missing";
+  }
+}
+
+/** Takes the colleague's saved version, discarding this form's edits. */
+async function useTheirs(): Promise<void> {
   if (!props.slug) return;
   try {
     await open(props.slug);
-    toast.success("Loaded the current version.");
+    toast.success("Loaded their version.");
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not reload this entry.");
+    toast.error(error instanceof ApiError ? error.message : "Could not load this entry.");
   }
 }
 
@@ -204,10 +288,7 @@ async function askDelete(): Promise<void> {
   if (props.slug) {
     try {
       const { references: found } = await api.entries.references(props.collection, props.slug);
-      references.value = found.map((item) => ({
-        collection: schema.collection(item.collection)?.label ?? item.collection,
-        title: item.title,
-      }));
+      references.value = found.map(describeReferrer);
     } catch {
       // The warning is a courtesy; a failure to fetch it must not block deletion.
     }
@@ -244,7 +325,7 @@ async function remove(): Promise<void> {
           <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
           {{ state.label }}
         </span>
-        <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save">
+        <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save()">
           {{ saving ? "Saving…" : "Save changes" }}
         </button>
       </template>
@@ -269,35 +350,46 @@ async function remove(): Promise<void> {
           <RouterLink :to="{ name: 'changes' }" class="btn-secondary mt-2.5 inline-flex">Choose a version</RouterLink>
         </div>
 
-        <div
-          v-if="conflict"
-          role="alert"
-          class="mb-5 rounded-md border border-warning/15 bg-warning-soft p-4"
-        >
-          <p class="text-sm font-medium text-warning">This entry changed while you were editing</p>
+        <SaveConflict
+          v-if="conflict !== 'none'"
+          :state="conflict"
+          :theirs="theirs?.data ?? null"
+          :mine="values"
+          :fields="definition.fields"
+          :busy="saving"
+          @keep="save({ keepMine: true })"
+          @take="useTheirs"
+        />
+
+        <IssueSummary :issues="issues" />
+
+        <div v-if="urlChanging" role="status" class="mb-5 rounded-md border border-line bg-subtle p-4">
+          <p class="text-sm font-medium">The URL changes from “{{ slug }}” to “{{ newSlug }}” when you save</p>
+          <template v-if="linkers?.length">
+            <p class="mt-1 text-xs text-muted">
+              {{ linkers.length }} other entr{{ linkers.length === 1 ? "y or page links" : "ies or pages link" }} to it:
+              {{ linkers.map(describeReferrer).join(", ") }}.
+            </p>
+            <p v-if="linkers.some((item) => item.readOnly)" class="mt-1 text-xs text-warning">
+              This version of Mica cannot change
+              {{ linkers.filter((item) => item.readOnly).map(describeReferrer).join(", ") }}. Their links keep the old
+              URL until a developer changes them.
+            </p>
+            <label class="mt-2 flex items-center gap-2 text-xs">
+              <input v-model="updateLinks" type="checkbox" class="h-4 w-4" />
+              Update their links when I save
+            </label>
+            <p v-if="!updateLinks" class="mt-1 text-xs text-warning">
+              Their links then point to a URL that does not exist, and Publish waits until they are changed.
+            </p>
+          </template>
           <p class="mt-1 text-xs text-muted">
-            Your changes are still here and have not been saved. Copy anything you need, then load
-            the current version.
+            Visitors who use the old URL, from a bookmark or a search engine, need a redirect. Ask the developer of
+            the website for one.
           </p>
-          <button type="button" class="btn-secondary mt-2.5" @click="reload">
-            Discard mine and reload
-          </button>
         </div>
 
-        <div
-          v-if="issues.length"
-          role="alert"
-          class="mb-5 rounded-md border border-danger/15 bg-danger-soft p-4"
-        >
-          <p class="text-sm font-medium text-danger">
-            {{ issues.length }} field{{ issues.length === 1 ? "" : "s" }} need attention
-          </p>
-          <ul class="mt-1.5 space-y-0.5 text-xs text-danger">
-            <li v-for="issue in issues" :key="issue.path">{{ issue.message }}</li>
-          </ul>
-        </div>
-
-        <form novalidate @submit.prevent="save">
+        <form novalidate @submit.prevent="save()" @focusout="onLeave">
           <FieldList
             v-model="values"
             :fields="definition.fields"
@@ -334,13 +426,11 @@ async function remove(): Promise<void> {
 
       <div v-if="references.length" class="mt-3 rounded-md border border-warning/15 bg-warning-soft p-4">
         <p class="text-sm font-medium text-warning">
-          {{ references.length }} other entr{{ references.length === 1 ? "y" : "ies" }} link to this
-          one:
+          {{ references.length }} other entr{{ references.length === 1 ? "y or page links" : "ies or pages link" }} to
+          this one:
         </p>
         <ul class="mt-1 list-inside list-disc text-xs">
-          <li v-for="(item, index) in references" :key="index">
-            {{ item.title }} ({{ item.collection }})
-          </li>
+          <li v-for="(item, index) in references" :key="index">{{ item }}</li>
         </ul>
       </div>
     </ConfirmDialog>

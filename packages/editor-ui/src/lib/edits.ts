@@ -117,7 +117,7 @@ export function problemsByEdit(edits: Edit[], problems: StagingProblem[]): Map<s
         : edit.target?.kind === "singleton"
           ? edit.target.name
           : null;
-    return base !== null && (path === `${base}.json` || path.startsWith(`${base}/`));
+    return base !== null && (path === base || path === `${base}.json` || path.startsWith(`${base}/`));
   };
   const result = new Map<string, StagingProblem[]>();
   for (const problem of problems) {

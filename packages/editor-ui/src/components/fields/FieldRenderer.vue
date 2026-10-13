@@ -20,6 +20,7 @@ const props = defineProps<{
   entrySlug?: string;
   /** Value of the sibling a slug field derives from. */
   source?: string | null;
+  sourceLabel?: string;
 }>();
 
 const emit = defineEmits<{ "update:modelValue": [unknown] }>();
@@ -30,7 +31,7 @@ const component = computed(() => fieldComponents[props.field.kind]);
 // in the DOM as stray attributes.
 const extra = computed(() =>
   props.field.kind === "slug"
-    ? { source: props.source, collection: props.collection, exceptSlug: props.entrySlug }
+    ? { source: props.source, sourceLabel: props.sourceLabel, collection: props.collection, exceptSlug: props.entrySlug }
     : {},
 );
 </script>

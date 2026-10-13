@@ -1337,6 +1337,22 @@ deletion is slow; then index the references.
 
 **Built in 0.6 (#69, #111).**
 
+**Changed in 0.7.0 (#70):** when the URL in an entry's form differs from the
+saved one, the entry page names the entries and settings pages that link to it
+and offers "Update their links when I save" (on by default). The save then
+writes the renamed entry and the data file of each of those, in one write
+(`relinkReferences` in core); their rich text and media are not touched. The
+data file is written as Mica writes every save, so a hand-written file also
+gets Mica's key order and `null` for empty fields. Each referrer's revision is
+checked in the same write, so a colleague's save in between makes the save
+refuse ("Save again") instead of being overwritten. A read-only collection or
+settings page is not written; the notice says that its links keep the old URL.
+On the
+Publish page, the URL change and the documents whose website version linked to
+the old URL need each other, so they are chosen together. A new draft that
+links to the new URL needs the change, but does not hold it back. The page also tells the editor that the old URL needs
+a redirect, which is the developer's.
+
 ---
 
 ### P2 — Images reach Astro as Astro images; other media as paths
@@ -1539,8 +1555,15 @@ draft with the website's version (`origin/<branch>`, not HEAD) and offers
 onto the new head exactly as above. The server logs the choice. The commit
 trailer that names the replaced revision is still to do.
 
-**1.0 status:** should for 1.0; the trailer, and conflicts on save in the
-local editor, are in #97.
+**Built in 0.7.0 (#97), on save:** two editors in one form is the same choice
+one step earlier. A save that finds a newer saved version shows it next to the
+editor's form, field by field, with "Keep mine" (save over it, with the newer
+revision; the server logs "Kept own version over a newer save" with the
+editor) and "Use theirs" (load it). In both apps the overwritten version is a
+draft, not a commit, so there is no revision to name in Git.
+
+**1.0 status:** should for 1.0. Still open: the commit trailer that names the
+website revision that "Keep my version" replaced at a sync conflict.
 
 ---
 

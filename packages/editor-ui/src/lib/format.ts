@@ -1,5 +1,7 @@
 /** Display formatting shared by the views. */
 
+import type { AnyField } from "@micacms/core";
+
 const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
 
 const UNITS: Array<[Intl.RelativeTimeFormatUnit, number]> = [
@@ -26,6 +28,30 @@ export function relativeTime(iso: string): string {
   }
 
   return rtf.format(Math.round(diff / 60_000), "minute");
+}
+
+/** The calendar date where the editor is, not in UTC: just after midnight in Zürich is still yesterday in UTC. */
+export function localDate(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/**
+ * The value of two coordinate boxes. Both empty is null. A missing half stays
+ * null, not 0, so that the form check says that it is missing. Undefined while
+ * a box holds something that is not a number yet, such as "-".
+ */
+export function coordinatesFrom(
+  latText: string,
+  lngText: string,
+): { lat: number | null; lng: number | null } | null | undefined {
+  const lat = latText.trim();
+  const lng = lngText.trim();
+  if (lat === "" && lng === "") return null;
+  const part = (text: string) => (text === "" ? null : Number(text));
+  const value = { lat: part(lat), lng: part(lng) };
+  if (Number.isNaN(value.lat) || Number.isNaN(value.lng)) return undefined;
+  return value;
 }
 
 export function absoluteTime(iso: string): string {
@@ -61,23 +87,63 @@ export function formatDuration(seconds: number): string {
   return `${Math.floor(hours / 24)} d ${hours % 24} h`;
 }
 
-/** Renders a stored field value as a short string for table cells. */
-export function previewValue(value: unknown): string {
-  if (value === null || value === undefined) return "—";
+/** Renders a stored field value as a short string for table cells, in the field's own terms. */
+export function previewValue(value: unknown, field?: AnyField): string {
+  if (value === null || value === undefined || value === "") return "—";
+
+  if (field?.kind === "date" && typeof value === "string") {
+    const date = field.includeTime ? new Date(value) : new Date(`${value}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return value;
+    return new Intl.DateTimeFormat(undefined, field.includeTime ? { dateStyle: "medium", timeStyle: "short" } : { dateStyle: "medium" }).format(date);
+  }
+  if (field?.kind === "select") {
+    const labelOf = (option: unknown) => field.options.find((candidate) => candidate.value === option)?.label ?? String(option);
+    return short(Array.isArray(value) ? value.map(labelOf).join(", ") : labelOf(value));
+  }
+  if (field?.kind === "richText" && typeof value === "string") return short(markdocText(value));
+  if (field?.kind === "coordinates" && typeof value === "object") {
+    const { lat, lng } = value as { lat?: unknown; lng?: unknown };
+    return typeof lat === "number" && typeof lng === "number" ? `${lat.toFixed(4)}, ${lng.toFixed(4)}` : "—";
+  }
+
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "number") return String(value);
-  if (Array.isArray(value)) return value.length === 0 ? "—" : `${value.length}`;
   // `media({ alt })`: the file name says more than the alt text in a list.
-  if (typeof value === "object" && typeof (value as { path?: unknown }).path === "string") {
-    return previewValue((value as { path: string }).path.split("/").pop());
+  if (typeof value === "object" && !Array.isArray(value) && typeof (value as { path?: unknown }).path === "string") {
+    return fileName((value as { path: string }).path);
   }
-
-  if (typeof value === "string") {
-    // Rich text arrives as HTML; show the text it contains.
-    const text = value.includes("<") ? value.replace(/<[^>]*>/g, " ") : value;
-    const trimmed = text.replace(/\s+/g, " ").trim();
-    return trimmed.length > 60 ? `${trimmed.slice(0, 60)}…` : trimmed || "—";
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "—";
+    // Repeater rows: how many there are says more than a list of their first values.
+    if (value.some((item) => item !== null && typeof item === "object" && typeof (item as { path?: unknown }).path !== "string")) {
+      return String(value.length);
+    }
+    const parts = value.map((item) =>
+      typeof item === "string" ? (field?.kind === "media" ? fileName(item) : item) : previewValue(item, field?.kind === "media" ? field : undefined),
+    );
+    return short(parts.join(", "));
   }
+  if (typeof value === "string") return short(field?.kind === "media" ? fileName(value) : value);
 
   return "—";
+}
+
+function fileName(path: string): string {
+  return path.split("/").pop() ?? path;
+}
+
+/** The words of a Markdoc text, without its marks, links and tags. */
+export function markdocText(source: string): string {
+  return source
+    .replace(/\{%[^%]*%\}/g, " ")
+    .replace(/!?\[([^\]]*)\]\([^)]*\)/g, "$1")
+    .replace(/^\s{0,3}(?:#{1,6}|[-*+]|\d+\.|>)\s+/gm, "")
+    .replace(/[*_~`]+/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function short(text: string): string {
+  const trimmed = text.replace(/\s+/g, " ").trim();
+  return trimmed.length > 60 ? `${trimmed.slice(0, 60)}…` : trimmed || "—";
 }

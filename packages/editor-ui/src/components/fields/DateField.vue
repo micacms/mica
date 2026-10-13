@@ -5,6 +5,7 @@ import type { DateField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
 import { useField, type FieldProps } from "@/composables/useField";
+import { localDate } from "@/lib/format";
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
@@ -50,10 +51,7 @@ function onInput(event: Event): void {
 
 function setToday(): void {
   const now = new Date();
-  emit(
-    "update:modelValue",
-    field.value.includeTime ? now.toISOString() : now.toISOString().slice(0, 10),
-  );
+  emit("update:modelValue", field.value.includeTime ? now.toISOString() : localDate(now));
 }
 </script>
 

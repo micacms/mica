@@ -7,7 +7,7 @@ import { collection, defineSite, number, slug, text } from "@micacms/core";
 import { Hono } from "hono";
 
 import { clientIp, type Env } from "../src/http.js";
-import { createLogger } from "../src/lib/logger.js";
+import { createLogger, type Logger } from "../src/lib/logger.js";
 import {
   CONTENT_SECURITY_POLICY,
   MAX_FILES_PER_UPLOAD,
@@ -193,6 +193,45 @@ describe("request size", () => {
     }));
     const response = await harness.request("/api/admin/media", { method: "POST", body: multipart(files) });
     assert.equal(response.status, 400);
+  });
+});
+
+describe("keeping my version at a save conflict", () => {
+  it("saves over the newer version and logs who chose it", async () => {
+    const lines: Array<{ message: string; fields?: Record<string, unknown> }> = [];
+    const logger: Logger = {
+      debug() {},
+      info: (message, fields) => lines.push({ message, ...(fields ? { fields } : {}) }),
+      warn() {},
+      error() {},
+      child: () => logger,
+    };
+    const harness = await createHarness({}, { logger });
+    try {
+      const put = (data: Record<string, unknown>, revision: string | null, keepMine?: boolean) =>
+        harness.request("/api/admin/collections/projects/entries/haus", {
+          method: "PUT",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ data, revision, ...(keepMine ? { keepMine } : {}) }),
+        });
+      await harness.request("/api/admin/collections/projects/entries", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ data: { title: "Haus" } }),
+      });
+      const opened = (await (await harness.request("/api/admin/collections/projects/entries/haus")).json()) as { revision: string };
+      assert.equal((await put({ title: "Haus", slug: "haus", year: 2001 }, opened.revision)).status, 200);
+      assert.equal((await put({ title: "Haus", slug: "haus", year: 1999 }, opened.revision)).status, 409);
+
+      const current = (await (await harness.request("/api/admin/collections/projects/entries/haus")).json()) as { revision: string };
+      assert.equal((await put({ title: "Haus", slug: "haus", year: 1999 }, current.revision, true)).status, 200);
+      assert.deepEqual(lines.find((line) => line.message === "Kept own version over a newer save")?.fields, {
+        entry: "projects/haus",
+        editor: undefined,
+      });
+    } finally {
+      await harness.close();
+    }
   });
 });
 

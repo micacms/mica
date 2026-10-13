@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "Breaking: findReferences also returns settings pages, as { kind: 'entry' | 'singleton', ... }; a save with updateLinks moves the links to a renamed entry along, and a URL change and those links are published together",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}
