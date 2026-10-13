@@ -42,7 +42,7 @@ export default defineConfig({
     port: 5173,
     // Proxying keeps the API same-origin for the browser, so the session cookie
     // is sent normally during development. The CMS still needs
-    // ADMIN_ORIGINS=http://localhost:5173 for its Origin check.
+    // MICA_ADMIN_ORIGINS=http://localhost:5173 for its Origin check.
     proxy: {
       "/api": { target: API_TARGET, changeOrigin: false },
     },

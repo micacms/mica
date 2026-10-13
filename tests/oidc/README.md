@@ -14,7 +14,7 @@ over Git, with the container as it is deployed.
 | Who                             | Rule                | Expected                 |
 | ------------------------------- | ------------------- | ------------------------ |
 | `alice@gmail.com`               | `MICA_ADMIT_EMAILS` | Admitted                 |
-| `bob@muster-consulting.example` | `MICA_ADMIT_DOMAIN` | Admitted                 |
+| `bob@muster-consulting.example` | `MICA_ADMIT_DOMAINS` | Admitted                 |
 | `mallory@gmail.com`             | none                | Authenticated, refused   |
 
 And, for an admitted session:

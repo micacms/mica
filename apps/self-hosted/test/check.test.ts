@@ -34,12 +34,12 @@ after(() => host.close());
 function environment(dataDir: string, overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return {
     NODE_ENV: "development",
-    LOG_LEVEL: "silent",
-    SESSION_SECRET: "0".repeat(32),
+    MICA_LOG_LEVEL: "silent",
+    MICA_SESSION_SECRET: "0".repeat(32),
     MICA_DATA_DIR: dataDir,
     MICA_OIDC_ISSUER: "https://auth.example.com",
     MICA_OIDC_CLIENT_ID: "mica",
-    MICA_ADMIT_GROUP: "mica-editors",
+    MICA_ADMIT_GROUPS: "mica-editors",
     MICA_REPOSITORY_URL: host.url("site"),
     MICA_REPOSITORY_TOKEN: TOKEN,
     ...overrides,

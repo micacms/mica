@@ -234,8 +234,8 @@ It stores no users either. Who may edit is configuration:
 provider says who you are        MICA_OIDC_*
         │
         ▼
-rules say whether you are in     MICA_ADMIT_GROUP
-        │                        MICA_ADMIT_DOMAIN
+rules say whether you are in     MICA_ADMIT_GROUPS
+        │                        MICA_ADMIT_DOMAINS
         │                        MICA_ADMIT_EMAILS
         ▼                        MICA_ADMIT_SUBJECTS
 everybody admitted is an editor of this site
@@ -263,7 +263,7 @@ Four details that matter:
   configuration change takes effect now.
 - A **group** change at the provider does not. Mica sees the claims it was
   given at sign-in, and learns better at the next one, so the session lifetime
-  is the upper bound. The cookie keeps only the groups that `MICA_ADMIT_GROUP`
+  is the upper bound. The cookie keeps only the groups that `MICA_ADMIT_GROUPS`
   names, to stay under the 4 KB cookie limit, so a group added to the rules
   counts from the next sign-in — hours, not weeks. That trade is recorded as a P1
   decision in [`decisions.md`](decisions.md).
@@ -328,12 +328,12 @@ unpushed commit can be thrown away and cloned again.
 There is no session table. The session is the `mica_session` cookie: JSON that
 holds the identity (issuer, subject, email, `emailVerified`, name, groups), a
 CSRF token and three times, encrypted with AES-256-GCM under a key that HKDF
-derives from `SESSION_SECRET`. The gate re-issues the cookie every five minutes
-while it is in use, so the idle window slides, and `SESSION_TTL_HOURS` caps it.
+derives from `MICA_SESSION_SECRET`. The gate re-issues the cookie every five minutes
+while it is in use, so the idle window slides, and `MICA_SESSION_TTL_HOURS` caps it.
 
 Sign-out clears the cookies in the browser. Mica cannot revoke one session on
 the server: a copied cookie stays valid until it expires. Rotating
-`SESSION_SECRET` and restarting ends every session at once. Removing somebody
+`MICA_SESSION_SECRET` and restarting ends every session at once. Removing somebody
 from the `MICA_ADMIT_*` rules and restarting refuses them on their next request.
 
 Note the startup order this implies. The content model is _in_ the repository,

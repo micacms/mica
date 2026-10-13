@@ -1,0 +1,67 @@
+Mica reads its settings from environment variables. Every name starts with `MICA_`, except `NODE_ENV`, `PORT` and `HOST`, which Node and hosting platforms already use. A blank value counts as not set.
+
+The self-hosted image reads the environment and a `.env` file in its working directory. The compose file passes the `.env` beside it. The local editor reads the environment only: a site's `.env` holds the site's settings, not the editor's. Its flags win over the environment.
+
+At the start, the image logs a warning for each `MICA_` name that it does not know. That is usually a typo.
+
+## Self-hosted image: required
+
+- `MICA_PUBLIC_URL`: the address that the browser shows, with `https://`. It sets the cookie scope, the Origin check and the OIDC redirect. Required in production.
+- `MICA_SESSION_SECRET`: at least 32 characters. It signs the session cookie, so a new value signs everybody out. Required in production. In development, Mica makes one at each start.
+- `MICA_REPOSITORY_URL`: the HTTPS clone URL of the content repository, without credentials.
+- `MICA_REPOSITORY_TOKEN`: the token for Git over HTTPS. GitHub: a fine-grained token with Contents: read and write. GitLab: a project access token with `read_repository` and `write_repository`.
+- `MICA_OIDC_ISSUER` and `MICA_OIDC_CLIENT_ID`: the OpenID Connect provider and the client that you registered there.
+- At least one of `MICA_ADMIT_GROUPS`, `MICA_ADMIT_DOMAINS`, `MICA_ADMIT_EMAILS` and `MICA_ADMIT_SUBJECTS`. Mica does not start without a rule that says who may edit.
+
+## Self-hosted image: the repository
+
+- `MICA_REPOSITORY_BRANCH`: the branch that Mica reads and publishes to. Default: `main`.
+- `MICA_REPOSITORY_ROOT`: the content root in the repository. Mica writes only below it. Default: `content`.
+- `MICA_REPOSITORY_USERNAME`: the Git user name for the token. Default: `x-access-token` on GitHub, `oauth2` on GitLab, `mica` on other hosts.
+- `MICA_REPOSITORY_SYNC_SECONDS`: how often Mica fetches the branch, from 5 to 86400. Default: `60`.
+- `MICA_DATA_DIR`: where Mica keeps its clone. Default in the image: `/data`, the volume.
+
+## Self-hosted image: sign-in and sessions
+
+- `MICA_OIDC_CLIENT_SECRET`: the client secret. Leave it out for a public client with PKCE only.
+- `MICA_OIDC_SCOPE`: the scopes that Mica asks for. Default: `openid profile email`.
+- `MICA_OIDC_GROUPS_CLAIM`: the claim that holds the person's groups. Default: `groups`.
+- `MICA_ADMIT_GROUPS`: groups whose members may edit, separated by commas.
+- `MICA_ADMIT_DOMAINS`: email domains whose verified addresses may edit, separated by commas.
+- `MICA_ADMIT_EMAILS`: verified email addresses that may edit, separated by commas.
+- `MICA_ADMIT_SUBJECTS`: `issuer|subject` pairs that may edit, separated by commas.
+- `MICA_SESSION_TTL_HOURS`: the longest session, in hours. Default: `8`.
+- `MICA_SESSION_IDLE_HOURS`: a session without a request ends after this many hours. Default: `4`.
+- `MICA_SIGNIN_MAX_ATTEMPTS`: sign-in starts from one address in the window. Default: `10`.
+- `MICA_SIGNIN_WINDOW_MS`: the window for that limit, in milliseconds. Default: `900000` (15 minutes).
+
+## Self-hosted image: the server
+
+- `NODE_ENV`: `production` in the image. Production refuses plain HTTP and a missing session secret.
+- `HOST`: the address to listen on. Default in the image: `0.0.0.0`.
+- `PORT`: the port to listen on. Default: `6422`.
+- `MICA_TRUST_PROXY`: read the client address from `X-Forwarded-For`. Set it to `true` only behind a proxy that you control. Default: `false`.
+- `MICA_MAX_UPLOAD_BYTES`: the largest upload, in bytes. Default: `26214400` (25 MB).
+- `MICA_LOG_LEVEL`: `debug`, `info`, `warn`, `error` or `silent`. Default: `info`.
+
+## Local editor
+
+`npx @micacms/editor [content directory]` takes these flags:
+
+- `--content`, `-c`: the content root. Default: `MICA_CONTENT_ROOT`, else `./content`.
+- `--port`, `-p`: the port. Default: `PORT`, else `6422`.
+- `--host`: the address to listen on. Only a loopback address is allowed. Default: `HOST`, else `127.0.0.1`.
+- `--no-open`: do not open the browser.
+
+It also reads these variables:
+
+- `MICA_CONTENT_ROOT`: the content root, when no path is given.
+- `MICA_PUBLIC_URL`: the editor's own address. It must be on this computer. Default: `http://localhost:` and the port.
+- `MICA_LOCAL_PUBLISH`: `false` shows the pending changes, but Publish does not commit or push. Default: `true`.
+- `MICA_MAX_UPLOAD_BYTES` and `MICA_LOG_LEVEL`, as for the image.
+- `NODE_ENV`: `production` stops the editor, because it has no sign-in.
+
+## For work on Mica itself
+
+- `MICA_ADMIN_ORIGINS`: more browser origins that may call the admin API, separated by commas. The Vite dev server of the editor UI needs it.
+- `MICA_ADMIN_DIR`: serve the editor UI from another directory.

@@ -814,7 +814,12 @@ who kept settings in `.env` must pass them as flags or export them.
 **What would change it:** an adopter on 0.x who cannot rename in one step; then
 add aliases with a warning for one minor.
 
-**1.0 status:** blocker; the rename is in #57, the `.env` change in #113.
+**Built in 0.6:** the rename (#57), with a reference at
+`micacms.com/docs/configuration` that a test keeps complete, and the local
+editor reads no `.env` file, and its flags win over the environment (#113).
+The runtime has no default content root any more; each app sets it.
+
+**1.0 status:** done.
 
 ---
 
@@ -1119,7 +1124,9 @@ changes before 1.0, with a changelog entry.
 **What would change it:** nothing in 1.x; the rule is part of the content
 format.
 
-**1.0 status:** blocker; the fix is in #59.
+**Built in 0.6 (#59).**
+
+**1.0 status:** done.
 
 ---
 

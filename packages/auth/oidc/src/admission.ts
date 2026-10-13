@@ -8,8 +8,8 @@
  *
  * Mica has no accounts, so admission is configuration:
  *
- *   MICA_ADMIT_GROUP=mica-editors            a claim the provider sends
- *   MICA_ADMIT_DOMAIN=example.com            every verified address there
+ *   MICA_ADMIT_GROUPS=mica-editors            a claim the provider sends
+ *   MICA_ADMIT_DOMAINS=example.com            every verified address there
  *   MICA_ADMIT_EMAILS=alice@gmail.com        these verified addresses
  *   MICA_ADMIT_SUBJECTS=https://id.example.com|a1b2c3
  *

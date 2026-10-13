@@ -26,7 +26,7 @@ export const authEnv = {
    * Which claim carries the person's groups. There is no standard one:
    * Keycloak and Entra normally send `groups`, others send `roles`, and some
    * send whatever the operator mapped. Naming it here is what keeps
-   * `MICA_ADMIT_GROUP` working against any provider.
+   * `MICA_ADMIT_GROUPS` working against any provider.
    */
   MICA_OIDC_GROUPS_CLAIM: z.string().default("groups"),
 
@@ -35,26 +35,26 @@ export const authEnv = {
    * whether that person gets in. At least one is required — the composition
    * refuses to start without one. Comma-separated, all four.
    */
-  MICA_ADMIT_GROUP: z.string().optional(),
-  MICA_ADMIT_DOMAIN: z.string().optional(),
+  MICA_ADMIT_GROUPS: z.string().optional(),
+  MICA_ADMIT_DOMAINS: z.string().optional(),
   /** Verified addresses — the list for a provider with no groups, such as Google. */
   MICA_ADMIT_EMAILS: z.string().optional(),
   /** `issuer|subject` pairs — see admission.ts. */
   MICA_ADMIT_SUBJECTS: z.string().optional(),
 
   /** Signs session cookies. Rotating it invalidates every session. */
-  SESSION_SECRET: z.string().min(32).optional(),
+  MICA_SESSION_SECRET: z.string().min(32).optional(),
   /**
    * Deliberately short. Admission is configuration and is re-read on every
    * request; what cannot be immediate is a change *at the provider*, which
    * Mica only sees at the next sign-in. The session lifetime is therefore the
    * upper bound on how long a revoked editor keeps working.
    */
-  SESSION_TTL_HOURS: z.coerce.number().int().positive().default(8),
-  SESSION_IDLE_HOURS: z.coerce.number().int().positive().default(4),
+  MICA_SESSION_TTL_HOURS: z.coerce.number().int().positive().default(8),
+  MICA_SESSION_IDLE_HOURS: z.coerce.number().int().positive().default(4),
 
-  LOGIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
-  LOGIN_WINDOW_MS: z.coerce
+  MICA_SIGNIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
+  MICA_SIGNIN_WINDOW_MS: z.coerce
     .number()
     .int()
     .positive()
@@ -77,10 +77,10 @@ export function deriveAuth<T extends AuthEnv & { NODE_ENV: string; MICA_PUBLIC_U
     oidcAllowInsecure:
       env.NODE_ENV !== "production" &&
       /^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(env.MICA_OIDC_ISSUER ?? ""),
-    admitGroups: list(env.MICA_ADMIT_GROUP),
+    admitGroups: list(env.MICA_ADMIT_GROUPS),
     // Lowercased: a domain is case-insensitive, and an operator who writes
     // `Example.com` means the same thing the provider spells `example.com`.
-    admitDomains: list(env.MICA_ADMIT_DOMAIN).map((domain) =>
+    admitDomains: list(env.MICA_ADMIT_DOMAINS).map((domain) =>
       domain.toLowerCase().replace(/^@/, ""),
     ),
     admitEmails: list(env.MICA_ADMIT_EMAILS).map((email) => email.toLowerCase()),
@@ -114,10 +114,10 @@ export interface AuthConfig {
   /** Resolved by the app: mandatory in production, ephemeral in development. */
   sessionSecret: string;
   cookieSecure: boolean;
-  SESSION_TTL_HOURS: number;
-  SESSION_IDLE_HOURS: number;
-  LOGIN_MAX_ATTEMPTS: number;
-  LOGIN_WINDOW_MS: number;
+  MICA_SESSION_TTL_HOURS: number;
+  MICA_SESSION_IDLE_HOURS: number;
+  MICA_SIGNIN_MAX_ATTEMPTS: number;
+  MICA_SIGNIN_WINDOW_MS: number;
 }
 
 /**
@@ -183,8 +183,8 @@ export function requireAuthConfig(config: {
       "Nothing says who may edit this site.\n" +
         "  Authentication is not admission: your provider will happily vouch for\n" +
         "  everybody it knows. Set at least one of these:\n\n" +
-        "    MICA_ADMIT_GROUP=mica-editors            a claim your provider sends\n" +
-        "    MICA_ADMIT_DOMAIN=example.com            every verified address there\n" +
+        "    MICA_ADMIT_GROUPS=mica-editors            a claim your provider sends\n" +
+        "    MICA_ADMIT_DOMAINS=example.com            every verified address there\n" +
         "    MICA_ADMIT_EMAILS=alice@gmail.com        these verified addresses\n" +
         "    MICA_ADMIT_SUBJECTS=https://id.example.com|a1b2c3\n\n" +
         "  The group rule is the one to grow into: adding an editor is then a\n" +
@@ -195,7 +195,7 @@ export function requireAuthConfig(config: {
   const open = config.admitDomains.filter((domain) => PUBLIC_EMAIL_DOMAINS.has(domain));
   if (open.length > 0) {
     throw new ConfigError(
-      `MICA_ADMIT_DOMAIN names ${open.join(", ")}, where anybody can register an address.\n` +
+      `MICA_ADMIT_DOMAINS names ${open.join(", ")}, where anybody can register an address.\n` +
         "  That rule would let the public edit this site. Name the people instead:\n" +
         "    MICA_ADMIT_EMAILS=alice@gmail.com,bob@gmail.com",
     );

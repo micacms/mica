@@ -42,8 +42,8 @@ export function createOidcAuth(deps: OidcAuthDeps): OidcAuth {
   const admission = createAdmissionPolicy(config);
   const oidc = createOidcService({ config, logger });
   const loginLimiter = createRateLimiter({
-    limit: config.LOGIN_MAX_ATTEMPTS,
-    windowMs: config.LOGIN_WINDOW_MS,
+    limit: config.MICA_SIGNIN_MAX_ATTEMPTS,
+    windowMs: config.MICA_SIGNIN_WINDOW_MS,
   });
 
   const gate = { sessions, admission };

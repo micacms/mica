@@ -12,7 +12,7 @@
  *   - it binds to loopback. A container binds 0.0.0.0 because it has to; a
  *     laptop does not, and this editor has no authentication. Anything
  *     reachable by anyone else runs @micacms/self-hosted with an identity
- *     provider — see docs/self-hosting.md.
+ *     provider — see https://micacms.com/docs/self-hosting/.
  *   - it talks to a person instead of to a log collector: one short banner
  *     saying where the editor is and what happens when you save, and the
  *     browser opened on it. `MICA_CLI` is how the server is told which of the
@@ -22,8 +22,8 @@
  * account and no session, so nothing is written outside the content
  * directory.
  *
- * Explicit environment wins over every flag default here, and a flag wins over
- * a `.env` file, because `loadConfig` leaves already-set variables alone.
+ * A flag wins over the environment, and the environment over a default. No
+ * `.env` file is read: the project's `.env` belongs to the site.
  */
 
 import { existsSync, realpathSync } from "node:fs";
@@ -37,7 +37,8 @@ import { checkContent, formatReport } from "./check.js";
 import { formatInit, initProject, InitError } from "./init.js";
 
 export interface Options {
-  content: string;
+  /** Undefined means "not given": `MICA_CONTENT_ROOT`, else `./content`. */
+  content?: string;
   port?: string;
   host?: string;
   /** Undefined means "decide from the terminal" — see `shouldOpenBrowser`. */
@@ -69,7 +70,7 @@ const USAGE = `
 `;
 
 export function parse(argv: string[]): Options {
-  const options: Options = { content: "./content" };
+  const options: Options = {};
 
   for (let index = 0; index < argv.length; index++) {
     const flag = argv[index]!;
@@ -144,13 +145,29 @@ export function shouldOpenBrowser(options: Options, env: NodeJS.ProcessEnv): boo
   return Boolean(process.stdout.isTTY) && !env["CI"];
 }
 
+/** What the server reads: a flag wins over the environment, and the environment over a default. */
+export function serverEnvironment(options: Options, env: NodeJS.ProcessEnv, content: string): Record<string, string> {
+  const port = options.port ?? env["PORT"] ?? String(DEFAULT_PORT);
+  return {
+    // The checks ran on this path, so it is the one the server gets.
+    MICA_CONTENT_ROOT: content,
+    HOST: options.host ?? env["HOST"] ?? "127.0.0.1",
+    PORT: port,
+    // It must agree with the port: it scopes the cookie and the Origin check.
+    MICA_PUBLIC_URL: (!options.port && env["MICA_PUBLIC_URL"]) || `http://localhost:${port}`,
+    // A person, not a log collector: one banner instead of startup log lines.
+    MICA_CLI: "true",
+    MICA_OPEN: String(shouldOpenBrowser(options, env)),
+  };
+}
+
 export async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   if (command === "init") return init(rest);
   if (command === "check") return check(rest);
 
   const options = parse(process.argv.slice(2));
-  const content = path.resolve(options.content);
+  const content = path.resolve(options.content ?? process.env["MICA_CONTENT_ROOT"] ?? "./content");
 
   if (!existsSync(content)) {
     report(`There is no content directory at ${content}.`, [
@@ -180,23 +197,7 @@ export async function main(): Promise<void> {
     process.exit(78); // EX_CONFIG
   }
 
-  const defaults: Record<string, string> = {
-    CONTENT_ROOT: content,
-    HOST: options.host ?? "127.0.0.1",
-    PORT: options.port ?? String(DEFAULT_PORT),
-    // Tells the server it is talking to a person: one banner instead of the
-    // startup log lines a collector wants.
-    MICA_CLI: "true",
-    MICA_OPEN: String(shouldOpenBrowser(options, process.env)),
-  };
-
-  for (const [key, value] of Object.entries(defaults)) {
-    process.env[key] ??= value;
-  }
-  // MICA_PUBLIC_URL has to agree with the port, and only matters here for
-  // cookie scope and the Origin check — both of which are this process's own
-  // address.
-  process.env["MICA_PUBLIC_URL"] ??= `http://localhost:${process.env["PORT"]}`;
+  Object.assign(process.env, serverEnvironment(options, process.env, content));
 
   // The server is imported rather than spawned: one process, one signal
   // handler, and a stack trace that points at the real thing.
@@ -215,8 +216,7 @@ function init(argv: string[]): void {
 }
 
 async function check(argv: string[]): Promise<void> {
-  const { content } = parse(argv);
-  const root = path.resolve(content);
+  const root = path.resolve(parse(argv).content ?? "./content");
   const result = await checkContent(root);
   process.stdout.write(formatReport(result, root));
   if (result.problems.some((problem) => problem.level === "error")) process.exit(1);

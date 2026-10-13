@@ -2,7 +2,7 @@
  * Session management.
  *
  * The session is the cookie: who the provider said this is, a CSRF token and
- * an expiry, encrypted with a key derived from SESSION_SECRET. There is no
+ * an expiry, encrypted with a key derived from MICA_SESSION_SECRET. There is no
  * session table, so Mica stores nothing about people at all.
  *
  *   - AES-256-GCM, so the cookie can be neither read nor altered. Encrypted and
@@ -14,7 +14,7 @@
  *
  * What this gives up is server-side revocation of one cookie. Sign-out clears
  * it in the browser; a copy taken before then stays valid until it expires.
- * Rotating SESSION_SECRET ends every session at once. The admission rules are
+ * Rotating MICA_SESSION_SECRET ends every session at once. The admission rules are
  * still re-read on every request — see gate.ts and docs/decisions.md.
  */
 
@@ -164,8 +164,8 @@ function parseRecord(json: string): SessionRecord | null {
 }
 
 export function createSessionService(config: AuthConfig): SessionService {
-  const ttlMs = config.SESSION_TTL_HOURS * 3600_000;
-  const idleMs = config.SESSION_IDLE_HOURS * 3600_000;
+  const ttlMs = config.MICA_SESSION_TTL_HOURS * 3600_000;
+  const idleMs = config.MICA_SESSION_IDLE_HOURS * 3600_000;
 
   const key = Buffer.from(
     hkdfSync("sha256", config.sessionSecret, "", "mica session cookie v1", 32),

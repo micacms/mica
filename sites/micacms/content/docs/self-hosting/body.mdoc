@@ -73,8 +73,8 @@ Step by step: [Sign in with Google](/docs/sign-in-with-google/) or [Other sign-i
 Your provider knows many people. It does not know who may edit this website. Set at least one rule. Mica refuses to start without one.
 
 ```env
-MICA_ADMIT_GROUP=mica-editors
-MICA_ADMIT_DOMAIN=example.com
+MICA_ADMIT_GROUPS=mica-editors
+MICA_ADMIT_DOMAINS=example.com
 MICA_ADMIT_EMAILS=alice@gmail.com,bob@example.com
 MICA_ADMIT_SUBJECTS=https://auth.example.com|a1b2c3
 ```
@@ -92,17 +92,19 @@ Everybody that a rule admits is an editor. There are no roles, no user table, an
 
 ```env
 MICA_PUBLIC_URL=https://cms.example.com
-TRUST_PROXY=true
-SESSION_SECRET=
+MICA_TRUST_PROXY=true
+MICA_SESSION_SECRET=
 ```
 
 - `MICA_PUBLIC_URL` must be exactly what the browser shows. `https://` turns on Secure cookies. Mica refuses plain-HTTP discovery in production.
-- Set `TRUST_PROXY=true` only behind a proxy that you control.
-- `SESSION_SECRET` must have at least 32 characters. Make one:
+- Set `MICA_TRUST_PROXY=true` only behind a proxy that you control.
+- `MICA_SESSION_SECRET` must have at least 32 characters. Make one:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+[Configuration](/docs/configuration/) lists every variable, with its default.
 
 The container listens on `127.0.0.1:6422`. Put TLS in front of it. With Caddy, this is enough:
 
@@ -137,15 +139,15 @@ The volume holds the clone and the unpublished drafts. If you lose it, unpublish
 A session is an encrypted cookie. Mica keeps no list of sessions.
 
 ```env
-SESSION_TTL_HOURS=8
-SESSION_IDLE_HOURS=4
+MICA_SESSION_TTL_HOURS=8
+MICA_SESSION_IDLE_HOURS=4
 ```
 
 - A session ends after 8 hours, or after 4 hours without use. While a session is in use, Mica issues the cookie again every 5 minutes.
 - Sign-out clears the cookie in the browser only.
 - Mica re-reads the rules on each request. The rules live in `.env`, so restart the container after a change. The change then counts at once.
 - A change at your provider, for example removal from a group, counts from the next sign-in.
-- To remove a person at once, take them out of the rules and restart. To end all sessions, change `SESSION_SECRET` and restart.
+- To remove a person at once, take them out of the rules and restart. To end all sessions, change `MICA_SESSION_SECRET` and restart.
 
 ## Backups
 

@@ -11,7 +11,6 @@ import {
   ConfigError,
   deriveRuntime,
   describeConfigIssues,
-  loadEnvFile,
   LOOPBACK,
   runtimeEnv,
   withoutBlanks,
@@ -20,29 +19,29 @@ import {
 
 const {
   NODE_ENV,
-  LOG_LEVEL,
+  MICA_LOG_LEVEL,
   HOST,
   PORT,
   MICA_PUBLIC_URL,
-  CONTENT_ROOT,
+  MICA_CONTENT_ROOT,
   MICA_LOCAL_PUBLISH,
-  MAX_UPLOAD_BYTES,
-  ADMIN_ORIGINS,
-  ADMIN_DIR,
+  MICA_MAX_UPLOAD_BYTES,
+  MICA_ADMIN_ORIGINS,
+  MICA_ADMIN_DIR,
 } = runtimeEnv;
 
 const schema = z
   .object({
     NODE_ENV,
-    LOG_LEVEL,
+    MICA_LOG_LEVEL,
     HOST,
     PORT,
     MICA_PUBLIC_URL,
-    CONTENT_ROOT,
+    MICA_CONTENT_ROOT,
     MICA_LOCAL_PUBLISH,
-    MAX_UPLOAD_BYTES,
-    ADMIN_ORIGINS,
-    ADMIN_DIR,
+    MICA_MAX_UPLOAD_BYTES,
+    MICA_ADMIN_ORIGINS,
+    MICA_ADMIN_DIR,
 
     /**
      * Set only by the `mica` bin: a terminal gets one banner, a log collector
@@ -56,18 +55,15 @@ const schema = z
     ...deriveRuntime({
       ...env,
       // There is no proxy in front of a loopback server to trust.
-      TRUST_PROXY: false,
+      MICA_TRUST_PROXY: false,
     }),
     HOST: env.HOST ?? "127.0.0.1",
   }));
 
 export type LocalConfig = RuntimeConfig & { MICA_CLI: boolean; MICA_OPEN: boolean };
 
+/** Reads the process environment only: a site's `.env` holds the site's settings, not the editor's. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): LocalConfig {
-  // Only when reading the ambient environment: tests pass an explicit object
-  // and must not pick up whatever `.env` sits in the working directory.
-  if (env === process.env) loadEnvFile();
-
   const parsed = schema.safeParse(withoutBlanks(env));
   if (!parsed.success) throw new ConfigError(describeConfigIssues(parsed.error));
 
@@ -79,7 +75,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): LocalConfig {
       "The local editor has no authentication, and NODE_ENV=production.\n" +
         "  There is no identity provider and no user: every request is allowed.\n" +
         "  A deployment runs @micacms/self-hosted with an OIDC provider instead —\n" +
-        "  see docs/self-hosting.md.",
+        "  see https://micacms.com/docs/self-hosting/.",
     );
   }
 

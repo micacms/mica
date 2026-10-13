@@ -37,7 +37,7 @@ async function main(): Promise<void> {
     throw error;
   }
 
-  const logger = createLogger({ level: config.LOG_LEVEL, pretty: true });
+  const logger = createLogger({ level: config.MICA_LOG_LEVEL, pretty: true });
 
   // A bad or absent model is a project mistake, not a crash: exit like a bad
   // environment, without a stack trace.
@@ -69,7 +69,7 @@ async function main(): Promise<void> {
 
   const app = createApp(ctx, {
     guards: [hostGuard()],
-    adminDir: config.ADMIN_DIR ?? editorUiDist(),
+    adminDir: config.MICA_ADMIN_DIR ?? editorUiDist(),
   });
 
   const fingerprint = await schemaFingerprint(model);

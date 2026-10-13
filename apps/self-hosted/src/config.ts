@@ -23,7 +23,7 @@ import { defaultUsername, parseRemote, type Remote } from "./workspace/credentia
 
 /** What the runtime reads, minus what only the local editor's checkout needs. */
 const {
-  CONTENT_ROOT: _contentRoot,
+  MICA_CONTENT_ROOT: _contentRoot,
   MICA_LOCAL_PUBLISH: _localPublish,
   ...runtimeFields
 } = runtimeEnv;
@@ -43,15 +43,15 @@ const fields = {
   MICA_REPOSITORY_SYNC_SECONDS: z.coerce.number().int().min(5).max(86_400).default(60),
 };
 
-/** Built from the schema's fields, so the two cannot drift. */
-const KNOWN = new Set(Object.keys(fields));
+/** Every variable the image reads. Built from the schema's fields, so the two cannot drift. */
+export const KNOWN = new Set(Object.keys(fields));
 
 const schema = z.object(fields).transform((env) => {
   const dataDir = path.resolve(env.MICA_DATA_DIR);
   const root = env.MICA_REPOSITORY_ROOT.replace(/^\/+|\/+$/g, "");
   const runtime = deriveRuntime({
     ...env,
-    CONTENT_ROOT: path.join(dataDir, "repository", root),
+    MICA_CONTENT_ROOT: path.join(dataDir, "repository", root),
     MICA_LOCAL_PUBLISH: true,
   });
   return {
@@ -76,7 +76,7 @@ export type SelfHostedConfig = RuntimeConfig &
   AuthConfig & {
     dataDir: string;
     repository: RepositoryConfig;
-    SESSION_SECRET?: string | undefined;
+    MICA_SESSION_SECRET?: string | undefined;
     /** Names of the secrets this process generated for itself. */
     devSecrets: string[];
     /** `MICA_*` names in the environment that nothing reads: likely typos. */
@@ -194,7 +194,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
   // In development a generated secret lets a trial run work from a clean
   // checkout; sessions end on restart.
   const missing: string[] = [];
-  if (!config.SESSION_SECRET) missing.push("SESSION_SECRET");
+  if (!config.MICA_SESSION_SECRET) missing.push("MICA_SESSION_SECRET");
 
   if (config.isProduction && missing.length > 0) {
     throw new ConfigError(
@@ -206,7 +206,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
   return {
     ...config,
     repository: repository!,
-    sessionSecret: config.SESSION_SECRET ?? randomBytes(32).toString("hex"),
+    sessionSecret: config.MICA_SESSION_SECRET ?? randomBytes(32).toString("hex"),
     devSecrets: missing,
     unknownVariables: Object.keys(env)
       .filter((name) => name.startsWith("MICA_") && !KNOWN.has(name))

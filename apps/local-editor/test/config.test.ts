@@ -9,7 +9,8 @@ import { loadConfig } from "../src/config.js";
 
 const base: NodeJS.ProcessEnv = {
   NODE_ENV: "test",
-  LOG_LEVEL: "silent",
+  MICA_LOG_LEVEL: "silent",
+  MICA_CONTENT_ROOT: "./content",
 };
 
 describe("the local editor's containment", () => {

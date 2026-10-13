@@ -1,22 +1,23 @@
 /** A configuration that cannot work must stop the start, not fail later when an editor saves. */
 
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
-import { ConfigError } from "@micacms/runtime";
+import { ConfigError, runtimeEnv } from "@micacms/runtime";
 
-import { loadConfig } from "../src/config.js";
+import { KNOWN, loadConfig } from "../src/config.js";
 
 /** A valid environment; tests subtract from it. */
 const base: NodeJS.ProcessEnv = {
   NODE_ENV: "test",
-  LOG_LEVEL: "silent",
-  SESSION_SECRET: "0".repeat(32),
+  MICA_LOG_LEVEL: "silent",
+  MICA_SESSION_SECRET: "0".repeat(32),
   MICA_DATA_DIR: "/tmp/mica-test-unused",
   MICA_OIDC_ISSUER: "https://auth.example.com",
   MICA_OIDC_CLIENT_ID: "mica",
-  MICA_ADMIT_GROUP: "mica-editors",
+  MICA_ADMIT_GROUPS: "mica-editors",
   MICA_REPOSITORY_URL: "https://gitlab.com/acme/site.git",
   MICA_REPOSITORY_TOKEN: "secret",
 };
@@ -63,15 +64,26 @@ describe("public URL", () => {
   });
 });
 
+describe("the configuration reference", () => {
+  it("names every variable that the image or the local editor reads", () => {
+    const reference = readFileSync(
+      join(import.meta.dirname, "../../../sites/micacms/content/docs/configuration/body.mdoc"),
+      "utf8",
+    );
+    const missing = [...new Set([...KNOWN, ...Object.keys(runtimeEnv)])].filter((name) => !reference.includes(`\`${name}\``));
+    assert.deepEqual(missing, []);
+  });
+});
+
 describe("unknown variables", () => {
   it("names MICA_ variables that nothing reads, and only those", () => {
     const config = loadConfig({
       ...base,
-      MICA_ADMIT_GROUPS: "typo-for-group",
+      MICA_ADMIT_GROUP: "typo-for-group",
       MICA_OIDC_ISSUER: "https://auth.example.com",
       UNRELATED_VARIABLE: "x",
     });
-    assert.deepEqual(config.unknownVariables, ["MICA_ADMIT_GROUPS"]);
+    assert.deepEqual(config.unknownVariables, ["MICA_ADMIT_GROUP"]);
   });
 });
 
@@ -146,18 +158,18 @@ describe("authentication", () => {
       NODE_ENV: "production",
       MICA_PUBLIC_URL: "https://cms.example.com",
     };
-    delete production["SESSION_SECRET"];
+    delete production["MICA_SESSION_SECRET"];
 
-    assert.throws(() => loadConfig(production), /SESSION_SECRET/);
+    assert.throws(() => loadConfig(production), /MICA_SESSION_SECRET/);
   });
 
   it("generates an ephemeral secret outside production, and says so", () => {
     const dev = { ...base };
-    delete dev["SESSION_SECRET"];
+    delete dev["MICA_SESSION_SECRET"];
 
     const config = loadConfig(dev);
     assert.equal(config.sessionSecret.length >= 32, true);
-    assert.deepEqual(config.devSecrets, ["SESSION_SECRET"]);
+    assert.deepEqual(config.devSecrets, ["MICA_SESSION_SECRET"]);
   });
 
   /** A remote issuer over HTTP would give the ID token to anybody on the path. */
@@ -188,7 +200,7 @@ describe("authentication", () => {
 describe("who may edit", () => {
   const withoutRules = () => {
     const env = { ...base };
-    delete env["MICA_ADMIT_GROUP"];
+    delete env["MICA_ADMIT_GROUPS"];
     return env;
   };
 
@@ -196,14 +208,14 @@ describe("who may edit", () => {
     assert.throws(() => loadConfig(withoutRules()), (error: unknown) => {
       assert.ok(error instanceof ConfigError);
       assert.match(error.message, /nothing says who may edit this site/i);
-      assert.match(error.message, /MICA_ADMIT_GROUP/);
+      assert.match(error.message, /MICA_ADMIT_GROUPS/);
       return true;
     });
   });
 
   for (const rule of [
-    { MICA_ADMIT_GROUP: "mica-editors" },
-    { MICA_ADMIT_DOMAIN: "example.com" },
+    { MICA_ADMIT_GROUPS: "mica-editors" },
+    { MICA_ADMIT_DOMAINS: "example.com" },
     { MICA_ADMIT_EMAILS: "alice@gmail.com" },
     { MICA_ADMIT_SUBJECTS: "https://auth.example.com|a1b2c3" },
   ]) {
@@ -215,8 +227,8 @@ describe("who may edit", () => {
   it("reads all four as comma-separated lists", () => {
     const config = loadConfig({
       ...base,
-      MICA_ADMIT_GROUP: "editors, writers",
-      MICA_ADMIT_DOMAIN: "Example.com, @acme.test",
+      MICA_ADMIT_GROUPS: "editors, writers",
+      MICA_ADMIT_DOMAINS: "Example.com, @acme.test",
       MICA_ADMIT_EMAILS: "Alice@Gmail.com, bob@example.com",
       MICA_ADMIT_SUBJECTS: "https://a.test|one, https://b.test|two",
     });
@@ -234,7 +246,7 @@ describe("who may edit", () => {
   /** A domain rule for a public provider admits the public. */
   it("refuses a domain where anybody can register an address", () => {
     assert.throws(
-      () => loadConfig({ ...withoutRules(), MICA_ADMIT_DOMAIN: "example.com, Gmail.com" }),
+      () => loadConfig({ ...withoutRules(), MICA_ADMIT_DOMAINS: "example.com, Gmail.com" }),
       (error: unknown) => {
         assert.ok(error instanceof ConfigError);
         assert.match(error.message, /gmail\.com, where anybody can register/);

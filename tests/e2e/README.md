@@ -34,7 +34,7 @@ she is in no group it was told to admit. Authentication and admission are
 separate questions, and this is where you can watch that be true.
 
 **Where the answer lives is the other point.** Alice and bob may edit because
-of a group in Keycloak — `MICA_ADMIT_GROUP=mica-editors` in
+of a group in Keycloak — `MICA_ADMIT_GROUPS=mica-editors` in
 [`compose.yml`](compose.yml) — not because of a row in Mica. There is no user
 table, no invitation and no People screen: adding an editor is a group change
 in the identity provider, and Mica is not touched.
@@ -51,7 +51,7 @@ on.
    come back with a session. Mica never saw a password.
 
 2. **Look for a People screen.** There is not one. Who may edit is
-   `MICA_ADMIT_GROUP`, and the System page says so under _Who may edit_.
+   `MICA_ADMIT_GROUPS`, and the System page says so under _Who may edit_.
 
 3. **Sign out, sign in as bob.** He gets in without anybody inviting him,
    because Keycloak already puts him in the group.
@@ -75,7 +75,7 @@ on.
    having no user table, and it is why sessions last hours rather than weeks —
    see the P1 entry in [`decisions.md`](../../docs/decisions.md).
 
-7. **Take her out of `MICA_ADMIT_GROUP` instead** and restart the container.
+7. **Take her out of `MICA_ADMIT_GROUPS` instead** and restart the container.
    Her next request is refused at once: the rules are re-read on every request,
    so a configuration change is immediate even though a provider change is not.
 

@@ -36,7 +36,7 @@ services:
       # ${MICA_PUBLIC_URL}/api/auth/callback with the provider.
       #
       # Who may then edit is a separate answer, and also required: set
-      # MICA_ADMIT_GROUP, MICA_ADMIT_DOMAIN, MICA_ADMIT_EMAILS or
+      # MICA_ADMIT_GROUPS, MICA_ADMIT_DOMAINS, MICA_ADMIT_EMAILS or
       # MICA_ADMIT_SUBJECTS in .env.
 
       # The content repository is MICA_REPOSITORY_URL, with

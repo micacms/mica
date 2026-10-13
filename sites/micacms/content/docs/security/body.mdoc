@@ -9,7 +9,7 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 ## What Mica protects
 
 - **The repository token.** It can write to the content repository. The self-hosted Mica keeps it in its environment and never sends it to the browser. Mica gives it only to the Git host and never writes it into the clone.
-- **The session secret.** `SESSION_SECRET` encrypts the session cookie (AES-256-GCM). A person who knows it can create a session for any editor.
+- **The session secret.** `MICA_SESSION_SECRET` encrypts the session cookie (AES-256-GCM). A person who knows it can create a session for any editor.
 - **The drafts.** Saved, unpublished changes are files in the Git clone on the data volume. They are not in the repository until somebody publishes them.
 - **The content repository.** Only an admitted editor can publish, and only to the configured branch.
 
@@ -18,13 +18,13 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 - **The identity provider.** It decides who a person is. Mica decides who may edit, from the rules in `MICA_ADMIT_*`. A provider that issues a false identity or false claims gets that person in.
 - **An admitted editor.** Every admitted editor can do everything, Publish included. There are no roles.
 - **A contributor to the content repository.** Anything in the repository reaches the editor: content, media and the content model. Give write access to the repository only to people you would also admit as editors.
-- **The reverse proxy.** It terminates TLS. With `TRUST_PROXY=true`, Mica believes the client address in `X-Forwarded-For`.
+- **The reverse proxy.** It terminates TLS. With `MICA_TRUST_PROXY=true`, Mica believes the client address in `X-Forwarded-For`.
 - **Processes on a developer's machine.** The local editor has no sign-in. It listens only on loopback and answers only to `localhost`, `127.0.0.1` and `[::1]`.
 
 ## Risks Mica accepts
 
 - **Removal at the provider applies at the next sign-in.** Mica checks the provider's claims when a person signs in. A person you remove from a group at the provider keeps working until the session ends: at most 8 hours, or 4 hours without activity, by default. To stop a person at once, use `MICA_ADMIT_SUBJECTS` or change the rules: Mica checks the rules on every request.
-- **No server-side session revocation.** Sessions are encrypted cookies. Mica has no database. To end every session at once, change `SESSION_SECRET` and restart. Every editor must then sign in again.
+- **No server-side session revocation.** Sessions are encrypted cookies. Mica has no database. To end every session at once, change `MICA_SESSION_SECRET` and restart. Every editor must then sign in again.
 - **The local editor is open to local processes.** Any process on the developer's machine can call the local API. Such a process can already change the files in the working tree.
 - **A publish is immediate.** There is no review step. If you need one, point Mica at a staging branch and merge on your own schedule.
 
@@ -44,9 +44,9 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 
 1. Put Mica behind a reverse proxy with HTTPS.
 2. Set `MICA_PUBLIC_URL` to the `https://` address. In production, Mica refuses anything else.
-3. Set `TRUST_PROXY=true` only behind a proxy that you control. Otherwise, clients can spoof their address and avoid the rate limit.
+3. Set `MICA_TRUST_PROXY=true` only behind a proxy that you control. Otherwise, clients can spoof their address and avoid the rate limit.
 4. Give the repository token access to the content repository only: on GitHub, a fine-grained token with Contents read and write on that one repository; on GitLab, a project access token with `read_repository` and `write_repository`.
-5. Generate `SESSION_SECRET` with at least 32 random characters, for example `openssl rand -base64 48`, and keep it out of Git.
+5. Generate `MICA_SESSION_SECRET` with at least 32 random characters, for example `openssl rand -base64 48`, and keep it out of Git.
 6. Admit as few people as you need. Prefer a group at your provider to a whole domain.
 7. Keep the image up to date. Only the latest release gets security fixes.
 8. Back up the data volume. It holds the clone and the drafts. Publish first or stop the container, then copy the volume.
