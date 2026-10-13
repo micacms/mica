@@ -13,7 +13,7 @@
  * the editor, and moves there when the packages split.
  */
 
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import {
   Files,
@@ -34,7 +34,44 @@ const route = useRoute();
 const router = useRouter();
 const session = useSession();
 const staging = useStaging();
-const { collections, singletons } = useSchema();
+const { collections, singletons, schema } = useSchema();
+
+function reloadPage(): void {
+  // The unsaved-changes guard asks first when a form has edits.
+  window.location.reload();
+}
+
+/** The server uses a newer content model than this page shows. */
+const modelChanged = computed(() => {
+  const serving = staging.status.value?.model;
+  return serving !== undefined && schema.value !== null && serving.revision !== schema.value.revision;
+});
+
+/**
+ * Minutes until the session ends, when that is soon. Each response names the
+ * end, so the check asks nobody: asking would extend an idle session, and the
+ * idle limit must still end a session in an unattended tab.
+ */
+const endsInMinutes = ref<number | null>(null);
+const WARN_MS = 5 * 60_000;
+
+function checkExpiry(): void {
+  const at = session.expiresAt.value;
+  const left = at && !session.ended.value ? Date.parse(at) - Date.now() : null;
+  endsInMinutes.value = left !== null && left > 0 && left < WARN_MS ? Math.max(1, Math.round(left / 60_000)) : null;
+}
+
+const expiryTimer = window.setInterval(checkExpiry, 30_000);
+onUnmounted(() => window.clearInterval(expiryTimer));
+
+async function stayIn(): Promise<void> {
+  await session.extend();
+  checkExpiry();
+}
+
+function signInAgain(): void {
+  session.signIn(`/admin${route.fullPath}`);
+}
 
 const menuOpen = ref(false);
 
@@ -189,6 +226,22 @@ async function signOut(): Promise<void> {
       </header>
 
       <main class="min-w-0 flex-1 bg-surface">
+        <div v-if="session.ended.value" role="alert" class="flex flex-wrap items-center gap-3 border-b border-line bg-danger-soft px-4 py-2.5 text-sm sm:px-6">
+          <span class="min-w-0 flex-1">
+            Your session ended, so Mica cannot save. Your changes stay in this tab: sign in again, and you can restore them.
+          </span>
+          <button type="button" class="btn-primary" @click="signInAgain">Sign in again</button>
+        </div>
+        <div v-else-if="endsInMinutes !== null" role="status" class="flex flex-wrap items-center gap-3 border-b border-line bg-warning-soft px-4 py-2.5 text-sm sm:px-6">
+          <span class="min-w-0 flex-1">
+            Your session ends in {{ endsInMinutes }} minute{{ endsInMinutes === 1 ? "" : "s" }}. Save your work.
+          </span>
+          <button type="button" class="btn-secondary" @click="stayIn">Stay signed in</button>
+        </div>
+        <div v-if="modelChanged" role="status" class="flex flex-wrap items-center gap-3 border-b border-line bg-warning-soft px-4 py-2.5 text-sm sm:px-6">
+          <span class="min-w-0 flex-1">The content model changed: there are new or changed fields. Save your work, then load the page again.</span>
+          <button type="button" class="btn-secondary" @click="reloadPage">Load again</button>
+        </div>
         <slot />
       </main>
     </div>

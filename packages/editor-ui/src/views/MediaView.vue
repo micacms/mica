@@ -2,24 +2,27 @@
 /**
  * Media library — a view of the files in the content repository.
  *
- * See what is there, and add to it. Two things it deliberately does not offer:
+ * See what is there, add to it, and delete what nothing uses. A delete is
+ * refused while an entry or a settings page uses the file, in a field or in
+ * rich text, and it waits on the Publish page like every change. Two things it
+ * deliberately does not offer:
  *
  *   - **Alt text.** Not a property of a file: the same photograph means
  *     different things in different places, so it belongs to the field that
  *     uses the image, next to the content it describes.
- *   - **Rename and delete.** A media file is referenced by its path, so moving
- *     or removing one is a change to every entry that points at it — a job for
- *     a commit and a review, not for a button that quietly leaves gaps on the
- *     website.
+ *   - **Rename.** A media file is referenced by its path, so moving one is a
+ *     change to every entry that points at it.
  *
  * Files are grouped by directory, which is meaningful here: an entry's images
  * sit beside the entry.
  */
 
-import { computed, onMounted, ref } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 
-import { api, ApiError, type MediaItem } from "@/api";
+import { api, ApiError, type MediaItem, type Referrer } from "@/api";
+import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import { useSchema } from "@/stores/schema";
 import { formatBytes } from "@/lib/format";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
@@ -33,6 +36,90 @@ const search = ref("");
 const dragging = ref(false);
 const selected = ref<MediaItem | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
+const schema = useSchema();
+const staging = useStaging();
+
+/** Files ticked for a delete. */
+const chosen = ref(new Set<string>());
+function toggleChosen(path: string): void {
+  const next = new Set(chosen.value);
+  if (!next.delete(path)) next.add(path);
+  chosen.value = next;
+}
+
+/** Where the selected file is used, for the details panel. */
+const usedBy = ref<Referrer[] | null>(null);
+/** Why the use cannot be checked, such as a collection that cannot be read. */
+const usageProblem = ref<string | null>(null);
+watch(selected, async (item) => {
+  usedBy.value = null;
+  usageProblem.value = null;
+  if (!item) return;
+  try {
+    const { uses, unreadable } = await api.media.usage([item.path]);
+    // A slower answer for a file selected before must not show for this one.
+    if (selected.value?.path !== item.path) return;
+    if (unreadable.length > 0) usageProblem.value = `Mica cannot read ${unreadable.join(", ")}.`;
+    else usedBy.value = uses[item.path] ?? [];
+  } catch (error) {
+    if (selected.value?.path === item.path) usageProblem.value = error instanceof ApiError ? error.message : "Could not check.";
+  }
+});
+
+/** Files that were never published: a delete removes them for good. */
+const neverPublished = computed(
+  () => new Set((staging.status.value?.changes ?? []).filter((change) => change.kind === "create").map((change) => change.path)),
+);
+
+/** Files that the last delete could not remove, with what uses them. */
+const blocked = ref<Array<{ path: string; users: Referrer[] }>>([]);
+const confirming = ref<string[] | null>(null);
+const deleting = ref(false);
+
+function linkTo(item: Referrer) {
+  return item.kind === "entry"
+    ? { name: "entry", params: { collection: item.collection, slug: item.slug } }
+    : { name: "singleton", params: { name: item.name } };
+}
+
+function describe(item: Referrer): string {
+  return item.kind === "entry" ? `${item.title} (${schema.collection(item.collection)?.label ?? item.collection})` : item.title;
+}
+
+/** Checks where the files are used first: a used file is named, not deleted. */
+async function askDelete(paths: string[]): Promise<void> {
+  blocked.value = [];
+  try {
+    const { uses, unreadable } = await api.media.usage(paths);
+    if (unreadable.length > 0) {
+      toast.error(`Mica cannot read ${unreadable.join(", ")}, so it cannot tell whether the files are used.`);
+      return;
+    }
+    blocked.value = paths.flatMap((path) => ((uses[path] ?? []).length > 0 ? [{ path, users: uses[path]! }] : []));
+  } catch (error) {
+    toast.error(error instanceof ApiError ? error.message : "Could not check where the files are used.");
+    return;
+  }
+  if (blocked.value.length === 0) confirming.value = paths;
+}
+
+async function remove(): Promise<void> {
+  const paths = confirming.value;
+  if (!paths) return;
+  deleting.value = true;
+  try {
+    await api.media.remove(paths);
+    toast.success(`Deleted ${paths.length} file${paths.length === 1 ? "" : "s"}.`, "They leave the website when you publish.");
+    confirming.value = null;
+    chosen.value = new Set();
+    void staging.refresh();
+    await load();
+  } catch (error) {
+    toast.error(error instanceof ApiError ? error.message : "Could not delete.");
+  } finally {
+    deleting.value = false;
+  }
+}
 
 const isImage = (item: MediaItem): boolean => item.mimeType.startsWith("image/");
 
@@ -86,7 +173,7 @@ async function upload(files: FileList | File[] | null): Promise<void> {
   try {
     const { items: uploaded } = await api.media.upload(list);
     toast.success(`Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}.`);
-    void useStaging().refresh();
+    void staging.refresh();
     await load();
     selected.value = items.value.find((item) => item.path === uploaded[0]?.path) ?? null;
   } catch (error) {
@@ -144,6 +231,26 @@ async function copyPath(path: string): Promise<void> {
         class="input max-w-64"
         aria-label="Search media"
       />
+      <template v-if="chosen.size > 0">
+        <span class="text-sm text-muted">{{ chosen.size }} selected</span>
+        <button type="button" class="btn-danger" @click="askDelete([...chosen])">Delete</button>
+        <button type="button" class="btn-ghost" @click="chosen = new Set()">Clear selection</button>
+      </template>
+    </div>
+
+    <div v-if="blocked.length" role="alert" class="mb-3 rounded-md border border-warning/15 bg-warning-soft p-4">
+      <p class="text-sm font-medium text-warning">
+        Not deleted: {{ blocked.length === 1 ? "this file is" : "these files are" }} still used
+      </p>
+      <ul class="mt-1.5 space-y-1 text-xs">
+        <li v-for="item in blocked" :key="item.path">
+          <span class="font-mono">{{ item.path.split("/").at(-1) }}</span> is used by
+          <template v-for="(user, index) in item.users" :key="index">
+            {{ index > 0 ? ", " : "" }}<RouterLink :to="linkTo(user)" class="underline underline-offset-2">{{ describe(user) }}</RouterLink>
+          </template>.
+        </li>
+      </ul>
+      <p class="mt-1.5 text-xs text-muted">Remove the file there first, then delete it here.</p>
     </div>
 
     <p v-if="loading" class="py-12 text-center text-sm text-muted">Loading…</p>
@@ -163,7 +270,14 @@ async function copyPath(path: string): Promise<void> {
           <h2 class="mb-2 font-mono text-xs text-muted">{{ folder }}</h2>
 
           <ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            <li v-for="item in files" :key="item.path">
+            <li v-for="item in files" :key="item.path" class="relative">
+              <input
+                type="checkbox"
+                class="absolute left-2 top-2 z-10 h-4 w-4"
+                :checked="chosen.has(item.path)"
+                :aria-label="`Select ${item.filename}`"
+                @change="toggleChosen(item.path)"
+              />
               <button
                 type="button"
                 :aria-pressed="selected?.path === item.path"
@@ -238,6 +352,18 @@ async function copyPath(path: string): Promise<void> {
           <p class="mt-1 break-all font-mono text-[11px]">{{ selected.path }}</p>
         </div>
 
+        <div class="mt-3 border-t border-line pt-3">
+          <p class="field-label">Used by</p>
+          <p v-if="usageProblem" class="mt-1 text-xs text-warning">{{ usageProblem }}</p>
+          <p v-else-if="usedBy === null" class="mt-1 text-xs text-muted">Checking…</p>
+          <p v-else-if="usedBy.length === 0" class="mt-1 text-xs text-muted">Nothing uses this file.</p>
+          <ul v-else class="mt-1 space-y-0.5 text-xs">
+            <li v-for="(user, index) in usedBy" :key="index">
+              <RouterLink :to="linkTo(user)" class="underline underline-offset-2">{{ describe(user) }}</RouterLink>
+            </li>
+          </ul>
+        </div>
+
         <div class="mt-3 flex gap-2">
           <button type="button" class="btn-secondary flex-1" @click="copyPath(selected.path)">
             Copy path
@@ -251,7 +377,37 @@ async function copyPath(path: string): Promise<void> {
             Open
           </a>
         </div>
+        <button
+          type="button"
+          class="btn-danger mt-2 w-full"
+          :disabled="usedBy === null || usedBy.length > 0"
+          @click="askDelete([selected.path])"
+        >
+          Delete this file
+        </button>
+        <p v-if="usedBy && usedBy.length > 0" class="mt-1 text-xs text-muted">Remove it where it is used first.</p>
       </aside>
     </div>
   </div>
+
+  <ConfirmDialog
+    :open="confirming !== null"
+    :title="`Delete ${confirming?.length === 1 ? 'this file' : `${confirming?.length} files`}?`"
+    confirm-label="Delete"
+    destructive
+    :busy="deleting"
+    @cancel="confirming = null"
+    @confirm="remove"
+  >
+    <p>
+      Nothing uses {{ confirming?.length === 1 ? "it" : "them" }}. {{ confirming?.length === 1 ? "It leaves" : "They leave" }}
+      the website when you publish. Until then, Discard on the Publish page brings
+      {{ confirming?.length === 1 ? "it" : "them" }} back.
+    </p>
+    <p v-if="confirming?.some((path) => neverPublished.has(path))" class="mt-2 text-warning">
+      {{ confirming.filter((path) => neverPublished.has(path)).map((path) => path.split("/").at(-1)).join(", ") }}
+      {{ confirming.filter((path) => neverPublished.has(path)).length === 1 ? "was" : "were" }} never published: deleting
+      cannot be undone.
+    </p>
+  </ConfirmDialog>
 </template>

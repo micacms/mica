@@ -2,7 +2,7 @@ import { createApp } from "vue";
 
 import App from "@/App.vue";
 import { router } from "@/router";
-import { ApiError } from "@/api";
+import { ApiError, whenSessionExpiry, whenUnauthenticated } from "@/api";
 import { useSession } from "@/stores/session";
 import { useToast } from "@/stores/toast";
 
@@ -10,16 +10,16 @@ import "@/style.css";
 
 const app = createApp(App);
 
+// A 401 during work keeps the page and its unsaved changes; the shell offers to sign in again.
+whenUnauthenticated(() => useSession().markEnded());
+whenSessionExpiry((at) => useSession().noteExpiry(at));
+
 /**
- * Anything that escapes a component's own handling lands here. A 401 means the
- * session ended mid-session, which is a redirect rather than an error message.
+ * Anything that escapes a component's own handling lands here. A 401 is the
+ * session's end, which the shell already shows.
  */
 app.config.errorHandler = (error) => {
-  if (error instanceof ApiError && error.isUnauthenticated) {
-    useSession().clear();
-    void router.push({ name: "login" });
-    return;
-  }
+  if (error instanceof ApiError && error.isUnauthenticated) return;
 
   console.error(error);
   useToast().error(

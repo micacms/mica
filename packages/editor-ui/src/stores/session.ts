@@ -18,6 +18,12 @@ const identity = ref<Identity | null>(null);
 const active = ref(false);
 const checked = ref(false);
 const authConfig = ref<AuthConfig | null>(null);
+/** When the session ends, as the server last said. Null without sign-in. */
+const expiresAt = ref<string | null>(null);
+/** The session ended while the editor was working: the page stays, and offers to sign in again. */
+const ended = ref(false);
+/** A sign-in redirect is under way: the forms have kept their changes, so leaving is safe. */
+const leaving = ref(false);
 
 export function useSession() {
   return {
@@ -31,6 +37,9 @@ export function useSession() {
     config: computed(() => authConfig.value),
     /** True only where there is a provider, and therefore something to show. */
     showsIdentity: computed(() => authConfig.value?.authRequired === true),
+    expiresAt: computed(() => expiresAt.value),
+    ended: computed(() => ended.value),
+    leaving: computed(() => leaving.value),
 
     /** Restores the session on a page load. Never throws. */
     async restore(): Promise<void> {
@@ -49,7 +58,9 @@ export function useSession() {
 
         const session = await api.auth.me();
         identity.value = session.identity;
+        expiresAt.value = session.expiresAt;
         active.value = true;
+        ended.value = false;
       } catch (error) {
         if (!(error instanceof ApiError) || !error.isUnauthenticated) {
           console.error("Failed to restore session", error);
@@ -69,7 +80,28 @@ export function useSession() {
      * cookie already set, and `restore` picks it up on the next page load.
      */
     signIn(returnTo = "/admin/"): void {
+      leaving.value = true;
       window.location.href = api.auth.signInUrl(returnTo);
+    },
+
+    /** Asks the server again, which also extends an idle session. False when it has ended. */
+    async extend(): Promise<boolean> {
+      try {
+        expiresAt.value = (await api.auth.me()).expiresAt;
+        return true;
+      } catch {
+        return false;
+      }
+    },
+
+    /** The end of the session, as the last response named it. */
+    noteExpiry(at: string): void {
+      expiresAt.value = at;
+    },
+
+    /** A request came back 401 during work: keep the page, and say so. */
+    markEnded(): void {
+      if (active.value && authConfig.value?.authRequired) ended.value = true;
     },
 
     async signOut(): Promise<void> {
@@ -87,11 +119,5 @@ export function useSession() {
       if (endSession) window.location.href = endSession;
     },
 
-    /** Called when any request comes back 401, so the UI drops to sign-in. */
-    clear(): void {
-      identity.value = null;
-      active.value = false;
-      checked.value = true;
-    },
   };
 }

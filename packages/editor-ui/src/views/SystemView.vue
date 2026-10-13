@@ -81,7 +81,7 @@ function report(): string {
       ? [
           `Last sync ${data.repository.sync.lastSyncAt ?? "never"}` +
             (data.repository.sync.error ? `, failing since ${data.repository.sync.error.since}: ${data.repository.sync.error.message}` : ""),
-          ...(data.repository.sync.restartRequired ? ["Restart needed: the content model changed"] : []),
+          ...(data.repository.sync.restartRequired ? ["Restart needed: the Git attributes changed"] : []),
           ...(data.repository.sync.refused ? [`Last publication refused: ${data.repository.sync.refused.reason}`] : []),
         ]
       : []),
@@ -171,10 +171,17 @@ async function copyReport(): Promise<void> {
 
       <!-- --------------------------------------------------- content model -->
 
+      <div v-if="info.schema.warning" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
+        <p class="text-sm font-medium text-warning">A newer content model cannot be read</p>
+        <p class="mt-1 text-xs text-muted">
+          Mica keeps using the model below until the new one is fixed. {{ info.schema.warning }}
+        </p>
+      </div>
+
       <section class="card p-4" aria-labelledby="model-heading">
         <h2 id="model-heading" class="text-sm font-semibold">Content model</h2>
         <p class="mt-1 text-xs text-muted">
-          The schema this server was handed at startup. The same file describes the model to the
+          The model in use, from .mica/schema.json. Mica loads a new one when that file changes. The same file describes the model to the
           Astro build, so the editor and the website cannot disagree about it.
         </p>
 
@@ -322,7 +329,7 @@ async function copyReport(): Promise<void> {
           v-if="info.repository.sync?.restartRequired"
           class="mt-3 rounded-md border border-warning/15 bg-warning-soft px-4 py-3 text-xs text-warning"
         >
-          Restart needed: the content model changed in the repository. Editing goes on; publishing
+          Restart needed: the Git attributes changed in the repository. Editing goes on; publishing
           waits for the restart.
         </p>
         <p

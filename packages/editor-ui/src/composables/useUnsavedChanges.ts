@@ -12,6 +12,8 @@
 import { computed, onMounted, onUnmounted, ref, type ComputedRef, type Ref } from "vue";
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router";
 
+import { useSession } from "@/stores/session";
+
 const PROMPT = "You have unsaved changes. Leave without saving?";
 
 export interface UnsavedChanges {
@@ -36,9 +38,11 @@ export function useUnsavedChanges(values: Ref<Record<string, unknown>>): Unsaved
     guarded.value = false;
   }
 
-  // The browser's own prompt is the only thing that can stop a tab close.
+  // The browser's own prompt is the only thing that can stop a tab close. A sign-in
+  // redirect needs none: the form kept its changes in this tab (`useKeptChanges`).
+  const session = useSession();
   function beforeUnload(event: BeforeUnloadEvent): void {
-    if (dirty.value) event.preventDefault();
+    if (dirty.value && !session.leaving.value) event.preventDefault();
   }
 
   onMounted(() => window.addEventListener("beforeunload", beforeUnload));

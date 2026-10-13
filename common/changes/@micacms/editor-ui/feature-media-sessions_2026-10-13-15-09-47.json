@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "When the session ends, the page stays and offers to sign in again; entry and settings forms keep their unsaved changes in the tab and offer to restore them after the sign-in; a warning comes five minutes before the end",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor-ui",
+  "email": "alexander@muedespacher.ch"
+}
