@@ -106,7 +106,7 @@ projects: collection({
 
 Every collection needs a slug field: it is the entry's identity in the
 repository and its address on the website. That is the field that `slugField`
-names, else the first `slug()` field.
+names. If there is none, it is the first `slug()` field.
 
 Singletons take `label`, `description` and `fields`, and nothing else.
 
@@ -219,10 +219,11 @@ write: entries are JSON files validated against whatever the model currently
 says.
 
 The exception is a change of layout. The first `richText()` or `media()` field
-in a collection moves its entries from `<slug>.json` to `<slug>/index.json`, and
-removing the last one moves them back. The existing entries stay in the old
-layout, and Mica and the website do not read them. Run `npx mica check`: it
-names each entry in the wrong layout. Move those files before you commit.
+in a collection changes where Mica and the website look for its entries: in
+`<slug>/index.json`, not in `<slug>.json`. Removing the last such field changes
+it back. A singleton changes the same way. The files do not move, so Mica and
+the website do not read the existing entries. Run `npx mica check`: it names
+each file in the wrong layout. Move those files before you commit.
 
 Removing a field leaves its value in the files until each entry is saved again.
 Nothing reads it, and the next save drops it.
