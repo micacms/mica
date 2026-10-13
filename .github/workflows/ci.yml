@@ -86,6 +86,9 @@ jobs:
       - name: Assert the published content model is committed
         run: git diff --exit-code examples/muster-consulting/content/.mica/schema.json
 
+      - name: Check the example's content
+        run: node apps/local-editor/dist/cli.js check examples/muster-consulting/content
+
       # The public website is built here rather than only on Vercel, so that a
       # pull request fails on a broken site before it can reach main — Vercel
       # deploys whatever main contains, without consulting this workflow.
