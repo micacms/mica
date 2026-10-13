@@ -17,7 +17,7 @@
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, relative, sep } from "node:path";
+import { dirname, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -44,7 +44,7 @@ import { fileSystemSource } from "@micacms/core/node";
 import type { ImageMetadata } from "astro";
 import { z } from "zod";
 
-import { imagePathsFromEntry } from "./images.js";
+import { imagePathsFromEntry, richTextImageSources } from "./images.js";
 import { manifestFor } from "./manifest.js";
 import { DEFAULT_CONTENT_ROOT, resolveContentRoot } from "./root.js";
 
@@ -99,14 +99,29 @@ export interface MicaMeta {
   collection: string;
   /** Index in the collection's order, manual when `_order.json` says so. */
   position: number;
+  /** The images in the entry's rich text, for `renderRichText(text, { images })`. */
+  images: RichTextImage[];
 }
 
-const metaSchema = z.object({
-  id: z.string(),
-  slug: z.string(),
-  collection: z.string(),
-  position: z.number(),
-});
+/** An image in rich text: the path as Markdoc writes it, and the image that Astro made of it. */
+export interface RichTextImage {
+  path: string;
+  src: ImageMetadata;
+}
+
+/** Astro's `image()` resolves each `src`, as it does for an image field. */
+const imagesSchema = (image: () => z.ZodType) => z.array(z.object({ path: z.string(), src: image() }));
+
+const metaSchema = (image: () => z.ZodType) =>
+  z.object({
+    id: z.string(),
+    slug: z.string(),
+    collection: z.string(),
+    position: z.number(),
+    images: imagesSchema(image),
+  });
+
+type ReferenceCheck = ReturnType<typeof createReferenceCheck>;
 
 /** What a document looks like inside Astro: the payload plus `_mica`. */
 export type AstroDocument<T> = T & { _mica: MicaMeta };
@@ -227,15 +242,18 @@ export function micaCollections<S extends Site>(
   };
 
   /** Warns about broken relations and missing files, or fails the build with `strict`. */
+  /** The images of a document's rich text whose files exist, for `image()`. */
+  const imagesOf = async (check: ReferenceCheck, fields: FieldMap, data: Record<string, unknown>, dataFile: string) =>
+    richTextImageSources((await check.richTextImages(fields, data, posix.dirname(dataFile))).found, dataFile);
+
   const checkReferences = async (
     context: LoaderContext,
-    source: ContentSource,
-    documents: Array<{ label: string; fields: FieldMap; data: Record<string, unknown> }>,
+    check: ReferenceCheck,
+    documents: Array<{ label: string; fields: FieldMap; data: Record<string, unknown>; folder: string }>,
   ): Promise<void> => {
-    const check = createReferenceCheck(site, source);
     const problems: string[] = [];
-    for (const { label, fields, data } of documents) {
-      for (const issue of await check.issues(fields, data)) problems.push(`${label}: ${issue.path}: ${issue.message}`);
+    for (const { label, fields, data, folder } of documents) {
+      for (const issue of await check.issues(fields, data, folder)) problems.push(`${label}: ${issue.path}: ${issue.message}`);
     }
     if (problems.length === 0) return;
     if (options.strict) throw new Error(`Broken references:\n  ${problems.join("\n  ")}`);
@@ -290,12 +308,13 @@ export function micaCollections<S extends Site>(
   for (const [name, def] of Object.entries(site.collections) as [string, Collection][]) {
     collections[name] = {
       type: "content_layer",
-      schema: ({ image }) => fieldsSchema(def.fields, { image }).extend({ _mica: metaSchema }),
+      schema: ({ image }) => fieldsSchema(def.fields, { image }).extend({ _mica: metaSchema(image) }),
       loader: {
         name: `mica:${name}`,
         load: async (context) => {
           const read = async (): Promise<void> => {
             const source = sourceFor(context);
+            const check = createReferenceCheck(site, source);
             const entries = await guard(context, source, () => readCollection(source, def, name));
 
             // A full replace, not a merge: an entry deleted from the repository
@@ -303,14 +322,16 @@ export function micaCollections<S extends Site>(
             context.store.clear();
 
             for (const entry of entries) {
-              const meta: MicaMeta = {
+              const file = entryFile(context, def.fields, name, entry.slug);
+              // `images` holds paths here; the schema's `image()` makes them images.
+              const meta = {
                 id: entry.slug,
                 slug: entry.slug,
                 collection: name,
                 position: entry.position,
+                images: await imagesOf(check, def.fields, entry.data, file.inContent),
               };
 
-              const file = entryFile(context, def.fields, name, entry.slug);
               const data = await draftTolerant(context, `${name}/${entry.slug}`, () =>
                 context.parseData({
                   id: entry.slug,
@@ -329,8 +350,13 @@ export function micaCollections<S extends Site>(
 
             await checkReferences(
               context,
-              source,
-              entries.map((entry) => ({ label: `${name}/${entry.slug}`, fields: def.fields, data: entry.data })),
+              check,
+              entries.map((entry) => ({
+                label: `${name}/${entry.slug}`,
+                fields: def.fields,
+                data: entry.data,
+                folder: posix.dirname(entryFile(context, def.fields, name, entry.slug).inContent),
+              })),
             );
             context.logger.info(`Loaded ${entries.length} ${entries.length === 1 ? "entry" : "entries"} of "${def.label}"`);
           };
@@ -348,12 +374,13 @@ export function micaCollections<S extends Site>(
   for (const [name, def] of Object.entries(site.singletons) as [string, Singleton][]) {
     collections[name] = {
       type: "content_layer",
-      schema: ({ image }) => fieldsSchema(def.fields, { image }),
+      schema: ({ image }) => fieldsSchema(def.fields, { image }).extend({ _mica: z.object({ images: imagesSchema(image) }) }),
       loader: {
         name: `mica:${name}`,
         load: async (context) => {
           const read = async (): Promise<void> => {
             const source = sourceFor(context);
+            const check = createReferenceCheck(site, source);
             const data = await guard(context, source, () => readSingleton(source, def, name));
 
             context.store.clear();
@@ -365,12 +392,16 @@ export function micaCollections<S extends Site>(
               return;
             }
 
-            await checkReferences(context, source, [{ label: name, fields: def.fields, data }]);
             const file = entryFile(context, def.fields, name);
+            await checkReferences(context, check, [{ label: name, fields: def.fields, data, folder: posix.dirname(file.inContent) }]);
+            const images = await imagesOf(check, def.fields, data, file.inContent);
             const parsed = await draftTolerant(context, name, () =>
               context.parseData({
                 id: name,
-                data: imagePathsFromEntry(def.fields, data, file.inContent),
+                data: {
+                  ...imagePathsFromEntry(def.fields, data, file.inContent),
+                  _mica: { images },
+                },
                 ...(file.inProject ? { filePath: file.inProject } : {}),
               }),
             );
@@ -526,7 +557,7 @@ export type CollectionDocument<
 export type SingletonDocument<
   S extends Site,
   K extends keyof S["singletons"],
-> = InferSingleton<S["singletons"][K], ImageMetadata>;
+> = InferSingleton<S["singletons"][K], ImageMetadata> & { _mica: { images: RichTextImage[] } };
 
 export { manifestFor } from "./manifest.js";
 export { DEFAULT_CONTENT_ROOT, resolveContentRoot };

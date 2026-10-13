@@ -14,16 +14,19 @@
  * be readable in a diff and safe to render into a static site.
  */
 
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, inject, onBeforeUnmount, ref, watch } from "vue";
 
 import { EditorContent, useEditor } from "@tiptap/vue-3";
 
-import type { RichTextFeature, RichTextField } from "@micacms/core";
+import { isWebAddress, richTextFeatures, type RichTextFeature, type RichTextField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
+import { api, type MediaItem } from "@/api";
 import InputDialog from "@/components/InputDialog.vue";
+import MediaPicker from "@/components/MediaPicker.vue";
 import { useField, type FieldProps } from "@/composables/useField";
 import { linkProblem } from "@/lib/links";
+import { MEDIA_FOLDER } from "@/lib/media-folder";
 import {
   equivalentMarkdoc,
   fromMarkdoc,
@@ -39,16 +42,7 @@ const emit = defineEmits<{ "update:modelValue": [string | null] }>();
 const field = computed(() => props.field as RichTextField);
 const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 
-const DEFAULT_TOOLBAR: RichTextFeature[] = [
-  "bold",
-  "italic",
-  "heading",
-  "bulletList",
-  "orderedList",
-  "link",
-];
-
-const toolbar = computed(() => field.value.toolbar ?? DEFAULT_TOOLBAR);
+const toolbar = computed(() => richTextFeatures(field.value.toolbar));
 const enabled = (feature: RichTextFeature) => toolbar.value.includes(feature);
 
 const source = computed(() => (typeof props.modelValue === "string" ? props.modelValue : ""));
@@ -88,19 +82,47 @@ function textboxAttributes(): Record<string, string> {
   return attributes;
 }
 
+/** The folder of the entry, such as `news/hello`, where its `media/` folder is. Null for a new entry without a URL. */
+const mediaFolder = inject(MEDIA_FOLDER, undefined);
+const pickerFolder = computed(() => mediaFolder?.value ?? null);
+const entryFolder = computed(() => pickerFolder.value?.path.replace(/\/media$/, "") ?? null);
+
+/** The preview address of a path as rich text stores it: from the entry's folder, or from the content root with `/`. */
+function imageUrl(src: string): string | null {
+  if (isWebAddress(src)) return null;
+  let path: string;
+  try {
+    // Markdown keeps a space or a letter outside ASCII percent-encoded; `api.media.url` encodes it once.
+    path = decodeURI(src);
+  } catch {
+    path = src;
+  }
+  if (path.startsWith("/")) return api.media.url(path.slice(1));
+  return entryFolder.value ? api.media.url(`${entryFolder.value}/${path}`) : null;
+}
+
+/** Why the image button is off, or null when it works. */
+const imageBlocked = computed(() => {
+  if (!pickerFolder.value || pickerFolder.value.isNew) return "Save the entry once, then add images.";
+  return null;
+});
+
 const editor = useEditor({
   content: readOnlyReason.value ? "" : fromMarkdoc(source.value),
   editable: !(locked.value || readOnlyReason.value),
   // The base styles are in style.css; an injected <style> tag would break the CSP.
   injectCSS: false,
 
-  extensions: createRichTextExtensions(toolbar.value),
+  extensions: createRichTextExtensions(toolbar.value, { imageUrl }),
   enableInputRules: inputRules(toolbar.value),
   enablePasteRules: inputRules(toolbar.value),
 
   editorProps: {
     // A function, so that ProseMirror reads the current hint, error and state at each update.
     attributes: () => textboxAttributes(),
+    // An image must be a file in the media library: one pasted from another page would point elsewhere.
+    // An image cut or copied in this editor carries its stored path and stays.
+    transformPastedHTML: (html) => html.replace(/<img\b(?![^>]*\bdata-mica-src=)[^>]*>/gi, ""),
   },
 
   onUpdate({ editor: instance }) {
@@ -141,8 +163,8 @@ watch(
     const current = instance.isEmpty ? "" : toMarkdoc(instance.getJSON() as ProseMirrorNode);
 
     if (!equivalentMarkdoc(incoming, current)) {
-      // `false` suppresses the update event, so this does not loop back.
-      instance.commands.setContent(fromMarkdoc(incoming), false);
+      // No update event, so this does not loop back.
+      instance.commands.setContent(fromMarkdoc(incoming), { emitUpdate: false });
     }
   },
 );
@@ -188,11 +210,72 @@ function removeLink(): void {
   editor.value?.chain().focus().extendMarkRange("link").unsetLink().run();
 }
 
+/* Images: the picker gives a file, then the dialog asks for its alt text. */
+
+const pickerOpen = ref(false);
+const imageDialog = ref({ open: false, src: "", alt: "", error: null as string | null, editing: false });
+
+function chooseImage(): void {
+  const instance = editor.value;
+  if (instance?.isActive("image")) {
+    const { src, alt } = instance.getAttributes("image") as { src?: string; alt?: string };
+    imageDialog.value = { open: true, src: src ?? "", alt: alt ?? "", error: null, editing: true };
+    return;
+  }
+  pickerOpen.value = true;
+}
+
+function onImageChosen(items: MediaItem[]): void {
+  const item = items[0];
+  if (!item) return;
+  // The entry's own files are stored from its folder, so the path stays right when its URL changes.
+  const folder = entryFolder.value;
+  const src = folder && item.path.startsWith(`${folder}/`) ? item.path.slice(folder.length + 1) : `/${item.path}`;
+  imageDialog.value = { open: true, src, alt: "", error: null, editing: false };
+}
+
+function applyImage(): void {
+  const { src, editing } = imageDialog.value;
+  const alt = imageDialog.value.alt.trim();
+  if (alt === "") {
+    imageDialog.value.error = "Describe what the image shows, for people who cannot see it.";
+    return;
+  }
+  // Markdown ends the alt text at a bracket.
+  if (/[[\]]/.test(alt)) {
+    imageDialog.value.error = "Use round brackets ( ) instead of square brackets [ ].";
+    return;
+  }
+  imageDialog.value.open = false;
+  const chain = editor.value?.chain().focus();
+  if (editing) chain?.updateAttributes("image", { alt }).run();
+  else chain?.setImage({ src, alt }).run();
+}
+
+/* Tables: a button inserts one; inside a table, a second row of buttons changes its rows and columns. */
+
+const inTable = computed(() => editor.value?.isActive("table") ?? false);
+
+const tableActions = computed(() => {
+  const instance = editor.value;
+  if (!instance) return [];
+  // The visible words are the accessible names; the title says where a row or column goes.
+  return [
+    { label: "Add row", title: "Add a row below this one", run: () => instance.chain().focus().addRowAfter().run() },
+    { label: "Add column", title: "Add a column to the right", run: () => instance.chain().focus().addColumnAfter().run() },
+    { label: "Delete row", title: "Delete this row", run: () => instance.chain().focus().deleteRow().run() },
+    { label: "Delete column", title: "Delete this column", run: () => instance.chain().focus().deleteColumn().run() },
+    { label: "Delete table", title: "Delete the whole table", run: () => instance.chain().focus().deleteTable().run() },
+  ];
+});
+
 interface ToolbarButton {
   feature: RichTextFeature;
   label: string;
   glyph: string;
   isActive: () => boolean;
+  /** Why the button is off here, or null. */
+  blocked?: () => string | null;
   run: () => void;
 }
 
@@ -271,6 +354,26 @@ const buttons = computed<ToolbarButton[]>(() => {
       isActive: () => false,
       run: () => instance.chain().focus().setHorizontalRule().run(),
     },
+    {
+      feature: "table",
+      label: "Table",
+      glyph: "▦",
+      isActive: () => false,
+      // A table cannot hold a table, and a list item cannot hold one in Markdown.
+      blocked: () => (instance.isActive("table") || instance.isActive("listItem") ? "Place the cursor outside a table or a list." : null),
+      run: () => instance.chain().focus().insertTable({ rows: 3, cols: 2, withHeaderRow: true }).run(),
+    },
+    {
+      feature: "image",
+      label: "Image",
+      glyph: "▣",
+      isActive: () => false,
+      blocked: () =>
+        instance.isActive("image")
+          ? null
+          : (imageBlocked.value ?? (instance.isActive("table") || instance.isActive("listItem") ? "Place the cursor outside a table or a list." : null)),
+      run: chooseImage,
+    },
   ];
 
   return all.filter((button) => enabled(button.feature));
@@ -318,10 +421,10 @@ const buttons = computed<ToolbarButton[]>(() => {
           v-for="button in buttons"
           :key="button.label"
           type="button"
-          :title="button.label"
-          :aria-label="button.label"
-          :aria-pressed="button.isActive()"
-          :disabled="locked"
+          :title="button.blocked?.() ?? button.label"
+          :aria-label="button.blocked?.() ? `${button.label}: ${button.blocked()}` : button.label"
+          :aria-pressed="button.feature === 'table' || button.feature === 'image' ? undefined : button.isActive()"
+          :disabled="locked || !!button.blocked?.()"
           :class="[
             'h-7 min-w-7 rounded px-1.5 text-xs font-semibold transition',
             button.isActive()
@@ -334,8 +437,46 @@ const buttons = computed<ToolbarButton[]>(() => {
         </button>
       </div>
 
+      <div
+        v-if="inTable && !locked"
+        class="flex flex-wrap items-center gap-0.5 border-b border-line bg-canvas/60 px-1.5 py-1"
+        role="toolbar"
+        :aria-label="`${label} table`"
+      >
+        <button
+          v-for="action in tableActions"
+          :key="action.label"
+          type="button"
+          :title="action.title"
+          class="h-7 rounded px-1.5 text-xs font-medium text-muted transition hover:bg-raised hover:text-ink"
+          @click="action.run()"
+        >
+          {{ action.label }}
+        </button>
+      </div>
+
       <EditorContent :editor="editor" />
     </div>
+
+    <MediaPicker
+      :open="pickerOpen"
+      accept="image"
+      :folder="pickerFolder"
+      @close="pickerOpen = false"
+      @choose="onImageChosen"
+    />
+
+    <InputDialog
+      v-model="imageDialog.alt"
+      :open="imageDialog.open"
+      :title="imageDialog.editing ? 'Alt text' : 'Add the image'"
+      label="Alt text"
+      hint="Say what the image shows, in one sentence. Screen readers read it, and search engines use it."
+      :error="imageDialog.error"
+      :confirm-label="imageDialog.editing ? 'Apply' : 'Add the image'"
+      @confirm="applyImage"
+      @cancel="imageDialog.open = false"
+    />
 
     <InputDialog
       v-model="linkDialog.href"

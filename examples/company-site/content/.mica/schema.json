@@ -44,16 +44,7 @@
         "body": {
           "kind": "richText",
           "label": "Content",
-          "toolbar": [
-            "bold",
-            "italic",
-            "heading",
-            "bulletList",
-            "orderedList",
-            "blockquote",
-            "link",
-            "horizontalRule"
-          ]
+          "toolbar": "full"
         },
         "sections": {
           "kind": "repeater",
@@ -217,7 +208,16 @@
         },
         "description": {
           "kind": "richText",
-          "label": "Description"
+          "label": "Description",
+          "toolbar": [
+            "bold",
+            "italic",
+            "heading",
+            "bulletList",
+            "orderedList",
+            "link",
+            "image"
+          ]
         },
         "location": {
           "kind": "object",

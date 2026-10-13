@@ -316,6 +316,33 @@ img.ProseMirror-separator {
   @apply my-5 border-t border-line;
 }
 
+.rich-text .ProseMirror table {
+  @apply w-full border-collapse text-sm;
+}
+
+.rich-text .ProseMirror th,
+.rich-text .ProseMirror td {
+  @apply border border-line px-2 py-1 text-left align-top;
+}
+
+.rich-text .ProseMirror th {
+  @apply bg-subtle font-semibold;
+}
+
+/* The cell that the cursor or a cell selection is in. */
+.rich-text .ProseMirror .selectedCell {
+  @apply bg-accent-soft;
+}
+
+.rich-text .ProseMirror img {
+  @apply max-h-80 max-w-full rounded-sm border border-line;
+}
+
+.rich-text .ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--mica-focus);
+  outline-offset: 2px;
+}
+
 .rich-text .ProseMirror p.is-editor-empty:first-child::before {
   content: attr(data-placeholder);
   @apply pointer-events-none float-left h-0 text-muted/70;

@@ -44,6 +44,24 @@ export function imagePathsFromEntry(
   return visit(fields, data);
 }
 
+/**
+ * The images of an entry's rich text whose files exist, each as Markdoc writes
+ * it (`path`) and as a path from the entry's data file (`src`), which `image()`
+ * resolves. `found` comes from the reference check of `@micacms/core`.
+ */
+export function richTextImageSources(
+  found: ReadonlyArray<{ target: string; path: string }>,
+  dataFile: string,
+): Array<{ path: string; src: string }> {
+  const folder = posix.dirname(dataFile);
+  const sources = new Map<string, string>();
+  for (const { target, path } of found) {
+    const relative = posix.relative(folder, path);
+    sources.set(target, relative.startsWith(".") ? relative : `./${relative}`);
+  }
+  return [...sources].map(([path, src]) => ({ path, src }));
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return value !== null && typeof value === "object" && !Array.isArray(value);
 }

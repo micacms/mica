@@ -1,4 +1,5 @@
 import { createApp } from "vue";
+import { config as zodConfig } from "zod";
 
 import App from "@/App.vue";
 import { router } from "@/router";
@@ -7,6 +8,9 @@ import { useSession } from "@/stores/session";
 import { useToast } from "@/stores/toast";
 
 import "@/style.css";
+
+// Zod tests once whether it may compile checks with `new Function`. The editor's CSP forbids that, and the test logs a violation.
+zodConfig({ jitless: true });
 
 const app = createApp(App);
 

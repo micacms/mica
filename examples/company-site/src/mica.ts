@@ -84,16 +84,7 @@ export const site = defineSite({
         }),
         body: richText({
           label: "Content",
-          toolbar: [
-            "bold",
-            "italic",
-            "heading",
-            "bulletList",
-            "orderedList",
-            "blockquote",
-            "link",
-            "horizontalRule",
-          ],
+          toolbar: "full",
         }),
         sections: repeater({
           label: "Extra sections",
@@ -196,7 +187,10 @@ export const site = defineSite({
             "strategy",
           ],
         }),
-        description: richText({ label: "Description" }),
+        description: richText({
+          label: "Description",
+          toolbar: ["bold", "italic", "heading", "bulletList", "orderedList", "link", "image"],
+        }),
         location: object({
           label: "Location",
           fields: {

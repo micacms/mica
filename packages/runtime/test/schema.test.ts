@@ -150,6 +150,21 @@ describe("checkSchema", () => {
     assert.equal(site.collections["pages"]?.defaultSort, undefined);
   });
 
+  it("keeps the toolbar features it knows, from a newer model, rather than refusing it", () => {
+    const raw = validSite();
+    const fields = raw.collections.pages.fields as Record<string, unknown>;
+    fields["body"] = { kind: "richText", toolbar: ["bold", "underline", "table"] };
+    fields["intro"] = { kind: "richText", toolbar: "maximal" };
+    fields["more"] = { kind: "object", fields: { text: { kind: "richText", toolbar: ["video"] } } };
+
+    const site = checkSchema(raw);
+    const loaded = site.collections["pages"]!.fields as Record<string, { toolbar?: unknown; fields?: Record<string, { toolbar?: unknown }> }>;
+
+    assert.deepEqual(loaded["body"]?.toolbar, ["bold", "table"]);
+    assert.equal(loaded["intro"]?.toolbar, undefined);
+    assert.deepEqual(loaded["more"]?.fields?.["text"]?.toolbar, []);
+  });
+
   it("keeps a default sort that names a real field", () => {
     const raw = validSite();
     (raw.collections.pages as Record<string, unknown>)["defaultSort"] = {

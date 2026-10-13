@@ -24,6 +24,51 @@ export interface RichTextOptions {
    * render at all.
    */
   config?: Config;
+  /**
+   * The images of the entry, `entry.data._mica.images`. An image in the text
+   * gets the address, width and height that Astro made for it. Without them,
+   * the path stays as written, which a browser cannot load.
+   */
+  images?: ReadonlyArray<{ path: string; src: { src: string; width?: number; height?: number } }>;
+}
+
+function decoded(path: string): string {
+  try {
+    return decodeURI(path);
+  } catch {
+    return path;
+  }
+}
+
+/** The configuration with an image node that uses the entry's images; a project's own image node wins. */
+function withImages(options: RichTextOptions): Config {
+  const config = options.config ?? {};
+  if (!options.images?.length) return config;
+  // Markdoc gives `src` percent-encoded (`z%C3%BCrich.jpg`); the path is as written. Both are compared decoded.
+  const byPath = new Map(options.images.map((image) => [decoded(image.path), image.src]));
+  return {
+    ...config,
+    nodes: {
+      image: {
+        attributes: { src: { type: String }, alt: { type: String }, title: { type: String } },
+        transform(node, nodeConfig) {
+          const attributes = node.transformAttributes(nodeConfig) as Record<string, unknown>;
+          const image = byPath.get(decoded(String(attributes["src"] ?? "")));
+          if (!image) return new Markdoc.Tag("img", attributes);
+          const { width, height } = image;
+          return new Markdoc.Tag("img", {
+            ...attributes,
+            src: image.src,
+            ...(width ? { width } : {}),
+            ...(height ? { height } : {}),
+            loading: "lazy",
+            decoding: "async",
+          });
+        },
+      },
+      ...config.nodes,
+    },
+  };
 }
 
 /**
@@ -47,7 +92,7 @@ export function transformRichText(
   source: string,
   options: RichTextOptions = {},
 ): RenderableTreeNode {
-  return Markdoc.transform(Markdoc.parse(source), options.config ?? {});
+  return Markdoc.transform(Markdoc.parse(source), withImages(options));
 }
 
 /**

@@ -19,7 +19,7 @@ Import the builders from `@micacms/core`. Each builder gives plain data, so the 
 | --- | --- | --- |
 | `text()` | A string. | `minLength`, `maxLength`, `placeholder`, `default`, `pattern` (a regular expression; since 0.6.0 it must match the whole value, with the `u` flag), `patternMessage` (0.7.0). |
 | `textarea()` | A string with line breaks. | `minLength`, `maxLength`, `rows`, `placeholder`, `default`. |
-| `richText()` | Markdoc, in a `<key>.mdoc` file beside the entry. | `toolbar`: a list from `bold`, `italic`, `strike`, `heading`, `bulletList`, `orderedList`, `blockquote`, `link`, `horizontalRule`. Also `maxLength`, `default`. |
+| `richText()` | Markdoc, in a `<key>.mdoc` file beside the entry. | `toolbar`: `"minimal"` (bold, italic, link), `"default"` (also headings and lists), `"full"` (also `strike`, `blockquote`, `horizontalRule`, `table`, `image`), or a list of these features (presets, `table` and `image`: 0.8.0). Also `maxLength`, `default`. |
 | `number()` | A number. | `min`, `max`, `step`, `integer`, `unit` (shown in the field, for example `"m²"`), `default`. |
 | `boolean()` | `true` or `false`, never empty. | `default`. |
 | `date()` | `"2026-10-13"`, or with `includeTime` a date and time with its offset. | `includeTime`, `min`, `max`, `default`. |

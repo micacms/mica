@@ -72,7 +72,7 @@ const project = await related("projects", relatedProject);
     }
 
     <div class="container-prose pb-8">
-      <RichText text={body} />
+      <RichText text={body} images={article.data._mica.images} />
 
       {
         project && (

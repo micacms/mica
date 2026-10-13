@@ -71,13 +71,13 @@ The command lists each key that it did not import, each id that gives the same s
 
 - **MDX components in a body.** Markdoc does not run them. Use a [Markdoc tag](/docs/recipes/), a field, or keep that collection in Astro.
 - **Raw HTML in a body.** Markdoc does not render it. Use Markdown, a Markdoc tag, or remove it.
-- **Footnotes, images and tables in a body.** Markdoc shows a footnote as text. An image or a table makes the whole rich-text field read-only in the editor, so editors cannot change that text. Use a paragraph and a link instead of a footnote, a `media()` field or a `repeater()` for images, and fields for a table.
+- **Footnotes, images and tables in a body.** Markdoc shows a footnote as text: use a paragraph and a link. The editor edits an image on a line of its own and a table without aligned columns. Move each image file into the entry's `media/` folder and write its path as `media/photo.jpg`. An image inside a line of text, or a table with aligned columns, makes the field read-only in the editor.
 - **Ids with folders** (`2024/hello`). They become flat slugs, so the URL can change. Keep the old URL with Astro `redirects`.
 - **Heading ids and code highlighting.** Markdoc does not add them. Add them in your rich-text component if your pages use them.
 
 ## 6. Change the pages, then compare
 
-- Replace `<Content />` from `render(entry)` with the HTML of `renderRichText(entry.data.body)`.
+- Replace `<Content />` from `render(entry)` with the HTML of `renderRichText(entry.data.body, { images: entry.data._mica.images })`.
 - Format and sort dates from the text `"2026-01-15"`.
 - Read an image with alt text as `{ src, alt }`: `<Image {...entry.data.cover} />`.
 - Sort a sortable collection by `data._mica.position`.

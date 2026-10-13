@@ -66,7 +66,7 @@ in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
 | --- | --- | --- |
 | `text()` | string | `minLength`, `maxLength`, `pattern` (must match the whole value), `patternMessage` (what the editor reads when it does not), `placeholder`, `default` |
 | `textarea()` | string | `minLength`, `maxLength`, `rows`, `placeholder`, `default` |
-| `richText()` | Markdoc in its own `.mdoc` file | `toolbar`, `maxLength`, `default` |
+| `richText()` | Markdoc in its own `.mdoc` file | `toolbar`: `"minimal"`, `"default"`, `"full"` (with tables and images), or a list of features; `maxLength`, `default` |
 | `number()` | number | `min`, `max`, `step`, `integer`, `unit`, `default` |
 | `boolean()` | boolean | `default` |
 | `date()` | `"YYYY-MM-DD"`, or an ISO timestamp with `includeTime: true` | `includeTime`, `min`, `max`, `default` |
@@ -226,6 +226,9 @@ const { cover } = article.data; // media({ accept: "image", alt: "required" })
 - Without `alt`, the field is the image itself: `<Image src={logo} alt="" />`.
 - A `media({ accept: "image", multiple: true })` field is an array of them.
 - On disk, the field still holds `media/cover.jpg`, or `{ path, alt }`.
+- An image in rich text (`![Alt](media/plan.png)`, from the entry's folder, or
+  `/media/logo.png` from the content root) needs the entry's images to get its
+  address: `renderRichText(entry.data.body, { images: entry.data._mica.images })`.
 - A `media()` without `accept: "image"`, for example a PDF, is a path from the
   content root: `news/hello-world/media/plan.pdf`. To link to it, use
   `import.meta.glob("../../content/**/*.pdf", { query: "?url", import: "default", eager: true })`.

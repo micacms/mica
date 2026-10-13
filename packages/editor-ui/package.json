@@ -38,10 +38,13 @@
     "@markdoc/markdoc": "^0.5.9",
     "@micacms/core": "workspace:*",
     "@tailwindcss/vite": "^4.0.0",
-    "@tiptap/core": "^2.11.0",
-    "@tiptap/extension-link": "^2.11.0",
-    "@tiptap/starter-kit": "^2.11.0",
-    "@tiptap/vue-3": "^2.11.0",
+    "@tiptap/core": "~3.31.4",
+    "@tiptap/extension-image": "~3.31.4",
+    "@tiptap/extension-link": "~3.31.4",
+    "@tiptap/extension-table": "~3.31.4",
+    "@tiptap/pm": "~3.31.4",
+    "@tiptap/starter-kit": "~3.31.4",
+    "@tiptap/vue-3": "~3.31.4",
     "@types/node": "^22.20.1",
     "@vitejs/plugin-vue": "^5.2.1",
     "tailwindcss": "^4.0.0",
@@ -50,7 +53,8 @@
     "vite": "^6.0.7",
     "vue": "^3.5.13",
     "vue-router": "^4.5.0",
-    "vue-tsc": "^2.2.0"
+    "vue-tsc": "^2.2.0",
+    "zod": "^4.3.6"
   },
   "engines": {
     "node": ">=24"

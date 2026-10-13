@@ -73,8 +73,8 @@ export interface TextareaField extends BaseField {
 /** Rich text is stored as Markdoc, in a file beside the entry. */
 export interface RichTextField extends BaseField {
   kind: "richText";
-  /** Marks/nodes the editor toolbar offers. */
-  toolbar?: RichTextFeature[];
+  /** The buttons and typing shortcuts: a preset, or a list of features. Default: `"default"`. */
+  toolbar?: RichTextToolbar;
   maxLength?: number;
   default?: string;
 }
@@ -88,7 +88,17 @@ export type RichTextFeature =
   | "orderedList"
   | "blockquote"
   | "link"
-  | "horizontalRule";
+  | "horizontalRule"
+  /** A table with a header row; each cell holds one line of text. Stored as a Markdown pipe table. */
+  | "table"
+  /** An image from the media library, with alt text, on a line of its own. */
+  | "image";
+
+/**
+ * A preset or a list of features. `"minimal"`: bold, italic and links.
+ * `"default"`: also headings and lists. `"full"`: every feature.
+ */
+export type RichTextToolbar = "minimal" | "default" | "full" | RichTextFeature[];
 
 export interface NumberField extends BaseField {
   kind: "number";

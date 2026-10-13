@@ -1669,29 +1669,48 @@ Developer-facing CLI output and the developer docs keep the Git words.
 
 ---
 
-### P2 — Images in rich text are kept as blocks; inserting them comes after 1.0
+### P2 — Tables and images in rich text are edited in place
 
-**Decided:** in 1.0, an image or a table in rich text opens as an atomic block:
-an image shows a thumbnail and its alt text, and a table a read-only notice.
-The text around them stays editable, and an unchanged block is written back
-byte for byte. Editors cannot insert or edit an image in rich text in 1.0; a
-toolbar option `"image"` adds that in a 1.x minor.
+**Decided:** rich text holds Markdown pipe tables and images. A table has a
+header row, and each cell is one line of text with inline formatting. An image
+stands on a line of its own and stores its path as a link does: from the
+entry's folder (`media/plan.png`) or from the content root (`/media/logo.png`).
+The features `"table"` and `"image"` add the buttons: the `"full"` toolbar
+preset has them, and a list can name them. A field without them still edits a
+table or an image that is already there. The presets `"minimal"`, `"default"`
+and `"full"` keep the common case to one word; a list stays possible. The image button
+opens the media picker and asks for the alt text, which it requires. An image
+inside a line of text, an image title, a table with aligned columns and a block
+inside a cell, a table row with more cells than its header, and an image in a
+list open read-only, because a conversion would change them. A new entry must
+be saved once before it takes an image, because its folder is not final before.
 
-**Why:** losing an image when a field opens is data loss, and #62 fixes that in
-any case. Blocks make such fields editable again with little code. Inserting
-images needs the picker, an alt-text dialog, and every media-reference check to
-scan rich text as well: the "not used" hint, the shared uploads that a
-selective publish brings along, and the Astro rendering. That is additive, so
-it can wait for a minor.
+One rule in `@micacms/core` decides what an image path is, and the delete
+warning, Publish, the Astro loader and `mica check` all use it: a file of the
+content that exists is used; a missing relative path is an error; a missing
+`/path` is allowed, because it can be a file of the website, such as one in
+Astro's `public/` folder; an address on the web is the website's business.
+Publish brings a pending upload along that an image uses, and refuses a
+missing one. The loader gives each entry the images that exist through
+`image()` in `_mica.images`, and `renderRichText(text, { images })` writes their
+address, width and height.
 
-**Consequence:** an editor who wants an image inside the body text asks a
-developer, or uses a `media()` field beside it.
+**Why:** a table or an image made the whole field read-only, which also hid the
+text around it. Pipe tables and lone images are what Markdown and Markdoc read
+everywhere, so the stored file stays readable in a diff. One rule keeps the
+editor, Publish and the build from disagreeing about the same image, and the
+`/path` exception keeps sites building that put images in `public/`.
 
-**What would change it:** the first editor who needs an image in body text more
-than once a month.
+**Consequence:** a cell cannot hold a list or a second line. The image in a
+page is the original file, with its size, not a version that Astro optimizes.
+Pasted HTML images from other pages are removed: an image must be a file in
+the media library. An image from `public/` shows no preview in the editor.
 
-**1.0 status:** blocks are should for 1.0 (#63). No data loss is built in 0.6
-(#62): such a field opens read-only. Inserting images is after 1.0.
+**What would change it:** a site that needs rich cells (Markdoc's
+`{% table %}`), or an optimized image in text (Astro's `getImage`, which is
+async and needs a component instead of an HTML string).
+
+**1.0 status:** done in 0.8 (#63).
 
 ---
 
@@ -1919,10 +1938,11 @@ model the way fields already are, and image and table blocks (#63).
 
 ---
 
-### P3 — Rich-text bundle is ~130 kB gzip
+### P3 — The form bundle is ~240 kB gzip
 
-**Decided:** Tiptap/ProseMirror, plus Markdoc's parser for the conversion,
-loaded in the chunk shared by the entry and settings editors.
+**Decided:** Tiptap 3/ProseMirror with tables and images, Markdoc's parser for
+the conversion, and Zod for the form checks, loaded in the chunk shared by the
+entry and settings editors.
 
 **Why:** editing must not require knowledge of a markup language. A hand-rolled
 `contenteditable` is a well-known trap.
@@ -2024,8 +2044,8 @@ without a break.
   two names alive in the files for good. The rename recipe on the website
   (`packages/core/recipes/rename-field.mjs`, run by CI) makes the rename one
   commit instead. Trigger: a site where a script cannot run, or many renames.
-- Decided elsewhere in this file: native multilingual content, a draft preview,
-  and inserting images in rich text.
+- Decided elsewhere in this file: native multilingual content and a draft
+  preview.
 
 ## Known gaps to close
 

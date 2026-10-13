@@ -21,7 +21,8 @@ services:
     ports:
       - "127.0.0.1:5556:5556"
       - "127.0.0.1:6422:6422"
-      - "127.0.0.1:3000:3000"
+      # Forgejo's port on this machine; FORGEJO_PORT=3001 when 3000 is in use. Inside, it stays 3000.
+      - "127.0.0.1:${FORGEJO_PORT:-3000}:3000"
 
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5556/dex/.well-known/openid-configuration"]

@@ -37,6 +37,25 @@ From `src/pages/news/[slug].astro` and `src/pages/projects/[slug].astro` of the 
 const projects = (await getCollection("projects")).filter((project) => project.data.team.includes(member.id));
 ```
 
+## Show images and tables in rich text
+
+With `toolbar: "full"`, or `"table"` and `"image"` in a list, editors add tables and images to the text. A table needs no code. An image needs the entry's images, so that it gets its address on the website:
+
+```astro
+<RichText text={body} images={page.data._mica.images} />
+```
+
+```astro
+---
+import { renderRichText, type RichTextImage } from "@micacms/astro";
+interface Props { text: string | null; images?: RichTextImage[] }
+const { text, images } = Astro.props;
+---
+<div set:html={renderRichText(text, { images })} />
+```
+
+Shortened from `src/pages/[...slug].astro` and `src/components/RichText.astro` of the example. Style `table` and `img` in your rich-text styles.
+
 ## Use the order of the editor
 
 When a collection is `sortable`, editors put its entries in an order. Each entry has its place in `data._mica.position`. Astro does not sort by it, so sort on your page:
@@ -90,7 +109,7 @@ Book a time **before** you visit.
 {% /callout %}
 ```
 
-The test `packages/astro/test/richtext.test.ts` renders this configuration. The editor cannot show a tag that it does not know, so it shows a rich-text field with such a tag read-only. Add the tag in the `.mdoc` file, and use it for content that changes seldom. The same is true for an image or a table in rich text.
+The test `packages/astro/test/richtext.test.ts` renders this configuration. The editor cannot show a tag that it does not know, so it shows a rich-text field with such a tag read-only. Add the tag in the `.mdoc` file, and use it for content that changes seldom.
 
 ## Check the content in CI
 

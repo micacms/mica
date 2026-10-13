@@ -21,3 +21,4 @@ export * from "./source.js";
 export * from "./read.js";
 export * from "./staging.js";
 export * from "./access.js";
+export * from "./rich-text.js";
