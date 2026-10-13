@@ -11,7 +11,7 @@ import type { ContentFiles } from "../workspace/files.js";
 import { imageSize } from "image-size";
 
 import { ApiError, badRequest } from "../lib/errors.js";
-import { detectFileType, isAccepted, isImageType, SVG_TYPE } from "../lib/file-type.js";
+import { detectFileType, isAccepted, isImageType, SVG_TYPE, VIDEO_TYPE } from "../lib/file-type.js";
 
 /** Where uploads go when they are not attached to a particular entry. */
 export const SHARED_MEDIA_DIR = "media";
@@ -75,6 +75,12 @@ export function createMediaService(deps: MediaServiceDeps) {
         throw new ApiError("unsupported_media_type", "This file type is not supported.");
       }
       if (detected.mimeType === SVG_TYPE) throw refuseSvg();
+      if (detected.mimeType === VIDEO_TYPE) {
+        throw new ApiError(
+          "unsupported_media_type",
+          "Mica does not keep videos: they make the website's files large. Put the video on a video service, and link to it.",
+        );
+      }
       if (!isAccepted(detected.mimeType, input.accept ?? "any")) {
         throw new ApiError(
           "unsupported_media_type",

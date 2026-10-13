@@ -244,8 +244,7 @@ export function createWorkingTreeStagingService(
           if ((await files.revision(MANIFEST_PATH)) !== deps.schemaRevision) {
             throw new ApiError(
               "conflict",
-              "The content model changed after this server started. Restart Mica to load " +
-                "the new model, then review the pending changes and publish again.",
+              "The content model changed just now. Review the changes again, then publish.",
             );
           }
 

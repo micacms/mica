@@ -41,6 +41,8 @@ export function adminSystemRoutes(): Hono<Env> {
         fields: def.fields,
         readOnly: site.readOnly.get(`singletons.${def.name}`) ?? null,
       })),
+      /** Which model this is, so that a page can tell that a newer one is in use. */
+      revision: site.schemaRevision,
     });
   });
 
@@ -113,6 +115,8 @@ export function adminSystemRoutes(): Hono<Env> {
           entries: counts[item.name] ?? 0,
         })),
         singletons: stats.singletons,
+        /** Why a newer model in the working tree is not in use, or null. */
+        warning: ctx.site.modelWarning?.message ?? null,
       },
       repository: {
         origin: ctx.site.contentRepository.origin,

@@ -5,6 +5,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { posix } from "node:path";
 
 import {
   ContentPathError,
@@ -18,6 +19,7 @@ import {
   isValidSlug,
   collectReferences,
   readCollection,
+  mapMedia,
   readCollectionEntry,
   readSingleton,
   relativizeMedia,
@@ -277,6 +279,34 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     return found;
   };
 
+  /**
+   * Files that a new entry uses from `<collection>/<other slug>/media/`:
+   * uploads made before the URL was final. Each gets a free name in the
+   * entry's own `media/` folder. From a folder where no entry lives they move;
+   * from another entry's folder (a colleague saved that URL first) they are
+   * copied, because that entry may use them too.
+   */
+  const stagedUploads = async (def: Collection, collection: string, data: Record<string, unknown>, base: string) => {
+    const moves: Array<{ from: string; to: string; bytes: Uint8Array; keep: boolean }> = [];
+    const taken = new Set((await workspace.list(`${base}/media`)).map((item) => item.name));
+    for (const reference of collectReferences(def.fields, data)) {
+      if (reference.kind !== "media") continue;
+      const match = /^([^/]+)\/([^/]+)\/media\/([^/]+)$/.exec(reference.path);
+      if (!match || match[1] !== collection || `${collection}/${match[2]}` === base) continue;
+      if (moves.some((move) => move.from === reference.path)) continue;
+      const keep = (await workspace.read(dataPath(def, collection, match[2]!))) !== null;
+      const bytes = await workspace.readBinary(reference.path);
+      if (bytes === null) continue;
+      const extension = match[3]!.includes(".") ? match[3]!.slice(match[3]!.lastIndexOf(".")) : "";
+      const stem = match[3]!.slice(0, match[3]!.length - extension.length);
+      let name = match[3]!;
+      for (let n = 2; taken.has(name); n += 1) name = `${stem}-${n}${extension}`;
+      taken.add(name);
+      moves.push({ from: reference.path, to: `${base}/media/${name}`, bytes, keep });
+    }
+    return moves;
+  };
+
   /** Slugs already taken in a collection, so a new one can be made unique. */
   const takenSlugs = async (def: Collection, name: string, except?: string): Promise<string[]> => {
     const entries = await readCollection(workspace, def, name);
@@ -327,11 +357,17 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
           : uniqueSlug(requested, await takenSlugs(def, collectionName, input.slug));
 
       data[slugKey] = slug;
+      const base = collectionEntryPath(def.fields, collectionName, slug);
+      // A new entry's uploads went into the folder of the URL it had then.
+      const staged = input.slug === undefined ? await stagedUploads(def, collectionName, data, base) : [];
+      if (staged.length > 0) {
+        const moved = new Map(staged.map((item) => [item.from, item.to]));
+        Object.assign(data, mapMedia(def.fields, data, (value) => (typeof value === "string" ? (moved.get(value) ?? value) : value)));
+      }
       // An entry that links to itself follows its own new URL.
       const own = previousLinks(input, slug) ? relinkReferences(def.fields, data, collectionName, input.slug!, slug) : null;
       if (own) Object.assign(data, own);
 
-      const base = collectionEntryPath(def.fields, collectionName, slug);
       const previousBase =
         input.slug && input.slug !== slug
           ? collectionEntryPath(def.fields, collectionName, input.slug)
@@ -350,6 +386,10 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
         path,
         contents,
       }));
+      for (const item of staged) {
+        changes.push({ type: "write", path: item.to, contents: item.bytes });
+        if (!item.keep) changes.push({ type: "delete", path: item.from });
+      }
 
       if (previousBase) {
         changes.push(
@@ -489,6 +529,51 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       return uniqueSlug(slugify(source), await takenSlugs(def, collectionName, except));
     },
 
+    /**
+     * Where each file is used: in a media field, or as an image or a link in rich
+     * text. A file that something uses is not deleted.
+     */
+    async mediaUses(paths: string[]): Promise<{ uses: Record<string, Referrer[]>; unreadable: string[] }> {
+      const wanted = new Set(paths);
+      /** Collections and settings that could not be read: a use there cannot be ruled out. */
+      const unreadable: string[] = [];
+      const uses: Record<string, Referrer[]> = Object.fromEntries(paths.map((path) => [path, []]));
+      const check = (referrer: Referrer, fields: FieldMap, data: Record<string, unknown>, folder: string) => {
+        const found = new Set<string>();
+        for (const reference of collectReferences(fields, data)) {
+          if (reference.kind === "media" && wanted.has(reference.path)) found.add(reference.path);
+        }
+        for (const text of richTextValues(fields, data)) {
+          for (const target of markdocTargets(text)) {
+            const path = resolveTarget(target, folder);
+            if (path && wanted.has(path)) found.add(path);
+          }
+        }
+        for (const path of found) uses[path]!.push(referrer);
+      };
+
+      for (const [name, def] of Object.entries(site.collections)) {
+        const entries = await readCollection(workspace, def, name).catch(() => null);
+        if (!entries) {
+          unreadable.push(def.label);
+          continue;
+        }
+        for (const entry of entries) {
+          const base = collectionEntryPath(def.fields, name, entry.slug);
+          const folder = entryLayout(def.fields) === "directory" ? base : name;
+          check({ kind: "entry", collection: name, slug: entry.slug, title: entryTitle(def, entry.data) }, def.fields, entry.data, folder);
+        }
+      }
+      for (const [name, def] of Object.entries(site.singletons)) {
+        const data = await readSingleton(workspace, def, name).catch(() => undefined);
+        if (data === undefined) unreadable.push(def.label);
+        if (!data) continue;
+        const folder = entryLayout(def.fields) === "directory" ? singletonPath(def.fields, name) : "";
+        check({ kind: "singleton", name, title: def.label }, def.fields, data, folder);
+      }
+      return { uses, unreadable };
+    },
+
     /** Entries and settings pages that link to `slug`: the warning before a delete or a URL change. */
     async findReferences(collectionName: string, slug: string): Promise<Referrer[]> {
       requireCollection(collectionName);
@@ -502,6 +587,51 @@ export type ContentStore = ReturnType<typeof createContentStore>;
 /** Whether a save is a URL change whose links should follow. */
 function previousLinks(input: SaveEntryInput, slug: string): boolean {
   return input.updateLinks === true && input.slug !== undefined && input.slug !== slug;
+}
+
+/** Every rich-text value in a payload, nested fields included. */
+function richTextValues(fields: FieldMap, data: Record<string, unknown>): string[] {
+  const found: string[] = [];
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    value !== null && typeof value === "object" && !Array.isArray(value);
+  const visit = (map: FieldMap, record: Record<string, unknown>) => {
+    for (const [key, field] of Object.entries(map)) {
+      const value = record[key];
+      if (field.kind === "richText" && typeof value === "string") found.push(value);
+      else if (field.kind === "object" && isRecord(value)) visit(field.fields, value);
+      else if (field.kind === "repeater" && Array.isArray(value)) for (const row of value) if (isRecord(row)) visit(field.fields, row);
+    }
+  };
+  visit(fields, data);
+  return found;
+}
+
+/**
+ * The targets of the images and links in Markdoc: `![alt](media/x.jpg)`,
+ * `[Price list](/media/prices.pdf)`, a reference `[x]: media/x.jpg`, and a tag
+ * attribute such as `{% figure src="media/x.jpg" %}`.
+ */
+function markdocTargets(text: string): string[] {
+  const inline = [...text.matchAll(/\]\(\s*<?([^)\s>]+)/g)].map((match) => match[1]!);
+  const references = [...text.matchAll(/^\s{0,3}\[[^\]]+\]:\s*<?([^\s>]+)/gm)].map((match) => match[1]!);
+  const attributes = [...text.matchAll(/\{%[^%]*%\}/g)].flatMap((tag) =>
+    [...tag[0].matchAll(/\b[\w-]+\s*=\s*"([^"]+)"/g)].map((match) => match[1]!),
+  );
+  return [...inline, ...references, ...attributes];
+}
+
+/** A rich-text target as a content path: from the content root with `/`, else from the document's folder. */
+function resolveTarget(target: string, folder: string): string | null {
+  if (/^[a-z][a-z0-9+.-]*:/i.test(target) || target.startsWith("#")) return null;
+  let decoded: string;
+  try {
+    decoded = decodeURI(target.split(/[?#]/)[0]!);
+  } catch {
+    return null;
+  }
+  const joined = decoded.startsWith("/") ? decoded.slice(1) : folder === "" ? decoded : `${folder}/${decoded}`;
+  const normal = posix.normalize(joined);
+  return normal.startsWith("..") ? null : normal;
 }
 
 /** Whether a field map has a relation to `collection`, nested fields included. */

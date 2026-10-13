@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "An upload from an entry's form goes into that entry's media folder, and a new entry's uploads move with its URL at the first save; videos are refused",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

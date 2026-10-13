@@ -92,8 +92,11 @@ export const isImageType = (mimeType: string): boolean => IMAGE_TYPES.has(mimeTy
 export function isAccepted(mimeType: string, accept: "image" | "document" | "any"): boolean {
   if (accept === "image") return IMAGE_TYPES.has(mimeType);
   if (accept === "document") return DOCUMENT_TYPES.has(mimeType);
-  return IMAGE_TYPES.has(mimeType) || DOCUMENT_TYPES.has(mimeType) || mimeType === "video/mp4";
+  return IMAGE_TYPES.has(mimeType) || DOCUMENT_TYPES.has(mimeType);
 }
+
+/** A video is large for a Git repository, and the media list cannot show one. */
+export const VIDEO_TYPE = "video/mp4";
 
 /**
  * SVG can carry scripts, so Mica neither stores nor shows it (#86). It is still
