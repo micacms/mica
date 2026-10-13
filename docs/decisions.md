@@ -1240,9 +1240,9 @@ a localized `alt` then belongs in the media value.
 Astro types, `mica check`, the guides and the `mica init` starter. A stored
 plain path reads as one without alt text, so `"optional"` can be added to a
 field with content; `"required"` then fails the build until each image has alt
-text. The example still uses plain paths.
+text. The example uses `alt: "required"` for every image that carries meaning.
 
-**1.0 status:** blocker until the example uses it; the Astro helper is in #109.
+**1.0 status:** done; the Astro helper is in #109.
 
 ---
 

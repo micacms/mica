@@ -7,19 +7,20 @@
  * re-encoded and emitted into `_astro/`. Nothing a visitor loads points at a
  * CMS, and no origin has to be allowlisted for it to work.
  *
- * Alt text is a prop rather than a property of the file. Media in Git is a
- * file, not a record with metadata attached — so where alt text matters, the
- * model should carry it, next to the `media()` field that needs it.
+ * The alt text comes with the value of a `media({ alt })` field. A page that
+ * shows the image as decoration, such as a card next to its title, passes
+ * `alt=""` to override it.
  */
 
 import { Image } from "astro:assets";
+import type { MediaWithAlt } from "@micacms/core";
 
 import { isVector, resolveMedia } from "@/lib/images";
 
 interface Props {
-  /** Content-root-relative path, as the loader emits it. */
-  media: string | null;
-  /** Pass "" for a decorative image. */
+  /** A media value, as the loader emits it: a content-root-relative path, or `{ path, alt }`. */
+  media: string | MediaWithAlt | null;
+  /** Overrides the value's alt text; "" for a decorative image. */
   alt?: string;
   class?: string;
   widths?: number[];
@@ -31,7 +32,7 @@ interface Props {
 
 const {
   media,
-  alt = "",
+  alt = typeof media === "object" ? (media?.alt ?? "") : "",
   class: className,
   widths,
   sizes,
@@ -39,7 +40,7 @@ const {
   priority = false,
 } = Astro.props;
 
-const image = resolveMedia(media);
+const image = resolveMedia(typeof media === "object" ? media?.path : media);
 ---
 
 {
