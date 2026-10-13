@@ -206,6 +206,10 @@ export interface FileChange {
   owner: ChangeOwner;
   /** The file's revision when listed, null for a deletion. Sent back with Publish. */
   revision?: string | null;
+  /** When the file was last saved. Null for a deletion. */
+  savedAt?: string | null;
+  /** New pending files that this document uses; it is published with them. */
+  needs?: string[];
 }
 
 /** One thing that would make the pending set unpublishable. */
@@ -253,8 +257,11 @@ export interface StagingStatus {
   /** The commit the pending changes sit on. For display. */
   head: string | null;
   branch: string | null;
-  /** Commits created and not yet pushed. */
-  ahead: number | null;
+  /**
+   * The developer's checkout only: publications not yet sent to the website
+   * (`mica`), and other work there that blocks Publish until it is sent (`other`).
+   */
+  unpushed: { mica: number; other: number } | null;
   /** File changes, not edits: count with `toEdits`, never with `.length`. */
   changes: FileChange[];
   validation: { ok: boolean; problems: StagingProblem[] };

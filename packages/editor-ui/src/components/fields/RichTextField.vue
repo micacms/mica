@@ -267,8 +267,8 @@ const buttons = computed<ToolbarButton[]>(() => {
   >
     <div v-if="readOnlyReason" class="rounded-sm border border-line bg-canvas/60">
       <p class="border-b border-line px-3 py-2 text-sm" role="status">
-        {{ readOnlyReason }} To keep it, it is read-only here. Change it in the
-        <code>.mdoc</code> file in the repository.
+        {{ readOnlyReason }} To keep it, it is read-only here. A developer can change it in the
+        <code>.mdoc</code> file.
       </p>
       <pre
         :id="inputId"

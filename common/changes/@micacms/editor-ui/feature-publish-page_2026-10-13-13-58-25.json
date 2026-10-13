@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "The Publish page lets editors choose the changes to publish, suggests a summary ('Say what changed'), shows when each change was saved, and confirms that the website is being rebuilt",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor-ui",
+  "email": "alexander@muedespacher.ch"
+}

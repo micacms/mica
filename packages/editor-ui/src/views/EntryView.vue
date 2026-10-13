@@ -15,6 +15,8 @@ import { api, ApiError, type EntryDetail } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FieldList from "@/components/fields/FieldList.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import PendingNotice from "@/components/PendingNotice.vue";
+import type { Edit } from "@/lib/edits";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
 import { useSchema } from "@/stores/schema";
@@ -57,6 +59,23 @@ const unsaved = useUnsavedChanges(values);
 const dirty = unsaved.dirty;
 
 const isNew = computed(() => !props.slug);
+
+/** This entry's saved changes that are not on the website yet. */
+const pending = computed(
+  () => (props.slug && staging.edits.value.find((edit) => edit.key === `entry:${props.collection}/${props.slug}`)) || null,
+);
+
+const state = computed(() =>
+  isNew.value
+    ? { label: "Not saved yet", tone: "border-accent bg-accent-soft text-accent" }
+    : dirty.value
+      ? { label: "Unsaved changes", tone: "border-accent bg-accent-soft text-accent" }
+      : pending.value
+        ? { label: "Saved · not published", tone: "text-warning" }
+        : staging.knowsPublished.value
+          ? { label: "Published", tone: "text-success" }
+          : { label: "Saved", tone: "text-muted" },
+);
 
 const title = computed(() => {
   const def = definition.value;
@@ -158,14 +177,25 @@ async function save(): Promise<void> {
   }
 }
 
-/** Takes the version now in the repository, discarding this form's edits. */
+/** Takes the saved version, discarding this form's edits. */
 async function reload(): Promise<void> {
   if (!props.slug) return;
   try {
     await open(props.slug);
-    toast.success("Reloaded from the repository.");
+    toast.success("Loaded the current version.");
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not reload this entry.");
+  }
+}
+
+/** After a discard, a new entry is gone, and a URL change goes back to the old URL. */
+async function discarded(edit: Edit): Promise<void> {
+  if (edit.state === "new") {
+    await router.replace({ name: "collection", params: { collection: props.collection } });
+  } else if (edit.target?.kind === "entry" && edit.target.from) {
+    await router.replace({ name: "entry", params: { collection: props.collection, slug: edit.target.from } });
+  } else if (props.slug) {
+    await open(props.slug);
   }
 }
 
@@ -210,9 +240,9 @@ async function remove(): Promise<void> {
       :back-label="definition.label"
     >
       <template v-if="!definition.readOnly">
-        <span :class="['badge', dirty ? 'border-accent bg-accent-soft text-accent' : 'text-success']">
+        <span :class="['badge', state.tone]">
           <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
-          {{ dirty ? "Unsaved" : "Saved" }}
+          {{ state.label }}
         </span>
         <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save">
           {{ saving ? "Saving…" : "Save changes" }}
@@ -225,6 +255,7 @@ async function remove(): Promise<void> {
 
       <template v-else>
         <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
+        <PendingNotice v-else-if="pending && !dirty" :edit="pending" @discarded="discarded" />
 
         <div
           v-if="websiteConflict"
@@ -246,7 +277,7 @@ async function remove(): Promise<void> {
           <p class="text-sm font-medium text-warning">This entry changed while you were editing</p>
           <p class="mt-1 text-xs text-muted">
             Your changes are still here and have not been saved. Copy anything you need, then load
-            the current version — or open the repository to see what changed.
+            the current version.
           </p>
           <button type="button" class="btn-secondary mt-2.5" @click="reload">
             Discard mine and reload
@@ -297,8 +328,8 @@ async function remove(): Promise<void> {
       @confirm="remove"
     >
       <p>
-        This removes <code>{{ location }}</code>. Like any edit, the removal joins the pending
-        changes and reaches the repository when they are published.
+        Like any change, the removal is saved first, and the entry leaves the website when you
+        publish.
       </p>
 
       <div v-if="references.length" class="mt-3 rounded-md border border-warning/15 bg-warning-soft p-4">

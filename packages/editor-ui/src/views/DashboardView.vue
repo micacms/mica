@@ -8,6 +8,7 @@
 import { computed, onMounted, ref } from "vue";
 
 import { api, ApiError, type Overview } from "@/api";
+import DeveloperDetails from "@/components/DeveloperDetails.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import { useSession } from "@/stores/session";
 import { useStaging } from "@/stores/staging";
@@ -48,7 +49,7 @@ onMounted(async () => {
 <template>
   <PageHeader
     :title="greeting"
-    :subtitle="`${entries} entr${entries === 1 ? 'y' : 'ies'} in the content repository`"
+    :subtitle="`${entries} entr${entries === 1 ? 'y' : 'ies'}`"
   />
 
   <div class="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6">
@@ -109,27 +110,28 @@ onMounted(async () => {
         <div class="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 id="pending-heading" class="text-sm font-semibold">
-              {{ staging.editCount.value }} edit{{ staging.editCount.value === 1 ? "" : "s" }}
-              waiting to be published
+              {{ staging.editCount.value }} saved change{{ staging.editCount.value === 1 ? "" : "s" }}
+              not on the website yet
             </h2>
             <p class="mt-1 text-sm text-muted">
-              Saved, and not yet in the repository. The whole set is published together.
+              Choose which of them to publish. The others stay saved.
             </p>
           </div>
           <RouterLink :to="{ name: 'changes' }" class="btn-secondary">Review and publish</RouterLink>
         </div>
       </section>
 
-      <section class="card p-4" aria-labelledby="repository-heading">
-        <h2 id="repository-heading" class="text-sm font-semibold">Content repository</h2>
+      <section class="card p-4" aria-labelledby="storage-heading">
+        <h2 id="storage-heading" class="text-sm font-semibold">Where your content is kept</h2>
 
-        <p class="mt-2 break-all font-mono text-xs text-muted">{{ overview.repository }}</p>
-
-        <p class="mt-3 text-sm text-muted">
-          Every entry and every uploaded file becomes a file in this repository when it is
-          published, so the website can be rebuilt from the repository alone — with or without
-          this server.
+        <p class="mt-2 text-sm text-muted">
+          Every entry and every uploaded file is kept as a file next to the website's code when it
+          is published, so the website can be rebuilt from these files alone — with or without Mica.
         </p>
+
+        <DeveloperDetails>
+          <p class="break-all font-mono">{{ overview.repository }}</p>
+        </DeveloperDetails>
       </section>
     </template>
   </div>
