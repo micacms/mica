@@ -1,6 +1,19 @@
 # Change Log - @micacms/core
 
-This log was last generated on Tue, 13 Oct 2026 04:44:02 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 11:14:11 GMT and should not be manually modified.
+
+## 0.6.0
+Tue, 13 Oct 2026 11:14:11 GMT
+
+### Minor changes
+
+- Add `media({ alt: "required" | "optional" })`: the field stores `{ path, alt }`, and `"required"` refuses an image without alt text. A `media()` without the option still stores a path. A stored path reads as one without alt text; with `"required"`, the build fails until each such image has alt text.
+- Breaking: an entry in the other layout is now an error (`LayoutError`), not hidden. A model change that adds the first, or removes the last, rich-text or media field changes where entries are stored; until the files move, the reader names them. `misplacedFiles` lists them.
+- Add `collectReferences` (every relation and media path in a document, nested fields included) and `createReferenceCheck` (the ones that point at nothing).
+- Breaking: a text field's `pattern` must now match the whole value, and is compiled with the `u` flag. An invalid pattern stops the model from loading. For "contains", write `.*x.*`.
+- Breaking: zod 4 is now a peer dependency, so a site has one zod, shared with Astro. Requires Node 24 or newer. The package ships its `src/`, so the declaration maps resolve.
+- Breaking: removed exports that nothing used: `collectMediaIds`, `walkFields`, `mediaRefSchema`, `collectionSchema`, `singletonSchema` and the `SchemaMode` type. `fieldsSchema` and `validateFields` no longer take a mode: pass the options as the second or third argument.
+- `fieldsSchema` and `validateFields` take an `image` resolver for `media({ accept: "image" })`, and the inference types take the image type as a second parameter.
 
 ## 0.5.0
 Tue, 13 Oct 2026 04:44:02 GMT

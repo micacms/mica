@@ -1,6 +1,24 @@
 # Change Log - @micacms/editor-ui
 
-This log was last generated on Tue, 13 Oct 2026 04:44:02 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 11:14:11 GMT and should not be manually modified.
+
+## 0.6.0
+Tue, 13 Oct 2026 11:14:11 GMT
+
+### Minor changes
+
+- A media field with `alt` shows an alt-text input under each image, with its own error message.
+- A rich-text field never opens empty and never drops Markdoc: stored text with a node that the editor cannot show (an image, a table, a `{% tag %}`, an attribute, a link title), or text that the editor refuses, opens read-only with the reason and the source. The toolbar option now limits only the buttons, so a stored heading in a field without heading buttons still loads.
+- Breaking: requires Node 24 or newer.
+
+### Patches
+
+- The bundle ships THIRD_PARTY_NOTICES.txt, with the license of each package in it.
+
+### Updates
+
+- Fixes after review: code inside a link or bold loads again, an ordered list keeps its start number, a first divider is written as *** so that it never starts front matter, front matter and variables open read-only, and the toolbar also limits the typing shortcuts.
+- The README states that the package is internal.
 
 ## 0.5.0
 Tue, 13 Oct 2026 04:44:02 GMT

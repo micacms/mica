@@ -1,6 +1,18 @@
 # Change Log - @micacms/auth-oidc
 
-This log was last generated on Tue, 13 Oct 2026 04:44:02 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 11:14:11 GMT and should not be manually modified.
+
+## 0.6.0
+Tue, 13 Oct 2026 11:14:11 GMT
+
+### Minor changes
+
+- Breaking: `SESSION_SECRET`, `SESSION_TTL_HOURS` and `SESSION_IDLE_HOURS` are now `MICA_SESSION_*`; `LOGIN_MAX_ATTEMPTS` and `LOGIN_WINDOW_MS` are now `MICA_SIGNIN_MAX_ATTEMPTS` and `MICA_SIGNIN_WINDOW_MS`; `MICA_ADMIT_GROUP` and `MICA_ADMIT_DOMAIN` are now `MICA_ADMIT_GROUPS` and `MICA_ADMIT_DOMAINS`. The old names are not read.
+- Breaking: requires Node 24 or newer.
+
+### Updates
+
+- The README states that the package is internal.
 
 ## 0.5.0
 Tue, 13 Oct 2026 04:44:02 GMT

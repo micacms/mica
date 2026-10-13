@@ -1,6 +1,26 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Tue, 13 Oct 2026 04:44:02 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 11:14:11 GMT and should not be manually modified.
+
+## 0.6.0
+Tue, 13 Oct 2026 11:14:11 GMT
+
+### Minor changes
+
+- `layoutProblems` lists the entries in the other layout; the local editor refuses to start on any, and a list request that meets one answers 409 with the files.
+- Publish refuses a change set that would leave a broken relation or a missing media file: a changed document that links to nothing, or a deleted entry or file that another document still uses. The delete warning also finds relations in nested fields.
+- Breaking: every Mica configuration variable starts with `MICA_`: `MICA_LOG_LEVEL`, `MICA_CONTENT_ROOT`, `MICA_MAX_UPLOAD_BYTES`, `MICA_TRUST_PROXY`, `MICA_ADMIN_ORIGINS` and `MICA_ADMIN_DIR`. The old names are not read. `MICA_CONTENT_ROOT` has no default any more.
+- Breaking: requires Node 24 or newer.
+- Internal: removed unused exports (`ulid`, `isUlid`, `intParam`, `validationFailed`, `RateLimiter.reset` and the `invalid_credentials` error code). The README states that the package is internal.
+- Breaking: an image field refuses HEIC files, because Astro cannot process them. Convert them to JPEG first.
+
+### Patches
+
+- Publish in the local editor pushes a new branch to `origin` and sets its upstream; without a remote, the message names the command.
+
+### Updates
+
+- Tests for a media value with alt text.
 
 ## 0.5.0
 Tue, 13 Oct 2026 04:44:02 GMT

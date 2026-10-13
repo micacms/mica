@@ -1,6 +1,22 @@
 # Change Log - @micacms/editor
 
-This log was last generated on Tue, 13 Oct 2026 04:44:02 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 11:14:11 GMT and should not be manually modified.
+
+## 0.6.0
+Tue, 13 Oct 2026 11:14:11 GMT
+
+### Minor changes
+
+- `mica check` reads the path of a media value with alt text, and the `mica init` starter model asks for alt text on the cover image.
+- Add `mica migrate-layout`: it moves the entries that a layout change left behind, and lists the rich-text and media files that it removes because no field reads them any more. The editor refuses to start while an entry is in the other layout.
+- Breaking: the local editor no longer reads the `.env` file of the project, and a flag now wins over the environment (`PORT=3000 npx @micacms/editor --port 7000` listens on 7000). `MICA_CONTENT_ROOT` sets the content root when no path is given. Messages link to micacms.com, not to repository files.
+- Breaking: requires Node 24 or newer.
+- Add `mica import`: it moves Astro content collections into Mica from Astro's data store, field by field, with `--map` for changed names and alt text and `--order` for the manual order; it converts dates, references, images and the Markdown body, and lists what it did not import.
+- Breaking: `mica start [content directory]` opens the editor, and `mica` alone prints the help. The first word is always a command, so that a directory named like a command cannot run it. Update a `"mica": "mica"` script to `"mica": "mica start"`.
+
+### Patches
+
+- `mica init` names the `mica` and `check` scripts that package.json lacks, and suggests `mica check` in front of an existing `check` script; `check` runs `astro check` too when `@astrojs/check` is installed.
 
 ## 0.5.0
 Tue, 13 Oct 2026 04:44:02 GMT
