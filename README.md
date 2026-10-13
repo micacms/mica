@@ -1,7 +1,8 @@
 # Mica
 
 > **Experimental.** Pre-1.0: APIs, the CLI and the content format can still
-> change without notice. Use it at your own risk.
+> change without notice. Use it at your own risk. Mica is a hobby project of
+> one maintainer: see [GOVERNANCE.md](./GOVERNANCE.md).
 
 A Git-native content editor for Astro websites.
 
@@ -181,8 +182,7 @@ examples/
 └── starter/            the minimal starter for `npm create astro --template`
 docs/                    for contributors; the user guides are on micacms.com/docs
 ├── architecture.md      what Mica is, and why it is shaped this way
-├── decisions.md         accepted trade-offs and known gaps
-└── history/             finished plans, kept for their reasons
+└── decisions.md         accepted trade-offs and known gaps
 deploy/
 ├── self-hosted/         the reference deployment: compose.yml + .env.example
 └── demo-identity/       the deployed shape on your machine: Mica + ZITADEL
@@ -278,5 +278,12 @@ each with what was decided, why, and what would change it. What each release
 contains is in [CHANGELOG.md](./CHANGELOG.md); everything here is released
 together under one version, and while that version starts with `0`, a minor
 bump may break something.
+
+## Contributing
+
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) before you open a pull request, and
+the [code of conduct](./CODE_OF_CONDUCT.md). Report a vulnerability privately,
+as [SECURITY.md](./SECURITY.md) says. How the project is run, and what to
+expect from it, is in [GOVERNANCE.md](./GOVERNANCE.md).
 
 Licence: [MIT](./LICENSE).

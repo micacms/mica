@@ -1,0 +1,58 @@
+name: Bug
+description: Something does not work as the documentation says.
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: Thank you. For a security problem, do not use this form. Follow SECURITY.md instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: The smallest steps that show the problem. A part of your model or an example entry helps.
+      placeholder: |
+        1. …
+        2. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Mica version
+      description: The version of @micacms/editor, @micacms/astro or the image. The System page shows it.
+      placeholder: 0.8.0
+    validations:
+      required: true
+  - type: dropdown
+    id: mode
+    attributes:
+      label: How you run Mica
+      options:
+        - The local editor (npx mica)
+        - The self-hosted image
+        - Only the website build (@micacms/astro)
+    validations:
+      required: true
+  - type: input
+    id: provider
+    attributes:
+      label: Identity provider and Git host
+      description: For the self-hosted image, for example "Google, GitHub" or "Keycloak, GitLab".
+  - type: input
+    id: node
+    attributes:
+      label: Node.js and Astro versions
+      placeholder: Node.js 24.18, Astro 7.3
+  - type: textarea
+    id: logs
+    attributes:
+      label: Messages and logs
+      description: The error message, the log lines or the report from the System page. Remove passwords and tokens.
+      render: text

@@ -1,0 +1,24 @@
+name: Feature
+description: Something that Mica does not do yet.
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: Mica is small on purpose. Read "Scope and non-goals" on micacms.com/docs/scope/ first. It may say how to work without the feature.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem
+      description: What you or your editors try to do, and why it is difficult now.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: Your idea
+      description: How Mica could help. A sketch of the model or the editor is welcome.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: What you do now
+      description: How you work without it today.

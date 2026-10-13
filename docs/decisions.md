@@ -15,7 +15,7 @@ Priorities:
 
 An entry marked **v3 — pending** is decided and not yet built. It constrains new
 work from now on, and the code still shows the old shape. The phase that closes
-it is named in the entry; the phases are in [`v3-plan.md`](history/v3-plan.md). A note
+it is named in the entry; the phases are in [`v3-plan.md`](https://github.com/micacms/mica/blob/898e17e0ffb4c5b3d7e68eab4b7986e486ee2370/docs/history/v3-plan.md) (a finished plan, removed). A note
 marked **built in Phase A** records what the code now does, and what the entry
 therefore costs in practice.
 
@@ -361,8 +361,8 @@ self-hosted deployment has the draft database.
 connector for its API, not `git` in the image.
 
 **Built in 0.3.0.** `apps/self-hosted/src/config.ts` refuses any other
-`REPOSITORY`. The test stacks publish to a stand-in for the GitHub API
-([`tests/github-stub/`](../tests/github-stub/README.md)).
+`REPOSITORY`. The test stacks published to a stand-in for the GitHub API
+(`tests/github-stub/`, removed in 0.5.0).
 
 **1.0 status:** accepted for 1.0.
 
@@ -399,7 +399,7 @@ in the plan), or LFS first.
 **Built in 0.5.0.** `apps/self-hosted/src/workspace/` (clone, sync, push,
 credentials, isolation), on the runtime's `workspace/` (runner, tree, locks,
 owner policy). The plan and its reviews are in
-[`git-workspace-plan.md`](history/git-workspace-plan.md).
+[`git-workspace-plan.md`](https://github.com/micacms/mica/blob/898e17e0ffb4c5b3d7e68eab4b7986e486ee2370/docs/history/git-workspace-plan.md) (a finished plan, removed).
 
 **1.0 status:** accepted for 1.0.
 
@@ -2015,7 +2015,7 @@ Explicitly not built. Everything in this section is after 1.0.
   product boundary and not a feature limit. The tables that once anticipated
   this are deleted in Phase A rather than kept as an unused schema; the
   capability belongs to the private Cloud control plane described in
-  [`v3-arch.md`](history/v3-arch.md) §14, which consumes published Mica releases and
+  [GOVERNANCE.md](../GOVERNANCE.md), which consumes published Mica releases and
   never enters this repository.
 - **P2** — A per-editor draft instead of one shared change set. "One shared
   pending change set per site" above records what that costs today.
