@@ -22,14 +22,14 @@ import type {
   ObjectField,
   RelationField,
   RepeaterField,
-  RichTextFeature,
   RichTextField,
+  RichTextToolbar,
   SelectField,
   SelectOption,
   SlugField,
   TagsField,
-  TextField,
   TextareaField,
+  TextField,
   UrlField,
 } from "./types.js";
 
@@ -136,8 +136,12 @@ export function textarea<O extends TextareaOptions>(options?: O): TextareaField 
 }
 
 export interface RichTextOptions extends CommonOptions {
-  /** The buttons and typing shortcuts the editor offers. Text that uses others still loads. Defaults to bold, italic, heading, lists and link. */
-  toolbar?: RichTextFeature[];
+  /**
+   * The buttons and typing shortcuts the editor offers: `"minimal"` (bold, italic, link), `"default"` (also headings
+   * and lists), `"full"` (also quote, strikethrough, divider, table and image), or a list of features. Text that uses
+   * others still loads.
+   */
+  toolbar?: RichTextToolbar;
   /** The most characters of the Markdoc source. */
   maxLength?: number;
   /** The Markdoc of a new entry. */

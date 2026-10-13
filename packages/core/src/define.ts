@@ -16,6 +16,7 @@ import type {
   Site,
 } from "./types.js";
 import { textPattern } from "./pattern.js";
+import { RICH_TEXT_TOOLBARS } from "./rich-text.js";
 
 export class ModelError extends Error {
   override name = "ModelError";
@@ -169,6 +170,18 @@ function checkFields(fields: FieldMap, path: string, collectionNames: Set<string
         textPattern(field.pattern);
       } catch (error) {
         throw new ModelError(`Text field "${here}" has an invalid pattern: ${(error as Error).message}`);
+      }
+    }
+
+    if (field.kind === "richText" && field.toolbar !== undefined) {
+      const known = RICH_TEXT_TOOLBARS.full as readonly string[];
+      const valid = Array.isArray(field.toolbar)
+        ? field.toolbar.every((feature) => known.includes(feature))
+        : Object.hasOwn(RICH_TEXT_TOOLBARS, field.toolbar);
+      if (!valid) {
+        throw new ModelError(
+          `Rich-text field "${here}" has an unknown toolbar. Use "minimal", "default", "full", or a list of: ${known.join(", ")}.`,
+        );
       }
     }
 

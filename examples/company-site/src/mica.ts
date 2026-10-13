@@ -84,18 +84,7 @@ export const site = defineSite({
         }),
         body: richText({
           label: "Content",
-          toolbar: [
-            "bold",
-            "italic",
-            "heading",
-            "bulletList",
-            "orderedList",
-            "blockquote",
-            "link",
-            "horizontalRule",
-            "table",
-            "image",
-          ],
+          toolbar: "full",
         }),
         sections: repeater({
           label: "Extra sections",

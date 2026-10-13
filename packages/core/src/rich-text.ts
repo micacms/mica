@@ -5,7 +5,20 @@
  * paths with these same rules.
  */
 
-import type { FieldMap } from "./types.js";
+import type { FieldMap, RichTextFeature, RichTextToolbar } from "./types.js";
+
+/** The features of each toolbar preset. */
+export const RICH_TEXT_TOOLBARS: Record<Exclude<RichTextToolbar, RichTextFeature[]>, readonly RichTextFeature[]> = {
+  minimal: ["bold", "italic", "link"],
+  default: ["bold", "italic", "heading", "bulletList", "orderedList", "link"],
+  full: ["bold", "italic", "strike", "heading", "bulletList", "orderedList", "blockquote", "link", "horizontalRule", "table", "image"],
+};
+
+/** The features that a field's `toolbar` gives: a preset's list, the list itself, or the default. */
+export function richTextFeatures(toolbar: RichTextToolbar | undefined): readonly RichTextFeature[] {
+  if (toolbar === undefined) return RICH_TEXT_TOOLBARS.default;
+  return typeof toolbar === "string" ? RICH_TEXT_TOOLBARS[toolbar] : toolbar;
+}
 
 /** Every rich-text value in a payload, nested fields included. */
 export function richTextValues(fields: FieldMap, data: Record<string, unknown>): string[] {

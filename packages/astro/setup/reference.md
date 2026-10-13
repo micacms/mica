@@ -66,7 +66,7 @@ in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
 | --- | --- | --- |
 | `text()` | string | `minLength`, `maxLength`, `pattern` (must match the whole value), `patternMessage` (what the editor reads when it does not), `placeholder`, `default` |
 | `textarea()` | string | `minLength`, `maxLength`, `rows`, `placeholder`, `default` |
-| `richText()` | Markdoc in its own `.mdoc` file | `toolbar` (also `"table"`, `"image"`), `maxLength`, `default` |
+| `richText()` | Markdoc in its own `.mdoc` file | `toolbar`: `"minimal"`, `"default"`, `"full"` (with tables and images), or a list of features; `maxLength`, `default` |
 | `number()` | number | `min`, `max`, `step`, `integer`, `unit`, `default` |
 | `boolean()` | boolean | `default` |
 | `date()` | `"YYYY-MM-DD"`, or an ISO timestamp with `includeTime: true` | `includeTime`, `min`, `max`, `default` |

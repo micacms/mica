@@ -1675,8 +1675,10 @@ Developer-facing CLI output and the developer docs keep the Git words.
 header row, and each cell is one line of text with inline formatting. An image
 stands on a line of its own and stores its path as a link does: from the
 entry's folder (`media/plan.png`) or from the content root (`/media/logo.png`).
-The toolbar options `"table"` and `"image"` add the buttons; a field without
-them still edits a table or an image that is already there. The image button
+The features `"table"` and `"image"` add the buttons: the `"full"` toolbar
+preset has them, and a list can name them. A field without them still edits a
+table or an image that is already there. The presets `"minimal"`, `"default"`
+and `"full"` keep the common case to one word; a list stays possible. The image button
 opens the media picker and asks for the alt text, which it requires. An image
 inside a line of text, an image title, a table with aligned columns and a block
 inside a cell open read-only, because a conversion would change them. The Astro

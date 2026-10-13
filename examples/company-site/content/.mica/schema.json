@@ -44,18 +44,7 @@
         "body": {
           "kind": "richText",
           "label": "Content",
-          "toolbar": [
-            "bold",
-            "italic",
-            "heading",
-            "bulletList",
-            "orderedList",
-            "blockquote",
-            "link",
-            "horizontalRule",
-            "table",
-            "image"
-          ]
+          "toolbar": "full"
         },
         "sections": {
           "kind": "repeater",

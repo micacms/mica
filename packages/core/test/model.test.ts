@@ -5,12 +5,12 @@ import {
   boolean,
   collection,
   color,
+  compareEntries,
   coordinates,
   date,
   defaultValues,
   defineSite,
   email,
-  compareEntries,
   entryTitle,
   media,
   ModelError,
@@ -18,18 +18,20 @@ import {
   object,
   relation,
   repeater,
+  RICH_TEXT_TOOLBARS,
   richText,
+  richTextFeatures,
   select,
   singleton,
   slug,
   slugify,
   text,
+  type FieldMap,
+  type InferFields,
   uniqueSlug,
   url,
   validateFields,
-  type FieldMap,
   withDefaults,
-  type InferFields,
 } from "../dist/index.js";
 
 /* Type-level assertions — these fail at `rush typecheck`, not at runtime. */
@@ -418,5 +420,23 @@ describe("model queries", () => {
     assert.equal(entryTitle(projects, { title: "Haus A" }), "Haus A");
     assert.equal(entryTitle(projects, { title: "   ", slug: "haus-a" }), "haus-a");
     assert.equal(entryTitle(projects, {}), "Untitled");
+  });
+});
+
+describe("rich-text toolbars", () => {
+  it("gives the features of a preset, a list as it is, and the default without one", () => {
+    assert.deepEqual(richTextFeatures("minimal"), ["bold", "italic", "link"]);
+    assert.deepEqual(richTextFeatures(undefined), RICH_TEXT_TOOLBARS.default);
+    assert.ok(richTextFeatures("full").includes("table") && richTextFeatures("full").includes("image"));
+    assert.deepEqual(richTextFeatures(["bold", "image"]), ["bold", "image"]);
+  });
+
+  it("refuses an unknown preset or feature when the model loads", () => {
+    for (const toolbar of ["maximal", ["bold", "underline"]]) {
+      assert.throws(
+        () => defineSite({ collections: { news: collection({ label: "News", fields: { body: richText({ toolbar: toolbar as never }) } }) } }),
+        (error: unknown) => error instanceof ModelError && /unknown toolbar/.test(error.message),
+      );
+    }
   });
 });

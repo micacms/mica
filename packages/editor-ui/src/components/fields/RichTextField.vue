@@ -18,7 +18,7 @@ import { computed, inject, onBeforeUnmount, ref, watch } from "vue";
 
 import { EditorContent, useEditor } from "@tiptap/vue-3";
 
-import type { RichTextFeature, RichTextField } from "@micacms/core";
+import { richTextFeatures, type RichTextFeature, type RichTextField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
 import { api, type MediaItem } from "@/api";
@@ -42,16 +42,7 @@ const emit = defineEmits<{ "update:modelValue": [string | null] }>();
 const field = computed(() => props.field as RichTextField);
 const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 
-const DEFAULT_TOOLBAR: RichTextFeature[] = [
-  "bold",
-  "italic",
-  "heading",
-  "bulletList",
-  "orderedList",
-  "link",
-];
-
-const toolbar = computed(() => field.value.toolbar ?? DEFAULT_TOOLBAR);
+const toolbar = computed(() => richTextFeatures(field.value.toolbar));
 const enabled = (feature: RichTextFeature) => toolbar.value.includes(feature);
 
 const source = computed(() => (typeof props.modelValue === "string" ? props.modelValue : ""));

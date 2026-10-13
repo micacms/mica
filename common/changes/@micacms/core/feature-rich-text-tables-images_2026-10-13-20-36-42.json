@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@micacms/core",
-      "comment": "The rich-text toolbar options \"table\" and \"image\", and the shared rules for paths in rich text (markdocImages, markdocTargets, resolveMarkdocTarget, richTextValues)",
+      "comment": "The rich-text toolbar takes a preset, \"minimal\", \"default\" or \"full\", or a list of features, which now include \"table\" and \"image\"; an unknown toolbar stops the model from loading. Shared rules for paths in rich text (markdocImages, markdocTargets, resolveMarkdocTarget, richTextValues)",
       "type": "minor"
     }
   ],

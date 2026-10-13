@@ -161,16 +161,7 @@
         "body": {
           "kind": "richText",
           "label": "Guide",
-          "toolbar": [
-            "bold",
-            "italic",
-            "heading",
-            "bulletList",
-            "orderedList",
-            "blockquote",
-            "link",
-            "horizontalRule"
-          ]
+          "toolbar": "full"
         }
       }
     },

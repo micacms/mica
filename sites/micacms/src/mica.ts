@@ -83,7 +83,7 @@ export const site = defineSite({
         readTime: number({ label: "Read time", unit: "min", integer: true, min: 1, max: 60 }),
         body: richText({
           label: "Guide",
-          toolbar: ["bold", "italic", "heading", "bulletList", "orderedList", "blockquote", "link", "horizontalRule"],
+          toolbar: "full",
         }),
       },
     }),
