@@ -1,6 +1,18 @@
 # Change Log - @micacms/astro
 
-This log was last generated on Tue, 13 Oct 2026 14:06:11 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 19:37:59 GMT and should not be manually modified.
+
+## 0.8.0
+Tue, 13 Oct 2026 19:37:59 GMT
+
+### Minor changes
+
+- @micacms/astro/relations: related() and relatedAll() resolve relation fields with the site's types and warn in dev about a missing target; the setup reference names tags()
+- Each entry has the images of its rich text in _mica.images, and renderRichText(text, { images }) gives them their Astro address, width and height
+
+### Updates
+
+- Comments only
 
 ## 0.7.0
 Tue, 13 Oct 2026 14:06:11 GMT

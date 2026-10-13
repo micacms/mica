@@ -1,6 +1,21 @@
 # Change Log - @micacms/editor
 
-This log was last generated on Tue, 13 Oct 2026 14:06:11 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 19:37:59 GMT and should not be manually modified.
+
+## 0.8.0
+Tue, 13 Oct 2026 19:37:59 GMT
+
+### Minor changes
+
+- mica check reports an image in rich text whose file is missing
+
+### Patches
+
+- mica import fills a tags field from a list or a comma-separated string
+
+### Updates
+
+- A test that the command-line reference names every command and option
 
 ## 0.7.0
 Tue, 13 Oct 2026 14:06:11 GMT

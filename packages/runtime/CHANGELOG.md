@@ -1,6 +1,19 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Tue, 13 Oct 2026 14:06:11 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 19:37:59 GMT and should not be manually modified.
+
+## 0.8.0
+Tue, 13 Oct 2026 19:37:59 GMT
+
+### Minor changes
+
+- Opening an entry, the free-URL check, the dashboard, the System page and the change list read only what they show; the media file route answers 304 with an ETag
+- Breaking: ContentFiles has stat(); the media list reads no file and has no dimensions, which /admin/media/info gives for one file; a single entry's response has no position
+
+### Updates
+
+- Comments only
+- Uses the rich-text path rules from @micacms/core
 
 ## 0.7.0
 Tue, 13 Oct 2026 14:06:11 GMT

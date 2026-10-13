@@ -10,6 +10,101 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.8.0] — 2026-10-13
+
+Ready for others. Rich text edits tables and images, and a toolbar takes a
+preset. The editor works with the keyboard and a screen reader on every view,
+and CI checks each view with axe. A relation field finds entries as you type,
+and entries move by drag, by the keyboard or to a typed position. A new
+`tags()` field holds a free list of words, and `@micacms/astro/relations`
+resolves relations on your pages. Each view of the editor reads only what it
+shows. A minimal starter, a general example site, and the documentation on
+micacms.com (reference pages, recipes, model changes, a guide for editors)
+help a new team to start.
+
+Read Breaking before upgrading from 0.7. `mica check` and Publish now report a
+missing image in rich text. An unknown rich-text toolbar stops the model from
+loading.
+
+### Breaking
+
+- **Images in rich text are checked.** `mica check` reports an image whose
+  file is missing, and Publish refuses it. A missing image with a `/path` is a
+  warning only, because it can be in Astro's `public/` folder
+  (`@micacms/editor`, `@micacms/runtime`).
+- **An unknown rich-text toolbar stops the model from loading.** `toolbar` is
+  a preset (`"minimal"`, `"default"`, `"full"`) or a list of known features;
+  before, an unknown feature was ignored. An older editor ignores a feature
+  from a newer model (`@micacms/core`).
+- **Internal: the runtime reads less.** `ContentFiles` has `stat()`; the media
+  list has no dimensions, which `/admin/media/info` gives for one file; a
+  single entry's response has no `position` (`@micacms/runtime`).
+
+### Added
+
+- **Tables and images in rich text.** A table has a header row and one line of
+  text in each cell, stored as a Markdown pipe table. An image comes from the
+  media library with its alt text, which is required. The toolbar options
+  `"table"` and `"image"` add the buttons (`@micacms/editor-ui`,
+  `@micacms/core`).
+- **Toolbar presets:** `toolbar: "minimal" | "default" | "full"`, or a list of
+  features (`@micacms/core`).
+- **Images in rich text on the website.** Each entry has its rich-text images
+  in `_mica.images`, made by Astro's `image()`, and
+  `renderRichText(text, { images })` writes their address, width and height
+  (`@micacms/astro`).
+- **`tags()`**, a field for a free list of short words, with `max`,
+  `maxLength`, `suggestions` and `default`. The editor adds a tag with Enter or
+  a comma and offers the suggestions; `mica import` fills a tags field
+  (`@micacms/core`, `@micacms/editor-ui`, `@micacms/editor`).
+- **`@micacms/astro/relations`:** `related()` and `relatedAll()` resolve
+  relation fields with the site's types and warn in `astro dev` about a
+  missing target (`@micacms/astro`).
+- **A searchable relation picker.** A relation field finds entries as you
+  type, and the chosen entries can be put in a new order (`@micacms/editor-ui`).
+- **Ordering by drag, by the keyboard, or to a position**, with one save for
+  each move (`@micacms/editor-ui`).
+- **Accessibility.** Each page has its own title, a skip link, and the focus on
+  its heading after navigation. The menu drawer, the dialogs and the upload
+  controls work with the keyboard; read-only fields stay focusable; the
+  Publish page labels Before and After. A browser test runs axe on every view
+  (`@micacms/editor-ui`).
+- **A "Help for editors" link** in the menu opens the guide for editors on
+  micacms.com (`@micacms/editor-ui`).
+- **A minimal starter** in `examples/starter`, for
+  `npm create astro -- --template micacms/mica/examples/starter`, with a CI
+  workflow that runs `mica check` and checks the committed model.
+- **`collectionSlugs`**, and shared rules for paths in rich text, in
+  `@micacms/core`.
+
+### Changed
+
+- **Each view reads what it shows.** Opening an entry, the free-URL check, the
+  overview, the System page and the change list read only what they show; the
+  media file route answers 304 with an ETag; a collection is read eight
+  entries at a time (`@micacms/runtime`, `@micacms/core`).
+- **The editor uses Tiptap 3** (`@micacms/editor-ui`).
+- **Fields stay readable while a form saves.** They are read-only, not
+  disabled, so the focus stays where it was (`@micacms/editor-ui`).
+- **The example is a general company site**, Harbor Lane Consulting in
+  `examples/company-site`, with every field kind, tables and images in rich
+  text, and imaginary places.
+- **One source of user documentation.** The guides are on micacms.com, with
+  new reference pages (command line, `@micacms/astro`, fields, health
+  endpoints), recipes, a guide to model changes with tested scripts, a guide
+  for an existing site, a guide for editors, the scope with a comparison, a
+  pattern for several languages, and an accessibility statement.
+- **Contributing:** `CONTRIBUTING.md`, a code of conduct, `GOVERNANCE.md`,
+  issue forms and a pull-request template.
+
+### Fixed
+
+- Saving a form no longer logs a Content-Security-Policy violation
+  (`@micacms/editor-ui`).
+- The media details load the dimensions of the selected file, and the change
+  list refreshes after a write and when the window gets the focus, not at each
+  navigation (`@micacms/editor-ui`).
+
 ## [0.7.0] — 2026-10-13
 
 The editor's daily work. Editors choose what to publish, read editing words

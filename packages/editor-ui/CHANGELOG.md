@@ -1,6 +1,23 @@
 # Change Log - @micacms/editor-ui
 
-This log was last generated on Tue, 13 Oct 2026 14:06:11 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 19:37:59 GMT and should not be manually modified.
+
+## 0.8.0
+Tue, 13 Oct 2026 19:37:59 GMT
+
+### Minor changes
+
+- The menu has a Help for editors link to the editor guide on micacms.com
+- Accessibility: every page has its own title, a skip link and focus on the heading after navigation; the menu drawer, dialogs and upload controls work with the keyboard; read-only fields stay focusable; the Publish page labels Before and After
+- A relation field finds entries as you type, and the chosen entries can be put in a new order
+- Entries of a sortable collection move by drag, by the keyboard or to a typed position, and each move saves once
+- A tags input: Enter or a comma adds a tag, each tag has a remove button, and suggestions are offered while typing
+- Rich text edits tables and images: a table with a header row and one line per cell, and an image from the media library with its alt text. The editor uses Tiptap 3
+
+### Patches
+
+- The media details load the dimensions of the selected file; the change list refreshes after writes and on window focus, not on every navigation
+- Saving a form no longer logs a Content-Security-Policy violation
 
 ## 0.7.0
 Tue, 13 Oct 2026 14:06:11 GMT

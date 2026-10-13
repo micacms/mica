@@ -1,6 +1,19 @@
 # Change Log - @micacms/core
 
-This log was last generated on Tue, 13 Oct 2026 14:06:11 GMT and should not be manually modified.
+This log was last generated on Tue, 13 Oct 2026 19:37:59 GMT and should not be manually modified.
+
+## 0.8.0
+Tue, 13 Oct 2026 19:37:59 GMT
+
+### Minor changes
+
+- tags(): a field kind for a free list of short words, with max, maxLength, suggestions and default
+- collectionSlugs lists a collection's URLs without reading entries, and readCollection reads eight entries at a time
+- The rich-text toolbar takes a preset, "minimal", "default" or "full", or a list of features, which now include "table" and "image"; an unknown toolbar stops the model from loading. Shared rules for paths in rich text (markdocImages, markdocTargets, resolveMarkdocTarget, richTextValues)
+
+### Updates
+
+- Migration recipes and their tests, not in the package
 
 ## 0.7.0
 Tue, 13 Oct 2026 14:06:11 GMT

@@ -2,6 +2,28 @@
   "name": "@micacms/editor",
   "entries": [
     {
+      "version": "0.8.0",
+      "tag": "@micacms/editor_v0.8.0",
+      "date": "Tue, 13 Oct 2026 19:37:59 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "A test that the command-line reference names every command and option"
+          }
+        ],
+        "patch": [
+          {
+            "comment": "mica import fills a tags field from a list or a comma-separated string"
+          }
+        ],
+        "minor": [
+          {
+            "comment": "mica check reports an image in rich text whose file is missing"
+          }
+        ]
+      }
+    },
+    {
       "version": "0.7.0",
       "tag": "@micacms/editor_v0.7.0",
       "date": "Tue, 13 Oct 2026 14:06:11 GMT",

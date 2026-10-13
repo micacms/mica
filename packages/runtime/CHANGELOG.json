@@ -2,6 +2,29 @@
   "name": "@micacms/runtime",
   "entries": [
     {
+      "version": "0.8.0",
+      "tag": "@micacms/runtime_v0.8.0",
+      "date": "Tue, 13 Oct 2026 19:37:59 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "Comments only"
+          },
+          {
+            "comment": "Uses the rich-text path rules from @micacms/core"
+          }
+        ],
+        "minor": [
+          {
+            "comment": "Opening an entry, the free-URL check, the dashboard, the System page and the change list read only what they show; the media file route answers 304 with an ETag"
+          },
+          {
+            "comment": "Breaking: ContentFiles has stat(); the media list reads no file and has no dimensions, which /admin/media/info gives for one file; a single entry's response has no position"
+          }
+        ]
+      }
+    },
+    {
       "version": "0.7.0",
       "tag": "@micacms/runtime_v0.7.0",
       "date": "Tue, 13 Oct 2026 14:06:11 GMT",
