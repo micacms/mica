@@ -394,8 +394,11 @@ export function createReferenceCheck(
     if (known) return Promise.resolve(known.has(slug));
     const key = `${collection}/${slug}`;
     if (!entries.has(key)) {
-      const def = site.collections[collection]!;
-      entries.set(key, readCollectionEntry(source, def, collection, slug).then((data) => data !== null, () => false));
+      // The data file is enough: an entry exists when it does.
+      const { fields } = site.collections[collection]!;
+      const base = `${collection}/${slug}`;
+      const dataPath = entryLayout(fields) === "directory" ? `${base}/${INDEX_FILE}` : `${base}.json`;
+      entries.set(key, source.read(dataPath).then((data) => data !== null, () => false));
     }
     return entries.get(key)!;
   };

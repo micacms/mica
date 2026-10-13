@@ -106,6 +106,12 @@ function blocks(nodes: ProseMirrorNode[] = []): string {
     .join("\n\n");
 }
 
+/** `---` as the first line would start front matter, which Markdoc hides. */
+function document(nodes: ProseMirrorNode[]): string {
+  const text = blocks(nodes);
+  return text.startsWith("---") ? `***${text.slice(3)}` : text;
+}
+
 function block(node: ProseMirrorNode): string {
   switch (node.type) {
     case "paragraph":
@@ -153,7 +159,7 @@ function block(node: ProseMirrorNode): string {
 /** ProseMirror JSON to a Markdoc document. Empty input gives an empty string. */
 export function toMarkdoc(doc: ProseMirrorNode | null | undefined): string {
   if (!doc?.content?.length) return "";
-  const text = blocks(doc.content).trim();
+  const text = document(doc.content).trim();
   return text === "" ? "" : `${text}\n`;
 }
 
@@ -291,8 +297,10 @@ function fromBlocks(nodes: MarkdocNode[]): ProseMirrorNode[] {
 
       case "list": {
         const ordered = node.attributes["ordered"] === true;
+        const start = Number(node.attributes["start"] ?? 1);
         result.push({
           type: ordered ? "orderedList" : "bulletList",
+          ...(ordered && start !== 1 ? { attrs: { start } } : {}),
           content: node.children
             .filter((child) => child.type === "item")
             .map((item) => ({ type: "listItem", content: fromBlocks(item.children) })),
@@ -331,6 +339,9 @@ export function unsupportedMarkdoc(source: string | null | undefined): string[] 
   const found = new Set<string>();
 
   const visit = (node: MarkdocNode): void => {
+    if (node.type === "document" && node.attributes["frontmatter"]) found.add("front matter");
+    // A variable or a function, such as `{% $name %}`, is a text node without a string.
+    if (node.type === "text" && typeof node.attributes["content"] !== "string") found.add("a variable such as {% $name %}");
     if (node.type === "tag") found.add(`a {% ${node.tag ?? ""} %} tag`);
     else if (TABLE.has(node.type)) found.add("a table");
     else if (!SUPPORTED.has(node.type)) found.add(NAMES[node.type] ?? `a "${node.type}" node`);

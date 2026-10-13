@@ -1231,8 +1231,9 @@ a localized `alt` then belongs in the media value.
 
 **Built in 0.6 (#61):** the option, the stored shape, the editor input, the
 Astro types, `mica check`, the guides and the `mica init` starter. A stored
-plain path reads as one without alt text, so adding the option is safe. The
-example still uses plain paths.
+plain path reads as one without alt text, so `"optional"` can be added to a
+field with content; `"required"` then fails the build until each image has alt
+text. The example still uses plain paths.
 
 **1.0 status:** blocker until the example uses it; the Astro helper is in #109.
 

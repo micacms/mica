@@ -10,7 +10,7 @@
  *     retry pushes and never commits again.
  */
 
-import { MANIFEST_PATH, memorySource, type PublishResult, type Site } from "@micacms/core";
+import { MANIFEST_PATH, memorySource, type ContentSource, type PublishResult, type Site } from "@micacms/core";
 
 import { ApiError, badRequest, notFound } from "../lib/errors.js";
 import type { Logger } from "../lib/logger.js";
@@ -26,6 +26,7 @@ import {
   discardChange,
   headRevision,
   headSource,
+  overlaySource,
   listTreeChanges,
   locateTree,
   type GitTree,
@@ -78,10 +79,11 @@ export function createWorkingTreeStagingService(
   const policy = deps.policy ?? developerPolicy({ publishEnabled: deps.publishEnabled, logger });
   const locks = deps.locks ?? createWorkspaceLocks();
 
-  const analyse = async (tree: GitTree, treeChanges: TreeChange[]) => {
+  /** `source` is what the result holds: the whole working tree, or HEAD with a selection. */
+  const analyse = async (tree: GitTree, treeChanges: TreeChange[], source: ContentSource = files) => {
     const { changes, validation } = await analyseChanges(
       model,
-      files,
+      source,
       treeChanges,
       headSource(tree),
     );
@@ -233,7 +235,9 @@ export function createWorkingTreeStagingService(
           }
 
           const selected = (await listTreeChanges(tree)).filter((change) => change.path in input.paths);
-          const { validation } = await analyse(tree, selected);
+          // Checked against what the commit will hold: drafts left behind are not on the site.
+          const result = overlaySource(headSource(tree), files, selected.map((change) => change.path));
+          const { validation } = await analyse(tree, selected, result);
           if (!validation.ok) {
             throw new ApiError("validation_failed", describeProblems(validation.problems), {
               issues: flattenProblems(validation.problems),

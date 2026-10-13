@@ -2,6 +2,7 @@
 
 import type { Author } from "../workspace/files.js";
 import {
+  LayoutError,
   ORDER_FILE,
   collectReferences,
   collectionEntryPath,
@@ -149,11 +150,15 @@ export async function compareSources(
   staged: ContentSource,
   target: CompareTarget,
 ): Promise<Comparison> {
+  // During a layout migration HEAD still has the old layout: then there is no "before".
+  const before = <T>(read: () => Promise<T>): Promise<T | null> =>
+    read().catch((error: unknown) => (error instanceof LayoutError ? null : Promise.reject(error)));
+
   if (target.kind === "singleton") {
     const def = model.singletons[target.name];
     if (!def) throw badRequest(`There is no singleton called "${target.name}".`);
     return {
-      before: await readSingleton(published, def, target.name),
+      before: await before(() => readSingleton(published, def, target.name)),
       after: await readSingleton(staged, def, target.name),
     };
   }
@@ -166,14 +171,14 @@ export async function compareSources(
     for (const slug of [target.slug, from]) {
       if (!isValidSlug(slug)) throw badRequest(`"${slug}" is not a slug.`);
     }
-    const before = await readCollectionEntry(published, def, target.collection, from);
+    const old = await readCollectionEntry(published, def, target.collection, from);
     const after = await readCollectionEntry(staged, def, target.collection, target.slug);
-    if (from === target.slug) return { before, after };
+    if (from === target.slug) return { before: old, after };
 
     // A rename: compare the on-disk form, where colocated media paths do not
     // name the entry's folder.
     return {
-      before: before && onDisk(def, target.collection, from, before),
+      before: old && onDisk(def, target.collection, from, old),
       after: after && onDisk(def, target.collection, target.slug, after),
     };
   }
@@ -186,7 +191,7 @@ export async function compareSources(
     };
   };
 
-  return { before: await ordering(published), after: await ordering(staged) };
+  return { before: await before(() => ordering(published)), after: await ordering(staged) };
 }
 
 /**
@@ -513,16 +518,22 @@ async function brokenByRemoval(
   entriesByCollection: Map<string, Map<string, Record<string, unknown>>>,
   titles: Map<string, string>,
 ): Promise<StagingProblem[]> {
-  const removedEntries = new Map<string, { collection: string; slug: string }>();
+  const removedEntries = new Map<string, { collection: string; slug: string; renamedTo?: string }>();
   const removedFiles = new Set<string>();
   changes.forEach((change, index) => {
     const owner = owners[index]!;
     if (change.kind !== "delete") return;
-    if (owner.kind === "entry" && !entriesByCollection.get(owner.collection)?.has(owner.slug)) {
-      removedEntries.set(`${owner.collection}/${owner.slug}`, { collection: owner.collection, slug: owner.slug });
-    } else {
-      removedFiles.add(change.path);
+    if (owner.kind === "entry") {
+      // A URL change removes the old slug: links to it break as with a delete.
+      const gone = owner.renamedFrom ?? owner.slug;
+      if (!entriesByCollection.get(owner.collection)?.has(gone)) {
+        const renamedTo = owner.renamedFrom ? owner.slug : undefined;
+        removedEntries.set(`${owner.collection}/${gone}`, { collection: owner.collection, slug: gone, ...(renamedTo ? { renamedTo } : {}) });
+        return;
+      }
     }
+    // Only a media file can be a target; a cleared rich-text file or an order file cannot.
+    if (!change.path.endsWith(".json") && !change.path.endsWith(".mdoc")) removedFiles.add(change.path);
   });
   if (removedEntries.size === 0 && removedFiles.size === 0) return [];
 
@@ -556,10 +567,13 @@ async function brokenByRemoval(
   for (const [target, from] of linkedFrom) {
     const entry = removedEntries.get(target);
     const def = entry ? model.collections[entry.collection]! : null;
+    const message = entry?.renamedTo
+      ? `The URL changes from "${entry.slug}" to "${entry.renamedTo}", and ${from.join(", ")} still link to "${entry.slug}". Change those links first, or publish them together.`
+      : `Still linked from ${from.join(", ")}. Remove those links first, or publish them together.`;
     problems.push({
       path: entry && def ? entryDataPath(def, entry.collection, entry.slug) : target,
       label: entry && def ? labelEntry(def, entry.slug, titles.get(target)) : target,
-      issues: [{ path: "", message: `Still linked from ${from.join(", ")}. Remove those links first, or publish them together.` }],
+      issues: [{ path: "", message }],
     });
   }
   return problems;

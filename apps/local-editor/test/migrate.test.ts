@@ -57,10 +57,38 @@ describe("mica migrate-layout", () => {
     const result = await migrateLayout(root);
     assert.deepEqual(result.moved, [{ from: "team/anna/index.json", to: "team/anna.json" }]);
     assert.deepEqual(result.removed.sort(), ["team/anna/bio.mdoc", "team/anna/media/portrait.jpg"]);
-    assert.deepEqual(result.kept, ["team/anna/notes.txt"]);
+    assert.deepEqual(result.kept, ["team/anna/notes.txt (not written by Mica)"]);
     assert.ok(existsSync(path.join(root, "team/anna.json")));
     assert.ok(!existsSync(path.join(root, "team/anna/media")));
     assert.match(formatMigration(result), /moved {4}team\/anna\/index\.json -> team\/anna\.json/);
+  });
+
+  it("moves an entry named index inside its collection", async () => {
+    write(MANIFEST_PATH, createManifest(model(true), "test"));
+    write("team/index.json", { name: "Index", slug: "index" });
+
+    const result = await migrateLayout(root);
+    assert.deepEqual(result.moved, [{ from: "team/index.json", to: "team/index/index.json" }]);
+    assert.ok(existsSync(path.join(root, "team/index/index.json")));
+  });
+
+  it("keeps media that another entry still uses", async () => {
+    const site = defineSite({
+      collections: {
+        team: collection({ label: "Team", fields: { name: text(), slug: slug({ from: "name" }) } }),
+        news: collection({ label: "News", fields: { title: text(), slug: slug({ from: "title" }), cover: media() } }),
+      },
+    });
+    write(MANIFEST_PATH, createManifest(site, "test"));
+    write("team/anna/index.json", { name: "Anna", slug: "anna" });
+    write("team/anna/media/shared.jpg", "jpeg");
+    write("team/anna/media/old.jpg", "jpeg");
+    write("news/hello/index.json", { title: "Hello", slug: "hello", cover: "/team/anna/media/shared.jpg" });
+
+    const result = await migrateLayout(root);
+    assert.deepEqual(result.removed, ["team/anna/media/old.jpg"]);
+    assert.deepEqual(result.kept, ["team/anna/media/shared.jpg (another entry uses it)"]);
+    assert.ok(existsSync(path.join(root, "team/anna/media/shared.jpg")));
   });
 
   it("does not overwrite an entry that exists in both layouts", async () => {

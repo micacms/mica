@@ -19,7 +19,7 @@ import {
   unsupportedMarkdoc,
   type ProseMirrorNode,
 } from "../src/lib/markdoc.js";
-import { createRichTextExtensions } from "../src/lib/rich-text-extensions.js";
+import { createRichTextExtensions, richTextSchema } from "../src/lib/rich-text-extensions.js";
 
 /** Markdoc in, Markdoc out, through the editor's representation. */
 const roundTrip = (source: string): string => toMarkdoc(fromMarkdoc(source));
@@ -204,7 +204,34 @@ describe("stored Markdoc that a toolbar does not offer", () => {
   }
 });
 
+describe("text that once broke the editor", () => {
+  it("keeps code inside a link or bold, and the schema accepts it", () => {
+    for (const sample of ["[`npm i`](https://example.com)\n", "**`x`** and _`y`_\n"]) {
+      const parsed = fromMarkdoc(sample);
+      assert.doesNotThrow(() => richTextSchema.nodeFromJSON(parsed));
+      assert.equal(toMarkdoc(parsed), sample);
+    }
+  });
+
+  it("keeps the start number of an ordered list", () => {
+    assert.equal(toMarkdoc(fromMarkdoc("3. third\n4. fourth\n")), "3. third\n4. fourth\n");
+  });
+
+  it("never writes a divider that starts front matter", () => {
+    const doc = { type: "doc", content: [{ type: "horizontalRule" }, { type: "paragraph", content: [{ type: "text", text: "Hello" }] }, { type: "horizontalRule" }] };
+    const out = toMarkdoc(doc);
+    assert.equal(out, "***\n\nHello\n\n---\n");
+    assert.deepEqual(unsupportedMarkdoc(out), []);
+    assert.equal(toMarkdoc(fromMarkdoc(out)), out);
+  });
+});
+
 describe("unsupportedMarkdoc", () => {
+  it("names front matter and variables", () => {
+    assert.deepEqual(unsupportedMarkdoc("---\ntitle: x\n---\n\nHello\n"), ["front matter"]);
+    assert.deepEqual(unsupportedMarkdoc("Hello {% $name %}.\n"), ["a variable such as {% $name %}"]);
+  });
+
   it("names what the editor cannot show", () => {
     assert.deepEqual(unsupportedMarkdoc("![A house](media/house.jpg)\n"), ["an image"]);
     assert.deepEqual(unsupportedMarkdoc("| a | b |\n| - | - |\n| 1 | 2 |\n"), ["a table"]);

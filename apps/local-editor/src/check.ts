@@ -14,6 +14,7 @@ import {
   INDEX_FILE,
   isValidSlug,
   MANIFEST_PATH,
+  misplacedFiles,
   ORDER_FILE,
   readCollectionEntry,
   readSingleton,
@@ -103,9 +104,11 @@ export async function checkContent(root: string): Promise<CheckReport> {
     const directory = entryLayout(def.fields) === "directory";
     const base = singletonPath(def.fields, name);
     const dataPath = directory ? `${base}/${INDEX_FILE}` : base;
-    const otherLayout = directory ? `${name}.json` : `${name}/${INDEX_FILE}`;
-    if ((await readText(files, otherLayout)) !== null) {
+    const [otherLayout] = await misplacedFiles(files, def.fields, name, "singleton");
+    if (otherLayout) {
       error(otherLayout, `Not read: "${def.label}" is stored as ${dataPath}, because ${directory ? "it has" : "it has no"} rich text or media. Run \`npx mica migrate-layout\`.`);
+      // Without a file in the model's layout, the reader stops at the other one: reported above.
+      if ((await readText(files, dataPath)) === null) continue;
     }
 
     const data = await readOrReport(() => readSingleton(files, def, name), dataPath, error);
@@ -140,6 +143,8 @@ async function entrySlugs(
   const directory = entryLayout(fields) === "directory";
   const shape = directory ? `a folder with ${INDEX_FILE}` : "a <slug>.json file";
   const found: string[] = [];
+  // The reader's own rule, so that `check` and `migrate-layout` agree.
+  const misplaced = new Set(await misplacedFiles(files, fields, name, "collection"));
 
   for (const item of await files.list(name)) {
     const path = `${name}/${item.name}`;
@@ -150,11 +155,11 @@ async function entrySlugs(
     }
 
     // An entry in the other layout is lost content, not a stray file: the model gained or lost rich text or media.
-    if (directory && item.type === "file" && item.name.endsWith(".json")) {
+    if (directory && misplaced.has(path)) {
       error(path, `Not read: entries of "${name}" are folders with ${INDEX_FILE}, because it has rich text or media. Run \`npx mica migrate-layout\`.`);
       continue;
     }
-    if (!directory && item.type === "directory" && (await readText(files, `${path}/${INDEX_FILE}`)) !== null) {
+    if (!directory && misplaced.has(`${path}/${INDEX_FILE}`)) {
       error(path, `Not read: entries of "${name}" are <slug>.json files, because it has no rich text or media. Run \`npx mica migrate-layout\`.`);
       continue;
     }

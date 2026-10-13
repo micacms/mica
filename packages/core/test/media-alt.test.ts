@@ -55,6 +55,11 @@ describe("media with alt text", () => {
     assert.deepEqual(result.ok && result.data["gallery"], [{ path: "media/a.jpg", alt: null }]);
   });
 
+  it("reads a stored { path, alt } as its path after the option is removed", () => {
+    const result = validateFields({ file: media() }, { file: { path: "media/a.pdf", alt: "Plan" } });
+    assert.equal(result.ok && result.data["file"], "media/a.pdf");
+  });
+
   it("writes the path and the alt text in a fixed order", () => {
     const { data } = serializeEntry(fields, {
       cover: { alt: "A house", path: "media/a.jpg" },

@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import { collection, defineSite, media, memorySource, relation, repeater, slug, text, type ContentChange } from "@micacms/core";
 
 import { analyseChanges } from "../src/services/changes.js";
+import { overlaySource } from "../src/workspace/tree.js";
 
 const model = defineSite({
   collections: {
@@ -84,5 +85,53 @@ describe("references at Publish", () => {
     // Bob is gone from the staged files; nothing links to him.
     const result = await analyseChanges(model, memorySource(files), [remove("team/bob.json")]);
     assert.deepEqual(messages(result), []);
+  });
+});
+
+describe("references in a selection", () => {
+  it("checks what the commit holds, not the drafts that stay behind", async () => {
+    // Bob is a new draft; the article links to him, but only the article is selected.
+    const head = memorySource(files);
+    const tree = memorySource({
+      ...files,
+      "team/bob.json": JSON.stringify({ name: "Bob", slug: "bob" }),
+      "news/hello/index.json": JSON.stringify({ title: "Hello", slug: "hello", author: "bob", sections: [] }),
+    });
+    const selected = ["news/hello/index.json"];
+    const result = await analyseChanges(model, overlaySource(head, tree, selected), [update(selected[0]!)]);
+    assert.deepEqual(messages(result), ['Article: Hello: author: Links to "bob" in Team, which does not exist.']);
+
+    const both = ["news/hello/index.json", "team/bob.json"];
+    const together = await analyseChanges(model, overlaySource(head, tree, both), [update(both[0]!), { path: both[1]!, kind: "create" }]);
+    assert.deepEqual(messages(together), []);
+  });
+
+  it("refuses a URL change while other entries link to the old URL", async () => {
+    const published = memorySource(files);
+    const { "team/anna.json": _old, ...rest } = files;
+    const staged = memorySource({ ...rest, "team/anna-vogt.json": JSON.stringify({ name: "Anna", slug: "anna-vogt" }) });
+    const result = await analyseChanges(
+      model,
+      staged,
+      [remove("team/anna.json"), { path: "team/anna-vogt.json", kind: "create" }],
+      published,
+    );
+    assert.deepEqual(messages(result), [
+      'Person: anna: The URL changes from "anna" to "anna-vogt", and Article: Hello still link to "anna". Change those links first, or publish them together.',
+    ]);
+  });
+});
+
+describe("overlaySource", () => {
+  it("reads and lists the selected paths from the top, everything else from the base", async () => {
+    const base = memorySource({ "team/a.json": "a", "team/b.json": "b", "media/x.png": "x" });
+    const top = memorySource({ "team/b.json": "B", "team/c.json": "c", "news/new/index.json": "{}" });
+    const overlay = overlaySource(base, top, ["team/a.json", "team/c.json", "news/new/index.json"]);
+
+    assert.equal(await overlay.read("team/a.json"), null);
+    assert.equal(await overlay.read("team/b.json"), "b");
+    assert.equal(await overlay.read("team/c.json"), "c");
+    assert.deepEqual((await overlay.list("team")).map((item) => item.name).sort(), ["b.json", "c.json"]);
+    assert.deepEqual(await overlay.list("news"), [{ name: "new", type: "directory" }]);
   });
 });

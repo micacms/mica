@@ -64,10 +64,7 @@ function createDispatcher() {
 
 async function readModel(config: SelfHostedConfig, files: ContentFiles): Promise<Site> {
   try {
-    const model = await loadSchema(files);
-    const misplaced = await layoutProblems(files, model);
-    if (misplaced.length > 0) refuse(misplaced.join("\n\n"));
-    return model;
+    return await loadSchema(files);
   } catch (error) {
     if (error instanceof SchemaError) {
       refuse(
@@ -187,6 +184,9 @@ async function serve(): Promise<void> {
   }
 
   const model = await readModel(config, files);
+  // Not a refusal: a draft of Mica's own in the old layout would stop every start,
+  // and no push can move it. The list and Publish name the files.
+  for (const problem of await layoutProblems(files, model)) logger.warn("Entries in the other layout", { problem });
   groups.of = contentGroups(model);
   revalidate.run = revalidator(model, files, tree);
   const schemaRevision = await files.revision(MANIFEST_PATH);

@@ -67,6 +67,10 @@ export function previewValue(value: unknown): string {
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "number") return String(value);
   if (Array.isArray(value)) return value.length === 0 ? "—" : `${value.length}`;
+  // `media({ alt })`: the file name says more than the alt text in a list.
+  if (typeof value === "object" && typeof (value as { path?: unknown }).path === "string") {
+    return previewValue((value as { path: string }).path.split("/").pop());
+  }
 
   if (typeof value === "string") {
     // Rich text arrives as HTML; show the text it contains.

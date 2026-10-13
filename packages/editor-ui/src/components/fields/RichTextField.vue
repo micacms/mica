@@ -14,7 +14,7 @@
  * be readable in a diff and safe to render into a static site.
  */
 
-import { computed, onBeforeUnmount, ref, watch } from "vue";
+import { computed, onBeforeUnmount, watch } from "vue";
 
 import { EditorContent, useEditor } from "@tiptap/vue-3";
 
@@ -29,7 +29,7 @@ import {
   unsupportedMarkdoc,
   type ProseMirrorNode,
 } from "@/lib/markdoc";
-import { createRichTextExtensions } from "@/lib/rich-text-extensions";
+import { createRichTextExtensions, inputRules, richTextSchema } from "@/lib/rich-text-extensions";
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
@@ -51,9 +51,18 @@ const enabled = (feature: RichTextFeature) => toolbar.value.includes(feature);
 
 const source = computed(() => (typeof props.modelValue === "string" ? props.modelValue : ""));
 
-/** Why the field is shown read-only, or null when the editor can load it. */
-const loadFailure = ref<string | null>(null);
 const unsupported = computed(() => unsupportedMarkdoc(source.value));
+
+/** A document that the schema refuses would load as an empty field. */
+const loadFailure = computed(() => {
+  if (unsupported.value.length > 0) return null;
+  try {
+    richTextSchema.nodeFromJSON(fromMarkdoc(source.value));
+    return null;
+  } catch (cause) {
+    return `The editor could not load this text (${(cause as Error).message}).`;
+  }
+});
 const readOnlyReason = computed(() =>
   unsupported.value.length > 0
     ? `This text contains ${list(unsupported.value)}, which the editor cannot show.`
@@ -65,18 +74,14 @@ function list(items: string[]): string {
 }
 
 const editor = useEditor({
-  content: unsupported.value.length > 0 ? "" : fromMarkdoc(source.value),
-  editable: !(props.disabled || field.value.readonly || unsupported.value.length > 0),
+  content: readOnlyReason.value ? "" : fromMarkdoc(source.value),
+  editable: !(props.disabled || field.value.readonly || readOnlyReason.value),
   // The base styles are in style.css; an injected <style> tag would break the CSP.
   injectCSS: false,
 
-  extensions: createRichTextExtensions(),
-
-  // Content the schema refuses would otherwise load as an empty document.
-  enableContentCheck: true,
-  onContentError({ error: cause }) {
-    loadFailure.value = `The editor could not load this text (${cause.message}).`;
-  },
+  extensions: createRichTextExtensions(toolbar.value),
+  enableInputRules: inputRules(toolbar.value),
+  enablePasteRules: inputRules(toolbar.value),
 
   editorProps: {
     attributes: {

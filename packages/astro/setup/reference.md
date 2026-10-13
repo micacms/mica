@@ -153,12 +153,13 @@ export async function writeOrder(collection, slugs) {
   await writeFile(join(ROOT, collection, "_order.json"), `${JSON.stringify(slugs, null, 2)}\n`);
 }
 
-// Example: `data` has every field, rich text as a Markdoc string, media as `media/<file>`.
+// Example: `data` has every field, rich text as a Markdoc string, and media as
+// `media/<file>`, or `{ path, alt }` for a `media({ alt })` field.
 // await writeEntry("news", "hello-world", {
 //   title: "Hello, world",
 //   slug: "hello-world",
 //   publishedOn: "2026-01-15",
-//   cover: "media/cover.jpg",
+//   cover: { path: "media/cover.jpg", alt: "The team at the opening" },
 //   body: "The first article.",
 // });
 ```

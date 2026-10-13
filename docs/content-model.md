@@ -158,9 +158,12 @@ invalid pattern stops the model from loading.
 **`richText()`** is [Markdoc](https://markdoc.dev), stored in its own file and
 _absent_ from `index.json`. Readable in a diff, and it cannot inject a script
 into the built site: Markdoc escapes raw HTML and renders an undeclared
-`{% tag %}` as nothing. `toolbar` limits what the editor offers — `bold`,
-`italic`, `strike`, `heading`, `bulletList`, `orderedList`, `blockquote`,
-`link`, `horizontalRule`.
+`{% tag %}` as nothing. `toolbar` limits what an editor can add, with the
+buttons and with the shortcuts while typing — `bold`, `italic`, `strike`,
+`heading`, `bulletList`, `orderedList`, `blockquote`, `link`, `horizontalRule`.
+Stored text with other nodes still loads. Text with something the editor cannot
+show — an image, a table, a `{% tag %}`, front matter — opens read-only, with
+the reason.
 
 **`media()`** holds a path. In the file it is relative to the entry's
 directory, like `media/exterior.jpg`, or it starts with `/` for a file elsewhere
@@ -174,8 +177,11 @@ Astro treats it as a local asset: optimised at build time, emitted into
 input under the preview. `"required"` refuses an image without alt text;
 `"optional"` allows one. Use it for every image that carries meaning, because
 a path alone leads to images with `alt=""`. A `media()` without the option
-stores a plain path, for a decorative image or a document. Adding the option to
-a field with content is safe: a stored path reads as one without alt text.
+stores a plain path, for a decorative image or a document. A field with content
+can get the option: a stored path reads as one without alt text. With
+`"optional"` nothing else changes; with `"required"` the build fails until each
+of those images has alt text. Removing the option drops the stored alt texts at
+the next save.
 
 **`relation()`** stores the target entry's slug. Pointing at a collection that
 does not exist is caught when the model is defined, not when a page renders.

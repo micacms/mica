@@ -62,6 +62,12 @@ function label(field: AnyField, key: string): string {
   return field.label ?? key;
 }
 
+/** A path. `{ path, alt }`, saved while the field had the `alt` option, reads as its path. */
+const plainMedia = z.preprocess(
+  (value) => (value !== null && typeof value === "object" && "path" in value ? (value as { path: unknown }).path : value),
+  z.string().min(1),
+);
+
 /** `{ path, alt }`. A plain path, saved before the field asked for alt text, reads as one without alt text. */
 function mediaWithAlt(alt: "required" | "optional", name: string, options: SchemaOptions): z.ZodType {
   const text = z.preprocess(
@@ -170,7 +176,7 @@ function innerSchema(
       return coordinatesSchema;
 
     case "media": {
-      const one = field.alt ? mediaWithAlt(field.alt, name, options) : z.string().min(1);
+      const one = field.alt ? mediaWithAlt(field.alt, name, options) : plainMedia;
       if (!field.multiple) return one;
       let list = z.array(one);
       if (field.max !== undefined) list = list.max(field.max);
