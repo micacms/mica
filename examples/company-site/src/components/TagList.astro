@@ -11,7 +11,7 @@ const { tags } = Astro.props;
   tags.length > 0 && (
     <ul class="flex flex-wrap gap-1.5" aria-label="Tags">
       {tags.map((tag) => (
-        <li class="rounded-full border border-line px-2.5 py-0.5 text-xs text-muted">{tag}</li>
+        <li class="rounded-full bg-primary/6 px-2.5 py-1 text-[11px] font-semibold uppercase leading-none tracking-wider text-primary">{tag}</li>
       ))}
     </ul>
   )

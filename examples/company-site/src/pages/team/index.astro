@@ -15,17 +15,14 @@ const team = await getFeaturedTeam();
       team.length === 0 ? (
         <p class="text-muted">No team members have been published yet.</p>
       ) : (
-        <ul class="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3">
+        <ul class="grid gap-x-8 gap-y-14 sm:grid-cols-2 lg:grid-cols-3">
           {team.map((member, index) => (
-            <li>
+            <li class="group relative">
               {member.data.portrait ? (
-                <div
-                  class="aspect-3/4 overflow-hidden bg-sunken"
-                  style="border-radius: var(--radius-theme)"
-                >
+                <div class="media-frame aspect-4/5">
                   <Image
                     {...member.data.portrait}
-                    class="h-full w-full object-cover"
+                    class="h-full w-full object-cover transition duration-700 ease-out group-hover:scale-[1.03]"
                     widths={[320, 640]}
                     sizes="(min-width: 1024px) 360px, (min-width: 640px) 45vw, 90vw"
                     loading={index < 3 ? "eager" : "lazy"}
@@ -34,8 +31,7 @@ const team = await getFeaturedTeam();
                 </div>
               ) : (
                 <div
-                  class="flex aspect-3/4 items-center justify-center bg-sunken text-3xl font-semibold text-muted"
-                  style="border-radius: var(--radius-theme)"
+                  class="media-frame flex aspect-4/5 items-center justify-center bg-primary/8 text-4xl font-semibold text-primary"
                   aria-hidden="true"
                 >
                   {member.data.name
@@ -46,19 +42,20 @@ const team = await getFeaturedTeam();
                 </div>
               )}
 
-              <h2 class="mt-4 font-semibold tracking-tight">
-                <a href={`/team/${member.id}/`} class="hover:text-primary">{member.data.name}</a>
+              <h2 class="mt-5 text-lg font-semibold">
+                {/* The link covers the whole card; the contact links below sit above it. */}
+                <a href={`/team/${member.id}/`} class="transition group-hover:text-primary after:absolute after:inset-0">{member.data.name}</a>
               </h2>
               {member.data.role && (
-                <p class="text-sm text-muted">{member.data.role}</p>
+                <p class="eyebrow mt-1 text-accent">{member.data.role}</p>
               )}
               {member.data.bio && (
-                <p class="mt-2 text-sm text-muted text-pretty">
+                <p class="mt-3 line-clamp-3 text-sm text-muted text-pretty">
                   {member.data.bio}
                 </p>
               )}
 
-              <div class="mt-3 space-y-0.5 text-sm">
+              <div class="relative mt-4 space-y-0.5 text-sm">
                 {member.data.email && (
                   <p>
                     <a

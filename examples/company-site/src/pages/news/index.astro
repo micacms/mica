@@ -21,19 +21,18 @@ const articles = await getNews();
             <li>
               <a
                 href={`/news/${article.id}/`}
-                class="group grid gap-5 py-8 sm:grid-cols-[12rem_1fr] sm:items-start"
+                class="group grid gap-6 pt-10 pb-4 sm:grid-cols-[16rem_1fr] sm:items-start sm:gap-10"
               >
                 {article.data.coverImage ? (
                   <div
-                    class="aspect-4/3 overflow-hidden bg-sunken"
-                    style="border-radius: var(--radius-theme)"
+                    class="media-frame aspect-4/3"
                   >
                     <Image
                       src={article.data.coverImage.src}
                       alt={article.data.coverImage.alt}
                       class="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
                       widths={[320, 640]}
-                      sizes="(min-width: 640px) 192px, 92vw"
+                      sizes="(min-width: 640px) 256px, 92vw"
                     />
                   </div>
                 ) : (
@@ -42,22 +41,22 @@ const articles = await getNews();
 
                 <div>
                   {article.data.publishDate && (
-                    <time datetime={article.data.publishDate} class="text-xs text-muted">
+                    <time datetime={article.data.publishDate} class="text-xs font-medium text-muted">
                       {formatDate(article.data.publishDate)}
                     </time>
                   )}
-                  <h2 class="mt-1 text-xl font-semibold tracking-tight group-hover:text-primary">
+                  <h2 class="mt-1.5 text-2xl font-semibold group-hover:text-primary">
                     {article.data.title}
                   </h2>
                   {article.data.excerpt && (
                     <p class="mt-2 text-muted text-pretty">{article.data.excerpt}</p>
                   )}
-                  <span class="mt-3 inline-block text-sm font-medium text-primary">
-                    Read more →
+                  <span class="link-arrow mt-4">
+                    Read more <span aria-hidden="true">→</span>
                   </span>
                 </div>
               </a>
-              <div class="pb-8 sm:pl-[13.25rem]">
+              <div class="pb-10 sm:pl-[18.5rem]">
                 <TagList tags={article.data.tags} />
               </div>
             </li>

@@ -153,19 +153,37 @@ export function formatDate(iso: string | null, locale = "en"): string {
  * applied by hand and the zone is named in the text.
  */
 export function formatDateTime(iso: string | null, locale = "en"): string {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (Number.isNaN(date.getTime())) return "";
-  const match = iso.match(/([+-])(\d{2}):(\d{2})$/);
-  const offset = match ? (match[1] === "-" ? -1 : 1) * (Number(match[2]) * 60 + Number(match[3])) : 0;
-  const shifted = new Date(date.getTime() + offset * 60_000);
+  const clock = wallClock(iso);
+  if (!clock) return "";
   const text = new Intl.DateTimeFormat(locale, {
     dateStyle: "long",
     timeStyle: "short",
     hourCycle: "h23",
     timeZone: "UTC",
-  }).format(shifted);
-  return `${text} (UTC${match ? `${match[1]}${match[2]}:${match[3]}` : "+00:00"})`;
+  }).format(clock.date);
+  return `${text} (UTC${clock.offset})`;
+}
+
+/** Day and short month of a date with time, for a calendar badge. */
+export function dateBadge(iso: string | null, locale = "en"): { day: string; month: string } | null {
+  const clock = wallClock(iso);
+  if (!clock) return null;
+  const part = (options: Intl.DateTimeFormatOptions) =>
+    new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" }).format(clock.date);
+  return { day: part({ day: "numeric" }), month: part({ month: "short" }) };
+}
+
+/** The instant shifted by its own offset, so that UTC formatting shows its wall clock. */
+function wallClock(iso: string | null): { date: Date; offset: string } | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const match = iso.match(/([+-])(\d{2}):(\d{2})$/);
+  const minutes = match ? (match[1] === "-" ? -1 : 1) * (Number(match[2]) * 60 + Number(match[3])) : 0;
+  return {
+    date: new Date(date.getTime() + minutes * 60_000),
+    offset: match ? `${match[1]}${match[2]}:${match[3]}` : "+00:00",
+  };
 }
 
 /**

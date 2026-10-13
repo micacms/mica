@@ -47,20 +47,20 @@ const SECTION_LAYOUTS: Record<string, string> = {
   image={seo?.ogImage ?? heroImage?.src}
   noindex={seo?.noindex ?? false}
 >
-  <div class="container-page pb-10 pt-14 sm:pt-20">
-    <div class="max-w-2xl">
-      <h1 class="text-3xl font-semibold tracking-tight text-balance sm:text-5xl">{title}</h1>
-      {intro && <p class="mt-5 text-lg text-muted text-pretty">{intro}</p>}
+  <div class="container-page pb-12 pt-16 sm:pt-24">
+    <div class="max-w-3xl">
+      <h1 class="text-4xl font-semibold sm:text-5xl lg:text-6xl">{title}</h1>
+      {intro && <p class="mt-6 text-lg text-muted text-pretty sm:text-xl">{intro}</p>}
     </div>
   </div>
 
   {
     heroImage && (
-      <div class="container-page mb-12">
-        <div class="overflow-hidden bg-sunken" style="border-radius: var(--radius-theme)">
+      <div class="container-page mb-16">
+        <div class="media-frame">
           <Image
             {...heroImage}
-            class="w-full object-cover"
+            class="aspect-16/9 w-full object-cover lg:aspect-2/1"
             widths={[800, 1200, 1800]}
             sizes="(min-width: 1152px) 1120px, 92vw"
             loading="eager"
@@ -81,26 +81,26 @@ const SECTION_LAYOUTS: Record<string, string> = {
 
   {
     sections.length > 0 && (
-      <div class="container-page mt-16 space-y-16">
+      <div class="container-page mt-20 space-y-20 sm:mt-28 sm:space-y-28">
         {sections.map((section) => (
           <section
             class:list={[
-              "grid items-center gap-8",
+              "grid items-center gap-10 lg:gap-16",
               SECTION_LAYOUTS[section.layout ?? "image-right"],
             ]}
           >
             <div>
-              <h2 class="text-2xl font-semibold tracking-tight">{section.heading}</h2>
-              <div class="mt-3">
+              <h2 class="text-3xl font-semibold sm:text-4xl">{section.heading}</h2>
+              <div class="mt-5">
                 <RichText text={section.text} />
               </div>
             </div>
 
             {section.image && (
-              <figure class="overflow-hidden bg-sunken" style="border-radius: var(--radius-theme)">
+              <figure class="media-frame shadow-xl shadow-ink/10">
                 <Image
                   {...section.image}
-                  class="w-full object-cover"
+                  class="aspect-4/3 w-full object-cover"
                   widths={[600, 1000]}
                   sizes="(min-width: 1024px) 45vw, 92vw"
                 />
@@ -114,7 +114,7 @@ const SECTION_LAYOUTS: Record<string, string> = {
 
   {
     showLocation && (
-      <div class="container-page mt-14">
+      <div class="container-page mt-20">
         <LocationMap
           position={settings.position}
           label={settings.companyName}

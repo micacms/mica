@@ -14,14 +14,20 @@ const isCurrent = (href: string): boolean => {
 };
 ---
 
-<header class="sticky top-0 z-40 border-b border-line bg-canvas/90 backdrop-blur">
-  <div class="container-page flex h-16 items-center gap-6">
+<header class="sticky top-0 z-40 border-b border-line/80 bg-canvas/85 backdrop-blur-md">
+  <div class="container-page flex h-18 items-center gap-6">
     <a href="/" class="flex shrink-0 items-center gap-2.5" aria-label={settings.companyName}>
       {
         settings.logo ? (
           <Image src={settings.logo} alt={settings.companyName} class="h-8 w-auto" widths={[96, 192]} sizes="96px" />
         ) : (
-          <span class="text-base font-semibold tracking-tight">{settings.companyName}</span>
+          <>
+            {/* Without a logo, a mark in the theme colours stands in for one. */}
+            <span class="grid size-8 place-items-center bg-primary text-sm font-bold text-white" style="border-radius: var(--radius-theme)" aria-hidden="true">
+              {settings.companyName.charAt(0)}
+            </span>
+            <span class="text-[15px] font-semibold tracking-tight">{settings.companyName}</span>
+          </>
         )
       }
     </a>
@@ -40,7 +46,7 @@ const isCurrent = (href: string): boolean => {
       </summary>
 
       <nav
-        class="absolute inset-x-0 top-16 border-b border-line bg-canvas p-5 shadow-lg"
+        class="absolute inset-x-0 top-18 border-b border-line bg-canvas p-5 shadow-lg"
         aria-label="Main"
       >
         <ul class="space-y-1">
@@ -49,7 +55,7 @@ const isCurrent = (href: string): boolean => {
               <li>
                 <a
                   href={item.href}
-                  class="block py-2 text-base font-medium"
+                  class="block py-2 text-base font-medium aria-[current=page]:text-primary"
                   aria-current={isCurrent(item.href) ? "page" : undefined}
                 >
                   {item.label}
@@ -73,20 +79,20 @@ const isCurrent = (href: string): boolean => {
     </details>
 
     <nav class="ml-auto hidden md:block" aria-label="Main">
-      <ul class="flex items-center gap-7">
+      <ul class="flex items-center gap-1">
         {
           navigation.main.map((item) => (
             <li class="group relative">
               <a
                 href={item.href}
-                class="text-sm font-medium transition hover:text-primary aria-[current=page]:text-primary"
+                class="relative block rounded-full px-3.5 py-2 text-sm font-medium text-ink/75 transition hover:bg-sunken hover:text-ink aria-[current=page]:bg-primary/8 aria-[current=page]:text-primary"
                 aria-current={isCurrent(item.href) ? "page" : undefined}
               >
                 {item.label}
               </a>
 
               {item.children.length > 0 && (
-                <ul class="invisible absolute left-0 top-full min-w-44 border border-line bg-canvas py-1.5 opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
+                <ul class="invisible absolute left-0 top-full min-w-48 rounded-lg border border-line bg-canvas py-1.5 opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100">
                   {item.children.map((child) => (
                     <li>
                       <a

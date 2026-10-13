@@ -27,24 +27,24 @@ const events = await getEventsOf(member.id);
 ---
 
 <BaseLayout title={name} description={bio}>
-  <div class="container-page pb-8 pt-14 sm:pt-20">
-    <a href="/team/" class="text-sm text-muted hover:text-primary">← Team</a>
+  <div class="container-page pb-8 pt-16 sm:pt-24">
+    <a href="/team/" class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> Team</a>
 
-    <div class="mt-6 grid gap-10 md:grid-cols-[16rem_1fr]">
+    <div class="mt-8 grid gap-10 md:grid-cols-[18rem_1fr] lg:gap-16">
       {
         portrait && (
-          <div class="aspect-3/4 overflow-hidden bg-sunken" style="border-radius: var(--radius-theme)">
-            <Image {...portrait} class="h-full w-full object-cover" widths={[320, 640]} sizes="16rem" />
+          <div class="media-frame aspect-4/5 self-start shadow-xl shadow-ink/10">
+            <Image {...portrait} class="h-full w-full object-cover" widths={[320, 640]} sizes="18rem" />
           </div>
         )
       }
 
       <div class:list={[!portrait && "md:col-span-2"]}>
-        <h1 class="text-3xl font-semibold tracking-tight sm:text-5xl">{name}</h1>
-        {role && <p class="mt-2 text-lg text-muted">{role}</p>}
-        {bio && <p class="mt-5 max-w-2xl text-pretty">{bio}</p>}
+        <h1 class="text-4xl font-semibold sm:text-5xl">{name}</h1>
+        {role && <p class="eyebrow mt-3 text-accent">{role}</p>}
+        {bio && <p class="mt-6 max-w-2xl text-lg leading-relaxed text-ink/85 text-pretty">{bio}</p>}
 
-        <p class="mt-5 space-y-0.5 text-sm">
+        <p class="mt-6 space-y-0.5 text-sm">
           {email && <a href={`mailto:${email}`} class="block text-primary hover:underline">{email}</a>}
           {phone && (
             <a href={`tel:${phone.replace(/\s/g, "")}`} class="block text-muted hover:text-primary">{phone}</a>
@@ -53,8 +53,8 @@ const events = await getEventsOf(member.id);
 
         {
           projects.length > 0 && (
-            <section class="mt-10">
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-muted">Projects</h2>
+            <section class="mt-12 max-w-2xl">
+              <h2 class="eyebrow text-muted">Projects</h2>
               <ul class="mt-3 divide-y divide-line border-t border-line text-sm">
                 {projects.map((project) => (
                   <li class="py-2.5">
@@ -71,8 +71,8 @@ const events = await getEventsOf(member.id);
 
         {
           events.length > 0 && (
-            <section class="mt-10">
-              <h2 class="text-xs font-semibold uppercase tracking-wider text-muted">Events</h2>
+            <section class="mt-12 max-w-2xl">
+              <h2 class="eyebrow text-muted">Events</h2>
               <ul class="mt-3 divide-y divide-line border-t border-line text-sm">
                 {events.map((event) => (
                   <li class="py-2.5">
