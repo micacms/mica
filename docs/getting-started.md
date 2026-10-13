@@ -16,8 +16,11 @@ Read https://micacms.com/setup.md and set up Mica in this project.
 [`SETUP.md`](../SETUP.md) finds out whether the project is new, an empty Astro
 project, or an Astro project with content collections, and sends the agent to
 the matching guide in `@micacms/astro/setup/`. The guides ship with the
-package, so they match the installed version. The agent asks you about the
-content model, and checks its work with `npx mica check`.
+package, so they match the installed version. Before it changes anything on
+your website, the agent shows you a plan in plain words: what editors will
+manage, and each change to your pages, with its recommendation. It continues
+when you agree, checks its work with `npx mica check`, and gives you the
+commands to commit.
 
 ## Before you start
 
