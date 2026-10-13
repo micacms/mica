@@ -128,7 +128,9 @@ If the container stops, read the log. Run `docker compose run --rm mica check` t
 
 ## Drafts, sync, and the data volume
 
-A save is a draft. Drafts are files in the Git clone on the `/data` volume. Only editors see them. **Publish** commits all pending drafts as one commit and pushes it over HTTPS. The editor is the author of the commit. Mica is the committer. The push starts your site build, and the website build needs no CMS address and no token.
+A save is a draft. Drafts are files in the Git clone on the `/data` volume. All editors see them. On the Publish page, an editor chooses which saved changes to publish now, and the others stay saved. **Publish** commits the chosen changes as one commit and pushes it over HTTPS. The editor's summary ("Say what changed") is the commit message. The editor is the author of the commit. Mica is the committer, and the message ends with the trailer `Published-with: Mica`. The push starts your site build, and the website build needs no CMS address and no token.
+
+Mica logs `Published` (with the commit and the number of files), `Discarded` (with the paths) and `Conflict resolved` (with the entry and the choice). Each line names the editor's email address. The content is never logged.
 
 Mica syncs with the branch on its own. It fetches and fast-forwards. It never merges. If somebody changes an entry on the website while an editor has a draft of that entry, this is a conflict. The editor chooses **Keep my version** or **Use the website's version**.
 

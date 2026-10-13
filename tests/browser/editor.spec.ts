@@ -65,7 +65,8 @@ test("an editor signs in, edits, saves and publishes", async ({ page, request, b
 
   const before = await headOfMain(request);
   await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("button", { name: "Saved" })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  await expect(page.getByText("Saved · not published")).toBeVisible();
 
   // Saved is not published: the repository has not moved.
   expect(await headOfMain(request)).toBe(before);
@@ -76,8 +77,9 @@ test("an editor signs in, edits, saves and publishes", async ({ page, request, b
   await expect(page.getByText(tagline)).toBeVisible();
 
   const message = `Publish the tagline from a browser (${tagline})`;
-  await page.getByPlaceholder(/becomes the commit message/).fill(message);
+  await page.getByLabel("Say what changed").fill(message);
   await page.getByRole("button", { name: "Publish", exact: true }).click();
+  await expect(page.getByText("Your website is being rebuilt now.")).toBeVisible();
   await expect(page.getByText("Nothing waiting to be published")).toBeVisible();
 
   const head = await headOfMain(request);
@@ -85,7 +87,7 @@ test("an editor signs in, edits, saves and publishes", async ({ page, request, b
     commit: { message: string; author: { email: string } };
     parents: { sha: string }[];
   };
-  expect(commit.commit.message.trim()).toBe(message);
+  expect(commit.commit.message.trim()).toBe(`${message}\n\nPublished-with: Mica`);
   expect(commit.parents.map((parent) => parent.sha)).toEqual([before]);
   expect(commit.commit.author.email).toBe("alice@gmail.com");
   expect(await publishedTagline(request)).toBe(tagline);

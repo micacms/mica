@@ -166,7 +166,7 @@ describe("an admitted session", () => {
     // One commit on top of the old head, by the person who pressed Publish.
     const head = await headOfMain();
     const commit = await forgejo(`git/commits/${head}`);
-    assert.equal(commit.commit.message.trim(), message);
+    assert.equal(commit.commit.message.trim(), `${message}\n\nPublished-with: Mica`);
     assert.deepEqual(commit.parents.map((parent) => parent.sha), [before]);
     assert.equal(commit.commit.author.email, "alice@gmail.com");
     assert.equal(commit.commit.committer.name, "Mica CMS");

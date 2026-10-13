@@ -172,8 +172,10 @@ a save writes its files. What differs is who owns the tree:
 
 Publish sends the reviewed paths with the revision each had, so a file saved
 again since — or another file of the same entry — is never published unseen,
-and a colleague's draft of another entry stays a draft. There is still no
-status column on an entry. Release-level staging is a branch: point a second
+and a colleague's draft of another entry stays a draft. The editor chooses
+which edits to publish; an edit comes with the new entries and files it uses.
+An entry's state ("New" or "Changed", not published) is not stored in the
+entry: the editor reads it from the pending changes. Release-level staging is a branch: point a second
 Mica at `MICA_REPOSITORY_BRANCH=staging` and editors have a staging site that
 is reviewed and merged like any other change.
 

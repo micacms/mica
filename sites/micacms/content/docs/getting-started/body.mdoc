@@ -105,7 +105,9 @@ const news = await getCollection("news");
 
 Autosave writes files into your checkout, and the Astro dev server reloads them at once. Run `git diff` after a save. You should see the whole change as JSON, Markdoc and media files, uncommitted.
 
-Nothing reaches the history until you press **Publish**. The Publish page lists every pending change and can show, field by field, what each one does. Publish makes one commit and pushes it with your own Git credentials. To commit with your own tools instead, set `MICA_LOCAL_PUBLISH=false`.
+Nothing reaches the history until you press **Publish**. The Publish page lists every saved change and shows, field by field, what each one does. You choose which of them to publish now. Publish makes one commit of the chosen files, with your summary as the message and the trailer `Published-with: Mica`, and pushes it with your own Git credentials. To commit with your own tools instead, set `MICA_LOCAL_PUBLISH=false`.
+
+Publish sends only Mica's own commits. If your branch has other commits that the remote does not have yet, Publish waits until you push them or move them to another branch.
 
 ## Next
 
