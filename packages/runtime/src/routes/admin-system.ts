@@ -32,12 +32,14 @@ export function adminSystemRoutes(): Hono<Env> {
         slugField: resolveSlugField(def),
         listedFields: listedFields(def),
         fields: def.fields,
+        readOnly: site.readOnly.get(`collections.${def.name}`) ?? null,
       })),
       singletons: Object.values(site.model.singletons).map((def) => ({
         name: def.name,
         label: def.label,
         description: def.description ?? null,
         fields: def.fields,
+        readOnly: site.readOnly.get(`singletons.${def.name}`) ?? null,
       })),
     });
   });

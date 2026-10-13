@@ -27,7 +27,7 @@ import {
   type Site,
 } from "@micacms/core";
 import { within } from "@micacms/core/node";
-import { contentFiles, loadSchema } from "@micacms/runtime";
+import { contentFiles, loadSchema, readOnlyParts } from "@micacms/runtime";
 
 export interface CheckProblem {
   level: "error" | "warning";
@@ -66,6 +66,10 @@ export async function checkContent(root: string): Promise<CheckReport> {
   }
   report.model = true;
 
+  // A model from a newer @micacms/astro: this check cannot judge those entries.
+  const readOnly = readOnlyParts(site);
+  for (const reason of readOnly.values()) error(MANIFEST_PATH, `Not checked. ${reason}`);
+
   const slugs = new Map<string, Set<string>>();
   for (const [name, def] of Object.entries(site.collections)) {
     slugs.set(name, new Set(await entrySlugs(files, def.fields, name, error, warning)));
@@ -75,6 +79,7 @@ export async function checkContent(root: string): Promise<CheckReport> {
 
   for (const [name, def] of Object.entries(site.collections)) {
     report.collections++;
+    if (readOnly.has(`collections.${name}`)) continue;
     const slugField = resolveSlugField(def);
     for (const slug of slugs.get(name)!) {
       report.entries++;
@@ -94,6 +99,7 @@ export async function checkContent(root: string): Promise<CheckReport> {
 
   for (const [name, def] of Object.entries(site.singletons)) {
     report.singletons++;
+    if (readOnly.has(`singletons.${name}`)) continue;
     const directory = entryLayout(def.fields) === "directory";
     const base = singletonPath(def.fields, name);
     const dataPath = directory ? `${base}/${INDEX_FILE}` : base;

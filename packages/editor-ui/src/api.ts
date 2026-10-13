@@ -108,6 +108,8 @@ export interface SchemaCollection {
   slugField: string;
   listedFields: string[];
   fields: Record<string, AnyField>;
+  /** Why this build of Mica cannot edit it, or null. Set when the model uses a newer field kind. */
+  readOnly: string | null;
 }
 
 export interface SchemaSingleton {
@@ -115,6 +117,8 @@ export interface SchemaSingleton {
   label: string;
   description: string | null;
   fields: Record<string, AnyField>;
+  /** Why this build of Mica cannot edit it, or null. Set when the model uses a newer field kind. */
+  readOnly: string | null;
 }
 
 export interface Schema {

@@ -14,7 +14,7 @@
  * The version is the backstop for changes that cannot be detected by looking.
  */
 
-import { entryLayout, type EntryLayout } from "./layout.js";
+import { deriveLayout, type EntryLayout } from "./layout.js";
 import type { Collection, Singleton, Site } from "./types.js";
 
 /**
@@ -65,7 +65,7 @@ export function createManifest(site: Site, generatedBy: string): ProtocolManifes
 
 /** `layout` right after `type`, where a reader of the file looks for it. */
 function layoutAfterType<T extends Collection | Singleton>(def: T): T & ManifestLayout {
-  return Object.assign({ type: def.type, layout: entryLayout(def.fields) }, def);
+  return Object.assign({ type: def.type, layout: deriveLayout(def.fields) }, def);
 }
 
 export type ManifestCompatibility =

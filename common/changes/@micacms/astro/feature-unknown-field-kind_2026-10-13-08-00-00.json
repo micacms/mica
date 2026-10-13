@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/astro",
+      "comment": "`micaCollections()` refuses a field kind it does not know, so a typo in the model fails the build instead of making the collection read-only in Mica.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

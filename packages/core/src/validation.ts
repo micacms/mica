@@ -197,6 +197,10 @@ function innerSchema(
       if (field.max !== undefined) list = list.max(field.max, `${name} allows at most ${field.max} entries.`);
       return list;
     }
+
+    // A kind from a newer @micacms/astro: its value is kept as it is. Mica makes the collection read-only.
+    default:
+      return z.unknown();
   }
 }
 

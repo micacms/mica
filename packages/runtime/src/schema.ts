@@ -7,6 +7,8 @@
 import {
   checkCompatibility,
   defineSite,
+  deriveLayout,
+  recordLayout,
   isFieldKind,
   isProtocolManifest,
   MANIFEST_PATH,
@@ -69,9 +71,8 @@ function describeMissing(origin: string): string {
 }
 
 /**
- * Runs the `defineSite` checks, and also refuses an unknown field `kind`, which
- * `defineSite` does not check. This turns a core version mismatch into a
- * startup error, not a later failure on an editor's screen.
+ * Runs the `defineSite` checks on untrusted input. A newer `protocolVersion` is
+ * refused; an unknown field kind is not, and `readOnlyParts` names what it locks.
  */
 export function checkSchema(raw: unknown, origin = "the schema"): Site {
   if (raw === null || typeof raw !== "object") {
@@ -118,7 +119,13 @@ export function checkSchema(raw: unknown, origin = "the schema"): Site {
   }
 
   try {
-    return defineSite({ collections, singletons });
+    const site = defineSite({ collections, singletons });
+    // Read and classify entries where the manifest says they are, not where fields this build may not know imply.
+    for (const def of [...Object.values(site.collections), ...Object.values(site.singletons)]) {
+      const stored = (def as { layout?: unknown }).layout;
+      if (stored === "file" || stored === "directory") recordLayout(def.fields, stored);
+    }
+    return site;
   } catch (error) {
     throw new SchemaError(`${origin} is not a valid content model.\n  ${(error as Error).message}`);
   }
@@ -135,17 +142,48 @@ function assertFieldMap(fields: unknown, at: string, origin: string): void {
     if (field === null || typeof field !== "object") {
       throw new SchemaError(`${origin}: field "${here}" is not an object.`);
     }
-    if (!isFieldKind(field.kind)) {
-      throw new SchemaError(
-        `${origin}: field "${here}" has unknown kind "${String(field.kind)}".\n` +
-          `  This build of Mica does not support it — the project may have been built\n` +
-          `  against a newer @micacms/astro than the server is running.`,
-      );
-    }
     if (field.kind === "object" || field.kind === "repeater") {
       assertFieldMap(field.fields, here, origin);
     }
   }
+}
+
+/**
+ * The collections and singletons this build of Mica must not write, keyed
+ * `collections.<name>` or `singletons.<name>`, with the reason for the editor.
+ * A field kind from a newer @micacms/astro makes only its own collection or
+ * singleton read-only; Mica still starts, and the rest stays editable.
+ */
+export function readOnlyParts(site: Site): Map<string, string> {
+  const parts = new Map<string, string>();
+  const add = (key: string, def: Collection | Singleton) => {
+    const unknown = unknownKinds(def.fields, []);
+    const stored = (def as { layout?: unknown }).layout;
+    if (unknown.length > 0) {
+      parts.set(
+        key,
+        `"${def.label}" uses ${unknown.map((field) => `"${field.path}" (${field.kind})`).join(", ")}, ` +
+          "a field type that this version of Mica does not know. Upgrade Mica to edit it.",
+      );
+    } else if (stored !== undefined && stored !== deriveLayout(def.fields)) {
+      parts.set(
+        key,
+        `"${def.label}" is stored as ${String(stored)}, which this version of Mica does not expect. ` +
+          "Upgrade Mica to edit it.",
+      );
+    }
+  };
+  for (const [name, def] of Object.entries(site.collections)) add(`collections.${name}`, def);
+  for (const [name, def] of Object.entries(site.singletons)) add(`singletons.${name}`, def);
+  return parts;
+}
+
+function unknownKinds(fields: FieldMap, at: string[]): Array<{ path: string; kind: string }> {
+  return Object.entries(fields).flatMap(([key, field]) => {
+    const here = [...at, key];
+    if (!isFieldKind(field.kind)) return [{ path: here.join("."), kind: String(field.kind) }];
+    return field.kind === "object" || field.kind === "repeater" ? unknownKinds(field.fields, here) : [];
+  });
 }
 
 /**

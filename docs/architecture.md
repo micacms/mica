@@ -110,8 +110,10 @@ The envelope carries a `protocolVersion`, bumped only when an older reader
 would _misinterpret_ a newer manifest. A Mica deployment and the
 `@micacms/astro` in a project are upgraded by different people at different
 times, so they are not required to move together. Whatever arrives is
-re-validated as if hand-written: an unknown field kind is reported by name at
-startup rather than surfacing later on an editor's screen.
+re-validated as if hand-written. A newer `protocolVersion` stops the start. A
+field kind that this build does not know makes only its collection or
+singleton read-only, with the reason in the editor and in the startup log, so
+an image that is older than the site's `@micacms/astro` still serves the rest.
 
 Beside the model, the manifest records `generatedBy` (the package, without a
 version) and each collection's and singleton's `layout`. It holds nothing that

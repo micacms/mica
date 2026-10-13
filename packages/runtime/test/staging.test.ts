@@ -51,7 +51,9 @@ interface Repo {
 }
 
 /** A repository with one committed entry under `content/`. */
-function makeRepo(options: { publishEnabled?: boolean; schemaRevision?: string | null } = {}): Repo {
+function makeRepo(
+  options: { publishEnabled?: boolean; schemaRevision?: string | null; readOnly?: ReadonlyMap<string, string> } = {},
+): Repo {
   const root = temp("mica-wt-");
   git(root, "init", "-q", "-b", "main");
   git(root, "config", "user.email", "test@example.com");
@@ -71,12 +73,36 @@ function makeRepo(options: { publishEnabled?: boolean; schemaRevision?: string |
     files: contentFiles({ root: contentRoot }),
     contentRoot,
     schemaRevision: options.schemaRevision ?? null,
+    ...(options.readOnly ? { readOnly: options.readOnly } : {}),
     publishEnabled: options.publishEnabled ?? true,
     logger: createLogger({ level: "silent", pretty: false }),
   });
 
   return { root, contentRoot, service, head: () => git(root, "rev-parse", "HEAD") };
 }
+
+describe("a read-only collection", () => {
+  // Mica never publishes what this build cannot interpret, even a change made outside the editor.
+  it("turns its pending changes into problems that block Publish", async () => {
+    const { contentRoot, service } = makeRepo({ readOnly: new Map([["collections.projects", "Upgrade Mica to edit it."]]) });
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), JSON.stringify({ title: "Haus A, changed", slug: "haus-a" }));
+
+    const status = await service.status();
+    assert.equal(status.validation.ok, false);
+    assert.deepEqual(
+      status.validation.problems.map((problem) => [problem.path, problem.issues[0]?.message]),
+      [["projects/haus-a.json", "Upgrade Mica to edit it."]],
+    );
+  });
+
+  it("also blocks a stray file in its directory", async () => {
+    const { contentRoot, service } = makeRepo({ readOnly: new Map([["collections.projects", "Upgrade Mica to edit it."]]) });
+    writeFileSync(join(contentRoot, "projects/notes.txt"), "not an entry");
+
+    const status = await service.status();
+    assert.deepEqual(status.validation.problems.map((problem) => problem.path), ["projects/notes.txt"]);
+  });
+});
 
 describe("status", () => {
   it("outside a repository, publishing is unavailable and says why", async () => {

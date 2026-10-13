@@ -55,6 +55,8 @@ export interface WorkingTreeStagingDeps {
   files: ContentFiles;
   contentRoot: string;
   schemaRevision: string | null;
+  /** From `readOnlyParts`: a change to one of these is never published by this build. */
+  readOnly?: ReadonlyMap<string, string>;
   /** `MICA_LOCAL_PUBLISH`, for the default developer policy. */
   publishEnabled: boolean;
   logger: Logger;
@@ -94,6 +96,14 @@ export function createWorkingTreeStagingService(
           { path: "", message: "This file has a Git merge conflict. Resolve it with your Git tools." },
         ],
       });
+    }
+    // By the first path segment, so that a stray file in a read-only collection is caught too.
+    for (const change of changes) {
+      const head = change.path.split("/")[0] ?? "";
+      const reason = deps.readOnly?.get(`collections.${head}`) ?? deps.readOnly?.get(`singletons.${head.replace(/\.json$/, "")}`);
+      if (reason) {
+        validation.problems.push({ path: change.path, label: change.owner.label, issues: [{ path: "", message: reason }] });
+      }
     }
     validation.ok = validation.problems.length === 0;
 

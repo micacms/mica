@@ -21,11 +21,13 @@ import { dirname, join, relative, sep } from "node:path";
 
 import {
   fieldsSchema,
+  isFieldKind,
   MANIFEST_PATH,
   readCollection,
   readSingleton,
   type Collection,
   type ContentSource,
+  type FieldMap,
   type InferCollection,
   type InferSingleton,
   type Singleton,
@@ -169,6 +171,8 @@ export function micaCollections<S extends Site>(
   site: S,
   options: MicaCollectionsOptions = {},
 ): MicaCollections<S> {
+  assertKnownKinds(site);
+
   /**
    * Everything below is resolved on first load rather than here, because the
    * Astro project root is something only a loader is told — and it is what
@@ -317,6 +321,24 @@ export function micaCollections<S extends Site>(
   }
 
   return collections as MicaCollections<S>;
+}
+
+/**
+ * The site's own model must use only kinds this package knows. Mica reads an
+ * unknown kind as one from a newer version and makes its collection read-only,
+ * so a typo would otherwise pass the build and lock the collection.
+ */
+function assertKnownKinds(site: Site): void {
+  const check = (fields: FieldMap, at: string) => {
+    for (const [key, field] of Object.entries(fields)) {
+      if (!isFieldKind(field.kind)) {
+        throw new Error(`Field "${at}.${key}" has the unknown kind "${String(field.kind)}". Use the field functions from @micacms/core.`);
+      }
+      if (field.kind === "object" || field.kind === "repeater") check(field.fields, `${at}.${key}`);
+    }
+  };
+  for (const [name, def] of Object.entries(site.collections)) check(def.fields, `collections.${name}`);
+  for (const [name, def] of Object.entries(site.singletons)) check(def.fields, `singletons.${name}`);
 }
 
 /**

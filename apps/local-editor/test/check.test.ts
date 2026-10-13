@@ -178,4 +178,15 @@ describe("mica check", () => {
     assert.deepEqual(markdocWarnings("Plain **Markdown** with a [link](https://example.com).\n"), []);
     assert.deepEqual(markdocWarnings("````md\n```html\n<div>inner</div>\n```\n<p>still code</p>\n````\n"), []);
   });
+
+  it("reports a field kind from a newer @micacms/astro, and checks the rest", async () => {
+    const manifest = createManifest(site, "test") as unknown as { collections: Record<string, { fields: Record<string, unknown> }> };
+    manifest.collections["team"]!.fields["badge"] = { kind: "hologram" };
+    write(MANIFEST_PATH, manifest);
+    write("news/hello/index.json", { slug: "hello" });
+
+    const errors = problems(await checkContent(root), "error");
+    assert.ok(errors.some((line) => line.startsWith(`${MANIFEST_PATH}: Not checked. "Team" uses "badge" (hologram)`)), errors.join("\n"));
+    assert.ok(errors.some((line) => line.startsWith("news/hello/index.json: title")), errors.join("\n"));
+  });
 });

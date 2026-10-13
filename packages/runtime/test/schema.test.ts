@@ -12,7 +12,7 @@ import {
   type ContentSource,
 } from "@micacms/core";
 
-import { checkSchema, loadSchema, schemaFingerprint, SchemaError } from "../src/schema.js";
+import { checkSchema, loadSchema, readOnlyParts, schemaFingerprint, SchemaError } from "../src/schema.js";
 
 /** The smallest model that satisfies `defineSite`: every collection needs a slug. */
 const validSite = () => ({
@@ -75,28 +75,50 @@ describe("checkSchema", () => {
     );
   });
 
-  it("names the field when a kind is unknown to this build", () => {
+  // A newer @micacms/astro must not stop the editors: only the part with the new kind is locked.
+  it("accepts an unknown kind, and makes only its collection read-only", () => {
     const raw = validSite();
+    (raw.collections as Record<string, unknown>)["news"] = {
+      type: "collection",
+      label: "News",
+      fields: { title: { kind: "text" }, slug: { kind: "slug" } },
+    };
     (raw.collections.pages.fields as Record<string, unknown>)["mystery"] = { kind: "quantum" };
 
-    assert.throws(() => checkSchema(raw), (error: Error) => {
-      assert.ok(error instanceof SchemaError);
-      assert.match(error.message, /collections\.pages\.mystery/);
-      assert.match(error.message, /unknown kind "quantum"/);
-      // The likeliest cause is a version skew, and saying so saves a hunt.
-      assert.match(error.message, /newer @micacms\/astro/);
-      return true;
-    });
+    const site = checkSchema(raw);
+    const readOnly = readOnlyParts(site);
+
+    assert.deepEqual([...readOnly.keys()], ["collections.pages"]);
+    assert.match(readOnly.get("collections.pages")!, /"mystery" \(quantum\)/);
+    assert.match(readOnly.get("collections.pages")!, /Upgrade Mica/);
   });
 
-  it("finds an unknown kind nested inside a repeater", () => {
+  it("finds an unknown kind nested inside a repeater, and in a singleton", () => {
     const raw = validSite();
     (raw.collections.pages.fields as Record<string, unknown>)["rows"] = {
       kind: "repeater",
       fields: { bad: { kind: "not-a-kind" } },
     };
+    (raw.singletons as Record<string, unknown>)["settings"] = {
+      type: "singleton",
+      label: "Settings",
+      fields: { logo: { kind: "vector" } },
+    };
 
-    assert.throws(() => checkSchema(raw), /collections\.pages\.rows\.bad/);
+    const readOnly = readOnlyParts(checkSchema(raw));
+    assert.match(readOnly.get("collections.pages")!, /"rows\.bad" \(not-a-kind\)/);
+    assert.match(readOnly.get("singletons.settings")!, /"logo" \(vector\)/);
+  });
+
+  it("makes a collection read-only when its recorded layout is not the one this build derives", () => {
+    const raw = validSite();
+    (raw.collections.pages as Record<string, unknown>)["layout"] = "directory";
+    assert.match(readOnlyParts(checkSchema(raw)).get("collections.pages")!, /stored as directory/);
+  });
+
+  it("still refuses a manifest with a newer protocol version", () => {
+    const manifest = { ...validSite(), protocolVersion: 99, generatedBy: "@micacms/astro" };
+    assert.throws(() => checkSchema(manifest), /protocol version 99/);
   });
 
   it("still applies the cross-reference checks defineSite performs", () => {

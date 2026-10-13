@@ -40,13 +40,30 @@ export const DOCUMENT_EXTENSION = ".mdoc";
  */
 export type EntryLayout = "file" | "directory";
 
+/** Layouts that a manifest recorded, for field maps read back from it. */
+const recorded = new WeakMap<FieldMap, EntryLayout>();
+
+/**
+ * Makes `entryLayout(fields)` return the layout the manifest recorded. A reader
+ * calls it, so that a field kind it does not know cannot change where it
+ * looks for the entries.
+ */
+export function recordLayout(fields: FieldMap, layout: EntryLayout): void {
+  recorded.set(fields, layout);
+}
+
+/** The recorded layout of these fields, or the one they imply. */
+export function entryLayout(fields: FieldMap): EntryLayout {
+  return recorded.get(fields) ?? deriveLayout(fields);
+}
+
 /**
  * A model needs a directory when it can produce sidecar files: rich text is
  * written to `.mdoc`, and media is colocated under `media/`. Anything else
  * fits in one JSON document, which keeps small singletons and flat collections
  * — a team list, a set of links — readable as a single file.
  */
-export function entryLayout(fields: FieldMap): EntryLayout {
+export function deriveLayout(fields: FieldMap): EntryLayout {
   return needsSidecars(fields) ? "directory" : "file";
 }
 
