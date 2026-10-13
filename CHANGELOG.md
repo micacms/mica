@@ -12,11 +12,10 @@ release note before upgrading.
 
 ## [0.6.0] — 2026-10-13
 
-The last release with breaking changes before 1.0: the configuration names, the
-package shape, the CLI and the public API are now in their 1.0 form. Mica also
-stops losing content without an error: an entry in the wrong layout, rich text
-that the editor cannot show, and a broken link or image at Publish are now
-named. Images carry alt text and reach Astro as Astro images, so pages need no
+New configuration names, a new package shape, a new CLI and a smaller public
+API. Mica also stops losing content without an error: an entry in the wrong
+layout, rich text that the editor cannot show, and a broken link or image at
+Publish are now named. Images carry alt text and reach Astro as Astro images, so pages need no
 helper. Astro collections move to Mica with `mica import`, and a coding agent
 shows its plan before it changes the site. The image runs on arm64.
 
@@ -142,9 +141,8 @@ editor starts with `mica start`.
 
 ## [0.6.0-rc.1] — 2026-10-13
 
-The last release with breaking changes before 1.0: the configuration names, the
-package shape and the public API are now in their 1.0 form. Mica also stops
-losing content without an error: an entry in the wrong layout, rich text that
+New configuration names, a new package shape and a smaller public API. Mica
+also stops losing content without an error: an entry in the wrong layout, rich text that
 the editor cannot show, and a broken link or image at Publish are all named
 now. Images can carry alt text, and the image runs on arm64.
 

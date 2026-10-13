@@ -1,0 +1,8 @@
+{
+  "title": "Alt text, Astro images and a safer content model",
+  "slug": "0-6-0",
+  "version": "0.6.0",
+  "publishDate": "2026-10-13",
+  "summary": "New configuration names, CLI and package shape. Images carry alt text and reach Astro as images. Read Breaking before you upgrade from 0.5.",
+  "latest": true
+}
