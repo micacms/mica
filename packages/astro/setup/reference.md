@@ -9,6 +9,7 @@ The guides link here. Read the section that a step names.
 | `npx mica init` | Writes a starter `src/mica.ts` and `src/content.config.ts`. Never overwrites a file |
 | `npx astro sync` | Runs the Mica loaders, which write the model to `content/.mica/schema.json` |
 | `npx mica check` | Checks every entry against `content/.mica/schema.json`. Exit code 1 on an error |
+| `npx mica migrate-layout` | Moves entries into the layout of the model, after the first or the last rich-text or media field of a collection was added or removed |
 | `npx mica` | Opens the editor in the browser. Only for the user; do not run it yourself |
 
 `mica check` reads the model from `content/.mica/schema.json`. After every
@@ -74,7 +75,7 @@ in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
 | `object()` | object | `fields` (required), `collapsible`, `collapsed` |
 | `repeater()` | array of objects | `fields` (required), `min`, `max`, `itemLabel`, `addLabel` |
 | `relation()` | the slug of an entry | `collection` (required), `multiple` |
-| `media()` | a file path | `accept: "image" \| "document" \| "any"`, `multiple`, `max` |
+| `media()` | a file path, or `{ path, alt }` with `alt` | `accept: "image" \| "document" \| "any"`, `multiple`, `max`, `alt: "required" \| "optional"` |
 | `color()` | `"#rrggbb"` | `presets`, `default` |
 | `coordinates()` | `{ "lat": 47.37, "lng": 8.54 }` | `defaultCenter`, `defaultZoom` |
 
@@ -152,12 +153,13 @@ export async function writeOrder(collection, slugs) {
   await writeFile(join(ROOT, collection, "_order.json"), `${JSON.stringify(slugs, null, 2)}\n`);
 }
 
-// Example: `data` has every field, rich text as a Markdoc string, media as `media/<file>`.
+// Example: `data` has every field, rich text as a Markdoc string, and media as
+// `media/<file>`, or `{ path, alt }` for a `media({ alt })` field.
 // await writeEntry("news", "hello-world", {
 //   title: "Hello, world",
 //   slug: "hello-world",
 //   publishedOn: "2026-01-15",
-//   cover: "media/cover.jpg",
+//   cover: { path: "media/cover.jpg", alt: "The team at the opening" },
 //   body: "The first article.",
 // });
 ```
@@ -229,16 +231,16 @@ export function mediaImage(path: string | null | undefined): ImageMetadata | und
 ---
 import { Image } from "astro:assets";
 import { mediaImage } from "../../lib/media";
-const cover = mediaImage(article.data.cover);
+const cover = article.data.cover; // media({ alt: "required" }): { path, alt }
+const image = mediaImage(cover?.path);
 ---
-{cover && <Image src={cover} alt={article.data.title} />}
+{image && <Image src={image} alt={cover.alt} />}
 ```
 
-A `media({ multiple: true })` field is an array of paths:
-`project.data.gallery.map(mediaImage)`.
-
-A media field has no alt text. Add a `text()` field for it where the image
-carries meaning. For documents such as PDF files, use
+A `media({ multiple: true })` field is an array:
+`project.data.gallery.map((item) => mediaImage(item.path))`. A `media()`
+without `alt` is a path only: use it for a decorative image, with `alt=""`. For
+documents such as PDF files, use
 `import.meta.glob("../../content/**/*.pdf", { query: "?url", import: "default", eager: true })`
 and link to the URL.
 

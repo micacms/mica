@@ -20,6 +20,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative, sep } from "node:path";
 
 import {
+  createReferenceCheck,
   fieldsSchema,
   isFieldKind,
   MANIFEST_PATH,
@@ -66,6 +67,11 @@ export interface MicaCollectionsOptions {
    * after the burst is both faster and less confusing than one per file.
    */
   debounceMs?: number;
+  /**
+   * Fails the build on a relation to a missing entry or a missing media file.
+   * Without it, the build logs a warning for each and goes on.
+   */
+  strict?: boolean;
 }
 
 /**
@@ -197,6 +203,22 @@ export function micaCollections<S extends Site>(
         ? Promise.resolve()
         : publishModel(site, rootFor(context), context.logger));
 
+  /** Warns about broken relations and missing files, or fails the build with `strict`. */
+  const checkReferences = async (
+    context: LoaderContext,
+    source: ContentSource,
+    documents: Array<{ label: string; fields: FieldMap; data: Record<string, unknown> }>,
+  ): Promise<void> => {
+    const check = createReferenceCheck(site, source);
+    const problems: string[] = [];
+    for (const { label, fields, data } of documents) {
+      for (const issue of await check.issues(fields, data)) problems.push(`${label}: ${issue.path}: ${issue.message}`);
+    }
+    if (problems.length === 0) return;
+    if (options.strict) throw new Error(`Broken references:\n  ${problems.join("\n  ")}`);
+    for (const problem of problems) context.logger.warn(problem);
+  };
+
   /** Collections whose watcher is already registered, so a reload adds none. */
   const watching = new Set<string>();
 
@@ -272,6 +294,11 @@ export function micaCollections<S extends Site>(
               context.store.set({ id: entry.slug, data, digest: context.generateDigest(data) });
             }
 
+            await checkReferences(
+              context,
+              source,
+              entries.map((entry) => ({ label: `${name}/${entry.slug}`, fields: def.fields, data: entry.data })),
+            );
             context.logger.info(`Loaded ${entries.length} ${entries.length === 1 ? "entry" : "entries"} of "${def.label}"`);
           };
 
@@ -305,6 +332,7 @@ export function micaCollections<S extends Site>(
               return;
             }
 
+            await checkReferences(context, source, [{ label: name, fields: def.fields, data }]);
             const parsed = await context.parseData({ id: name, data });
             context.store.set({ id: name, data: parsed, digest: context.generateDigest(parsed) });
           };

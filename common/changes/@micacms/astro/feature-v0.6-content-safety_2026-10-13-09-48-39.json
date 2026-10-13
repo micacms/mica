@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/astro",
+      "comment": "The setup guides use `media({ alt: \"required\" })` for images that carry meaning.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

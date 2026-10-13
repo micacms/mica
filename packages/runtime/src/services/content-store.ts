@@ -16,6 +16,7 @@ import {
   entryLayout,
   entryTitle,
   isValidSlug,
+  collectReferences,
   readCollection,
   readSingleton,
   relativizeMedia,
@@ -399,17 +400,12 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       const results: Array<{ collection: string; slug: string; title: string }> = [];
 
       for (const [name, def] of Object.entries(site.collections)) {
-        const keys = Object.entries(def.fields)
-          .filter(([, field]) => field.kind === "relation" && field.collection === collectionName)
-          .map(([key]) => key);
-
-        if (keys.length === 0) continue;
-
+        if (!linksTo(def.fields, collectionName)) continue;
         for (const entry of await readCollection(workspace, def, name)) {
-          const points = keys.some((key) => {
-            const value = entry.data[key];
-            return Array.isArray(value) ? value.includes(slug) : value === slug;
-          });
+          const points = collectReferences(def.fields, entry.data).some(
+            (reference) =>
+              reference.kind === "relation" && reference.collection === collectionName && reference.slug === slug,
+          );
           if (points) {
             results.push({ collection: name, slug: entry.slug, title: entryTitle(def, entry.data) });
           }
@@ -422,6 +418,15 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
 }
 
 export type ContentStore = ReturnType<typeof createContentStore>;
+
+/** Whether a field map has a relation to `collection`, nested fields included. */
+function linksTo(fields: FieldMap, collection: string): boolean {
+  return Object.values(fields).some(
+    (field) =>
+      (field.kind === "relation" && field.collection === collection) ||
+      ((field.kind === "object" || field.kind === "repeater") && linksTo(field.fields, collection)),
+  );
+}
 
 /**
  * Media paths as the repository stores them. Only a directory entry has

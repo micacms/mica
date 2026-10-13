@@ -1112,9 +1112,12 @@ semver-covered CLI.
 for example from the editor itself.
 
 **Built:** the manifest records `layout` for each collection and singleton
-(#60). The command is not built yet.
+(#60). In 0.6, the reader refuses an entry in the other layout (`LayoutError`),
+so the Astro build fails, the local editor refuses to start, the self-hosted
+app logs a warning (a refusal there would loop on its own drafts), and a list
+request answers 409 (#64); `mica migrate-layout` moves the entries (#65).
 
-**1.0 status:** blocker; the command is in #65.
+**1.0 status:** done.
 
 ---
 
@@ -1227,7 +1230,13 @@ places the alt text away from the preview.
 **What would change it:** native i18n (see "No native multilingual content");
 a localized `alt` then belongs in the media value.
 
-**1.0 status:** blocker; the field is in #61, the Astro helper in #109.
+**Built in 0.6 (#61):** the option, the stored shape, the editor input, the
+Astro types, `mica check`, the guides and the `mica init` starter. A stored
+plain path reads as one without alt text, so `"optional"` can be added to a
+field with content; `"required"` then fails the build until each image has alt
+text. The example still uses plain paths.
+
+**1.0 status:** blocker until the example uses it; the Astro helper is in #109.
 
 ---
 
@@ -1254,6 +1263,30 @@ default the picker's upload to the shared folder, which the layout rule would
 no longer justify.
 
 **1.0 status:** should for 1.0; the fix is in #102, the path forms in #58.
+
+---
+
+### P2 — Publish refuses a broken reference that it would create
+
+**Decided:** Publish refuses a change set that would leave a relation to a
+missing entry or a media path to a missing file: a changed document that links
+to nothing, or a deleted entry or file that another document still uses. The
+problem names the field and the entries. A broken reference in a document that
+the change set does not touch does not block Publish. The Astro loaders warn
+about every broken reference, and fail the build with `strict: true`.
+
+**Why:** a broken link or a missing image on the site is silent loss, and
+Publish is the last point where Mica can stop it. Refusing references that
+were already broken would let one old mistake block every publication.
+
+**Consequence:** deleting an entry, or changing its URL, needs the links to it
+changed first, until #70 updates them. The check reads every collection when
+the change set deletes something.
+
+**What would change it:** a site with so many entries that the scan at a
+deletion is slow; then index the references.
+
+**Built in 0.6 (#69, #111).**
 
 ---
 
@@ -1372,8 +1405,8 @@ developer, or uses a `media()` field beside it.
 **What would change it:** the first editor who needs an image in body text more
 than once a month.
 
-**1.0 status:** blocks are should for 1.0 (#63); no data loss is a blocker
-(#62). Inserting images is after 1.0.
+**1.0 status:** blocks are should for 1.0 (#63). No data loss is built in 0.6
+(#62): such a field opens read-only. Inserting images is after 1.0.
 
 ---
 
@@ -1540,27 +1573,30 @@ and the file format is already that payload.
 
 ---
 
-### P3 — The editor cannot represent a Markdoc tag
+### P3 — Rich text that the editor cannot show opens read-only
 
-**Decided:** `{% callout %}` and friends survive a round trip as their inner
-text, not as a tag. The editor drops the wrapper.
+**Decided:** a rich-text field whose stored Markdoc has a node that the editor
+cannot show — a `{% tag %}`, an image, a table, an attribute such as
+`{% .class %}`, a link title — opens read-only. The field names what it found
+and shows the source; the stored text is written back unchanged. The same
+happens when Tiptap refuses the content. The editor's schema always holds
+every node it can show; the `toolbar` option limits only the buttons, so a
+stored heading in a field without heading buttons still loads.
 
-**Why:** Tiptap has no node for an arbitrary tag, and inventing a generic one
-would give editors a box they cannot meaningfully fill in.
+**Why:** before 0.6, a tag lost its wrapper, an image disappeared, and a
+heading that the toolbar did not offer made Tiptap open the field empty; the
+next save wrote that loss to the file (#62). Read-only keeps every byte; a
+developer can still change the file.
 
-**Consequence:** a developer who hand-writes a Markdoc tag in a `.mdoc` file
-loses it the next time an editor opens that field. The words inside are kept —
-losing those would be losing content.
+**Consequence:** an editor cannot change such a field in Mica until a developer
+removes what the editor cannot show, or until blocks (#63) make it editable.
 
 **What would change it:** a Tiptap node per declared tag, generated from the
-model the way fields already are. That is the right design; nothing needs it
-yet.
+model the way fields already are, and image and table blocks (#63).
 
-**Trigger:** the first project that wants callouts or embeds inside rich text.
+**Built in 0.6 (#62).**
 
-**1.0 status:** blocker. #62 replaces this trade-off: an unknown node, a tag
-included, opens as a read-only block and is written back unchanged, never
-unwrapped. Rewrite this entry when #62 lands.
+**1.0 status:** done.
 
 ---
 

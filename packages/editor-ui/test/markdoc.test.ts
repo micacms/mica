@@ -12,8 +12,14 @@ import { describe, it } from "node:test";
 
 import { getSchema } from "@tiptap/core";
 
-import { equivalentMarkdoc, fromMarkdoc, toMarkdoc, type ProseMirrorNode } from "../src/lib/markdoc.js";
-import { createRichTextExtensions } from "../src/lib/rich-text-extensions.js";
+import {
+  equivalentMarkdoc,
+  fromMarkdoc,
+  toMarkdoc,
+  unsupportedMarkdoc,
+  type ProseMirrorNode,
+} from "../src/lib/markdoc.js";
+import { createRichTextExtensions, richTextSchema } from "../src/lib/rich-text-extensions.js";
 
 /** Markdoc in, Markdoc out, through the editor's representation. */
 const roundTrip = (source: string): string => toMarkdoc(fromMarkdoc(source));
@@ -171,11 +177,73 @@ describe("round trips", () => {
 describe("Tiptap schema", () => {
   it("accepts inline and fenced code from stored Markdoc", () => {
     const parsed = fromMarkdoc("Run `rush build`.\n\n```ts\nconst ready = true;\n```\n");
-    const schema = getSchema(createRichTextExtensions([]));
+    const schema = getSchema(createRichTextExtensions());
 
     assert.doesNotThrow(() => schema.nodeFromJSON(parsed));
     assert.equal(parsed.content?.[0]?.content?.[1]?.marks?.[0]?.type, "code");
     assert.equal(parsed.content?.[1]?.type, "codeBlock");
+  });
+});
+
+describe("stored Markdoc that a toolbar does not offer", () => {
+  // The schema is the same for every toolbar, so one check covers them all.
+  const schema = getSchema(createRichTextExtensions());
+  const samples = [
+    "# Title\n\n#### Small heading\n",
+    "- one\n- two\n\n1. first\n2. second\n",
+    "> A quote\n\n---\n\n~~gone~~ and [a link](https://example.com)\n",
+  ];
+
+  for (const sample of samples) {
+    it(`loads and writes back ${JSON.stringify(sample.slice(0, 20))} unchanged`, () => {
+      const parsed = fromMarkdoc(sample);
+      assert.doesNotThrow(() => schema.nodeFromJSON(parsed).check());
+      assert.equal(toMarkdoc(parsed), sample);
+      assert.deepEqual(unsupportedMarkdoc(sample), []);
+    });
+  }
+});
+
+describe("text that once broke the editor", () => {
+  it("keeps code inside a link or bold, and the schema accepts it", () => {
+    for (const sample of ["[`npm i`](https://example.com)\n", "**`x`** and _`y`_\n"]) {
+      const parsed = fromMarkdoc(sample);
+      assert.doesNotThrow(() => richTextSchema.nodeFromJSON(parsed));
+      assert.equal(toMarkdoc(parsed), sample);
+    }
+  });
+
+  it("keeps the start number of an ordered list", () => {
+    assert.equal(toMarkdoc(fromMarkdoc("3. third\n4. fourth\n")), "3. third\n4. fourth\n");
+  });
+
+  it("never writes a divider that starts front matter", () => {
+    const doc = { type: "doc", content: [{ type: "horizontalRule" }, { type: "paragraph", content: [{ type: "text", text: "Hello" }] }, { type: "horizontalRule" }] };
+    const out = toMarkdoc(doc);
+    assert.equal(out, "***\n\nHello\n\n---\n");
+    assert.deepEqual(unsupportedMarkdoc(out), []);
+    assert.equal(toMarkdoc(fromMarkdoc(out)), out);
+  });
+});
+
+describe("unsupportedMarkdoc", () => {
+  it("names front matter and variables", () => {
+    assert.deepEqual(unsupportedMarkdoc("---\ntitle: x\n---\n\nHello\n"), ["front matter"]);
+    assert.deepEqual(unsupportedMarkdoc("Hello {% $name %}.\n"), ["a variable such as {% $name %}"]);
+  });
+
+  it("names what the editor cannot show", () => {
+    assert.deepEqual(unsupportedMarkdoc("![A house](media/house.jpg)\n"), ["an image"]);
+    assert.deepEqual(unsupportedMarkdoc("| a | b |\n| - | - |\n| 1 | 2 |\n"), ["a table"]);
+    assert.deepEqual(unsupportedMarkdoc("{% callout %}\nCareful.\n{% /callout %}\n"), ["a {% callout %} tag"]);
+    assert.deepEqual(unsupportedMarkdoc("# Title {% #intro %}\n"), ["an attribute such as {% .class %}"]);
+    assert.deepEqual(unsupportedMarkdoc('[x](https://example.com "Title")\n'), ["a link title"]);
+  });
+
+  it("finds nothing in plain text, code, or an empty field", () => {
+    assert.deepEqual(unsupportedMarkdoc("Run `rush build`.\n\n```ts\nconst a = 1;\n```\n"), []);
+    assert.deepEqual(unsupportedMarkdoc(null), []);
+    assert.deepEqual(unsupportedMarkdoc("  \n"), []);
   });
 });
 

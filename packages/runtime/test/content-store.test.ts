@@ -15,6 +15,7 @@ import {
   media,
   number,
   relation,
+  repeater,
   richText,
   singleton,
   slug,
@@ -137,6 +138,26 @@ describe("saving an entry", () => {
 
     const entry = await store.get("projects", "haus-a");
     assert.equal(entry?.data.cover, "projects/haus-a/media/photo.jpg");
+  });
+
+  it("stores a media value with alt text relative to the entry, and reads it back", async () => {
+    const withAlt = defineSite({
+      collections: {
+        projects: collection({
+          label: "Projects",
+          fields: { title: text(), slug: slug({ from: "title" }), cover: media({ alt: "required" }) },
+        }),
+      },
+    });
+    const altStore = createContentStore(withAlt, contentFiles({ root }));
+    const cover = { path: "projects/haus-a/media/photo.jpg", alt: "The house from the street" };
+    await altStore.save("projects", { data: { title: "Haus A", cover } });
+
+    assert.deepEqual(JSON.parse(await read("projects/haus-a/index.json")).cover, {
+      path: "media/photo.jpg",
+      alt: "The house from the street",
+    });
+    assert.deepEqual((await altStore.get("projects", "haus-a"))?.data.cover, cover);
   });
 
   it("keeps a media path from outside the entry pointing where it did", async () => {
@@ -385,5 +406,30 @@ describe("singletons", () => {
 
     assert.deepEqual(await files("about"), ["index.json", "intro.mdoc"]);
     assert.equal((await store.getSingleton("about")).intro, "Hello.");
+  });
+});
+
+describe("findReferences", () => {
+  it("finds an entry that links from a nested field", async () => {
+    const nested = defineSite({
+      collections: {
+        team: collection({ label: "Team", fields: { name: text(), slug: slug({ from: "name" }) } }),
+        events: collection({
+          label: "Events",
+          fields: {
+            title: text(),
+            slug: slug({ from: "title" }),
+            talks: repeater({ fields: { speaker: relation({ collection: "team" }) } }),
+          },
+        }),
+      },
+    });
+    const nestedStore = createContentStore(nested, contentFiles({ root }));
+    await nestedStore.save("team", { data: { name: "Anna" } });
+    await nestedStore.save("events", { data: { title: "Meetup", talks: [{ speaker: "anna" }] } });
+
+    assert.deepEqual(await nestedStore.findReferences("team", "anna"), [
+      { collection: "events", slug: "meetup", title: "Meetup" },
+    ]);
   });
 });

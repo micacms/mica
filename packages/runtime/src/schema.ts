@@ -8,6 +8,9 @@ import {
   checkCompatibility,
   defineSite,
   deriveLayout,
+  entryLayout,
+  LayoutError,
+  misplacedFiles,
   recordLayout,
   isFieldKind,
   isProtocolManifest,
@@ -59,6 +62,24 @@ export async function loadSchema(source: ContentSource): Promise<Site> {
   }
 
   return checkSchema(raw, origin);
+}
+
+/**
+ * One message for each collection or singleton with entries in the other
+ * layout. Mica refuses to start on any: editing next to hidden entries would
+ * let a save create a second copy of a page.
+ */
+export async function layoutProblems(source: ContentSource, site: Site): Promise<string[]> {
+  const problems: string[] = [];
+  const parts = [
+    ...Object.entries(site.collections).map(([name, def]) => [name, def.fields, "collection"] as const),
+    ...Object.entries(site.singletons).map(([name, def]) => [name, def.fields, "singleton"] as const),
+  ];
+  for (const [name, fields, kind] of parts) {
+    const paths = await misplacedFiles(source, fields, name, kind);
+    if (paths.length > 0) problems.push(new LayoutError(paths, name, entryLayout(fields)).message);
+  }
+  return problems;
 }
 
 function describeMissing(origin: string): string {

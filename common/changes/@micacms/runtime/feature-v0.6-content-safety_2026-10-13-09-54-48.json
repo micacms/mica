@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "`layoutProblems` lists the entries in the other layout; the local editor refuses to start on any, and a list request that meets one answers 409 with the files.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

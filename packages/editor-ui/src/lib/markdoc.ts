@@ -12,9 +12,10 @@
  * So the conversion happens here, at the boundary, and nothing above it has to
  * know that two representations exist.
  *
- * Only the nodes the field DSL can enable are handled. That is not a gap: the
- * editor's schema is built from the same list, so a node outside it cannot be
- * produced in the first place.
+ * Only the nodes the editor can show are handled. Stored Markdoc with any other
+ * node — an image, a table, a `{% tag %}` — is found by `unsupportedMarkdoc`
+ * first, and the field shows it read-only instead of converting it, because a
+ * conversion would drop it.
  */
 
 import Markdoc, { type Node as MarkdocNode } from "@markdoc/markdoc";
@@ -105,6 +106,12 @@ function blocks(nodes: ProseMirrorNode[] = []): string {
     .join("\n\n");
 }
 
+/** `---` as the first line would start front matter, which Markdoc hides. */
+function document(nodes: ProseMirrorNode[]): string {
+  const text = blocks(nodes);
+  return text.startsWith("---") ? `***${text.slice(3)}` : text;
+}
+
 function block(node: ProseMirrorNode): string {
   switch (node.type) {
     case "paragraph":
@@ -152,7 +159,7 @@ function block(node: ProseMirrorNode): string {
 /** ProseMirror JSON to a Markdoc document. Empty input gives an empty string. */
 export function toMarkdoc(doc: ProseMirrorNode | null | undefined): string {
   if (!doc?.content?.length) return "";
-  const text = blocks(doc.content).trim();
+  const text = document(doc.content).trim();
   return text === "" ? "" : `${text}\n`;
 }
 
@@ -290,8 +297,10 @@ function fromBlocks(nodes: MarkdocNode[]): ProseMirrorNode[] {
 
       case "list": {
         const ordered = node.attributes["ordered"] === true;
+        const start = Number(node.attributes["start"] ?? 1);
         result.push({
           type: ordered ? "orderedList" : "bulletList",
+          ...(ordered && start !== 1 ? { attrs: { start } } : {}),
           content: node.children
             .filter((child) => child.type === "item")
             .map((item) => ({ type: "listItem", content: fromBlocks(item.children) })),
@@ -309,6 +318,41 @@ function fromBlocks(nodes: MarkdocNode[]): ProseMirrorNode[] {
   }
 
   return result;
+}
+
+/** The Markdoc node types that the editor can show and write back unchanged. */
+const SUPPORTED = new Set([
+  "document", "paragraph", "inline", "text", "softbreak", "hardbreak", "strong", "em", "s", "code",
+  "link", "heading", "blockquote", "hr", "fence", "list", "item",
+]);
+
+const TABLE = new Set(["table", "thead", "tbody", "tr", "th", "td"]);
+
+const NAMES: Record<string, string> = { image: "an image", html: "HTML", comment: "a comment" };
+
+/**
+ * What a stored document has that the editor cannot show, in words, such as
+ * `["an image", "a {% callout %} tag"]`. Empty when the editor can load it.
+ */
+export function unsupportedMarkdoc(source: string | null | undefined): string[] {
+  if (!source?.trim()) return [];
+  const found = new Set<string>();
+
+  const visit = (node: MarkdocNode): void => {
+    if (node.type === "document" && node.attributes["frontmatter"]) found.add("front matter");
+    // A variable or a function, such as `{% $name %}`, is a text node without a string.
+    if (node.type === "text" && typeof node.attributes["content"] !== "string") found.add("a variable such as {% $name %}");
+    if (node.type === "tag") found.add(`a {% ${node.tag ?? ""} %} tag`);
+    else if (TABLE.has(node.type)) found.add("a table");
+    else if (!SUPPORTED.has(node.type)) found.add(NAMES[node.type] ?? `a "${node.type}" node`);
+    else if (node.type === "link" && node.attributes["title"]) found.add("a link title");
+    if (node.annotations.length > 0) found.add("an attribute such as {% .class %}");
+    if (node.errors.length > 0) found.add("Markdoc that does not parse");
+    for (const child of node.children) visit(child);
+  };
+
+  visit(Markdoc.parse(source));
+  return [...found];
 }
 
 /** A Markdoc document as ProseMirror JSON the editor can load. */

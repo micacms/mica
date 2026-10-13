@@ -148,7 +148,14 @@ export function displayValue(field: AnyField, value: unknown): string {
   if (field.kind === "media") {
     const values = Array.isArray(value) ? value : [value];
     if (values.length === 0) return "Empty";
-    return values.map((entry) => String(entry).split("/").at(-1) ?? String(entry)).join(", ");
+    return values
+      .map((entry) => {
+        // `media({ alt })` stores `{ path, alt }`.
+        const { path, alt } = typeof entry === "string" ? { path: entry, alt: null } : (asRecord(entry) ?? {});
+        const name = String(path).split("/").at(-1) ?? String(path);
+        return typeof alt === "string" && alt ? `${name} ("${alt}")` : name;
+      })
+      .join(", ");
   }
 
   if (field.kind === "coordinates") {

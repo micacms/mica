@@ -79,6 +79,15 @@ function projectValue(
     return rows.map((row, index) => project(field.fields, asRecord(row), [...path, index], documents));
   }
 
+  if (field.kind === "media" && field.alt) {
+    // Fixed key order, so that the same value always gives the same bytes.
+    const one = (item: unknown): unknown => {
+      const record = asRecord(item);
+      return typeof record["path"] === "string" ? { path: record["path"], alt: record["alt"] ?? null } : item;
+    };
+    return Array.isArray(value) ? value.map(one) : value == null ? null : one(value);
+  }
+
   // Everything else is already JSON: the DSL admits no value that is not.
   return value ?? null;
 }

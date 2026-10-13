@@ -4,7 +4,9 @@
  *
  * The value is a path into the content repository. The path *is* the reference:
  * the preview URL follows from it and the filename is its last segment, so
- * there is nothing to resolve and no registry to keep in step.
+ * there is nothing to resolve and no registry to keep in step. With the `alt`
+ * option, each value is `{ path, alt }`, and an alt-text input sits under the
+ * preview.
  */
 
 import { computed, ref } from "vue";
@@ -17,29 +19,51 @@ import MediaPicker from "@/components/MediaPicker.vue";
 import { api, type MediaItem } from "@/api";
 import { useField, type FieldProps } from "@/composables/useField";
 
+interface Value {
+  path: string;
+  alt: string | null;
+}
+
 const props = defineProps<FieldProps & { modelValue: unknown }>();
-const emit = defineEmits<{ "update:modelValue": [string | string[] | null] }>();
+const emit = defineEmits<{ "update:modelValue": [unknown] }>();
 
 const field = computed(() => props.field as MediaField);
 const { inputId, label, error, describedBy, hintId, errorId } = useField(props);
 
 const pickerOpen = ref(false);
 
-const paths = computed<string[]>(() => {
-  if (field.value.multiple) {
-    return Array.isArray(props.modelValue) ? (props.modelValue as string[]) : [];
-  }
-  return typeof props.modelValue === "string" && props.modelValue ? [props.modelValue] : [];
+/** A path saved before the field asked for alt text reads as one without it. */
+function toValue(raw: unknown): Value {
+  if (typeof raw === "string") return { path: raw, alt: null };
+  const record = (raw ?? {}) as { path?: unknown; alt?: unknown };
+  return {
+    path: typeof record.path === "string" ? record.path : "",
+    alt: typeof record.alt === "string" ? record.alt : null,
+  };
+}
+
+const values = computed<Value[]>(() => {
+  const raw = field.value.multiple
+    ? Array.isArray(props.modelValue) ? props.modelValue : []
+    : props.modelValue == null || props.modelValue === "" ? [] : [props.modelValue];
+  return raw.map(toValue).filter((value) => value.path !== "");
 });
 
+const paths = computed(() => values.value.map((value) => value.path));
+
 const items = computed(() =>
-  paths.value.map((path) => ({
-    path,
-    filename: path.split("/").pop() ?? path,
-    url: api.media.url(path),
+  values.value.map((value, index) => ({
+    ...value,
+    filename: value.path.split("/").pop() ?? value.path,
+    url: api.media.url(value.path),
     // From the extension: the picker knows the real type, but a field rendering
     // a saved path has only the path.
-    isImage: /\.(jpe?g|png|webp|avif|gif)$/i.test(path),
+    isImage: /\.(jpe?g|png|webp|avif|gif)$/i.test(value.path),
+    altId: `${inputId}-alt-${index}`,
+    altErrorId: `${inputId}-alt-${index}-error`,
+    altError:
+      props.issues?.find((issue) => issue.path === (field.value.multiple ? `${props.path}.${index}.alt` : `${props.path}.alt`))
+        ?.message ?? null,
   })),
 );
 
@@ -48,36 +72,39 @@ const atLimit = computed(
     field.value.multiple && field.value.max !== undefined && paths.value.length >= field.value.max,
 );
 
+function update(next: Value[]): void {
+  const out = field.value.alt ? next : next.map((value) => value.path);
+  emit("update:modelValue", field.value.multiple ? out : (out[0] ?? null));
+}
+
 function onChoose(chosen: MediaItem[]): void {
   if (!field.value.multiple) {
-    emit("update:modelValue", chosen[0]?.path ?? null);
+    update(chosen[0] ? [{ path: chosen[0].path, alt: null }] : []);
     return;
   }
 
   // Skip anything already present rather than duplicating it.
-  const next = [...paths.value];
-  for (const item of chosen) if (!next.includes(item.path)) next.push(item.path);
-  emit("update:modelValue", field.value.max ? next.slice(0, field.value.max) : next);
+  const next = [...values.value];
+  for (const item of chosen) if (!paths.value.includes(item.path)) next.push({ path: item.path, alt: null });
+  update(field.value.max ? next.slice(0, field.value.max) : next);
 }
 
 function removeAt(index: number): void {
-  if (!field.value.multiple) {
-    emit("update:modelValue", null);
-    return;
-  }
-  emit(
-    "update:modelValue",
-    paths.value.filter((_, position) => position !== index),
-  );
+  update(values.value.filter((_, position) => position !== index));
 }
 
 function move(index: number, direction: -1 | 1): void {
   const target = index + direction;
-  if (target < 0 || target >= paths.value.length) return;
+  if (target < 0 || target >= values.value.length) return;
 
-  const next = [...paths.value];
+  const next = [...values.value];
   [next[index], next[target]] = [next[target]!, next[index]!];
-  emit("update:modelValue", next);
+  update(next);
+}
+
+function setAlt(index: number, event: Event): void {
+  const text = (event.target as HTMLInputElement).value;
+  update(values.value.map((value, position) => (position === index ? { ...value, alt: text === "" ? null : text } : value)));
 }
 </script>
 
@@ -96,7 +123,9 @@ function move(index: number, direction: -1 | 1): void {
         v-if="items.length"
         :class="[
           'mb-2 gap-2',
-          field.multiple ? 'grid grid-cols-3 sm:grid-cols-5' : 'flex',
+          field.multiple
+            ? field.alt ? 'grid grid-cols-2 sm:grid-cols-3' : 'grid grid-cols-3 sm:grid-cols-5'
+            : 'flex',
         ]"
       >
         <li
@@ -104,7 +133,7 @@ function move(index: number, direction: -1 | 1): void {
           :key="`${item.path}-${index}`"
           :class="[
             'group relative overflow-hidden rounded-lg border border-line bg-canvas',
-            field.multiple ? '' : 'w-40',
+            field.multiple ? '' : field.alt ? 'w-64' : 'w-40',
           ]"
         >
           <div class="aspect-4/3">
@@ -127,6 +156,27 @@ function move(index: number, direction: -1 | 1): void {
           <p class="truncate px-1.5 py-1 text-[11px] text-muted" :title="item.path">
             {{ item.filename }}
           </p>
+
+          <div v-if="field.alt" class="px-1.5 pb-1.5">
+            <label :for="item.altId" class="text-[11px] font-medium">
+              Alt text
+              <span v-if="field.alt === 'required'" class="text-danger" aria-hidden="true">*</span>
+              <span v-if="field.alt === 'required'" class="sr-only">(required)</span>
+            </label>
+            <input
+              :id="item.altId"
+              type="text"
+              :value="item.alt ?? ''"
+              :required="field.alt === 'required'"
+              :disabled="disabled || field.readonly"
+              :aria-invalid="item.altError ? 'true' : undefined"
+              :aria-describedby="item.altError ? item.altErrorId : undefined"
+              :class="['input mt-0.5 text-xs', item.altError && 'input-invalid']"
+              autocomplete="off"
+              @input="setAlt(index, $event)"
+            />
+            <p v-if="item.altError" :id="item.altErrorId" class="field-error">{{ item.altError }}</p>
+          </div>
 
           <!-- Controls are always in the DOM so they are reachable by keyboard,
                and only fade in visually on hover/focus. -->

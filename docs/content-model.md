@@ -144,7 +144,7 @@ Singletons take `label`, `description` and `fields`, and nothing else.
 | `object()`      | nested object                       | `fields` (required), `collapsible`, `collapsed`                 |
 | `repeater()`    | array of objects                    | `fields` (required), `min`, `max`, `itemLabel`, `addLabel`      |
 | `relation()`    | the target's slug                   | `collection` (required), `multiple`                             |
-| `media()`       | repository path                     | `accept: "image" \| "document" \| "any"`, `multiple`, `max`     |
+| `media()`       | repository path, or `{ path, alt }` | `accept: "image" \| "document" \| "any"`, `multiple`, `max`, `alt` |
 | `color()`       | hex string                          | `presets`, `default`                                            |
 | `coordinates()` | `{ lat, lng }`                      | `defaultCenter`, `defaultZoom`                                  |
 
@@ -158,9 +158,12 @@ invalid pattern stops the model from loading.
 **`richText()`** is [Markdoc](https://markdoc.dev), stored in its own file and
 _absent_ from `index.json`. Readable in a diff, and it cannot inject a script
 into the built site: Markdoc escapes raw HTML and renders an undeclared
-`{% tag %}` as nothing. `toolbar` limits what the editor offers — `bold`,
-`italic`, `strike`, `heading`, `bulletList`, `orderedList`, `blockquote`,
-`link`, `horizontalRule`.
+`{% tag %}` as nothing. `toolbar` limits what an editor can add, with the
+buttons and with the shortcuts while typing — `bold`, `italic`, `strike`,
+`heading`, `bulletList`, `orderedList`, `blockquote`, `link`, `horizontalRule`.
+Stored text with other nodes still loads. Text with something the editor cannot
+show — an image, a table, a `{% tag %}`, front matter — opens read-only, with
+the reason.
 
 **`media()`** holds a path. In the file it is relative to the entry's
 directory, like `media/exterior.jpg`, or it starts with `/` for a file elsewhere
@@ -169,6 +172,16 @@ root: `projects/haus-a/media/exterior.jpg`. The file is uploaded into the entry'
 own directory, so an entry is self-contained and renaming it is a directory move.
 Astro treats it as a local asset: optimised at build time, emitted into
 `_astro/`, with nothing fetched at runtime.
+
+**`media({ alt: "required" })`** stores `{ path, alt }` and shows an alt-text
+input under the preview. `"required"` refuses an image without alt text;
+`"optional"` allows one. Use it for every image that carries meaning, because
+a path alone leads to images with `alt=""`. A `media()` without the option
+stores a plain path, for a decorative image or a document. A field with content
+can get the option: a stored path reads as one without alt text. With
+`"optional"` nothing else changes; with `"required"` the build fails until each
+of those images has alt text. Removing the option drops the stored alt texts at
+the next save.
 
 **`relation()`** stores the target entry's slug. Pointing at a collection that
 does not exist is caught when the model is defined, not when a page renders.
@@ -226,9 +239,11 @@ says.
 The exception is a change of layout. The first `richText()` or `media()` field
 in a collection changes where Mica and the website look for its entries: in
 `<slug>/index.json`, not in `<slug>.json`. Removing the last such field changes
-it back. A singleton changes the same way. The files do not move, so Mica and
-the website do not read the existing entries. Run `npx mica check`: it names
-each file in the wrong layout. Move those files before you commit.
+it back. A singleton changes the same way. The files do not move, so the build
+fails and the local editor refuses to start, and both name the files. Run
+`npx mica migrate-layout`: it moves each entry, and lists the rich-text and
+media files that it removes because no field reads them any more. Run
+`npx mica check`, and commit the result with the model change.
 
 Removing a field leaves its value in the files until each entry is saved again.
 Nothing reads it, and the next save drops it.

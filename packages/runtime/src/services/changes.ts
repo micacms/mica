@@ -2,8 +2,11 @@
 
 import type { Author } from "../workspace/files.js";
 import {
+  LayoutError,
   ORDER_FILE,
+  collectReferences,
   collectionEntryPath,
+  createReferenceCheck,
   entryLayout,
   entryTitle,
   isValidSlug,
@@ -18,6 +21,7 @@ import {
   type ContentChange,
   type ContentSource,
   type FieldIssue,
+  type FieldMap,
   type PublishResult,
   type Site,
 } from "@micacms/core";
@@ -146,11 +150,15 @@ export async function compareSources(
   staged: ContentSource,
   target: CompareTarget,
 ): Promise<Comparison> {
+  // During a layout migration HEAD still has the old layout: then there is no "before".
+  const before = <T>(read: () => Promise<T>): Promise<T | null> =>
+    read().catch((error: unknown) => (error instanceof LayoutError ? null : Promise.reject(error)));
+
   if (target.kind === "singleton") {
     const def = model.singletons[target.name];
     if (!def) throw badRequest(`There is no singleton called "${target.name}".`);
     return {
-      before: await readSingleton(published, def, target.name),
+      before: await before(() => readSingleton(published, def, target.name)),
       after: await readSingleton(staged, def, target.name),
     };
   }
@@ -163,14 +171,14 @@ export async function compareSources(
     for (const slug of [target.slug, from]) {
       if (!isValidSlug(slug)) throw badRequest(`"${slug}" is not a slug.`);
     }
-    const before = await readCollectionEntry(published, def, target.collection, from);
+    const old = await readCollectionEntry(published, def, target.collection, from);
     const after = await readCollectionEntry(staged, def, target.collection, target.slug);
-    if (from === target.slug) return { before, after };
+    if (from === target.slug) return { before: old, after };
 
     // A rename: compare the on-disk form, where colocated media paths do not
     // name the entry's folder.
     return {
-      before: before && onDisk(def, target.collection, from, before),
+      before: old && onDisk(def, target.collection, from, old),
       after: after && onDisk(def, target.collection, target.slug, after),
     };
   }
@@ -183,7 +191,7 @@ export async function compareSources(
     };
   };
 
-  return { before: await ordering(published), after: await ordering(staged) };
+  return { before: await before(() => ordering(published)), after: await ordering(staged) };
 }
 
 /**
@@ -233,6 +241,10 @@ export async function analyseChanges(
   }
 
   const validated = new Set<string>();
+  const targets = createReferenceCheck(model, source, (name) => {
+    const entries = entriesByCollection.get(name);
+    return entries ? new Set(entries.keys()) : undefined;
+  });
 
   for (const owner of owners) {
     if (owner.kind === "entry") {
@@ -246,11 +258,12 @@ export async function analyseChanges(
       if (!data) continue;
 
       const result = validateFields(def.fields, data);
-      if (!result.ok) {
+      const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data))];
+      if (issues.length > 0) {
         problems.push({
           path: entryDataPath(def, owner.collection, owner.slug),
           label: labelEntry(def, owner.slug, titles.get(key)),
-          issues: result.issues,
+          issues,
         });
       }
     }
@@ -265,9 +278,8 @@ export async function analyseChanges(
         if (data === null) continue;
 
         const result = validateFields(def.fields, data);
-        if (!result.ok) {
-          problems.push({ path: dataPath, label: def.label, issues: result.issues });
-        }
+        const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data))];
+        if (issues.length > 0) problems.push({ path: dataPath, label: def.label, issues });
       } catch (error) {
         problems.push({
           path: (error as { path?: string }).path ?? dataPath,
@@ -277,6 +289,8 @@ export async function analyseChanges(
       }
     }
   }
+
+  problems.push(...(await brokenByRemoval(model, source, changes, owners, entriesByCollection, titles)));
 
   const annotated = changes.map((change, index): AnnotatedChange => {
     const owner = owners[index]!;
@@ -490,6 +504,79 @@ function canonical(value: unknown): string {
     const record = entry as Record<string, unknown>;
     return Object.fromEntries(Object.keys(record).sort().map((key) => [key, record[key]]));
   });
+}
+
+/**
+ * Entries and files that the change set removes while another entry still
+ * points at them. Publishing them would break a link or an image on the site.
+ */
+async function brokenByRemoval(
+  model: Site,
+  source: ContentSource,
+  changes: ContentChange[],
+  owners: ChangeOwner[],
+  entriesByCollection: Map<string, Map<string, Record<string, unknown>>>,
+  titles: Map<string, string>,
+): Promise<StagingProblem[]> {
+  const removedEntries = new Map<string, { collection: string; slug: string; renamedTo?: string }>();
+  const removedFiles = new Set<string>();
+  changes.forEach((change, index) => {
+    const owner = owners[index]!;
+    if (change.kind !== "delete") return;
+    if (owner.kind === "entry") {
+      // A URL change removes the old slug: links to it break as with a delete.
+      const gone = owner.renamedFrom ?? owner.slug;
+      if (!entriesByCollection.get(owner.collection)?.has(gone)) {
+        const renamedTo = owner.renamedFrom ? owner.slug : undefined;
+        removedEntries.set(`${owner.collection}/${gone}`, { collection: owner.collection, slug: gone, ...(renamedTo ? { renamedTo } : {}) });
+        return;
+      }
+    }
+    // Only a media file can be a target; a cleared rich-text file or an order file cannot.
+    if (!change.path.endsWith(".json") && !change.path.endsWith(".mdoc")) removedFiles.add(change.path);
+  });
+  if (removedEntries.size === 0 && removedFiles.size === 0) return [];
+
+  const linkedFrom = new Map<string, string[]>();
+  const note = (target: string, from: string) => linkedFrom.set(target, [...(linkedFrom.get(target) ?? []), from]);
+
+  const scan = (label: string, fields: FieldMap, data: Record<string, unknown>) => {
+    for (const reference of collectReferences(fields, data)) {
+      const target = reference.kind === "relation" ? `${reference.collection}/${reference.slug}` : reference.path;
+      if (removedEntries.has(target) || removedFiles.has(target)) note(target, label);
+    }
+  };
+
+  for (const [name, def] of Object.entries(model.collections)) {
+    let entries = entriesByCollection.get(name);
+    if (!entries) {
+      try {
+        entries = new Map((await readCollection(source, def, name)).map((entry) => [entry.slug, entry.data]));
+      } catch {
+        continue; // An unreadable collection is reported where it is changed.
+      }
+    }
+    for (const [slug, data] of entries) scan(labelEntry(def, slug, entryTitle(def, data)), def.fields, data);
+  }
+  for (const [name, def] of Object.entries(model.singletons)) {
+    const data = await readSingleton(source, def, name).catch(() => null);
+    if (data) scan(def.label, def.fields, data);
+  }
+
+  const problems: StagingProblem[] = [];
+  for (const [target, from] of linkedFrom) {
+    const entry = removedEntries.get(target);
+    const def = entry ? model.collections[entry.collection]! : null;
+    const message = entry?.renamedTo
+      ? `The URL changes from "${entry.slug}" to "${entry.renamedTo}", and ${from.join(", ")} still link to "${entry.slug}". Change those links first, or publish them together.`
+      : `Still linked from ${from.join(", ")}. Remove those links first, or publish them together.`;
+    problems.push({
+      path: entry && def ? entryDataPath(def, entry.collection, entry.slug) : target,
+      label: entry && def ? labelEntry(def, entry.slug, titles.get(target)) : target,
+      issues: [{ path: "", message }],
+    });
+  }
+  return problems;
 }
 
 function labelEntry(def: Collection, slug: string, title: string | undefined): string {

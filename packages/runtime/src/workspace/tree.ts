@@ -197,6 +197,34 @@ export function headSource(tree: GitTree, ref = "HEAD"): ContentSource {
 }
 
 /**
+ * `base` with `paths` taken from `top`: what a commit of exactly those paths
+ * would hold. Publish checks a selection against it, not against drafts that
+ * stay behind.
+ */
+export function overlaySource(base: ContentSource, top: ContentSource, paths: Iterable<string>): ContentSource {
+  const selected = new Set(paths);
+
+  return {
+    origin: `${base.origin} with the selected changes`,
+
+    read: (path) => (selected.has(path) ? top.read(path) : base.read(path)),
+
+    async list(directory) {
+      const prefix = directory === "" ? "" : `${directory}/`;
+      const items = new Map((await base.list(directory)).map((item) => [item.name, item]));
+      for (const path of selected) {
+        if (!path.startsWith(prefix)) continue;
+        const [name, ...deeper] = path.slice(prefix.length).split("/");
+        if (deeper.length > 0) items.set(name!, { name: name!, type: "directory" });
+        else if ((await top.read(path)) === null) items.delete(name!);
+        else items.set(name!, { name: name!, type: "file" });
+      }
+      return [...items.values()];
+    },
+  };
+}
+
+/**
  * A save's temporary file (`*.mica-<pid>-<n>`), seen during a save or after a
  * crash. Never content.
  */

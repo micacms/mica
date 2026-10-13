@@ -281,3 +281,44 @@ export function getSingleton(site: Site, name: string): Singleton | undefined {
   return site.singletons[name];
 }
 
+
+/** One relation or media path in an entry, with the dotted path of its field. */
+export type Reference =
+  | { kind: "relation"; field: string; collection: string; slug: string }
+  | { kind: "media"; field: string; path: string };
+
+/** Every relation and media path in a payload, nested fields included. */
+export function collectReferences(fields: FieldMap, data: Record<string, unknown>): Reference[] {
+  const found: Reference[] = [];
+  const isRecord = (value: unknown): value is Record<string, unknown> =>
+    value !== null && typeof value === "object" && !Array.isArray(value);
+
+  const visit = (map: FieldMap, record: Record<string, unknown>, prefix: string): void => {
+    for (const [key, field] of Object.entries(map)) {
+      const value = record[key];
+      const here = prefix ? `${prefix}.${key}` : key;
+      const many = Array.isArray(value) ? value : value == null ? [] : [value];
+
+      if (field.kind === "relation") {
+        many.forEach((slug, index) => {
+          if (typeof slug !== "string" || slug === "") return;
+          found.push({ kind: "relation", field: field.multiple ? `${here}.${index}` : here, collection: field.collection, slug });
+        });
+      } else if (field.kind === "media") {
+        many.forEach((item, index) => {
+          // `media({ alt })` stores `{ path, alt }`.
+          const path = isRecord(item) ? item["path"] : item;
+          if (typeof path !== "string" || path === "") return;
+          found.push({ kind: "media", field: field.multiple ? `${here}.${index}` : here, path });
+        });
+      } else if (field.kind === "object" && isRecord(value)) {
+        visit(field.fields, value, here);
+      } else if (field.kind === "repeater" && Array.isArray(value)) {
+        value.forEach((row, index) => isRecord(row) && visit(field.fields, row, `${here}.${index}`));
+      }
+    }
+  };
+
+  visit(fields, data, "");
+  return found;
+}

@@ -2,9 +2,11 @@
 /**
  * Rich text.
  *
- * Tiptap over ProseMirror, constrained to the marks and nodes the field
- * declares. The schema also keeps code that is already in Markdoc because code
- * has no toolbar action. An editor never has to know a markup language.
+ * Tiptap over ProseMirror. The schema holds every node the editor can show;
+ * the field's toolbar limits only the buttons. Stored Markdoc with anything
+ * else, or content that Tiptap refuses, is shown read-only with the reason:
+ * the field never opens empty, and never writes back a copy with parts
+ * missing. An editor never has to know a markup language.
  *
  * What leaves this component is **Markdoc**, not HTML. Tiptap's own `getHTML()`
  * is never called: the value is converted from ProseMirror JSON on the way out
@@ -20,8 +22,14 @@ import type { RichTextFeature, RichTextField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
 import { useField, type FieldProps } from "@/composables/useField";
-import { equivalentMarkdoc, fromMarkdoc, toMarkdoc, type ProseMirrorNode } from "@/lib/markdoc";
-import { createRichTextExtensions } from "@/lib/rich-text-extensions";
+import {
+  equivalentMarkdoc,
+  fromMarkdoc,
+  toMarkdoc,
+  unsupportedMarkdoc,
+  type ProseMirrorNode,
+} from "@/lib/markdoc";
+import { createRichTextExtensions, inputRules, richTextSchema } from "@/lib/rich-text-extensions";
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
@@ -41,13 +49,39 @@ const DEFAULT_TOOLBAR: RichTextFeature[] = [
 const toolbar = computed(() => field.value.toolbar ?? DEFAULT_TOOLBAR);
 const enabled = (feature: RichTextFeature) => toolbar.value.includes(feature);
 
+const source = computed(() => (typeof props.modelValue === "string" ? props.modelValue : ""));
+
+const unsupported = computed(() => unsupportedMarkdoc(source.value));
+
+/** A document that the schema refuses would load as an empty field. */
+const loadFailure = computed(() => {
+  if (unsupported.value.length > 0) return null;
+  try {
+    richTextSchema.nodeFromJSON(fromMarkdoc(source.value));
+    return null;
+  } catch (cause) {
+    return `The editor could not load this text (${(cause as Error).message}).`;
+  }
+});
+const readOnlyReason = computed(() =>
+  unsupported.value.length > 0
+    ? `This text contains ${list(unsupported.value)}, which the editor cannot show.`
+    : loadFailure.value,
+);
+
+function list(items: string[]): string {
+  return items.length < 2 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
+}
+
 const editor = useEditor({
-  content: fromMarkdoc(typeof props.modelValue === "string" ? props.modelValue : ""),
-  editable: !(props.disabled || field.value.readonly),
+  content: readOnlyReason.value ? "" : fromMarkdoc(source.value),
+  editable: !(props.disabled || field.value.readonly || readOnlyReason.value),
   // The base styles are in style.css; an injected <style> tag would break the CSP.
   injectCSS: false,
 
   extensions: createRichTextExtensions(toolbar.value),
+  enableInputRules: inputRules(toolbar.value),
+  enablePasteRules: inputRules(toolbar.value),
 
   editorProps: {
     attributes: {
@@ -59,6 +93,9 @@ const editor = useEditor({
   },
 
   onUpdate({ editor: instance }) {
+    // Read-only: the stored text stays exactly as it is.
+    if (readOnlyReason.value) return;
+
     // ProseMirror represents "empty" as one empty paragraph; the model wants
     // null, so that an untouched field does not write a file.
     const next = instance.isEmpty ? null : toMarkdoc(instance.getJSON() as ProseMirrorNode);
@@ -87,7 +124,7 @@ watch(
   () => props.modelValue,
   (next) => {
     const instance = editor.value;
-    if (!instance || instance.isFocused) return;
+    if (!instance || instance.isFocused || readOnlyReason.value) return;
 
     const incoming = typeof next === "string" ? next : "";
     const current = instance.isEmpty ? "" : toMarkdoc(instance.getJSON() as ProseMirrorNode);
@@ -101,8 +138,10 @@ watch(
 
 watch(
   () => props.disabled,
-  (isDisabled) => editor.value?.setEditable(!(isDisabled || field.value.readonly)),
+  (isDisabled) => editor.value?.setEditable(!(isDisabled || field.value.readonly || readOnlyReason.value)),
 );
+
+watch(readOnlyReason, (reason) => editor.value?.setEditable(!(props.disabled || field.value.readonly || reason)));
 
 onBeforeUnmount(() => editor.value?.destroy());
 
@@ -226,7 +265,21 @@ const buttons = computed<ToolbarButton[]>(() => {
     :hint-id="hintId"
     :error-id="errorId"
   >
+    <div v-if="readOnlyReason" class="rounded-sm border border-line bg-canvas/60">
+      <p class="border-b border-line px-3 py-2 text-sm" role="status">
+        {{ readOnlyReason }} To keep it, it is read-only here. Change it in the
+        <code>.mdoc</code> file in the repository.
+      </p>
+      <pre
+        :id="inputId"
+        class="max-h-96 overflow-auto px-3 py-2 text-xs whitespace-pre-wrap"
+        :aria-label="label"
+        :aria-describedby="describedBy"
+      >{{ source }}</pre>
+    </div>
+
     <div
+      v-else
       :class="[
         'rich-text overflow-hidden rounded-sm border bg-surface focus-within:ring-2 focus-within:ring-ink/10',
         error ? 'border-danger' : 'border-line focus-within:border-ink',
