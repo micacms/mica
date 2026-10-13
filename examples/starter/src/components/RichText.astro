@@ -1,12 +1,14 @@
 ---
-import { renderRichText } from "@micacms/astro";
+import { renderRichText, type RichTextImage } from "@micacms/astro";
 
 interface Props {
   text: string | null;
+  /** The entry's `_mica.images`, so that an image in the text gets its address on the website. */
+  images?: RichTextImage[];
 }
 
 // Markdoc to HTML at build time; raw HTML in the text is escaped.
-const html = renderRichText(Astro.props.text);
+const html = renderRichText(Astro.props.text, { images: Astro.props.images });
 ---
 
 {html && <div set:html={html} />}
