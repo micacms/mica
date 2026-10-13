@@ -175,7 +175,7 @@ export interface EntrySummary {
   data: Record<string, unknown>;
 }
 
-export interface EntryDetail extends EntrySummary {
+export interface EntryDetail extends Omit<EntrySummary, "position"> {
   /**
    * Relative to the content root: a directory when the entry has rich text or
    * media beside it, else one `.json` file.
@@ -548,6 +548,8 @@ export const api = {
       }
       return { items };
     },
+    /** One file with its dimensions; the list leaves them out, so that the server reads no file for it. */
+    info: (path: string) => request<MediaItem>("/admin/media/info", { query: { path } }),
     /** Where each file is used, in a media field or in rich text. */
     usage: (paths: string[]) =>
       request<{ uses: Record<string, Referrer[]>; unreadable: string[] }>("/admin/media/usage", { query: { path: paths } }),
