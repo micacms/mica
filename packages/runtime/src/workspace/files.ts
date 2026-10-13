@@ -6,7 +6,7 @@
  */
 
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, rename, rm, unlink, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
 import { contentPath, type ContentSource } from "@micacms/core";
@@ -40,6 +40,12 @@ export type FileChange =
   /** Deletes every file under `path`. Removing an entry removes its directory. */
   | { type: "deleteTree"; path: string };
 
+export interface FileStat {
+  size: number;
+  /** ISO 8601. */
+  modifiedAt: string;
+}
+
 export interface FileChanges {
   changes: FileChange[];
   /**
@@ -53,6 +59,9 @@ export interface FileChanges {
 export interface ContentFiles extends ContentSource {
   /** Bytes of a file, for media. Null when there is no such file. */
   readBinary(path: string): Promise<Uint8Array | null>;
+
+  /** Size and last change of a file, without reading it. Null when there is no such file. */
+  stat(path: string): Promise<FileStat | null>;
 
   /**
    * An opaque token for the current state of `path`, or null when it is absent.
@@ -102,6 +111,16 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
     },
 
     readBinary: readBytes,
+
+    async stat(path) {
+      try {
+        const info = await stat(full(path));
+        return info.isFile() ? { size: info.size, modifiedAt: info.mtime.toISOString() } : null;
+      } catch (error) {
+        if (isMissing(error)) return null;
+        throw error;
+      }
+    },
 
     async list(path) {
       let items;

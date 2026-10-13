@@ -674,6 +674,37 @@ describe("media in an entry's folder, and media delete", () => {
     assert.equal(stored.cover, "media/front.png");
   });
 
+  it("gives one file's dimensions, and answers 304 for an unchanged file", async () => {
+    const path = await uploadTo("media", "sized.png");
+    const list = (await (await harness.request("/api/admin/media")).json()) as { items: Array<{ path: string; width: number | null }> };
+    assert.equal(list.items.find((item) => item.path === path)?.width, null, "the list reads no file");
+
+    const info = (await (await harness.request(`/api/admin/media/info?path=${path}`)).json()) as { width: number; height: number };
+    assert.deepEqual([info.width, info.height], [1, 1]);
+
+    const first = await harness.request(`/api/admin/media/file/${path}`);
+    const etag = first.headers.get("etag");
+    assert.ok(etag);
+    const again = await harness.request(`/api/admin/media/file/${path}`, { headers: { "if-none-match": etag } });
+    assert.equal(again.status, 304);
+  });
+
+  it("keeps a new entry's URL when its uploads went into the folder of that URL", async () => {
+    const staged = await uploadTo("projects/same-title/media", "front.png");
+    const created = await json("/api/admin/collections/projects/entries", "POST", { data: { title: "Same title", cover: staged } });
+    assert.equal(((await created.json()) as { slug: string }).slug, "same-title");
+  });
+
+  it("does not count a folder that a discard left empty, nor treat its URL as taken", async () => {
+    mkdirSync(join(harness.contentRoot, "projects/left-behind/media"), { recursive: true });
+    const before = (await (await harness.request("/api/admin/overview")).json()) as { collections: Array<{ name: string; total: number }> };
+    const created = await json("/api/admin/collections/projects/entries", "POST", { data: { title: "Left behind" } });
+    assert.equal(((await created.json()) as { slug: string }).slug, "left-behind");
+    const after = (await (await harness.request("/api/admin/overview")).json()) as { collections: Array<{ name: string; total: number }> };
+    const total = (body: typeof before) => body.collections.find((item) => item.name === "projects")!.total;
+    assert.equal(total(after), total(before) + 1);
+  });
+
   it("refuses a video", async () => {
     const mp4 = new Uint8Array([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0]);
     const response = await harness.request("/api/admin/media", {

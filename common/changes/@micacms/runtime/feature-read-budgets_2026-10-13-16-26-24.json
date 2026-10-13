@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "Breaking: ContentFiles has stat(); the media list reads no file and has no dimensions, which /admin/media/info gives for one file; a single entry's response has no position",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

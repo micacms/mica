@@ -33,6 +33,7 @@ export interface MediaFile {
 
 export function createMediaService(deps: MediaServiceDeps) {
   const { files, maxBytes } = deps;
+  const dimensionCache = new Map<string, { mimeType: string; width: number | null; height: number | null }>();
 
   /** A name that is unique in `directory`. Only there can a collision overwrite a file. */
   const uniqueName = async (directory: string, filename: string): Promise<string> => {
@@ -103,41 +104,55 @@ export function createMediaService(deps: MediaServiceDeps) {
     },
 
     /**
-     * Every media file in the repository. A tree walk is sufficient because
-     * content trees are small.
+     * Every media file in the repository, from directory listings and `stat`:
+     * no file is read (#75). The type comes from the name, which the upload
+     * chose from the bytes; the dimensions come from `info`, for one file.
      */
     async list(): Promise<MediaFile[]> {
       const found: MediaFile[] = [];
 
       const walk = async (directory: string): Promise<void> => {
-        for (const item of await files.list(directory)) {
-          const child = directory === "" ? item.name : `${directory}/${item.name}`;
-
-          if (item.type === "directory") {
-            await walk(child);
-            continue;
-          }
-
-          if (!isMediaName(item.name)) continue;
-
-          const bytes = await files.readBinary(child);
-          if (!bytes) continue;
-
-          const mimeType = typeOf(bytes, item.name);
-          if (mimeType === SVG_TYPE) continue;
-
-          found.push({
-            path: child,
-            filename: item.name,
-            mimeType,
-            size: bytes.byteLength,
-            ...dimensions(bytes, mimeType),
-          });
-        }
+        const items = await files.list(directory);
+        await Promise.all(
+          items.map(async (item) => {
+            const child = directory === "" ? item.name : `${directory}/${item.name}`;
+            if (item.type === "directory") return walk(child);
+            if (!isMediaName(item.name)) return;
+            const mimeType = listedType(item.name);
+            if (mimeType === SVG_TYPE) return;
+            const info = await files.stat(child);
+            if (!info) return;
+            found.push({ path: child, filename: item.name, mimeType, size: info.size, width: null, height: null });
+          }),
+        );
       };
 
       await walk("");
       return found.sort((a, b) => a.path.localeCompare(b.path));
+    },
+
+    /** One file with its dimensions, which only this reads. Cached by path, size and last change. */
+    async info(mediaPath: string): Promise<MediaFile | null> {
+      const path = contentPath(mediaPath);
+      const info = await files.stat(path);
+      if (!info) return null;
+      const key = `${path}\0${info.size}\0${info.modifiedAt}`;
+      let cached = dimensionCache.get(key);
+      if (!cached) {
+        const bytes = await files.readBinary(path);
+        if (!bytes) return null;
+        const mimeType = typeOf(bytes, path);
+        if (mimeType === SVG_TYPE) throw refuseSvg();
+        cached = { mimeType, ...dimensions(bytes, mimeType) };
+        if (dimensionCache.size >= 2_000) dimensionCache.clear();
+        dimensionCache.set(key, cached);
+      }
+      return { path, filename: path.split("/").at(-1)!, size: info.size, ...cached };
+    },
+
+    /** Size and last change, for the file route's ETag. */
+    stat(mediaPath: string) {
+      return files.stat(contentPath(mediaPath));
     },
 
     async read(mediaPath: string): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
@@ -201,6 +216,26 @@ const refuseSvg = () =>
     "unsupported_media_type",
     "Mica does not accept SVG files, because they can contain scripts. Use PNG or WebP instead.",
   );
+
+/**
+ * The type the media list shows, from the name only. An image name stands for
+ * its image type here: the upload chose the name from the bytes, and serving a
+ * file still reads the bytes (`typeOf`).
+ */
+const IMAGE_BY_EXTENSION: Record<string, string> = {
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  png: "image/png",
+  gif: "image/gif",
+  webp: "image/webp",
+  avif: "image/avif",
+  tif: "image/tiff",
+  tiff: "image/tiff",
+};
+
+function listedType(name: string): string {
+  return IMAGE_BY_EXTENSION[path.extname(name).slice(1).toLowerCase()] ?? mimeFromName(name);
+}
 
 function mimeFromName(name: string): string {
   const extension = path.extname(name).slice(1).toLowerCase();

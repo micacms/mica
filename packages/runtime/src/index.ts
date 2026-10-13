@@ -98,6 +98,7 @@ export {
   type ContentFilesOptions,
   type FileChange,
   type FileChanges,
+  type FileStat,
 } from "./workspace/files.js";
 export {
   developerEnvironment,

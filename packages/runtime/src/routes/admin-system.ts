@@ -54,7 +54,7 @@ export function adminSystemRoutes(): Hono<Env> {
       Object.values(ctx.site.model.collections).map(async (def) => ({
         name: def.name,
         label: def.label,
-        total: (await content.list(def.name)).length,
+        total: await content.count(def.name),
       })),
     );
 
@@ -84,7 +84,7 @@ export function adminSystemRoutes(): Hono<Env> {
     const counts = Object.fromEntries(
       await Promise.all(
         Object.values(ctx.site.model.collections).map(
-          async (def) => [def.name, (await ctx.services.content.list(def.name)).length] as const,
+          async (def) => [def.name, await ctx.services.content.count(def.name)] as const,
         ),
       ),
     );

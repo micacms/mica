@@ -49,6 +49,15 @@ export function adminMediaRoutes(): Hono<Env> {
     return c.json({ items: await media.list() });
   });
 
+  /** One file with its dimensions: the list leaves them out, so that it reads no file. */
+  app.get("/info", async (c) => {
+    const { media } = c.get("ctx").services;
+    const [path] = cleanPaths([c.req.query("path") ?? ""]);
+    const found = await media.info(path!);
+    if (!found) throw notFound("No such file.");
+    return c.json(found);
+  });
+
   /** Where files are used, before a delete: `?path=a&path=b`. */
   app.get("/usage", async (c) => {
     const { content } = c.get("ctx").services;
@@ -149,13 +158,23 @@ export function adminMediaRoutes(): Hono<Env> {
       throw badRequest("The file path is not valid.");
     }
 
+    // A weak validator from size and last change: an unchanged file is not sent again.
+    const info = await media.stat(decoded);
+    if (!info) throw notFound("No such file.");
+    const etag = `W/"${info.size.toString(36)}-${Date.parse(info.modifiedAt).toString(36)}"`;
+    // The 304's headers replace the stored ones, so the sandbox goes with it.
+    if (c.req.header("if-none-match") === etag) {
+      return c.body(null, 304, { etag, "cache-control": "private, no-cache", "content-security-policy": "sandbox; default-src 'none'" });
+    }
+
     const found = await media.read(decoded);
     if (!found) throw notFound("No such file.");
 
     return c.body(found.bytes as unknown as ArrayBuffer, 200, {
       // Text without a charset is decoded by guessing; the repository's text is UTF-8.
       "content-type": found.mimeType.startsWith("text/") ? `${found.mimeType}; charset=utf-8` : found.mimeType,
-      "cache-control": "private, max-age=60",
+      "cache-control": "private, no-cache",
+      etag,
       // A file opened directly runs nothing and reaches nothing on this origin.
       "content-security-policy": "sandbox; default-src 'none'",
       // An image is shown as a preview; anything else is downloaded, never rendered here.

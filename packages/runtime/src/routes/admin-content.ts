@@ -125,7 +125,6 @@ export function adminContentRoutes(): Hono<Env> {
     return c.json({
       collection,
       slug: entry.slug,
-      position: entry.position,
       title: entryTitle(def, entry.data),
       data: entry.data,
       // From the model, so the editor need not know when an entry is a directory.
