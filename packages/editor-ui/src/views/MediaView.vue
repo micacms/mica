@@ -234,7 +234,7 @@ async function copyPath(path: string): Promise<void> {
         <!-- The path is the file's identity: it is what a field stores and what
              appears in the diff, so it is worth being able to copy. -->
         <div class="mt-3 border-t border-line pt-3">
-          <p class="field-label">Path in the repository</p>
+          <p class="field-label">Path</p>
           <p class="mt-1 break-all font-mono text-[11px]">{{ selected.path }}</p>
         </div>
 

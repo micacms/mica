@@ -171,11 +171,21 @@ describe("saving an entry", () => {
 
   it("refuses a payload the model rejects, and names the fields", async () => {
     const error = await store
-      .save("projects", { data: { year: 2024 } })
+      .save("projects", { data: { title: "Haus A", year: "soon" } })
       .then(() => null, (caught: unknown) => caught);
 
     assert.ok(error instanceof ValidationError);
-    assert.ok(error.issues.some((issue) => issue.path === "title"));
+    assert.ok(error.issues.some((issue) => issue.path === "year"));
+    assert.deepEqual(await readdir(root), []);
+  });
+
+  it("saves an entry that misses a required value, which Publish then refuses", async () => {
+    const saved = await store.save("projects", { data: { slug: "draft", year: 2024 } });
+    assert.equal(saved.slug, "draft");
+  });
+
+  it("refuses an entry with neither a title nor a URL", async () => {
+    await assert.rejects(store.save("projects", { data: { year: 2024 } }), /needs a title or a URL/);
     assert.deepEqual(await readdir(root), []);
   });
 

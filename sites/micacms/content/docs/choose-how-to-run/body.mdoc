@@ -26,8 +26,8 @@ Run the Docker image `ghcr.io/micacms/mica` on a server. It runs on amd64 and ar
 
 - It is for editors who are not developers.
 - Editors sign in through an OpenID Connect provider, for example Google. Mica keeps no passwords and no user list.
-- A save is a draft. Drafts are files in a Git clone on the server, and only editors see them.
-- **Publish** commits all pending drafts as one commit and pushes it over HTTPS. The editor is the author, and Mica is the committer.
+- A save is a draft. Drafts are files in a Git clone on the server, and all editors see them.
+- **Publish** commits the drafts that the editor chooses as one commit and pushes it over HTTPS. The editor is the author, and Mica is the committer.
 - Mica fetches the branch on its own and never merges. If the website changes an entry that has a draft, the editor keeps their version or uses the website's version.
 - Whoever your rules admit is an editor. There are no roles.
 

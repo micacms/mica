@@ -309,11 +309,14 @@ export function micaCollections<S extends Site>(
               };
 
               const file = entryFile(context, def.fields, name, entry.slug);
-              const data = await context.parseData({
-                id: entry.slug,
-                data: { ...imagePathsFromEntry(def.fields, entry.data, file.inContent), _mica: meta },
-                ...(file.inProject ? { filePath: file.inProject } : {}),
-              });
+              const data = await draftTolerant(context, `${name}/${entry.slug}`, () =>
+                context.parseData({
+                  id: entry.slug,
+                  data: { ...imagePathsFromEntry(def.fields, entry.data, file.inContent), _mica: meta },
+                  ...(file.inProject ? { filePath: file.inProject } : {}),
+                }),
+              );
+              if (data === undefined) continue;
               context.store.set({
                 id: entry.slug,
                 data,
@@ -362,11 +365,14 @@ export function micaCollections<S extends Site>(
 
             await checkReferences(context, source, [{ label: name, fields: def.fields, data }]);
             const file = entryFile(context, def.fields, name);
-            const parsed = await context.parseData({
-              id: name,
-              data: imagePathsFromEntry(def.fields, data, file.inContent),
-              ...(file.inProject ? { filePath: file.inProject } : {}),
-            });
+            const parsed = await draftTolerant(context, name, () =>
+              context.parseData({
+                id: name,
+                data: imagePathsFromEntry(def.fields, data, file.inContent),
+                ...(file.inProject ? { filePath: file.inProject } : {}),
+              }),
+            );
+            if (parsed === undefined) return;
             context.store.set({
               id: name,
               data: parsed,
@@ -384,6 +390,21 @@ export function micaCollections<S extends Site>(
   }
 
   return collections as MicaCollections<S>;
+}
+
+/**
+ * In dev, an entry that fails its schema is left out with a warning: the editor
+ * saves a draft before every required field is filled in, and Publish refuses it
+ * until then. A build has no watcher, and fails as before.
+ */
+async function draftTolerant<T>(context: LoaderContext, label: string, parse: () => Promise<T>): Promise<T | undefined> {
+  try {
+    return await parse();
+  } catch (error) {
+    if (!context.watcher) throw error;
+    context.logger.warn(`Left out "${label}" until it is valid: ${describe(error)}`);
+    return undefined;
+  }
 }
 
 /**

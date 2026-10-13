@@ -3,10 +3,8 @@
  * Collection overview: a filterable list of entries.
  * Columns come from fields marked `listed` in the model.
  *
- * The status column and its filter are gone: an entry in the repository is
- * saved, and saved is published. The "Updated" column went with them — the
- * honest answer is the last commit that touched the file, which is the
- * repository's to give, not a timestamp Mica writes into the entry.
+ * A row says "New" or "Changed" while the entry has saved changes that are
+ * not on the website yet; removed entries are counted above the list.
  */
 
 import { computed, onMounted, ref, watch } from "vue";
@@ -17,12 +15,26 @@ import PageHeader from "@/components/PageHeader.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import { previewValue } from "@/lib/format";
 import { useSchema } from "@/stores/schema";
+import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
 const props = defineProps<{ collection: string }>();
 
 const schema = useSchema();
+const staging = useStaging();
 const toast = useToast();
+
+/** Each entry's pending state, by slug, and the entries that publishing removes. */
+const pendingStates = computed(() => {
+  const states = new Map<string, "new" | "changed">();
+  let removed = 0;
+  for (const edit of staging.edits.value) {
+    if (edit.target?.kind !== "entry" || edit.target.collection !== props.collection) continue;
+    if (edit.state === "removed") removed += 1;
+    else states.set(edit.target.slug, edit.state);
+  }
+  return { states, removed };
+});
 
 const entries = ref<EntrySummary[]>([]);
 const loading = ref(true);
@@ -116,6 +128,11 @@ const canReorder = computed(
 
     <div class="mx-auto max-w-5xl px-4 py-5 sm:px-6">
       <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
+      <p v-if="pendingStates.removed > 0" role="status" class="mb-3 text-sm text-muted">
+        {{ pendingStates.removed }} {{ pendingStates.removed === 1 ? "entry is" : "entries are" }} removed, and
+        still on the website until you
+        <RouterLink :to="{ name: 'changes' }" class="underline">publish</RouterLink>.
+      </p>
       <div class="mb-3 flex flex-wrap items-center gap-2">
         <input
           v-model="search"
@@ -170,6 +187,9 @@ const canReorder = computed(
                 >
                   {{ entry.title }}
                 </RouterLink>
+                <span v-if="pendingStates.states.has(entry.slug)" class="ml-2 text-xs text-warning">
+                  {{ pendingStates.states.get(entry.slug) === "new" ? "New" : "Changed" }} · not published
+                </span>
                 <span class="block font-mono text-xs text-muted">/{{ entry.slug }}</span>
               </td>
 

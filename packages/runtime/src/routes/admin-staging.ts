@@ -52,6 +52,12 @@ async function handled<T>(run: () => Promise<T>): Promise<T> {
   }
 }
 
+/** Who did it, for the log: the signed-in editor's email, else their subject. None in the local editor. */
+function editorOf(c: Parameters<typeof actorOf>[0]): string | undefined {
+  const actor = actorOf(c);
+  return actor ? actor.email || actor.id : undefined;
+}
+
 export function adminStagingRoutes(): Hono<Env> {
   const app = new Hono<Env>();
 
@@ -87,6 +93,7 @@ export function adminStagingRoutes(): Hono<Env> {
         message: parsed.data.message,
         paths: parsed.data.paths,
         author: actor ? { name: actor.name || actor.email, email: actor.email } : undefined,
+        editor: editorOf(c),
       }),
     );
 
@@ -110,7 +117,7 @@ export function adminStagingRoutes(): Hono<Env> {
     const parsed = resolveSchema.safeParse(await jsonBody(c));
     if (!parsed.success) throw badRequest("Expected a group and a choice: mine or website.");
 
-    await handled(() => staging.resolve(parsed.data.group, parsed.data.choice));
+    await handled(() => staging.resolve(parsed.data.group, parsed.data.choice, editorOf(c)));
     return c.json(await staging.status());
   });
 
@@ -119,7 +126,7 @@ export function adminStagingRoutes(): Hono<Env> {
     const parsed = discardSchema.safeParse(await jsonBody(c));
     if (!parsed.success) throw badRequest("Expected a list of change paths.");
 
-    return c.json(await handled(() => staging.discard(parsed.data.paths)));
+    return c.json(await handled(() => staging.discard(parsed.data.paths, editorOf(c))));
   });
 
   return app;

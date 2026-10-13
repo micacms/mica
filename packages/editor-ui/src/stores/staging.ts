@@ -22,6 +22,13 @@ export function useStaging() {
     /** The pending set as an editor reads it: one edit per entry, singleton, order or media. */
     edits,
     editCount: computed(() => edits.value.length),
+    /**
+     * Whether "no pending edit" means "on the website": the list is loaded, there
+     * is a repository, and no publication waits to be sent.
+     */
+    knowsPublished: computed(
+      () => status.value !== null && status.value.head !== null && (status.value.unpushed?.mica ?? 0) === 0,
+    ),
 
     /** Concurrent callers share one request; failures leave the last answer. */
     async refresh(): Promise<void> {

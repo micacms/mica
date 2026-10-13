@@ -21,6 +21,7 @@ import {
   readSingleton,
   relativizeMedia,
   resolveSlugField,
+  resolveTitleField,
   serializeEntry,
   singletonPath,
   slugify,
@@ -98,7 +99,8 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     data: unknown,
     what: string,
   ): Record<string, unknown> => {
-    const result = validateFields(def.fields, data);
+    // Save keeps a half-finished entry; Publish checks `required` (decision "Publish a selection").
+    const result = validateFields(def.fields, data, { enforceRequired: false });
     if (!result.ok) {
       throw new ValidationError(
         `${what} cannot be saved until these fields are correct.`,
@@ -459,8 +461,11 @@ function pickSlug(
   const slugKey = resolveSlugField(def)!;
   const fromData = data[slugKey];
 
+  // Not `entryTitle`, whose "Untitled" would give every entry without a title the same URL.
+  const titleKey = resolveTitleField(def);
+  const title = titleKey ? data[titleKey] : undefined;
   const candidate =
-    (typeof fromData === "string" && fromData.trim()) || slugify(entryTitle(def, data));
+    (typeof fromData === "string" && fromData.trim()) || (typeof title === "string" ? slugify(title.trim()) : "");
 
   if (!candidate) {
     throw new ContentError("An entry needs a title or a URL before it can be saved.");

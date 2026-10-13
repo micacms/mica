@@ -40,6 +40,23 @@ const messages = (result: Awaited<ReturnType<typeof analyseChanges>>) =>
   );
 
 describe("references at Publish", () => {
+  it("names the new pending files that a changed entry needs, so that they publish together", async () => {
+    const source = memorySource({
+      ...files,
+      "team/ben.json": JSON.stringify({ name: "Ben", slug: "ben" }),
+      "media/new.png": "png",
+      "news/hello/index.json": JSON.stringify({ title: "Hello", slug: "hello", author: "ben", cover: "/media/new.png", sections: [{ contact: "anna" }] }),
+    });
+    const result = await analyseChanges(model, source, [
+      update("news/hello/index.json"),
+      { path: "team/ben.json", kind: "create" },
+      { path: "media/new.png", kind: "create" },
+    ]);
+    const byPath = new Map(result.changes.map((change) => [change.path, change.needs]));
+    assert.deepEqual(byPath.get("news/hello/index.json"), ["team/ben.json", "media/new.png"]);
+    assert.equal(byPath.get("team/ben.json"), undefined);
+  });
+
   it("accepts a changed entry whose links and files exist", async () => {
     const result = await analyseChanges(model, memorySource(files), [update("news/hello/index.json")]);
     assert.deepEqual(messages(result), []);

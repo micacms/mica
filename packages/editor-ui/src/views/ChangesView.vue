@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
- * The pending change set, and Publish. The whole site shares one pending set,
- * so everything on it is published together, whoever presses the button.
- * `owner` changes only the words, not the behaviour.
+ * The saved changes that are not on the website yet, and Publish. The whole
+ * site shares them; the editor chooses which of them to publish now, and the
+ * rest stays saved. `owner` changes only the developer details, not the words.
  */
 
 import { computed, onMounted, ref, watch } from "vue";
@@ -20,9 +20,19 @@ import {
   type SyncConflict,
 } from "@/api";
 import ChangeComparison from "@/components/ChangeComparison.vue";
-import type { Edit } from "@/lib/edits";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import DeveloperDetails from "@/components/DeveloperDetails.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import {
+  blockedEdits,
+  problemsByEdit,
+  publishSummary,
+  reviewedPaths,
+  withNeeds,
+  withoutDependents,
+  type Edit,
+} from "@/lib/edits";
+import { relativeTime } from "@/lib/format";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
@@ -34,17 +44,68 @@ const toast = useToast();
 const loading = ref(true);
 const publishing = ref(false);
 const pushing = ref(false);
-const message = ref("");
 const discardTarget = ref<Edit | null>(null);
 const discarding = ref(false);
 
-/** The half-finished publication, when a local push failed. */
+/** The last publication on this page, for the success panel. */
+const published = ref<{ revision: string | null } | null>(null);
+
+/** A publication in the developer's checkout that did not reach the website. */
 const pendingPush = ref<PublishOutcome | null>(null);
 
 const status = staging.status;
 
 /** One row per edit, never per file — see `lib/edits.ts`. */
 const edits = staging.edits;
+
+const problems = computed(() => problemsByEdit(edits.value, status.value?.validation.problems ?? []));
+/** Edits that cannot be published now: a problem in them, or in what they need. */
+const blocked = computed(() => blockedEdits(edits.value, problems.value));
+const labelOf = computed(() => new Map(edits.value.map((edit) => [edit.key, edit.label])));
+
+/* ------------------------------------------------- the selection */
+
+/**
+ * The edits to publish now. A new edit starts selected unless it is blocked;
+ * the editor's own choices stay when the list refreshes. An edit always comes
+ * with the new edits it needs, and goes with the edits that need it.
+ */
+const selected = ref(new Set<string>());
+const offered = new Set<string>();
+
+function updateSelection(next: Edit[]): void {
+  const keys = new Set(next.map((edit) => edit.key));
+  const kept = new Set([...selected.value].filter((key) => keys.has(key) && !blocked.value.has(key)));
+  for (const edit of next) {
+    // An edit that is blocked when it first appears is offered once it is fixed.
+    if (offered.has(edit.key) || blocked.value.has(edit.key)) continue;
+    offered.add(edit.key);
+    kept.add(edit.key);
+  }
+  selected.value = withNeeds(kept, next);
+}
+
+function toggle(key: string): void {
+  selected.value = selected.value.has(key)
+    ? withoutDependents(selected.value, key, edits.value)
+    : withNeeds([...selected.value, key], edits.value);
+}
+
+function selectAll(on: boolean): void {
+  selected.value = new Set(on ? selectable.value.map((edit) => edit.key) : []);
+}
+
+const chosen = computed(() => edits.value.filter((edit) => selected.value.has(edit.key)));
+const selectable = computed(() => edits.value.filter((edit) => !blocked.value.has(edit.key)));
+
+/** The summary: Mica's suggestion until the editor types their own. */
+const typed = ref<string | null>(null);
+const summary = computed({
+  get: () => typed.value ?? publishSummary(chosen.value),
+  set: (value: string) => {
+    typed.value = value;
+  },
+});
 
 /* ------------------------------------------------- before/after */
 
@@ -79,44 +140,44 @@ async function loadComparison(edit: Edit): Promise<void> {
 }
 
 // Comparisons load with the change list, with nothing to click.
-watch(edits, (next) => {
-  for (const edit of next) {
-    if (edit.target && !comparisons.value[edit.key]) void loadComparison(edit);
-  }
-});
+watch(
+  edits,
+  (next) => {
+    updateSelection(next);
+    for (const edit of next) {
+      if (edit.target && !comparisons.value[edit.key]) void loadComparison(edit);
+    }
+  },
+  { immediate: true },
+);
 
-/**
- * The developer's checkout, worded in Git's terms; otherwise Mica's own clone,
- * worded for editors.
- */
+/* ------------------------------------------------- state */
+
+/** The developer's checkout: the details for developers name Git. */
 const isTree = computed(() => status.value?.owner === "developer");
 const sync = computed(() => status.value?.sync ?? null);
 
-const subtitle = computed(() => {
-  if (!status.value) return null;
-  if (isTree.value) {
-    return status.value.branch
-      ? `Your working tree, on branch ${status.value.branch}`
-      : "Your working tree";
-  }
-  return "Saved in Mica, waiting to be published";
-});
-
-/**
- * Commits already made and not yet pushed — visible even across a restart. The
- * developer retries; Mica retries its own.
- */
-const waitingToPush = computed(
-  () => isTree.value && (pendingPush.value !== null || (status.value?.ahead ?? 0) > 0),
+/** Publications made here that did not reach the website — also after a restart. */
+const waitingToSend = computed(
+  () => isTree.value && (pendingPush.value !== null || (status.value?.unpushed?.mica ?? 0) > 0),
 );
+/** Work in the developer's checkout that Publish would send too, so it waits. */
+const otherWork = computed(() => (isTree.value ? (status.value?.unpushed?.other ?? 0) : 0));
 
 const canPublish = computed(
   () =>
     (status.value?.publish.enabled ?? false) &&
-    (status.value?.validation.ok ?? false) &&
-    (status.value?.changes.length ?? 0) > 0 &&
+    chosen.value.length > 0 &&
+    summary.value.trim() !== "" &&
+    otherWork.value === 0 &&
     !publishing.value,
 );
+
+const stateWord: Record<Edit["state"], string> = {
+  new: "New",
+  changed: "Changed",
+  removed: "Will be removed",
+};
 
 const kindWord: Record<FileChange["kind"], string> = {
   create: "Added",
@@ -139,27 +200,23 @@ onMounted(refresh);
 
 async function publish(): Promise<void> {
   publishing.value = true;
+  published.value = null;
   try {
     // Exactly what the editor sees here, at the revision they see it: a file
     // saved again since makes the server refuse rather than publish it unseen.
-    const reviewed = Object.fromEntries(
-      (status.value?.changes ?? []).map((change) => [change.path, change.revision ?? null]),
-    );
-    const outcome = await api.staging.publish(message.value, reviewed);
+    const outcome = await api.staging.publish(summary.value.trim(), reviewedPaths(chosen.value));
+    typed.value = null;
 
     if (outcome.state === "published") {
       pendingPush.value = null;
-      message.value = "";
-      toast.success("Published.", outcome.revision ? `Commit ${short(outcome.revision)}.` : undefined);
+      published.value = { revision: outcome.revision };
     } else if (isTree.value) {
-      // The commit is real; only the push failed. Say so, and keep the retry
-      // visible — pressing Publish again must not create a second commit.
+      // Only the sending failed. Keep "Try again" visible: Publish again would
+      // publish nothing new.
       pendingPush.value = outcome;
-      message.value = "";
-      toast.error("Committed, but the push failed.", outcome.pushError);
+      toast.error("Published here, but not sent to the website.", outcome.pushError);
     } else {
-      message.value = "";
-      toast.error("Published in Mica, not yet sent to the website.", "Mica tries again every minute.");
+      toast.error("Published in Mica, not on the website yet.", "Mica tries again every minute.");
     }
 
     await staging.refresh();
@@ -182,14 +239,14 @@ async function retryPush(): Promise<void> {
     const outcome = await api.staging.push();
     if (outcome.state === "published") {
       pendingPush.value = null;
-      toast.success("Pushed.", outcome.revision ? `Commit ${short(outcome.revision)}.` : undefined);
+      published.value = { revision: outcome.revision };
     } else {
       pendingPush.value = outcome;
-      toast.error("The push failed again.", outcome.pushError);
+      toast.error("It could not be sent again.", outcome.pushError);
     }
     await staging.refresh();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not push.");
+    toast.error(error instanceof ApiError ? error.message : "Could not send it to the website.");
   } finally {
     pushing.value = false;
   }
@@ -225,7 +282,7 @@ async function syncNow(): Promise<void> {
     await api.staging.sync();
     await refresh();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not reach the repository.");
+    toast.error(error instanceof ApiError ? error.message : "Could not reach the website's files.");
   } finally {
     syncing.value = false;
   }
@@ -296,13 +353,17 @@ function since(iso: string): string {
 function short(revision: string): string {
   return /^[0-9a-f]{20,}$/i.test(revision) ? revision.slice(0, 7) : revision;
 }
+
+function plural(count: number, one: string, many: string): string {
+  return `${count} ${count === 1 ? one : many}`;
+}
 </script>
 
 <template>
-  <PageHeader title="Publish" :subtitle="subtitle">
+  <PageHeader title="Publish" subtitle="Saved changes that are not on the website yet">
     <button type="button" class="btn-ghost px-2" :disabled="loading" @click="refresh">
       <RefreshCw :size="16" aria-hidden="true" />
-      <span class="sr-only">Refresh the change list</span>
+      <span class="sr-only">Refresh the list of changes</span>
     </button>
   </PageHeader>
 
@@ -310,7 +371,17 @@ function short(revision: string): string {
     <p v-if="loading" class="text-sm text-muted">Loading…</p>
 
     <template v-else-if="status">
-      <!-- Publishing unavailable: still an honest, read-only change list. -->
+      <div v-if="published" role="status" class="rounded-md border border-success/15 bg-success-soft p-4">
+        <p class="text-sm font-medium text-success">Published</p>
+        <p class="mt-1 text-xs text-muted">
+          Your website is being rebuilt now. This usually takes a few minutes.
+        </p>
+        <DeveloperDetails v-if="published.revision">
+          <p>Commit <span class="font-mono">{{ short(published.revision) }}</span>.</p>
+        </DeveloperDetails>
+      </div>
+
+      <!-- Publishing unavailable: still an honest, read-only list. -->
       <div
         v-if="!status.publish.enabled"
         class="rounded-md border border-line bg-subtle p-4 text-sm text-muted"
@@ -329,7 +400,7 @@ function short(revision: string): string {
         </div>
 
         <div v-if="sync.error" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
-          <p class="text-sm font-medium text-warning">Cannot reach the repository since {{ since(sync.error.since) }}</p>
+          <p class="text-sm font-medium text-warning">Mica cannot reach the website's files since {{ since(sync.error.since) }}</p>
           <p class="mt-1 text-xs text-muted">
             You can go on saving. Mica tries again every minute. If this stays, tell the person who runs Mica:
             {{ sync.error.message }}
@@ -340,7 +411,7 @@ function short(revision: string): string {
         </div>
 
         <div v-if="sync.pendingPush" role="status" class="rounded-md border border-line bg-subtle p-4">
-          <p class="text-sm font-medium">Published in Mica, not yet sent to the website</p>
+          <p class="text-sm font-medium">Published in Mica, not on the website yet</p>
           <p class="mt-1 text-xs text-muted">
             Mica tries again every minute. If this stays, tell the person who runs Mica:
             {{ sync.pendingPush.reason }}
@@ -348,9 +419,9 @@ function short(revision: string): string {
         </div>
 
         <div v-if="sync.refused" role="alert" class="rounded-md border border-danger/15 bg-danger-soft p-4">
-          <p class="text-sm font-medium text-danger">The repository refused the last publication</p>
+          <p class="text-sm font-medium text-danger">The last publication was refused</p>
           <p class="mt-1 text-xs text-muted">
-            Its changes are drafts again, listed below. Tell the person who runs Mica: {{ sync.refused.reason }}
+            Its changes are listed below again. Tell the person who runs Mica: {{ sync.refused.reason }}
           </p>
         </div>
 
@@ -407,28 +478,34 @@ function short(revision: string): string {
         </section>
       </template>
 
-      <!-- A commit exists that the repository's remote has not seen. -->
-      <div
-        v-if="waitingToPush"
-        role="alert"
-        class="rounded-md border border-warning/15 bg-warning-soft p-4"
-      >
-        <p class="text-sm font-medium text-warning">Committed, waiting to be pushed</p>
+      <!-- The developer's checkout: a publication that did not reach the website. -->
+      <div v-if="waitingToSend" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
+        <p class="text-sm font-medium text-warning">Published here, but not sent to the website yet</p>
         <p class="mt-1 text-xs text-muted">
-          {{
-            pendingPush?.pushError ??
-            "This branch has commits the remote has not seen. Retrying pushes the existing " +
-              "commits — it never creates new ones."
-          }}
+          {{ pendingPush?.pushError ?? "Try again to send it. Nothing is published twice." }}
         </p>
-        <button
-          type="button"
-          class="btn-secondary mt-2.5"
-          :disabled="pushing"
-          @click="retryPush"
-        >
-          {{ pushing ? "Pushing…" : "Retry push" }}
+        <button type="button" class="btn-secondary mt-2.5" :disabled="pushing" @click="retryPush">
+          {{ pushing ? "Sending…" : "Try again" }}
         </button>
+        <DeveloperDetails>
+          <p>The commit is in your checkout. "Try again" runs <code>git push</code> and never commits again.</p>
+        </DeveloperDetails>
+      </div>
+
+      <div v-if="otherWork > 0" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
+        <p class="text-sm font-medium text-warning">Publishing waits for other work</p>
+        <p class="mt-1 text-xs text-muted">
+          This copy of the website has {{ plural(otherWork, "change", "changes") }} that
+          {{ otherWork === 1 ? "was" : "were" }} not made in Mica and {{ otherWork === 1 ? "is" : "are" }} not on the
+          website yet. Publishing would send {{ otherWork === 1 ? "it" : "them" }} too.
+        </p>
+        <DeveloperDetails>
+          <p>
+            {{ plural(otherWork, "commit", "commits") }} on this branch {{ otherWork === 1 ? "is" : "are" }} on no
+            remote. Push {{ otherWork === 1 ? "it" : "them" }} with <code>git push</code>, or move
+            {{ otherWork === 1 ? "it" : "them" }} to another branch. Then publish.
+          </p>
+        </DeveloperDetails>
       </div>
 
       <div
@@ -436,9 +513,8 @@ function short(revision: string): string {
         role="alert"
         class="rounded-md border border-danger/15 bg-danger-soft p-4"
       >
-        <p class="text-sm font-medium text-danger">
-          These changes cannot be published until they are fixed
-        </p>
+        <p class="text-sm font-medium text-danger">Some changes cannot be published yet</p>
+        <p class="mt-1 text-xs text-muted">Fix them, or publish the other changes without them.</p>
         <ul class="mt-1.5 space-y-1 text-xs text-danger">
           <li v-for="problem in status.validation.problems" :key="problem.path">
             <span class="font-medium">{{ problem.label }}</span>
@@ -452,24 +528,66 @@ function short(revision: string): string {
       <div v-if="edits.length === 0" class="card p-8 text-center">
         <p class="text-sm font-medium">Nothing waiting to be published</p>
         <p class="mt-1 text-sm text-muted">
-          Saved changes collect here until somebody publishes them. Right now the
-          {{ isTree ? "working tree" : "draft workspace" }} matches the repository.
+          Saved changes collect here until somebody publishes them. Right now the website has
+          everything.
         </p>
       </div>
 
-      <section v-else aria-labelledby="changes-heading">
-        <h2 id="changes-heading" class="sr-only">Pending changes</h2>
+      <section v-else aria-labelledby="changes-heading" class="space-y-2">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 id="changes-heading" class="text-sm font-semibold">
+            {{ plural(edits.length, "saved change", "saved changes") }}
+          </h2>
+          <div v-if="status.publish.enabled && selectable.length > 1" class="flex gap-1">
+            <button type="button" class="btn-ghost text-xs" @click="selectAll(true)">Select all</button>
+            <button type="button" class="btn-ghost text-xs" @click="selectAll(false)">Select none</button>
+          </div>
+        </div>
 
         <ul class="card divide-y divide-line">
           <li v-for="edit in edits" :key="edit.key" class="flex items-start gap-3 p-4">
+            <input
+              v-if="status.publish.enabled"
+              :id="`publish-${edit.key}`"
+              type="checkbox"
+              class="mt-1 h-4 w-4 shrink-0"
+              :checked="selected.has(edit.key)"
+              :disabled="blocked.has(edit.key) || publishing"
+              :aria-label="`Publish ${edit.label}`"
+              @change="toggle(edit.key)"
+            />
+
             <div class="min-w-0 flex-1">
-              <component
-                :is="edit.link ? 'RouterLink' : 'p'"
-                v-bind="edit.link ? { to: edit.link } : {}"
-                :class="['text-sm font-medium', edit.link && 'hover:underline']"
-              >
-                {{ edit.label }}
-              </component>
+              <div class="flex flex-wrap items-baseline gap-x-2">
+                <component
+                  :is="edit.link ? 'RouterLink' : 'p'"
+                  v-bind="edit.link ? { to: edit.link } : {}"
+                  :class="['text-sm font-medium', edit.link && 'hover:underline']"
+                >
+                  {{ edit.label }}
+                </component>
+                <span
+                  :class="[
+                    'text-xs',
+                    edit.state === 'removed' ? 'text-danger' : edit.state === 'new' ? 'text-success' : 'text-muted',
+                  ]"
+                >
+                  {{ stateWord[edit.state] }}
+                </span>
+                <span v-if="edit.savedAt" class="text-xs text-muted">
+                  · saved {{ relativeTime(edit.savedAt) }}
+                </span>
+              </div>
+
+              <p v-if="problems.has(edit.key)" class="mt-1 text-xs text-danger">
+                Fix this first: {{ problems.get(edit.key)!.flatMap((problem) => problem.issues.map((issue) => issue.message)).join("; ") }}
+              </p>
+              <p v-else-if="blocked.has(edit.key)" class="mt-1 text-xs text-danger">
+                It uses something that must be fixed first.
+              </p>
+              <p v-if="edit.needs.length > 0" class="mt-1 text-xs text-muted">
+                Published together with {{ edit.needs.map((key) => labelOf.get(key) ?? key).join(", ") }}, which it uses.
+              </p>
 
               <!-- What the change does. Edits with a document get the
                    before/after view and no file paths; media and everything
@@ -516,36 +634,43 @@ function short(revision: string): string {
 
       <section v-if="edits.length > 0 && status.publish.enabled" class="card p-4" aria-labelledby="publish-heading">
         <h2 id="publish-heading" class="text-sm font-semibold">
-          Publish {{ edits.length === 1 ? "this edit" : `these ${edits.length} edits` }}
+          {{ chosen.length === 0 ? "Choose the changes to publish" : `Publish ${plural(chosen.length, "change", "changes")}` }}
         </h2>
-
         <p class="mt-1 text-xs text-muted">
-          {{
-            isTree
-              ? "One commit of exactly the files listed above, pushed with your own Git configuration."
-              : "One commit to the content repository, which is what triggers your site's build."
-          }}
-          <template v-if="isTree && status.head"> Based on {{ short(status.head) }}.</template>
+          The website is rebuilt after you publish. Changes that you do not choose stay saved here.
         </p>
 
-        <form class="mt-3 flex flex-wrap items-center gap-2" @submit.prevent="canPublish && message.trim() && publish()">
-          <input
-            v-model="message"
-            type="text"
-            class="input min-w-0 flex-1"
-            maxlength="500"
-            placeholder="Describe this publication — it becomes the commit message"
-            aria-label="Commit message"
-            :disabled="publishing"
-          />
-          <button type="submit" class="btn-primary" :disabled="!canPublish || !message.trim()">
-            {{ publishing ? "Publishing…" : "Publish" }}
-          </button>
+        <form class="mt-3 space-y-2" @submit.prevent="canPublish && publish()">
+          <label for="publish-summary" class="field-label">Say what changed</label>
+          <div class="flex flex-wrap items-center gap-2">
+            <input
+              id="publish-summary"
+              v-model="summary"
+              type="text"
+              class="input min-w-0 flex-1"
+              maxlength="500"
+              :disabled="publishing"
+            />
+            <button type="submit" class="btn-primary" :disabled="!canPublish">
+              {{ publishing ? "Publishing…" : "Publish" }}
+            </button>
+          </div>
         </form>
+
+        <DeveloperDetails>
+          <p v-if="isTree">
+            One commit of the chosen files<template v-if="status.branch"> on branch <span class="font-mono">{{ status.branch }}</span></template><template v-if="status.head">, after <span class="font-mono">{{ short(status.head) }}</span></template>,
+            pushed with your own Git configuration. The summary is the commit message.
+          </p>
+          <p v-else>
+            One commit of the chosen files to the content repository, which starts your website's build. The summary
+            is the commit message.
+          </p>
+        </DeveloperDetails>
       </section>
     </template>
 
-    <p v-else class="text-sm text-muted">The change list could not be loaded. Reload to retry.</p>
+    <p v-else class="text-sm text-muted">The list of changes could not be loaded. Reload to try again.</p>
   </div>
 
   <ConfirmDialog
@@ -557,13 +682,9 @@ function short(revision: string): string {
     @cancel="discardTarget = null"
     @confirm="discard"
   >
-    <p v-if="isTree">
-      This restores the files in your working tree to the last commit — new files are deleted,
-      edited ones go back. It cannot be undone from here.
-    </p>
-    <p v-else>
-      This forgets the saved changes; the repository stays exactly as it is. It cannot be undone
-      from here.
+    <p>
+      This puts it back as it was at the last publication: something new is deleted, and something changed or
+      removed comes back. It cannot be undone.
     </p>
   </ConfirmDialog>
 </template>

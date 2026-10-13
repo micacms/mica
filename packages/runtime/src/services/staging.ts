@@ -10,7 +10,10 @@
  *     retry pushes and never commits again.
  */
 
+import { stat } from "node:fs/promises";
+
 import { MANIFEST_PATH, memorySource, type ContentSource, type PublishResult, type Site } from "@micacms/core";
+import { within } from "@micacms/core/node";
 
 import { ApiError, badRequest, notFound } from "../lib/errors.js";
 import type { Logger } from "../lib/logger.js";
@@ -20,7 +23,6 @@ import { GitError } from "../workspace/git.js";
 import { createWorkspaceLocks, type WorkspaceLocks } from "../workspace/locks.js";
 import type { OwnerPolicy } from "../workspace/policy.js";
 import {
-  aheadOfUpstream,
   commitPaths,
   currentBranch,
   discardChange,
@@ -29,6 +31,8 @@ import {
   overlaySource,
   listTreeChanges,
   locateTree,
+  publicationMessage,
+  unpushedCommits,
   type GitTree,
   type TreeChange,
 } from "../workspace/tree.js";
@@ -143,9 +147,19 @@ export function createWorkingTreeStagingService(
       })),
     );
 
+  /** When each file was last saved; a deletion has no file to ask. */
+  const withSavedAt = async (changes: AnnotatedChange[]): Promise<AnnotatedChange[]> =>
+    Promise.all(
+      changes.map(async (change) => {
+        if (change.kind === "delete") return { ...change, savedAt: null };
+        const saved = await stat(within(contentRoot, change.path)).catch(() => null);
+        return { ...change, savedAt: saved ? saved.mtime.toISOString() : null };
+      }),
+    );
+
   /** Refused for the developer's checkout: Mica never fetches or merges there. */
   const managedOnly = <T>(action: T | undefined): T => {
-    if (action === undefined) throw notFound("This is the developer's checkout; Git there is theirs.");
+    if (action === undefined) throw notFound("Only a self-hosted Mica keeps its own copy of the website; the local editor leaves Git to you.");
     return action;
   };
 
@@ -160,7 +174,7 @@ export function createWorkingTreeStagingService(
           publish: { enabled: false, reason: tree.reason },
           head: null,
           branch: null,
-          ahead: null,
+          unpushed: null,
           changes: [],
           validation: emptyValidation(),
           sync,
@@ -171,7 +185,7 @@ export function createWorkingTreeStagingService(
         const analysed = await analyse(tree, await listTreeChanges(tree));
         return {
           ...analysed,
-          changes: await withRevisions(analysed.changes),
+          changes: await withSavedAt(await withRevisions(analysed.changes)),
           head: await headRevision(tree),
           branch: await currentBranch(tree),
         };
@@ -182,7 +196,8 @@ export function createWorkingTreeStagingService(
         publish: policy.publishAvailability(),
         head,
         branch,
-        ahead: await aheadOfUpstream(tree),
+        // A clone that Mica keeps holds only Mica's commits, and retries its own push.
+        unpushed: policy.owner === "developer" ? await unpushedCommits(tree) : null,
         changes,
         validation,
         sync,
@@ -191,7 +206,7 @@ export function createWorkingTreeStagingService(
 
     async publish(input: PublishInput): Promise<PublishResult> {
       const message = input.message.trim();
-      if (!message) throw badRequest("A publication needs a commit message.");
+      if (!message) throw badRequest("Say what changed before you publish.");
       const reviewed = Object.keys(input.paths);
       if (reviewed.length === 0) throw badRequest("Choose at least one change to publish.");
 
@@ -245,14 +260,14 @@ export function createWorkingTreeStagingService(
           }
 
           try {
-            const revision = await commitPaths(tree, reviewed, message, policy.commitAuthor(input.author));
-            logger.info("Published", { revision, files: reviewed.length, owner: policy.owner });
+            const revision = await commitPaths(tree, reviewed, publicationMessage(message), policy.commitAuthor(input.author));
+            logger.info("Published", { revision, files: reviewed.length, owner: policy.owner, editor: input.editor });
             return revision;
           } catch (error) {
             if (error instanceof GitError) {
               // Git's message is the actionable part: no identity, a hook that
               // refused, a rebase in progress.
-              throw new ApiError("conflict", `Git refused the commit: ${error.message}`);
+              throw new ApiError("conflict", `Publishing failed: ${error.message}`);
             }
             throw error;
           }
@@ -267,12 +282,12 @@ export function createWorkingTreeStagingService(
 
       return locks.remote.run(async () => {
         const revision = await headRevision(tree);
-        if (revision === null) throw badRequest("There is no commit to push yet.");
+        if (revision === null) throw badRequest("There is nothing to send to the website yet.");
         return policy.push(tree, revision);
       });
     },
 
-    async discard(requested: string[]): Promise<{ discarded: string[] }> {
+    async discard(requested: string[], editor?: string): Promise<{ discarded: string[] }> {
       const tree = await located();
 
       return locks.tree.write(async () => {
@@ -287,6 +302,7 @@ export function createWorkingTreeStagingService(
           discarded.push(path);
         }
 
+        if (discarded.length > 0) logger.info("Discarded", { paths: discarded, editor });
         return { discarded };
       });
     },
@@ -306,8 +322,9 @@ export function createWorkingTreeStagingService(
       await managedOnly(policy.sync)();
     },
 
-    async resolve(group: string, choice: "mine" | "website"): Promise<void> {
+    async resolve(group: string, choice: "mine" | "website", editor?: string): Promise<void> {
       await managedOnly(policy.resolve)(group, choice);
+      logger.info("Conflict resolved", { group, choice, editor });
     },
 
     async repository(): Promise<RepositoryInfo> {

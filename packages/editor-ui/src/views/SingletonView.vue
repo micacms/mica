@@ -12,6 +12,7 @@ import { withDefaults as fillDefaults, type FieldIssue } from "@micacms/core";
 import { api, ApiError } from "@/api";
 import FieldList from "@/components/fields/FieldList.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import PendingNotice from "@/components/PendingNotice.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
 import { useSchema } from "@/stores/schema";
@@ -47,6 +48,19 @@ const websiteConflict = computed(() =>
 const location = ref("");
 
 const { dirty, markClean } = useUnsavedChanges(values);
+
+/** These settings' saved changes that are not on the website yet. */
+const pending = computed(() => staging.edits.value.find((edit) => edit.key === `singleton:${props.name}`) ?? null);
+
+const state = computed(() =>
+  dirty.value
+    ? { label: "Unsaved changes", tone: "border-accent bg-accent-soft text-accent" }
+    : pending.value
+      ? { label: "Saved · not published", tone: "text-warning" }
+      : staging.knowsPublished.value
+        ? { label: "Published", tone: "text-success" }
+        : { label: "Saved", tone: "text-muted" },
+);
 
 async function load(): Promise<void> {
   loading.value = true;
@@ -101,12 +115,12 @@ async function save(): Promise<void> {
   <template v-if="definition">
     <PageHeader :title="definition.label" :subtitle="location">
       <template v-if="!definition.readOnly">
-        <span :class="['badge', dirty ? 'border-accent bg-accent-soft text-accent' : 'text-success']">
+        <span :class="['badge', state.tone]">
           <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
-          {{ dirty ? "Unsaved" : "Saved" }}
+          {{ state.label }}
         </span>
         <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save">
-          {{ saving ? "Saving…" : dirty ? "Save changes" : "Saved" }}
+          {{ saving ? "Saving…" : "Save changes" }}
         </button>
       </template>
     </PageHeader>
@@ -120,6 +134,7 @@ async function save(): Promise<void> {
         </p>
 
         <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
+        <PendingNotice v-else-if="pending && !dirty" :edit="pending" @discarded="load" />
 
         <div
           v-if="websiteConflict"

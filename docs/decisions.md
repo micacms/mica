@@ -253,6 +253,11 @@ working tree. Publish commits exactly the paths the editor reviewed; a
 colleague's later autosave on another entry stays a draft instead of joining
 the publication. That is the server half of a selection (#98).
 
+**Changed in 0.7.0:** the Publish page selects what to publish (#98), so a
+colleague's unfinished entry stays saved instead of joining the publication.
+The log names who published, discarded or chose a version at a conflict
+(#82), which answers "who published what".
+
 **1.0 status:** accepted for 1.0. Selective publish (#98) lowers the cost.
 
 ---
@@ -280,6 +285,19 @@ never runs `git add -A`, so a developer's unrelated work in the same checkout is
 never swept into an editor's commit.
 
 **What would change it:** nothing foreseen.
+
+**Changed in 0.7.0 (#71):** a push sends every commit between the upstream
+branch and HEAD, so the path set alone did not keep a developer's own commits
+out of a publication. Each commit that Publish makes now ends with the trailer
+`Published-with: Mica`. In the developer's checkout, Publish refuses while that
+range holds a commit without the trailer (`unpushedCommits` in
+`workspace/tree.ts`; without an upstream, the range is the commits that no
+remote has). A retry that finds one returns `committed-pending-push` with the
+reason. The Publish page shows only Mica's own unsent publications as waiting.
+The developer sends or moves their commits, then publishes. A clone that Mica
+keeps holds only Mica's commits, so the check is the developer policy's. The
+trailer marks the message, not the content: a developer who amends a Mica
+commit with their own files keeps the trailer, and the check trusts it.
 
 **Built in Phase B.** `lib/git.ts` spawns the binary with
 `GIT_TERMINAL_PROMPT=0`, and `services/staging-local.ts` holds the rules: the
@@ -1408,12 +1426,63 @@ surprising when a shared upload comes along.
 
 **Built in 0.5.0, the server half:** Publish takes the reviewed paths with the
 revision each had in the review, commits exactly those, and refuses only when
-one of them, or another file of the same entry, changed since. The Publish
-page still sends every pending path; the selection UI and `required` at
-Publish are still #98.
+one of them, or another file of the same entry, changed since.
 
-**1.0 status:** should for 1.0; both are in #98. The "One shared pending change
-set" entry has its note.
+**Built in 0.7.0 (#98):** the Publish page has a checkbox for each edit, and all
+edits start selected except those with a problem. Save no longer checks
+`required` (`enforceRequired: false` in the content store); the entry page then
+says "Not ready to publish" and names the empty fields, and Publish refuses
+that edit. A group is what the editor sees as one edit: an entry with its own
+files and both halves of a URL change, a singleton, or one shared media file.
+The status names, for each changed document, the new pending files it uses
+(`needs`: a new linked entry, a new shared upload); selecting the document
+selects them, and leaving one out leaves out what uses it. Two choices differ
+from the decision above:
+
+- A collection's `_order.json` is its own edit, not part of an entry's group.
+  The order tolerates a slug it does not list and one that does not exist, so
+  either half can be published first; tying every entry of a sortable
+  collection to the one order file would make the whole collection one group.
+- A deletion does not pull in the edits that remove links to it. Publish
+  refuses such a selection and says "publish them together".
+
+Saving a draft that the model rejects has a cost in the developer's checkout:
+the working tree is the site's content. The `@micacms/astro` loader therefore
+leaves such an entry out in dev, with a warning ("Left out … until it is
+valid"), and the rest of the collection loads. A build has no watcher and
+fails as before, so `astro build` in a checkout with an unfinished draft
+fails. CI builds what was published, and Publish never commits the draft.
+
+The summary of a publication is prefilled from the chosen edits ("Update About
+us and Team") and is the commit message.
+
+**1.0 status:** accepted for 1.0. The "One shared pending change set" entry has
+its note.
+
+---
+
+### P2 — The editor speaks of saving and publishing, not of Git
+
+**Decided:** the editor's text uses editing words: "Say what changed", not
+"commit message"; "not on the website yet", not "not pushed"; "Published", not
+"committed". Git words (commit, push, branch, repository, working tree, hash)
+appear only on the System page and in a closed "Details for developers"
+element (`DeveloperDetails.vue`). Messages from the server that reach editors
+follow the same rule. A test (`editor-ui/test/words.test.ts`) finds Git words
+in the components' text.
+
+**Why:** editors are not developers. An editor who reads "push" or "branch"
+thinks the tool is not for them, and Mica is a CMS, not a Git client. The
+developer still needs the details, so they stay one click away.
+
+**Consequence:** the local editor uses the same words, although its users are
+often developers. Where a local message needs a Git command to resolve it, such
+as "Send them with Git first (`git push`)", the command is in the message.
+Developer-facing CLI output and the developer docs keep the Git words.
+
+**What would change it:** nothing foreseen.
+
+**1.0 status:** accepted for 1.0 (#193).
 
 ---
 

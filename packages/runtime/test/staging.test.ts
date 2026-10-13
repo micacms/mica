@@ -11,7 +11,7 @@ import { contentFiles } from "../src/index.js";
 import { collection, defineSite, slug, text } from "@micacms/core";
 
 import { ApiError } from "../src/lib/errors.js";
-import { createLogger } from "../src/lib/logger.js";
+import { createLogger, type Logger } from "../src/lib/logger.js";
 import { createWorkingTreeStagingService } from "../src/services/staging.js";
 import type { ContentStagingService } from "../src/services/changes.js";
 
@@ -52,7 +52,12 @@ interface Repo {
 
 /** A repository with one committed entry under `content/`. */
 function makeRepo(
-  options: { publishEnabled?: boolean; schemaRevision?: string | null; readOnly?: ReadonlyMap<string, string> } = {},
+  options: {
+    publishEnabled?: boolean;
+    schemaRevision?: string | null;
+    readOnly?: ReadonlyMap<string, string>;
+    logger?: Logger;
+  } = {},
 ): Repo {
   const root = temp("mica-wt-");
   git(root, "init", "-q", "-b", "main");
@@ -75,7 +80,7 @@ function makeRepo(
     schemaRevision: options.schemaRevision ?? null,
     ...(options.readOnly ? { readOnly: options.readOnly } : {}),
     publishEnabled: options.publishEnabled ?? true,
-    logger: createLogger({ level: "silent", pretty: false }),
+    logger: options.logger ?? createLogger({ level: "silent", pretty: false }),
   });
 
   return { root, contentRoot, service, head: () => git(root, "rev-parse", "HEAD") };
@@ -238,6 +243,16 @@ describe("status", () => {
     );
   });
 
+  it("says when each change was saved; a deletion has no time", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-b.json"), '{"title":"Haus B","slug":"haus-b"}');
+    unlinkSync(join(contentRoot, "projects/haus-a.json"));
+
+    const byPath = new Map((await service.status()).changes.map((change) => [change.path, change]));
+    assert.ok(Date.parse(byPath.get("projects/haus-b.json")?.savedAt ?? "") > Date.now() - 60_000);
+    assert.equal(byPath.get("projects/haus-a.json")?.savedAt, null);
+  });
+
   it("invalid staged content is named, and blocks nothing else", async () => {
     const { contentRoot, service } = makeRepo();
     writeFileSync(
@@ -345,6 +360,8 @@ describe("publish", () => {
     const bare = temp("mica-bare-");
     git(bare, "init", "-q", "--bare", "-b", "main");
     git(root, "remote", "add", "origin", bare);
+    git(root, "push", "-q", "origin", "HEAD~1:refs/heads/main");
+    git(root, "fetch", "-q", "origin");
     git(root, "config", "branch.main.remote", "origin");
     git(root, "config", "branch.main.merge", "refs/heads/main");
 
@@ -396,12 +413,123 @@ describe("publish", () => {
 
   it("names the push command when the remote is not called origin", async () => {
     const { root, contentRoot, service } = makeRepo();
-    git(root, "remote", "add", "upstream", temp("mica-bare-"));
+    const bare = temp("mica-bare-");
+    git(bare, "init", "-q", "--bare", "-b", "main");
+    git(root, "remote", "add", "upstream", bare);
+    git(root, "push", "-q", "upstream", "main");
     writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"New","slug":"haus-a"}');
     const result = await service.publish({ message: "Other remote", paths: await reviewed(service) });
 
     assert.equal(result.state, "committed-pending-push");
     assert.match(result.pushError!, /git push -u upstream HEAD/);
+  });
+
+  it("marks its commit with Mica's trailer, under the editor's summary", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Marked","slug":"haus-a"}');
+    await service.publish({ message: "Update Haus A", paths: await reviewed(service) });
+
+    assert.equal(git(root, "log", "-1", "--format=%s"), "Update Haus A");
+    assert.match(git(root, "log", "-1", "--format=%B"), /^Published-with: Mica$/m);
+  });
+
+  it("refuses while the branch holds other commits that no remote has, and commits nothing", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    const bare = temp("mica-bare-");
+    git(bare, "init", "-q", "--bare", "-b", "main");
+    git(root, "remote", "add", "origin", bare);
+    git(root, "push", "-q", "-u", "origin", "main");
+
+    writeFileSync(join(root, "astro.config.mjs"), "export default {};");
+    git(root, "add", "astro.config.mjs");
+    git(root, "commit", "-q", "-m", "Developer work");
+    const before = git(root, "rev-parse", "HEAD");
+
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Blocked","slug":"haus-a"}');
+    assert.deepEqual((await service.status()).unpushed, { mica: 0, other: 1 });
+
+    await assert.rejects(
+      service.publish({ message: "Blocked", paths: await reviewed(service) }),
+      (error: unknown) =>
+        error instanceof ApiError && error.code === "conflict" && /1 change that was not made in Mica/.test(error.message),
+    );
+    assert.equal(git(root, "rev-parse", "HEAD"), before);
+    assert.equal(git(bare, "rev-parse", "HEAD"), git(root, "rev-parse", "HEAD~1"));
+  });
+
+  it("counts its own unsent commit, and a retry refuses once another commit follows it", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    const bare = temp("mica-bare-");
+    git(bare, "init", "-q", "--bare", "-b", "main");
+    git(root, "remote", "add", "origin", bare);
+    git(root, "push", "-q", "-u", "origin", "main");
+    // The push fails until the hook goes.
+    const hook = join(bare, "hooks/pre-receive");
+    writeFileSync(hook, "#!/bin/sh\nexit 1\n", { mode: 0o755 });
+
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Waiting","slug":"haus-a"}');
+    const first = await service.publish({ message: "Waiting", paths: await reviewed(service) });
+    assert.equal(first.state, "committed-pending-push");
+    assert.deepEqual((await service.status()).unpushed, { mica: 1, other: 0 });
+
+    writeFileSync(join(root, "notes.txt"), "later");
+    git(root, "add", "notes.txt");
+    git(root, "commit", "-q", "-m", "Developer work");
+    unlinkSync(hook);
+
+    const retried = await service.push();
+    assert.equal(retried.state, "committed-pending-push");
+    assert.match(retried.pushError ?? "", /1 change that was not made in Mica/);
+    assert.equal(git(bare, "rev-parse", "HEAD"), git(root, "rev-parse", "HEAD~2"));
+  });
+
+  it("counts a commit that is on another remote branch but new to the upstream", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    const bare = temp("mica-bare-");
+    git(bare, "init", "-q", "--bare", "-b", "main");
+    git(root, "remote", "add", "origin", bare);
+    git(root, "push", "-q", "-u", "origin", "main");
+
+    // A feature branch is on the remote, and main is fast-forwarded to it.
+    git(root, "switch", "-q", "-c", "feature/x");
+    writeFileSync(join(root, "feature.txt"), "feature");
+    git(root, "add", "feature.txt");
+    git(root, "commit", "-q", "-m", "Feature");
+    git(root, "push", "-q", "origin", "feature/x");
+    git(root, "switch", "-q", "main");
+    git(root, "merge", "-q", "--ff-only", "feature/x");
+
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Blocked","slug":"haus-a"}');
+    assert.deepEqual((await service.status()).unpushed, { mica: 0, other: 1 });
+    await assert.rejects(
+      service.publish({ message: "Blocked", paths: await reviewed(service) }),
+      (error: unknown) => error instanceof ApiError && error.code === "conflict",
+    );
+  });
+
+  it("logs who published and who discarded, without the content", async () => {
+    const lines: Array<{ message: string; fields?: Record<string, unknown> }> = [];
+    const logger: Logger = {
+      debug() {},
+      info: (message, fields) => lines.push({ message, ...(fields ? { fields } : {}) }),
+      warn() {},
+      error() {},
+      child: () => logger,
+    };
+    const { contentRoot, service } = makeRepo({ logger });
+
+    writeFileSync(join(contentRoot, "projects/haus-a.json"), '{"title":"Secret words","slug":"haus-a"}');
+    await service.publish({ message: "Publish", paths: await reviewed(service), editor: "anna@example.com" });
+    writeFileSync(join(contentRoot, "projects/haus-b.json"), '{"title":"Draft","slug":"haus-b"}');
+    await service.discard(["projects/haus-b.json"], "ben@example.com");
+
+    const published = lines.find((line) => line.message === "Published");
+    assert.equal(published?.fields?.editor, "anna@example.com");
+    assert.deepEqual(lines.find((line) => line.message === "Discarded")?.fields, {
+      paths: ["projects/haus-b.json"],
+      editor: "ben@example.com",
+    });
+    assert.doesNotMatch(JSON.stringify(lines), /Secret words/);
   });
 
   it("is refused when disabled by configuration", async () => {

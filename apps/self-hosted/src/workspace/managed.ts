@@ -374,7 +374,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
         logger.warn("The repository refused a publication; it is a draft again", { revision, reason });
         throw new ApiError(
           "conflict",
-          "The repository refused this publication. It is a draft again. Tell the person who runs Mica.",
+          "The website refused this publication. Its changes are saved again. Tell the person who runs Mica.",
         );
       }
 
@@ -546,7 +546,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       if (state.pendingPush) {
         throw new ApiError(
           "conflict",
-          "An earlier publication has not reached the repository yet. Mica tries again every minute.",
+          "An earlier publication has not reached the website yet. Mica tries again every minute.",
         );
       }
     },
@@ -556,7 +556,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     // The staging service holds the remote lock around this call.
     async push(_tree, revision) {
       if ((await git.run(["rev-parse", "HEAD"])) !== revision || !(await pendingPublication())) {
-        throw new ApiError("conflict", "The clone is not where this publication left it. Nothing was pushed.");
+        throw new ApiError("conflict", "Mica's copy of the website changed during this publication. Nothing was published. Try again.");
       }
       return push();
     },

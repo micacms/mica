@@ -259,11 +259,11 @@ describe("content", () => {
   });
 
   it("refuses an entry the model rejects, and names the fields", async () => {
-    const response = await create({ title: "", year: 2024 });
+    const response = await create({ title: "Wrong year", year: "soon" });
     assert.equal(response.status, 422);
 
     const body = (await response.json()) as { error: { issues: Array<{ path: string }> } };
-    assert.ok(body.error.issues.some((issue) => issue.path === "title"));
+    assert.ok(body.error.issues.some((issue) => issue.path === "year"));
   });
 
   it("hands out a revision, and requires it back", async () => {
