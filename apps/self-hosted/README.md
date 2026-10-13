@@ -1,7 +1,7 @@
 # @micacms/self-hosted
 
-> **Experimental.** Pre-1.0: APIs and the content format can still change
-> without notice. Use it at your own risk.
+> **Not published to npm.** It ships only as the image
+> `ghcr.io/micacms/mica`; this package is how the image is built.
 
 The self-hosted Mica composition — what the Docker image runs. It composes
 `@micacms/runtime` and `@micacms/editor-ui` behind the OIDC gate from

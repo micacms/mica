@@ -5,7 +5,7 @@ Notable changes to Mica. The format follows
 follow [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Everything in this repository is released together and carries one version: the
-seven published packages and the CMS image.
+published packages and the CMS image.
 
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
