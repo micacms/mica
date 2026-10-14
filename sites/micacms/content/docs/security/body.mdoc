@@ -27,7 +27,38 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 - **No server-side session revocation.** Sessions are encrypted cookies. Mica has no database. To end every session at once, change `MICA_SESSION_SECRET` and restart. Every editor must then sign in again.
 - **The local editor is open to local processes.** Any process on the developer's machine can call the local API. Such a process can already change the files in the working tree.
 - **A publish is immediate.** There is no review step. If you need one, point Mica at a staging branch and merge on your own schedule.
+- **No roles.** Every admitted editor can save, publish, discard and delete.
+- **Rate limits are in the process.** Each Mica counts on its own, and a restart resets the counts.
+- **A contributor can already run code.** A person who can change the website's `package.json` runs code in its build and on developers' computers. Mica adds no new way to do that.
 - **The website's templates decide whether an editor can run script.** Rich text cannot add script: Markdoc escapes HTML. A template can still do it. Do not put a script address in a field, for example for analytics: every editor could then load their own script on every page. Keep such addresses in code. When a template writes content into a `<script>` element, for example JSON-LD, escape `<` as `\u003c`, so that a text cannot end the element.
+
+## What the repository token can reach
+
+Mica writes only below `MICA_REPOSITORY_ROOT`. The token can do more: it can push to the whole repository, the website's code and its CI files included, such as `.github/workflows/` or `.gitlab-ci.yml`. A CI file runs with the secrets of your CI. So a person who steals the token can change what your build does. The content root is not a limit for the token.
+
+- Keep the token only in the container's environment, give it an expiry, and replace it when a person who saw it leaves.
+- Let the production deployment run only from a protected branch, with its own secrets, for example with a GitHub environment or a GitLab protected environment.
+- For the strongest separation, point Mica at a staging branch, and let a person merge it into the production branch.
+
+## Website visitors
+
+Mica is not on a visitor's path: your website is the output of your build. Editors decide what visitors see, so a stolen editor session can change the website until you notice. Every publication is a Git commit: revert it to undo it. Whether an editor can run script on your website depends on your templates (see the accepted risks above).
+
+## Availability
+
+When Mica is down, your website stays up: the website does not call Mica. Mica limits sign-in attempts and the size of uploads. The content model comes from the repository, so only a person who can push to it can change the model, for example a slow regular expression in `text({ pattern })`.
+
+## The supply chain
+
+- The image is signed without a key, with GitHub's OIDC identity, and carries an SBOM and build provenance. [Self-hosting](/docs/self-hosting/) has the command that verifies it.
+- The npm packages carry provenance from the release workflow when the repository is public.
+- CI audits the dependencies that Mica ships, the libraries in the editor's bundle included, on every change and every week.
+
+## Which claims of the identity provider Mica trusts
+
+- **Subject:** the `sub` claim with the issuer. It never changes for a person. The subject rule is the strictest.
+- **Groups:** the claim in `MICA_OIDC_GROUPS_CLAIM`, as the provider sends it. Whoever can change a group at the provider can admit a person.
+- **Email and domain:** only with `email_verified`. The provider vouches for the address, not for the person who owns the domain. With a public provider such as Google, a domain rule can admit a personal account that uses an address at your domain. With such a provider, use a group or subjects.
 
 ## What Mica does for you
 
@@ -46,7 +77,7 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 1. Put Mica behind a reverse proxy with HTTPS.
 2. Set `MICA_PUBLIC_URL` to the `https://` address. In production, Mica refuses anything else.
 3. Set `MICA_TRUST_PROXY=true` only behind a proxy that you control. Otherwise, clients can spoof their address and avoid the rate limit.
-4. Give the repository token access to the content repository only: on GitHub, a fine-grained token with Contents read and write on that one repository; on GitLab, a project access token with `read_repository` and `write_repository`.
+4. Give the repository token access to that one repository only: on GitHub, a fine-grained token with Contents read and write; on GitLab, a project access token with `read_repository` and `write_repository`. The token can push anything in that repository, CI files included: see "What the repository token can reach" above.
 5. Generate `MICA_SESSION_SECRET` with at least 32 random characters, for example `openssl rand -base64 48`, and keep it out of Git.
 6. Admit as few people as you need. Prefer a group at your provider to a whole domain.
 7. Keep the image up to date. Only the latest release gets security fixes.
