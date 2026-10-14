@@ -200,7 +200,8 @@ jobs:
               echo "$name@$version is on npm already."
               continue
             fi
-            npm publish "$file" --access public --tag "$tag" $provenance
+            # "./": without it, npm reads `packages/<file>` as a GitHub repository and clones it.
+            npm publish "./$file" --access public --tag "$tag" $provenance
           done
 
   github-release:
