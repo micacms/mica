@@ -17,6 +17,7 @@ export * from "./layout.js";
 export * from "./serialize.js";
 export * from "./parse.js";
 export * from "./protocol.js";
+export * from "./manifest.js";
 export * from "./source.js";
 export * from "./read.js";
 export * from "./staging.js";

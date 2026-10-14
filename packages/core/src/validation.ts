@@ -43,7 +43,7 @@ const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /** Kinds whose empty state is a value, not null. */
 function neverNull(field: AnyField): boolean {
-  if (field.kind === "boolean" || field.kind === "repeater" || field.kind === "tags") return true;
+  if (field.kind === "boolean" || field.kind === "object" || field.kind === "repeater" || field.kind === "tags") return true;
   return "multiple" in field && field.multiple === true;
 }
 
@@ -166,10 +166,10 @@ function innerSchema(
           ctx.addIssue({ code: "custom", message: `${name} is not a valid date.` });
           return;
         }
-        if (field.min && value < field.min) {
+        if (field.min && compareDates(value, field.min) < 0) {
           ctx.addIssue({ code: "custom", message: `${name} must be on or after ${field.min}.` });
         }
-        if (field.max && value > field.max) {
+        if (field.max && compareDates(value, field.max) > 0) {
           ctx.addIssue({ code: "custom", message: `${name} must be on or before ${field.max}.` });
         }
       });
@@ -284,8 +284,8 @@ function fieldSchema(
   };
 
   if (neverNull(field)) {
-    // A missing multi-value field is an empty list; a missing boolean is false, never its default (#221).
-    const fallback: unknown = field.kind === "boolean" ? false : [];
+    // A missing multi-value field is an empty list, a missing object has empty fields, and a missing boolean is false, never its default (#221).
+    const fallback: unknown = field.kind === "boolean" ? false : field.kind === "object" ? {} : [];
     // A required list needs one value; a boolean is never empty.
     const filled =
       field.required && options.enforceRequired !== false && field.kind !== "boolean"
@@ -348,6 +348,19 @@ export function toIssues(error: z.ZodError): FieldIssue[] {
     path: issue.path.join("."),
     message: issue.message,
   }));
+}
+
+/**
+ * Compares a date value with a bound. A bound without a time compares the
+ * calendar date as written; a bound with a time compares the instants, so an
+ * offset counts.
+ */
+export function compareDates(value: string, bound: string): number {
+  if (CALENDAR_DATE.test(bound)) {
+    const day = value.slice(0, 10);
+    return day < bound ? -1 : day > bound ? 1 : 0;
+  }
+  return Math.sign(Date.parse(value) - Date.parse(bound));
 }
 
 /** Validates a payload against a field map and returns a flat issue list. */

@@ -60,7 +60,7 @@ describe("inferred entry types", () => {
     expectType<Equal<Project["cover"], { path: string; alt: string } | null>>();
     expectType<Equal<Project["gallery"], string[]>>();
     expectType<Equal<Project["lead"], string | null>>();
-    expectType<Equal<Project["meta"], { note: string | null; slugDe: string | null } | null>>();
+    expectType<Equal<Project["meta"], { note: string | null; slugDe: string | null }>>();
     expectType<Equal<Project["steps"], Array<{ label: string }>>>();
     expectType<Equal<Project["keywords"], string[]>>();
     assert.deepEqual(defaultValues(projects.fields)["keywords"], []);

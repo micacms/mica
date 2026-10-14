@@ -5,8 +5,11 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { checkSchema } from "../src/schema.js";
+import { readManifest } from "@micacms/core";
+
 import { createHarness, multipart, pngBytes, type TestHarness } from "./helpers.js";
+
+const checkSchema = (raw: unknown) => readManifest(raw).site;
 
 const site = checkSchema({
   protocolVersion: 1,

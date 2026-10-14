@@ -143,7 +143,16 @@ describe("micaCollections", () => {
         notes: collection({ label: "Notes", fields: { title: text(), slug: slug(), body: { kind: "txet" } as never } }),
       },
     });
-    assert.throws(() => micaCollections(site), /"collections\.notes\.body" has the unknown kind "txet"/);
+    assert.throws(() => micaCollections(site), /collections\.notes: "body" \(txet\)/);
+  });
+
+  it("refuses an option it does not know, such as a typo", () => {
+    const site = defineSite({
+      collections: {
+        notes: collection({ label: "Notes", fields: { title: text({ help: "A typo for description." } as never), slug: slug() } }),
+      },
+    });
+    assert.throws(() => micaCollections(site), /collections\.notes: "title" \(option help\)/);
   });
 
   it("refuses a second slug field in a collection's own fields, and accepts one per language in an object", () => {

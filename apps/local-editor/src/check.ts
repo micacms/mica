@@ -23,6 +23,7 @@ import {
   markdocImages,
   needsRowKey,
   ORDER_FILE,
+  readManifest,
   readsDocument,
   type PathSegment,
   readCollectionEntry,
@@ -34,7 +35,7 @@ import {
   validateFields,
 } from "@micacms/core";
 import { within } from "@micacms/core/node";
-import { contentFiles, loadSchema, readOnlyParts } from "@micacms/runtime";
+import { contentFiles } from "@micacms/runtime";
 
 export interface CheckProblem {
   level: "error" | "warning";
@@ -65,16 +66,18 @@ export async function checkContent(root: string): Promise<CheckReport> {
     return report;
   }
   let site: Site;
+  let readOnly: Map<string, string>;
   try {
-    site = await loadSchema(files);
+    const read = readManifest(JSON.parse(manifest), MANIFEST_PATH);
+    ({ site, readOnly } = read);
+    for (const message of read.warnings) warning(MANIFEST_PATH, message);
   } catch (cause) {
-    error(MANIFEST_PATH, (cause as Error).message);
+    error(MANIFEST_PATH, cause instanceof SyntaxError ? `Not valid JSON: ${cause.message}` : (cause as Error).message);
     return report;
   }
   report.model = true;
 
   // A model from a newer @micacms/astro: this check cannot judge those entries.
-  const readOnly = readOnlyParts(site);
   for (const reason of readOnly.values()) error(MANIFEST_PATH, `Not checked. ${reason}`);
 
   const slugs = new Map<string, Set<string>>();

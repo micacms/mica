@@ -25,7 +25,7 @@ import {
   entryDataPath,
   entryFolder,
   fieldsSchema,
-  isFieldKind,
+  unknownFieldParts,
   resolveSlugField,
   MANIFEST_PATH,
   readCollection,
@@ -200,7 +200,7 @@ export function micaCollections<S extends Site>(
   site: S,
   options: MicaCollectionsOptions = {},
 ): MicaCollections<S> {
-  assertKnownKinds(site);
+  assertKnownFields(site);
   assertOneUrl(site);
 
   /**
@@ -440,17 +440,18 @@ async function draftTolerant<T>(context: LoaderContext, label: string, parse: ()
  * unknown kind as one from a newer version and makes its collection read-only,
  * so a typo would otherwise pass the build and lock the collection.
  */
-function assertKnownKinds(site: Site): void {
-  const check = (fields: FieldMap, at: string) => {
-    for (const [key, field] of Object.entries(fields)) {
-      if (!isFieldKind(field.kind)) {
-        throw new Error(`Field "${at}.${key}" has the unknown kind "${String(field.kind)}". Use the field functions from @micacms/core.`);
-      }
-      if (field.kind === "object" || field.kind === "repeater") check(field.fields, `${at}.${key}`);
-    }
-  };
-  for (const [name, def] of Object.entries(site.collections)) check(def.fields, `collections.${name}`);
-  for (const [name, def] of Object.entries(site.singletons)) check(def.fields, `singletons.${name}`);
+/** A field kind or option that core does not know is a typo here; the editor would make its collection read-only. */
+function assertKnownFields(site: Site): void {
+  const unknown = [
+    ...Object.entries(site.collections).map(([name, def]) => [`collections.${name}`, unknownFieldParts(def.fields)] as const),
+    ...Object.entries(site.singletons).map(([name, def]) => [`singletons.${name}`, unknownFieldParts(def.fields)] as const),
+  ].filter(([, parts]) => parts.length > 0);
+  if (unknown.length > 0) {
+    throw new Error(
+      `${unknown.map(([at, parts]) => `${at}: ${parts.join(", ")}`).join("\n")}\n` +
+        "@micacms/core does not know these field kinds or options. Use the field functions and their options from @micacms/core.",
+    );
+  }
 }
 
 /**
