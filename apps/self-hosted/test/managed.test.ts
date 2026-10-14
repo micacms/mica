@@ -492,7 +492,16 @@ describe("recovery at start", () => {
     const remote = parseRemote(host.url(name));
     const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username: "oauth2", token: TOKEN });
     await assert.rejects(openClone({ layout, url: remote.url, branch: "main", root: "content", env, logger }), CloneRefusal);
-    assert.deepEqual(readdirSync(dataDir), []);
+    assert.deepEqual(readdirSync(dataDir), ["volume.json"]);
+  });
+
+  it("refuses a volume with another layout version", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "mica-data-"));
+    writeFileSync(join(dataDir, "volume.json"), '{"version":2}');
+    const layout = cloneLayout(dataDir);
+    const remote = parseRemote(host.url(`site-${counter}`));
+    const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username: "oauth2", token: TOKEN });
+    await assert.rejects(openClone({ layout, url: remote.url, branch: "main", root: null, env, logger }), /layout version 2/);
   });
 
   it("refuses to clone again while the rescue directory holds drafts", async () => {

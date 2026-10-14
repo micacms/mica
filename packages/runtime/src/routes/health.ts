@@ -8,13 +8,16 @@ import { Hono, type Context } from "hono";
 
 import type { Env } from "../http.js";
 
-type Check = "ok" | "unavailable";
+type Check = "ok" | "degraded" | "unavailable";
 
 interface Readiness {
-  status: "ok" | "error";
+  /** `degraded`: the site can be edited, but something needs a person, such as a failing Publish. */
+  status: "ok" | "degraded" | "error";
   repository: Check;
-  /** Short codes from the composition, such as `sync_failing`. */
+  /** Short codes from the composition, such as `auth_failed`. */
   reasons?: string[];
+  /** When a sync last reached the Git host. */
+  lastSyncAt?: string | null;
 }
 
 export interface HealthOptions {
@@ -38,7 +41,7 @@ export function healthRoutes(options: HealthOptions = {}): Hono<Env> {
       cached = { at: now(), result: probe(c) };
     }
     const result = await cached.result;
-    return c.json(result, result.status === "ok" ? 200 : 503);
+    return c.json(result, result.status === "error" ? 503 : 200);
   });
 
   return app;
@@ -50,8 +53,9 @@ async function probe(c: Context<Env>): Promise<Readiness> {
 
   // A managed clone knows whether it can be edited without asking the remote.
   if (ctx.health.ready) {
-    const { ok, reasons } = ctx.health.ready();
-    return { status: ok ? "ok" : "error", repository: ok ? "ok" : "unavailable", reasons };
+    const { degraded, reasons, lastSyncAt } = ctx.health.ready();
+    const status = degraded ? "degraded" : "ok";
+    return { status, repository: status, reasons, lastSyncAt };
   }
 
   // `list` on a missing root returns an empty array, so this proves reachability only.

@@ -247,7 +247,7 @@ MICA_SESSION_IDLE_HOURS=4
 
 ## Health
 
-`GET /health` answers while the process runs. The image's health check uses it, so a problem at the Git host does not restart the container. `GET /ready` reports the clone, with reason codes such as `sync_failing` or `restart_required`. It answers 503 only while there is no clone. Point an uptime monitor at `/ready`, and alert on `reasons`, not on the status code. `/ready` does not check the identity provider: a short outage of the provider must stop new sign-ins only. [Health endpoints](/docs/reference-health/) lists every code.
+`GET /health` answers while the process runs. The image's health check uses it, so a problem at the Git host does not restart the container. `GET /ready` reports the clone: `status` is `degraded` when something needs a person, with reason codes such as `auth_failed` or `pending_push`, and `lastSyncAt`. It answers 503 only while there is no clone. Point an uptime monitor at `/ready`, and alert on `status`, not on the HTTP status code. `/ready` does not check the identity provider: a short outage of the provider must stop new sign-ins only. [Health endpoints](/docs/reference-health/) lists every code.
 
 ## Backups
 

@@ -4,15 +4,16 @@
  * server runs. A dry-run push cannot see branch protection or server hooks.
  */
 
-import { existsSync, mkdtempSync, rmSync } from "node:fs";
+import { accessSync, constants, existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
+import { discover, redirectUri } from "@micacms/auth-oidc";
 import { memorySource } from "@micacms/core/internal";
 import { ConfigError, GitError, gitRunner, loadSchema, SchemaError, type GitRunner } from "@micacms/runtime";
 
-import { currentToken, loadConfig, type RepositoryConfig } from "./config.js";
-import { CloneRefusal, cloneLayout } from "./workspace/clone.js";
+import { currentToken, loadConfig, type RepositoryConfig, type SelfHostedConfig } from "./config.js";
+import { CloneRefusal, cloneLayout, VOLUME_VERSION, volumeVersion } from "./workspace/clone.js";
 import { contentRootAt } from "./workspace/content-root.js";
 import { redact } from "./workspace/credentials.js";
 import { classifyFailure, describeFailure, readPush } from "./workspace/failures.js";
@@ -47,6 +48,7 @@ export async function runCheck(
     say(`FAIL  ${what}: ${detail}`);
   };
 
+  await checkIdentityProvider(config, pass, fail);
   say(`Repository ${remote.url} (branch ${branch})`);
 
   let root: string | null = null;
@@ -80,7 +82,7 @@ export async function runCheck(
     rmSync(scratch, { recursive: true, force: true });
   }
 
-  await checkVolume(config.dataDir, { ...config.repository, root }, pass);
+  await checkVolume(config.dataDir, { ...config.repository, root }, pass, fail);
 
   say(failures === 0 ? "All checks passed." : `${failures} check${failures === 1 ? "" : "s"} failed.`);
   return failures === 0 ? 0 : 1;
@@ -138,25 +140,59 @@ async function checkContent(
   else pass("Git LFS", "not used under the content root");
 }
 
+async function checkIdentityProvider(
+  config: SelfHostedConfig,
+  pass: (what: string, detail?: string) => void,
+  fail: (what: string, detail: string) => void,
+): Promise<void> {
+  const register = `Register the redirect URI ${redirectUri(config)}`;
+  try {
+    const { issuer } = (await discover(config)).serverMetadata();
+    pass("identity provider", `${issuer} answers. ${register}`);
+  } catch (error) {
+    fail("identity provider", `${config.MICA_OIDC_ISSUER} cannot be discovered: ${(error as Error).message}. ${register}`);
+  }
+}
+
 /** Looks at the volume without writing to it: the server may be running on it. */
 async function checkVolume(
   dataDir: string,
   repository: RepositoryConfig,
   pass: (what: string, detail?: string) => void,
+  fail: (what: string, detail: string) => void,
 ): Promise<void> {
-  const { remote, root, token, tokenFile, username } = repository;
+  const { remote, branch, root, token, tokenFile, username } = repository;
   const layout = cloneLayout(dataDir);
-  if (!existsSync(join(layout.repositoryDir, ".git"))) {
-    pass("data volume", `no clone yet in ${layout.repositoryDir}; the first start makes it`);
-    return;
+
+  // The nearest directory that exists is where the start creates the rest.
+  let existing = dataDir;
+  while (!existsSync(existing)) existing = dirname(existing);
+  try {
+    accessSync(existing, constants.W_OK);
+  } catch {
+    return fail("data volume", `${existing} is not writable for this user (uid ${process.getuid?.() ?? "?"}).`);
   }
+  const version = await volumeVersion(layout);
+  if (version !== null && version !== VOLUME_VERSION) {
+    return fail("data volume", `layout version ${version}; this Mica knows version ${VOLUME_VERSION}.`);
+  }
+  if (!existsSync(join(layout.repositoryDir, ".git"))) {
+    return pass("data volume", `writable, no clone yet in ${layout.repositoryDir}; the first start makes it`);
+  }
+
   const git = gitRunner(layout.repositoryDir, {
     env: { ...managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token, tokenFile }), GIT_OPTIONAL_LOCKS: "0" },
   });
+  const head = await git.tryRun(["rev-parse", "--short", "HEAD"]);
   const drafts = await draftPaths(git, root ?? "").catch(() => null);
+  if (head === null || drafts === null) return fail("data volume", `the clone in ${layout.repositoryDir} cannot be read.`);
+  const ahead = Number((await git.tryRun(["rev-list", "--count", `origin/${branch}..HEAD`])) ?? "0");
+  const interrupted = [layout.operationFile, layout.keepMineFile].filter((file) => existsSync(file));
   pass(
     "data volume",
-    drafts === null ? `${layout.repositoryDir} could not be read` : `a clone with ${drafts.length} unpublished draft files`,
+    `a clone at ${head}, with ${drafts.length} unpublished draft files` +
+      (ahead > 0 ? ", and a commit that is not pushed" : "") +
+      (interrupted.length > 0 ? `; the next start finishes the work that ${interrupted.join(" and ")} records` : ""),
   );
 }
 

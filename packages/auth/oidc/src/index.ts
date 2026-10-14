@@ -69,7 +69,7 @@ export {
   type AuthEnv,
 } from "./config.js";
 export { csrfProtection, requireAccess, sessionOf } from "./gate.js";
-export { createOidcService, type OidcService } from "./oidc.js";
+export { createOidcService, discover, redirectUri, type OidcService } from "./oidc.js";
 export {
   cookieNames,
   createSessionService,

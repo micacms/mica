@@ -207,7 +207,7 @@ The levels in this chapter are approximate; several requirements can be level
 | --- | --- | --- | --- | --- |
 | 13.4.1 | No source-control metadata exposed | Pass | `packages/runtime/src/routes/admin-spa.ts`; `packages/runtime/src/app.ts` | Only the editor's build is served. |
 | 13.4.2 | Debug mode off in production | Pass | `Dockerfile` | Mica has no debug mode (#233). The image sets `NODE_ENV=production` for its libraries. ID approximate. |
-| 13.4.x | No needless information on anonymous endpoints | Pass | `packages/runtime/src/routes/health.ts`; `apps/self-hosted/src/index.ts` | `/health` sends only `status`; `/ready` sends short reason codes (#156). ID approximate. |
+| 13.4.x | No needless information on anonymous endpoints | Pass | `packages/runtime/src/routes/health.ts`; `apps/self-hosted/src/index.ts` | `/health` sends only `status`; `/ready` sends short reason codes and the time of the last sync (#156, #232). ID approximate. |
 | 13.x | Anonymous endpoint uses provider quota | Pass | `packages/runtime/src/routes/health.ts` | `/health` does no I/O; `/ready` is cached and uses the clone's state (#156). ID approximate. |
 
 ## V14 Data Protection

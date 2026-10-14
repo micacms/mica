@@ -129,6 +129,23 @@ export function emailFrom(
  * The service
  * ------------------------------------------------------------------ */
 
+/** The address the identity provider sends the browser back to; register it there. */
+export function redirectUri(config: AuthConfig): string {
+  return new URL("/api/auth/callback", config.MICA_PUBLIC_URL).toString();
+}
+
+/** Asks the issuer for its configuration. Throws what openid-client throws, such as an issuer mismatch. */
+export function discover(config: AuthConfig): Promise<client.Configuration> {
+  return client.discovery(
+    new URL(config.MICA_OIDC_ISSUER!),
+    config.MICA_OIDC_CLIENT_ID!,
+    config.MICA_OIDC_CLIENT_SECRET,
+    undefined,
+    // Only ever for a provider on this machine: the config layer refuses it anywhere else.
+    config.oidcAllowInsecure ? { execute: [client.allowInsecureRequests] } : undefined,
+  );
+}
+
 export interface OidcServiceDeps {
   config: AuthConfig;
   logger: Logger;
@@ -137,7 +154,7 @@ export interface OidcServiceDeps {
 export function createOidcService(deps: OidcServiceDeps) {
   const { config, logger } = deps;
 
-  const redirectUri = new URL("/api/auth/callback", config.MICA_PUBLIC_URL).toString();
+  const callback = redirectUri(config);
 
   /**
    * Discovery, done once and remembered.
@@ -149,17 +166,7 @@ export function createOidcService(deps: OidcServiceDeps) {
   let discovered: Promise<client.Configuration> | null = null;
 
   function configuration(): Promise<client.Configuration> {
-    discovered ??= client
-      .discovery(
-        new URL(config.MICA_OIDC_ISSUER!),
-        config.MICA_OIDC_CLIENT_ID!,
-        config.MICA_OIDC_CLIENT_SECRET,
-        undefined,
-        // Only ever for a provider on localhost, and only outside production —
-        // the config layer refuses the combination anywhere else.
-        config.oidcAllowInsecure ? { execute: [client.allowInsecureRequests] } : undefined,
-      )
-      .catch((error: unknown) => {
+    discovered ??= discover(config).catch((error: unknown) => {
         // Forget the failure so the next attempt retries rather than caching a
         // rejected promise for the life of the process.
         discovered = null;
@@ -191,7 +198,7 @@ export function createOidcService(deps: OidcServiceDeps) {
       };
 
       const url = client.buildAuthorizationUrl(as, {
-        redirect_uri: redirectUri,
+        redirect_uri: callback,
         scope: config.MICA_OIDC_SCOPE,
         state: transaction.state,
         nonce: transaction.nonce,

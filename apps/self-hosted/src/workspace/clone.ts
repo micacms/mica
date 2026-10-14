@@ -20,6 +20,8 @@ export const LONGEST_GIT_CALL_MS = 10 * 60_000;
 
 export interface CloneLayout {
   dataDir: string;
+  /** The layout version of the volume (`VOLUME_VERSION`). */
+  volumeFile: string;
   repositoryDir: string;
   /** Marks a fast-forward in progress. */
   operationFile: string;
@@ -31,12 +33,16 @@ export interface CloneLayout {
 export function cloneLayout(dataDir: string): CloneLayout {
   return {
     dataDir,
+    volumeFile: join(dataDir, "volume.json"),
     repositoryDir: join(dataDir, "repository"),
     operationFile: join(dataDir, "operation.json"),
     keepMineFile: join(dataDir, "keep-mine.json"),
     rescueDir: join(dataDir, "rescue"),
   };
 }
+
+/** The layout of the data volume. A Mica that changes the layout writes a higher number. */
+export const VOLUME_VERSION = 1;
 
 /** A start that must not go on. The message tells the operator what to do. */
 export class CloneRefusal extends ConfigError {
@@ -63,6 +69,7 @@ export interface OpenedClone {
 export async function openClone(options: OpenCloneOptions): Promise<OpenedClone> {
   const { layout, logger } = options;
   const git = runner(layout.repositoryDir, options.env);
+  await claimVolume(layout);
   await removeUnfinishedClones(layout);
 
   if (!existsSync(join(layout.repositoryDir, ".git"))) {
@@ -164,6 +171,27 @@ async function cloneFresh(options: OpenCloneOptions): Promise<string> {
   const head = await runner(layout.repositoryDir, options.env).run(["rev-parse", "HEAD"]);
   options.logger.info("Cloned the content repository", { head, root });
   return root;
+}
+
+/** Refuses a volume with another layout version, and marks a new one with this version. */
+async function claimVolume(layout: CloneLayout): Promise<void> {
+  const version = await volumeVersion(layout);
+  if (version !== null && version !== VOLUME_VERSION) {
+    throw new CloneRefusal(
+      `${layout.volumeFile} says that the data volume has layout version ${version}, and this Mica knows version ` +
+        `${VOLUME_VERSION}.\n  Start the Mica version that made the volume, or use a new volume.`,
+    );
+  }
+  if (version === null) {
+    await mkdir(layout.dataDir, { recursive: true });
+    await writeMarker(layout.volumeFile, { version: VOLUME_VERSION });
+  }
+}
+
+/** The volume's layout version, or null for a volume without the file. */
+export async function volumeVersion(layout: CloneLayout): Promise<number | null> {
+  const marker = await readMarker<{ version?: number }>(layout.volumeFile);
+  return marker?.version ?? null;
 }
 
 const UNFINISHED = ".unfinished-";

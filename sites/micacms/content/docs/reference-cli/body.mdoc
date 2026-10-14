@@ -86,10 +86,11 @@ docker compose run --rm mica check
 Tests the configuration in a temporary clone, while the server can run:
 
 - the configuration loads;
+- the identity provider answers discovery, with the configured issuer. The line also shows the redirect URI to register;
 - the token can read the branch;
 - the token may push (a dry run, which cannot see branch protection or server hooks);
-- the content model at `.mica/schema.json` loads;
+- the content root, and its model at `.mica/schema.json` loads;
 - Git LFS is not used under the content root;
-- the data volume.
+- the data volume is writable and has a layout that this version knows. If there is a clone, the line shows its head, the number of drafts, a commit that is not pushed, and work that the next start finishes.
 
 It prints one line for each check, `ok` or `FAIL`, and exits with 0 when all pass, 1 when a check fails, and 78 when the configuration does not load. The settings are in [Configuration](/docs/configuration/). The endpoints are in [Health endpoints](/docs/reference-health/).

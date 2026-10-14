@@ -8,6 +8,8 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it, mock } from "node:test";
 
+import { readiness } from "../src/readiness.js";
+import type { SyncState } from "../src/workspace/managed.js";
 import {
   ADMITTED,
   createHarness,
@@ -28,7 +30,35 @@ describe("health", () => {
     const response = await harness.request("/ready");
     assert.equal(response.status, 200);
     // No origin and no uptime: the endpoint is public (#79).
-    assert.deepEqual(await response.json(), { status: "ok", repository: "ok", reasons: [] });
+    assert.deepEqual(await response.json(), { status: "ok", repository: "ok", reasons: [], lastSyncAt: null });
+  });
+
+  it("is degraded when Publish cannot work, with one reason for each problem", () => {
+    const clean: SyncState = {
+      head: "abc",
+      lastSyncAt: "2026-10-14T10:00:00.000Z",
+      behind: 0,
+      restartRequired: false,
+      conflicts: [],
+      pendingPush: null,
+      refused: null,
+      error: null,
+      readOnly: null,
+    };
+    assert.deepEqual(readiness(clean), { degraded: false, reasons: [], lastSyncAt: "2026-10-14T10:00:00.000Z" });
+
+    const conflict = { group: "news/a", paths: [] } as unknown as SyncState["conflicts"][number];
+    assert.deepEqual(readiness({ ...clean, conflicts: [conflict] }).degraded, false);
+
+    const failing = readiness({
+      ...clean,
+      error: { code: "auth", message: "", since: "" },
+      pendingPush: { revision: "def", reason: "" },
+      conflicts: [conflict],
+    });
+    assert.deepEqual(failing, { degraded: true, reasons: ["auth_failed", "pending_push", "conflict"], lastSyncAt: clean.lastSyncAt });
+    assert.deepEqual(readiness({ ...clean, error: { code: "network", message: "", since: "" } }).reasons, ["network"]);
+    assert.deepEqual(readiness({ ...clean, error: { code: "unknown", message: "", since: "" } }).reasons, ["sync_failing"]);
   });
 });
 
