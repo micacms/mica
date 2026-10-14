@@ -26,7 +26,7 @@
  * `.env` file is read: the project's `.env` belongs to the site.
  */
 
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, readdirSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -38,7 +38,7 @@ import { formatInit, initProject, InitError } from "./init.js";
 import { formatImport, importCollections, ImportError } from "./import.js";
 
 export interface Options {
-  /** Undefined means "not given": `MICA_CONTENT_ROOT`, else `./content`. */
+  /** Undefined means "not given": see `contentRoot`. */
   content?: string;
   port?: string;
   host?: string;
@@ -61,7 +61,7 @@ const USAGE = `
   With @micacms/editor installed in the project, \`npx mica\` is the same command.
 
   Options of start
-    -c, --content <dir>   The content root (default: ./content)
+    -c, --content <dir>   The content root (default: the directory with a .mica/schema.json)
     -p, --port <number>   Port to listen on (default: ${DEFAULT_PORT})
         --host <address>  Address to bind (default: 127.0.0.1)
         --no-open         Do not open the browser
@@ -153,9 +153,29 @@ export function shouldOpenBrowser(options: Options, env: NodeJS.ProcessEnv): boo
 /** A variable's value, with a blank one counted as not set. */
 const set = (value: string | undefined): string | undefined => (value?.trim() ? value : undefined);
 
-/** The content root: the flag or path, else `MICA_CONTENT_ROOT`, else `./content`. */
-export function contentRoot(options: Options, env: NodeJS.ProcessEnv): string {
-  return path.resolve(options.content ?? set(env["MICA_CONTENT_ROOT"]) ?? "./content");
+/**
+ * The content root: the flag or path, else `MICA_CONTENT_ROOT`, else the one
+ * directory with a `.mica/schema.json` under `cwd`, else `./content`.
+ */
+export function contentRoot(options: Options, env: NodeJS.ProcessEnv, cwd = process.cwd()): string {
+  const given = options.content ?? set(env["MICA_CONTENT_ROOT"]);
+  if (given) return path.resolve(cwd, given);
+  const found = contentRootsUnder(cwd);
+  if (found.length > 1) {
+    const listed = found.map((root) => `  ${path.relative(cwd, root) || "."}`);
+    report("There is more than one content root here.", [...listed, "", "Name the one to use, for example: npx mica check ./content"]);
+    process.exit(64); // EX_USAGE
+  }
+  return found[0] ?? path.join(cwd, "content");
+}
+
+/** The directories with a `.mica/schema.json`, at most `depth` levels down. Skips `node_modules` and hidden directories. */
+export function contentRootsUnder(dir: string, depth = 3): string[] {
+  if (existsSync(path.join(dir, MANIFEST_PATH))) return [dir];
+  if (depth === 0) return [];
+  return readdirSync(dir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name !== "node_modules" && !entry.name.startsWith("."))
+    .flatMap((entry) => contentRootsUnder(path.join(dir, entry.name), depth - 1));
 }
 
 /** What the server reads: a flag wins over the environment, and the environment over a default. */

@@ -77,7 +77,7 @@ async function setup(
   const layout = cloneLayout(dataDir);
   const remote = parseRemote(host.url(name));
   const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username: "oauth2", token });
-  const open = () => openClone({ layout, url: remote.url, branch: "main", root: "content", env, logger });
+  const open = async () => (await openClone({ layout, url: remote.url, branch: "main", root: null, env, logger })).git;
   const git = await open();
   const workspace = createManagedWorkspace({
     layout,
@@ -362,7 +362,7 @@ describe("sync", () => {
     const s = await setup();
     const remote = parseRemote(host.url(s.name));
     const env = managedEnvironment({ remote, cloneDir: s.repo, username: "oauth2", token: "wrong-token-123" });
-    const git = await openClone({ layout: s.layout, url: remote.url, branch: "main", root: "content", env, logger });
+    const { git } = await openClone({ layout: s.layout, url: remote.url, branch: "main", root: null, env, logger });
     const workspace = createManagedWorkspace({
       layout: s.layout,
       url: remote.url,

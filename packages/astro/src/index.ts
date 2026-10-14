@@ -47,16 +47,7 @@ import { manifestFor } from "./manifest.js";
 import { DEFAULT_CONTENT_ROOT, resolveContentRoot } from "./root.js";
 
 export interface MicaCollectionsOptions {
-  /**
-   * Overrides `defineSite({ root })`, which is where the content root belongs.
-   *
-   * Relative paths resolve against the Astro project root, like Astro's own
-   * `glob({ base })`. An absolute path is used as given — which is what a
-   * project whose content is a separate repository, checked out by CI
-   * somewhere else, wants.
-   */
-  root?: string;
-  /** Overrides `root` entirely. Used by tests, and by a non-filesystem source. */
+  /** Replaces the content root of `defineSite({ root })`. Used by tests, and by a non-filesystem source. */
   source?: ContentSource;
   /**
    * Turns off publishing the model to `<root>/.mica/schema.json`.
@@ -213,7 +204,7 @@ export function micaCollections<S extends Site>(
   let source: ContentSource | undefined;
 
   const rootFor = (context: LoaderContext): string =>
-    (root ??= resolveContentRoot(options.root ?? site.root, context.config?.root));
+    (root ??= resolveContentRoot(site.root, context.config?.root));
 
   const sourceFor = (context: LoaderContext): ContentSource =>
     (source ??= options.source ?? fileSystemSource(rootFor(context)));

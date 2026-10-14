@@ -84,8 +84,8 @@ ZITADEL's own console is at <http://localhost:8080>, as `admin` /
    git -C /path/to/your/repo pull && git log -1 --stat
    ```
 
-   One commit, authored by the editor, touching only files under
-   `MICA_REPOSITORY_ROOT`. That is the whole architecture in one command.
+   One commit, authored by the editor, touching only files in the content
+   root. That is the whole architecture in one command.
 
 5. **Try mallory.** Read the message. To let her in, add her subject to
    `MICA_ADMIT_SUBJECTS` — you can read it from the ZITADEL console — and

@@ -18,7 +18,7 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 ## Self-hosted image: the repository
 
 - `MICA_REPOSITORY_BRANCH`: the branch that Mica reads and publishes to. Default: `main`.
-- `MICA_REPOSITORY_ROOT`: the content root in the repository. Mica writes only below it. Default: `content`.
+- `MICA_CONTENT_PATH`: the content root in the repository, such as `content` or `site/content`. Mica writes only below it. Without it, Mica uses the one directory in the repository with a `.mica/schema.json`. Set it only when the repository has more than one. The top of the repository cannot be the content root.
 - `MICA_REPOSITORY_USERNAME`: the Git user name for the token. Default: `x-access-token` on GitHub, `oauth2` on GitLab, `mica` on other hosts.
 - `MICA_REPOSITORY_SYNC_SECONDS`: how often Mica fetches the branch, from 5 to 86400. Default: `60`.
 - `MICA_DATA_DIR`: where Mica keeps its clone, in the folder `repository`. Default: `./data`. The image sets `/data`, the volume.
@@ -49,7 +49,7 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 
 `npx @micacms/editor start [content directory]` takes these flags:
 
-- `--content`, `-c`: the content root. Default: `MICA_CONTENT_ROOT`, else `./content`.
+- `--content`, `-c`: the content root. Default: `MICA_CONTENT_ROOT`, else the directory with a `.mica/schema.json` (at most three levels down; not in `node_modules` or a hidden directory), else `./content`. With more than one such directory, name the one to use.
 - `--port`, `-p`: the port. Default: `PORT`, else `6422`.
 - `--host`: the address to listen on. Only a loopback address is allowed. Default: `HOST`, else `127.0.0.1`.
 - `--no-open`: do not open the browser.

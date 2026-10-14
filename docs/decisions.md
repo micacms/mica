@@ -1213,6 +1213,33 @@ format.
 
 ---
 
+### P2 — The model sets the content root; the rest finds it by its `.mica/schema.json`
+
+**Decided:** `defineSite({ root })` is the one setting for the content root.
+`micaCollections` has no `root` option. The CLI and the self-hosted image find
+the root as the directory with a `.mica/schema.json`, which the website's build
+writes. A setting is necessary only when there is more than one: a path for the
+CLI, and `MICA_CONTENT_PATH` for the image. The top of the repository cannot be
+the content root, because `.git` would then be inside it.
+
+**Why:** four settings with different bases (the model, the loader option, the
+CLI default and `MICA_REPOSITORY_ROOT`) could disagree, and `npm run check`
+failed for a root that was not `./content`. The manifest is the one file that
+every part already reads.
+
+**Consequence:** a monorepo with several content roots names one. The image
+finds the root once, at the start; a move of the root needs a restart. The CLI
+looks at most three levels down, and not in `node_modules` or a hidden
+directory.
+
+**What would change it:** a project layout that the search cannot find.
+
+**Built:** 0.9 (#227).
+
+**1.0 status:** done.
+
+---
+
 ### P2 — A save keeps what the model does not declare; a default fills only a new entry
 
 **Decided:** a save keeps the keys of `index.json` and the `.mdoc` files that

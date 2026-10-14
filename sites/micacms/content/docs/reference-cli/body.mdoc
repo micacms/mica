@@ -4,7 +4,7 @@ This page lists the commands of `@micacms/editor` (the local editor) and of the 
 
 Run each command with `npx @micacms/editor <command>`. When `@micacms/editor` is installed in the project, `npx mica <command>` is the same. `npx @micacms/editor --help` shows the same list.
 
-The content root is the path that you give, or `MICA_CONTENT_ROOT`, or `./content`, in this order.
+The content root is the path that you give, or `MICA_CONTENT_ROOT`, or the directory with a `.mica/schema.json`, or `./content`, in this order. Mica looks for `.mica/schema.json` at most three levels below the current directory, and not in `node_modules` or a hidden directory. If it finds more than one, give the path.
 
 ### start
 
@@ -16,7 +16,7 @@ Opens the editor on this machine. It has no sign-in, and it listens only on loop
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `-c`, `--content <dir>` | `./content` | The content root. A path without a flag does the same. |
+| `-c`, `--content <dir>` | Found by its `.mica/schema.json` | The content root. A path without a flag does the same. |
 | `-p`, `--port <number>` | `PORT`, else `6422` | The port to listen on. |
 | `--host <address>` | `HOST`, else `127.0.0.1` | The address to bind. |
 | `--open`, `--no-open` | open in an interactive terminal, not in CI | Opens the browser, or does not. |

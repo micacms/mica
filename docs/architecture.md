@@ -93,6 +93,8 @@ image ship without a content model and be handed one at startup.
 The loaders write `<content root>/.mica/schema.json` — the model wrapped in a
 small protocol envelope — on every build and dev-server start, and the developer
 commits it. Mica reads it back from the same working tree it reads entries from.
+The file also marks the content root: the CLI and the image find the root as the
+directory that holds it.
 
 Written from a loader rather than from an Astro integration, because that is the
 moment both facts are in hand: the model, and the project root that turns

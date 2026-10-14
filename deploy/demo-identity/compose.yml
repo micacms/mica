@@ -151,7 +151,6 @@ services:
       # Your repository, from deploy/demo-identity/.env.
       MICA_REPOSITORY_URL: ${MICA_REPOSITORY_URL:?set MICA_REPOSITORY_URL in deploy/demo-identity/.env}
       MICA_REPOSITORY_TOKEN: ${MICA_REPOSITORY_TOKEN:?set MICA_REPOSITORY_TOKEN in deploy/demo-identity/.env}
-      MICA_REPOSITORY_ROOT: ${MICA_REPOSITORY_ROOT:-content}
       MICA_REPOSITORY_BRANCH: ${MICA_REPOSITORY_BRANCH:-main}
 
       MICA_DATA_DIR: /data

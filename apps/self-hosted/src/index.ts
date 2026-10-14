@@ -5,6 +5,8 @@
  * comes in with a sync, and the runtime loads it.
  */
 
+import { join } from "node:path";
+
 import { createOidcAuth } from "@micacms/auth-oidc";
 import { MANIFEST_PATH, type Site } from "@micacms/core/internal";
 import {
@@ -86,7 +88,7 @@ async function readModel(config: SelfHostedConfig, files: ContentFiles): Promise
     if (error instanceof SchemaError) {
       refuse(
         `${error.message}\n  (Repository ${config.repository.remote.url}, branch ${config.repository.branch}, ` +
-          `content root ${config.repository.root || "/"}.)`,
+          `content root ${config.repository.root}.)`,
       );
     }
     throw error;
@@ -103,7 +105,7 @@ async function serve(): Promise<void> {
   }
 
   const logger: Logger = createLogger({ level: config.MICA_LOG_LEVEL, pretty: process.stdout.isTTY === true });
-  const { remote, branch, root, token, tokenFile, username, syncSeconds } = config.repository;
+  const { remote, branch, token, tokenFile, username, syncSeconds } = config.repository;
   const secrets = () => [currentToken(config.repository)];
   const clean = (text: string) => redact(text, secrets());
   const authLabel = `oidc:${new URL(config.MICA_OIDC_ISSUER!).hostname}`;
@@ -153,9 +155,9 @@ async function serve(): Promise<void> {
 
   const layout = cloneLayout(config.dataDir);
   const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token, tokenFile });
-  let git;
+  let opened;
   try {
-    git = await openClone({ layout, url: remote.url, branch, root, env, logger });
+    opened = await openClone({ layout, url: remote.url, branch, root: config.repository.root, env, logger });
   } catch (error) {
     if (error instanceof CloneRefusal) refuse(error.message);
     if (error instanceof GitError) {
@@ -167,6 +169,8 @@ async function serve(): Promise<void> {
     throw error;
   }
 
+  const { git, root } = opened;
+  config = { ...config, contentRoot: join(layout.repositoryDir, root), repository: { ...config.repository, root } };
   const tree = { git, prefix: root, contentRoot: config.contentRoot };
   const files = contentFiles({ root: config.contentRoot });
   const workspaceLocks = createWorkspaceLocks();
@@ -298,7 +302,7 @@ async function serve(): Promise<void> {
     admission: auth.admission.summary,
     repository: remote.url,
     branch,
-    root: root || "/",
+    root,
     head: workspace.state().head,
     writeCheck,
     // Shows when a website was built against a different model than the CMS serves.

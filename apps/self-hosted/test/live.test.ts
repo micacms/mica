@@ -54,7 +54,7 @@ for (const host of hosts) {
           username: defaultUsername(remote),
           token: host.token!,
         });
-        const git = await openClone({ layout, url: remote.url, branch, root: "content", env, logger });
+        const { git } = await openClone({ layout, url: remote.url, branch, root: null, env, logger });
         const tree = { git, prefix: "content", contentRoot: join(layout.repositoryDir, "content") };
         const workspace = createManagedWorkspace({
           layout,

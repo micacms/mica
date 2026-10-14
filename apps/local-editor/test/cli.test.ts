@@ -18,7 +18,7 @@ import { MANIFEST_PATH } from "@micacms/core/internal";
 
 import { DEFAULT_PORT } from "@micacms/runtime";
 
-import { contentRoot, parse, serverEnvironment, shouldOpenBrowser } from "../src/cli.js";
+import { contentRoot, contentRootsUnder, parse, serverEnvironment, shouldOpenBrowser } from "../src/cli.js";
 
 const CLI = path.resolve(import.meta.dirname, "../src/cli.ts");
 
@@ -43,11 +43,22 @@ describe("arguments", () => {
     assert.equal(parse([]).content, undefined);
   });
 
-  it("takes the content root from the path, else MICA_CONTENT_ROOT, else ./content", () => {
+  it("takes the content root from the path, else MICA_CONTENT_ROOT, else the model, else ./content", () => {
+    const project = mkdtempSync(path.join(tmpdir(), "mica-root-"));
     const env = { MICA_CONTENT_ROOT: "/from/env" };
-    assert.equal(contentRoot({ content: "/from/flag" }, env), path.resolve("/from/flag"));
-    assert.equal(contentRoot({}, env), path.resolve("/from/env"));
-    assert.equal(contentRoot({}, { MICA_CONTENT_ROOT: "" }), path.resolve("./content"));
+    assert.equal(contentRoot({ content: "/from/flag" }, env, project), path.resolve("/from/flag"));
+    assert.equal(contentRoot({}, env, project), path.resolve("/from/env"));
+    assert.equal(contentRoot({}, { MICA_CONTENT_ROOT: "" }, project), path.join(project, "content"));
+
+    for (const dir of ["site/data/.mica", "node_modules/x/.mica", ".astro/.mica"]) mkdirSync(path.join(project, dir), { recursive: true });
+    writeFileSync(path.join(project, "site/data/.mica/schema.json"), "{}");
+    writeFileSync(path.join(project, "node_modules/x/.mica/schema.json"), "{}");
+    writeFileSync(path.join(project, ".astro/.mica/schema.json"), "{}");
+    assert.equal(contentRoot({}, {}, project), path.join(project, "site/data"));
+
+    mkdirSync(path.join(project, "other/.mica"), { recursive: true });
+    writeFileSync(path.join(project, "other/.mica/schema.json"), "{}");
+    assert.deepEqual(contentRootsUnder(project).sort(), [path.join(project, "other"), path.join(project, "site/data")]);
   });
 
   it("lets a flag win over the environment, and the environment over a default", () => {
