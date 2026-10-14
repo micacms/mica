@@ -1,0 +1,86 @@
+---
+/** The ways to start, as tabs: a prompt for a coding agent or commands, each with a copy button, or "coming soon". */
+import { Check, Copy } from "@lucide/astro";
+
+interface Path { label: string; kind: string; content: string; }
+interface Props { paths: Path[]; labelledBy: string; }
+const { paths, labelledBy } = Astro.props;
+---
+
+<div data-tabs>
+  <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-4" role="tablist" aria-labelledby={labelledBy}>
+    {paths.map((path, index) => (
+      <button
+        class="cursor-pointer rounded-md border border-line bg-surface px-4 py-3 text-left text-[15px] leading-5 text-ink-muted transition hover:border-line-strong hover:text-ink aria-selected:border-primary aria-selected:bg-primary-soft aria-selected:font-semibold aria-selected:text-ink"
+        type="button"
+        role="tab"
+        id={`start-tab-${index}`}
+        aria-controls={`start-panel-${index}`}
+        aria-selected={index === 0 ? "true" : "false"}
+        tabindex={index === 0 ? 0 : -1}
+        data-tab
+      >{path.label}</button>
+    ))}
+  </div>
+  {paths.map((path, index) => (
+    <div class="mt-4" role="tabpanel" id={`start-panel-${index}`} aria-labelledby={`start-tab-${index}`} hidden={index !== 0}>
+      <div class="flex items-start gap-3 rounded-md border border-line bg-ground p-4 sm:p-5">
+        {path.kind === "commands" ? (
+          <pre class="m-0 min-w-0 flex-1 overflow-x-auto font-mono text-[14px] leading-[1.7] text-ink" tabindex="0"><code>{path.content.split("\n").map((line) => <span class:list={["block", line.startsWith("#") && "text-ink-subtle"]}>{line || " "}</span>)}</code></pre>
+        ) : path.kind === "soon" ? (
+          <p class="m-0 min-w-0 flex-1 text-[18px] leading-[1.6] text-ink-muted">{path.content}</p>
+        ) : (
+          <p class="m-0 min-w-0 flex-1 text-[18px] leading-[1.6] text-ink">{path.content}</p>
+        )}
+        {path.kind !== "soon" && <button class="group flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-sm border-0 bg-transparent text-ink-muted transition hover:bg-strata-soft hover:text-ink" type="button" data-copy={path.content} aria-label={path.kind === "commands" ? "Copy the commands" : "Copy the prompt"}>
+          <Copy size={16} class="group-[.copied]:hidden" aria-hidden="true" />
+          <Check size={16} class="hidden text-primary group-[.copied]:block" aria-hidden="true" />
+        </button>}
+      </div>
+    </div>
+  ))}
+  <p class="sr-only" aria-live="polite" data-copy-status></p>
+</div>
+
+<script>
+  document.querySelectorAll<HTMLElement>("[data-tabs]").forEach((root) => {
+    const tabs = [...root.querySelectorAll<HTMLButtonElement>("[data-tab]")];
+    const select = (next: HTMLButtonElement) => {
+      for (const tab of tabs) {
+        const selected = tab === next;
+        tab.setAttribute("aria-selected", String(selected));
+        tab.tabIndex = selected ? 0 : -1;
+        root.querySelector<HTMLElement>(`#${tab.getAttribute("aria-controls")}`)!.hidden = !selected;
+      }
+    };
+    tabs.forEach((tab, index) => {
+      tab.addEventListener("click", () => select(tab));
+      tab.addEventListener("keydown", (event) => {
+        const target = { ArrowRight: index + 1, ArrowDown: index + 1, ArrowLeft: index - 1, ArrowUp: index - 1, Home: 0, End: tabs.length - 1 }[event.key];
+        if (target === undefined) return;
+        event.preventDefault();
+        const next = tabs[(target + tabs.length) % tabs.length]!;
+        select(next);
+        next.focus();
+      });
+    });
+
+    const status = root.querySelector<HTMLElement>("[data-copy-status]");
+    root.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((button) =>
+      button.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(button.dataset.copy ?? "");
+        } catch {
+          if (status) status.textContent = "Copy failed. Select the text and copy it.";
+          return;
+        }
+        button.classList.add("copied");
+        if (status) status.textContent = "Copied.";
+        window.setTimeout(() => {
+          button.classList.remove("copied");
+          if (status) status.textContent = "";
+        }, 1400);
+      }),
+    );
+  });
+</script>

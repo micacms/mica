@@ -1,170 +1,154 @@
 ---
+import { ArrowRight, Check, Minus } from "@lucide/astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import CodeWindow from "@/components/CodeWindow.astro";
-import EditorPreview from "@/components/EditorPreview.astro";
-import Icon from "@/components/Icon.astro";
-import WorkflowPath from "@/components/WorkflowPath.astro";
-import { getFeatures, getHome, getSite } from "@/lib/content";
-const [home, site, features] = await Promise.all([getHome(), getSite(), getFeatures()]);
+import CodeBlock from "@/components/CodeBlock.astro";
+import EditorMock from "@/components/EditorMock.astro";
+import Rocket from "@/components/Rocket.astro";
+import StartPaths from "@/components/StartPaths.astro";
+import Strata from "@/components/Strata.astro";
+import { renderRichText } from "@micacms/astro";
+import { getHome, getSite } from "@/lib/content";
+const [home, site] = await Promise.all([getHome(), getSite()]);
+const { hero, how, audiences, run, fit, start } = home;
+const lead = renderRichText(hero.lead);
 ---
 
 <BaseLayout>
-  <section class="border-b border-line bg-surface">
-    <div class="wrap grid items-start gap-14 py-16 md:py-24 lg:grid-cols-[1fr_1fr] lg:gap-16">
-      <div class="lg:pt-6">
-        <p class="eyebrow">{home.heroEyebrow}</p>
-        <h1 class="display max-w-xl text-[2.3rem] leading-[1.1] sm:text-[42px]">{home.heroTitle}</h1>
-        <p class="lead mt-6 max-w-lg">{home.heroSummary}</p>
-        <div class="mt-8 flex flex-wrap gap-3">
-          <a class="btn-primary" href={home.primaryCta.href}>{home.primaryCta.label}</a>
-          <a class="btn-secondary" href={home.secondaryCta.href} target="_blank" rel="noreferrer">
-            <Icon name="github" size={17} /> {home.secondaryCta.label}
-          </a>
-        </div>
-        <div class="mt-6 flex max-w-md items-center justify-between gap-3 rounded-lg border border-line bg-canvas py-2 pl-4 pr-2">
-          <code class="overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[11px] text-muted sm:text-xs">npm install @micacms/astro @micacms/core</code>
-          <button class="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border-0 bg-transparent text-faint transition hover:bg-subtle hover:text-ink [&.copied]:text-success" data-copy="npm install @micacms/astro @micacms/core" aria-label="Copy install command">
-            <Icon name="copy" size={15} />
-          </button>
-        </div>
-        <a class="mt-6 inline-flex items-center gap-2 text-sm text-muted transition hover:text-ink" href={site.announcement.href}>
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-accent"></span>{site.announcement.text}<Icon name="arrow" size={14} />
-        </a>
+  <section class="relative flex min-h-[calc(100svh-9rem)] flex-col overflow-hidden md:min-h-[calc(100svh-6.5rem)]">
+    <div class="wrap relative flex flex-1 flex-col justify-center pt-14 pb-44 md:pt-20 md:pb-60">
+      <a class="mb-8 inline-flex items-center gap-2 rounded-full border border-line bg-surface py-1 pr-3 pl-2.5 text-[14px] text-ink-muted transition hover:border-line-strong hover:text-ink" href={site.announcement.href}>
+        <span class="h-2 w-2 rounded-full bg-glint ring-1 ring-on-glint ring-inset" aria-hidden="true"></span>
+        {site.announcement.text}
+        <ArrowRight size={14} aria-hidden="true" />
+      </a>
+      <p class="eyebrow">{hero.eyebrow}</p>
+      <h1 class="display-1 m-0 max-w-[21ch]">{hero.title}</h1>
+      <div class="lead mt-6 max-w-xl [&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/40 [&_a]:underline-offset-4 [&_a:hover]:text-primary-hover [&_p]:m-0" set:html={lead} />
+      <div class="mt-9 flex flex-wrap gap-3">
+        <a class="btn-primary" href={hero.primary.href}>{hero.primary.label}</a>
+        <a class="btn-secondary" href={hero.secondary.href}>{hero.secondary.label}</a>
       </div>
-      <CodeWindow />
     </div>
+    <Rocket class="pointer-events-none absolute inset-y-0 right-0 hidden h-full w-[45%] lg:block" />
+    <Strata class="absolute inset-x-0 bottom-0 h-40 md:h-56" sparkles={false} rise />
   </section>
 
-  <section class="border-b border-line bg-canvas">
-    <div class="wrap grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {home.stats.map((stat) => (
-        <div class="py-7 lg:py-8">
-          <strong class="display block text-3xl">{stat.value}</strong>
-          <span class="mt-1 block text-sm text-ink">{stat.label}</span>
-          <small class="mt-0.5 block text-xs text-faint">{stat.note}</small>
-        </div>
-      ))}
-    </div>
-  </section>
-
-  <section class="section border-b border-line bg-surface">
-    <div class="wrap grid gap-14 lg:grid-cols-[.85fr_1.15fr] lg:gap-20">
-      <div class="lg:sticky lg:top-28 lg:self-start">
-        <p class="eyebrow">{home.problemEyebrow}</p>
-        <h2 class="display max-w-md text-[30px] leading-[1.15]">{home.problemTitle}</h2>
-        <p class="lead mt-5 max-w-md">{home.problemSummary}</p>
-      </div>
-      <WorkflowPath />
-    </div>
-  </section>
-
-  <section class="section border-b border-line bg-canvas">
+  <section id="how-it-works" class="section scroll-mt-20 border-b border-line bg-surface">
     <div class="wrap">
       <div class="max-w-2xl">
-        <p class="eyebrow">From model to production</p>
-        <h2 class="display text-[30px] leading-[1.15]">{home.workflowTitle}</h2>
-        <p class="lead mt-5">{home.workflowSummary}</p>
+        <p class="eyebrow">{how.eyebrow}</p>
+        <h2 class="title-1 m-0">{how.title}</h2>
+        <p class="lead mt-5">{how.lead}</p>
       </div>
-      <div class="mt-12 grid gap-px overflow-hidden rounded-xl border border-line bg-line md:grid-cols-3">
-        {home.workflowSteps.map((step, index) => (
-          <article class="bg-surface p-6 md:p-7">
-            <span class="label-mono">Step {index + 1}</span>
-            <h3 class="mt-4 text-lg font-semibold text-ink">{step.title}</h3>
-            <p class="mt-2 text-sm leading-relaxed text-muted">{step.text}</p>
-            <code class="mt-5 inline-block rounded-md border border-line bg-canvas px-2.5 py-1 font-mono text-[11px] text-muted">{step.detail}</code>
+      <ol class="m-0 mt-14 flex list-none flex-col gap-16 p-0 md:mt-20 md:gap-24">
+        {how.steps.map((step, index) => (
+          <li class="grid items-center gap-8 md:grid-cols-[5fr_7fr] md:gap-14">
+            <div class="max-w-md">
+              <span class="font-display text-[44px] leading-none font-extrabold text-primary" aria-hidden="true">{index + 1}</span>
+              <h3 class="title-3 mt-4 mb-0">{step.title}</h3>
+              <p class="mt-3 mb-0 text-ink-muted">{step.text}</p>
+            </div>
+            <div class="min-w-0">
+              {step.visual === "editor" ? (
+                <EditorMock />
+              ) : (
+                <CodeBlock file={step.file} code={step.code ?? ""} kind={step.visual === "change" ? "change" : "code"} />
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="wrap">
+      <div class="max-w-2xl">
+        <p class="eyebrow">{audiences.eyebrow}</p>
+        <h2 class="title-1 m-0">{audiences.title}</h2>
+      </div>
+      <div class="mt-12 grid gap-6 md:grid-cols-2">
+        {audiences.groups.map((group) => (
+          <article class="card flex flex-col gap-4 p-6 md:p-8">
+            <h3 class="title-3 m-0">{group.title}</h3>
+            <p class="m-0 text-ink-muted">{group.text}</p>
+            <ul class="m-0 flex list-none flex-col gap-2.5 p-0">
+              {group.points.map((point) => (
+                <li class="flex gap-2.5"><Check size={20} class="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{point.text}</li>
+              ))}
+            </ul>
           </article>
         ))}
       </div>
     </div>
   </section>
 
-  <section class="section border-b border-line bg-surface">
+  <section class="section border-y border-line bg-sandstone">
     <div class="wrap">
-      <div class="grid items-end gap-8 md:grid-cols-[1fr_auto]">
-        <div class="max-w-xl">
-          <p class="eyebrow">For the people who write</p>
-          <h2 class="display text-[30px] leading-[1.15]">A real editor, not a repository in nicer colours.</h2>
-        </div>
-        <p class="lead max-w-sm md:text-right">
-          Model-generated forms give editors the controls they need. Validation happens before an entry reaches the repository.
-        </p>
+      <div class="max-w-2xl">
+        <p class="eyebrow">{run.eyebrow}</p>
+        <h2 class="title-1 m-0">{run.title}</h2>
+        <p class="lead mt-5">{run.lead}</p>
       </div>
-      <div class="mt-12"><EditorPreview /></div>
-      <div class="mt-6 grid gap-2 text-sm text-muted sm:grid-cols-2 lg:grid-cols-4">
-        {["Focused field controls", "Markdoc rich text", "Media and relations", "Conflict protection"].map((item) => (
-          <span class="flex items-center gap-2"><i class="text-success"><Icon name="check" size={15} /></i>{item}</span>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <section id="features" class="section border-b border-line bg-canvas">
-    <div class="wrap">
-      <div class="grid items-end gap-8 md:grid-cols-[1fr_auto]">
-        <div class="max-w-xl">
-          <p class="eyebrow">{home.featuresEyebrow}</p>
-          <h2 class="display text-[30px] leading-[1.15]">{home.featuresTitle}</h2>
-        </div>
-        <p class="lead max-w-sm md:text-right">{home.featuresSummary}</p>
-      </div>
-      <div class="mt-12 grid gap-px overflow-hidden rounded-xl border border-line bg-line sm:grid-cols-2 lg:grid-cols-3">
-        {features.map((feature) => (
-          <a class="group flex flex-col bg-surface p-6 transition hover:bg-raised md:p-7" href={`/features/${feature.id}/`}>
-            <span class="flex h-10 w-10 items-center justify-center rounded-lg border border-line bg-canvas text-muted transition group-hover:border-line-strong group-hover:text-accent">
-              <Icon name={feature.data.icon} size={18} />
-            </span>
-            <p class="label-mono mt-6">{feature.data.eyebrow}</p>
-            <h3 class="mt-1.5 text-lg font-semibold text-ink">{feature.data.title}</h3>
-            <p class="mt-2 text-sm leading-relaxed text-muted">{feature.data.summary}</p>
-            <span class="mt-auto inline-flex items-center gap-1.5 pt-6 text-sm text-accent">
-              Read more <i class="transition group-hover:translate-x-0.5"><Icon name="arrow" size={14} /></i>
-            </span>
-          </a>
-        ))}
-      </div>
-    </div>
-  </section>
-
-  <section class="section border-b border-line bg-surface">
-    <div class="wrap">
-      <div class="max-w-xl">
-        <p class="eyebrow">Built with a point of view</p>
-        <h2 class="display text-[30px] leading-[1.15]">Less infrastructure. More ownership.</h2>
-      </div>
-      <div class="mt-12 border-t border-line">
-        {home.principles.map((principle) => (
-          <article class="grid gap-3 border-b border-line py-7 md:grid-cols-[70px_1fr_1.4fr] md:items-start md:gap-10">
-            <span class="label-mono md:pt-1">{principle.number}</span>
-            <h3 class="text-lg font-semibold text-ink">{principle.title}</h3>
-            <p class="max-w-lg text-sm leading-relaxed text-muted">{principle.text}</p>
+      <div class="mt-12 grid gap-6 md:grid-cols-2">
+        {run.options.map((option) => (
+          <article class="card flex flex-col gap-4 p-6 md:p-8">
+            <span class="w-fit rounded-full bg-strata-soft px-2.5 py-0.5 text-[13px] leading-4.5 font-semibold text-ink">{option.audience}</span>
+            <h3 class="title-3 m-0">{option.title}</h3>
+            <p class="m-0 text-ink-muted">{option.text}</p>
+            <code class="block overflow-x-auto rounded-sm bg-strata-soft px-3 py-2 font-mono text-[14px] whitespace-nowrap text-ink" tabindex="0">{option.command}</code>
+            <div>
+              <h4 class="m-0 text-[13px] font-semibold tracking-[.08em] text-ink-muted uppercase">{run.needsTitle}</h4>
+              <ul class="m-0 mt-3 flex list-disc flex-col gap-1 pl-5 marker:text-ink-subtle">
+                {option.needs.map((need) => <li>{need.text}</li>)}
+              </ul>
+            </div>
+            <a class="link mt-auto inline-flex w-fit items-center gap-1.5 pt-2" href={option.link.href}>{option.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
           </article>
         ))}
       </div>
     </div>
   </section>
 
-  <section class="section bg-canvas">
-    <div class="wrap grid items-end gap-8 md:grid-cols-[1fr_auto]">
-      <div>
-        <p class="eyebrow">Ready when your repository is</p>
-        <h2 class="display max-w-xl text-[30px] leading-[1.15]">{home.ctaTitle}</h2>
-        <p class="lead mt-4 max-w-lg">{home.ctaText}</p>
+  <section class="section">
+    <div class="wrap">
+      <div class="max-w-2xl">
+        <p class="eyebrow">{fit.eyebrow}</p>
+        <h2 class="title-1 m-0">{fit.title}</h2>
+        <p class="lead mt-5">{fit.lead}</p>
       </div>
-      <div class="md:text-right">
-        <a class="btn-primary" href="/docs/getting-started/">Read the quick start <Icon name="arrow" size={16} /></a>
-        <p class="mt-3 text-xs text-faint">Experimental · v{site.currentVersion} · MIT</p>
+      <div class="mt-12 grid gap-10 md:grid-cols-2 md:gap-14">
+        <div>
+          <h3 class="title-3 m-0">{fit.goodTitle}</h3>
+          <ul class="m-0 mt-5 flex list-none flex-col gap-3 p-0">
+            {fit.good.map((item) => (
+              <li class="flex gap-2.5"><Check size={20} class="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{item.text}</li>
+            ))}
+          </ul>
+        </div>
+        <div>
+          <h3 class="title-3 m-0">{fit.notTitle}</h3>
+          <ul class="m-0 mt-5 flex list-none flex-col gap-3 p-0">
+            {fit.not.map((item) => (
+              <li class="flex gap-2.5 text-ink-muted"><Minus size={20} class="mt-0.5 shrink-0 text-ink-subtle" aria-hidden="true" />{item.text}</li>
+            ))}
+          </ul>
+        </div>
       </div>
+      <a class="link mt-10 inline-flex items-center gap-1.5" href={fit.link.href}>{fit.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
     </div>
   </section>
 
-  <script>
-    document.querySelectorAll<HTMLButtonElement>("[data-copy]").forEach((button) =>
-      button.addEventListener("click", async () => {
-        await navigator.clipboard.writeText(button.dataset.copy ?? "");
-        button.classList.add("copied");
-        button.setAttribute("aria-label", "Copied");
-        window.setTimeout(() => button.classList.remove("copied"), 1400);
-      }),
-    );
-  </script>
+  <section class="section border-t border-line bg-surface">
+    <div class="wrap">
+      <div class="max-w-2xl">
+        <h2 class="title-1 m-0" id="start-title">{start.title}</h2>
+        <p class="lead mt-5">{start.text}</p>
+      </div>
+      <div class="mt-10 max-w-4xl">
+        <StartPaths paths={start.paths} labelledBy="start-title" />
+      </div>
+      <a class="btn-primary mt-10" href={start.link.href}>{start.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
+    </div>
+  </section>
 </BaseLayout>

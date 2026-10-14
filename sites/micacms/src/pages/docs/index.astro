@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
+import { Search } from "@lucide/astro";
 import PageHeader from "@/components/PageHeader.astro";
 import { DOC_SECTIONS, getDocs } from "@/lib/content";
 const docs = await getDocs();
@@ -13,35 +14,35 @@ const sections = DOC_SECTIONS.filter((section) => docs.some((doc) => doc.data.se
     title="Build the content layer you can keep."
     lead="Start locally, understand the model, and take the same files to production."
   >
-    <div class="mt-8 flex max-w-md items-center gap-3 rounded-lg border border-line bg-canvas px-4 py-2.5 text-muted">
-      <span aria-hidden="true">⌕</span>
-      <input class="min-w-0 flex-1 border-0 bg-transparent text-sm text-ink outline-none placeholder:text-faint" type="search" placeholder="Filter guides" aria-label="Filter documentation" data-doc-search />
-      <kbd class="rounded border border-line-strong px-1.5 py-0.5 font-mono text-[10px] text-faint">/</kbd>
+    <div class="mt-8 flex max-w-md items-center gap-3 rounded-md border border-line-strong bg-surface px-4 py-2.5 text-ink-subtle focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-strata">
+      <Search size={18} aria-hidden="true" />
+      <input class="min-w-0 flex-1 border-0 bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-subtle" type="search" placeholder="Filter guides" aria-label="Filter documentation" data-doc-search />
+      <kbd class="rounded-sm border border-line-strong px-1.5 py-0.5 font-mono text-[12px] text-ink-subtle">/</kbd>
     </div>
   </PageHeader>
 
-  <section class="section bg-surface">
+  <section class="section">
     <div class="wrap">
       {sections.map((section, index) => (
         <div class:list={["grid gap-6 border-t border-line py-10 md:grid-cols-[190px_1fr] md:gap-10", index === 0 && "border-t-0 pt-0"]}>
-          <h2 class="text-lg font-semibold text-ink">{section.label}</h2>
+          <h2 class="title-3 m-0">{section.label}</h2>
           <div class="grid gap-4 sm:grid-cols-2">
             {docs.filter((doc) => doc.data.section === section.key).map((doc) => (
               <a
-                class="card p-5 transition hover:border-line-strong hover:bg-canvas"
+                class="card p-5 transition hover:border-line-strong"
                 href={`/docs/${doc.id}/`}
                 data-doc-card
                 data-title={`${doc.data.title} ${doc.data.summary}`}
               >
-                <span class="label-mono">{doc.data.readTime} min read</span>
-                <h3 class="mt-3 text-lg font-semibold text-ink">{doc.data.title}</h3>
-                <p class="mt-1.5 text-sm leading-relaxed text-muted">{doc.data.summary}</p>
+                <span class="text-[13px] text-ink-subtle">{doc.data.readTime} min read</span>
+                <h3 class="mt-2 mb-0 font-sans text-[18px] font-semibold text-ink">{doc.data.title}</h3>
+                <p class="mt-1.5 mb-0 text-[15px] leading-relaxed text-ink-muted">{doc.data.summary}</p>
               </a>
             ))}
           </div>
         </div>
       ))}
-      <p class="py-14 text-center text-muted" data-no-results hidden>No guide matches this filter.</p>
+      <p class="py-14 text-center text-ink-muted" data-no-results hidden>No guide matches this filter.</p>
     </div>
   </section>
 

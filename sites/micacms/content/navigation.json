@@ -1,34 +1,66 @@
 {
   "main": [
-    { "label": "Product", "href": "/product/" },
-    { "label": "Docs", "href": "/docs/" },
-    { "label": "Changelog", "href": "/changelog/" }
+    {
+      "label": "Docs",
+      "href": "/docs/"
+    },
+    {
+      "label": "Changelog",
+      "href": "/changelog/"
+    }
   ],
   "footerGroups": [
     {
-      "title": "Product",
+      "title": "Start",
       "links": [
-        { "label": "Overview", "href": "/product/" },
-        { "label": "Features", "href": "/#features" },
-        { "label": "Changelog", "href": "/changelog/" }
+        {
+          "label": "Getting started",
+          "href": "/docs/getting-started/"
+        },
+        {
+          "label": "Choose how to run",
+          "href": "/docs/choose-how-to-run/"
+        },
+        {
+          "label": "Scope and non-goals",
+          "href": "/docs/scope/"
+        }
       ]
     },
     {
-      "title": "Resources",
+      "title": "Documentation",
       "links": [
-        { "label": "Documentation", "href": "/docs/" },
-        { "label": "Get started", "href": "/docs/getting-started/" },
-        { "label": "Self-hosting", "href": "/docs/self-hosting/" }
+        {
+          "label": "All guides",
+          "href": "/docs/"
+        },
+        {
+          "label": "Self-hosting",
+          "href": "/docs/self-hosting/"
+        },
+        {
+          "label": "Security",
+          "href": "/docs/security/"
+        }
       ]
     },
     {
       "title": "Open source",
       "links": [
-        { "label": "GitHub", "href": "https://github.com/micacms/mica" },
-        { "label": "npm", "href": "https://www.npmjs.com/package/@micacms/editor" },
-        { "label": "MIT licence", "href": "https://github.com/micacms/mica/blob/main/LICENSE" }
+        {
+          "label": "GitHub",
+          "href": "https://github.com/micacms/mica"
+        },
+        {
+          "label": "npm",
+          "href": "https://www.npmjs.com/package/@micacms/editor"
+        },
+        {
+          "label": "MIT licence",
+          "href": "https://github.com/micacms/mica/blob/main/LICENSE"
+        }
       ]
     }
   ],
-  "footerNote": "Open source under the MIT licence. Built for Astro."
+  "footerNote": "Open source under the MIT licence. Built for Astro, kept down to earth."
 }

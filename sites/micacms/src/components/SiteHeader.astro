@@ -1,5 +1,5 @@
 ---
-import Icon from "./Icon.astro";
+import { ExternalLink, Menu } from "@lucide/astro";
 import Logo from "./Logo.astro";
 import { getNavigation, getSite } from "@/lib/content";
 const [navigation, site] = await Promise.all([getNavigation(), getSite()]);
@@ -7,37 +7,35 @@ const current = Astro.url.pathname;
 const isActive = (href: string) => href !== "/" && current.startsWith(href);
 ---
 
-<header class="sticky top-0 z-50 border-b border-line bg-surface/90 backdrop-blur-md">
-  <div class="wrap flex h-16 items-center justify-between">
+<header class="sticky top-0 z-50 border-b border-line bg-ground/90 backdrop-blur-md">
+  <div class="wrap flex h-16 items-center justify-between gap-6">
     <Logo />
-    <nav class="hidden items-center gap-7 md:flex" aria-label="Main navigation">
+    <nav class="hidden items-center gap-1 md:flex" aria-label="Main navigation">
       {navigation.main.map((item) => (
         <a
           class:list={[
-            "relative py-1 text-sm text-muted transition hover:text-ink",
-            isActive(item.href) && "font-medium !text-ink after:absolute after:inset-x-0 after:-bottom-1 after:h-0.5 after:bg-accent",
+            "rounded-full px-3.5 py-1.5 text-[15px] font-medium text-ink-muted transition hover:text-ink",
+            isActive(item.href) && "bg-primary-soft !text-ink",
           ]}
           href={item.href}
           aria-current={isActive(item.href) ? "page" : undefined}
         >{item.label}</a>
       ))}
-    </nav>
-    <div class="hidden items-center gap-4 md:flex">
-      <a class="flex items-center gap-2 text-sm text-muted transition hover:text-ink" href={site.githubUrl} target="_blank" rel="noreferrer">
-        <Icon name="github" size={17} /><span>GitHub</span>
+      <a class="flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-[15px] font-medium text-ink-muted transition hover:text-ink" href={site.githubUrl}>
+        GitHub<ExternalLink size={14} aria-hidden="true" />
       </a>
-      <a class="btn-primary" href="/docs/getting-started/">Get started</a>
-    </div>
+    </nav>
+    <a class="btn-primary hidden min-h-10 py-2 md:inline-flex" href="/docs/getting-started/">Get started</a>
     <details class="group relative md:hidden">
-      <summary class="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-sm border border-line-strong [&::-webkit-details-marker]:hidden" aria-label="Open navigation">
-        <Icon name="menu" size={20} />
+      <summary class="flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-md border border-line-strong [&::-webkit-details-marker]:hidden" aria-label="Open navigation">
+        <Menu size={20} aria-hidden="true" />
       </summary>
-      <nav class="card absolute right-0 top-12 flex min-w-56 flex-col p-2 shadow-lg" aria-label="Mobile navigation">
+      <nav class="card absolute top-12 right-0 flex min-w-56 flex-col p-2 shadow-pop" aria-label="Mobile navigation">
         {navigation.main.map((item) => (
-          <a class="rounded-sm px-3 py-2.5 text-sm text-muted hover:bg-canvas hover:text-ink" href={item.href}>{item.label}</a>
+          <a class="rounded-md px-3 py-2.5 text-[15px] text-ink-muted hover:bg-ground hover:text-ink" href={item.href}>{item.label}</a>
         ))}
-        <a class="rounded-sm px-3 py-2.5 text-sm text-muted hover:bg-canvas hover:text-ink" href={site.githubUrl}>GitHub</a>
-        <a class="rounded-sm px-3 py-2.5 text-sm font-medium text-ink hover:bg-canvas" href="/docs/getting-started/">Get started</a>
+        <a class="flex items-center gap-1.5 rounded-md px-3 py-2.5 text-[15px] text-ink-muted hover:bg-ground hover:text-ink" href={site.githubUrl}>GitHub <ExternalLink size={14} aria-hidden="true" /></a>
+        <a class="rounded-md px-3 py-2.5 text-[15px] font-semibold text-primary hover:bg-ground" href="/docs/getting-started/">Get started</a>
       </nav>
     </details>
   </div>

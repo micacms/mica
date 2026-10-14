@@ -1,0 +1,206 @@
+{
+  "hero": {
+    "eyebrow": "The content editor for Astro",
+    "title": "Astro reaches for the stars. Mica keeps your content down to earth.",
+    "primary": {
+      "label": "Get started",
+      "href": "/docs/getting-started/"
+    },
+    "secondary": {
+      "label": "See how it works",
+      "href": "#how-it-works"
+    }
+  },
+  "how": {
+    "eyebrow": "How it works",
+    "title": "One model. Forms for editors. Files for your build.",
+    "lead": "The content model connects the editor and the website. Git connects everything else.",
+    "steps": [
+      {
+        "title": "Describe your content",
+        "text": "Write the content model in TypeScript, next to your pages. Fields, labels, help texts and rules live in one file.",
+        "visual": "code",
+        "file": "src/mica.ts",
+        "code": "export const site = defineSite({\n  root: \"./content\",\n  collections: {\n    news: collection({\n      label: \"News\",\n      fields: {\n        title: text({ label: \"Title\", required: true }),\n        slug: slug({ from: \"title\" }),\n        image: media({ label: \"Image\", alt: \"required\" }),\n        body: richText({ label: \"Text\" }),\n      },\n    }),\n  },\n});"
+      },
+      {
+        "title": "Editors fill in forms",
+        "text": "Mica turns the model into forms. Editors save as often as they like. Nothing goes on the website until someone publishes.",
+        "visual": "editor",
+        "file": "",
+        "code": ""
+      },
+      {
+        "title": "Publish makes one commit",
+        "text": "Publish commits the saved JSON, Markdoc and images to your repository, as one commit. Your build reads the files. The website never calls Mica.",
+        "visual": "change",
+        "file": "content/news/opening-hours/index.json",
+        "code": "-  \"title\": \"Opening hours\",\n+  \"title\": \"New opening hours\",\n   \"slug\": \"opening-hours\",\n\ncommit 3f07610\n    New opening hours\n\n    Published-with: Mica"
+      }
+    ]
+  },
+  "audiences": {
+    "eyebrow": "Two sides, one repository",
+    "title": "Calm for editors. Plain for developers.",
+    "groups": [
+      {
+        "title": "For editors",
+        "text": "Clear forms with the labels and help that your developer wrote. Rich text, images, relations and lists that you can reorder. No Git words, no YAML.",
+        "points": [
+          {
+            "text": "Save as often as you like"
+          },
+          {
+            "text": "See each change before you publish"
+          },
+          {
+            "text": "Choose what goes on the website"
+          },
+          {
+            "text": "Keep mine or use theirs when two people edit"
+          }
+        ]
+      },
+      {
+        "title": "For developers",
+        "text": "The model is TypeScript. The content is JSON, Markdoc and images in your repository. Astro reads it at build time, with types.",
+        "points": [
+          {
+            "text": "No database, no content API, no webhook"
+          },
+          {
+            "text": "Types without code generation"
+          },
+          {
+            "text": "mica check in your CI"
+          },
+          {
+            "text": "One reviewable commit for each publish"
+          }
+        ]
+      }
+    ]
+  },
+  "run": {
+    "eyebrow": "Run it your way",
+    "title": "On your laptop, or on your server.",
+    "lead": "Both edit the same files in the same repository. Start with one, and add the other when you need it.",
+    "needsTitle": "What you need",
+    "options": [
+      {
+        "title": "Local editor",
+        "audience": "For developers",
+        "text": "Runs on your machine, next to astro dev. Publish commits and pushes with your own Git credentials.",
+        "command": "npx @micacms/editor start",
+        "needs": [
+          {
+            "text": "Node.js 24 and an Astro 7 project"
+          },
+          {
+            "text": "A Git repository"
+          },
+          {
+            "text": "No sign-in, no account, no database"
+          }
+        ],
+        "link": {
+          "label": "Getting started",
+          "href": "/docs/getting-started/"
+        }
+      },
+      {
+        "title": "Self-hosted editor",
+        "audience": "For your editors",
+        "text": "One container on your server. Editors sign in through your identity provider, for example Google. Mica keeps its own Git clone.",
+        "command": "ghcr.io/micacms/mica",
+        "needs": [
+          {
+            "text": "A server with Docker Compose and one volume"
+          },
+          {
+            "text": "HTTPS in front of it"
+          },
+          {
+            "text": "An OpenID Connect client"
+          },
+          {
+            "text": "A token that can push to the repository"
+          }
+        ],
+        "link": {
+          "label": "Self-hosting",
+          "href": "/docs/self-hosting/"
+        }
+      }
+    ]
+  },
+  "fit": {
+    "eyebrow": "Is Mica for you?",
+    "title": "Small on purpose.",
+    "lead": "Mica does a few things well. Here is what it does not do yet, so that you can choose well.",
+    "goodTitle": "A good fit",
+    "notTitle": "Not a good fit today",
+    "good": [
+      {
+        "text": "A content-driven Astro website: a company site, a blog, documentation"
+      },
+      {
+        "text": "One developer, and two to five people who write"
+      },
+      {
+        "text": "Content in Git, as files that people can read"
+      },
+      {
+        "text": "A static website with no CMS code in it"
+      }
+    ],
+    "not": [
+      {
+        "text": "A preview of drafts in the self-hosted editor"
+      },
+      {
+        "text": "Roles or approval steps inside the editor"
+      },
+      {
+        "text": "A page builder, or editing on the page"
+      },
+      {
+        "text": "Many websites from one editor"
+      }
+    ],
+    "link": {
+      "label": "Read the scope and non-goals",
+      "href": "/docs/scope/"
+    }
+  },
+  "start": {
+    "title": "Start in five minutes.",
+    "text": "Give one prompt to your coding agent. It reads the setup guide, asks you about your content, and shows you a plan before it changes anything. Or install Mica by hand.",
+    "paths": [
+      {
+        "label": "Add Mica to your existing Astro site",
+        "kind": "prompt",
+        "content": "Read https://micacms.com/setup.md and extend this existing Astro project to work with Mica."
+      },
+      {
+        "label": "Create a new website with Astro and Mica",
+        "kind": "prompt",
+        "content": "Read https://micacms.com/setup.md and create a new website with Astro and Mica in this folder."
+      },
+      {
+        "label": "Migrate your website from another CMS",
+        "kind": "soon",
+        "content": "Coming soon."
+      },
+      {
+        "label": "Install manually",
+        "kind": "commands",
+        "content": "# 1) Install the Mica packages\nnpm install @micacms/astro @micacms/core\n\n# 2) Set up your content model; see https://micacms.com/docs/content-model/\n\n# 3) Start the local Mica editor\nnpx @micacms/editor start"
+      }
+    ],
+    "link": {
+      "label": "Read the getting started guide",
+      "href": "/docs/getting-started/"
+    }
+  }
+}

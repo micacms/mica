@@ -2,95 +2,6 @@
   "protocolVersion": 1,
   "generatedBy": "@micacms/astro",
   "collections": {
-    "features": {
-      "type": "collection",
-      "layout": "directory",
-      "name": "features",
-      "label": "Features",
-      "labelSingular": "Feature",
-      "description": "Product capabilities used on the home and feature pages.",
-      "sortable": true,
-      "defaultSort": {
-        "field": "position",
-        "direction": "asc"
-      },
-      "fields": {
-        "title": {
-          "kind": "text",
-          "label": "Title",
-          "required": true,
-          "listed": true,
-          "maxLength": 80
-        },
-        "slug": {
-          "kind": "slug",
-          "label": "URL",
-          "from": "title"
-        },
-        "icon": {
-          "kind": "select",
-          "label": "Icon",
-          "required": true,
-          "listed": true,
-          "options": [
-            {
-              "label": "Repository",
-              "value": "repository"
-            },
-            {
-              "label": "Model",
-              "value": "model"
-            },
-            {
-              "label": "Edit",
-              "value": "edit"
-            },
-            {
-              "label": "History",
-              "value": "history"
-            },
-            {
-              "label": "Image",
-              "value": "image"
-            },
-            {
-              "label": "Shield",
-              "value": "shield"
-            }
-          ]
-        },
-        "eyebrow": {
-          "kind": "text",
-          "label": "Eyebrow",
-          "maxLength": 40
-        },
-        "summary": {
-          "kind": "textarea",
-          "label": "Summary",
-          "required": true,
-          "rows": 3,
-          "maxLength": 220
-        },
-        "detail": {
-          "kind": "richText",
-          "label": "Detail"
-        },
-        "outcomes": {
-          "kind": "repeater",
-          "label": "Outcomes",
-          "itemLabel": "text",
-          "addLabel": "Add outcome",
-          "max": 5,
-          "fields": {
-            "text": {
-              "kind": "text",
-              "label": "Outcome",
-              "required": true
-            }
-          }
-        }
-      }
-    },
     "docs": {
       "type": "collection",
       "layout": "directory",
@@ -352,228 +263,378 @@
     },
     "home": {
       "type": "singleton",
-      "layout": "file",
+      "layout": "directory",
       "name": "home",
       "label": "Home page",
-      "description": "All editorial content for the main marketing page.",
+      "description": "All copy on the home page, from top to bottom.",
       "fields": {
-        "heroEyebrow": {
-          "kind": "text",
-          "label": "Hero eyebrow",
-          "required": true
-        },
-        "heroTitle": {
-          "kind": "textarea",
-          "label": "Hero title",
-          "required": true,
-          "rows": 2,
-          "maxLength": 120
-        },
-        "heroSummary": {
-          "kind": "textarea",
-          "label": "Hero summary",
-          "required": true,
-          "rows": 3,
-          "maxLength": 320
-        },
-        "primaryCta": {
+        "hero": {
           "kind": "object",
-          "label": "Primary action",
+          "label": "Hero",
           "required": true,
           "fields": {
-            "label": {
+            "eyebrow": {
               "kind": "text",
-              "label": "Label",
+              "label": "Eyebrow",
               "required": true,
-              "width": "half"
+              "maxLength": 60
             },
-            "href": {
-              "kind": "text",
-              "label": "Link",
+            "title": {
+              "kind": "textarea",
+              "label": "Headline",
               "required": true,
-              "width": "half"
+              "rows": 2,
+              "maxLength": 120
+            },
+            "lead": {
+              "kind": "richText",
+              "label": "Lead",
+              "required": true,
+              "toolbar": [
+                "bold",
+                "italic",
+                "link"
+              ]
+            },
+            "primary": {
+              "kind": "object",
+              "label": "Main action",
+              "required": true,
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Label",
+                  "required": true,
+                  "width": "half"
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "width": "half"
+                }
+              }
+            },
+            "secondary": {
+              "kind": "object",
+              "label": "Second action",
+              "required": true,
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Label",
+                  "required": true,
+                  "width": "half"
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "width": "half"
+                }
+              }
             }
           }
         },
-        "secondaryCta": {
+        "how": {
           "kind": "object",
-          "label": "Secondary action",
+          "label": "How it works",
           "required": true,
           "fields": {
-            "label": {
+            "eyebrow": {
               "kind": "text",
-              "label": "Label",
-              "required": true,
-              "width": "half"
+              "label": "Eyebrow",
+              "required": true
             },
-            "href": {
-              "kind": "text",
-              "label": "Link",
-              "required": true,
-              "width": "half"
-            }
-          }
-        },
-        "stats": {
-          "kind": "repeater",
-          "label": "Product facts",
-          "itemLabel": "value",
-          "max": 4,
-          "fields": {
-            "value": {
-              "kind": "text",
-              "label": "Value",
-              "required": true,
-              "width": "third"
-            },
-            "label": {
-              "kind": "text",
-              "label": "Label",
-              "required": true,
-              "width": "third"
-            },
-            "note": {
-              "kind": "text",
-              "label": "Note",
-              "width": "third"
-            }
-          }
-        },
-        "problemEyebrow": {
-          "kind": "text",
-          "label": "Positioning eyebrow",
-          "required": true
-        },
-        "problemTitle": {
-          "kind": "textarea",
-          "label": "Positioning title",
-          "required": true,
-          "rows": 2
-        },
-        "problemSummary": {
-          "kind": "textarea",
-          "label": "Positioning summary",
-          "required": true,
-          "rows": 3
-        },
-        "workflowTitle": {
-          "kind": "text",
-          "label": "Workflow title",
-          "required": true
-        },
-        "workflowSummary": {
-          "kind": "textarea",
-          "label": "Workflow summary",
-          "required": true,
-          "rows": 2
-        },
-        "workflowSteps": {
-          "kind": "repeater",
-          "label": "Workflow steps",
-          "itemLabel": "title",
-          "min": 3,
-          "max": 3,
-          "fields": {
             "title": {
               "kind": "text",
               "label": "Title",
               "required": true
             },
-            "text": {
+            "lead": {
               "kind": "textarea",
-              "label": "Text",
+              "label": "Lead",
               "required": true,
               "rows": 2
             },
-            "detail": {
-              "kind": "text",
-              "label": "Technical detail"
+            "steps": {
+              "kind": "repeater",
+              "label": "Steps",
+              "itemLabel": "title",
+              "min": 3,
+              "max": 3,
+              "fields": {
+                "title": {
+                  "kind": "text",
+                  "label": "Title",
+                  "required": true
+                },
+                "text": {
+                  "kind": "textarea",
+                  "label": "Text",
+                  "required": true,
+                  "rows": 3
+                },
+                "visual": {
+                  "kind": "select",
+                  "label": "Picture",
+                  "required": true,
+                  "options": [
+                    {
+                      "label": "Code",
+                      "value": "code"
+                    },
+                    {
+                      "label": "Editor form",
+                      "value": "editor"
+                    },
+                    {
+                      "label": "Change and commit",
+                      "value": "change"
+                    }
+                  ]
+                },
+                "file": {
+                  "kind": "text",
+                  "label": "File path",
+                  "help": "Shown above the code."
+                },
+                "code": {
+                  "kind": "textarea",
+                  "label": "Code",
+                  "rows": 10,
+                  "help": "For a change, start lines with + or -."
+                }
+              }
             }
           }
         },
-        "featuresEyebrow": {
-          "kind": "text",
-          "label": "Features eyebrow",
-          "required": true
-        },
-        "featuresTitle": {
-          "kind": "text",
-          "label": "Features title",
-          "required": true
-        },
-        "featuresSummary": {
-          "kind": "textarea",
-          "label": "Features summary",
+        "audiences": {
+          "kind": "object",
+          "label": "Editors and developers",
           "required": true,
-          "rows": 2
-        },
-        "principles": {
-          "kind": "repeater",
-          "label": "Product principles",
-          "itemLabel": "title",
           "fields": {
-            "number": {
+            "eyebrow": {
               "kind": "text",
-              "label": "Number",
-              "required": true,
-              "width": "third"
+              "label": "Eyebrow",
+              "required": true
             },
             "title": {
               "kind": "text",
               "label": "Title",
-              "required": true,
-              "width": "third"
+              "required": true
             },
-            "text": {
-              "kind": "textarea",
-              "label": "Text",
-              "required": true,
-              "rows": 3,
-              "width": "third"
+            "groups": {
+              "kind": "repeater",
+              "label": "Groups",
+              "itemLabel": "title",
+              "min": 2,
+              "max": 2,
+              "fields": {
+                "title": {
+                  "kind": "text",
+                  "label": "Title",
+                  "required": true
+                },
+                "text": {
+                  "kind": "textarea",
+                  "label": "Text",
+                  "required": true,
+                  "rows": 3
+                },
+                "points": {
+                  "kind": "repeater",
+                  "label": "Points",
+                  "itemLabel": "text",
+                  "max": 5,
+                  "fields": {
+                    "text": {
+                      "kind": "text",
+                      "label": "Point",
+                      "required": true
+                    }
+                  }
+                }
+              }
             }
           }
         },
-        "ctaTitle": {
-          "kind": "text",
-          "label": "CTA title",
-          "required": true
-        },
-        "ctaText": {
-          "kind": "textarea",
-          "label": "CTA text",
+        "run": {
+          "kind": "object",
+          "label": "Ways to run",
           "required": true,
-          "rows": 2
-        }
-      }
-    },
-    "product": {
-      "type": "singleton",
-      "layout": "file",
-      "name": "product",
-      "label": "Product page",
-      "description": "Editorial content for the detailed product page.",
-      "fields": {
-        "eyebrow": {
-          "kind": "text",
-          "label": "Eyebrow",
-          "required": true
+          "fields": {
+            "eyebrow": {
+              "kind": "text",
+              "label": "Eyebrow",
+              "required": true
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "lead": {
+              "kind": "textarea",
+              "label": "Lead",
+              "required": true,
+              "rows": 2
+            },
+            "needsTitle": {
+              "kind": "text",
+              "label": "Title above the needs",
+              "required": true
+            },
+            "options": {
+              "kind": "repeater",
+              "label": "Options",
+              "itemLabel": "title",
+              "min": 2,
+              "max": 2,
+              "fields": {
+                "title": {
+                  "kind": "text",
+                  "label": "Title",
+                  "required": true,
+                  "width": "half"
+                },
+                "audience": {
+                  "kind": "text",
+                  "label": "For whom",
+                  "required": true,
+                  "width": "half"
+                },
+                "text": {
+                  "kind": "textarea",
+                  "label": "Text",
+                  "required": true,
+                  "rows": 3
+                },
+                "command": {
+                  "kind": "text",
+                  "label": "Command or image",
+                  "required": true
+                },
+                "needs": {
+                  "kind": "repeater",
+                  "label": "What you need",
+                  "itemLabel": "text",
+                  "max": 5,
+                  "fields": {
+                    "text": {
+                      "kind": "text",
+                      "label": "Need",
+                      "required": true
+                    }
+                  }
+                },
+                "link": {
+                  "kind": "object",
+                  "label": "Link",
+                  "required": true,
+                  "fields": {
+                    "label": {
+                      "kind": "text",
+                      "label": "Label",
+                      "required": true,
+                      "width": "half"
+                    },
+                    "href": {
+                      "kind": "text",
+                      "label": "Link",
+                      "required": true,
+                      "width": "half"
+                    }
+                  }
+                }
+              }
+            }
+          }
         },
-        "title": {
-          "kind": "textarea",
-          "label": "Title",
+        "fit": {
+          "kind": "object",
+          "label": "Is Mica for you",
           "required": true,
-          "rows": 2
+          "fields": {
+            "eyebrow": {
+              "kind": "text",
+              "label": "Eyebrow",
+              "required": true
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "lead": {
+              "kind": "textarea",
+              "label": "Lead",
+              "required": true,
+              "rows": 2
+            },
+            "goodTitle": {
+              "kind": "text",
+              "label": "Good fit, title",
+              "required": true,
+              "width": "half"
+            },
+            "notTitle": {
+              "kind": "text",
+              "label": "Not a fit, title",
+              "required": true,
+              "width": "half"
+            },
+            "good": {
+              "kind": "repeater",
+              "label": "A good fit",
+              "itemLabel": "text",
+              "max": 6,
+              "fields": {
+                "text": {
+                  "kind": "text",
+                  "label": "Point",
+                  "required": true
+                }
+              }
+            },
+            "not": {
+              "kind": "repeater",
+              "label": "Not a good fit",
+              "itemLabel": "text",
+              "max": 6,
+              "fields": {
+                "text": {
+                  "kind": "text",
+                  "label": "Point",
+                  "required": true
+                }
+              }
+            },
+            "link": {
+              "kind": "object",
+              "label": "Link",
+              "required": true,
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Label",
+                  "required": true,
+                  "width": "half"
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "width": "half"
+                }
+              }
+            }
+          }
         },
-        "summary": {
-          "kind": "textarea",
-          "label": "Summary",
+        "start": {
+          "kind": "object",
+          "label": "Start",
           "required": true,
-          "rows": 3
-        },
-        "audiences": {
-          "kind": "repeater",
-          "label": "Audiences",
-          "itemLabel": "title",
           "fields": {
             "title": {
               "kind": "text",
@@ -585,25 +646,66 @@
               "label": "Text",
               "required": true,
               "rows": 3
-            }
-          }
-        },
-        "stack": {
-          "kind": "repeater",
-          "label": "Technical stack",
-          "itemLabel": "name",
-          "fields": {
-            "name": {
-              "kind": "text",
-              "label": "Name",
-              "required": true,
-              "width": "half"
             },
-            "role": {
-              "kind": "text",
-              "label": "Role",
+            "paths": {
+              "kind": "repeater",
+              "label": "Ways to start",
+              "itemLabel": "label",
+              "min": 1,
+              "max": 6,
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Tab",
+                  "required": true,
+                  "maxLength": 60
+                },
+                "kind": {
+                  "kind": "select",
+                  "label": "Kind",
+                  "required": true,
+                  "options": [
+                    {
+                      "label": "Prompt for a coding agent",
+                      "value": "prompt"
+                    },
+                    {
+                      "label": "Commands",
+                      "value": "commands"
+                    },
+                    {
+                      "label": "Coming soon",
+                      "value": "soon"
+                    }
+                  ]
+                },
+                "content": {
+                  "kind": "textarea",
+                  "label": "Prompt, commands or text",
+                  "required": true,
+                  "rows": 6,
+                  "help": "In commands, lines that start with # are comments."
+                }
+              }
+            },
+            "link": {
+              "kind": "object",
+              "label": "Link",
               "required": true,
-              "width": "half"
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Label",
+                  "required": true,
+                  "width": "half"
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "width": "half"
+                }
+              }
             }
           }
         }

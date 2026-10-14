@@ -7,20 +7,21 @@ const html = renderRichText(text, { images });
 ---
 
 {html && <div class:list={[
-  "max-w-[68ch] text-[16px] leading-[1.75] text-ink-soft [&>*+*]:mt-5",
-  "[&_h2]:mt-12 [&_h2]:font-display [&_h2]:text-[26px] [&_h2]:font-normal [&_h2]:leading-snug [&_h2]:tracking-[-.012em] [&_h2]:text-ink",
-  "[&_h3]:mt-9 [&_h3]:text-lg [&_h3]:font-semibold [&_h3]:text-ink",
-  "[&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5",
-  "[&_a]:font-medium [&_a]:text-accent [&_a]:underline [&_a]:decoration-accent/30 [&_a]:underline-offset-4 hover:[&_a]:decoration-accent",
-  "[&_strong]:font-semibold [&_strong]:text-ink",
-  "[&_blockquote]:my-7 [&_blockquote]:border-l-2 [&_blockquote]:border-accent [&_blockquote]:pl-5 [&_blockquote]:text-muted",
-  "[&_pre]:my-6 [&_pre]:overflow-x-auto [&_pre]:rounded-xl [&_pre]:border [&_pre]:border-line [&_pre]:bg-canvas [&_pre]:p-4 [&_pre]:text-[13px] [&_pre]:leading-relaxed [&_pre]:text-ink-soft",
-  "[&_pre_code]:font-mono [&_:not(pre)>code]:rounded [&_:not(pre)>code]:border [&_:not(pre)>code]:border-line [&_:not(pre)>code]:bg-canvas [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[.85em] [&_:not(pre)>code]:text-ink",
+  // Markdoc wraps its output in <article>; :where() keeps the heading margins below stronger.
+  "max-w-[68ch] text-[17px] leading-[1.65] text-ink [&>*+*]:mt-5 [&_:where(article)>*+*]:mt-5",
+  "[&_h2]:mt-12 [&_h2]:font-display [&_h2]:text-[26px] [&_h2]:font-bold [&_h2]:leading-[1.2] [&_h2]:tracking-[-.01em] [&_h2]:text-ink",
+  "[&_h3]:mt-9 [&_h3]:font-sans [&_h3]:text-[19px] [&_h3]:font-semibold [&_h3]:text-ink",
+  "[&_ul]:list-disc [&_ul]:space-y-2 [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:space-y-2 [&_ol]:pl-5 [&_li]:marker:text-ink-subtle",
+  "[&_a]:font-medium [&_a]:text-primary [&_a]:underline [&_a]:decoration-primary/40 [&_a]:underline-offset-4 [&_a:hover]:text-primary-hover [&_a:hover]:decoration-primary-hover",
+  "[&_strong]:font-semibold",
+  "[&_blockquote]:my-7 [&_blockquote]:rounded-md [&_blockquote]:bg-strata-soft [&_blockquote]:px-5 [&_blockquote]:py-4 [&_blockquote]:text-ink",
+  "[&_pre]:my-6 [&_pre]:overflow-x-auto [&_pre]:rounded-lg [&_pre]:border [&_pre]:border-line [&_pre]:bg-surface [&_pre]:p-4 [&_pre]:text-[14px] [&_pre]:leading-[1.7] [&_pre]:text-ink",
+  "[&_pre_code]:font-mono [&_:not(pre)>code]:rounded-sm [&_:not(pre)>code]:bg-strata-soft [&_:not(pre)>code]:px-1.5 [&_:not(pre)>code]:py-0.5 [&_:not(pre)>code]:font-mono [&_:not(pre)>code]:text-[.85em] [&_:not(pre)>code]:text-ink",
   "[&_hr]:my-10 [&_hr]:border-line",
   // A wide table scrolls on its own, so the page does not.
-  "[&_table]:my-6 [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_table]:border-collapse [&_table]:text-[14px] [&_table]:leading-normal",
-  "[&_th]:border-b [&_th]:border-line-strong [&_th]:py-2 [&_th]:pr-4 [&_th]:text-left [&_th]:align-bottom [&_th]:font-semibold [&_th]:text-ink",
-  "[&_td]:border-b [&_td]:border-line [&_td]:py-2 [&_td]:pr-4 [&_td]:align-top",
-  "[&_img]:h-auto [&_img]:w-full [&_img]:rounded-xl [&_img]:border [&_img]:border-line",
+  "[&_table]:my-6 [&_table]:block [&_table]:max-w-full [&_table]:overflow-x-auto [&_table]:border-collapse [&_table]:text-[15px] [&_table]:leading-normal",
+  "[&_th]:border-b [&_th]:border-line-strong [&_th]:bg-sandstone [&_th]:px-3 [&_th]:py-2 [&_th]:text-left [&_th]:align-bottom [&_th]:font-semibold [&_th]:text-ink",
+  "[&_td]:border-b [&_td]:border-line [&_td]:px-3 [&_td]:py-2 [&_td]:align-top",
+  "[&_img]:h-auto [&_img]:w-full [&_img]:rounded-lg [&_img]:border [&_img]:border-line",
   className,
 ]} set:html={html} />}
