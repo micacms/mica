@@ -140,7 +140,8 @@ content/
 ```
 
 **One folder for each entry and each singleton**: its structured fields are
-in `index.json`, and its rich text and media are beside it.
+in `index.json`, and its rich text and media are beside it. The normative
+rules, with tested examples, are in [content-format.md](./content-format.md).
 
 **JSON for structure, Markdoc for prose.** A field's value is JSON unless it is
 rich text, in which case it is a sibling `.mdoc` and _absent_ from the JSON.
