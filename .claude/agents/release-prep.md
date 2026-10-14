@@ -24,4 +24,4 @@ Write the root `CHANGELOG.md` section in the voice of the existing sections: a o
 3. The output of `node scripts/version.mjs` (every file at the new version, the CHANGELOG section found) and the count of remaining change files (must be 0).
 4. `git diff --stat`.
 5. The three commands for the main session to run after the user approves:
-   `git commit -am "Release X.Y.Z"`, `git tag -a vX.Y.Z -m "Release X.Y.Z"`, `git push origin main --follow-tags`.
+   `git commit -am "Release X.Y.Z"`, `git tag -a vX.Y.Z -m "Release X.Y.Z"`, `git push --atomic origin main vX.Y.Z`.
