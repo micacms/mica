@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import type { DateField } from "@micacms/core";
+import type { DateField } from "@micacms/core/internal";
 
 import FieldShell from "./FieldShell.vue";
 import { useField, type FieldProps } from "@/composables/useField";

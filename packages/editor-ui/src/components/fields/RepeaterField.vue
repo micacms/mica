@@ -10,7 +10,7 @@
 import { computed, ref, toRaw } from "vue";
 import { ChevronDown, Copy, Plus, Trash2 } from "@lucide/vue";
 
-import { defaultValues, needsRowKey, newRowKey, ROW_KEY, type RepeaterField } from "@micacms/core";
+import { defaultValues, needsRowKey, newRowKey, ROW_KEY, type RepeaterField } from "@micacms/core/internal";
 
 import FieldList from "./FieldList.vue";
 import ReorderArrows from "@/components/ReorderArrows.vue";

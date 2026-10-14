@@ -6,7 +6,7 @@
 
 import path from "node:path";
 
-import { contentPath, ContentPathError, MEDIA_DIR, slugify } from "@micacms/core";
+import { contentPath, ContentPathError, MEDIA_DIR, slugify } from "@micacms/core/internal";
 import type { ContentFiles } from "../workspace/files.js";
 import { imageSize } from "image-size";
 

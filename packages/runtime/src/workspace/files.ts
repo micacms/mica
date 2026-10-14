@@ -9,7 +9,7 @@ import { createHash } from "node:crypto";
 import { mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
-import { contentPath, type ContentSource } from "@micacms/core";
+import { contentPath, type ContentSource } from "@micacms/core/internal";
 import { isMissing, within } from "@micacms/core/node";
 
 export class FilesError extends Error {

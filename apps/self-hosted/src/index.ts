@@ -6,7 +6,7 @@
  */
 
 import { createOidcAuth } from "@micacms/auth-oidc";
-import { MANIFEST_PATH, type Site } from "@micacms/core";
+import { MANIFEST_PATH, type Site } from "@micacms/core/internal";
 import {
   ConfigError,
   ConflictError,

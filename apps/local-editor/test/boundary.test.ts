@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, defineSite, slug, text } from "@micacms/core";
+import { collection, defineSite, slug, text } from "@micacms/core/internal";
 import { contentFiles, createApp, createLogger, createRuntimeContext } from "@micacms/runtime";
 
 import { loadConfig } from "../src/config.js";

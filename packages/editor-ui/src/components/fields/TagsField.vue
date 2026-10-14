@@ -8,7 +8,7 @@
 import { computed, ref } from "vue";
 import { X } from "@lucide/vue";
 
-import type { TagsField } from "@micacms/core";
+import type { TagsField } from "@micacms/core/internal";
 
 import FieldShell from "./FieldShell.vue";
 import { useField, type FieldProps } from "@/composables/useField";

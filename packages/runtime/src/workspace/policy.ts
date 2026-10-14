@@ -4,7 +4,7 @@
  * its policy; `developer.ts` is the developer's.
  */
 
-import type { PublishResult } from "@micacms/core";
+import type { PublishResult } from "@micacms/core/internal";
 
 import type { Author } from "./files.js";
 

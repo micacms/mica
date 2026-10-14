@@ -8,7 +8,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { RefreshCw } from "@lucide/vue";
 
-import type { FieldMap } from "@micacms/core";
+import type { FieldMap } from "@micacms/core/internal";
 
 import {
   api,

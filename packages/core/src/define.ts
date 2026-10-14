@@ -339,14 +339,6 @@ export function listedFields(def: Collection): string[] {
     .map(([key]) => key);
 }
 
-export function getCollection(site: Site, name: string): Collection | undefined {
-  return site.collections[name];
-}
-
-export function getSingleton(site: Site, name: string): Singleton | undefined {
-  return site.singletons[name];
-}
-
 
 /** One relation or media path in an entry, with the dotted path of its field. */
 export type Reference =

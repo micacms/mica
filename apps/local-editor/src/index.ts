@@ -4,7 +4,7 @@
  * content directory and installs no auth code that can be misconfigured.
  */
 
-import { MANIFEST_PATH } from "@micacms/core";
+import { MANIFEST_PATH } from "@micacms/core/internal";
 import {
   ConfigError,
   contentFiles,

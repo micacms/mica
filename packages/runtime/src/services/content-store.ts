@@ -41,7 +41,7 @@ import {
   type Site,
   slugify,
   validateFields,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 
 import { ConflictError, FilesError, type ContentFiles, type FileChange } from "../workspace/files.js";
 

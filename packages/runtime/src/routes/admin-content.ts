@@ -6,7 +6,7 @@
 
 import { ReadOnlyError, ValidationError } from "../services/content-store.js";
 import { ConflictError } from "../workspace/files.js";
-import { compareEntries, entryFolder, entryTitle } from "@micacms/core";
+import { compareEntries, entryFolder, entryTitle } from "@micacms/core/internal";
 import { Hono } from "hono";
 import { z } from "zod";
 

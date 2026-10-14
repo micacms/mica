@@ -7,7 +7,7 @@
  * import each other.
  */
 
-import { createManifest, type ProtocolManifest, type Site } from "@micacms/core";
+import { createManifest, type ProtocolManifest, type Site } from "@micacms/core/internal";
 
 /**
  * Mica holds no model of its own. The Astro project is the only place a

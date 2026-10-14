@@ -9,7 +9,7 @@ import { existsSync } from "node:fs";
 import { realpath, rm } from "node:fs/promises";
 import { join, relative, sep } from "node:path";
 
-import type { ContentChange, ContentSource, DirectoryEntry } from "@micacms/core";
+import type { ContentChange, ContentSource, DirectoryEntry } from "@micacms/core/internal";
 import { within } from "@micacms/core/node";
 
 import type { Author } from "./files.js";

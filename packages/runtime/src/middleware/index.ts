@@ -10,7 +10,7 @@
  * keeps this package authentication-neutral.
  */
 
-import { ContentPathError } from "@micacms/core";
+import { ContentPathError } from "@micacms/core/internal";
 import type { ErrorHandler, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { ContentfulStatusCode } from "hono/utils/http-status";

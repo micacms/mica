@@ -4,7 +4,7 @@
  * so a keyboard or screen-reader user gets there in one step.
  */
 
-import type { FieldIssue } from "@micacms/core";
+import type { FieldIssue } from "@micacms/core/internal";
 
 import { focusField } from "@/lib/focus";
 

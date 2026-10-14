@@ -27,7 +27,7 @@ import {
   richTextValues,
   type Site,
   validateFields,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 
 import { badRequest } from "../lib/errors.js";
 import type { SyncStatus } from "../workspace/policy.js";

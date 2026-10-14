@@ -10,7 +10,7 @@
 
 import { computed } from "vue";
 
-import type { FieldMap } from "@micacms/core";
+import type { FieldMap } from "@micacms/core/internal";
 
 import type { Comparison } from "@/api";
 import { compareRows } from "@/lib/compare";

@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, createManifest, defineSite, MANIFEST_PATH, number, slug, text } from "@micacms/core";
+import { collection, createManifest, defineSite, MANIFEST_PATH, number, slug, text } from "@micacms/core/internal";
 import { Hono } from "hono";
 
 import { clientIp, type Env } from "../src/http.js";

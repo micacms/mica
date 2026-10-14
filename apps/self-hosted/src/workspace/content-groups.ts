@@ -4,7 +4,7 @@
  * is an entry that nobody wrote. The groups match the Publish page.
  */
 
-import type { Site } from "@micacms/core";
+import type { Site } from "@micacms/core/internal";
 import {
   analyseChanges,
   ApiError,

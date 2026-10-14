@@ -7,7 +7,7 @@
  * written the way its field type would show it — never as JSON with quotes.
  */
 
-import type { AnyField, FieldMap } from "@micacms/core";
+import type { AnyField, FieldMap } from "@micacms/core/internal";
 
 import { humanise } from "@/composables/useField";
 

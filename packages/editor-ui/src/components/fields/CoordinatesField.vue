@@ -13,7 +13,7 @@
 
 import { computed, ref, watch } from "vue";
 
-import type { Coordinates, CoordinatesField } from "@micacms/core";
+import type { Coordinates, CoordinatesField } from "@micacms/core/internal";
 
 import FieldShell from "./FieldShell.vue";
 import { useField, type FieldProps } from "@/composables/useField";

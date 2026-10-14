@@ -8,7 +8,7 @@ import { dirname, join } from "node:path";
 import { after, describe, it } from "node:test";
 
 import { contentFiles } from "../src/index.js";
-import { collection, defineSite, singleton, slug, text } from "@micacms/core";
+import { collection, defineSite, singleton, slug, text } from "@micacms/core/internal";
 
 import { ApiError } from "../src/lib/errors.js";
 import { createLogger, type Logger } from "../src/lib/logger.js";

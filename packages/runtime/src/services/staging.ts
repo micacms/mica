@@ -12,7 +12,7 @@
 
 import { stat } from "node:fs/promises";
 
-import { MANIFEST_PATH, memorySource, type ContentSource, type PublishResult, type Site } from "@micacms/core";
+import { MANIFEST_PATH, memorySource, type ContentSource, type PublishResult, type Site } from "@micacms/core/internal";
 import { within } from "@micacms/core/node";
 
 import { ApiError, badRequest, notFound } from "../lib/errors.js";

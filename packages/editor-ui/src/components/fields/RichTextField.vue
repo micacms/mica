@@ -18,7 +18,7 @@ import { computed, inject, onBeforeUnmount, ref, watch } from "vue";
 
 import { EditorContent, useEditor } from "@tiptap/vue-3";
 
-import { isWebAddress, richTextFeatures, type RichTextFeature, type RichTextField } from "@micacms/core";
+import { isWebAddress, richTextFeatures, type RichTextFeature, type RichTextField } from "@micacms/core/internal";
 
 import FieldShell from "./FieldShell.vue";
 import { api, type MediaItem } from "@/api";

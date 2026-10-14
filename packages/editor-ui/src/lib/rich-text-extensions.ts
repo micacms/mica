@@ -4,7 +4,7 @@ import Link from "@tiptap/extension-link";
 import { Table, TableCell, TableHeader, TableRow } from "@tiptap/extension-table";
 import StarterKit from "@tiptap/starter-kit";
 
-import type { RichTextFeature } from "@micacms/core";
+import type { RichTextFeature } from "@micacms/core/internal";
 
 export interface RichTextExtensionOptions {
   /** The address of a preview for an image path as Markdoc stores it, such as `media/house.jpg`. */

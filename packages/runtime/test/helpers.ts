@@ -21,7 +21,7 @@ import {
   slug,
   text,
   type Site,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 
 import { createApp } from "../src/app.js";
 import { createRuntimeContext, type RuntimeContext } from "../src/context.js";

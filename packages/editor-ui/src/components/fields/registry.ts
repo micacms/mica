@@ -11,7 +11,7 @@
 
 import { defineAsyncComponent, type Component } from "vue";
 
-import type { FieldKind } from "@micacms/core";
+import type { FieldKind } from "@micacms/core/internal";
 
 import BooleanField from "./BooleanField.vue";
 import ColorField from "./ColorField.vue";

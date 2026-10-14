@@ -19,7 +19,7 @@ import {
   select,
   slug,
   text,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 
 import { compareRows, displayValue } from "../src/lib/compare.js";
 

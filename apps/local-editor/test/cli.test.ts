@@ -14,7 +14,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 
-import { MANIFEST_PATH } from "@micacms/core";
+import { MANIFEST_PATH } from "@micacms/core/internal";
 
 import { DEFAULT_PORT } from "@micacms/runtime";
 

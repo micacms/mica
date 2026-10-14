@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { media, object, text } from "@micacms/core";
+import { media, object, text } from "@micacms/core/internal";
 
 import { imagePathsFromEntry } from "../dist/images.js";
 

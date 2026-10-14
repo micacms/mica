@@ -5,7 +5,7 @@
 
 import { Hono } from "hono";
 
-import { listedFields, resolveSlugField, resolveTitleField } from "@micacms/core";
+import { listedFields, resolveSlugField, resolveTitleField } from "@micacms/core/internal";
 
 import type { Env } from "../http.js";
 import { schemaStats } from "../lib/schema-stats.js";

@@ -11,7 +11,7 @@
 
 import { computed, nextTick, onMounted, ref } from "vue";
 
-import type { RelationField } from "@micacms/core";
+import type { RelationField } from "@micacms/core/internal";
 
 import FieldShell from "./FieldShell.vue";
 import type { EntrySummary } from "@/api";

@@ -36,7 +36,7 @@ export interface SchemaOptions {
   image?: () => z.ZodType;
 }
 
-export const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+const HEX_COLOR = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
 const CALENDAR_DATE = /^\d{4}-\d{2}-\d{2}$/;
 
 /* ------------------------------------------------------------------ */
@@ -343,7 +343,7 @@ export type ValidationResult<T> =
   | { ok: true; data: T }
   | { ok: false; issues: FieldIssue[] };
 
-export function toIssues(error: z.ZodError): FieldIssue[] {
+function toIssues(error: z.ZodError): FieldIssue[] {
   return error.issues.map((issue) => ({
     path: issue.path.join("."),
     message: issue.message,

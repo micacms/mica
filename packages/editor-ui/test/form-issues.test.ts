@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 
 import { nextTick, ref } from "vue";
 
-import { text } from "@micacms/core";
+import { text } from "@micacms/core/internal";
 
 import { useFormIssues } from "../src/composables/useFormIssues.js";
 

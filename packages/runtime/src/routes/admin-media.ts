@@ -5,7 +5,7 @@
  * something uses the file.
  */
 
-import { contentPath, ContentPathError, MEDIA_DIR } from "@micacms/core";
+import { contentPath, ContentPathError, MEDIA_DIR } from "@micacms/core/internal";
 import { Hono } from "hono";
 import { z } from "zod";
 

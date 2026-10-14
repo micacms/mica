@@ -37,7 +37,7 @@ import {
   type InferSingleton,
   type Singleton,
   type Site,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 import { fileSystemSource } from "@micacms/core/node";
 import type { ImageMetadata } from "astro";
 import { z } from "zod";
