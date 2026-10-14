@@ -279,6 +279,20 @@ describe("defineSite", () => {
     assert.throws(site("\\-"), ModelError);
   });
 
+  it("rejects a text pattern that repeats a group that repeats inside", () => {
+    const site = (pattern: string) => () =>
+      defineSite({
+        collections: { news: collection({ label: "News", fields: { slug: slug(), code: text({ pattern }) } }) },
+      });
+    for (const slow of ["(a+)+", "(a*)*", "(\\w+\\s?)+", "((ab)+c)*", "(?:a{2,})+", "(?<word>x+){2,}", "(a?)+"]) {
+      assert.throws(site(slow), /has a pattern that can be very slow/, slow);
+    }
+    for (const safe of ["[A-Z]{2}", "(ab)+", "\\d{4}", "(-[0-9]+)?", "[(+)]+", "\\(a+\\)+", "\\p{L}+", "(?<year>[0-9]{4})", "(?:ab)*"]) {
+      assert.doesNotThrow(site(safe), safe);
+    }
+    assert.throws(site("x(a+){3}"), /\(a\+\)\{3\} repeats a group/);
+  });
+
   it("rejects a slug deriving from a non-existent sibling", () => {
     assert.throws(
       () =>

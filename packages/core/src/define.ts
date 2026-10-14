@@ -17,7 +17,7 @@ import type {
   Site,
 } from "./types.js";
 import { MEDIA_DIR } from "./layout.js";
-import { textPattern } from "./pattern.js";
+import { nestedRepeat, textPattern } from "./pattern.js";
 import { RICH_TEXT_TOOLBARS } from "./rich-text.js";
 import { compareDates, validateFields } from "./validation.js";
 
@@ -185,6 +185,13 @@ function checkFields(fields: FieldMap, path: string, collectionNames: Set<string
         textPattern(field.pattern);
       } catch (error) {
         throw new ModelError(`Text field "${here}" has an invalid pattern: ${(error as Error).message}`);
+      }
+      const repeat = nestedRepeat(field.pattern);
+      if (repeat) {
+        throw new ModelError(
+          `Text field "${here}" has a pattern that can be very slow: ${repeat} repeats a group that repeats inside. ` +
+            "Repeat the group or its contents, not both.",
+        );
       }
     }
 

@@ -19,7 +19,7 @@ The build stops on an option that is not in these tables, for example a typo. A 
 
 | Builder | Stores | Options |
 | --- | --- | --- |
-| `text()` | A string. | `minLength`, `maxLength`, `placeholder`, `default`, `pattern` (a regular expression; since 0.6.0 it must match the whole value, with the `u` flag), `patternMessage` (0.7.0). |
+| `text()` | A string. | `minLength`, `maxLength`, `placeholder`, `default`, `pattern` (a regular expression; since 0.6.0 it must match the whole value, with the `u` flag; a group that repeats cannot contain a repeat, so `(a+)+` is refused, but `(-[0-9]+)?` is allowed), `patternMessage` (0.7.0). |
 | `textarea()` | A string with line breaks. | `minLength`, `maxLength`, `rows`, `placeholder`, `default`. |
 | `richText()` | Markdoc, in a `<key>.mdoc` file beside the entry. | `toolbar`: `"minimal"` (bold, italic, link), `"default"` (also headings and lists), `"full"` (also `strike`, `blockquote`, `horizontalRule`, `table`, `image`), or a list of these features (presets, `table` and `image`: 0.8.0). Also `maxLength`, `default`. |
 | `number()` | A number. | `min`, `max`, `step`, `integer`, `unit` (shown in the field, for example `"m²"`), `default`. |

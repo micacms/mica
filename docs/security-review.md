@@ -241,7 +241,7 @@ the summary do not include them.
 | Path or option injection through the branch or the content root | Pass | `apps/self-hosted/src/config.ts` (`isBranchName`, the root check); `packages/runtime/src/workspace/tree.ts` | |
 | A second process writes to the volume | Pass | `apps/self-hosted/src/workspace/lease.ts` | A lease with a heartbeat: a second Mica waits for it to expire, then refuses to start (#229). |
 | A rich-text image or link leaves the content root | Pass | `packages/core/src/rich-text.ts` (`resolveMarkdocTarget`); `packages/astro/src/images.ts` | A path above the root resolves to nothing; only files inside the root reach Astro's `image()`. Media fields: N15. |
-| A pushed content model runs code | Pass | `packages/core/src/manifest.ts` (`readManifest`) | The manifest is data. The one risk is a slow regular expression in `text({ pattern })` (#215). |
+| A pushed content model runs code | Pass | `packages/core/src/manifest.ts` (`readManifest`) | The manifest is data. A text pattern that repeats a group with a repeat inside, such as `(a+)+`, is refused when the model loads (#215). Overlapping alternatives, such as `(a|a)+`, are still possible. |
 
 ## Next review
 
