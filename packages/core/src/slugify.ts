@@ -46,16 +46,3 @@ export function slugify(input: string, maxLength = 96): string {
 export function isValidSlug(value: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 }
-
-/**
- * Appends `-2`, `-3`, … until the slug is not in `taken`.
- * `taken` should exclude the entry being edited.
- */
-export function uniqueSlug(base: string, taken: Iterable<string>): string {
-  const used = new Set(taken);
-  if (!used.has(base)) return base;
-
-  let suffix = 2;
-  while (used.has(`${base}-${suffix}`)) suffix++;
-  return `${base}-${suffix}`;
-}

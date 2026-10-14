@@ -10,7 +10,7 @@ import { join } from "node:path";
 import { Writable } from "node:stream";
 import { after, before, describe, it } from "node:test";
 
-import { createManifest, defineSite } from "@micacms/core";
+import { createManifest, defineSite } from "@micacms/core/internal";
 import { createLogger } from "@micacms/runtime";
 
 import { runCheck } from "../src/check.js";

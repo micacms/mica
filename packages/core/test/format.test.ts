@@ -40,7 +40,7 @@ import {
   url,
   withEmptyValues,
   type FieldMap,
-} from "../dist/index.js";
+} from "../dist/internal.js";
 
 /* ------------------------------------------------------------------ *
  * Layout

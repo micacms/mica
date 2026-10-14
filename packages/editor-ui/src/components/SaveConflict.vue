@@ -4,7 +4,7 @@
  * and chooses: keep theirs, or save their own over it. Nothing is merged.
  */
 
-import type { FieldMap } from "@micacms/core";
+import type { FieldMap } from "@micacms/core/internal";
 
 import ChangeComparison from "@/components/ChangeComparison.vue";
 

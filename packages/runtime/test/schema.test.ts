@@ -11,7 +11,7 @@ import {
   slug,
   text,
   type ContentSource,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 
 import { loadSchema, schemaFingerprint, SchemaError } from "../src/schema.js";
 

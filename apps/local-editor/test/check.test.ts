@@ -18,7 +18,7 @@ import {
   singleton,
   slug,
   text,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 
 import { checkContent, formatReport, markdocWarnings, type CheckReport } from "../src/check.js";
 

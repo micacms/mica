@@ -6,7 +6,7 @@
  * commits that no remote has make Publish refuse.
  */
 
-import type { PublishResult } from "@micacms/core";
+import type { PublishResult } from "@micacms/core/internal";
 
 import { ApiError } from "../lib/errors.js";
 import type { Logger } from "../lib/logger.js";

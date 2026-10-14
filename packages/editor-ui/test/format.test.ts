@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { coordinates, date, media, richText, select } from "@micacms/core";
+import { coordinates, date, media, richText, select } from "@micacms/core/internal";
 
 import { coordinatesFrom, localDate, markdocText, previewValue } from "../src/lib/format.js";
 

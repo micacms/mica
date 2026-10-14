@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { readManifest } from "@micacms/core";
+import { readManifest } from "@micacms/core/internal";
 
 import { createHarness, multipart, pngBytes, type TestHarness } from "./helpers.js";
 

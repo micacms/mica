@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, defineSite, media, relation, richText, slug, text, type Site } from "@micacms/core";
+import { collection, defineSite, media, relation, richText, slug, text, type Site } from "@micacms/core/internal";
 
 import { createApp } from "../src/app.js";
 import { createRuntimeContext, type RuntimeContext } from "../src/context.js";

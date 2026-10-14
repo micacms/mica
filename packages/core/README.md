@@ -1,7 +1,9 @@
 # @micacms/core
 
-> **Public.** From 1.0, semver covers this package. Pre-1.0: the API and the
-> content format can still change in a minor release.
+> **Public.** From 1.0, semver covers what `@micacms/core` and
+> `@micacms/core/node` export. `@micacms/core/internal` is for Mica's own
+> packages and can change in any release. Pre-1.0: the API and the content
+> format can still change in a minor release.
 
 The core of Mica — a Git-native content editor for static Astro websites: the
 content model, the format its entries take on disk, and the `ContentSource`

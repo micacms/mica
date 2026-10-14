@@ -3,7 +3,7 @@
  * surfaces field-level issues for forms.
  */
 
-import type { AnyField, FieldIssue } from "@micacms/core";
+import type { AnyField, FieldIssue } from "@micacms/core/internal";
 
 const BASE = "/api";
 

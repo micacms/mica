@@ -761,8 +761,8 @@ the draft store and nothing about people. See "Sessions are encrypted cookies".
 
 ### P2 — Semver covers the public surface, not every published package
 
-**Decided:** from 1.0, semver covers `@micacms/core`, `@micacms/astro`, the
-`@micacms/editor` CLI, the self-hosted image contract (environment variables,
+**Decided:** from 1.0, semver covers the main entry point of `@micacms/core`
+and `@micacms/core/node`, `@micacms/astro`, the `@micacms/editor` CLI, the self-hosted image contract (environment variables,
 port, volume, `/health` and `/ready`), the content format and the manifest
 protocol.
 `@micacms/runtime`, `@micacms/auth-oidc` and `@micacms/editor-ui` are internal
@@ -794,7 +794,11 @@ subset of the runtime to public.
 
 **Built in 0.6 (#55):** each package README says whether it is public or
 internal; `@micacms/astro` no longer re-exports the readers of `@micacms/core`,
-and the dead exports are gone.
+and the dead exports are gone. In 0.9 (#223), the main entry point of
+`@micacms/core` lists its public exports one by one: the model and its types,
+validation, the content format, the readers and the model file. Mica's own
+packages import the rest from `@micacms/core/internal`, which semver does not
+cover.
 
 **1.0 status:** accepted for 1.0.
 

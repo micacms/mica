@@ -1,6 +1,6 @@
 import type { Context } from "hono";
 
-import type { AccessContext } from "@micacms/core";
+import type { AccessContext } from "@micacms/core/internal";
 
 import type { RuntimeContext } from "./context.js";
 import type { Logger } from "./lib/logger.js";

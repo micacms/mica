@@ -20,7 +20,7 @@ import {
   slug,
   tags,
   text,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 
 import { checkContent } from "../src/check.js";
 import { unflatten } from "../src/devalue.js";

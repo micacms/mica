@@ -1,6 +1,6 @@
 /** Display formatting shared by the views. */
 
-import type { AnyField } from "@micacms/core";
+import type { AnyField } from "@micacms/core/internal";
 
 const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
 

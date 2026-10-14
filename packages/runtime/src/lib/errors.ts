@@ -6,7 +6,7 @@
  * treated as a bug: logged with its stack, reported as a bare 500.
  */
 
-import type { FieldIssue } from "@micacms/core";
+import type { FieldIssue } from "@micacms/core/internal";
 
 export type ErrorCode =
   | "bad_request"

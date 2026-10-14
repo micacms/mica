@@ -4,7 +4,7 @@
  * runtime stays authentication-neutral.
  */
 
-import { MANIFEST_PATH, readOnlyParts, type Site } from "@micacms/core";
+import { MANIFEST_PATH, readOnlyParts, type Site } from "@micacms/core/internal";
 
 import type { RuntimeConfig } from "./config.js";
 import { createLogger, type Logger } from "./lib/logger.js";

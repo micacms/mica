@@ -5,7 +5,7 @@
 
 import { computed, type ComputedRef } from "vue";
 
-import type { AnyField, FieldIssue } from "@micacms/core";
+import type { AnyField, FieldIssue } from "@micacms/core/internal";
 
 let sequence = 0;
 

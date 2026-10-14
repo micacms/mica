@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { collection, defineSite, media, memorySource, relation, repeater, richText, singleton, slug, text, type ContentChange } from "@micacms/core";
+import { collection, defineSite, media, memorySource, relation, repeater, richText, singleton, slug, text, type ContentChange } from "@micacms/core/internal";
 
 import { analyseChanges } from "../src/services/changes.js";
 import { overlaySource } from "../src/workspace/tree.js";

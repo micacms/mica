@@ -13,7 +13,7 @@
 import { computed, inject, ref } from "vue";
 import { Plus, X } from "@lucide/vue";
 
-import type { MediaField } from "@micacms/core";
+import type { MediaField } from "@micacms/core/internal";
 
 import FieldShell from "./FieldShell.vue";
 import MediaPicker from "@/components/MediaPicker.vue";

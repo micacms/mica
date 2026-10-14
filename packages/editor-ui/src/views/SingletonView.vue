@@ -8,7 +8,7 @@
 import { computed, nextTick, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
-import { withEmptyValues } from "@micacms/core";
+import { withEmptyValues } from "@micacms/core/internal";
 
 import { api, ApiError, type SingletonDetail } from "@/api";
 import FieldList from "@/components/fields/FieldList.vue";

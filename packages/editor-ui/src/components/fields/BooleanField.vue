@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 
-import type { BooleanField } from "@micacms/core";
+import type { BooleanField } from "@micacms/core/internal";
 
 import { useField, type FieldProps } from "@/composables/useField";
 

@@ -3,7 +3,7 @@
  * The Astro project writes it; core's `readManifest` checks it.
  */
 
-import { type ContentSource, MANIFEST_PATH, ManifestError, readManifest, type Site } from "@micacms/core";
+import { type ContentSource, MANIFEST_PATH, ManifestError, readManifest, type Site } from "@micacms/core/internal";
 
 export class SchemaError extends Error {
   override name = "SchemaError";

@@ -8,7 +8,7 @@ import { existsSync, mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { memorySource } from "@micacms/core";
+import { memorySource } from "@micacms/core/internal";
 import { ConfigError, GitError, gitRunner, loadSchema, SchemaError, type GitRunner } from "@micacms/runtime";
 
 import { currentToken, loadConfig, type RepositoryConfig } from "./config.js";

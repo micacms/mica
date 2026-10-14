@@ -7,7 +7,7 @@
 
 import { ref, watch, type Ref } from "vue";
 
-import { validateFields, type FieldIssue, type FieldMap } from "@micacms/core";
+import { validateFields, type FieldIssue, type FieldMap } from "@micacms/core/internal";
 
 const within = (path: string, prefix: string): boolean => path === prefix || path.startsWith(`${prefix}.`);
 

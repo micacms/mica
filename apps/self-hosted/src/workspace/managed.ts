@@ -10,7 +10,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, rm, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { PublishResult } from "@micacms/core";
+import type { PublishResult } from "@micacms/core/internal";
 import {
   ApiError,
   type Author,

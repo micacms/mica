@@ -33,7 +33,7 @@ import {
   resolveSlugField,
   type Site,
   validateFields,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 import { within } from "@micacms/core/node";
 import { contentFiles } from "@micacms/runtime";
 

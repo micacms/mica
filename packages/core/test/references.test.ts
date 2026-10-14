@@ -22,7 +22,7 @@ import {
   richTextValues,
   slug,
   text,
-} from "../dist/index.js";
+} from "../dist/internal.js";
 
 const fields = {
   title: text(),

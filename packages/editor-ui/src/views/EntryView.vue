@@ -9,7 +9,7 @@
 import { computed, nextTick, onMounted, provide, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 
-import { defaultValues, isValidSlug } from "@micacms/core";
+import { defaultValues, isValidSlug } from "@micacms/core/internal";
 
 import { api, ApiError, type EntryDetail, type Referrer } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";

@@ -20,7 +20,7 @@ import {
   singleton,
   slug,
   text,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 
 import {
   ConflictError,

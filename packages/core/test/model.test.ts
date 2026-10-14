@@ -29,11 +29,10 @@ import {
   text,
   type FieldMap,
   type InferFields,
-  uniqueSlug,
   url,
   validateFields,
   withEmptyValues,
-} from "../dist/index.js";
+} from "../dist/internal.js";
 
 /* Type-level assertions — these fail at `rush typecheck`, not at runtime. */
 type Equal<A, B> =
@@ -83,11 +82,6 @@ describe("slugify", () => {
     assert.equal(slugify("alpha beta gamma delta", 14), "alpha-beta");
   });
 
-  it("disambiguates against taken slugs", () => {
-    assert.equal(uniqueSlug("haus", []), "haus");
-    assert.equal(uniqueSlug("haus", ["haus"]), "haus-2");
-    assert.equal(uniqueSlug("haus", ["haus", "haus-2"]), "haus-3");
-  });
 });
 
 describe("validation", () => {

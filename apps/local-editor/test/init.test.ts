@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
-import { collection, date, defineSite, media, richText, singleton, slug, text } from "@micacms/core";
+import { collection, date, defineSite, media, richText, singleton, slug, text } from "@micacms/core/internal";
 
 import { initProject, InitError, MODEL } from "../src/init.js";
 

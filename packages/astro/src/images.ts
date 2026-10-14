@@ -6,7 +6,7 @@
 
 import { posix } from "node:path";
 
-import type { FieldMap } from "@micacms/core";
+import type { FieldMap } from "@micacms/core/internal";
 
 /**
  * Rewrites the paths of `media({ accept: "image" })` fields, which the reader

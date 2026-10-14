@@ -22,7 +22,7 @@ import {
   slug,
   text,
   type Site,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 import {
   contentFiles,
   createApp,

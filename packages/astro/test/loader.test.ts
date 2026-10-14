@@ -21,7 +21,7 @@ import {
   singleton,
   slug,
   text,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 
 import { micaCollections, type LoaderContext } from "../dist/index.js";
 

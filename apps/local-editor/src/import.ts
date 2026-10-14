@@ -20,7 +20,7 @@ import {
   validateFields,
   type AnyField,
   type FieldMap,
-} from "@micacms/core";
+} from "@micacms/core/internal";
 import { within } from "@micacms/core/node";
 import { contentFiles, loadSchema } from "@micacms/runtime";
 

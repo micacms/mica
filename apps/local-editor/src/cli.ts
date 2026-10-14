@@ -30,7 +30,7 @@ import { existsSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
-import { MANIFEST_PATH } from "@micacms/core";
+import { MANIFEST_PATH } from "@micacms/core/internal";
 import { DEFAULT_PORT, VERSION } from "@micacms/runtime";
 
 import { checkContent, formatReport } from "./check.js";

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { memorySource } from "@micacms/core";
+import { memorySource } from "@micacms/core/internal";
 
 import type { ContentFiles } from "../src/workspace/files.js";
 import { createMutex, createReadWriteLock, lockedFiles } from "../src/workspace/locks.js";
