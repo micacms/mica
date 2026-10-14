@@ -141,7 +141,7 @@ describe("mica import", () => {
     assert.ok(existsSync(path.join(root, "blog/2026-second-post/media/photo.jpg")));
     assert.equal(readFileSync(path.join(root, "blog/2026-second-post/body.mdoc"), "utf8"), "# Second\n\nText.\n");
     assert.deepEqual(JSON.parse(readFileSync(path.join(root, "blog/_order.json"), "utf8")), ["first", "2026-second-post"]);
-    assert.equal(JSON.parse(readFileSync(path.join(root, "settings.json"), "utf8")).siteName, "Example");
+    assert.equal(JSON.parse(readFileSync(path.join(root, "settings/index.json"), "utf8")).siteName, "Example");
     assert.deepEqual((await checkContent(root)).problems.filter((problem) => problem.level === "error"), []);
   });
 

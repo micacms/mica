@@ -11,7 +11,6 @@ import {
   createApp,
   createLogger,
   createRuntimeContext,
-  layoutProblems,
   loadSchema,
   SchemaError,
   schemaFingerprint,
@@ -53,12 +52,6 @@ async function main(): Promise<void> {
       process.exit(78); // EX_CONFIG
     }
     throw error;
-  }
-
-  const misplaced = await layoutProblems(files, model);
-  if (misplaced.length > 0) {
-    process.stderr.write(`\n${misplaced.join("\n\n")}\n\n`);
-    process.exit(78); // EX_CONFIG
   }
 
   const schemaRevision = await files.revision(MANIFEST_PATH);

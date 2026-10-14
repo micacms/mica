@@ -3,7 +3,7 @@
  *
  * The property that matters most is the round trip: anything an editor saves
  * has to come back out of the repository unchanged. Everything else here —
- * layout choice, path derivation, byte-level determinism — exists to make a
+ * path derivation, byte-level determinism — exists to make a
  * content directory something a person can read and Git can diff.
  */
 
@@ -13,19 +13,18 @@ import { describe, it } from "node:test";
 import {
   boolean,
   collection,
-  collectionEntryPath,
   color,
   createManifest,
   defineSite,
   documentName,
   documentPath,
+  entryDataPath,
   entryFiles,
-  entryLayout,
+  entryFolder,
   fieldsSchema,
   FormatError,
   isProtocolManifest,
   isRowKey,
-  keyRepeaterRows,
   media,
   number,
   object,
@@ -35,7 +34,6 @@ import {
   richText,
   serializeEntry,
   singleton,
-  singletonPath,
   slug,
   text,
   url,
@@ -48,37 +46,17 @@ import {
  * ------------------------------------------------------------------ */
 
 describe("layout", () => {
-  const flat: FieldMap = { title: text(), slug: slug(), year: number() };
-  const withText: FieldMap = { title: text(), body: richText() };
-  const withMedia: FieldMap = { title: text(), logo: media() };
-
-  it("keeps an entry in one file when nothing needs a sidecar", () => {
-    assert.equal(entryLayout(flat), "file");
-  });
-
-  it("uses a directory when the model has rich text or media", () => {
-    assert.equal(entryLayout(withText), "directory");
-    assert.equal(entryLayout(withMedia), "directory");
-  });
-
-  it("looks through objects and repeaters for sidecar fields", () => {
-    assert.equal(entryLayout({ seo: object({ fields: { title: text() } }) }), "file");
-    assert.equal(entryLayout({ seo: object({ fields: { intro: richText() } }) }), "directory");
-    assert.equal(entryLayout({ rows: repeater({ fields: { image: media() } }) }), "directory");
-  });
-
-  it("derives paths from the layout", () => {
-    assert.equal(collectionEntryPath(flat, "team", "anna-vogt"), "team/anna-vogt.json");
-    assert.equal(collectionEntryPath(withText, "projects", "buchholzstrasse"), "projects/buchholzstrasse");
-    assert.equal(singletonPath(flat, "theme"), "theme.json");
-    assert.equal(singletonPath(withText, "site"), "site");
+  it("gives every entry and every singleton a folder with index.json", () => {
+    assert.equal(entryFolder("team", "anna-vogt"), "team/anna-vogt");
+    assert.equal(entryFolder("site"), "site");
+    assert.equal(entryDataPath("team", "anna-vogt"), "team/anna-vogt/index.json");
+    assert.equal(entryDataPath("site"), "site/index.json");
   });
 
   it("round-trips a document name through its field path", () => {
     assert.equal(documentName(["body"]), "body.mdoc");
-    assert.equal(documentName(["sections", 0, "body"]), "sections.0.body.mdoc");
+    assert.equal(documentName(["sections", "kbrief", "body"]), "sections.kbrief.body.mdoc");
     assert.deepEqual(documentPath("body.mdoc"), ["body"]);
-    assert.deepEqual(documentPath("sections.0.body.mdoc"), ["sections", 0, "body"]);
     assert.deepEqual(documentPath("sections.kbrief.body.mdoc"), ["sections", "kbrief", "body"]);
   });
 
@@ -87,7 +65,7 @@ describe("layout", () => {
   });
 
   it("places every file of a directory entry beside its index", () => {
-    const files = entryFiles(withText, "projects/buchholzstrasse", {
+    const files = entryFiles("projects/buchholzstrasse", {
       data: "{}\n",
       documents: { "body.mdoc": "Hello\n" },
     });
@@ -96,13 +74,6 @@ describe("layout", () => {
       "projects/buchholzstrasse/body.mdoc",
       "projects/buchholzstrasse/index.json",
     ]);
-  });
-
-  it("rejects a sidecar on an entry that has file layout", () => {
-    assert.throws(
-      () => entryFiles(flat, "team/anna-vogt.json", { data: "{}\n", documents: { "x.mdoc": "y" } }),
-      FormatError,
-    );
   });
 });
 
@@ -307,7 +278,7 @@ describe("repeater row keys", () => {
     assert.equal(documents[`sections.${keys[1]}.body.mdoc`], "two\n");
   });
 
-  it("places nothing from a document that names its row by number: the reader refuses it", () => {
+  it("places nothing from a document whose row does not exist", () => {
     const parsed = parseEntry(fields, { data: '{ "sections": [{ "heading": "A" }] }', documents: { "sections.0.body.mdoc": "x" } });
     assert.equal((parsed["sections"] as Array<Record<string, unknown>>)[0]!["body"], null);
   });
@@ -333,24 +304,6 @@ describe("repeater row keys", () => {
     };
     assert.equal("_key" in template.sections[0]!, false);
   });
-
-  it("converts stored content to keys and renames its documents, and changes nothing else", () => {
-    const stored = { title: "A", sections: [{ heading: "One", note: "kept" }, { heading: "Two" }] };
-    const result = keyRepeaterRows(fields, stored, ["body.mdoc", "sections.0.body.mdoc", "sections.1.body.mdoc"]);
-    const [first, second] = result.data["sections"] as Array<Record<string, unknown>>;
-
-    assert.equal(result.changed, true);
-    assert.deepEqual(Object.keys(first!), ["_key", "heading", "note"]);
-    assert.deepEqual(result.renames, {
-      "sections.0.body.mdoc": `sections.${first!["_key"]}.body.mdoc`,
-      "sections.1.body.mdoc": `sections.${second!["_key"]}.body.mdoc`,
-    });
-    assert.deepEqual(stored.sections[0], { heading: "One", note: "kept" });
-
-    const again = keyRepeaterRows(fields, result.data, Object.values(result.renames));
-    assert.equal(again.changed, false);
-    assert.deepEqual(again.renames, {});
-  });
 });
 
 /* ------------------------------------------------------------------ *
@@ -374,22 +327,6 @@ describe("protocol manifest", () => {
     assert.equal(manifest.generatedBy, "@micacms/astro");
     assert.deepEqual(Object.keys(manifest.collections), ["projects"]);
     assert.deepEqual(Object.keys(manifest.singletons), ["site"]);
-  });
-
-  // A reader must not derive the layout from fields that a newer @micacms/astro may have added.
-  it("records how each collection and singleton is stored", () => {
-    const withBody = defineSite({
-      collections: {
-        news: collection({ label: "News", fields: { title: text(), slug: slug(), body: richText() } }),
-        team: collection({ label: "Team", fields: { name: text(), slug: slug() } }),
-      },
-      singletons: { site: singleton({ label: "Site", fields: { homepage: url() } }) },
-    });
-    const manifest = createManifest(withBody, "test");
-
-    assert.equal(manifest.collections["news"]?.layout, "directory");
-    assert.equal(manifest.collections["team"]?.layout, "file");
-    assert.equal(manifest.singletons["site"]?.layout, "file");
   });
 
   it("survives the trip through JSON that the protocol implies", () => {

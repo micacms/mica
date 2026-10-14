@@ -251,6 +251,16 @@ describe("defineSite", () => {
     );
   });
 
+  // The shared media folder sits beside the folders of the collections and singletons.
+  it("rejects a collection or a singleton named media", () => {
+    const fields = { title: text(), slug: slug() };
+    assert.throws(() => defineSite({ collections: { media: collection({ label: "Media", fields }) } }), /"media" is reserved/);
+    assert.throws(
+      () => defineSite({ collections: {}, singletons: { media: singleton({ label: "Media", fields: { title: text() } }) } }),
+      /"media" is reserved/,
+    );
+  });
+
   it("rejects a collection without a slug field", () => {
     assert.throws(
       () =>

@@ -9,16 +9,11 @@ import {
   type Collection,
   type ContentSource,
   defineSite,
-  deriveLayout,
-  entryLayout,
   type FieldMap,
   isFieldKind,
   isProtocolManifest,
-  LayoutError,
   MANIFEST_PATH,
-  misplacedFiles,
   PROTOCOL_VERSION,
-  recordLayout,
   RICH_TEXT_TOOLBARS,
   type Singleton,
   type Site,
@@ -63,24 +58,6 @@ export async function loadSchema(source: ContentSource): Promise<Site> {
   }
 
   return checkSchema(raw, origin);
-}
-
-/**
- * One message for each collection or singleton with entries in the other
- * layout. Mica refuses to start on any: editing next to hidden entries would
- * let a save create a second copy of a page.
- */
-export async function layoutProblems(source: ContentSource, site: Site): Promise<string[]> {
-  const problems: string[] = [];
-  const parts = [
-    ...Object.entries(site.collections).map(([name, def]) => [name, def.fields, "collection"] as const),
-    ...Object.entries(site.singletons).map(([name, def]) => [name, def.fields, "singleton"] as const),
-  ];
-  for (const [name, fields, kind] of parts) {
-    const paths = await misplacedFiles(source, fields, name, kind);
-    if (paths.length > 0) problems.push(new LayoutError(paths, name, entryLayout(fields)).message);
-  }
-  return problems;
 }
 
 function describeMissing(origin: string): string {
@@ -144,13 +121,7 @@ export function checkSchema(raw: unknown, origin = "the schema"): Site {
   for (const def of [...Object.values(collections), ...Object.values(singletons)]) knownToolbars(def?.fields);
 
   try {
-    const site = defineSite({ collections, singletons });
-    // Read and classify entries where the manifest says they are, not where fields this build may not know imply.
-    for (const def of [...Object.values(site.collections), ...Object.values(site.singletons)]) {
-      const stored = (def as { layout?: unknown }).layout;
-      if (stored === "file" || stored === "directory") recordLayout(def.fields, stored);
-    }
-    return site;
+    return defineSite({ collections, singletons });
   } catch (error) {
     throw new SchemaError(`${origin} is not a valid content model.\n  ${(error as Error).message}`);
   }
@@ -183,18 +154,11 @@ export function readOnlyParts(site: Site): Map<string, string> {
   const parts = new Map<string, string>();
   const add = (key: string, def: Collection | Singleton) => {
     const unknown = unknownKinds(def.fields, []);
-    const stored = (def as { layout?: unknown }).layout;
     if (unknown.length > 0) {
       parts.set(
         key,
         `"${def.label}" uses ${unknown.map((field) => `"${field.path}" (${field.kind})`).join(", ")}, ` +
           "a field type that this version of Mica does not know. Upgrade Mica to edit it.",
-      );
-    } else if (stored !== undefined && stored !== deriveLayout(def.fields)) {
-      parts.set(
-        key,
-        `"${def.label}" is stored as ${String(stored)}, which this version of Mica does not expect. ` +
-          "Upgrade Mica to edit it.",
       );
     }
   };

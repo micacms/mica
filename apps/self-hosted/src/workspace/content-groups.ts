@@ -44,7 +44,7 @@ export function contentGroups(model: Site): (path: string) => ContentGroup {
  * shows more conflicts, never fewer.
  */
 export function coarseGroups(path: string): ContentGroup {
-  const key = path.split("/")[0]!.replace(/\.json$/, "");
+  const key = path.split("/")[0]!;
   return { key: `path:${key}`, label: key };
 }
 

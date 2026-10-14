@@ -6,7 +6,7 @@
 
 import { ReadOnlyError, ValidationError } from "../services/content-store.js";
 import { ConflictError } from "../workspace/files.js";
-import { collectionEntryPath, compareEntries, entryTitle, LayoutError, singletonPath } from "@micacms/core";
+import { compareEntries, entryFolder, entryTitle } from "@micacms/core";
 import { Hono } from "hono";
 import { z } from "zod";
 
@@ -40,7 +40,7 @@ async function handled<T>(run: () => Promise<T>): Promise<T> {
   try {
     return await run();
   } catch (error) {
-    if (error instanceof ConflictError || error instanceof ReadOnlyError || error instanceof LayoutError) {
+    if (error instanceof ConflictError || error instanceof ReadOnlyError) {
       throw new ApiError("conflict", error.message);
     }
     if (error instanceof ValidationError) {
@@ -127,8 +127,7 @@ export function adminContentRoutes(): Hono<Env> {
       slug: entry.slug,
       title: entryTitle(def, entry.data),
       data: entry.data,
-      // From the model, so the editor need not know when an entry is a directory.
-      path: collectionEntryPath(def.fields, collection, entry.slug),
+      path: entryFolder(collection, entry.slug),
       revision: await content.revisionOf(collection, slug),
     });
   });
@@ -184,7 +183,7 @@ export function adminContentRoutes(): Hono<Env> {
     return c.json({
       name,
       label: def.label,
-      path: singletonPath(def.fields, name),
+      path: entryFolder(name),
       data: await handled(() => content.getSingleton(name)),
       revision: await content.revisionOfSingleton(name),
     });

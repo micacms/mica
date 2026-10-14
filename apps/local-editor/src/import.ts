@@ -13,10 +13,9 @@ import { copyFile, mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
-  collectionEntryPath,
   entryFiles,
+  entryFolder,
   serializeEntry,
-  singletonPath,
   slugify,
   validateFields,
   type AnyField,
@@ -90,8 +89,7 @@ async function importAll(options: ImportOptions): Promise<ImportResult> {
 
   // Before the first write, so that a refusal leaves nothing half done.
   for (const name of names) {
-    const fields = (site.singletons[name] ?? site.collections[name]!).fields;
-    const target = site.singletons[name] ? singletonPath(fields, name) : name;
+    const target = entryFolder(name);
     if (existsSync(within(options.root, target))) {
       throw new ImportError(`${target} exists in the content root. Delete it to import "${name}" again.`);
     }
@@ -123,7 +121,7 @@ async function importAll(options: ImportOptions): Promise<ImportResult> {
       }
       slugs.set(slug, entry.id);
 
-      const base = singleton ? singletonPath(fields, name) : collectionEntryPath(fields, name, slug);
+      const base = entryFolder(name, singleton ? undefined : slug);
       const context: Context = { options, map, name, entry, base, slug, used, problems: result.problems, copies: [], body: false };
       const data = convertFields(fields, entry.data, "", context, singleton ? undefined : slug);
       bodyTaken ||= context.body;
@@ -132,7 +130,7 @@ async function importAll(options: ImportOptions): Promise<ImportResult> {
       if (!check.ok) {
         for (const issue of check.issues) result.problems.push(`${name}/${slug}: ${issue.path}: ${issue.message}`);
       }
-      for (const [file, contents] of Object.entries(entryFiles(fields, base, serializeEntry(fields, data)))) {
+      for (const [file, contents] of Object.entries(entryFiles(base, serializeEntry(fields, data)))) {
         await mkdir(path.dirname(within(options.root, file)), { recursive: true });
         await writeFile(within(options.root, file), contents);
       }

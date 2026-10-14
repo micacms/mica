@@ -8,23 +8,21 @@ import { createHash } from "node:crypto";
 
 import {
   type Collection,
-  collectionEntryPath,
   collectionSlugs,
   collectReferences,
   type ContentEntry,
   ContentPathError,
   DOCUMENT_EXTENSION,
+  entryDataPath,
   entryFiles,
-  entryLayout,
+  entryFolder,
   entryTitle,
   type FieldIssue,
   type FieldMap,
   INDEX_FILE,
   isValidSlug,
-  LayoutError,
   mapMedia,
   markdocTargets,
-  misplacedFiles,
   ORDER_FILE,
   readCollection,
   readCollectionEntry,
@@ -37,7 +35,6 @@ import {
   richTextValues,
   serializeEntry,
   type Singleton,
-  singletonPath,
   type Site,
   slugify,
   validateFields,
@@ -146,40 +143,35 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
   };
 
   /**
-   * The document's revision after a write. Throws when the file is absent,
+   * The entry's revision after a write. Throws when the entry is absent,
    * because an empty token could never match.
    */
-  const revisionAfterWrite = async (dataFile: string, folder: string | null): Promise<string> => {
-    const revision = await documentRevision(dataFile, folder);
+  const revisionAfterWrite = async (folder: string): Promise<string> => {
+    const revision = await documentRevision(folder);
     if (revision === null) {
-      throw new ContentError(`Saved, but "${dataFile}" is not in the repository afterwards.`);
+      throw new ContentError(`Saved, but "${folder}/${INDEX_FILE}" is not in the repository afterwards.`);
     }
     return revision;
   };
 
-  /** The folder whose files make up one document, or null for a one-file document. */
-  const folderOf = (fields: FieldMap, base: string): string | null =>
-    entryLayout(fields) === "directory" ? base : null;
-
   /**
-   * The revision of a whole document: its data file and, in the folder layout,
-   * every file of its folder. A change to any one of them makes the next save a
-   * conflict, not an overwrite.
+   * The revision of a whole entry: every file of its folder. A change to any
+   * one of them makes the next save a conflict, not an overwrite.
    */
-  const documentRevision = async (dataFile: string, folder: string | null): Promise<string | null> => {
-    const files = await documentFiles(dataFile, folder);
+  const documentRevision = async (folder: string): Promise<string | null> => hashFiles(await documentFiles(folder));
+
+  const hashFiles = (files: Map<string, string> | null): string | null => {
     if (files === null) return null;
-    if (folder === null) return files.get(dataFile)!;
     const parts = [...files].map(([path, revision]) => `${path}\u0000${revision}`);
     return createHash("sha256").update(parts.sort().join("\n")).digest("hex").slice(0, 16);
   };
 
-  /** Every file of a document with its revision, or null when its data file is absent. */
-  const documentFiles = async (dataFile: string, folder: string | null): Promise<Map<string, string> | null> => {
+  /** Every file of an entry's folder with its revision, or null when it has no data file. */
+  const documentFiles = async (folder: string): Promise<Map<string, string> | null> => {
+    const dataFile = `${folder}/${INDEX_FILE}`;
     const data = await workspace.revision(dataFile);
     if (data === null) return null;
     const files = new Map([[dataFile, data]]);
-    if (folder === null) return files;
     const walk = async (dir: string): Promise<void> => {
       for (const item of await workspace.list(dir)) {
         const child = `${dir}/${item.name}`;
@@ -192,21 +184,19 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
   };
 
   /**
-   * Refuses when the document changed since the editor read `expected`, and
+   * Refuses when the entry changed since the editor read `expected`, and
    * returns every file's revision for `apply`, which checks them all again
    * under the write lock.
    */
   const expectDocument = async (
     expected: string | null | undefined,
-    dataFile: string,
-    folder: string | null,
+    folder: string,
   ): Promise<Record<string, string | null> | undefined> => {
     if (expected === undefined) return undefined;
-    const files = await documentFiles(dataFile, folder);
-    if ((await documentRevision(dataFile, folder)) !== expected) {
-      throw new ConflictError("This content changed after you opened it. Reload to see the current version.", [
-        dataFile,
-      ]);
+    const dataFile = `${folder}/${INDEX_FILE}`;
+    const files = await documentFiles(folder);
+    if (hashFiles(files) !== expected) {
+      throw new ConflictError("This content changed after you opened it. Reload to see the current version.", [dataFile]);
     }
     return files === null ? { [dataFile]: null } : Object.fromEntries(files);
   };
@@ -238,8 +228,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     const found: Array<{
       referrer: Referrer;
       fields: FieldMap;
-      base: string;
-      dataFile: string;
+      folder: string;
       /** Reads the data again, so that a relink starts from what is on disk now. */
       read: () => Promise<Record<string, unknown> | null>;
     }> = [];
@@ -262,8 +251,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
             ...readOnlyMark(`collections.${name}`),
           },
           fields: def.fields,
-          base: collectionEntryPath(def.fields, name, entry.slug),
-          dataFile: dataPath(def, name, entry.slug),
+          folder: entryFolder(name, entry.slug),
           read: () => readCollectionEntry(workspace, def, name, entry.slug),
         });
       }
@@ -275,8 +263,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       found.push({
         referrer: { kind: "singleton", name, title: def.label, ...readOnlyMark(`singletons.${name}`) },
         fields: def.fields,
-        base: singletonPath(def.fields, name),
-        dataFile: singletonDataPath(def, name),
+        folder: entryFolder(name),
         read: () => readSingleton(workspace, def, name),
       });
     }
@@ -298,7 +285,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       const match = /^([^/]+)\/([^/]+)\/media\/([^/]+)$/.exec(reference.path);
       if (!match || match[1] !== collection || `${collection}/${match[2]}` === base) continue;
       if (moves.some((move) => move.from === reference.path)) continue;
-      const keep = (await workspace.read(dataPath(def, collection, match[2]!))) !== null;
+      const keep = (await workspace.read(entryDataPath(collection, match[2]!))) !== null;
       const bytes = await workspace.readBinary(reference.path);
       if (bytes === null) continue;
       const extension = match[3]!.includes(".") ? match[3]!.slice(match[3]!.lastIndexOf(".")) : "";
@@ -312,14 +299,14 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
   };
 
   /** Whether an entry has this URL: its data file exists. A folder with only uploads is not one. */
-  const entryExists = async (def: Collection, name: string, slug: string): Promise<boolean> =>
-    (await workspace.stat(dataPath(def, name, slug))) !== null;
+  const entryExists = async (name: string, slug: string): Promise<boolean> =>
+    (await workspace.stat(entryDataPath(name, slug))) !== null;
 
   /** The first free URL from `base` (`base`, `base-2`, …), checking candidates rather than reading the collection. */
-  const freeSlug = async (def: Collection, name: string, base: string, except?: string): Promise<string> => {
+  const freeSlug = async (name: string, base: string, except?: string): Promise<string> => {
     for (let suffix = 1; ; suffix++) {
       const candidate = suffix === 1 ? base : `${base}-${suffix}`;
-      if (candidate === except || !(await entryExists(def, name, candidate))) return candidate;
+      if (candidate === except || !(await entryExists(name, candidate))) return candidate;
     }
   };
 
@@ -330,36 +317,31 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
 
     /** How many entries a collection has, from one directory listing: for counts, not for lists. */
     async count(collectionName: string): Promise<number> {
-      const def = requireCollection(collectionName);
-      const names = await collectionSlugs(workspace, def, collectionName);
-      const exists = await Promise.all(names.map((slug) => entryExists(def, collectionName, slug)));
+      requireCollection(collectionName);
+      const names = await collectionSlugs(workspace, collectionName);
+      const exists = await Promise.all(names.map((slug) => entryExists(collectionName, slug)));
       return exists.filter(Boolean).length;
     },
 
-    /** One entry, without opening the rest of its collection. Refuses, like the list, while entries sit in the other layout. */
+    /** One entry, without opening the rest of its collection. */
     async get(collectionName: string, slug: string): Promise<Omit<ContentEntry, "position"> | null> {
       const def = requireCollection(collectionName);
       // A file system that ignores case would otherwise open `News-42` as `news-42`.
       if (!isValidSlug(slug)) return null;
-      const misplaced = await misplacedFiles(workspace, def.fields, collectionName, "collection");
-      if (misplaced.length > 0) throw new LayoutError(misplaced, collectionName, entryLayout(def.fields));
       const data = await readCollectionEntry(workspace, def, collectionName, slug);
       return data ? { slug, data } : null;
     },
 
     /** The revision an editor must send back with a save of this entry. */
     async revisionOf(collectionName: string, slug: string): Promise<string | null> {
-      const def = requireCollection(collectionName);
-      return documentRevision(
-        dataPath(def, collectionName, slug),
-        folderOf(def.fields, collectionEntryPath(def.fields, collectionName, slug)),
-      );
+      requireCollection(collectionName);
+      return documentRevision(entryFolder(collectionName, slug));
     },
 
     /** The revision an editor must send back with a save of this singleton. */
     async revisionOfSingleton(name: string): Promise<string | null> {
-      const def = requireSingleton(name);
-      return documentRevision(singletonDataPath(def, name), folderOf(def.fields, singletonPath(def.fields, name)));
+      requireSingleton(name);
+      return documentRevision(entryFolder(name));
     },
 
     async getSingleton(name: string): Promise<Record<string, unknown>> {
@@ -378,10 +360,10 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       const slug =
         requested === input.slug
           ? requested
-          : await freeSlug(def, collectionName, requested, input.slug);
+          : await freeSlug(collectionName, requested, input.slug);
 
       data[slugKey] = slug;
-      const base = collectionEntryPath(def.fields, collectionName, slug);
+      const base = entryFolder(collectionName, slug);
       // A new entry's uploads went into the folder of the URL it had then.
       const staged = input.slug === undefined ? await stagedUploads(def, collectionName, data, base) : [];
       if (staged.length > 0) {
@@ -392,18 +374,12 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       const own = previousLinks(input, slug) ? relinkReferences(def.fields, data, collectionName, input.slug!, slug) : null;
       if (own) Object.assign(data, own);
 
-      const previousBase =
-        input.slug && input.slug !== slug
-          ? collectionEntryPath(def.fields, collectionName, input.slug)
-          : null;
+      const previousBase = input.slug && input.slug !== slug ? entryFolder(collectionName, input.slug) : null;
 
       // The editor uses root-relative media paths; store them relative to the
       // entry (the old directory on a rename).
-      const serialized = serializeEntry(
-        def.fields,
-        mediaForDisk(def.fields, data, previousBase ?? base),
-      );
-      const files = entryFiles(def.fields, base, serialized);
+      const serialized = serializeEntry(def.fields, relativizeMedia(def.fields, data, previousBase ?? base));
+      const files = entryFiles(base, serialized);
 
       const changes: FileChange[] = Object.entries(files).map(([path, contents]) => ({
         type: "write",
@@ -416,15 +392,11 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       }
 
       if (previousBase) {
-        changes.push(
-          entryLayout(def.fields) === "directory"
-            ? { type: "deleteTree", path: previousBase }
-            : { type: "delete", path: previousBase },
-        );
+        changes.push({ type: "deleteTree", path: previousBase });
         await moveMedia(workspace, previousBase, base, changes);
         const order = await renameInOrder(collectionName, input.slug!, slug);
         if (order) changes.push(order);
-      } else if (entryLayout(def.fields) === "directory") {
+      } else {
         changes.push(...(await staleDocuments(base, new Set(Object.keys(serialized.documents)))));
       }
 
@@ -437,23 +409,20 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
           if (found.referrer.readOnly) continue;
           if (found.referrer.kind === "entry" && found.referrer.collection === collectionName && found.referrer.slug === input.slug) continue;
           // The revision before the read: a save in between makes the write refuse, not overwrite it.
-          const revision = await workspace.revision(found.dataFile);
+          const dataFile = `${found.folder}/${INDEX_FILE}`;
+          const revision = await workspace.revision(dataFile);
           const current = await found.read();
           const next = current && relinkReferences(found.fields, current, collectionName, input.slug!, slug);
           if (!next) continue;
-          const written = entryFiles(found.fields, found.base, serializeEntry(found.fields, mediaForDisk(found.fields, next, found.base)));
-          changes.push({ type: "write", path: found.dataFile, contents: written[found.dataFile]! });
-          referrerRevisions[found.dataFile] = revision;
+          const { data: contents } = serializeEntry(found.fields, relativizeMedia(found.fields, next, found.folder));
+          changes.push({ type: "write", path: dataFile, contents });
+          referrerRevisions[dataFile] = revision;
           relinked += 1;
         }
       }
 
       const title = entryTitle(def, data);
-      const expected = await expectDocument(
-        input.expectedRevision,
-        dataPath(def, collectionName, input.slug ?? slug),
-        folderOf(def.fields, previousBase ?? base),
-      );
+      const expected = await expectDocument(input.expectedRevision, previousBase ?? base);
       try {
         await workspace.apply({
           changes,
@@ -466,7 +435,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
         throw error;
       }
 
-      const revision = await revisionAfterWrite(dataPath(def, collectionName, slug), folderOf(def.fields, base));
+      const revision = await revisionAfterWrite(base);
 
       return { slug, title, revision, renamed: previousBase !== null, relinked };
     },
@@ -476,24 +445,16 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       slug: string,
       options: { expectedRevision?: string | null } = {},
     ): Promise<void> {
-      const def = writable(requireCollection(collectionName), `collections.${collectionName}`);
+      writable(requireCollection(collectionName), `collections.${collectionName}`);
       // One path segment: an empty slug or `a/b` would delete more than one entry.
       if (slug === "" || slug.includes("/") || slug === "." || slug === "..") {
         throw new ContentPathError(`"${slug}" is not an entry of "${collectionName}".`);
       }
-      const base = collectionEntryPath(def.fields, collectionName, slug);
+      const base = entryFolder(collectionName, slug);
 
       await workspace.apply({
-        changes: [
-          entryLayout(def.fields) === "directory"
-            ? { type: "deleteTree", path: base }
-            : { type: "delete", path: base },
-        ],
-        expect: await expectDocument(
-          options.expectedRevision,
-          dataPath(def, collectionName, slug),
-          folderOf(def.fields, base),
-        ),
+        changes: [{ type: "deleteTree", path: base }],
+        expect: await expectDocument(options.expectedRevision, base),
       });
     },
 
@@ -505,23 +466,17 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       const def = writable(requireSingleton(name), `singletons.${name}`);
       const data = validate(def, payload, `The "${def.label}" settings`);
 
-      const base = singletonPath(def.fields, name);
-      const serialized = serializeEntry(def.fields, mediaForDisk(def.fields, data, base));
+      const base = entryFolder(name);
+      const serialized = serializeEntry(def.fields, relativizeMedia(def.fields, data, base));
 
-      const changes: FileChange[] = Object.entries(entryFiles(def.fields, base, serialized)).map(
+      const changes: FileChange[] = Object.entries(entryFiles(base, serialized)).map(
         ([path, contents]) => ({ type: "write", path, contents }),
       );
+      changes.push(...(await staleDocuments(base, new Set(Object.keys(serialized.documents)))));
 
-      if (entryLayout(def.fields) === "directory") {
-        changes.push(...(await staleDocuments(base, new Set(Object.keys(serialized.documents)))));
-      }
+      await workspace.apply({ changes, expect: await expectDocument(options.expectedRevision, base) });
 
-      await workspace.apply({
-        changes,
-        expect: await expectDocument(options.expectedRevision, singletonDataPath(def, name), folderOf(def.fields, base)),
-      });
-
-      return { revision: await revisionAfterWrite(singletonDataPath(def, name), folderOf(def.fields, base)) };
+      return { revision: await revisionAfterWrite(base) };
     },
 
     async reorder(
@@ -549,8 +504,8 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
 
     /** Slug the server would assign, so the editor's URL preview matches it. */
     async suggestSlug(collectionName: string, source: string, except?: string): Promise<string> {
-      const def = requireCollection(collectionName);
-      return freeSlug(def, collectionName, slugify(source), except);
+      requireCollection(collectionName);
+      return freeSlug(collectionName, slugify(source), except);
     },
 
     /**
@@ -583,17 +538,14 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
           continue;
         }
         for (const entry of entries) {
-          const base = collectionEntryPath(def.fields, name, entry.slug);
-          const folder = entryLayout(def.fields) === "directory" ? base : name;
-          check({ kind: "entry", collection: name, slug: entry.slug, title: entryTitle(def, entry.data) }, def.fields, entry.data, folder);
+          check({ kind: "entry", collection: name, slug: entry.slug, title: entryTitle(def, entry.data) }, def.fields, entry.data, entryFolder(name, entry.slug));
         }
       }
       for (const [name, def] of Object.entries(site.singletons)) {
         const data = await readSingleton(workspace, def, name).catch(() => undefined);
         if (data === undefined) unreadable.push(def.label);
         if (!data) continue;
-        const folder = entryLayout(def.fields) === "directory" ? singletonPath(def.fields, name) : "";
-        check({ kind: "singleton", name, title: def.label }, def.fields, data, folder);
+        check({ kind: "singleton", name, title: def.label }, def.fields, data, entryFolder(name));
       }
       return { uses, unreadable };
     },
@@ -620,28 +572,6 @@ function linksTo(fields: FieldMap, collection: string): boolean {
       (field.kind === "relation" && field.collection === collection) ||
       ((field.kind === "object" || field.kind === "repeater") && linksTo(field.fields, collection)),
   );
-}
-
-/**
- * Media paths as the repository stores them. Only a directory entry has
- * colocated media to relativize.
- */
-function mediaForDisk(
-  fields: FieldMap,
-  data: Record<string, unknown>,
-  base: string,
-): Record<string, unknown> {
-  return entryLayout(fields) === "directory" ? relativizeMedia(fields, data, base) : data;
-}
-
-function dataPath(def: Collection, collection: string, slug: string): string {
-  const base = collectionEntryPath(def.fields, collection, slug);
-  return entryLayout(def.fields) === "directory" ? `${base}/${INDEX_FILE}` : base;
-}
-
-function singletonDataPath(def: Singleton, name: string): string {
-  const base = singletonPath(def.fields, name);
-  return entryLayout(def.fields) === "directory" ? `${base}/${INDEX_FILE}` : base;
 }
 
 /** The slug from the payload's slug field, or one derived from the title. */

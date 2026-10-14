@@ -9,10 +9,9 @@
  */
 
 import { collectReferences, resolveSlugField } from "./define.js";
-import { DOCUMENT_EXTENSION, FormatError, INDEX_FILE, entryLayout, type EntryLayout } from "./layout.js";
+import { DOCUMENT_EXTENSION, FormatError, INDEX_FILE, entryDataPath, entryFolder } from "./layout.js";
 import { isValidSlug } from "./slugify.js";
 import { parseEntry } from "./parse.js";
-import { numberedDocuments } from "./row-key.js";
 import { isWebAddress, markdocImages, resolveMarkdocTarget, richTextDocuments } from "./rich-text.js";
 import type { Collection, FieldMap, Singleton, Site } from "./types.js";
 import type { FieldIssue } from "./validation.js";
@@ -48,58 +47,6 @@ export class ContentReadError extends Error {
   }
 }
 
-/**
- * Entries stored in the layout that the fields do not give. A model change
- * moved them, and the files did not follow: reading on would hide them.
- */
-export class LayoutError extends ContentReadError {
-  override name = "LayoutError";
-  constructor(
-    readonly paths: string[],
-    name: string,
-    layout: EntryLayout,
-  ) {
-    const shown = paths.length > 5 ? [...paths.slice(0, 5), `and ${paths.length - 5} more`] : paths;
-    super(
-      `"${name}" is stored as ${layout === "directory" ? "folders with index.json" : ".json files"}, ` +
-        `but these files are in the other layout: ${shown.join(", ")}. ` +
-        "Run `npx mica migrate-layout`, check the result, and commit it.",
-      paths[0]!,
-    );
-  }
-}
-
-/**
- * Rich-text files that name a repeater row by its number, as content from Mica
- * 0.8 or earlier does (#220). A layout error, so that it is handled as one:
- * `mica migrate-layout` converts the files.
- */
-export class RowNumberError extends LayoutError {
-  override name = "RowNumberError";
-  constructor(paths: string[], name: string) {
-    super(paths, name, "directory");
-    const shown = paths.length > 5 ? [...paths.slice(0, 5), `and ${paths.length - 5} more`] : paths;
-    this.message =
-      `"${name}" has files that name a repeater row by its number: ${shown.join(", ")}. ` +
-      "Mica names rows by their key now. Run `npx mica migrate-layout`, check the result, and commit it.";
-  }
-}
-
-/**
- * The files of a collection or singleton that are in the other layout, for a
- * check before anything reads them, and for `mica migrate-layout`.
- */
-export async function misplacedFiles(
-  source: ContentSource,
-  fields: FieldMap,
-  name: string,
-  kind: "collection" | "singleton",
-): Promise<string[]> {
-  if (kind === "collection") return (await scanCollection(source, fields, name)).misplaced;
-  const other = entryLayout(fields) === "directory" ? `${name}.json` : `${name}/${INDEX_FILE}`;
-  return (await source.read(other)) === null ? [] : [other];
-}
-
 /* ------------------------------------------------------------------ *
  * Collections
  * ------------------------------------------------------------------ */
@@ -109,13 +56,13 @@ export async function readCollection(
   def: Collection,
   name: string,
 ): Promise<ContentEntry[]> {
-  const slugs = await listSlugs(source, def.fields, name);
+  const slugs = await collectionSlugs(source, name);
   const ordered = await applyOrder(source, name, slugs);
 
   // Eight at a time: a disk or a Git object store answers in parallel, and a
   // limit keeps a large collection from opening every file at once.
   const read = await mapLimit(ordered, 8, (slug) =>
-    readEntry(source, def.fields, `${name}/${slug}`, entryBase(def.fields, name, slug)),
+    readEntry(source, def.fields, entryFolder(name, slug)),
   );
   const entries: ContentEntry[] = [];
   ordered.forEach((slug, position) => {
@@ -168,16 +115,6 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
   return results;
 }
 
-/**
- * The names in a collection's directory that can be entries, from one listing,
- * without reading any entry. In the folder layout, a folder without an
- * `index.json` (an upload for an entry that is not saved yet, or one that a
- * discard left empty) is listed too: check the data file before counting it.
- */
-export async function collectionSlugs(source: ContentSource, def: Collection, name: string): Promise<string[]> {
-  return listSlugs(source, def.fields, name);
-}
-
 /** The entry's URL is its file name: the slug field says the same, whatever the file holds. */
 function withSlug(def: Collection, data: Record<string, unknown>, slug: string): Record<string, unknown> {
   const key = resolveSlugField(def);
@@ -197,57 +134,20 @@ export async function readCollectionEntry(
   name: string,
   slug: string,
 ): Promise<Record<string, unknown> | null> {
-  const data = await readEntry(source, def.fields, `${name}/${slug}`, entryBase(def.fields, name, slug));
+  const data = await readEntry(source, def.fields, entryFolder(name, slug));
   return data && withSlug(def, data, slug);
 }
 
 /**
- * Slugs present in a collection directory.
- *
- * The layout decides what to look at: directory-shaped entries are directories,
- * file-shaped ones are `.json` files. An entry in the other layout is an error,
- * because skipping it would hide a page. Anything else — a stray README, the
- * order file, a directory without an `index.json` — is skipped, because a
- * content repository belongs to its owner and may hold things Mica did not put
- * there.
+ * The slugs of a collection: its folders, from one listing, without reading
+ * any entry. A folder without an `index.json` (an upload for an entry that is
+ * not saved yet, or one that a discard left empty) is listed too: check the
+ * data file before counting it. Files, such as the order file or a README, are
+ * skipped, because a content repository belongs to its owner and may hold
+ * things Mica did not put there.
  */
-async function listSlugs(
-  source: ContentSource,
-  fields: FieldMap,
-  name: string,
-): Promise<string[]> {
-  const { slugs, misplaced } = await scanCollection(source, fields, name);
-  if (misplaced.length > 0) throw new LayoutError(misplaced, name, entryLayout(fields));
-  return slugs;
-}
-
-/** The slugs in the collection's layout, and the entries in the other one. */
-async function scanCollection(
-  source: ContentSource,
-  fields: FieldMap,
-  name: string,
-): Promise<{ slugs: string[]; misplaced: string[] }> {
-  const directoryLayout = entryLayout(fields) === "directory";
-  const slugs: string[] = [];
-  const misplaced: string[] = [];
-
-  for (const item of await source.list(name)) {
-    const jsonSlug = item.type === "file" && item.name.endsWith(".json") ? item.name.slice(0, -".json".length) : null;
-
-    if (directoryLayout) {
-      if (item.type === "directory" && isValidSlug(item.name)) slugs.push(item.name);
-      else if (jsonSlug !== null && item.name !== ORDER_FILE && isValidSlug(jsonSlug)) misplaced.push(`${name}/${item.name}`);
-      continue;
-    }
-
-    if (jsonSlug !== null && isValidSlug(jsonSlug)) slugs.push(jsonSlug);
-    else if (item.type === "directory" && isValidSlug(item.name)) {
-      const index = `${name}/${item.name}/${INDEX_FILE}`;
-      if ((await source.read(index)) !== null) misplaced.push(index);
-    }
-  }
-
-  return { slugs, misplaced };
+export async function collectionSlugs(source: ContentSource, name: string): Promise<string[]> {
+  return (await source.list(name)).filter((item) => item.type === "directory" && isValidSlug(item.name)).map((item) => item.name);
 }
 
 /**
@@ -291,41 +191,24 @@ export async function readSingleton(
   def: Singleton,
   name: string,
 ): Promise<Record<string, unknown> | null> {
-  const data = await readEntry(source, def.fields, name, entryBase(def.fields, name));
-  if (data !== null) return data;
-  const misplaced = await misplacedFiles(source, def.fields, name, "singleton");
-  if (misplaced.length > 0) throw new LayoutError(misplaced, name, entryLayout(def.fields));
-  return null;
+  return readEntry(source, def.fields, entryFolder(name));
 }
 
 /* ------------------------------------------------------------------ *
  * Shared
  * ------------------------------------------------------------------ */
 
-/** The directory an entry's files live in, or null for file-shaped entries. */
-function entryBase(fields: FieldMap, ...segments: string[]): string | null {
-  return entryLayout(fields) === "directory" ? segments.join("/") : null;
-}
-
-async function readEntry(
-  source: ContentSource,
-  fields: FieldMap,
-  label: string,
-  base: string | null,
-): Promise<Record<string, unknown> | null> {
-  const dataPath = base === null ? `${label}.json` : `${base}/${INDEX_FILE}`;
-
+/** An entry's data from its folder, or null when the folder has no `index.json`. */
+async function readEntry(source: ContentSource, fields: FieldMap, folder: string): Promise<Record<string, unknown> | null> {
+  const dataPath = `${folder}/${INDEX_FILE}`;
   const data = await source.read(dataPath);
   if (data === null) return null;
 
-  const documents = base === null ? {} : await readDocuments(source, base);
+  const documents = await readDocuments(source, folder);
 
   let parsed: Record<string, unknown>;
   try {
     parsed = parseEntry(fields, { data, documents });
-    // Valid JSON now: `parseEntry` has read it.
-    const numbered = numberedDocuments(fields, JSON.parse(data) as Record<string, unknown>, Object.keys(documents));
-    if (numbered.length > 0) throw new RowNumberError(numbered.map((name) => `${base}/${name}`), label);
   } catch (error) {
     // A `FormatError` names the problem but not the file, and a build that
     // says only "Content is not valid JSON" is close to useless.
@@ -335,7 +218,7 @@ async function readEntry(
     throw error;
   }
 
-  return base === null ? parsed : resolveMedia(fields, parsed, base);
+  return resolveMedia(fields, parsed, folder);
 }
 
 /**
@@ -467,10 +350,7 @@ export function createReferenceCheck(
     const key = `${collection}/${slug}`;
     if (!entries.has(key)) {
       // The data file is enough: an entry exists when it does.
-      const { fields } = site.collections[collection]!;
-      const base = `${collection}/${slug}`;
-      const dataPath = entryLayout(fields) === "directory" ? `${base}/${INDEX_FILE}` : `${base}.json`;
-      entries.set(key, source.read(dataPath).then((data) => data !== null, () => false));
+      entries.set(key, source.read(entryDataPath(collection, slug)).then((data) => data !== null, () => false));
     }
     return entries.get(key)!;
   };

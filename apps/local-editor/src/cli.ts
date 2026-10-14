@@ -36,7 +36,6 @@ import { DEFAULT_PORT, VERSION } from "@micacms/runtime";
 import { checkContent, formatReport } from "./check.js";
 import { formatInit, initProject, InitError } from "./init.js";
 import { formatImport, importCollections, ImportError } from "./import.js";
-import { formatMigration, migrateLayout } from "./migrate.js";
 
 export interface Options {
   /** Undefined means "not given": `MICA_CONTENT_ROOT`, else `./content`. */
@@ -54,8 +53,6 @@ const USAGE = `
     $ npx @micacms/editor start [content dir]   open the editor
     $ npx @micacms/editor init                  add Mica to this Astro project
     $ npx @micacms/editor check [content dir]   check every entry against the model
-    $ npx @micacms/editor migrate-layout [dir]  move entries into the layout of the model,
-                                                and name rich-text files by row keys
     $ npx @micacms/editor import [names]        move Astro collections into Mica
         --from <file>         Astro's data store (default: node_modules/.astro/data-store.json)
         --map <c.field=key>   take a field from another key; @body is the Markdown body
@@ -181,7 +178,6 @@ export async function main(): Promise<void> {
   const [command, ...rest] = process.argv.slice(2);
   if (command === "init") return init(rest);
   if (command === "check") return check(rest);
-  if (command === "migrate-layout") return migrate(rest);
   if (command === "import") return importCommand(rest);
   // The first word is always a command, so that a directory named `init` is not one.
   if (command === undefined || command === "-h" || command === "--help") return void process.stdout.write(`${USAGE}\n`);
@@ -242,12 +238,6 @@ async function check(argv: string[]): Promise<void> {
   const result = await checkContent(root);
   process.stdout.write(formatReport(result, root));
   if (result.problems.some((problem) => problem.level === "error")) process.exit(1);
-}
-
-async function migrate(argv: string[]): Promise<void> {
-  const result = await migrateLayout(contentRoot(parse(argv), process.env));
-  process.stdout.write(formatMigration(result));
-  if (result.conflicts.length > 0) process.exit(1);
 }
 
 async function importCommand(argv: string[]): Promise<void> {

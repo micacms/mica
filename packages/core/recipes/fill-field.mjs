@@ -3,7 +3,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { collectionEntryPath, collectionSlugs, entryLayout, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
+import { collectionSlugs, entryDataPath, MANIFEST_PATH } from "@micacms/core";
 import { fileSystemSource } from "@micacms/core/node";
 
 const [root, collection, key, json] = process.argv.slice(2);
@@ -13,9 +13,8 @@ const def = manifest.collections[collection];
 if (!def) throw new Error(`The model has no collection "${collection}".`);
 if (def.fields[key]?.kind === "richText") throw new Error(`"${key}" is rich text, which is a file: write it in the editor.`);
 
-for (const slug of await collectionSlugs(fileSystemSource(root), def, collection)) {
-  const base = collectionEntryPath(def.fields, collection, slug);
-  const file = join(root, entryLayout(def.fields) === "file" ? base : `${base}/${INDEX_FILE}`);
+for (const slug of await collectionSlugs(fileSystemSource(root), collection)) {
+  const file = join(root, entryDataPath(collection, slug));
   const data = JSON.parse(await readFile(file, "utf8"));
   if (data[key] !== undefined && data[key] !== null && data[key] !== "") continue;
   data[key] = value;

@@ -70,7 +70,7 @@ describe("the root comes from the model", () => {
     try {
       await mkdir(join(dir, "content", "news", "hello"), { recursive: true });
       await writeFile(
-        join(dir, "content", "news", "hello.json"),
+        join(dir, "content", "news", "hello", "index.json"),
         JSON.stringify({ title: "Hello", slug: "hello" }),
       );
 

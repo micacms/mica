@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/astro",
+      "comment": "Read every entry and singleton from its own folder.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

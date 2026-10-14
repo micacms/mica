@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@micacms/editor",
-      "comment": "`mica migrate-layout` also gives repeater rows with rich text their keys and renames their rich-text files. `mica check` reads files named by row keys.",
+      "comment": "`mica check` reads files named by row keys, and warns about a file whose row does not exist.",
       "type": "minor"
     }
   ],

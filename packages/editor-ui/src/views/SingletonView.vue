@@ -30,7 +30,7 @@ import { useToast } from "@/stores/toast";
 const props = defineProps<{ name: string }>();
 const route = useRoute();
 
-// Settings with media keep them in their own folder, as an entry does.
+// Settings keep their media in their own folder, as an entry does.
 provide(
   MEDIA_FOLDER,
   computed(() => ({ path: `${props.name}/media`, isNew: false })),

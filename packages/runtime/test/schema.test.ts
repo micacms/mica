@@ -110,12 +110,6 @@ describe("checkSchema", () => {
     assert.match(readOnly.get("singletons.settings")!, /"logo" \(vector\)/);
   });
 
-  it("makes a collection read-only when its recorded layout is not the one this build derives", () => {
-    const raw = validSite();
-    (raw.collections.pages as Record<string, unknown>)["layout"] = "directory";
-    assert.match(readOnlyParts(checkSchema(raw)).get("collections.pages")!, /stored as directory/);
-  });
-
   it("still refuses a manifest with a newer protocol version", () => {
     const manifest = { ...validSite(), protocolVersion: 99, generatedBy: "@micacms/astro" };
     assert.throws(() => checkSchema(manifest), /protocol version 99/);

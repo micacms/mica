@@ -12,14 +12,14 @@ import {
   type ContentSource,
   DOCUMENT_EXTENSION,
   documentPath,
-  entryLayout,
+  entryDataPath,
+  entryFolder,
   type FieldMap,
   INDEX_FILE,
   isValidSlug,
   isWebAddress,
   MANIFEST_PATH,
   markdocImages,
-  misplacedFiles,
   needsRowKey,
   ORDER_FILE,
   readsDocument,
@@ -29,7 +29,6 @@ import {
   readSingleton,
   resolveMarkdocTarget,
   resolveSlugField,
-  singletonPath,
   type Site,
   validateFields,
 } from "@micacms/core";
@@ -78,8 +77,8 @@ export async function checkContent(root: string): Promise<CheckReport> {
   for (const reason of readOnly.values()) error(MANIFEST_PATH, `Not checked. ${reason}`);
 
   const slugs = new Map<string, Set<string>>();
-  for (const [name, def] of Object.entries(site.collections)) {
-    slugs.set(name, new Set(await entrySlugs(files, def.fields, name, error, warning)));
+  for (const name of Object.keys(site.collections)) {
+    slugs.set(name, new Set(await entrySlugs(files, name, error, warning)));
   }
 
   const context: EntryContext = { root, files, site, slugs, error, warning };
@@ -90,9 +89,7 @@ export async function checkContent(root: string): Promise<CheckReport> {
     const slugField = resolveSlugField(def);
     for (const slug of slugs.get(name)!) {
       report.entries++;
-      const directory = entryLayout(def.fields) === "directory";
-      const base = directory ? `${name}/${slug}` : null;
-      const dataPath = directory ? `${base}/${INDEX_FILE}` : `${name}/${slug}.json`;
+      const dataPath = entryDataPath(name, slug);
 
       const data = await readOrReport(() => readCollectionEntry(files, def, name, slug), dataPath, error);
       if (!data) continue;
@@ -101,30 +98,21 @@ export async function checkContent(root: string): Promise<CheckReport> {
       if (typeof stored === "string" && stored !== "" && stored !== slug) {
         warning(dataPath, `${slugField} is "${stored}", but the entry is named "${slug}". Mica uses the name; the next save writes it into the file.`);
       }
-      await checkEntry(context, def.fields, data, dataPath, base);
+      await checkEntry(context, def.fields, data, entryFolder(name, slug));
     }
   }
 
   for (const [name, def] of Object.entries(site.singletons)) {
     report.singletons++;
     if (readOnly.has(`singletons.${name}`)) continue;
-    const directory = entryLayout(def.fields) === "directory";
-    const base = singletonPath(def.fields, name);
-    const dataPath = directory ? `${base}/${INDEX_FILE}` : base;
-    const [otherLayout] = await misplacedFiles(files, def.fields, name, "singleton");
-    if (otherLayout) {
-      error(otherLayout, `Not read: "${def.label}" is stored as ${dataPath}, because ${directory ? "it has" : "it has no"} rich text or media. Run \`npx mica migrate-layout\`.`);
-      // Without a file in the model's layout, the reader stops at the other one: reported above.
-      if ((await readText(files, dataPath)) === null) continue;
-    }
-
+    const dataPath = entryDataPath(name);
     const data = await readOrReport(() => readSingleton(files, def, name), dataPath, error);
     if (data === undefined) continue;
     if (data === null) {
       warning(dataPath, `No content for "${def.label}" yet.`);
       continue;
     }
-    await checkEntry(context, def.fields, data, dataPath, directory ? base : null);
+    await checkEntry(context, def.fields, data, entryFolder(name));
   }
 
   return report;
@@ -142,17 +130,11 @@ interface EntryContext {
 /** The slugs Mica reads in a collection, reporting what it would skip. */
 async function entrySlugs(
   files: ContentSource,
-  fields: FieldMap,
   name: string,
   error: (path: string, message: string) => void,
   warning: (path: string, message: string) => void,
 ): Promise<string[]> {
-  const directory = entryLayout(fields) === "directory";
-  const shape = directory ? `a folder with ${INDEX_FILE}` : "a <slug>.json file";
   const found: string[] = [];
-  // The reader's own rule, so that `check` and `migrate-layout` agree.
-  const misplaced = new Set(await misplacedFiles(files, fields, name, "collection"));
-
   for (const item of await files.list(name)) {
     const path = `${name}/${item.name}`;
     if (item.name.startsWith(".")) continue;
@@ -160,33 +142,20 @@ async function entrySlugs(
       checkOrder(await readText(files, path), path, error);
       continue;
     }
-
-    // An entry in the other layout is lost content, not a stray file: the model gained or lost rich text or media.
-    if (directory && misplaced.has(path)) {
-      error(path, `Not read: entries of "${name}" are folders with ${INDEX_FILE}, because it has rich text or media. Run \`npx mica migrate-layout\`.`);
+    if (item.type !== "directory") {
+      warning(path, `Not read. Each entry of "${name}" is a folder with ${INDEX_FILE}.`);
       continue;
     }
-    if (!directory && misplaced.has(`${path}/${INDEX_FILE}`)) {
-      error(path, `Not read: entries of "${name}" are <slug>.json files, because it has no rich text or media. Run \`npx mica migrate-layout\`.`);
+    if (!isValidSlug(item.name)) {
+      error(path, `Not read: "${item.name}" is not a slug. Use lowercase letters, digits and single hyphens.`);
       continue;
     }
-
-    const slug = directory ? item.name : item.name.replace(/\.json$/, "");
-    const looksLikeEntry = directory ? item.type === "directory" : item.type === "file" && item.name.endsWith(".json");
-    if (!looksLikeEntry) {
-      warning(path, `Not read. Each entry of "${name}" is ${shape}.`);
-      continue;
-    }
-    if (!isValidSlug(slug)) {
-      error(path, `Not read: "${slug}" is not a slug. Use lowercase letters, digits and single hyphens.`);
-      continue;
-    }
-    const index = directory ? await readText(files, `${path}/${INDEX_FILE}`) : "";
+    const index = await readText(files, `${path}/${INDEX_FILE}`);
     if (index === null || index instanceof Error) {
       error(path, `Not read: ${index?.message ?? `the folder has no ${INDEX_FILE}.`}`);
       continue;
     }
-    found.push(slug);
+    found.push(item.name);
   }
   return found;
 }
@@ -231,10 +200,10 @@ async function checkEntry(
   context: EntryContext,
   fields: FieldMap,
   data: Record<string, unknown>,
-  dataPath: string,
-  base: string | null,
+  folder: string,
 ): Promise<void> {
   const { root, files, slugs, error, warning } = context;
+  const dataPath = `${folder}/${INDEX_FILE}`;
 
   const result = validateFields(fields, data);
   if (!result.ok) {
@@ -266,10 +235,9 @@ async function checkEntry(
     }
   });
 
-  if (base === null) return;
-  for (const item of await files.list(base)) {
+  for (const item of await files.list(folder)) {
     if (item.type !== "file" || !item.name.endsWith(DOCUMENT_EXTENSION)) continue;
-    const path = `${base}/${item.name}`;
+    const path = `${folder}/${item.name}`;
     if (!namesRichText(fields, documentPath(item.name))) {
       warning(path, "Not read: no rich-text field has this name.");
       continue;
@@ -284,7 +252,7 @@ async function checkEntry(
     for (const target of markdocImages(text)) {
       // An address on the web is the website's business, not a file in the content.
       if (isWebAddress(target)) continue;
-      const file = resolveMarkdocTarget(target, base);
+      const file = resolveMarkdocTarget(target, folder);
       if (file === null) {
         error(path, `The image "${target}" is outside the content root.`);
         continue;

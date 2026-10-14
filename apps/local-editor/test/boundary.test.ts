@@ -167,7 +167,7 @@ describe("the running composition", () => {
     assert.equal(saved.status, 201);
 
     const written = readdirSync(path.join(contentRoot, "notes"));
-    assert.deepEqual(written, ["boundary.json"]);
+    assert.deepEqual(written, ["boundary"]);
   });
 });
 

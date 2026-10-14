@@ -1,9 +1,9 @@
 // Moves a text value out of index.json into the field's .mdoc file, after text() became richText().
-// Run `npx mica migrate-layout` first. node text-to-rich-text.mjs <content root> <collection> <key>
+// Change the model and run `npx astro sync` first. node text-to-rich-text.mjs <content root> <collection> <key>
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { collectionEntryPath, collectionSlugs, documentName, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
+import { collectionSlugs, documentName, entryFolder, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
 import { fileSystemSource } from "@micacms/core/node";
 
 const [root, collection, key] = process.argv.slice(2);
@@ -18,8 +18,8 @@ const escape = (line) =>
     .replace(/^([-+])/, "\\$1")
     .replace(/^(\d+)([.)])/, "$1\\$2");
 
-for (const slug of await collectionSlugs(fileSystemSource(root), def, collection)) {
-  const base = join(root, collectionEntryPath(def.fields, collection, slug));
+for (const slug of await collectionSlugs(fileSystemSource(root), collection)) {
+  const base = join(root, entryFolder(collection, slug));
   const file = join(base, INDEX_FILE);
   const data = JSON.parse(await readFile(file, "utf8"));
   const value = data[key];

@@ -21,12 +21,10 @@ import { dirname, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
-  collectionEntryPath,
   createReferenceCheck,
-  entryLayout,
+  entryDataPath,
+  entryFolder,
   fieldsSchema,
-  INDEX_FILE,
-  singletonPath,
   isFieldKind,
   resolveSlugField,
   MANIFEST_PATH,
@@ -230,9 +228,8 @@ export function micaCollections<S extends Site>(
         : publishModel(site, rootFor(context), context.logger));
 
   /** An entry's data file, from the content root and, outside tests, from the project root. */
-  const entryFile = (context: LoaderContext, fields: FieldMap, name: string, slug?: string) => {
-    const base = slug === undefined ? singletonPath(fields, name) : collectionEntryPath(fields, name, slug);
-    const inContent = entryLayout(fields) === "directory" ? `${base}/${INDEX_FILE}` : base;
+  const entryFile = (context: LoaderContext, name: string, slug?: string) => {
+    const inContent = entryDataPath(name, slug);
     const project = context.config?.root;
     const inProject =
       project && !options.source
@@ -271,13 +268,11 @@ export function micaCollections<S extends Site>(
     const base = rootFor(context);
     watcher.add(base);
 
-    // A collection lives in `<root>/<name>/`; a singleton is either
-    // `<root>/<name>.json` or `<root>/<name>/…`. Both are covered by this
-    // prefix, and nothing outside it can concern this loader — which is what
-    // keeps one collection's save from re-reading every other one.
+    // A collection or a singleton lives in `<root>/<name>/`. Nothing outside
+    // it can concern this loader — which is what keeps one collection's save
+    // from re-reading every other one.
     const prefix = join(base, name);
-    const mine = (path: string): boolean =>
-      path === `${prefix}.json` || path.startsWith(prefix + sep);
+    const mine = (path: string): boolean => path.startsWith(prefix + sep);
 
     let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -322,7 +317,7 @@ export function micaCollections<S extends Site>(
             context.store.clear();
 
             for (const entry of entries) {
-              const file = entryFile(context, def.fields, name, entry.slug);
+              const file = entryFile(context, name, entry.slug);
               // `images` holds paths here; the schema's `image()` makes them images.
               const meta = {
                 id: entry.slug,
@@ -355,7 +350,7 @@ export function micaCollections<S extends Site>(
                 label: `${name}/${entry.slug}`,
                 fields: def.fields,
                 data: entry.data,
-                folder: posix.dirname(entryFile(context, def.fields, name, entry.slug).inContent),
+                folder: entryFolder(name, entry.slug),
               })),
             );
             context.logger.info(`Loaded ${entries.length} ${entries.length === 1 ? "entry" : "entries"} of "${def.label}"`);
@@ -392,8 +387,8 @@ export function micaCollections<S extends Site>(
               return;
             }
 
-            const file = entryFile(context, def.fields, name);
-            await checkReferences(context, check, [{ label: name, fields: def.fields, data, folder: posix.dirname(file.inContent) }]);
+            const file = entryFile(context, name);
+            await checkReferences(context, check, [{ label: name, fields: def.fields, data, folder: entryFolder(name) }]);
             const images = await imagesOf(check, def.fields, data, file.inContent);
             const parsed = await draftTolerant(context, name, () =>
               context.parseData({

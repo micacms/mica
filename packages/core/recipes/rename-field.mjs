@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { readFile, rename, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { collectionEntryPath, collectionSlugs, documentName, entryLayout, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
+import { collectionSlugs, documentName, entryFolder, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
 import { fileSystemSource } from "@micacms/core/node";
 
 const [root, collection, from, to] = process.argv.slice(2);
@@ -12,8 +12,8 @@ const manifest = JSON.parse(await readFile(join(root, MANIFEST_PATH), "utf8"));
 const def = manifest.collections[collection];
 if (!def) throw new Error(`The model has no collection "${collection}".`);
 
-for (const slug of await collectionSlugs(fileSystemSource(root), def, collection)) {
-  const base = join(root, collectionEntryPath(def.fields, collection, slug));
+for (const slug of await collectionSlugs(fileSystemSource(root), collection)) {
+  const base = join(root, entryFolder(collection, slug));
   if (def.fields[to]?.kind === "richText") {
     // Rich text is a file beside index.json, not a key in it.
     const [old, renamed] = [join(base, documentName([from])), join(base, documentName([to]))];
@@ -21,7 +21,7 @@ for (const slug of await collectionSlugs(fileSystemSource(root), def, collection
     if (existsSync(old)) await rename(old, renamed);
     continue;
   }
-  const file = entryLayout(def.fields) === "file" ? base : join(base, INDEX_FILE);
+  const file = join(base, INDEX_FILE);
   const data = JSON.parse(await readFile(file, "utf8"));
   if (!(from in data)) continue;
   if (to in data) throw new Error(`${file} has "${to}" already.`);
