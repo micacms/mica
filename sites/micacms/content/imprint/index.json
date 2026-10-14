@@ -9,7 +9,13 @@
   "country": "Switzerland",
   "email": "alexander@muedespacher.ch",
   "sections": [
-    { "title": "About this project" },
-    { "title": "This website" }
+    {
+      "_key": "its3br",
+      "title": "About this project"
+    },
+    {
+      "_key": "ttgwh6",
+      "title": "This website"
+    }
   ]
 }
