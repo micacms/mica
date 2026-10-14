@@ -15,9 +15,6 @@ importers:
       '@micacms/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@micacms/editor-ui':
-        specifier: workspace:*
-        version: link:../../packages/editor-ui
       '@micacms/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
@@ -28,6 +25,9 @@ importers:
         specifier: ^4.3.6
         version: 4.6.6
     devDependencies:
+      '@micacms/editor-ui':
+        specifier: workspace:*
+        version: link:../../packages/editor-ui
       '@types/node':
         specifier: ^22.20.1
         version: 22.20.5

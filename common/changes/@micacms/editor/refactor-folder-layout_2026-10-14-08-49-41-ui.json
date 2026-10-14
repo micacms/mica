@@ -1,11 +1,11 @@
 {
   "changes": [
     {
-      "packageName": "@micacms/editor-ui",
+      "packageName": "@micacms/editor",
       "comment": "Describe the entry path as the entry folder.",
       "type": "none"
     }
   ],
-  "packageName": "@micacms/editor-ui",
+  "packageName": "@micacms/editor",
   "email": "alexander@muedespacher.ch"
 }
