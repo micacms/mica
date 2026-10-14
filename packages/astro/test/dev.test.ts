@@ -296,6 +296,21 @@ describe("reloading in dev", () => {
     }
   });
 
+  it("says how to load a changed model, which Astro does not reload by itself", async () => {
+    const dir = await project();
+    const watcher = createWatcher();
+
+    try {
+      const context = createContext(dir, watcher);
+      await micaCollections(site).projects.loader.load(context);
+
+      watcher.emit("change", join(dir, "src", "mica.ts"));
+      assert.ok(context.logs.some((line) => /^warn: src\/mica\.ts changed\. .*save src\/content\.config\.ts/.test(line)), context.logs.join("\n"));
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("ignores the model it wrote itself", async () => {
     const dir = await project();
     const watcher = createWatcher();

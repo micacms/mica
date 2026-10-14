@@ -6,40 +6,39 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-export const MODEL = `import {
-  collection,
-  date,
-  defineSite,
-  media,
-  richText,
-  singleton,
-  slug,
-  text,
-} from "@micacms/core";
+/** The starter's model, the same as `examples/starter/src/mica.ts` (a test compares them). */
+export const MODEL = `/**
+ * The content model. Mica builds the editor's forms from it, checks every save
+ * against it, and gives the pages their types. Change it here, and the build
+ * writes \`content/.mica/schema.json\` for Mica to read: commit that file too.
+ */
+
+import { collection, date, defineSite, media, richText, singleton, slug, tags, text, textarea } from "@micacms/core";
 
 export const site = defineSite({
   root: "./content",
-
   collections: {
-    news: collection({
-      label: "News",
-      labelSingular: "Article",
+    posts: collection({
+      label: "Posts",
+      labelSingular: "Post",
+      defaultSort: { field: "publishDate", direction: "desc" },
       fields: {
         title: text({ label: "Title", required: true, maxLength: 120, listed: true }),
-        slug: slug({ from: "title" }),
-        publishedOn: date({ label: "Published on", listed: true }),
-        cover: media({ accept: "image", alt: "required" }),
-        body: richText(),
+        slug: slug({ label: "URL", from: "title" }),
+        publishDate: date({ label: "Date", required: true, listed: true, width: "half" }),
+        tags: tags({ label: "Tags", width: "half" }),
+        cover: media({ label: "Cover image", accept: "image", alt: "required" }),
+        excerpt: textarea({ label: "Teaser", rows: 3, maxLength: 300 }),
+        body: richText({ label: "Text" }),
       },
     }),
   },
-
   singletons: {
-    settings: singleton({
+    site: singleton({
       label: "Website",
       fields: {
-        siteName: text({ label: "Site name", required: true }),
-        tagline: text({ label: "Tagline" }),
+        title: text({ label: "Site name", required: true }),
+        description: textarea({ label: "Description", rows: 2, maxLength: 160 }),
       },
     }),
   },
@@ -125,7 +124,7 @@ export function initProject(project: string): InitResult {
   result.next.push(
     model
       ? "Add the website's collections and singletons to the model in src/mica.ts."
-      : "Replace the starter model in src/mica.ts (news, settings) with the website's model.",
+      : "Replace the starter model in src/mica.ts (posts, site) with the website's model.",
     "Write the model to content/.mica/schema.json: npx astro sync",
     "Check the content: npm run check",
     "When the content is in place, open the editor in a browser: npx mica start",

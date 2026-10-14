@@ -22,11 +22,13 @@ localhost:6422
 ## Running it against a project
 
 ```bash
-npx @micacms/editor start --content ./content
+npm install --save-dev @micacms/editor
+npx mica start ./content
 ```
 
 The published package carries the API and the built admin, so this is one
-command and no clone. It binds to **loopback** and refuses anything else,
+command and no clone. Before it is installed, `npx @micacms/editor start` does
+the same. It binds to **loopback** and refuses anything else,
 answers only to `localhost` / `127.0.0.1` / `[::1]` — any other Host gets a 403
 pointing at the self-hosted distribution — and prints a banner instead of
 startup log lines before opening a browser on the editor.
@@ -42,9 +44,9 @@ keeps Publish out of the editor entirely).
 ## More commands
 
 ```bash
-npx @micacms/editor init     # add Mica to the Astro project in this directory
-npx @micacms/editor check    # check every entry against the model
-npx @micacms/editor import   # move Astro collections into Mica
+npx mica init     # add Mica to the Astro project in this directory
+npx mica check    # check every entry against the model
+npx mica import   # move Astro collections into Mica
 ```
 
 `init` writes a starter `src/mica.ts` and `src/content.config.ts`, and never
@@ -54,8 +56,10 @@ website read it, and reports what they would skip or refuse: fields that do
 not validate, missing media, relations to entries that do not exist, slug
 values in a file that differ from its name (Mica uses the name), and files
 that are not read at all. It
-exits with 1 on an error, so it fits in CI. With the package installed, both
-are also `npx mica init` and `npx mica check`.
+exits with 1 on an error and with 78 without a readable model, so it fits in
+CI. `import` moves Astro content collections into Mica from Astro's data
+store. Each command takes only its own options, and a path without an option
+is always the content root: `npx mica --help` lists them.
 
 ## Working on Mica itself
 

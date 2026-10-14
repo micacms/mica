@@ -18,7 +18,7 @@ const page = readFileSync(PAGE, "utf8");
 
 describe("the command-line reference", () => {
   it("has a section for every command in the help", () => {
-    const commands = [...help.matchAll(/\$ npx @micacms\/editor ([a-z-]+)/g)].map((match) => match[1]!);
+    const commands = [...help.matchAll(/\$ npx mica ([a-z-]+)/g)].map((match) => match[1]!);
     assert.ok(commands.length >= 4, help);
     for (const command of commands) assert.match(page, new RegExp(`^### ${command}$`, "m"), command);
   });

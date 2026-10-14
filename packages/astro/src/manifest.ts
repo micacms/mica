@@ -1,11 +1,4 @@
-/**
- * The protocol manifest this project publishes.
- *
- * Its own module rather than a function in `index.ts`, so that the integration
- * can emit a manifest without importing the loaders, and the loaders can be
- * imported without pulling in the integration. The two files would otherwise
- * import each other.
- */
+/** The protocol manifest this project publishes; the loaders write it. */
 
 import { createManifest, type ProtocolManifest, type Site } from "@micacms/core/internal";
 
