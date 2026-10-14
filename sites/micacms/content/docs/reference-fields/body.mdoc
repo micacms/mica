@@ -13,6 +13,8 @@ Import the builders from `@micacms/core`. Each builder gives plain data, so the 
 | `group` | Fields with the same group show in one box. |
 | `width` | `"full"`, `"half"` or `"third"` of the form row. |
 
+The build stops on an option that is not in these tables, for example a typo. A field with an option from a newer `@micacms/astro` is read-only in an older Mica until you upgrade it.
+
 ## The builders
 
 | Builder | Stores | Options |
@@ -76,7 +78,7 @@ export const site = defineSite({
 | `fields` | The fields. |
 | `titleField` | The key that names an entry in lists. Default: `title`, else the first `text()`, else the slug. |
 | `slugField` | The key of the slug. Default: the first `slug()`. |
-| `defaultSort` | `{ field, direction }` for the list in the editor. `field` is a field of the collection or `"position"`. It does not sort your pages. |
+| `defaultSort` | `{ field, direction }` for the list in the editor. `field` is a field of the collection or `"position"`. Text sorts alphabetically in English, and a date with a time by its instant. It does not sort your pages. |
 | `sortable` | Editors can put the entries in an order. Mica keeps it in `_order.json`. |
 
 `singleton()` takes `label`, `description` and `fields`. `defineSite()` takes `root`, `collections` and `singletons`.

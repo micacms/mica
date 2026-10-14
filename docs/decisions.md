@@ -1283,19 +1283,23 @@ same source as the types.
 
 ---
 
-### P2 — An unknown field kind makes its collection read-only
+### P2 — An unknown field kind or option makes its collection read-only
 
-**Decided:** when the manifest uses a field kind that this build of Mica does
-not know, Mica still starts. The collection or singleton that contains the
-kind opens read-only, with a warning that names the upgrade; every other
-collection stays editable. A manifest with a newer `protocolVersion` is still
+**Decided:** when the manifest uses a field kind or a field option that this
+build of Mica does not know, Mica still starts. The collection or singleton
+that contains it opens read-only, with a warning that names the upgrade; every
+other collection stays editable. An unknown toolbar feature and a default sort
+by a missing field are left out with a warning, because only the editor's
+buttons or a list order depend on them. In the site's own build, an unknown
+kind or option is a typo, and the build stops. A manifest with a newer `protocolVersion` is still
 refused, because that is the signal for a change that cannot degrade. The
 fields do not choose where entries are, so Mica finds them without
 interpreting the unknown kind.
 
 **Why:** a developer upgrades `@micacms/astro` with the site, and the operator
 upgrades the image on another schedule. Refusing to start locks out every
-editor over one field. Locking only the field would need saves to round-trip a
+editor over one field. An option can change what is stored, as `media({ alt })`
+did, so an older build that ignored it could drop data on a save. Locking only the field would need saves to round-trip a
 value and sidecars that Mica does not understand; locking the collection means
 Mica never writes what it cannot interpret.
 
@@ -1303,9 +1307,11 @@ Mica never writes what it cannot interpret.
 image is upgraded. The versioning policy says: upgrade the image first, or at
 the same time.
 
-**Built (#60):** `readOnlyParts` in the runtime names the parts. Writes and
-uploads are refused with the reason, and Publish refuses their pending
-changes. The editor shows a notice and a placeholder for the unknown field;
+**Built (#60, #222):** `readManifest` in core checks the manifest for every
+reader and returns the model, the read-only parts and the warnings; it refuses
+a manifest without the protocol envelope. `FIELD_OPTIONS` lists the options of
+each kind, and a type check keeps it complete. Writes and uploads are refused
+with the reason, and Publish refuses their pending changes. The editor shows a notice and a placeholder for the unknown field;
 `mica check` reports the part as an error and checks the rest.
 
 **What would change it:** editors who are often blocked by this; then lock
