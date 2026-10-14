@@ -24,6 +24,8 @@ export interface GitCallOptions {
   input?: string;
   /** Added to the runner's environment for this call only. */
   env?: NodeJS.ProcessEnv;
+  /** Replaces the runner's time limit for this call. */
+  timeoutMs?: number;
 }
 
 export interface GitRunner {
@@ -61,7 +63,7 @@ export function gitRunner(cwd: string, options: GitRunnerOptions = {}): GitRunne
         {
           cwd,
           env: call.env ? { ...env, ...call.env } : env,
-          timeout: options.timeoutMs ?? 60_000,
+          timeout: call.timeoutMs ?? options.timeoutMs ?? 60_000,
           maxBuffer: options.maxBuffer ?? 10 * 1024 * 1024,
         },
         (error, stdout, stderr) => {

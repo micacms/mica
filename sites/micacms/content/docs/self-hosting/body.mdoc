@@ -182,7 +182,9 @@ Mica logs `Published` (with the commit and the number of files), `Discarded` (wi
 What Mica does with the repository:
 
 - **It clones** the branch into `MICA_DATA_DIR/repository` at the first start. The clone has one branch, and Git downloads only the files of the current tree.
-- **It syncs** at each interval: it fetches the branch and fast-forwards. It never merges, rebases, or stashes. Developers can push to the branch as before.
+- **It starts** with the model in its clone, and syncs in the background. Only when the clone has no model that this version can read does the start wait for a sync.
+- **It syncs** at once and then at each interval: it fetches the branch and fast-forwards. It never merges, rebases, or stashes. Developers can push to the branch as before. If a sync is still running at the next interval, Mica skips that interval.
+- **It holds a version that it cannot use.** If the new version of the branch has a content model that this Mica cannot read (`model_unreadable`), or assigns Git LFS to files under the content root (`lfs_refused`), Mica keeps the old version. Editors can save, and Publish waits. Push a fix, or upgrade Mica.
 - **It finds conflicts.** If somebody changes an entry on the website while an editor has a draft of that entry, this is a conflict. The editor sees it on the Overview, on the Publish page, and on the entry, and chooses **Keep my version** or **Use the website's version**. While a conflict exists, Mica does not fast-forward and Publish waits.
 - **It tries again.** If the branch moved during a publication, Mica removes its commit, catches up, makes the commit again with the same author and message, and pushes. It tries three times. If the host cannot be reached, the publication stays committed in Mica, and the Publish page shows "Published in Mica, not on the website yet". Mica sends it later.
 - **A refused push turns the publication back into drafts.** If the host refuses the push, for example because of a protected branch, a server hook, or a token that cannot write, the changes are saved drafts again. The Publish page and the System page show the reason of the host. Nothing is lost.
@@ -272,13 +274,7 @@ The image tag in `compose.yml` is the version. Read the [changelog](https://gith
 docker compose pull && docker compose up -d
 ```
 
-When you change the content model, run the Astro build, commit `.mica/schema.json`, and push. Mica brings the change in with its next sync and uses the new model at once; editors see a notice to load the page again. The image holds no model, so a model change never needs a new image. If the new model cannot be read, Mica keeps the old one, logs a warning, and the System page names the problem.
-
-Only a change to a `.gitattributes` file that applies under the content root needs a restart. Until then, the System page shows "Restart needed", `/ready` has `restart_required`, editors can save, and Publish waits. Drafts stay in the clone during the restart.
-
-```bash
-docker compose restart mica
-```
+When you change the content model, run the Astro build, commit `.mica/schema.json`, and push. Mica brings the change in with its next sync and uses the new model at once; editors see a notice to load the page again. The image holds no model, so a model change never needs a new image. If this Mica cannot read the new model, it keeps the old version of the branch, and `/ready` has `model_unreadable`. Upgrade Mica, or push a model that it can read. A change to a `.gitattributes` file needs no restart.
 
 ## Verify the image
 
@@ -295,6 +291,12 @@ docker buildx imagetools inspect ghcr.io/micacms/mica:<version> --format '{{ jso
 ```
 
 The compose file hardens the container: a read-only root file system, `/tmp` in memory, no Linux capabilities, `no-new-privileges`, and a 512 MB memory limit. Only the `/data` volume is writable.
+
+Git in the image has settings for a large repository with many images and for a slow network. You cannot change them:
+
+- A fetch or a push stops when it stays below 1 kB/s for 60 seconds, and after 5 minutes in all. The first clone can take 60 minutes.
+- A repack uses one thread and at most 256 MB for its window (`pack.threads`, `pack.windowMemory`). Git does not compare files larger than 16 MB with other files (`core.bigFileThreshold`).
+- `feature.manyFiles` and `core.untrackedCache` make the status of a large tree faster.
 
 ## Troubleshooting
 

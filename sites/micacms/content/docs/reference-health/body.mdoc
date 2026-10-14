@@ -46,7 +46,8 @@ The reason codes. Each code makes the status `degraded`, except `cloning` (`erro
 | `fast_forward_failed` | A sync could not bring the clone to the new version. | Read the log. |
 | `sync_failing` | Another sync problem. | Read the log, and run `docker compose run --rm mica check`. |
 | `pending_push` | A publication is committed in the clone, but the Git host did not take it yet. | Mica tries again at each sync. Look at the other codes for the cause. |
-| `restart_required` | `.gitattributes` changed at the Git host. Mica keeps the old version of the branch until a restart checks it. | Restart the container. |
+| `lfs_refused` | The new version of the branch assigns Git LFS to files under the content root. Mica keeps the old version, and Publish waits. | Keep LFS out of the content root. |
+| `model_unreadable` | This Mica cannot read the content model of the new version. Mica keeps the old version, and Publish waits. | Upgrade Mica, or push a model that it can read. |
 | `read_only` | A sync failed while it changed the files, and Mica could not undo it. Editors cannot save or publish. | Read the log, then restart the container: the start finishes the sync. |
 | `conflict` | An editor's draft and a change at the Git host touch the same entry. | Nothing: the editor chooses a version in the editor. |
 

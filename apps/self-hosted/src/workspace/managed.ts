@@ -26,7 +26,7 @@ import {
   type WorkspaceLocks,
 } from "@micacms/runtime";
 
-import { CloneRefusal, lfsRefusal, writeBackKept, writeMarker, type CloneLayout } from "./clone.js";
+import { lfsRefusal, NETWORK_CALL_MS, writeBackKept, writeMarker, type CloneLayout } from "./clone.js";
 import { redact } from "./credentials.js";
 import { classifyFailure, describeFailure, readPush, type FailureClass, type PushOutcome } from "./failures.js";
 import { MICA_IDENTITY } from "./isolation.js";
@@ -48,7 +48,7 @@ export interface ConflictGroup extends ContentGroup {
 }
 
 export interface SyncProblem {
-  code: FailureClass | "prefetch_incomplete" | "fast_forward_failed" | "diverged";
+  code: FailureClass | "prefetch_incomplete" | "fast_forward_failed" | "diverged" | "lfs_refused" | "model_unreadable";
   message: string;
   since: string;
 }
@@ -59,8 +59,6 @@ export interface SyncState {
   lastSyncAt: string | null;
   /** Upstream commits not yet in the clone. */
   behind: number;
-  /** Upstream changed `.gitattributes`; a restart applies it. A new content model needs none. */
-  restartRequired: boolean;
   conflicts: ConflictGroup[];
   pendingPush: { revision: string; reason: string } | null;
   /** The last publication the host refused, turned back into drafts. */
@@ -91,14 +89,16 @@ export interface ManagedWorkspaceOptions {
   syncSeconds: number;
   /** After a fast-forward brought a new content model: the app uses it at once. */
   onModelChange?(): Promise<void>;
+  /** Why this image cannot read a content model (the text of `.mica/schema.json`), or null. */
+  modelProblem?(manifest: string): Promise<string | null>;
 }
 
 export interface ManagedWorkspace {
   policy: OwnerPolicy;
   state(): SyncState;
   /**
-   * At start, `skipHold` lets the fast-forward apply a model change; the model
-   * is read after it.
+   * `skipHold` lets the fast-forward apply a model that this image cannot read:
+   * at a start without a readable model, a newer one is the only way forward.
    */
   sync(options?: { skipHold?: boolean }): Promise<SyncState>;
   resolve(group: string, choice: "mine" | "website"): Promise<SyncState>;
@@ -122,6 +122,9 @@ class RemoteFailure extends Error {
 
 const MAX_PUSH_TRIES = 3;
 
+/** Failures that keep the clone from the website's version: Publish waits for them. */
+const HOLDS = new Set<SyncProblem["code"]>(["diverged", "lfs_refused", "model_unreadable"]);
+
 /** Failures that a successful fetch ends. */
 const REACHABILITY = new Set<SyncProblem["code"]>(["auth", "network", "repo_not_found", "branch_not_found", "unknown"]);
 
@@ -134,7 +137,6 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     head: null,
     lastSyncAt: null,
     behind: 0,
-    restartRequired: false,
     conflicts: [],
     pendingPush: null,
     refused: null,
@@ -144,6 +146,8 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
   /** Groups whose editor chose "Keep my version"; applied at the next fast-forward. */
   const kept = new Set<string>();
   let timer: NodeJS.Timeout | null = null;
+  /** A timed sync that finds one running skips its turn, so a slow network does not queue them. */
+  let syncing = false;
 
   const underRoot = (path: string) => root === "" || path.startsWith(`${root}/`);
   const contentPath = (path: string) => (root === "" ? path : path.slice(root.length + 1));
@@ -152,7 +156,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
   const fetch = async () => {
     try {
-      await git.run(["fetch", "--quiet", "--no-tags", "origin"]);
+      await git.run(["fetch", "--quiet", "--no-tags", "origin"], { timeoutMs: NETWORK_CALL_MS });
     } catch (error) {
       throw remoteFailure(error);
     }
@@ -198,14 +202,6 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     const to = await git.run(["rev-parse", upstreamRef]);
     state.head = from;
 
-    // At start, LFS is checked even when nothing moved: the clone may be older
-    // than the attributes that added LFS.
-    if (skipHold) {
-      state.restartRequired = false;
-      const lfs = await lfsUnderRoot(git, to, root);
-      if (lfs) throw lfsRefusal(lfs, root);
-    }
-
     if (from === to) {
       state.behind = 0;
       state.conflicts = [];
@@ -220,7 +216,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     // Download every blob the fast-forward will write, then make sure they all
     // arrived: the fast-forward must not need the network. Only the new side
     // counts.
-    await git.run(["diff", "--numstat", from, to]);
+    await git.run(["diff", "--numstat", from, to], { timeoutMs: NETWORK_CALL_MS });
     // `-z --no-renames` gives pairs of metadata and path, so a path that starts
     // with ":" is still a path.
     const fields = (await git.run(["diff", "--raw", "-z", "--no-renames", "--no-abbrev", from, to])).split("\0");
@@ -243,13 +239,17 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     state.behind = Number(await git.run(["rev-list", "--count", `${from}..${to}`]));
     const upstream = await changedBetween(git, from, to);
 
-    if (!skipHold && upstream.some((path) => attributesPlace(path, root) !== null)) {
-      // Hold the fast-forward: the LFS check runs at start.
-      if (!state.restartRequired) logger.warn("The Git attributes changed upstream; a restart applies them", { to });
-      state.restartRequired = true;
-      return;
+    // Hold a version that Mica cannot work with; the next sync tries again.
+    if (upstream.some((path) => attributesPlace(path, root) !== null)) {
+      const lfs = await lfsUnderRoot(git, to, root);
+      if (lfs) throw new RemoteFailure("lfs_refused", lfsRefusal(lfs, root).message);
     }
     const modelChanged = upstream.includes(manifestPath);
+    if (modelChanged && !skipHold) {
+      const manifest = await git.tryRun(["show", `${to}:${manifestPath}`]);
+      const problem = manifest === null ? `The new version has no ${manifestPath}.` : await options.modelProblem?.(manifest);
+      if (problem) throw new RemoteFailure("model_unreadable", `This Mica cannot read the new content model: ${problem}`);
+    }
 
     await locks.tree.write(async () => {
       const drafts = await draftPaths(git, root);
@@ -365,7 +365,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     try {
       return await pushHeld();
     } catch (error) {
-      if (error instanceof ApiError || error instanceof CloneRefusal) throw error;
+      if (error instanceof ApiError) throw error;
       // After an undo, a failure leaves the publication as drafts again.
       const problem = error instanceof RemoteFailure ? error : new RemoteFailure("unknown", clean(String(error)));
       recordError(problem);
@@ -419,12 +419,10 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       await undoPublication();
       await fetch();
       await fastForward(false);
-      if (state.restartRequired || state.conflicts.length > 0) {
+      if (state.conflicts.length > 0) {
         throw new ApiError(
           "conflict",
-          state.restartRequired
-            ? "The way the website stores its files changed. Ask the person who runs Mica to restart it, then publish again."
-            : "The website changed some of these entries while you published. Resolve the conflicts, then publish again.",
+          "The website changed some of these entries while you published. Resolve the conflicts, then publish again.",
         );
       }
       await options.revalidate?.(paths);
@@ -458,7 +456,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
   const pushOnce = async (args: string[]): Promise<PushOutcome> => {
     try {
-      await git.run(args);
+      await git.run(args, { timeoutMs: NETWORK_CALL_MS });
       return { kind: "pushed" };
     } catch (error) {
       if (!(error instanceof GitError)) throw error;
@@ -502,8 +500,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       state.error = null;
       state.lastSyncAt = new Date().toISOString();
     } catch (error) {
-      // A refusal stops the start; anything else is recorded, and the next sync tries again.
-      if (error instanceof CloneRefusal) throw error;
+      // Recorded; the next sync tries again.
       recordError(error instanceof RemoteFailure ? error : new RemoteFailure("unknown", clean(String(error))));
     }
     return snapshot();
@@ -518,7 +515,6 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     lastSyncAt: state.lastSyncAt,
     behind: state.behind,
     error: state.error,
-    restartRequired: state.restartRequired,
     pendingPush: state.pendingPush,
     refused: state.refused,
     conflicts: state.conflicts.map(({ key, label, paths, upstream, target }) => ({
@@ -549,12 +545,6 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
     publishAvailability(): PublishAvailability {
       if (state.readOnly) return { enabled: false, reason: state.readOnly };
-      if (state.restartRequired) {
-        return {
-          enabled: false,
-          reason: "The way the website stores its files changed. Ask the person who runs Mica to restart it.",
-        };
-      }
       if (state.conflicts.length > 0) {
         return { enabled: false, reason: "Some entries were changed on the website while you edited them." };
       }
@@ -565,7 +555,8 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     // sync runs between commit and push.
     async prepare() {
       await syncHeld();
-      if (state.error?.code === "diverged") throw new ApiError("conflict", state.error.message);
+      // The website has a version that Mica cannot bring in, so a publication cannot go on top of it.
+      if (state.error && HOLDS.has(state.error.code)) throw new ApiError("conflict", state.error.message);
       const availability = policy.publishAvailability();
       if (!availability.enabled) throw new ApiError("conflict", availability.reason);
       if (state.pendingPush) {
@@ -607,11 +598,18 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
         pushOnce(["push", "--dry-run", "--porcelain", "origin", `refs/remotes/${upstreamRef}:refs/heads/${branch}`]),
       ),
 
+    /** Syncs at once, and then every `syncSeconds`. */
     start() {
       if (timer) return;
-      timer = setInterval(() => {
-        void sync().catch((error: unknown) => logger.error("Sync crashed", { error: String(error) }));
-      }, options.syncSeconds * 1000);
+      const tick = () => {
+        if (syncing) return;
+        syncing = true;
+        sync()
+          .catch((error: unknown) => logger.error("Sync crashed", { error: String(error) }))
+          .finally(() => (syncing = false));
+      };
+      tick();
+      timer = setInterval(tick, options.syncSeconds * 1000);
       timer.unref();
     },
 

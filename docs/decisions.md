@@ -429,9 +429,10 @@ check would mix an entry from two sides, so the unit is the group.
 
 **Consequence:** one conflict holds the fast-forward for every editor until
 somebody chooses, so it is shown on the Dashboard, the Publish page and the
-entry's own page. A change upstream to `.gitattributes` holds too, until a
-restart; a new content model is used at once (see "The content model is read at
-startup, and again when it changes").
+entry's own page. A version upstream that assigns LFS under the content root,
+or has a model that the image cannot read, holds too; a new content model that
+it can read is used at once (see "The content model is read at startup, and
+again when it changes").
 
 **What would change it:** frequent conflicts on different fields of one entry;
 then a merge per field.
@@ -631,6 +632,13 @@ model cannot drop a new field's value without a conflict: the entry's file
 changed, so the save's revision no longer matches. Only a `.gitattributes`
 change still holds the fast-forward until a restart, because the LFS check runs
 at start.
+
+**Changed in 0.9 (#231):** no change needs a restart. The sync checks a new
+`.gitattributes` for LFS and a new model for whether the image can read it, and
+holds the fast-forward (`lfs_refused`, `model_unreadable`) until a later version
+passes. The start serves with the model at the clone's head and syncs in the
+background. Only a clone without a readable model waits for a sync that skips
+the hold, because a newer model is then the only way forward.
 
 **1.0 status:** accepted for 1.0.
 

@@ -418,15 +418,8 @@ function plural(count: number, one: string, many: string): string {
 
       <!-- Mica's own clone: shown only when something needs attention. -->
       <template v-if="sync">
-        <div v-if="sync.restartRequired" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
-          <p class="text-sm font-medium text-warning">The way the website stores its files changed</p>
-          <p class="mt-1 text-xs text-muted">
-            You can go on saving. To publish, ask the person who runs Mica to restart it.
-          </p>
-        </div>
-
         <div v-if="sync.error" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
-          <p class="text-sm font-medium text-warning">Mica cannot reach the website's files since {{ since(sync.error.since) }}</p>
+          <p class="text-sm font-medium text-warning">Mica cannot bring in the website's latest version since {{ since(sync.error.since) }}</p>
           <p class="mt-1 text-xs text-muted">
             You can go on saving. Mica tries again every minute. If this stays, tell the person who runs Mica:
             {{ sync.error.message }}
