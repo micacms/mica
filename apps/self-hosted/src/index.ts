@@ -59,10 +59,10 @@ const SHUTDOWN_WAIT_MS = 10_000;
 function refuseWritesWhile(files: ContentFiles, readOnly: () => string | null): ContentFiles {
   return {
     ...files,
-    async apply(input) {
+    async apply(input, after) {
       const reason = readOnly();
       if (reason) throw new ConflictError(reason, []);
-      return files.apply(input);
+      return files.apply(input, after);
     },
   };
 }

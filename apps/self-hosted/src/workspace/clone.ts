@@ -284,9 +284,10 @@ async function recover(git: GitRunner, options: OpenCloneOptions, root: string):
     logger.warn("Restored the drafts of an interrupted \"Keep my version\"");
   }
 
-  // Temporary files of a save that a crash interrupted.
+  // Temporary files and folders of a save that a crash interrupted.
   for (const path of await draftPaths(git, root)) {
-    if (/\.mica-\d+-\d+$/.test(path)) await rm(join(layout.repositoryDir, path), { force: true });
+    const temporary = /^(.*?\.mica-\d+-\d+)(?:\/|$)/.exec(path);
+    if (temporary) await rm(join(layout.repositoryDir, temporary[1]!), { recursive: true, force: true });
   }
 }
 

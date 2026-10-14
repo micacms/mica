@@ -166,8 +166,8 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
    * The entry's revision after a write. Throws when the entry is absent,
    * because an empty token could never match.
    */
-  const revisionAfterWrite = async (folder: string): Promise<string> => {
-    const revision = await documentRevision(folder);
+  const revisionAfterWrite = async (folder: string, files: ContentFiles): Promise<string> => {
+    const revision = await documentRevision(folder, files);
     if (revision === null) {
       throw new ContentError(`Saved, but "${folder}/${INDEX_FILE}" is not in the repository afterwards.`);
     }
@@ -178,7 +178,8 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
    * The revision of a whole entry: every file of its folder. A change to any
    * one of them makes the next save a conflict, not an overwrite.
    */
-  const documentRevision = async (folder: string): Promise<string | null> => hashFiles(await documentFiles(folder));
+  const documentRevision = async (folder: string, files: ContentFiles = workspace): Promise<string | null> =>
+    hashFiles(await documentFiles(folder, files));
 
   const hashFiles = (files: Map<string, string> | null): string | null => {
     if (files === null) return null;
@@ -187,20 +188,20 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
   };
 
   /** Every file of an entry's folder with its revision, or null when it has no data file. */
-  const documentFiles = async (folder: string): Promise<Map<string, string> | null> => {
+  const documentFiles = async (folder: string, source: ContentFiles = workspace): Promise<Map<string, string> | null> => {
     const dataFile = `${folder}/${INDEX_FILE}`;
-    const data = await workspace.revision(dataFile);
+    const data = await source.revision(dataFile);
     if (data === null) return null;
-    const files = new Map([[dataFile, data]]);
+    const found = new Map([[dataFile, data]]);
     const walk = async (dir: string): Promise<void> => {
-      for (const item of await workspace.list(dir)) {
+      for (const item of await source.list(dir)) {
         const child = `${dir}/${item.name}`;
         if (item.type === "directory") await walk(child);
-        else files.set(child, (await workspace.revision(child)) ?? "");
+        else found.set(child, (await source.revision(child)) ?? "");
       }
     };
     await walk(folder);
-    return files;
+    return found;
   };
 
   /**
@@ -298,7 +299,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
    * copied, because that entry may use them too.
    */
   const stagedUploads = async (def: Collection, collection: string, data: Record<string, unknown>, base: string) => {
-    const moves: Array<{ from: string; to: string; bytes: Uint8Array; keep: boolean }> = [];
+    const moves: Array<{ from: string; to: string; keep: boolean }> = [];
     const taken = new Set((await workspace.list(`${base}/media`)).map((item) => item.name));
     for (const reference of collectReferences(def.fields, data)) {
       if (reference.kind !== "media") continue;
@@ -306,14 +307,13 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       if (!match || match[1] !== collection || `${collection}/${match[2]}` === base) continue;
       if (moves.some((move) => move.from === reference.path)) continue;
       const keep = (await workspace.read(entryDataPath(collection, match[2]!))) !== null;
-      const bytes = await workspace.readBinary(reference.path);
-      if (bytes === null) continue;
+      if ((await workspace.stat(reference.path)) === null) continue;
       const extension = match[3]!.includes(".") ? match[3]!.slice(match[3]!.lastIndexOf(".")) : "";
       const stem = match[3]!.slice(0, match[3]!.length - extension.length);
       let name = match[3]!;
       for (let n = 2; taken.has(name); n += 1) name = `${stem}-${n}${extension}`;
       taken.add(name);
-      moves.push({ from: reference.path, to: `${base}/media/${name}`, bytes, keep });
+      moves.push({ from: reference.path, to: `${base}/media/${name}`, keep });
     }
     return moves;
   };
@@ -412,13 +412,14 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
         contents,
       }));
       for (const item of staged) {
-        changes.push({ type: "write", path: item.to, contents: item.bytes });
+        changes.push({ type: "copy", from: item.from, path: item.to });
         if (!item.keep) changes.push({ type: "delete", path: item.from });
       }
 
       if (previousBase) {
-        changes.push({ type: "deleteTree", path: previousBase });
+        // The copies first: they read from the old folder.
         await moveFiles(workspace, def.fields, previousBase, base, changes);
+        changes.push({ type: "deleteTree", path: previousBase });
         const order = await renameInOrder(collectionName, input.slug!, slug);
         if (order) changes.push(order);
       } else {
@@ -452,19 +453,18 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
 
       const title = entryTitle(def, data);
       const expected = await expectDocument(input.expectedRevision, previousBase ?? base);
+      let revision: string;
       try {
-        await workspace.apply({
-          changes,
-          expect: relinked > 0 ? { ...expected, ...referrerRevisions } : expected,
-        });
+        revision = await workspace.apply(
+          { changes, expect: relinked > 0 ? { ...expected, ...referrerRevisions } : expected },
+          (files) => revisionAfterWrite(base, files),
+        );
       } catch (error) {
         if (error instanceof ConflictError && error.paths.some((path) => path in referrerRevisions)) {
           throw new ConflictError("An entry or page that links here changed while you saved. Save again.", error.paths);
         }
         throw error;
       }
-
-      const revision = await revisionAfterWrite(base);
 
       return { slug, title, revision, renamed: previousBase !== null, relinked };
     },
@@ -501,9 +501,8 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       );
       changes.push(...(await staleDocuments(def.fields, base, new Set(Object.keys(serialized.documents)))));
 
-      await workspace.apply({ changes, expect: await expectDocument(options.expectedRevision, base) });
-
-      return { revision: await revisionAfterWrite(base) };
+      const expect = await expectDocument(options.expectedRevision, base);
+      return { revision: await workspace.apply({ changes, expect }, (files) => revisionAfterWrite(base, files)) };
     },
 
     /** The revision of a collection's order file, or null without one. */
@@ -521,17 +520,20 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
 
       const path = `${collectionName}/${ORDER_FILE}`;
       try {
-        await workspace.apply({
-          changes: [{ type: "write", path, contents: `${JSON.stringify(slugs, null, 2)}\n` }],
-          expect: { [path]: expectedRevision },
-        });
+        const written = await workspace.apply(
+          {
+            changes: [{ type: "write", path, contents: `${JSON.stringify(slugs, null, 2)}\n` }],
+            expect: { [path]: expectedRevision },
+          },
+          (files) => files.revision(path),
+        );
+        return written!;
       } catch (error) {
         if (error instanceof ConflictError) {
           throw new ConflictError("Someone changed this order after you opened it. Reload to see the current order.", [path]);
         }
         throw error;
       }
-      return (await workspace.revision(path))!;
     },
 
     requireCollection,
@@ -658,8 +660,7 @@ async function moveFiles(
       // Written by the save from the data: `index.json`, and the rich text that the model declares.
       if (relative === `/${INDEX_FILE}`) continue;
       if (dir === "" && item.name.endsWith(DOCUMENT_EXTENSION) && declaresDocument(fields, documentPath(item.name))) continue;
-      const bytes = await files.readBinary(`${from}${relative}`);
-      if (bytes !== null) changes.push({ type: "write", path: `${to}${relative}`, contents: bytes });
+      changes.push({ type: "copy", from: `${from}${relative}`, path: `${to}${relative}` });
     }
   };
   await walk("");

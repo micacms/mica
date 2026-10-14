@@ -1746,6 +1746,14 @@ a counting Git runner):
 - A full collection is read eight entries at a time.
 - The editor refreshes the change list after its own writes and when the
   window gets focus, not on every navigation.
+- No whole media file is in memory (#235). A revision is a streamed hash, kept
+  while the file's size, change times and inode stay the same, with eight
+  hashes at a time. An upload is one file for each request, which streams to a
+  temporary file in its folder; only its first 512 kB are kept, for the type
+  and the dimensions. The file route streams. A URL change copies the media on
+  disk, and a save puts what it overwrites or deletes aside under a temporary
+  name, not in memory, to undo a failure. A save returns the revision that it
+  reads under its own write lock.
 
 **Why:** 0.5 took the network out of reads, but opening one entry still read
 its whole collection, and the media list read every image. At a few hundred

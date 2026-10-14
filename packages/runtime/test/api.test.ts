@@ -10,7 +10,6 @@ import { clientIp, type Env } from "../src/http.js";
 import { createLogger, type Logger } from "../src/lib/logger.js";
 import {
   CONTENT_SECURITY_POLICY,
-  MAX_FILES_PER_UPLOAD,
   MAX_JSON_BYTES,
   securityHeaders,
 } from "../src/middleware/index.js";
@@ -18,7 +17,7 @@ import { healthRoutes } from "../src/routes/health.js";
 
 import {
   createHarness,
-  multipart,
+  uploadPath,
   pngBytes,
   testSite,
   type TestHarness,
@@ -179,21 +178,22 @@ describe("request size", () => {
 
   it("refuses an upload above the limit", async () => {
     const big = new Uint8Array(10 * 1024 + 1024 * 1024 + 1);
-    const response = await harness.request("/api/admin/media", {
-      method: "POST",
-      body: multipart([{ name: "big.png", bytes: big, type: "image/png" }]),
-    });
+    const response = await harness.request(uploadPath("big.png"), { method: "POST", body: big });
     assert.equal(response.status, 413);
   });
 
-  it("refuses more files than one upload may carry", async () => {
-    const files = Array.from({ length: MAX_FILES_PER_UPLOAD + 1 }, (_, i) => ({
-      name: `f${i}.png`,
-      bytes: pngBytes(),
-      type: "image/png",
-    }));
-    const response = await harness.request("/api/admin/media", { method: "POST", body: multipart(files) });
-    assert.equal(response.status, 400);
+  it("refuses an upload above the limit that does not say its size, and keeps no part of it", async () => {
+    const big = new Uint8Array(4 * 1024);
+    big.set(pngBytes());
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(big);
+        controller.close();
+      },
+    });
+    const response = await harness.request(uploadPath("big.png"), { method: "POST", body, duplex: "half" } as RequestInit);
+    assert.equal(response.status, 413);
+    assert.deepEqual(readdirSync(join(harness.contentRoot, "media")).filter((name) => name.includes(".mica-")), []);
   });
 });
 
@@ -531,13 +531,11 @@ describe("media", () => {
   });
   after(() => harness.close());
 
-  const upload = (form: FormData) =>
-    harness.request("/api/admin/media", { method: "POST", body: form });
+  const upload = (name: string, bytes: Uint8Array, query: Record<string, string> = {}) =>
+    harness.request(uploadPath(name, query), { method: "POST", body: bytes });
 
   it("commits an upload into the repository", async () => {
-    const response = await upload(
-      multipart([{ name: "Pixel Image.png", bytes: pngBytes(), type: "image/png" }]),
-    );
+    const response = await upload("Pixel Image.png", pngBytes());
 
     assert.equal(response.status, 201);
     const body = (await response.json()) as {
@@ -553,16 +551,14 @@ describe("media", () => {
 
   it("trusts the bytes rather than the declared content type", async () => {
     const disguised = new TextEncoder().encode("#!/bin/sh\necho not an image at all\n");
-    const response = await upload(
-      multipart([{ name: "evil.png", bytes: disguised, type: "image/png" }]),
-    );
+    const response = await upload("evil.png", disguised);
 
     assert.equal(response.status, 415);
   });
 
   it("does not let one upload overwrite another with the same name", async () => {
-    const first = await upload(multipart([{ name: "same.png", bytes: pngBytes(), type: "image/png" }]));
-    const second = await upload(multipart([{ name: "same.png", bytes: pngBytes(), type: "image/png" }]));
+    const first = await upload("same.png", pngBytes());
+    const second = await upload("same.png", pngBytes());
 
     const a = (await first.json()) as { items: Array<{ path: string }> };
     const b = (await second.json()) as { items: Array<{ path: string }> };
@@ -572,34 +568,26 @@ describe("media", () => {
   });
 
   it("places an upload beside the entry that will reference it", async () => {
-    const form = multipart([{ name: "cover.png", bytes: pngBytes(), type: "image/png" }]);
-    form.set("directory", "projects/haus-a/media");
-
-    const response = await upload(form);
+    const response = await upload("cover.png", pngBytes(), { directory: "projects/haus-a/media" });
     const body = (await response.json()) as { items: Array<{ path: string }> };
 
     assert.equal(body.items[0]!.path, "projects/haus-a/media/cover.png");
   });
 
   it("refuses a directory that leaves the content root", async () => {
-    const form = multipart([{ name: "escape.png", bytes: pngBytes(), type: "image/png" }]);
-    form.set("directory", "../../escaped");
-
-    assert.equal((await upload(form)).status, 400);
+    assert.equal((await upload("escape.png", pngBytes(), { directory: "../../escaped" })).status, 400);
     assert.equal(existsSync(join(harness.contentRoot, "../../escaped")), false);
   });
 
   it("refuses an upload directory that is not a media folder", async () => {
     for (const directory of ["projects/haus-a", "", "media/../projects"]) {
-      const form = multipart([{ name: "stray.png", bytes: pngBytes(), type: "image/png" }]);
-      form.set("directory", directory);
-      assert.equal((await upload(form)).status, 400, directory);
+      assert.equal((await upload("stray.png", pngBytes(), { directory })).status, 400, directory);
     }
   });
 
   it("refuses an SVG upload, and says why", async () => {
     const svg = new TextEncoder().encode('<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>');
-    const response = await upload(multipart([{ name: "logo.svg", bytes: svg, type: "image/svg+xml" }]));
+    const response = await upload("logo.svg", svg);
 
     assert.equal(response.status, 415);
     assert.match(((await response.json()) as { error: { message: string } }).error.message, /SVG/);
@@ -624,7 +612,7 @@ describe("media", () => {
   });
 
   it("serves a file sandboxed, and anything but an image as a download", async () => {
-    await upload(multipart([{ name: "shown.png", bytes: pngBytes(), type: "image/png" }]));
+    await upload("shown.png", pngBytes());
     const image = await harness.request("/api/admin/media/file/media/shown.png");
     assert.equal(image.status, 200);
     assert.equal(image.headers.get("content-security-policy"), "sandbox; default-src 'none'");
@@ -662,7 +650,7 @@ describe("media", () => {
   });
 
   it("lists what the repository holds", async () => {
-    await upload(multipart([{ name: "listed.png", bytes: pngBytes(), type: "image/png" }]));
+    await upload("listed.png", pngBytes());
 
     const response = await harness.request("/api/admin/media");
     const body = (await response.json()) as { items: Array<{ path: string }> };
@@ -671,7 +659,7 @@ describe("media", () => {
   });
 
   it("serves a file to a signed-in editor", async () => {
-    await upload(multipart([{ name: "served.png", bytes: pngBytes(), type: "image/png" }]));
+    await upload("served.png", pngBytes());
 
     const response = await harness.request("/api/admin/media/file/media/served.png");
     assert.equal(response.status, 200);
@@ -689,9 +677,7 @@ describe("media in an entry's folder, and media delete", () => {
   const json = (path: string, method: string, body: unknown) =>
     harness.request(path, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
   const uploadTo = async (directory: string, name: string): Promise<string> => {
-    const form = multipart([{ name, bytes: pngBytes(), type: "image/png" }]);
-    form.append("directory", directory);
-    const response = await harness.request("/api/admin/media", { method: "POST", body: form });
+    const response = await harness.request(uploadPath(name, { directory }), { method: "POST", body: pngBytes() });
     assert.equal(response.status, 201);
     return ((await response.json()) as { items: Array<{ path: string }> }).items[0]!.path;
   };
@@ -742,10 +728,7 @@ describe("media in an entry's folder, and media delete", () => {
 
   it("refuses a video", async () => {
     const mp4 = new Uint8Array([0, 0, 0, 24, 0x66, 0x74, 0x79, 0x70, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0, 0x69, 0x73, 0x6f, 0x6d, 0, 0, 0, 0]);
-    const response = await harness.request("/api/admin/media", {
-      method: "POST",
-      body: multipart([{ name: "clip.mp4", bytes: mp4, type: "video/mp4" }]),
-    });
+    const response = await harness.request(uploadPath("clip.mp4"), { method: "POST", body: mp4 });
     assert.equal(response.status, 415);
     assert.match(((await response.json()) as { error: { message: string } }).error.message, /does not keep videos/);
   });
@@ -796,10 +779,8 @@ describe("media in an entry's folder, and media delete", () => {
   });
 
   it("refuses a new entry's upload into the folder of a saved entry", async () => {
-    const form = multipart([{ name: "x.png", bytes: pngBytes(), type: "image/png" }]);
-    form.append("directory", "projects/final-title/media");
-    form.append("newEntry", "true");
-    const response = await harness.request("/api/admin/media", { method: "POST", body: form });
+    const query = { directory: "projects/final-title/media", newEntry: "true" };
+    const response = await harness.request(uploadPath("x.png", query), { method: "POST", body: pngBytes() });
     assert.equal(response.status, 409);
   });
 

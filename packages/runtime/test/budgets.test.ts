@@ -43,6 +43,7 @@ const site: Site = defineSite({
 /** Every call by kind, with its path. */
 interface Log {
   read: string[];
+  /** Every read of file bytes beyond text: a head, a stream, or a revision's hash. */
   readBinary: string[];
   list: string[];
   stat: string[];
@@ -54,11 +55,13 @@ function counting(files: ContentFiles, log: Log): ContentFiles {
   return {
     origin: files.origin,
     read: (path) => (log.read.push(path), files.read(path)),
-    readBinary: (path) => (log.readBinary.push(path), files.readBinary(path)),
+    readHead: (path, length) => (log.readBinary.push(path), files.readHead(path, length)),
+    readStream: (path) => (log.readBinary.push(path), files.readStream(path)),
+    receive: (path, body, limit) => files.receive(path, body, limit),
     list: (path) => (log.list.push(path), files.list(path)),
     stat: (path) => (log.stat.push(path), files.stat(path)),
     revision: (path) => (log.revision.push(path), files.revision(path)),
-    apply: (input) => files.apply(input),
+    apply: (input, after) => files.apply(input, after),
   };
 }
 
@@ -76,7 +79,7 @@ const reset = () => {
 
 let root = "";
 let ctx: RuntimeContext;
-let request: (path: string) => Promise<Response>;
+let request: (path: string, init?: RequestInit) => Promise<Response>;
 
 /** Runs a view, and returns what it read and how long it took. */
 async function measure(view: () => Promise<unknown>): Promise<{ ms: number }> {
@@ -121,7 +124,7 @@ before(() => {
     tree: { git: countingGit(gitRunner(root), log), prefix: "content", contentRoot: content },
   });
   const app = createApp(ctx);
-  request = async (path) => app.request(`${TEST_ORIGIN}${path}`);
+  request = async (path, init) => app.request(`${TEST_ORIGIN}${path}`, init);
 });
 
 after(async () => {
@@ -219,7 +222,9 @@ describe("write budgets at the 1.0 target", () => {
 
   it("shows a URL change and checks a media deletion within budget", async () => {
     const entry = await ctx.services.content.get("news", "news-11");
-    await ctx.services.content.save("news", { slug: "news-11", data: { ...entry!.data, slug: "news-11-moved" } });
+    // The media of the entry is copied on disk, not read.
+    await measure(() => ctx.services.content.save("news", { slug: "news-11", data: { ...entry!.data, slug: "news-11-moved" } }));
+    assert.deepEqual(log.readBinary, []);
     const status = await measure(pending);
     assert.ok(status.ms < 5_000, `status: ${status.ms} ms`);
     await publishAll("Move news 11");
@@ -244,5 +249,21 @@ describe("write budgets at the 1.0 target", () => {
     assert.equal(git("status", "--porcelain"), "");
     assert.equal(Number(git("rev-list", "--count", "--grep=round", "HEAD")), 15);
     assert.ok(ms < 30_000, `${ms} ms`);
+  });
+});
+
+describe("memory at the 1.0 target", () => {
+  it("streams an upload to disk and reads only its head", async () => {
+    const photo = new Uint8Array(20 * 1024 * 1024);
+    photo.set(pngBytes());
+    const response = await measure(async () => {
+      const answer = await request("/api/admin/media?name=large.png", { method: "POST", body: photo });
+      assert.equal(answer.status, 201, await answer.clone().text());
+    });
+    assert.deepEqual(log.readBinary, []);
+    assert.ok(response.ms < 5_000, `${response.ms} ms`);
+
+    const served = await request("/api/admin/media/file/media/large.png");
+    assert.equal((await served.arrayBuffer()).byteLength, photo.byteLength);
   });
 });

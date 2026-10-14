@@ -178,12 +178,7 @@ function crc32(buffer: Buffer): number {
   return (crc ^ 0xffffffff) >>> 0;
 }
 
-export function multipart(
-  files: Array<{ name: string; bytes: Uint8Array; type: string }>,
-): FormData {
-  const form = new FormData();
-  for (const file of files) {
-    form.append("file", new File([new Uint8Array(file.bytes)], file.name, { type: file.type }));
-  }
-  return form;
+/** An upload as the editor sends it: one file as the body, its name and the rest in the query. */
+export function uploadPath(name: string, query: Record<string, string> = {}): string {
+  return `/api/admin/media?${new URLSearchParams({ name, ...query })}`;
 }
