@@ -131,6 +131,8 @@ export async function createHarness(
     MICA_DATA_DIR: dataDir,
     MICA_REPOSITORY_URL: "https://git.example.test/acme/site.git",
     MICA_REPOSITORY_TOKEN: "unused-by-the-harness",
+    // A real start finds the root in the clone; the harness has no clone to look in.
+    MICA_CONTENT_PATH: "content",
     MICA_OIDC_ISSUER: ISSUER,
     MICA_OIDC_CLIENT_ID: "mica",
     MICA_ADMIT_GROUPS: "mica-editors",
