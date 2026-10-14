@@ -30,6 +30,19 @@ Mica also has no content API, no GraphQL, no build webhook, no media server and 
 
 Most of these can come in a later version without a breaking change. The reasons are in [decisions.md](https://github.com/micacms/mica/blob/main/docs/decisions.md), under "Deferred scope".
 
+## Limits
+
+Mica 1.0 is tested at these numbers. Above them, Mica can work, but nobody measured it.
+
+- 1,000 entries in one collection.
+- 5,000 files in the content root.
+- 5 editors at the same time.
+
+Other limits:
+
+- A sortable collection can have at most 2,000 entries in its order.
+- One upload has at most 4 files. Each file is at most `MICA_MAX_UPLOAD_BYTES`, 25 MB by default.
+
 ## Compared with other editors
 
 The table compares Mica with other editors that keep content in Git. It shows what their documentation said in October 2026. These products change often, so read their documentation before you decide.

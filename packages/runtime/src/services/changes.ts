@@ -227,6 +227,8 @@ export async function analyseChanges(
   changes: ContentChange[],
   /** The repository's side. When given, renamed entries are detected. */
   published?: ContentSource,
+  /** `validate: false` only groups the changes, for the review check of Publish and Discard. */
+  options: { validate?: boolean } = {},
 ): Promise<{ changes: AnnotatedChange[]; validation: StagingValidation }> {
   const owners = changes.map((change) => classifyPath(model, change.path));
 
@@ -291,6 +293,23 @@ export async function analyseChanges(
 
   const created = new Set(changes.filter((change) => change.kind === "create").map((change) => change.path));
   const needsByPath = new Map<string, string[]>();
+  const annotate = (): AnnotatedChange[] =>
+    changes.map((change, index): AnnotatedChange => {
+      const owner = owners[index]!;
+      const needs = needsByPath.get(change.path);
+      const extra = needs ? { needs } : {};
+      if (owner.kind === "entry") {
+        const def = model.collections[owner.collection]!;
+        return {
+          ...change,
+          ...extra,
+          owner: { ...owner, label: labelEntry(def, owner.slug, titles.get(`${owner.collection}/${owner.slug}`)) },
+        };
+      }
+      return { ...change, ...extra, owner };
+    });
+  if (options.validate === false) return { changes: annotate(), validation: { ok: true, problems: [] } };
+
   /** How to read each changed document as the website has it, by its data file. */
   const publishedOf = new Map<string, () => Promise<Record<string, unknown> | null>>();
   const addNeeds = (dataPath: string, fields: Collection["fields"], data: Record<string, unknown>): void => {
@@ -398,23 +417,8 @@ export async function analyseChanges(
 
   problems.push(...(await brokenByRemoval(model, source, changes, owners, entriesByCollection, titles)));
 
-  const annotated = changes.map((change, index): AnnotatedChange => {
-    const owner = owners[index]!;
-    const needs = needsByPath.get(change.path);
-    const extra = needs ? { needs } : {};
-    if (owner.kind === "entry") {
-      const def = model.collections[owner.collection]!;
-      return {
-        ...change,
-        ...extra,
-        owner: { ...owner, label: labelEntry(def, owner.slug, titles.get(`${owner.collection}/${owner.slug}`)) },
-      };
-    }
-    return { ...change, ...extra, owner };
-  });
-
   return {
-    changes: annotated,
+    changes: annotate(),
     validation: { ok: problems.length === 0, problems },
   };
 }

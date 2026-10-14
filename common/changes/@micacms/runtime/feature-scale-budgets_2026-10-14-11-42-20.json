@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "Publish reads unchanged files from the working tree and only the drafts that stay behind from Git: a deletion no longer starts one Git process for each file of the site.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}
