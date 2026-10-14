@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   boolean,
+  byCodeUnits,
   collection,
   color,
   compareEntries,
@@ -63,7 +64,7 @@ type _BooleanNeverNull = Expect<Equal<Inferred["featured"], boolean>>;
 type _MultiSelect = Expect<Equal<Inferred["tags"], string[]>>;
 type _SingleRelation = Expect<Equal<Inferred["author"], string | null>>;
 type _Repeater = Expect<Equal<Inferred["facts"], Array<{ label: string }>>>;
-type _Nested = Expect<Equal<Inferred["seo"], { metaTitle: string | null } | null>>;
+type _Nested = Expect<Equal<Inferred["seo"], { metaTitle: string | null }>>;
 type _Coordinates = Expect<Equal<Inferred["where"], { lat: number; lng: number } | null>>;
 /* eslint-enable @typescript-eslint/no-unused-vars */
 
@@ -333,6 +334,43 @@ describe("defineSite", () => {
         }),
       );
     }
+  });
+});
+
+describe("model checks (#222)", () => {
+  const fields = { title: text(), slug: slug() };
+  const throws = (build: () => unknown, pattern: RegExp) => assert.throws(build, (error: unknown) => error instanceof ModelError && pattern.test(error.message));
+
+  it("refuse two names that differ only in case", () => {
+    throws(() => defineSite({ collections: { teamMembers: collection({ label: "A", fields }), teammembers: collection({ label: "B", fields }) } }), /differ only in case/);
+  });
+
+  it("refuse a slugField that is not a slug", () => {
+    throws(() => defineSite({ collections: { news: collection({ label: "News", slugField: "title", fields }) } }), /not a slug\(\) field/);
+  });
+
+  it("refuse a lower bound above the upper bound", () => {
+    throws(() => defineSite({ collections: { news: collection({ label: "News", fields: { ...fields, size: number({ min: 5, max: 1 }) } }) } }), /min above/);
+    throws(() => defineSite({ collections: { news: collection({ label: "News", fields: { ...fields, day: date({ min: "2026-12-01", max: "2026-01-01" }) } }) } }), /min date after/);
+  });
+
+  it("refuse a default that is not a valid value", () => {
+    throws(
+      () => defineSite({ collections: { news: collection({ label: "News", fields: { ...fields, kind: select({ options: [{ label: "A", value: "a" }], default: "b" }) } }) } }),
+      /default of "collections.news.kind"/,
+    );
+  });
+});
+
+describe("the order of slugs and dates", () => {
+  it("sorts slugs by code unit, the same on every machine", () => {
+    assert.deepEqual(["b", "a-2", "a", "a10", "a1"].sort(byCodeUnits), ["a", "a-2", "a1", "a10", "b"]);
+  });
+
+  it("compares a date with a time as an instant, and a calendar bound by its day", () => {
+    const at = date({ includeTime: true, max: "2026-01-01" });
+    assert.equal(validateFields({ at }, { at: "2026-01-01T23:00:00+01:00" }).ok, true);
+    assert.equal(validateFields({ at }, { at: "2026-01-02T00:30:00+01:00" }).ok, false);
   });
 });
 

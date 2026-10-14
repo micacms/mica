@@ -25,23 +25,26 @@ export type FieldKind =
   | "coordinates"
   | "tags";
 
-/** Options shared by every field type. */
+/**
+ * Options shared by every field type. The builders in `fields.ts` take the
+ * options of a field type without its `kind`: one declaration for both.
+ */
 export interface BaseFieldOptions {
-  /** Human readable label shown in the editor. Falls back to the field key. */
+  /** The label in the editor. Defaults to the field key, in words: `metaTitle` is "Meta title". */
   label?: string;
-  /** Help text rendered below the input. */
+  /** Help text under the input. */
   description?: string;
-  /** Empty values are rejected by validation when true. */
+  /** Publish refuses an empty value. A draft may still be saved without it. The value's type is then not nullable. */
   required?: boolean;
-  /** Shown in list/table views for this collection. */
+  /** Shown as a column in the collection's list. */
   listed?: boolean;
-  /** Rendered but not editable. */
+  /** Shown, but the editor cannot change it. */
   readonly?: boolean;
-  /** Kept in the payload but hidden from the editor. */
+  /** Kept in the content, but not shown in the editor. */
   hidden?: boolean;
-  /** Layout hint for the generated form: fields sharing a group are boxed together. */
+  /** Fields with the same group, one after another, are shown in one box with this heading. */
   group?: string;
-  /** Fraction of the form row this field occupies. */
+  /** How much of the form's width the field takes. Defaults to `"full"`. */
   width?: "full" | "half" | "third";
 }
 
@@ -51,31 +54,46 @@ export interface BaseField extends BaseFieldOptions {
 
 export interface TextField extends BaseField {
   kind: "text";
+  /** The fewest characters, after trimming. */
   minLength?: number;
+  /** The most characters, after trimming. */
   maxLength?: number;
   /** A regular expression that must match the whole value, with the `u` flag, e.g. `"[A-Z]{2}"`. */
   pattern?: string;
   /** What the editor reads when the value does not match `pattern`, e.g. "Use two capital letters, like CH." */
   patternMessage?: string;
+  /** Example text in the empty input. */
   placeholder?: string;
+  /** The value of a new entry. */
   default?: string;
 }
 
 export interface TextareaField extends BaseField {
   kind: "textarea";
+  /** The fewest characters. */
   minLength?: number;
+  /** The most characters. */
   maxLength?: number;
+  /** The height of the input, in lines. Defaults to 4. */
   rows?: number;
+  /** Example text in the empty input. */
   placeholder?: string;
+  /** The value of a new entry. */
   default?: string;
 }
 
 /** Rich text is stored as Markdoc, in a file beside the entry. */
 export interface RichTextField extends BaseField {
   kind: "richText";
-  /** The buttons and typing shortcuts: a preset, or a list of features. Default: `"default"`. */
+  /**
+   * The buttons and typing shortcuts the editor offers: `"minimal"` (bold, italic, link), `"default"` (also headings
+   * and lists), `"full"` (also quote, strikethrough, divider, table and image), or a list of features. Text that uses
+   * others still loads.
+   */
   toolbar?: RichTextToolbar;
+  /** The most characters of the Markdoc source. */
   maxLength?: number;
+  /** The Markdoc of a new entry. */
   default?: string;
 }
 
@@ -102,46 +120,59 @@ export type RichTextToolbar = "minimal" | "default" | "full" | RichTextFeature[]
 
 export interface NumberField extends BaseField {
   kind: "number";
+  /** The smallest value. */
   min?: number;
+  /** The largest value. */
   max?: number;
+  /** The step of the input's arrows. */
   step?: number;
+  /** Only whole numbers. */
   integer?: boolean;
-  /** Suffix rendered inside the input, e.g. `"m²"`. */
+  /** Shown after the input, such as `"m²"` or `"CHF"`. Not stored. */
   unit?: string;
+  /** The value of a new entry. */
   default?: number;
 }
 
 export interface BooleanField extends BaseField {
   kind: "boolean";
+  /** The value of a new entry. Defaults to `false`. */
   default?: boolean;
 }
 
 export interface DateField extends BaseField {
   kind: "date";
-  /** Store a full timestamp instead of a calendar date. */
+  /** Store a time too: an ISO 8601 timestamp with its offset instead of `YYYY-MM-DD`. */
   includeTime?: boolean;
-  /** ISO 8601 bounds. */
+  /** The earliest value, in the stored form. A date without a time compares the calendar date. */
   min?: string;
+  /** The latest value, in the stored form. A date without a time compares the calendar date. */
   max?: string;
+  /** The value of a new entry, in the stored form. */
   default?: string;
 }
 
 export interface EmailField extends BaseField {
   kind: "email";
+  /** Example text in the empty input. */
   placeholder?: string;
+  /** The value of a new entry. */
   default?: string;
 }
 
 export interface UrlField extends BaseField {
   kind: "url";
+  /** Example text in the empty input. */
   placeholder?: string;
+  /** The value of a new entry. */
   default?: string;
 }
 
 export interface SlugField extends BaseField {
   kind: "slug";
-  /** Field key the slug is derived from while the editor types. */
+  /** The field that a new entry's URL follows while the editor types, until the editor changes the URL. */
   from?: string;
+  /** The most characters. Defaults to 96. */
   maxLength?: number;
 }
 
@@ -152,45 +183,55 @@ export interface SelectOption {
 
 export interface SelectField extends BaseField {
   kind: "select";
+  /** The choices: the stored `value` and the `label` the editor reads. */
   options: SelectOption[];
-  multiple?: boolean;
+  /** Several choices, stored as a list. */
+  multiple?: true;
+  /** The value of a new entry: a value, or a list with `multiple`. */
   default?: string | string[];
 }
 
 export interface ObjectField extends BaseField {
   kind: "object";
+  /** The fields of the group. */
   fields: FieldMap;
-  /** Render the group as an expandable section. */
+  /** The editor can fold the group away. */
   collapsible?: boolean;
+  /** Folded when the form opens. Needs `collapsible`. */
   collapsed?: boolean;
 }
 
 export interface RepeaterField extends BaseField {
   kind: "repeater";
+  /** The fields of each row. */
   fields: FieldMap;
+  /** The fewest rows. */
   min?: number;
+  /** The most rows. */
   max?: number;
-  /** Child field key used as the row summary in the collapsed list. */
+  /** The field of a row that names the row in the editor. */
   itemLabel?: string;
-  /** Label of the "add" button. */
+  /** The text of the button that adds a row. Defaults to "Add item". */
   addLabel?: string;
 }
 
 export interface RelationField extends BaseField {
   kind: "relation";
-  /** Collection name the relation points at. Values are entry slugs. */
+  /** The collection the links point into. The stored value is the target's URL (slug). */
   collection: string;
-  multiple?: boolean;
+  /** Several links, stored as a list in the editor's order. */
+  multiple?: true;
 }
 
 export interface MediaField extends BaseField {
   kind: "media";
-  multiple?: boolean;
-  /** Restricts the upload picker and server-side validation. */
+  /** Several files, stored as a list in the editor's order. */
+  multiple?: true;
+  /** The kind of file: images (JPEG, PNG, GIF, WebP, AVIF), PDF documents, or both. Defaults to `"any"`. In Astro, an image field is an Astro image. */
   accept?: "image" | "document" | "any";
-  /** Maximum number of items when `multiple` is set. */
+  /** The most files, with `multiple`. */
   max?: number;
-  /** Stores `{ path, alt }` and asks for alt text beside the preview. `"required"` refuses an empty one. */
+  /** Stores `{ path, alt }` and asks for alt text. `"required"` refuses an empty one. */
   alt?: "required" | "optional";
 }
 
@@ -202,8 +243,9 @@ export interface MediaWithAlt {
 
 export interface ColorField extends BaseField {
   kind: "color";
-  /** Swatches offered next to the picker. */
+  /** Colours offered with one click, as hex values. */
   presets?: string[];
+  /** The value of a new entry, as a hex value. */
   default?: string;
 }
 
@@ -220,6 +262,7 @@ export interface TagsField extends BaseField {
   maxLength?: number;
   /** Tags the editor is offered while typing; others are allowed too. */
   suggestions?: string[];
+  /** The tags of a new entry. */
   default?: string[];
 }
 
@@ -375,8 +418,8 @@ export type FieldValue<F extends AnyField, Img = never> =
   never;
 
 /**
- * Booleans, repeaters and multi-value fields always have a concrete empty
- * representation, so they are never null. A collection's own slug field is the
+ * Booleans, objects, repeaters and multi-value fields always have a concrete
+ * empty representation, so they are never null. A collection's own slug field is the
  * entry's file name (`Url`), so it is never null either; a slug elsewhere, such
  * as one per language in an object, can be. Everything else is nullable unless
  * declared `required: true`.
@@ -385,6 +428,7 @@ export type FieldValue<F extends AnyField, Img = never> =
 type NeverNull<F extends AnyField, Url extends boolean> =
   F extends BooleanField ? true :
   F extends RepeaterField ? true :
+  F extends ObjectField ? true :
   F extends TagsField ? true :
   F extends { multiple: true } ? true :
   F extends { required: true } ? true :

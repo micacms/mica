@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "The model refuses two names that differ only in case, a `slugField` that is not a slug, a lower bound above an upper one, and a default that is not a valid value. `readManifest` reads a manifest for every reader: an unknown field option makes its collection read-only, and a manifest without the protocol envelope is refused. Slugs without `_order.json` are in code-unit order; text sorts in one fixed collation; date bounds and sorts compare dates. Option types are the field types without `kind`, an object is never null, and `multiple` is `true` or absent.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

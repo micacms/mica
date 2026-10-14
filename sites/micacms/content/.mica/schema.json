@@ -392,13 +392,13 @@
                 "file": {
                   "kind": "text",
                   "label": "File path",
-                  "help": "Shown above the code."
+                  "description": "Shown above the code."
                 },
                 "code": {
                   "kind": "textarea",
                   "label": "Code",
                   "rows": 10,
-                  "help": "For a change, start lines with + or -."
+                  "description": "For a change, start lines with + or -."
                 }
               }
             }
@@ -679,7 +679,7 @@
                   "label": "Prompt, commands or text",
                   "required": true,
                   "rows": 6,
-                  "help": "In commands, lines that start with # are comments."
+                  "description": "In commands, lines that start with # are comments."
                 }
               }
             },
@@ -732,7 +732,7 @@
           "kind": "text",
           "label": "Name",
           "required": true,
-          "help": "The person or company answering for this website."
+          "description": "The person or company answering for this website."
         },
         "street": {
           "kind": "text",

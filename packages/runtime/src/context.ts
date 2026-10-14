@@ -4,12 +4,12 @@
  * runtime stays authentication-neutral.
  */
 
-import { MANIFEST_PATH, type Site } from "@micacms/core";
+import { MANIFEST_PATH, readOnlyParts, type Site } from "@micacms/core";
 
 import type { RuntimeConfig } from "./config.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
-import { loadSchema, readOnlyParts, SchemaError } from "./schema.js";
+import { loadSchema, SchemaError } from "./schema.js";
 import { createMediaService, type MediaService } from "./services/media.js";
 import type { ContentStagingService } from "./services/changes.js";
 import { createContentStore, type ContentStore } from "./services/content-store.js";

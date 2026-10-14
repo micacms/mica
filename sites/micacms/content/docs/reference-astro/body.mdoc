@@ -33,7 +33,7 @@ export const collections = { ...micaCollections(site), glossary };
 | --- | --- |
 | `id`, `slug` | The slug. |
 | `collection` | The name of the collection. |
-| `position` | The place in the collection's order: the order in `_order.json` when there is one, then the other slugs in alphabetical order. |
+| `position` | The place in the collection's order: the order in `_order.json` when there is one, then the other slugs in the order of their characters (UTF-16 code units), the same on every computer. |
 | `images` | Added in 0.8.0. The images of the entry's rich text whose files are in the content, as `{ path, src }`: the path as the text writes it, and the image that Astro made. A singleton has `data._mica.images` too. |
 
 There are no dates in `_mica`, because in Git a date is commit data. Add a `date()` field when editors must see or set a date.

@@ -8,6 +8,7 @@
  */
 
 import type {
+  AnyField,
   Collection,
   CollectionOptions,
   FieldMap,
@@ -18,6 +19,7 @@ import type {
 import { MEDIA_DIR } from "./layout.js";
 import { textPattern } from "./pattern.js";
 import { RICH_TEXT_TOOLBARS } from "./rich-text.js";
+import { compareDates, validateFields } from "./validation.js";
 
 export class ModelError extends Error {
   override name = "ModelError";
@@ -83,6 +85,16 @@ const RESERVED_NAMES = new Set([
 function assertValidSite(site: Site): void {
   const collectionNames = new Set(Object.keys(site.collections));
 
+  // Each name is a folder: on macOS and Windows, two names that differ only in case are one folder.
+  const byLowerCase = new Map<string, string>();
+  for (const name of [...Object.keys(site.collections), ...Object.keys(site.singletons)]) {
+    const other = byLowerCase.get(name.toLowerCase());
+    if (other && other !== name) {
+      throw new ModelError(`"${other}" and "${name}" differ only in case. On macOS and Windows they are one folder: rename one.`);
+    }
+    byLowerCase.set(name.toLowerCase(), name);
+  }
+
   for (const [name, def] of Object.entries(site.collections)) {
     if (!NAME_PATTERN.test(name)) {
       throw new ModelError(
@@ -103,9 +115,9 @@ function assertValidSite(site: Site): void {
           `or point \`slugField\` at an existing field.`,
       );
     }
-    if (def.slugField && !def.fields[def.slugField]) {
+    if (def.slugField && def.fields[def.slugField]?.kind !== "slug") {
       throw new ModelError(
-        `Collection "${name}" declares slugField "${def.slugField}" which is not a field.`,
+        `Collection "${name}" declares slugField "${def.slugField}", which is not a slug() field.`,
       );
     }
 
@@ -198,9 +210,33 @@ function checkFields(fields: FieldMap, path: string, collectionNames: Set<string
       );
     }
 
+    checkRange(field, here);
+
+    if ("default" in field && field.default !== undefined) {
+      const result = validateFields({ [key]: field } as FieldMap, { [key]: field.default }, { enforceRequired: false });
+      if (!result.ok) {
+        throw new ModelError(`The default of "${here}" is not a valid value: ${result.issues[0]!.message}`);
+      }
+    }
+
     if (field.kind === "object" || field.kind === "repeater") {
       checkFields(field.fields, here, collectionNames);
     }
+  }
+}
+
+/** A lower bound above the upper bound leaves no valid value. */
+function checkRange(field: AnyField, here: string): void {
+  const pairs: Array<[unknown, unknown, string]> = [];
+  if (field.kind === "number" || field.kind === "repeater") pairs.push([field.min, field.max, "min"]);
+  if (field.kind === "text" || field.kind === "textarea") pairs.push([field.minLength, field.maxLength, "minLength"]);
+  for (const [low, high, name] of pairs) {
+    if (typeof low === "number" && typeof high === "number" && low > high) {
+      throw new ModelError(`"${here}" has a ${name} above its upper bound: ${low} > ${high}.`);
+    }
+  }
+  if (field.kind === "date" && field.min && field.max && compareDates(field.max, field.min) < 0) {
+    throw new ModelError(`"${here}" has a min date after its max date: ${field.min} > ${field.max}.`);
   }
 }
 
@@ -264,6 +300,7 @@ export function compareEntries(def: Collection): (a: SortableEntry, b: SortableE
   }
 
   const sign = sort.direction === "desc" ? -1 : 1;
+  const field = def.fields[sort.field];
 
   return (a, b) => {
     const left = a.data[sort.field];
@@ -283,10 +320,17 @@ export function compareEntries(def: Collection): (a: SortableEntry, b: SortableE
       return (left - right) * sign || byPosition(a, b);
     }
 
-    // Dates are ISO strings, which compare correctly as text.
-    return String(left).localeCompare(String(right)) * sign || byPosition(a, b);
+    // A date with a time has an offset: compare the instants, not the text.
+    if (field?.kind === "date") {
+      return (Date.parse(String(left)) - Date.parse(String(right))) * sign || byPosition(a, b);
+    }
+
+    return TEXT_ORDER.compare(String(left), String(right)) * sign || byPosition(a, b);
   };
 }
+
+/** One collation for every machine, so a list never depends on the locale of the build. */
+const TEXT_ORDER = new Intl.Collator("en");
 
 /** Field keys shown as columns in the collection overview. */
 export function listedFields(def: Collection): string[] {

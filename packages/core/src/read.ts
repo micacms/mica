@@ -147,7 +147,18 @@ export async function readCollectionEntry(
  * things Mica did not put there.
  */
 export async function collectionSlugs(source: ContentSource, name: string): Promise<string[]> {
-  return (await source.list(name)).filter((item) => item.type === "directory" && isValidSlug(item.name)).map((item) => item.name);
+  return (await source.list(name))
+    .filter((item) => item.type === "directory" && isValidSlug(item.name))
+    .map((item) => item.name)
+    .sort(byCodeUnits);
+}
+
+/**
+ * The order of slugs without `_order.json`: by UTF-16 code unit, as Git lists
+ * files, the same on every machine and in every source.
+ */
+export function byCodeUnits(a: string, b: string): number {
+  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 /**
@@ -171,7 +182,7 @@ async function applyOrder(
     (slug): slug is string => typeof slug === "string" && available.delete(slug),
   );
 
-  // Whatever the order file did not mention keeps its alphabetical position.
+  // Whatever the order file did not mention keeps its place in code-unit order.
   return [...ordered, ...slugs.filter((slug) => available.has(slug))];
 }
 
