@@ -1170,6 +1170,37 @@ format.
 
 ---
 
+### P2 — A save keeps what the model does not declare; a default fills only a new entry
+
+**Decided:** a save keeps the keys of `index.json` and the `.mdoc` files that
+the model does not declare: at the top, in objects, and in list rows with a
+`_key`. They come after the declared keys, in their stored order. A save
+deletes a `.mdoc` file only when the model declares it and the field is empty
+or its row is gone. A URL change moves every file of the folder. `mica check`
+warns about undeclared keys and files, and the recipe `remove-field.mjs`
+deletes a field's content on purpose. A `default` fills a field of a new entry,
+and of a singleton without a file; a read fills a missing value with the empty
+value (`null`, `false`, `[]`), never with the default.
+
+**Why:** the model and the content can arrive in different commits. A save
+with an older model deleted the content of a newer field (#217). Defaults on
+read made a cleared rich-text field come back, and a changed default changed
+every entry with no diff (#221).
+
+**Consequence:** a field that leaves the model leaves its values in the files
+until the recipe removes them. A key in a list row without `_key` is not kept,
+because such a row has no identity across a reorder. Templates handle a missing
+optional value.
+
+**What would change it:** nothing in 1.x; the rules are part of the content
+format.
+
+**Built:** 0.9 (#217, #221).
+
+**1.0 status:** done.
+
+---
+
 ### P2 — A repeater row with rich text has a key that names its files
 
 **Decided:** a row of a `repeater()` whose fields hold rich text stores a key,

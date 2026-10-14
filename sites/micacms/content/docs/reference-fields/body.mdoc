@@ -35,9 +35,17 @@ Import the builders from `@micacms/core`. Each builder gives plain data, so the 
 | `coordinates()` | `{ lat, lng }`. | None. |
 | `tags()` | A list of short words, never null: no tags is `[]`. | `max`, `maxLength`, `suggestions`, `default`. Added in 0.8.0. |
 
+## Defaults and empty values
+
+A `default` fills the field of a new entry, and of a singleton that has no file yet. It never fills a value that is missing in a stored entry: such a value is empty, `null`, `false` or `[]`, and your templates must handle it. So a changed default does not change the stored entries, and a cleared field stays cleared.
+
+## Values that the model does not have
+
+A save keeps a key in `index.json` and a `.mdoc` file that the model does not declare, for example content for a field that a newer model adds. Your templates do not get them, and `npx mica check` warns about them. To delete them, see [Change the model](/docs/model-changes/). A key in a list row without `_key` is not kept, because such a row has no identity when the order changes.
+
 ## The slug of a collection
 
-The first `slug()` among the fields of a collection is the entry's slug. It is also the name of the entry's file or folder, so it is never empty. A second `slug()` among the same fields stops the build. A `slug()` in an object or in a singleton is an ordinary value, for example one URL for each language.
+The first `slug()` among the fields of a collection is the entry's slug. It is also the name of the entry's folder, so it is never empty. A second `slug()` among the same fields stops the build. A `slug()` in an object or in a singleton is an ordinary value, for example one URL for each language.
 
 ## Where an entry is stored
 
