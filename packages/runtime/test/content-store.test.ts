@@ -373,17 +373,27 @@ describe("ordering", () => {
     await store.save("projects", { data: { title: "Haus A" } });
     await store.save("projects", { data: { title: "Haus B" } });
 
-    await store.reorder("projects", ["haus-b", "haus-a"]);
+    const revision = await store.reorder("projects", ["haus-b", "haus-a"], null);
 
     assert.equal(await read("projects/_order.json"), '[\n  "haus-b",\n  "haus-a"\n]\n');
     const listed = (await store.list("projects")).map((entry) => entry.slug);
     assert.deepEqual(listed, ["haus-b", "haus-a"]);
+    assert.equal(revision, await store.orderRevision("projects"));
+  });
+
+  it("refuses an order based on one that a colleague changed since", async () => {
+    await store.save("projects", { data: { title: "Haus A" } });
+    await store.save("projects", { data: { title: "Haus B" } });
+    await store.reorder("projects", ["haus-b", "haus-a"], null);
+
+    await assert.rejects(() => store.reorder("projects", ["haus-a", "haus-b"], null), /changed this order/);
+    assert.equal(await read("projects/_order.json"), '[\n  "haus-b",\n  "haus-a"\n]\n');
   });
 
   it("a renamed entry keeps its place in the order", async () => {
     await store.save("projects", { data: { title: "Haus A" } });
     await store.save("projects", { data: { title: "Haus B" } });
-    await store.reorder("projects", ["haus-b", "haus-a"]);
+    await store.reorder("projects", ["haus-b", "haus-a"], null);
     const revision = await store.revisionOf("projects", "haus-b");
 
     await store.save("projects", {
@@ -396,7 +406,7 @@ describe("ordering", () => {
   });
 
   it("refuses to reorder a collection the model does not call sortable", async () => {
-    await assert.rejects(() => store.reorder("team", []), /not manually sortable/);
+    await assert.rejects(() => store.reorder("team", [], null), /not manually sortable/);
   });
 });
 

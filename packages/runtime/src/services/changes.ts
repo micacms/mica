@@ -125,8 +125,11 @@ export interface RepositoryInfo {
 export interface ContentStagingService {
   status(): Promise<StagingStatus>;
   publish(input: PublishInput): Promise<PublishResult>;
-  /** `editor` names who discarded, for the log. */
-  discard(paths: string[], editor?: string): Promise<{ discarded: string[] }>;
+  /**
+   * Restores the reviewed paths, each with the revision the editor saw, under
+   * the same check as Publish. `editor` names who discarded, for the log.
+   */
+  discard(paths: Record<string, string | null>, editor?: string): Promise<{ discarded: string[] }>;
   /** Retries the push after `committed-pending-push`. */
   push(): Promise<PublishResult>;
   /**
@@ -156,6 +159,11 @@ export interface Comparison {
   before: Record<string, unknown> | null;
   /** As staged for publication — null when the change deletes it. */
   after: Record<string, unknown> | null;
+  /**
+   * The pending files of the compared document, each with its revision when it
+   * was compared: what Publish and Discard send back. Empty against `origin`.
+   */
+  revisions: Record<string, string | null>;
 }
 
 /**
@@ -167,7 +175,7 @@ export async function compareSources(
   published: ContentSource,
   staged: ContentSource,
   target: CompareTarget,
-): Promise<Comparison> {
+): Promise<Omit<Comparison, "revisions">> {
   if (target.kind === "singleton") {
     const def = model.singletons[target.name];
     if (!def) throw badRequest(`There is no singleton called "${target.name}".`);
@@ -417,6 +425,19 @@ function fieldsOfDocument(model: Site, path: string): Collection["fields"] | nul
   if (owner.kind === "entry") return model.collections[owner.collection]?.fields ?? null;
   if (owner.kind === "singleton") return model.singletons[owner.name]?.fields ?? null;
   return null;
+}
+
+/**
+ * Whether a file of `owner` can be part of the document that `target` compares.
+ * A URL change can take its collection's order file along (`detectRenames`).
+ */
+export function ownedByTarget(owner: ChangeOwner, target: CompareTarget): boolean {
+  if (target.kind === "entry") {
+    if (owner.kind === "order") return target.from !== undefined && owner.collection === target.collection;
+    return owner.kind === "entry" && owner.collection === target.collection && (owner.slug === target.slug || owner.slug === target.from);
+  }
+  if (target.kind === "singleton") return owner.kind === "singleton" && owner.name === target.name;
+  return owner.kind === "order" && owner.collection === target.collection;
 }
 
 /** Which piece of content a file belongs to, read from the model's path layout. */

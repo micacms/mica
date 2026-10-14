@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "Publish and Discard send the revisions of the comparison on the page, and Delete and Reorder send the revision the editor saw. A colleague's later save shows as a conflict instead of being published, discarded or overwritten unseen.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/editor-ui",
+  "email": "alexander@muedespacher.ch"
+}

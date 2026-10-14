@@ -23,7 +23,8 @@ const resolveSchema = z.object({
   choice: z.enum(["mine", "website"]),
 });
 
-const discardSchema = z.object({ paths: z.array(z.string().min(1)).min(1).max(2000) });
+/** The reviewed paths, with the revision each had in the review: the check of Publish. */
+const discardSchema = z.object({ paths: z.record(z.string().min(1), z.string().nullable()) });
 
 const compareSchema = z.discriminatedUnion("kind", [
   z.object({
@@ -132,7 +133,7 @@ export function adminStagingRoutes(): Hono<Env> {
   app.post("/changes/discard", async (c) => {
     const { staging } = c.get("ctx").services;
     const parsed = discardSchema.safeParse(await jsonBody(c));
-    if (!parsed.success) throw badRequest("Expected a list of change paths.");
+    if (!parsed.success || Object.keys(parsed.data.paths).length === 0) throw badRequest("Expected the reviewed paths with their revisions.");
 
     return c.json(await handled(() => staging.discard(parsed.data.paths, editorOf(c))));
   });

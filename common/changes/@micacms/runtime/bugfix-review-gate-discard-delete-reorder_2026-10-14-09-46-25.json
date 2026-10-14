@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "Discard, Delete and Reorder check the revision that the editor saw, as Publish does: a colleague's later save is a conflict (409), not lost. The comparison returns the revisions of the files it shows.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

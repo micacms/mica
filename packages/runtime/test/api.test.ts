@@ -338,8 +338,9 @@ describe("content", () => {
 
   it("removes the whole entry on delete", async () => {
     await create({ title: "Doomed", summary: "Text." });
+    const { body } = await get("doomed");
 
-    const response = await harness.request("/api/admin/collections/projects/entries/doomed", {
+    const response = await harness.request(`/api/admin/collections/projects/entries/doomed?revision=${body.revision}`, {
       method: "DELETE",
     });
 
@@ -379,14 +380,34 @@ describe("content", () => {
   });
 
   it("records a manual order as one file", async () => {
-    const response = await harness.request("/api/admin/collections/projects/reorder", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ slugs: ["doppelt-2", "doppelt"] }),
-    });
+    const reorder = (slugs: string[], revision: string | null) =>
+      harness.request("/api/admin/collections/projects/reorder", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ slugs, revision }),
+      });
+    const { orderRevision } = (await (await harness.request("/api/admin/collections/projects/entries")).json()) as {
+      orderRevision: string | null;
+    };
 
+    const response = await reorder(["doppelt-2", "doppelt"], orderRevision);
     assert.equal(response.status, 200);
     assert.deepEqual(JSON.parse(file("projects/_order.json")), ["doppelt-2", "doppelt"]);
+
+    // A second editor who saw the old order: their move would undo the first one unseen.
+    assert.equal((await reorder(["doppelt", "doppelt-2"], orderRevision)).status, 409);
+    assert.deepEqual(JSON.parse(file("projects/_order.json")), ["doppelt-2", "doppelt"]);
+  });
+
+  it("refuses to delete an entry that a colleague saved after it was opened", async () => {
+    await create({ title: "Kept" });
+    const { body } = await get("kept");
+    assert.equal((await update("kept", { ...body.data, year: 2024 }, body.revision)).status, 200);
+
+    const response = await harness.request(`/api/admin/collections/projects/entries/kept?revision=${body.revision}`, { method: "DELETE" });
+    assert.equal(response.status, 409);
+    assert.match(file("projects/kept/index.json"), /2024/);
+    assert.equal((await harness.request("/api/admin/collections/projects/entries/kept", { method: "DELETE" })).status, 400);
   });
 
   it("404s for an entry that is not in the repository", async () => {

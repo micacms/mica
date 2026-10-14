@@ -317,6 +317,8 @@ export type CompareTarget =
 export interface Comparison {
   before: Record<string, unknown> | null;
   after: Record<string, unknown> | null;
+  /** The compared document's pending files at the revision shown: what Publish and Discard send back. */
+  revisions: Record<string, string | null>;
 }
 
 /** A file in the content repository. */
@@ -450,7 +452,7 @@ export const api = {
 
   entries: {
     list: (collection: string, query: RequestOptions["query"] = {}) =>
-      request<{ items: EntrySummary[]; total: number }>(
+      request<{ items: EntrySummary[]; total: number; orderRevision: string | null }>(
         `/admin/collections/${collection}/entries`,
         { query },
       ),
@@ -468,14 +470,17 @@ export const api = {
         method: "PUT",
         body,
       }),
-    remove: (collection: string, slug: string) =>
+    /** `revision`: the entry as the editor saw it. A later save by a colleague is a conflict. */
+    remove: (collection: string, slug: string, revision: string) =>
       request<{ ok: true }>(`/admin/collections/${collection}/entries/${slug}`, {
         method: "DELETE",
+        query: { revision },
       }),
-    reorder: (collection: string, slugs: string[]) =>
-      request<{ ok: true }>(`/admin/collections/${collection}/reorder`, {
+    /** `revision`: the order the editor saw, null without an order file. */
+    reorder: (collection: string, slugs: string[], revision: string | null) =>
+      request<{ ok: true; revision: string }>(`/admin/collections/${collection}/reorder`, {
         method: "POST",
-        body: { slugs },
+        body: { slugs, revision },
       }),
     suggestSlug: (collection: string, source: string, except?: string) =>
       request<{ slug: string }>(`/admin/collections/${collection}/slug`, {
@@ -513,7 +518,8 @@ export const api = {
       }),
     /** Retries the push after `committed-pending-push`. Never commits again. */
     push: () => request<PublishOutcome>("/admin/publish/push", { method: "POST" }),
-    discard: (paths: string[]) =>
+    /** `paths`: the reviewed paths, each with the revision the editor saw, as for Publish. */
+    discard: (paths: Record<string, string | null>) =>
       request<{ discarded: string[] }>("/admin/changes/discard", {
         method: "POST",
         body: { paths },

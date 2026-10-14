@@ -27,7 +27,11 @@ const saveSchema = z.object({
   updateLinks: z.boolean().optional(),
 });
 
-const reorderSchema = z.object({ slugs: z.array(z.string().min(1)).max(2000) });
+const reorderSchema = z.object({
+  slugs: z.array(z.string().min(1)).max(2000),
+  /** The revision of the order the editor saw; `null`: the collection had no order file. */
+  revision: z.string().nullable(),
+});
 
 async function jsonBody(c: { req: { json(): Promise<unknown> } }): Promise<unknown> {
   return c.req.json().catch(() => {
@@ -58,6 +62,8 @@ export function adminContentRoutes(): Hono<Env> {
     const collection = c.req.param("collection");
     const def = content.requireCollection(collection);
 
+    // Before the list: the revision is never newer than the order the editor sees.
+    const orderRevision = await content.orderRevision(collection);
     const entries = await handled(() => content.list(collection));
     const search = c.req.query("search")?.trim().toLowerCase();
 
@@ -72,7 +78,7 @@ export function adminContentRoutes(): Hono<Env> {
       .filter((item) => !search || JSON.stringify(item.data).toLowerCase().includes(search))
       .sort(compareEntries(def));
 
-    return c.json({ items, total: items.length });
+    return c.json({ items, total: items.length, orderRevision });
   });
 
   app.post("/collections/:collection/entries", async (c) => {
@@ -93,10 +99,10 @@ export function adminContentRoutes(): Hono<Env> {
   app.post("/collections/:collection/reorder", async (c) => {
     const { content } = c.get("ctx").services;
     const parsed = reorderSchema.safeParse(await jsonBody(c));
-    if (!parsed.success) throw badRequest("Expected a list of entry slugs.");
+    if (!parsed.success) throw badRequest("Expected a list of entry slugs and the revision of the order.");
 
-    await handled(() => content.reorder(c.req.param("collection"), parsed.data.slugs));
-    return c.json({ ok: true });
+    const revision = await handled(() => content.reorder(c.req.param("collection"), parsed.data.slugs, parsed.data.revision));
+    return c.json({ ok: true, revision });
   });
 
   /** Server-side slug generation, so the URL preview matches what is saved. */
@@ -158,8 +164,11 @@ export function adminContentRoutes(): Hono<Env> {
   app.delete("/collections/:collection/entries/:slug", async (c) => {
     const { content } = c.get("ctx").services;
 
+    // The revision the editor saw: a colleague's later save is not deleted unseen.
+    const revision = c.req.query("revision");
+    if (!revision) throw badRequest("Send the revision of the entry that you delete.");
     await handled(() =>
-      content.remove(c.req.param("collection"), c.req.param("slug")),
+      content.remove(c.req.param("collection"), c.req.param("slug"), { expectedRevision: revision }),
     );
 
     return c.json({ ok: true });

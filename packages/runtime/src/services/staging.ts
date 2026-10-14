@@ -38,6 +38,7 @@ import {
 } from "../workspace/tree.js";
 import {
   analyseChanges,
+  classifyPath,
   compareSources,
   describeProblems,
   flattenProblems,
@@ -45,6 +46,7 @@ import {
   type CompareTarget,
   type Comparison,
   type ContentStagingService,
+  ownedByTarget,
   type PublishInput,
   type RepositoryInfo,
   type StagingStatus,
@@ -147,6 +149,25 @@ export function createWorkingTreeStagingService(
       })),
     );
 
+  /**
+   * The review check of Publish and Discard: the reviewed paths whose file was
+   * saved again or is no longer pending, and the other pending files of a
+   * reviewed group. Drafts of other groups never block.
+   */
+  const unreviewed = (pending: AnnotatedChange[], reviewed: Record<string, string | null>): string[] => {
+    const byPath = new Map(pending.map((change) => [change.path, change]));
+    const groups = new Set(
+      Object.keys(reviewed).flatMap((path) => {
+        const change = byPath.get(path);
+        return change ? [groupOf(change)] : [];
+      }),
+    );
+    return [
+      ...Object.keys(reviewed).filter((path) => !byPath.has(path) || byPath.get(path)!.revision !== reviewed[path]),
+      ...pending.filter((change) => groups.has(groupOf(change)) && !(change.path in reviewed)).map((change) => change.path),
+    ];
+  };
+
   /** When each file was last saved; a deletion has no file to ask. */
   const withSavedAt = async (changes: AnnotatedChange[]): Promise<AnnotatedChange[]> =>
     Promise.all(
@@ -219,21 +240,7 @@ export function createWorkingTreeStagingService(
 
         const revision = await locks.tree.write(async () => {
           const pending = await withRevisions((await analyse(tree, await listTreeChanges(tree))).changes);
-          const byPath = new Map(pending.map((change) => [change.path, change]));
-
-          // The review gate refuses a file saved again since the review, a
-          // reviewed file that is no longer pending, or another file of a
-          // reviewed entry. Drafts of other entries never block a publication.
-          const reviewedGroups = new Set(
-            reviewed.map((path) => byPath.get(path)).flatMap((change) => (change ? [groupOf(change)] : [])),
-          );
-          const stale = [
-            ...reviewed.filter((path) => byPath.get(path)?.revision !== input.paths[path] || !byPath.has(path)),
-            ...pending
-              .filter((change) => reviewedGroups.has(groupOf(change)) && !(change.path in input.paths))
-              .map((change) => change.path),
-          ];
-          if (stale.length > 0) {
+          if (unreviewed(pending, input.paths).length > 0) {
             throw new ApiError(
               "conflict",
               "Some of these changes were edited after you reviewed them. Review them again, then publish.",
@@ -286,15 +293,19 @@ export function createWorkingTreeStagingService(
       });
     },
 
-    async discard(requested: string[], editor?: string): Promise<{ discarded: string[] }> {
+    async discard(reviewed: Record<string, string | null>, editor?: string): Promise<{ discarded: string[] }> {
       const tree = await located();
 
       return locks.tree.write(async () => {
-        // Discard is destructive, so it reaches only paths that the change list names.
-        const current = new Map((await listTreeChanges(tree)).map((change) => [change.path, change]));
+        const listed = await listTreeChanges(tree);
+        // A discarded draft cannot come back, so it takes the review check of Publish.
+        if (unreviewed(await withRevisions((await analyse(tree, listed)).changes), reviewed).length > 0) {
+          throw new ApiError("conflict", "Some of these changes were edited after you reviewed them. Review them again, then discard.");
+        }
+        const current = new Map(listed.map((change) => [change.path, change]));
 
         const discarded: string[] = [];
-        for (const path of requested) {
+        for (const path of Object.keys(reviewed)) {
           const change = current.get(path);
           if (!change) continue;
           await discardChange(tree, change);
@@ -314,7 +325,17 @@ export function createWorkingTreeStagingService(
         "reason" in tree
           ? memorySource({}, "unpublished")
           : headSource(tree, against === "origin" ? policy.upstreamRef : "HEAD");
-      return locks.tree.read(() => compareSources(model, published, files, target));
+      return locks.tree.read(async () => {
+        // The revisions before the content: a revision is never newer than what the editor sees.
+        const revisions: Record<string, string | null> = {};
+        if (!("reason" in tree) && against === "head") {
+          for (const change of await listTreeChanges(tree)) {
+            if (!ownedByTarget(classifyPath(model, change.path), target)) continue;
+            revisions[change.path] = change.kind === "delete" ? null : await files.revision(change.path);
+          }
+        }
+        return { ...(await compareSources(model, published, files, target)), revisions };
+      });
     },
 
     async sync(): Promise<void> {

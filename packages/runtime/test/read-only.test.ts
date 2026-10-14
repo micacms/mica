@@ -78,8 +78,8 @@ describe("a field kind this build does not know", () => {
     const writes: Array<[string, RequestInit]> = [
       ["/api/admin/collections/gallery/entries", json("POST", { data: { title: "Winter" } })],
       ["/api/admin/collections/gallery/entries/summer", json("PUT", { data: { title: "Summer" } })],
-      ["/api/admin/collections/gallery/entries/summer", { method: "DELETE" }],
-      ["/api/admin/collections/gallery/reorder", json("POST", { slugs: ["summer"] })],
+      ["/api/admin/collections/gallery/entries/summer?revision=x", { method: "DELETE" }],
+      ["/api/admin/collections/gallery/reorder", json("POST", { slugs: ["summer"], revision: null })],
       ["/api/admin/singletons/settings", json("PUT", { data: {} })],
     ];
     for (const [path, init] of writes) {
