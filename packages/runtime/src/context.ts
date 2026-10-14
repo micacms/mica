@@ -54,10 +54,10 @@ export interface OperationalInfo {
 /** What /ready asks the composition. */
 export interface RuntimeHealth {
   /**
-   * Whether the site can be edited, with short reason codes. Never names the
+   * Whether something needs a person, with short reason codes. Never names the
    * repository: the endpoint is public.
    */
-  ready?: () => { ok: boolean; reasons: string[] };
+  ready?: () => { degraded: boolean; reasons: string[]; lastSyncAt: string | null };
 }
 
 export interface RuntimeContext {

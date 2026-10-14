@@ -4,7 +4,9 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, readdirSync, statSync } from "node:fs";
+import { chmodSync, mkdtempSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Writable } from "node:stream";
@@ -22,8 +24,18 @@ import { seedRepository, startGitHost, writeIn, type GitHost } from "./git-http.
 const TOKEN = "check-token-91b2";
 
 let host: GitHost;
+/** An identity provider that answers discovery only. */
+let issuer: { url: string; close(): void };
 before(async () => {
   host = await startGitHost(TOKEN);
+  const server = createServer((req, res) => {
+    const url = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    if (req.url !== "/.well-known/openid-configuration") return void res.writeHead(404).end();
+    res.setHeader("content-type", "application/json");
+    res.end(JSON.stringify({ issuer: url, authorization_endpoint: `${url}/auth`, token_endpoint: `${url}/token`, jwks_uri: `${url}/jwks` }));
+  });
+  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
+  issuer = { url: `http://127.0.0.1:${(server.address() as AddressInfo).port}`, close: () => server.close() };
   seedRepository(host, "site", {
     "content/.mica/schema.json": JSON.stringify(createManifest(defineSite({ collections: {} }), "test")),
     "content/theme.json": "{}\n",
@@ -33,7 +45,10 @@ before(async () => {
     "two/content/.mica/schema.json": JSON.stringify(createManifest(defineSite({ collections: {} }), "test")),
   });
 });
-after(() => host.close());
+after(() => {
+  host.close();
+  issuer.close();
+});
 
 function environment(dataDir: string, overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return {
@@ -41,7 +56,7 @@ function environment(dataDir: string, overrides: NodeJS.ProcessEnv = {}): NodeJS
     MICA_LOG_LEVEL: "silent",
     MICA_SESSION_SECRET: "0".repeat(32),
     MICA_DATA_DIR: dataDir,
-    MICA_OIDC_ISSUER: "https://auth.example.com",
+    MICA_OIDC_ISSUER: issuer.url,
     MICA_OIDC_CLIENT_ID: "mica",
     MICA_ADMIT_GROUPS: "mica-editors",
     MICA_REPOSITORY_URL: host.url("site"),
@@ -81,7 +96,9 @@ describe("check", () => {
     assert.equal(code, 0, output);
     assert.match(output, /ok {4}read access/);
     assert.match(output, /ok {4}push rights/);
+    assert.match(output, /ok {4}identity provider: http:\/\/127\.0\.0\.1:\d+ answers\. Register the redirect URI http:\/\/localhost:6422\/api\/auth\/callback/);
     assert.match(output, /ok {4}content root: content\n/);
+    assert.match(output, /ok {4}data volume: writable, no clone yet/);
     assert.match(output, /ok {4}content model/);
     assert.match(output, /no clone yet/);
   });
@@ -113,6 +130,27 @@ describe("check", () => {
     assert.match(chosen.output, /ok {4}content root: two\/content/);
   });
 
+  it("fails for an identity provider that does not answer, and for a volume it cannot write", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "mica-check-"));
+    chmodSync(dataDir, 0o500);
+    try {
+      const { code, output } = await check(environment(dataDir, { MICA_OIDC_ISSUER: `${issuer.url}/missing` }));
+      assert.equal(code, 1);
+      assert.match(output, /FAIL {2}identity provider: .*\/missing cannot be discovered/);
+      assert.match(output, /FAIL {2}data volume: .* is not writable/);
+    } finally {
+      chmodSync(dataDir, 0o700);
+    }
+  });
+
+  it("refuses a volume with another layout version", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "mica-check-"));
+    writeFileSync(join(dataDir, "volume.json"), '{"version":2}');
+    const { code, output } = await check(environment(dataDir));
+    assert.equal(code, 1);
+    assert.match(output, /FAIL {2}data volume: layout version 2/);
+  });
+
   it("writes nothing to an existing clone", async () => {
     const dataDir = mkdtempSync(join(tmpdir(), "mica-check-"));
     const layout = cloneLayout(dataDir);
@@ -130,7 +168,7 @@ describe("check", () => {
 
     const { code, output } = await check(environment(dataDir));
     assert.equal(code, 0, output);
-    assert.match(output, /a clone with 1 unpublished draft files/);
+    assert.match(output, /a clone at [0-9a-f]+, with 1 unpublished draft files/);
     assert.equal(snapshot(dataDir), before);
     assert.equal(readFileSync(join(layout.repositoryDir, "content/theme.json"), "utf8"), '{"draft":true}\n');
   });

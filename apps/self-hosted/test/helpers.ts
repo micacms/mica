@@ -158,7 +158,7 @@ export async function createHarness(
       sessionTtlHours: config.MICA_SESSION_TTL_HOURS,
       sessionIdleHours: config.MICA_SESSION_IDLE_HOURS,
     }),
-    health: { ready: () => ({ ok: true, reasons: [] }) },
+    health: { ready: () => ({ degraded: false, reasons: [], lastSyncAt: null }) },
     onShutdown: () => {
       auth.loginLimiter.stop();
     },

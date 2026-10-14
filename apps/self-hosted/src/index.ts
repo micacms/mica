@@ -32,6 +32,7 @@ import { Hono } from "hono";
 
 import { editorUiDist } from "./admin-dir.js";
 import { runCheck } from "./check.js";
+import { readiness } from "./readiness.js";
 import { currentToken, loadConfig, type SelfHostedConfig } from "./config.js";
 import { cloneLayout, CloneRefusal, openClone } from "./workspace/clone.js";
 import { coarseGroups, contentGroups, revalidator } from "./workspace/content-groups.js";
@@ -261,24 +262,7 @@ async function serve(): Promise<void> {
       sessionIdleHours: config.MICA_SESSION_IDLE_HOURS,
     }),
 
-    health: {
-      // Editing works as long as the clone is there; these are reasons to look.
-      ready: () => {
-        const state = workspace.state();
-        const reasons: string[] = [];
-        if (state.error) {
-          const reason: Record<string, string> = {
-            auth: "auth_failed",
-            write_forbidden: "write_forbidden",
-            branch_not_found: "branch_not_found",
-          };
-          reasons.push(reason[state.error.code] ?? "sync_failing");
-        }
-        if (state.restartRequired) reasons.push("restart_required");
-        if (state.readOnly) reasons.push("read_only");
-        return { ok: true, reasons };
-      },
-    },
+    health: { ready: () => readiness(workspace.state()) },
 
     onShutdown: () => {
       auth.loginLimiter.stop();
