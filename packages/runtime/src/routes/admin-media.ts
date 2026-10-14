@@ -11,7 +11,6 @@ import { z } from "zod";
 
 import { ApiError, badRequest, notFound } from "../lib/errors.js";
 import { isImageType } from "../lib/file-type.js";
-import { MAX_FILES_PER_UPLOAD } from "../middleware/index.js";
 import { editorOf, type Env } from "../http.js";
 import type { Referrer } from "../services/content-store.js";
 
@@ -91,58 +90,46 @@ export function adminMediaRoutes(): Hono<Env> {
     return c.json({ deleted: paths });
   });
 
+  /**
+   * One file for each request, as the request body; the rest is in the query.
+   * The body streams to disk, so no upload is held in memory.
+   */
   app.post("/", async (c) => {
     const ctx = c.get("ctx");
-    const form = await c.req.formData().catch(() => {
-      throw badRequest("Expected a multipart upload.");
-    });
+    const body = c.req.raw.body;
+    if (!body) throw badRequest("No file was uploaded.");
 
-    // The cast picks one of the two structurally different `File` types (Node's and undici's).
-    const files = form
-      .getAll("file")
-      .filter((value) => typeof value !== "string") as unknown as File[];
-
-    if (files.length === 0) throw badRequest("No file was uploaded.");
-    if (files.length > MAX_FILES_PER_UPLOAD) {
-      throw badRequest(`Upload at most ${MAX_FILES_PER_UPLOAD} files at a time.`);
-    }
-
-    const accept = form.get("accept");
+    const accept = c.req.query("accept");
     // An entry's own `media/` directory or the shared one; the media service refuses anything else.
-    const directory = typeof form.get("directory") === "string" ? String(form.get("directory")) : undefined;
+    const directory = c.req.query("directory");
     // The media service accepts `/gallery/x/media` too; take the owner from the path it will write to.
     const owner = (directory ?? "").replace(/^[/\\]+/, "").split(/[/\\]/)[0] ?? "";
     const readOnly = ctx.site.readOnly.get(`collections.${owner}`) ?? ctx.site.readOnly.get(`singletons.${owner}`);
     if (readOnly) throw new ApiError("conflict", readOnly);
     // A new entry uploads into the folder of the URL in its form; never into a saved entry's.
     const folder = /^([^/]+)\/([^/]+)\/media$/.exec((directory ?? "").replace(/^\/+/, ""));
-    if (form.get("newEntry") === "true" && folder && ctx.site.model.collections[folder[1]!]) {
+    if (c.req.query("newEntry") === "true" && folder && ctx.site.model.collections[folder[1]!]) {
       if ((await ctx.services.content.revisionOf(folder[1]!, folder[2]!)) !== null) {
         throw new ApiError("conflict", `Another entry already has the URL “${folder[2]}”. Change the URL, then upload.`);
       }
     }
 
-    // One after another: each file is copied while it is checked, so only one copy is in memory at a time.
-    const prepared = [];
-    for (const file of files) {
-      prepared.push(
-        await ctx.services.media.prepare({
-          file,
-          directory,
-          accept: accept === "image" || accept === "document" ? accept : "any",
-        }),
-      );
+    const length = Number(c.req.header("content-length"));
+    const received = await ctx.services.media.receive({
+      body,
+      name: c.req.query("name") ?? "upload",
+      ...(Number.isFinite(length) ? { size: length } : {}),
+      directory,
+      accept: accept === "image" || accept === "document" ? accept : "any",
+    });
+    try {
+      await ctx.site.contentRepository.apply({ changes: received.changes });
+    } catch (error) {
+      await ctx.services.media.discard(received.temporary);
+      throw error;
     }
 
-    await ctx.site.contentRepository.apply({
-      changes: prepared.map((item) => ({
-        type: "write" as const,
-        path: item.file.path,
-        contents: item.contents,
-      })),
-    });
-
-    return c.json({ items: prepared.map((item) => item.file) }, 201);
+    return c.json({ items: [received.file] }, 201);
   });
 
   /**
@@ -173,7 +160,7 @@ export function adminMediaRoutes(): Hono<Env> {
     const found = await media.read(decoded);
     if (!found) throw notFound("No such file.");
 
-    return c.body(found.bytes as unknown as ArrayBuffer, 200, {
+    return c.body(found.stream, 200, {
       // Text without a charset is decoded by guessing; the repository's text is UTF-8.
       "content-type": found.mimeType.startsWith("text/") ? `${found.mimeType}; charset=utf-8` : found.mimeType,
       "cache-control": "private, no-cache",

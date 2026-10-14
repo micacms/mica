@@ -96,9 +96,13 @@ export function lockedFiles(
     origin: files.origin,
     read: (path) => tree.read(() => files.read(path)),
     list: (path) => tree.read(() => files.list(path)),
-    readBinary: (path) => tree.read(() => files.readBinary(path)),
+    readHead: (path, length) => tree.read(() => files.readHead(path, length)),
+    // The stream outlives the lock; a write renames the file aside, which an open file survives.
+    readStream: (path) => tree.read(() => files.readStream(path)),
+    // A temporary file that nothing reads until `apply` copies it.
+    receive: (path, body, limit) => files.receive(path, body, limit),
     stat: (path) => tree.read(() => files.stat(path)),
     revision: (path) => tree.read(() => files.revision(path)),
-    apply: (input) => tree.write(() => files.apply(input)),
+    apply: (input, after) => tree.write(() => files.apply(input, after)),
   };
 }

@@ -6,8 +6,11 @@
  */
 
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, realpath, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
+import { createReadStream, createWriteStream, type Stats } from "node:fs";
+import { copyFile, mkdir, open, readdir, readFile, realpath, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, resolve, sep } from "node:path";
+import { Readable, Transform } from "node:stream";
+import { pipeline } from "node:stream/promises";
 
 import { contentPath, ContentPathError, type ContentSource } from "@micacms/core/internal";
 import { isMissing, within } from "@micacms/core/node";
@@ -36,6 +39,11 @@ export interface Author {
 
 export type FileChange =
   | { type: "write"; path: string; contents: string | Uint8Array }
+  /**
+   * Copies a file on disk, without reading it into memory: media of a renamed
+   * entry, or an upload. A change that removes `from` must come after it.
+   */
+  | { type: "copy"; from: string; path: string }
   | { type: "delete"; path: string }
   /** Deletes every file under `path`. Removing an entry removes its directory. */
   | { type: "deleteTree"; path: string };
@@ -56,9 +64,24 @@ export interface FileChanges {
   expect?: Record<string, string | null>;
 }
 
+/** An upload that went over its limit. */
+export class TooLargeError extends FilesError {
+  override name = "TooLargeError";
+}
+
 export interface ContentFiles extends ContentSource {
-  /** Bytes of a file, for media. Null when there is no such file. */
-  readBinary(path: string): Promise<Uint8Array | null>;
+  /** The first `length` bytes of a file, for its type and size. Null when there is no such file. */
+  readHead(path: string, length: number): Promise<Uint8Array | null>;
+
+  /** A file as a stream, for the editor's file route. Null when there is no such file. */
+  readStream(path: string): Promise<ReadableStream<Uint8Array> | null>;
+
+  /**
+   * Writes a stream to a new temporary file at `path` (`*.mica-<pid>-<n>`), at
+   * most `limit` bytes, and returns its size and its first bytes. Throws
+   * `TooLargeError` over the limit. `apply` copies it into place.
+   */
+  receive(path: string, body: ReadableStream<Uint8Array>, limit: number): Promise<{ size: number; head: Uint8Array }>;
 
   /** Size and last change of a file, without reading it. Null when there is no such file. */
   stat(path: string): Promise<FileStat | null>;
@@ -71,9 +94,10 @@ export interface ContentFiles extends ContentSource {
 
   /**
    * Applies every change, or none of them. Throws `ConflictError` when any
-   * `expect` no longer holds.
+   * `expect` no longer holds. `after` runs before the write lock ends, with
+   * files that take no lock, so that a revision it reads is of this write.
    */
-  apply(input: FileChanges): Promise<void>;
+  apply<T = void>(input: FileChanges, after?: (files: ContentFiles) => Promise<T>): Promise<T>;
 }
 
 /**
@@ -81,13 +105,26 @@ export interface ContentFiles extends ContentSource {
  * root or a path outside it.
  */
 export function checkChangePaths(input: FileChanges): void {
-  for (const change of input.changes) contentPath(change.path);
+  for (const change of input.changes) {
+    contentPath(change.path);
+    if (change.type === "copy") contentPath(change.from);
+  }
   for (const path of Object.keys(input.expect ?? {})) contentPath(path);
 }
 
 export interface ContentFilesOptions {
   root: string;
 }
+
+/** Bytes of a file's head that the upload keeps: enough for its type and its dimensions. */
+export const HEAD_BYTES = 512 * 1024;
+
+/** Files hashed at the same time: `/changes` asks for every pending file at once. */
+const PARALLEL_HASHES = 8;
+
+/** A temporary name beside `target`, which `git status` and the readers skip. */
+let temporaryCount = 0;
+const temporaryName = (target: string) => `${target}.mica-${process.pid}-${temporaryCount++}`;
 
 export function contentFiles(options: ContentFilesOptions): ContentFiles {
   const base = resolve(options.root);
@@ -115,32 +152,100 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
     }
   };
 
-  const readBytes = async (path: string): Promise<Uint8Array | null> => {
+  /** Null for a missing file, so that every reader answers "absent" the same way. */
+  const missingAsNull = <T>(error: unknown): T | null => {
+    if (isMissing(error)) return null;
+    throw error;
+  };
+
+  const statOrNull = (target: string) => stat(target).catch((error: unknown) => missingAsNull<Stats>(error));
+
+  /**
+   * Digests by path, reused while the file's size, change times and inode stay
+   * the same: opening an entry with many photos hashes them once, not each time.
+   */
+  const digests = new Map<string, { key: string; digest: string }>();
+  let hashing = 0;
+  const waiting: Array<() => void> = [];
+  const hashFile = async (target: string): Promise<string> => {
+    if (hashing >= PARALLEL_HASHES) await new Promise<void>((resolve) => waiting.push(resolve));
+    hashing += 1;
     try {
-      return await readFile(await full(path));
-    } catch (error) {
-      if (isMissing(error)) return null;
-      throw error;
+      const hash = createHash("sha256");
+      await pipeline(createReadStream(target), hash);
+      return hash.digest("hex").slice(0, 16);
+    } finally {
+      hashing -= 1;
+      waiting.shift()?.();
     }
   };
 
-  return {
+  const files: ContentFiles = {
     origin: base,
 
     async read(path) {
-      const bytes = await readBytes(path);
-      return bytes === null ? null : Buffer.from(bytes).toString("utf8");
+      try {
+        return await readFile(await full(path), "utf8");
+      } catch (error) {
+        return missingAsNull(error);
+      }
     },
 
-    readBinary: readBytes,
+    async readHead(path, length) {
+      let handle;
+      try {
+        handle = await open(await full(path), "r");
+      } catch (error) {
+        return missingAsNull(error);
+      }
+      try {
+        const buffer = Buffer.alloc(length);
+        const { bytesRead } = await handle.read(buffer, 0, length, 0);
+        return new Uint8Array(buffer.subarray(0, bytesRead));
+      } finally {
+        await handle.close();
+      }
+    },
+
+    async readStream(path) {
+      const target = await full(path);
+      const info = await statOrNull(target);
+      if (!info?.isFile()) return null;
+      return Readable.toWeb(createReadStream(target)) as ReadableStream<Uint8Array>;
+    },
+
+    async receive(path, body, limit) {
+      const target = await full(path);
+      await mkdir(dirname(target), { recursive: true });
+      let size = 0;
+      const head: Buffer[] = [];
+      let headSize = 0;
+      const count = new Transform({
+        transform(chunk: Buffer, _encoding, done) {
+          size += chunk.length;
+          if (size > limit) return done(new TooLargeError(`The file is larger than ${limit} bytes.`));
+          if (headSize < HEAD_BYTES) {
+            head.push(chunk.subarray(0, HEAD_BYTES - headSize));
+            headSize += Math.min(chunk.length, HEAD_BYTES - headSize);
+          }
+          done(null, chunk);
+        },
+      });
+      try {
+        await pipeline(Readable.fromWeb(body as never), count, createWriteStream(target, { flags: "wx" }));
+      } catch (error) {
+        await rm(target, { force: true });
+        throw error;
+      }
+      return { size, head: new Uint8Array(Buffer.concat(head)) };
+    },
 
     async stat(path) {
       try {
         const info = await stat(await full(path));
         return info.isFile() ? { size: info.size, modifiedAt: info.mtime.toISOString() } : null;
       } catch (error) {
-        if (isMissing(error)) return null;
-        throw error;
+        return missingAsNull(error);
       }
     },
 
@@ -164,64 +269,64 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
      * must not cause a conflict.
      */
     async revision(path) {
-      const bytes = await readBytes(path);
-      if (bytes === null) return null;
-      return createHash("sha256").update(bytes).digest("hex").slice(0, 16);
+      const target = await full(path);
+      const info = await statOrNull(target);
+      if (!info?.isFile()) return null;
+      const key = `${info.size}:${info.mtimeMs}:${info.ctimeMs}:${info.ino}`;
+      const known = digests.get(path);
+      if (known?.key === key) return known.digest;
+      const digest = await hashFile(target);
+      if (digests.size >= 20_000) digests.clear();
+      digests.set(path, { key, digest });
+      return digest;
     },
 
-    async apply(input: FileChanges): Promise<void> {
+    async apply<T>(input: FileChanges, after?: (files: ContentFiles) => Promise<T>): Promise<T> {
       checkChangePaths(input);
-      await assertExpected(this, input);
+      await assertExpected(files, input);
 
-      // In-memory undo of every overwrite and removal. Content trees are small,
-      // so no journal is necessary.
+      // Each overwritten or removed file or folder is renamed aside, and renamed
+      // back on a failure: no copy in memory, however large the media.
       const undo: Array<() => Promise<void>> = [];
+      const aside: string[] = [];
       const staging: string[] = [];
+
+      /** Renames what is at `target` aside, if anything is. */
+      const putAside = async (target: string): Promise<void> => {
+        const kept = temporaryName(target);
+        try {
+          await rename(target, kept);
+        } catch (error) {
+          if (isMissing(error)) return;
+          throw error;
+        }
+        aside.push(kept);
+        undo.push(async () => {
+          await rm(target, { recursive: true, force: true });
+          await rename(kept, target);
+        });
+      };
 
       try {
         for (const change of input.changes) {
-          if (change.type === "write") {
-            const target = await full(change.path);
-            const previous = await readBytes(change.path);
+          const target = await full(change.path);
 
-            undo.push(async () => {
-              if (previous === null) await rm(target, { force: true });
-              else await writeFile(target, previous);
-            });
-
+          if (change.type === "write" || change.type === "copy") {
             await mkdir(dirname(target), { recursive: true });
             // Write beside the target and rename, so a reader (the Astro dev
             // server) never sees a partial file.
-            const staged = `${target}.mica-${process.pid}-${staging.length}`;
+            const staged = temporaryName(target);
             staging.push(staged);
-            await writeFile(staged, change.contents);
+            if (change.type === "write") await writeFile(staged, change.contents);
+            else await copyFile(await full(change.from), staged);
+            await putAside(target);
+            undo.push(() => rm(target, { force: true }));
             await rename(staged, target);
             continue;
           }
 
-          const target = await full(change.path);
-
-          if (change.type === "delete") {
-            const previous = await readBytes(change.path);
-            if (previous === null) continue;
-
-            undo.push(async () => {
-              await mkdir(dirname(target), { recursive: true });
-              await writeFile(target, previous);
-            });
-            await unlink(target);
-            continue;
-          }
-
-          const saved = await snapshotTree(this, change.path);
-          undo.push(async () => {
-            for (const [path, bytes] of saved) {
-              const restored = await full(path);
-              await mkdir(dirname(restored), { recursive: true });
-              await writeFile(restored, bytes);
-            }
-          });
-          await rm(target, { recursive: true, force: true });
+          // A delete and a tree delete are the same move aside; a missing file is already gone.
+          await putAside(target);
         }
       } catch (error) {
         // Reverse order, so a path written and then deleted comes back in its first state.
@@ -237,8 +342,11 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
               `Could not apply changes to ${base}: ${(error as Error).message}`,
             );
       }
+      for (const kept of aside) await rm(kept, { recursive: true, force: true });
+      return (await after?.(files)) as T;
     },
   };
+  return files;
 }
 
 async function assertExpected(
@@ -258,27 +366,4 @@ async function assertExpected(
       stale,
     );
   }
-}
-
-/** Every file under `path`, so a tree deletion can be undone. */
-async function snapshotTree(
-  files: ContentFiles,
-  path: string,
-): Promise<Array<[string, Uint8Array]>> {
-  const saved: Array<[string, Uint8Array]> = [];
-
-  const walk = async (at: string): Promise<void> => {
-    for (const item of await files.list(at)) {
-      const child = `${at}/${item.name}`;
-      if (item.type === "directory") {
-        await walk(child);
-        continue;
-      }
-      const bytes = await files.readBinary(child);
-      if (bytes !== null) saved.push([child, bytes]);
-    }
-  };
-
-  await walk(path);
-  return saved;
 }

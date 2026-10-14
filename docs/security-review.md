@@ -30,8 +30,8 @@ out, because they go out of date with each change.
 
 | Status | Count |
 | --- | --- |
-| Pass | 53 |
-| Partial | 4: 2.1.1, 5.2.1, 7.4.2, 14.3.1 |
+| Pass | 54 |
+| Partial | 3: 2.1.1, 7.4.2, 14.3.1 |
 | Fail | 0 |
 | Accepted | 1: 7.4.1 |
 | N/A | 10 (some rows group several requirements) |
@@ -65,7 +65,7 @@ ones, all low or lower. #213 tracks them.
 | --- | --- | --- | --- | --- |
 | N11 | low | The local editor follows a symbolic link inside the content root. `within` checks the path as text, so a committed link to a folder outside the root makes a save write, and a delete remove, outside it. The self-hosted clone has no links (`core.symlinks=false`). | `packages/core/src/node.ts` (`within`); `packages/runtime/src/workspace/files.ts` | Refuse a path whose real location leaves the real content root. |
 | N12 | low | The `:slug` of `PUT /entries/:slug` does not get the one-segment check that a delete has. `x%2Fmedia` with a new URL removes another entry's media folder, inside the root. | `packages/runtime/src/routes/admin-content.ts`; `packages/runtime/src/services/content-store.ts` (`save`) | Check the slug parameter of get, save and references. |
-| N13 | low | One upload request can hold about 251 MB in memory: the form is buffered and each file copied, against a 512 MB container. Admitted editors only. | `packages/runtime/src/middleware/index.ts` (body limit); `packages/runtime/src/routes/admin-media.ts` | Lower the limit for one request, and prepare the files one after another. |
+| N13 | low | One upload request can hold about 251 MB in memory: the form is buffered and each file copied, against a 512 MB container. Admitted editors only. | `packages/runtime/src/middleware/index.ts` (body limit); `packages/runtime/src/routes/admin-media.ts` | Lower the limit for one request, and prepare the files one after another. Since #235, an upload is one file that streams to disk. |
 | N14 | low | Unsaved form values kept in `sessionStorage` (`mica:kept:*`) stay after sign-out in the same tab. Website content, not secrets. A regression of #197. | `packages/editor-ui/src/composables/useKeptChanges.ts`; `packages/editor-ui/src/stores/session.ts` (`signOut`) | Remove the keys at sign-out. |
 | N15 | low | A `media()` value is not checked for `..`. A hand-committed `/../../x.png` reaches Astro's `image()`, which can put a file from outside the content root into the build; Mica's Publish refuses it as missing. Needs write access to the repository. | `packages/core/src/validation.ts`; `packages/core/src/read.ts`; `packages/astro/src/images.ts` | Refuse media paths that `contentPath` refuses. |
 | N16 | low | `requireCollection` and `requireSingleton` accept inherited names such as `constructor`, and a save then fails with a 500. | `packages/runtime/src/services/content-store.ts` | `Object.hasOwn`. |
@@ -89,7 +89,7 @@ ones, all low or lower. #213 tracks them.
 
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
-| 2.1.1 | Validation rules documented | Partial | `sites/micacms/content/docs/reference-fields/body.mdoc`; `packages/runtime/src/routes/admin-content.ts` | The field rules are documented. Not yet: the accepted upload types (`file-type.ts`), 10 files for each upload, and the 2 MB limit for JSON. |
+| 2.1.1 | Validation rules documented | Partial | `sites/micacms/content/docs/reference-fields/body.mdoc`; `packages/runtime/src/routes/admin-content.ts` | The field rules are documented. Not yet: the accepted upload types (`file-type.ts`) and the 2 MB limit for JSON. |
 | 2.2.1 | Positive input validation | Pass | `packages/runtime/src/routes/admin-content.ts`; `packages/runtime/src/services/content-store.ts` | The delete slug is checked; the save slug is not (N12). |
 | 2.2.2 | Validation on the server | Pass | `packages/runtime/src/services/content-store.ts` (`validate`); `packages/auth/oidc/src/config.ts` | |
 | 2.3.1 | Business flow in the expected order | Pass | `packages/runtime/src/routes/admin-content.ts`; `packages/runtime/src/services/staging.ts` (`unreviewed`) | Save, delete, reorder, discard and publish carry the revision that the editor saw (#216). |
@@ -124,7 +124,7 @@ not counted.
 
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
-| 5.2.1 | Size limit without DoS | Partial | `packages/runtime/src/middleware/index.ts`; `packages/runtime/src/routes/admin-media.ts` | The limit applies before the body is read (#158). One request can still hold about 251 MB in memory (N13). |
+| 5.2.1 | Size limit without DoS | Pass | `packages/runtime/src/middleware/index.ts`; `packages/runtime/src/services/media.ts` | A JSON body is refused over 2 MB before it is read (#158). An upload is one file that streams to disk; the stream stops at `MICA_MAX_UPLOAD_BYTES`, and a Content-Length over it is refused at once (#235). |
 | 5.2.2 | Type from content; extension matches | Pass | `packages/runtime/src/services/media.ts`; `packages/runtime/src/lib/file-type.ts` | The extension comes from the detected type. |
 | 5.3.1 | Uploads never run as server code | Pass | `packages/runtime/src/routes/admin-media.ts` | Uploads are files in the content, never served as code. |
 | 5.3.2 | Paths from user input confined | Pass | `packages/core/src/source.ts` (`contentPath`); `packages/core/src/node.ts` (`within`); `packages/runtime/src/workspace/files.ts`; `packages/runtime/src/services/media.ts` | One check refuses `.`, `..`, `\`, control characters and drive letters, and uploads go only into a `media` folder (#153). Gaps: N11, N12, N15. |

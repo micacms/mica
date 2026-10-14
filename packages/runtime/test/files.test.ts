@@ -43,13 +43,16 @@ describe("reading", () => {
   it("reads text and bytes", async () => {
     assert.equal(await files.read("theme.json"), '{ "primaryColor": "#123456" }');
 
-    const bytes = await files.readBinary("projects/haus-a/media/photo.jpg");
-    assert.equal(Buffer.from(bytes!).toString("utf8"), "not really a jpeg");
+    const head = await files.readHead("projects/haus-a/media/photo.jpg", 8);
+    assert.equal(Buffer.from(head!).toString("utf8"), "not real");
+    const stream = await files.readStream("projects/haus-a/media/photo.jpg");
+    assert.equal(await new Response(stream).text(), "not really a jpeg");
   });
 
   it("returns null for what is not there", async () => {
     assert.equal(await files.read("missing.json"), null);
-    assert.equal(await files.readBinary("missing.jpg"), null);
+    assert.equal(await files.readHead("missing.jpg", 8), null);
+    assert.equal(await files.readStream("missing.jpg"), null);
     assert.equal(await files.revision("missing.json"), null);
   });
 
@@ -116,7 +119,7 @@ describe("commit", () => {
       ],
     });
 
-    const bytes = await files.readBinary("projects/haus-a/media/new.bin");
+    const bytes = await files.readHead("projects/haus-a/media/new.bin", 16);
     assert.deepEqual([...bytes!], [1, 2, 3]);
   });
 

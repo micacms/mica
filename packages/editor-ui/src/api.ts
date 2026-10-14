@@ -26,8 +26,6 @@ export class ApiError extends Error {
   }
 }
 
-/** Files per upload request; matches `MAX_FILES_PER_UPLOAD` in the runtime. */
-const UPLOAD_BATCH = 4;
 
 /** The CSRF cookie is readable by design — it is echoed back as a header. `__Host-` over https. */
 function csrfToken(): string {
@@ -69,8 +67,9 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   if (method !== "GET") headers["x-csrf-token"] = csrfToken();
 
-  const isFormData = options.body instanceof FormData;
-  if (options.body !== undefined && !isFormData) headers["content-type"] = "application/json";
+  // A file goes as it is: the server streams it to disk.
+  const isFile = options.body instanceof Blob;
+  if (options.body !== undefined && !isFile) headers["content-type"] = "application/json";
 
   let response: Response;
   try {
@@ -79,8 +78,8 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
       headers,
       credentials: "same-origin",
       signal: options.signal,
-      body: isFormData
-        ? (options.body as FormData)
+      body: isFile
+        ? (options.body as Blob)
         : options.body !== undefined
           ? JSON.stringify(options.body)
           : undefined,
@@ -535,17 +534,19 @@ export const api = {
 
   media: {
     list: () => request<{ items: MediaItem[] }>("/admin/media"),
+    /** One request for each file, one after another. */
     upload: async (files: File[], options: { accept?: string; directory?: string; newEntry?: boolean } = {}) => {
       const items: MediaItem[] = [];
-      for (let start = 0; start < files.length; start += UPLOAD_BATCH) {
-        const form = new FormData();
-        for (const file of files.slice(start, start + UPLOAD_BATCH)) form.append("file", file);
-        if (options.accept) form.append("accept", options.accept);
-        // Where the file goes in the repository. An entry's own `media/`
-        // directory keeps the entry self-contained and its rename cheap.
-        if (options.directory) form.append("directory", options.directory);
-        if (options.newEntry) form.append("newEntry", "true");
-        const result = await request<{ items: MediaItem[] }>("/admin/media", { method: "POST", body: form });
+      for (const file of files) {
+        const query = {
+          name: file.name,
+          accept: options.accept,
+          // Where the file goes in the repository. An entry's own `media/`
+          // directory keeps the entry self-contained and its rename cheap.
+          directory: options.directory,
+          newEntry: options.newEntry ? "true" : undefined,
+        };
+        const result = await request<{ items: MediaItem[] }>("/admin/media", { method: "POST", body: file, query });
         items.push(...result.items);
       }
       return { items };

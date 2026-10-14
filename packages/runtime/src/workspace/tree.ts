@@ -254,10 +254,11 @@ export function overlaySource(base: ContentSource, top: ContentSource, paths: It
 }
 
 /**
- * A save's temporary file (`*.mica-<pid>-<n>`), seen during a save or after a
- * crash. Never content.
+ * A save's temporary file or folder (`*.mica-<pid>-<n>`): a file being written,
+ * an upload, or what a save put aside. Seen during a save or after a crash.
+ * Never content.
  */
-const TEMPORARY_FILE = /\.mica-\d+-\d+$/;
+const TEMPORARY_FILE = /\.mica-\d+-\d+(?:\/|$)/;
 
 /**
  * Parses `git status --porcelain=v1 -z` into content-root-relative changes.

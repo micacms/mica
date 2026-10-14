@@ -1,13 +1,14 @@
 /**
  * Media uploads. Every upload is checked here for size and for its real content
  * type, read from the bytes. An upload is a file in the content repository; its
- * name is slugified and unique in its own directory.
+ * name is slugified and unique in its own directory. No whole file is held in
+ * memory: an upload streams to disk, and a read is a stream or the file's head.
  */
 
 import path from "node:path";
 
 import { contentPath, ContentPathError, MEDIA_DIR, slugify } from "@micacms/core/internal";
-import type { ContentFiles } from "../workspace/files.js";
+import { HEAD_BYTES, TooLargeError, type ContentFiles, type FileChange } from "../workspace/files.js";
 import { imageSize } from "image-size";
 
 import { ApiError, badRequest } from "../lib/errors.js";
@@ -28,8 +29,17 @@ export interface MediaFile {
   height: number | null;
 }
 
+let uploads = 0;
+
 export function createMediaService(deps: MediaServiceDeps) {
   const { files, maxBytes } = deps;
+  const tooLarge = (size?: number) =>
+    new ApiError(
+      "payload_too_large",
+      size === undefined
+        ? `The file is larger than the limit of ${formatBytes(maxBytes)}.`
+        : `The file is ${formatBytes(size)}. The limit is ${formatBytes(maxBytes)}.`,
+    );
   const dimensionCache = new Map<string, { mimeType: string; width: number | null; height: number | null }>();
 
   /** A name that is unique in `directory`. Only there can a collision overwrite a file. */
@@ -46,59 +56,83 @@ export function createMediaService(deps: MediaServiceDeps) {
     return candidate;
   };
 
+  /** Removes the temporary file of an upload that is not applied. */
+  const discard = async (temporary: string): Promise<void> => {
+    await files.apply({ changes: [{ type: "delete", path: temporary }] }).catch(() => {});
+  };
+
   return {
-    /** Reads and checks an upload, without writing it. */
-    async prepare(input: {
-      file: File;
+    /**
+     * Writes an upload to a temporary file in its folder, and checks its size
+     * and its type from the first bytes. Returns the changes that put it in
+     * place; the caller applies them, or calls `discard`.
+     */
+    async receive(input: {
+      body: ReadableStream<Uint8Array>;
+      /** The name in the browser, for the new name. */
+      name: string;
+      /** From Content-Length, to refuse a large file before it arrives. */
+      size?: number;
       /** Directory to place the file in, relative to the content root. */
       directory?: string;
       accept?: "image" | "document" | "any";
-    }): Promise<{ file: MediaFile; contents: Uint8Array }> {
-      const { file } = input;
+    }): Promise<{ file: MediaFile; changes: FileChange[]; temporary: string }> {
       const directory = uploadDirectory(input.directory ?? MEDIA_DIR);
+      if (input.size !== undefined && input.size > maxBytes) throw tooLarge(input.size);
 
-      if (file.size === 0) throw badRequest("The file is empty.");
-      if (file.size > maxBytes) {
-        throw new ApiError(
-          "payload_too_large",
-          `The file is ${formatBytes(file.size)}. The limit is ${formatBytes(maxBytes)}.`,
-        );
+      const temporary = `${directory}/upload.mica-${process.pid}-${uploads++}`;
+      let received: { size: number; head: Uint8Array };
+      try {
+        received = await files.receive(temporary, input.body, maxBytes);
+      } catch (error) {
+        if (error instanceof TooLargeError) throw tooLarge();
+        throw error;
       }
 
-      const contents = new Uint8Array(await file.arrayBuffer());
-      // From the bytes, never from the browser's claim.
-      const detected = detectFileType(contents);
+      try {
+        if (received.size === 0) throw badRequest("The file is empty.");
+        // From the bytes, never from the browser's claim.
+        const detected = detectFileType(received.head);
+        if (!detected) {
+          throw new ApiError("unsupported_media_type", "This file type is not supported.");
+        }
+        if (detected.mimeType === SVG_TYPE) throw refuseSvg();
+        if (detected.mimeType === VIDEO_TYPE) {
+          throw new ApiError(
+            "unsupported_media_type",
+            "Mica does not keep videos: they make the website's files large. Put the video on a video service, and link to it.",
+          );
+        }
+        if (!isAccepted(detected.mimeType, input.accept ?? "any")) {
+          throw new ApiError(
+            "unsupported_media_type",
+            `A ${input.accept} was expected, but this is a ${detected.mimeType}.`,
+          );
+        }
 
-      if (!detected) {
-        throw new ApiError("unsupported_media_type", "This file type is not supported.");
+        const filename = await uniqueName(directory, safeName(input.name, detected.extension));
+        const path = `${directory}/${filename}`;
+        return {
+          temporary,
+          changes: [
+            { type: "copy", from: temporary, path },
+            { type: "delete", path: temporary },
+          ],
+          file: {
+            path,
+            filename,
+            mimeType: detected.mimeType,
+            size: received.size,
+            ...dimensions(received.head, detected.mimeType),
+          },
+        };
+      } catch (error) {
+        await discard(temporary);
+        throw error;
       }
-      if (detected.mimeType === SVG_TYPE) throw refuseSvg();
-      if (detected.mimeType === VIDEO_TYPE) {
-        throw new ApiError(
-          "unsupported_media_type",
-          "Mica does not keep videos: they make the website's files large. Put the video on a video service, and link to it.",
-        );
-      }
-      if (!isAccepted(detected.mimeType, input.accept ?? "any")) {
-        throw new ApiError(
-          "unsupported_media_type",
-          `A ${input.accept} was expected, but this is a ${detected.mimeType}.`,
-        );
-      }
-
-      const filename = await uniqueName(directory, safeName(file.name, detected.extension));
-
-      return {
-        contents,
-        file: {
-          path: `${directory}/${filename}`,
-          filename,
-          mimeType: detected.mimeType,
-          size: contents.byteLength,
-          ...dimensions(contents, detected.mimeType),
-        },
-      };
     },
+
+    discard,
 
     /**
      * Every media file in the repository, from directory listings and `stat`:
@@ -136,7 +170,7 @@ export function createMediaService(deps: MediaServiceDeps) {
       const key = `${path}\0${info.size}\0${info.modifiedAt}`;
       let cached = dimensionCache.get(key);
       if (!cached) {
-        const bytes = await files.readBinary(path);
+        const bytes = await files.readHead(path, HEAD_BYTES);
         if (!bytes) return null;
         const mimeType = typeOf(bytes, path);
         if (mimeType === SVG_TYPE) throw refuseSvg();
@@ -152,13 +186,16 @@ export function createMediaService(deps: MediaServiceDeps) {
       return files.stat(contentPath(mediaPath));
     },
 
-    async read(mediaPath: string): Promise<{ bytes: Uint8Array; mimeType: string } | null> {
-      const bytes = await files.readBinary(contentPath(mediaPath));
-      if (!bytes) return null;
+    /** A file as a stream, with its type from its first bytes. */
+    async read(mediaPath: string): Promise<{ stream: ReadableStream<Uint8Array>; mimeType: string } | null> {
+      const path = contentPath(mediaPath);
+      const head = await files.readHead(path, 1024);
+      if (!head) return null;
 
-      const mimeType = typeOf(bytes, mediaPath);
+      const mimeType = typeOf(head, mediaPath);
       if (mimeType === SVG_TYPE) throw refuseSvg();
-      return { bytes, mimeType };
+      const stream = await files.readStream(path);
+      return stream && { stream, mimeType };
     },
   };
 }
@@ -251,6 +288,7 @@ function dimensions(
   if (bytes.byteLength === 0 || !isImageType(mimeType)) {
     return { width: null, height: null };
   }
+  // `bytes` can be the head of the file only: a JPEG with a large preview may not show its size there.
   try {
     const size = imageSize(Buffer.from(bytes));
     return { width: size.width ?? null, height: size.height ?? null };

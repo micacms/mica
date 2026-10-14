@@ -116,11 +116,14 @@ describe("locked files", () => {
     const order: string[] = [];
     const files: ContentFiles = {
       ...source,
-      readBinary: async () => null,
+      readHead: async () => null,
+      readStream: async () => null,
+      receive: async () => ({ size: 0, head: new Uint8Array() }),
       stat: async () => null,
       revision: async () => null,
-      apply: async () => {
+      apply: async <T>() => {
         order.push("save");
+        return undefined as T;
       },
     };
     const locked = lockedFiles(files, lock);

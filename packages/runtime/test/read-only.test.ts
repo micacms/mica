@@ -7,7 +7,7 @@ import { after, before, describe, it } from "node:test";
 
 import { readManifest } from "@micacms/core/internal";
 
-import { createHarness, multipart, pngBytes, type TestHarness } from "./helpers.js";
+import { createHarness, uploadPath, pngBytes, type TestHarness } from "./helpers.js";
 
 const checkSchema = (raw: unknown) => readManifest(raw).site;
 
@@ -93,9 +93,7 @@ describe("a field kind this build does not know", () => {
   });
 
   it("refuses an upload into a read-only collection's entry", async () => {
-    const form = multipart([{ name: "photo.png", bytes: pngBytes(), type: "image/png" }]);
-    form.append("directory", "gallery/summer/media");
-    const response = await harness.request("/api/admin/media", { method: "POST", body: form });
+    const response = await harness.request(uploadPath("photo.png", { directory: "gallery/summer/media" }), { method: "POST", body: pngBytes() });
     assert.equal(response.status, 409);
   });
 
@@ -136,9 +134,7 @@ describe("a collection whose new field kind keeps files beside the entry", () =>
   });
 
   it("refuses an upload with a leading slash into a read-only collection", async () => {
-    const form = multipart([{ name: "photo.png", bytes: pngBytes(), type: "image/png" }]);
-    form.append("directory", "/albums/summer/media");
-    const response = await harness.request("/api/admin/media", { method: "POST", body: form });
+    const response = await harness.request(uploadPath("photo.png", { directory: "/albums/summer/media" }), { method: "POST", body: pngBytes() });
     assert.equal(response.status, 409);
   });
 });
