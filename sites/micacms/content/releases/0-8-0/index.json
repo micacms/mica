@@ -4,5 +4,5 @@
   "version": "0.8.0",
   "publishDate": "2026-10-13",
   "summary": "Rich text holds tables and images. The editor works with the keyboard and a screen reader. A new tags field and a searchable relation picker are added. Read Breaking before you upgrade from 0.7.",
-  "latest": true
+  "latest": false
 }

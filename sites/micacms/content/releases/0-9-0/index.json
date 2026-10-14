@@ -1,0 +1,8 @@
+{
+  "title": "A simpler content format, safer saves, and a new look",
+  "slug": "0-9-0",
+  "version": "0.9.0",
+  "publishDate": "2026-10-14",
+  "summary": "One folder for each entry and singleton, saves that keep unknown content, and a new editor look with a dark mode. This release has no migration. Read Breaking before you upgrade from 0.8.",
+  "latest": true
+}
