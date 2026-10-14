@@ -146,6 +146,8 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
   /** Groups whose editor chose "Keep my version"; applied at the next fast-forward. */
   const kept = new Set<string>();
   let timer: NodeJS.Timeout | null = null;
+  /** Drafts that a move to a rewritten branch kept: conflicts until an editor chooses. Lost at a restart. */
+  const moved = new Map<string, ConflictGroup>();
   /** A timed sync that finds one running skips its turn, so a slow network does not queue them. */
   let syncing = false;
 
@@ -173,27 +175,31 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
   const ahead = async () => Number((await git.tryRun(["rev-list", "--count", `${upstreamRef}..HEAD`])) ?? "0");
 
   /**
-   * Whether HEAD is one unpushed publication of Mica's: one commit ahead,
-   * committed by Mica, on a base the branch still contains. Anything else ahead
-   * means the branch was rewritten; pushing it or making drafts would undo
-   * that.
+   * Whether HEAD is a publication of Mica's that never reached the host. One in
+   * the tracking branch's reflog was pushed once and then taken back by a force push.
    */
-  const pendingPublication = async (): Promise<boolean> => {
-    if ((await ahead()) !== 1) return false;
+  const neverPushed = async (): Promise<boolean> => {
     if ((await git.run(["log", "-1", "--format=%ce", "HEAD"])) !== MICA_IDENTITY.email) return false;
-    if ((await git.tryRun(["merge-base", "--is-ancestor", "HEAD^", upstreamRef])) === null) return false;
-    // A publication in the tracking branch's reflog was pushed once and then
-    // taken back by a force push.
     const head = await git.run(["rev-parse", "HEAD"]);
     const known = await git.tryRun(["reflog", "show", "--format=%H", `refs/remotes/${upstreamRef}`]);
     return !(known ?? "").split("\n").includes(head);
   };
 
+  /**
+   * Whether HEAD is one unpushed publication of Mica's: one commit ahead, on a
+   * base the branch still contains. Anything else ahead means the branch was
+   * rewritten; pushing it would undo that.
+   */
+  const pendingPublication = async (): Promise<boolean> =>
+    (await ahead()) === 1 &&
+    (await git.tryRun(["merge-base", "--is-ancestor", "HEAD^", upstreamRef])) !== null &&
+    (await neverPushed());
+
   const diverged = () =>
     new RemoteFailure(
       "diverged",
-      "The branch was rewritten in the repository (a force push or a reset), and Mica's clone no longer " +
-        "follows it. Copy any drafts out of the clone, delete MICA_DATA_DIR/repository and restart Mica.",
+      "The branch was rewritten in the repository (a force push or a reset) during a publication. " +
+        "The next sync moves the clone to it.",
     );
 
   /** The caller holds the remote lock. All network access happens before the tree lock is taken. */
@@ -204,52 +210,18 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
     if (from === to) {
       state.behind = 0;
-      state.conflicts = [];
+      state.conflicts = [...moved.values()];
       return;
     }
     if ((await git.tryRun(["merge-base", "--is-ancestor", "HEAD", upstreamRef])) === null) {
       // The push loop makes Mica's unpushed publication again on top.
       if (await pendingPublication()) return;
-      throw diverged();
+      return moveTo(from, to, skipHold);
     }
 
-    // Download every blob the fast-forward will write, then make sure they all
-    // arrived: the fast-forward must not need the network. Only the new side
-    // counts.
-    await git.run(["diff", "--numstat", from, to], { timeoutMs: NETWORK_CALL_MS });
-    // `-z --no-renames` gives pairs of metadata and path, so a path that starts
-    // with ":" is still a path.
-    const fields = (await git.run(["diff", "--raw", "-z", "--no-renames", "--no-abbrev", from, to])).split("\0");
-    const written: string[] = [];
-    for (let at = 0; at + 1 < fields.length; at += 2) {
-      const [, mode, , object] = fields[at]!.slice(1).split(" ");
-      if (mode !== "000000" && mode !== "160000" && object && !/^0+$/.test(object)) written.push(object);
-    }
-    if (written.length > 0) {
-      const checked = await git.run(["cat-file", "--batch-check"], {
-        input: `${written.join("\n")}\n`,
-        env: { GIT_NO_LAZY_FETCH: "1" },
-      });
-      const missing = checked.split("\n").filter((line) => line.endsWith(" missing"));
-      if (missing.length > 0) {
-        throw new RemoteFailure("prefetch_incomplete", `${missing.length} files could not be downloaded.`);
-      }
-    }
-
+    const upstream = await prepareVersion(from, to, skipHold);
     state.behind = Number(await git.run(["rev-list", "--count", `${from}..${to}`]));
-    const upstream = await changedBetween(git, from, to);
-
-    // Hold a version that Mica cannot work with; the next sync tries again.
-    if (upstream.some((path) => attributesPlace(path, root) !== null)) {
-      const lfs = await lfsUnderRoot(git, to, root);
-      if (lfs) throw new RemoteFailure("lfs_refused", lfsRefusal(lfs, root).message);
-    }
     const modelChanged = upstream.includes(manifestPath);
-    if (modelChanged && !skipHold) {
-      const manifest = await git.tryRun(["show", `${to}:${manifestPath}`]);
-      const problem = manifest === null ? `The new version has no ${manifestPath}.` : await options.modelProblem?.(manifest);
-      if (problem) throw new RemoteFailure("model_unreadable", `This Mica cannot read the new content model: ${problem}`);
-    }
 
     await locks.tree.write(async () => {
       const drafts = await draftPaths(git, root);
@@ -257,9 +229,9 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       const draftGroups = new Set(drafts.map(groupKey));
       const upstreamGroups = new Set(upstreamInRoot.map(groupKey));
 
-      const conflicting = [...upstreamGroups].filter((key) => draftGroups.has(key) && !kept.has(key));
+      const conflicting = [...upstreamGroups].filter((key) => draftGroups.has(key) && !kept.has(key) && !moved.has(key));
       if (conflicting.length > 0) {
-        state.conflicts = await describeConflicts(conflicting, drafts, upstreamInRoot, from, to);
+        state.conflicts = [...(await describeConflicts(conflicting, drafts, upstreamInRoot, from, to)), ...moved.values()];
         return;
       }
 
@@ -302,12 +274,85 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
       // A kept choice is for the conflict it answered, not for the next one.
       kept.clear();
-      state.conflicts = [];
+      state.conflicts = [...moved.values()];
       state.behind = 0;
       state.head = to;
       logger.info("Brought the clone up to date", { from, to, files: upstream.length });
       // Still under the tree lock: no save runs between the new files and the new model.
       if (modelChanged) await options.onModelChange?.();
+    });
+  };
+
+  /**
+   * Downloads every file that a move from `from` to `to` writes, and checks that
+   * Mica can work with `to`. Returns the paths that change. The move itself
+   * must not need the network.
+   */
+  const prepareVersion = async (from: string, to: string, skipHold: boolean): Promise<string[]> => {
+    await git.run(["diff", "--numstat", from, to], { timeoutMs: NETWORK_CALL_MS });
+    // `-z --no-renames` gives pairs of metadata and path, so a path that starts
+    // with ":" is still a path.
+    const fields = (await git.run(["diff", "--raw", "-z", "--no-renames", "--no-abbrev", from, to])).split("\0");
+    const written: string[] = [];
+    for (let at = 0; at + 1 < fields.length; at += 2) {
+      const [, mode, , object] = fields[at]!.slice(1).split(" ");
+      if (mode !== "000000" && mode !== "160000" && object && !/^0+$/.test(object)) written.push(object);
+    }
+    if (written.length > 0) {
+      const checked = await git.run(["cat-file", "--batch-check"], {
+        input: `${written.join("\n")}\n`,
+        env: { GIT_NO_LAZY_FETCH: "1" },
+      });
+      const missing = checked.split("\n").filter((line) => line.endsWith(" missing"));
+      if (missing.length > 0) {
+        throw new RemoteFailure("prefetch_incomplete", `${missing.length} files could not be downloaded.`);
+      }
+    }
+
+    const upstream = await changedBetween(git, from, to);
+
+    // Hold a version that Mica cannot work with; the next sync tries again.
+    if (upstream.some((path) => attributesPlace(path, root) !== null)) {
+      const lfs = await lfsUnderRoot(git, to, root);
+      if (lfs) throw new RemoteFailure("lfs_refused", lfsRefusal(lfs, root).message);
+    }
+    if (upstream.includes(manifestPath) && !skipHold) {
+      const manifest = await git.tryRun(["show", `${to}:${manifestPath}`]);
+      const problem = manifest === null ? `The new version has no ${manifestPath}.` : await options.modelProblem?.(manifest);
+      if (problem) throw new RemoteFailure("model_unreadable", `This Mica cannot read the new content model: ${problem}`);
+    }
+
+    return upstream;
+  };
+
+  /**
+   * Moves the clone to a branch that was rewritten (a force push or a reset).
+   * The drafts, and a publication that never reached the host, stay as drafts
+   * on the new version, and each of their entries shows as a conflict. The
+   * caller holds the remote lock.
+   */
+  const moveTo = async (from: string, to: string, skipHold: boolean): Promise<void> => {
+    const upstream = await prepareVersion(from, to, skipHold);
+    await locks.tree.write(async () => {
+      // Mica's own commit that the host never had is unpublished work.
+      const unpushed = (await neverPushed()) ? (await changedBetween(git, "HEAD^", "HEAD")).filter(underRoot) : [];
+      const paths = [...new Set([...(await draftPaths(git, root)), ...unpushed])];
+      // The marker of `rescue` lets a start write the drafts back after a crash.
+      if (paths.length > 0) await rescue(paths);
+      await git.run(["reset", "--hard", "--quiet", to], { env: { GIT_NO_LAZY_FETCH: "1" } });
+      await writeBackKept(layout);
+
+      for (const key of new Set(paths.map(groupKey))) {
+        const groupPaths = paths.filter((path) => groupKey(path) === key).map(contentPath);
+        const { label, target } = options.groupOf(groupPaths[0]!);
+        moved.set(key, { key, label, ...(target ? { target } : {}), paths: groupPaths, upstream: "changed" });
+      }
+      kept.clear();
+      state.conflicts = [...moved.values()];
+      state.behind = 0;
+      state.head = to;
+      logger.warn("The branch was rewritten; moved the clone to it and kept the drafts", { from, to, drafts: paths.length });
+      if (upstream.includes(manifestPath)) await options.onModelChange?.();
     });
   };
 
@@ -488,8 +533,8 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
         logger.info("The repository is reachable again");
         state.error = null;
       }
-      if ((await ahead()) > 0) {
-        if (!(await pendingPublication())) throw diverged();
+      // Anything else ahead is a rewritten branch, which `fastForward` moves to.
+      if ((await ahead()) > 0 && (await pendingPublication())) {
         await push().catch((error: unknown) => {
           // A refusal, a conflict or a recorded failure is in the state now.
           if (!(error instanceof ApiError)) throw error;
@@ -527,8 +572,10 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
   });
 
   const resolve = async (group: string, choice: "mine" | "website"): Promise<SyncState> => {
+    // A moved group's drafts are on the website's version already: "mine" keeps them as they are.
+    const wasMoved = moved.delete(group);
     if (choice === "mine") {
-      kept.add(group);
+      if (!wasMoved) kept.add(group);
     } else {
       kept.delete(group);
       await locks.tree.write(async () => {
@@ -621,7 +668,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 }
 
 /** Bytes of the files under `dir`. */
-async function sizeOf(dir: string): Promise<number | null> {
+export async function sizeOf(dir: string): Promise<number | null> {
   try {
     let total = 0;
     for (const entry of await readdir(dir, { withFileTypes: true, recursive: true })) {

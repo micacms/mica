@@ -95,7 +95,12 @@ export async function openClone(options: OpenCloneOptions): Promise<OpenedClone>
   const url = await git.tryRun(["config", "--get", "remote.origin.url"]);
   const branch = await git.tryRun(["rev-parse", "--abbrev-ref", "HEAD"]);
 
-  if (url !== options.url || branch !== options.branch) {
+  // A renamed repository, or one that moved: the next sync fetches from the new URL. If its
+  // branch has another history, the sync moves the clone to it and keeps the drafts.
+  if (url !== options.url && branch === options.branch) {
+    await git.run(["remote", "set-url", "origin", options.url]);
+    logger.info("The repository URL changed; the clone fetches from the new one", { was: url, url: options.url });
+  } else if (branch !== options.branch) {
     const drafts = await draftPaths(git, "");
     const ahead = Number((await git.tryRun(["rev-list", "--count", `origin/${branch}..HEAD`])) ?? "0");
     await refuseRescuedDrafts(layout);
@@ -103,7 +108,7 @@ export async function openClone(options: OpenCloneOptions): Promise<OpenedClone>
       const listed = drafts.slice(0, 10).map((path) => `    ${path}`).join("\n");
       throw new CloneRefusal(
         `The clone on the data volume is for ${url ?? "an unknown remote"} (${branch ?? "no branch"}),\n` +
-          `  but MICA_REPOSITORY_URL and MICA_REPOSITORY_BRANCH say ${options.url} (${options.branch}).\n` +
+          `  but MICA_REPOSITORY_BRANCH says ${options.branch}.\n` +
           `  It holds work that is not published${ahead > 0 ? " (one commit not pushed)" : ""}:\n` +
           `${listed}${drafts.length > 10 ? "\n    …" : ""}\n` +
           "  Start Mica with the old configuration and publish, or copy the drafts out with\n" +
@@ -111,7 +116,7 @@ export async function openClone(options: OpenCloneOptions): Promise<OpenedClone>
           "  and delete the volume.",
       );
     }
-    logger.info("The clone is for another repository or branch and holds no work; cloning again", {
+    logger.info("The clone is for another branch and holds no work; cloning again", {
       was: url,
       branch,
     });

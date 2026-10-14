@@ -32,6 +32,7 @@ import { Hono } from "hono";
 
 import { editorUiDist } from "./admin-dir.js";
 import { runCheck } from "./check.js";
+import { runCompact } from "./compact.js";
 import { readiness } from "./readiness.js";
 import { currentToken, loadConfig, type SelfHostedConfig } from "./config.js";
 import { cloneLayout, CloneRefusal, openClone } from "./workspace/clone.js";
@@ -298,8 +299,9 @@ async function serve(): Promise<void> {
 async function main(): Promise<void> {
   const command = process.argv[2];
   if (command === "check") process.exit(await runCheck());
+  if (command === "compact") process.exit(await runCompact());
   if (command !== undefined && command !== "serve") {
-    process.stderr.write(`Unknown command "${command}". Use no command to serve, or "check".\n`);
+    process.stderr.write(`Unknown command "${command}". Use no command to serve, "check" or "compact".\n`);
     process.exit(EX_USAGE);
   }
   await serve();

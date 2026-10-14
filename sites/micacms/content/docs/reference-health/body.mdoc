@@ -41,7 +41,7 @@ The reason codes. Each code makes the status `degraded`, except `cloning` (`erro
 | `repo_not_found` | The Git host does not know the repository, or the token cannot see it. | Correct `MICA_REPOSITORY_URL`, or the token's access. |
 | `branch_not_found` | The branch does not exist at the Git host. | Create the branch, or correct `MICA_REPOSITORY_BRANCH`. |
 | `network` | The Git host cannot be reached. | Check DNS and outgoing HTTPS from the container. Mica tries again at each sync. |
-| `diverged` | The branch at the Git host does not contain Mica's last commit, for example after a force push. | Read the log. See "Troubleshooting" in [Self-hosting](/docs/self-hosting/). |
+| `diverged` | The branch was rewritten during a publication. | Nothing: the next sync follows the branch. See "Troubleshooting" in [Self-hosting](/docs/self-hosting/). |
 | `prefetch_incomplete` | A sync could not fetch all files of the new version. | Mica tries again at each sync. If it stays, read the log. |
 | `fast_forward_failed` | A sync could not bring the clone to the new version. | Read the log. |
 | `sync_failing` | Another sync problem. | Read the log, and run `docker compose run --rm mica check`. |

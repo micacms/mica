@@ -194,7 +194,7 @@ The volume:
 
 - Mount the volume at `MICA_DATA_DIR` (`/data` in the image), never at its `repository` folder. Mica makes a new clone next to the old one and renames it, and a mount point cannot be renamed.
 - Run one Mica for each volume. A second Mica on the same volume waits up to 45 seconds for the first one to stop, then refuses to start. Deploy with the strategy "recreate", which stops the old container before it starts the new one, not with a rolling update. `docker compose up -d` does that.
-- Make the volume about twice the size of the content: the objects in `.git` and the files. `.git` grows with each media change from the website. To make it smaller, publish or discard all drafts, stop Mica, delete `MICA_DATA_DIR/repository`, and start Mica. Mica clones again.
+- Make the volume about twice the size of the content: the objects in `.git` and the files. `.git` grows with each media change from the website. To make it smaller, publish or discard all drafts, stop Mica, and run `docker compose run --rm mica compact`. It makes a new clone with only the current files. It refuses a clone with drafts or with a publication that is not pushed yet.
 
 The volume holds the clone and the unpublished drafts. If you lose it, unpublished work is gone. Nobody is signed out, and everything published is in the repository. Tell editors to publish often: the drafts are not an archive.
 
@@ -307,7 +307,7 @@ The System page and the log show the message of the Git host, without the token.
 - "`MICA_REPOSITORY_URL` contains credentials": remove them, and set `MICA_REPOSITORY_TOKEN`.
 - "must be an https:// URL": use the HTTPS URL. SSH is not supported yet.
 - "assigns Git LFS to files under the content root": keep LFS out of the content root.
-- "The clone on the data volume is for …": the URL or the branch changed, and the clone holds drafts. Start with the old configuration and publish, or copy the drafts out and delete the volume.
+- "The clone on the data volume is for …": the branch changed, and the clone holds drafts. Start with the old branch and publish, or copy the drafts out and delete the volume. A new URL for the same repository needs nothing: Mica keeps the clone and fetches from the new URL.
 - No content model: build the Astro project, commit `.mica/schema.json`, and push it to `MICA_REPOSITORY_BRANCH`.
 - "MICA_SESSION_SECRET: is required" or "Nothing says who may edit this site": set `MICA_SESSION_SECRET` or an admission rule.
 
@@ -319,7 +319,9 @@ The System page and the log show the message of the Git host, without the token.
 
 **The repository does not exist, or the token cannot see it.** The URL is wrong, or the token is for a different repository. The host gives the same answer for both.
 
-**The repository cannot be reached** (`/ready` has `sync_failing`). The host is down, DNS fails, or the container has no outgoing HTTPS. Run `curl -I <url>` on the server. Mica tries again at each sync.
+**The branch was rewritten** (a force push or a reset). Mica follows it at the next sync. Drafts stay drafts on the new version, and each of their entries shows as a conflict: the editor chooses to keep the draft or to take the website's version. A publication that never reached the host stays as drafts too. The log has "The branch was rewritten". After a restart, the drafts stay, but they no longer show as conflicts.
+
+**The repository cannot be reached** (`/ready` has `network` or `sync_failing`). The host is down, DNS fails, or the container has no outgoing HTTPS. Run `curl -I <url>` on the server. Mica tries again at each sync.
 
 **`/ready` stays at `cloning`.** The first clone cannot finish, because of the network or a very large repository. Read the log. A large clone can take minutes.
 
@@ -329,7 +331,7 @@ The System page and the log show the message of the Git host, without the token.
 
 **"Some of these changes were edited while they were being published".** A colleague saved one of the files during the publication. Look at the changes again, then publish.
 
-**The disk is full.** The clone grows with each media change. See "The volume" above.
+**The disk is full.** The clone grows with each media change. See "The volume" above, and run `compact`.
 
 **"That account has no access to this site" after the sign-in.** The person signed in, but no rule admits them. Set `MICA_LOG_LEVEL=debug`, restart, and sign in again: the log gives the reason. Make sure that the groups claim arrives, or add the person to `MICA_ADMIT_EMAILS` or `MICA_ADMIT_SUBJECTS`.
 
