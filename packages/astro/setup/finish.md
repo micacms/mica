@@ -81,7 +81,8 @@ git commit -m "Add Mica"
 # 2. The content and the page changes.
 git add -A
 git commit -m "Move the content to Mica"
-# 3. A branch that is not on the remote yet.
+# 3. Push once, so that the branch has an upstream before the first Publish.
+#    In a new project, add the remote first: git remote add origin <url>
 git push -u origin <branch>
 ```
 

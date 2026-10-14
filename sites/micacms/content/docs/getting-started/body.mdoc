@@ -15,7 +15,12 @@ npm run dev     # the website
 npm run mica    # the editor, in a second terminal
 ```
 
-Change the post in the editor and save; the website shows it at once. Publish commits the change and pushes it, once the repository has a remote.
+Change the post in the editor and save; the website shows it at once. Publish commits the change and pushes it. Before the first Publish, create an empty repository on your Git host and push the starter's commit once:
+
+```bash
+git remote add origin <url>
+git push -u origin main
+```
 
 ## Set up with a coding agent
 
