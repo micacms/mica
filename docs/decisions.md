@@ -388,8 +388,12 @@ package.
 drafts — back it up as before. A clone that does not match the configuration
 is thrown away only when it holds no draft and no unpushed commit; otherwise
 Mica refuses to start and says how to get the work out. One Mica per volume:
-there is no lock file, because a stale lock after a crash would block the
-restart. For a hosted offering later, a clean clone can move to a new node,
+a lease file with a heartbeat names the process that uses the clone, and a
+second one waits for the lease to expire, then refuses (#229). A lease without
+a heartbeat expires after 30 seconds, so a crash does not block the restart.
+With the lease held, the start removes every Git lock file that a stop left.
+A fast-forward that fails and cannot be undone makes Mica read-only until a
+restart finishes it. For a hosted offering later, a clean clone can move to a new node,
 and the drafts pin a site to its volume, as the SQLite file did.
 
 **What would change it:** sites whose media outgrows a full checkout of the
