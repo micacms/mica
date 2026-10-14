@@ -1,18 +1,19 @@
 /** A configuration that cannot work must stop the start, not fail later when an editor saves. */
 
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import { ConfigError, runtimeEnv } from "@micacms/runtime";
 
-import { KNOWN, loadConfig } from "../src/config.js";
+import { currentToken, KNOWN, loadConfig } from "../src/config.js";
 
 /** A valid environment; tests subtract from it. */
 const base: NodeJS.ProcessEnv = {
-  NODE_ENV: "test",
   MICA_LOG_LEVEL: "silent",
+  MICA_PUBLIC_URL: "https://cms.example.com",
   MICA_SESSION_SECRET: "0".repeat(32),
   MICA_DATA_DIR: "/tmp/mica-test-unused",
   MICA_OIDC_ISSUER: "https://auth.example.com",
@@ -32,35 +33,27 @@ function refuses(env: NodeJS.ProcessEnv, ...patterns: RegExp[]): void {
 }
 
 describe("public URL", () => {
-  const production = { ...base, NODE_ENV: "production" };
-
-  it("refuses plain HTTP in production", () => {
-    assert.throws(
-      () => loadConfig({ ...production, MICA_PUBLIC_URL: "http://cms.example.com" }),
-      (error: unknown) => {
-        assert.ok(error instanceof ConfigError);
-        assert.match(error.message, /https:\/\//);
-        return true;
-      },
-    );
-  });
-
-  it("accepts https, and plain HTTP on loopback for a trial on one machine", () => {
-    for (const url of ["https://cms.example.com", "http://localhost:6422", "http://127.0.0.1:6422"]) {
-      assert.equal(loadConfig({ ...production, MICA_PUBLIC_URL: url }).MICA_PUBLIC_URL, url);
+  it("refuses plain HTTP to another machine, whatever NODE_ENV says", () => {
+    for (const NODE_ENV of ["production", "development"]) {
+      refuses({ ...base, NODE_ENV, MICA_PUBLIC_URL: "http://cms.example.com" }, /https:\/\//);
     }
   });
 
-  it("refuses a missing public URL in production, whose default is localhost", () => {
-    assert.throws(() => loadConfig({ ...production }), (error: unknown) => {
-      assert.ok(error instanceof ConfigError);
-      assert.match(error.message, /MICA_PUBLIC_URL is not set/);
-      return true;
-    });
+  it("accepts https, and plain HTTP on this machine for a trial", () => {
+    for (const url of ["https://cms.example.com", "http://localhost:6422", "http://127.0.0.1:6422"]) {
+      assert.equal(loadConfig({ ...base, MICA_PUBLIC_URL: url }).MICA_PUBLIC_URL, url);
+    }
   });
 
-  it("allows plain HTTP outside production", () => {
-    assert.equal(loadConfig({ ...base, MICA_PUBLIC_URL: "http://cms.example.com" }).MICA_PUBLIC_URL, "http://cms.example.com");
+  it("is an origin: a trailing slash goes, a path is refused", () => {
+    assert.equal(loadConfig({ ...base, MICA_PUBLIC_URL: "https://cms.example.com/" }).MICA_PUBLIC_URL, "https://cms.example.com");
+    assert.throws(() => loadConfig({ ...base, MICA_PUBLIC_URL: "https://example.com/cms" }), /must be an origin/);
+  });
+
+  it("refuses a missing public URL, whose default is localhost", () => {
+    const missing = { ...base };
+    delete missing["MICA_PUBLIC_URL"];
+    refuses(missing, /MICA_PUBLIC_URL is not set/);
   });
 });
 
@@ -112,15 +105,29 @@ describe("repository configuration", () => {
     refuses({ ...base, MICA_REPOSITORY_URL: "https://oauth2:glpat-x@gitlab.com/acme/site.git" }, /contains credentials/);
   });
 
-  it("refuses plain HTTP, SSH, and anything but https outside development", () => {
+  it("refuses plain HTTP to another machine, SSH, and anything but https", () => {
     for (const url of ["http://gitlab.com/acme/site.git", "git@gitlab.com:acme/site.git", "file:///srv/site.git"]) {
       refuses({ ...base, MICA_REPOSITORY_URL: url }, /MICA_REPOSITORY_URL/);
     }
   });
 
-  it("accepts plain HTTP on loopback in development, for the tests and a local trial", () => {
-    const config = loadConfig({ ...base, NODE_ENV: "development", MICA_REPOSITORY_URL: "http://127.0.0.1:3000/site.git" });
+  it("accepts plain HTTP on this machine, for the tests and a local trial", () => {
+    const config = loadConfig({ ...base, MICA_REPOSITORY_URL: "http://127.0.0.1:3000/site.git" });
     assert.equal(config.repository.remote.scheme, "http");
+  });
+
+  it("reads the token from a file for each call, so a short-lived token can change", () => {
+    const file = join(mkdtempSync(join(tmpdir(), "mica-token-")), "token");
+    writeFileSync(file, "first\n");
+    const env: NodeJS.ProcessEnv = { ...base, MICA_REPOSITORY_TOKEN_FILE: file };
+    delete env["MICA_REPOSITORY_TOKEN"];
+    const config = loadConfig(env);
+    assert.equal(currentToken(config.repository), "first");
+    writeFileSync(file, "second\n");
+    assert.equal(currentToken(config.repository), "second");
+
+    refuses({ ...base, MICA_REPOSITORY_TOKEN_FILE: file }, /both set/);
+    refuses({ ...env, MICA_REPOSITORY_TOKEN_FILE: "/nonexistent/token" }, /cannot be read/);
   });
 
   it("refuses a branch name Git would read as something else, and a root outside the repository", () => {
@@ -152,28 +159,26 @@ describe("authentication", () => {
     assert.doesNotThrow(() => loadConfig({ ...base }));
   });
 
-  it("requires the session secret in production", () => {
-    const production: NodeJS.ProcessEnv = {
-      ...base,
-      NODE_ENV: "production",
-      MICA_PUBLIC_URL: "https://cms.example.com",
-    };
-    delete production["MICA_SESSION_SECRET"];
-
-    assert.throws(() => loadConfig(production), /MICA_SESSION_SECRET/);
+  it("requires the session secret, also for a trial", () => {
+    const missing: NodeJS.ProcessEnv = { ...base, MICA_PUBLIC_URL: "http://localhost:6422" };
+    delete missing["MICA_SESSION_SECRET"];
+    assert.throws(() => loadConfig(missing), /MICA_SESSION_SECRET/);
   });
 
-  it("generates an ephemeral secret outside production, and says so", () => {
-    const dev = { ...base };
-    delete dev["MICA_SESSION_SECRET"];
-
-    const config = loadConfig(dev);
-    assert.equal(config.sessionSecret.length >= 32, true);
-    assert.deepEqual(config.devSecrets, ["MICA_SESSION_SECRET"]);
+  it("reads the session secret and the client secret from files", () => {
+    const dir = mkdtempSync(join(tmpdir(), "mica-secrets-"));
+    writeFileSync(join(dir, "session"), "s".repeat(40) + "\n");
+    writeFileSync(join(dir, "client"), "client-secret\n");
+    const env: NodeJS.ProcessEnv = { ...base, MICA_SESSION_SECRET_FILE: join(dir, "session"), MICA_OIDC_CLIENT_SECRET_FILE: join(dir, "client") };
+    delete env["MICA_SESSION_SECRET"];
+    const config = loadConfig(env);
+    assert.equal(config.sessionSecret, "s".repeat(40));
+    assert.equal(config.MICA_OIDC_CLIENT_SECRET, "client-secret");
+    refuses({ ...env, MICA_SESSION_SECRET: "0".repeat(32) }, /both set/);
   });
 
   /** A remote issuer over HTTP would give the ID token to anybody on the path. */
-  it("permits insecure discovery only for a local provider outside production", () => {
+  it("permits insecure discovery only for a provider on this machine", () => {
     const local = loadConfig({
       ...base,
       MICA_OIDC_ISSUER: "http://localhost:8080/realms/mica",
@@ -182,14 +187,6 @@ describe("authentication", () => {
 
     const remote = loadConfig({ ...base, MICA_OIDC_ISSUER: "http://auth.example.com" });
     assert.equal(remote.oidcAllowInsecure, false);
-
-    const production = loadConfig({
-      ...base,
-      NODE_ENV: "production",
-      MICA_PUBLIC_URL: "https://cms.example.com",
-      MICA_OIDC_ISSUER: "http://localhost:8080/realms/mica",
-    });
-    assert.equal(production.oidcAllowInsecure, false);
   });
 });
 

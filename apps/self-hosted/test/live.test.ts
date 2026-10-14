@@ -44,7 +44,7 @@ for (const host of hosts) {
 
   describe(`live: ${host.name}`, { skip }, () => {
     it("clones, publishes one commit and pushes it", async () => {
-      const remote = parseRemote(host.url(host.project!), false);
+      const remote = parseRemote(host.url(host.project!));
       const dataDir = mkdtempSync(join(tmpdir(), "mica-live-"));
       try {
         const layout = cloneLayout(dataDir);
@@ -66,7 +66,7 @@ for (const host of hosts) {
           locks: createWorkspaceLocks(),
           logger,
           groupOf: (path) => ({ key: path, label: path }),
-          secrets: [host.token!],
+          secrets: () => [host.token!],
           syncSeconds: 60,
         });
 

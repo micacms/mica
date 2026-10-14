@@ -1,6 +1,7 @@
 /**
- * The token never goes into the URL or a file: a credential helper reads it
- * from the environment of each `git` process (`isolation.ts`). The helper is
+ * The token never goes into the URL or the clone: a credential helper reads it
+ * from the environment of each `git` process, or from the operator's token
+ * file (`isolation.ts`). The helper is
  * scoped to the configured host, so a redirect or a second remote gets nothing.
  */
 
@@ -13,8 +14,8 @@ export interface Remote {
   hostKey: string;
 }
 
-/** Checks `MICA_REPOSITORY_URL`. Plain HTTP is accepted only in development, on a loopback host. */
-export function parseRemote(raw: string, development: boolean): Remote {
+/** Checks `MICA_REPOSITORY_URL`. Plain HTTP is accepted only on a loopback host, for a test. */
+export function parseRemote(raw: string): Remote {
   let url: URL;
   try {
     url = new URL(raw);
@@ -33,11 +34,10 @@ export function parseRemote(raw: string, development: boolean): Remote {
   }
 
   const loopback = LOOPBACK.has(url.hostname.replace(/^\[|\]$/g, ""));
-  if (url.protocol !== "https:" && !(url.protocol === "http:" && development && loopback)) {
+  if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) {
     throw new ConfigError(
       `MICA_REPOSITORY_URL must be an https:// URL, not "${url.protocol}".\n` +
-        "  SSH remotes are not supported yet. Plain http:// works only with\n" +
-        "  NODE_ENV=development and a loopback host.",
+        "  SSH remotes are not supported yet. Plain http:// works only on this machine.",
     );
   }
 

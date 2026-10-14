@@ -30,7 +30,7 @@ import { Hono } from "hono";
 
 import { editorUiDist } from "./admin-dir.js";
 import { runCheck } from "./check.js";
-import { loadConfig, type SelfHostedConfig } from "./config.js";
+import { currentToken, loadConfig, type SelfHostedConfig } from "./config.js";
 import { cloneLayout, CloneRefusal, openClone } from "./workspace/clone.js";
 import { coarseGroups, contentGroups, revalidator } from "./workspace/content-groups.js";
 import { redact } from "./workspace/credentials.js";
@@ -102,17 +102,12 @@ async function serve(): Promise<void> {
     throw error;
   }
 
-  const logger: Logger = createLogger({ level: config.MICA_LOG_LEVEL, pretty: !config.isProduction });
-  const { remote, branch, root, token, username, syncSeconds } = config.repository;
-  const clean = (text: string) => redact(text, [token]);
+  const logger: Logger = createLogger({ level: config.MICA_LOG_LEVEL, pretty: process.stdout.isTTY === true });
+  const { remote, branch, root, token, tokenFile, username, syncSeconds } = config.repository;
+  const secrets = () => [currentToken(config.repository)];
+  const clean = (text: string) => redact(text, secrets());
   const authLabel = `oidc:${new URL(config.MICA_OIDC_ISSUER!).hostname}`;
 
-  if (config.devSecrets.length > 0) {
-    logger.warn("Using generated development secrets", {
-      missing: config.devSecrets,
-      note: "Sessions end on restart. Set these before deploying.",
-    });
-  }
   if (config.unknownVariables.length > 0) {
     logger.warn("Unknown configuration variables", {
       names: config.unknownVariables,
@@ -157,7 +152,7 @@ async function serve(): Promise<void> {
   }
 
   const layout = cloneLayout(config.dataDir);
-  const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token });
+  const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token, tokenFile });
   let git;
   try {
     git = await openClone({ layout, url: remote.url, branch, root, env, logger });
@@ -203,7 +198,7 @@ async function serve(): Promise<void> {
     logger,
     groupOf: (path) => groups.of(path),
     revalidate: (paths) => revalidate.run(paths),
-    secrets: [token],
+    secrets,
     syncSeconds,
     // Before the runtime exists, the start reads the model after the first sync anyway.
     onModelChange: async () => {
@@ -260,7 +255,6 @@ async function serve(): Promise<void> {
       dataDir: config.dataDir,
       sessionTtlHours: config.MICA_SESSION_TTL_HOURS,
       sessionIdleHours: config.MICA_SESSION_IDLE_HOURS,
-      generatedSecrets: config.devSecrets,
     }),
 
     health: {
@@ -290,7 +284,7 @@ async function serve(): Promise<void> {
   dispatcher.serve(
     createApp(ctx, {
       auth: auth.surface,
-      adminDir: config.MICA_ADMIN_DIR ?? editorUiDist(),
+      adminDir: editorUiDist(),
     }),
   );
   workspace.start();
@@ -298,7 +292,6 @@ async function serve(): Promise<void> {
   logger.info("Mica CMS started", {
     url: config.MICA_PUBLIC_URL,
     site: ctx.site.id,
-    environment: config.NODE_ENV,
     auth: authLabel,
     // A rule that admits nobody and one that admits everybody look the same
     // until somebody signs in.

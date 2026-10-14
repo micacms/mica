@@ -9,7 +9,7 @@
 
 import { z } from "zod";
 
-import { ConfigError, list } from "@micacms/runtime";
+import { ConfigError, isLoopbackUrl, list } from "@micacms/runtime";
 
 export const authEnv = {
   /**
@@ -19,7 +19,7 @@ export const authEnv = {
    */
   MICA_OIDC_ISSUER: z.string().url().optional(),
   MICA_OIDC_CLIENT_ID: z.string().optional(),
-  /** Omit for a public client using PKCE alone. */
+  /** Omit for a public client using PKCE alone. `MICA_OIDC_CLIENT_SECRET_FILE` reads it from a file. */
   MICA_OIDC_CLIENT_SECRET: z.string().optional(),
   MICA_OIDC_SCOPE: z.string().default("openid profile email"),
   /**
@@ -42,8 +42,12 @@ export const authEnv = {
   /** `issuer|subject` pairs — see admission.ts. */
   MICA_ADMIT_SUBJECTS: z.string().optional(),
 
-  /** Signs session cookies. Rotating it invalidates every session. */
-  MICA_SESSION_SECRET: z.string().min(32).optional(),
+  /**
+   * Encrypts the session cookies. Required, also for a trial: a generated one
+   * would sign everybody out at each restart. Rotating it ends every session.
+   * `MICA_SESSION_SECRET_FILE` reads it from a file.
+   */
+  MICA_SESSION_SECRET: z.string({ error: "is required: generate one with `openssl rand -base64 48`" }).min(32),
   /**
    * Deliberately short. Admission is configuration and is re-read on every
    * request; what cannot be immediate is a change *at the provider*, which
@@ -54,29 +58,20 @@ export const authEnv = {
   MICA_SESSION_IDLE_HOURS: z.coerce.number().int().positive().default(4),
 
   MICA_SIGNIN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(10),
-  MICA_SIGNIN_WINDOW_MS: z.coerce
-    .number()
-    .int()
-    .positive()
-    .default(15 * 60 * 1000),
+  /** Durations carry their unit in the name, in whole units: hours, minutes, seconds. */
+  MICA_SIGNIN_WINDOW_MINUTES: z.coerce.number().int().positive().default(15),
 };
 
 const authSchema = z.object(authEnv);
 export type AuthEnv = z.infer<typeof authSchema>;
 
 /** The derived values the gate reads, on top of the parsed environment. */
-export function deriveAuth<T extends AuthEnv & { NODE_ENV: string; MICA_PUBLIC_URL: string }>(
-  env: T,
-) {
+export function deriveAuth<T extends AuthEnv & { MICA_PUBLIC_URL: string }>(env: T) {
   return {
     ...env,
-    /**
-     * Discovery over plain HTTP, for an identity provider running on
-     * localhost. Never in production, and never for a remote host.
-     */
+    /** Discovery over plain HTTP, only for an identity provider on this machine, as in a trial or a test. */
     oidcAllowInsecure:
-      env.NODE_ENV !== "production" &&
-      /^http:\/\/(localhost|127\.0\.0\.1)(:|\/|$)/.test(env.MICA_OIDC_ISSUER ?? ""),
+      env.MICA_OIDC_ISSUER?.startsWith("http://") === true && isLoopbackUrl(env.MICA_OIDC_ISSUER),
     admitGroups: list(env.MICA_ADMIT_GROUPS),
     // Lowercased: a domain is case-insensitive, and an operator who writes
     // `Example.com` means the same thing the provider spells `example.com`.
@@ -100,7 +95,6 @@ export function deriveAuth<T extends AuthEnv & { NODE_ENV: string; MICA_PUBLIC_U
 /** What the gate requires of a finished configuration. */
 export interface AuthConfig {
   MICA_PUBLIC_URL: string;
-  isProduction: boolean;
   MICA_OIDC_ISSUER?: string | undefined;
   MICA_OIDC_CLIENT_ID?: string | undefined;
   MICA_OIDC_CLIENT_SECRET?: string | undefined;
@@ -111,13 +105,13 @@ export interface AuthConfig {
   admitDomains: string[];
   admitEmails: string[];
   admitSubjects: Array<{ issuer: string; subject: string }>;
-  /** Resolved by the app: mandatory in production, ephemeral in development. */
+  /** `MICA_SESSION_SECRET`, or the contents of `MICA_SESSION_SECRET_FILE`. */
   sessionSecret: string;
   cookieSecure: boolean;
   MICA_SESSION_TTL_HOURS: number;
   MICA_SESSION_IDLE_HOURS: number;
   MICA_SIGNIN_MAX_ATTEMPTS: number;
-  MICA_SIGNIN_WINDOW_MS: number;
+  MICA_SIGNIN_WINDOW_MINUTES: number;
 }
 
 /**

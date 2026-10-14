@@ -20,6 +20,7 @@ export {
   describeConfigIssues,
   list,
   loadEnvFile,
+  isLoopbackUrl,
   LOOPBACK,
   runtimeEnv,
   withoutBlanks,

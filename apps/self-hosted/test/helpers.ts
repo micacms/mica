@@ -125,7 +125,6 @@ export async function createHarness(
   const dataDir = mkdtempSync(join(tmpdir(), "mica-test-data-"));
 
   const config = loadConfig({
-    NODE_ENV: "test",
     MICA_LOG_LEVEL: "silent",
     MICA_PUBLIC_URL: TEST_ORIGIN,
     MICA_SESSION_SECRET: "0".repeat(32),
@@ -158,7 +157,6 @@ export async function createHarness(
       dataDir: config.dataDir,
       sessionTtlHours: config.MICA_SESSION_TTL_HOURS,
       sessionIdleHours: config.MICA_SESSION_IDLE_HOURS,
-      generatedSecrets: config.devSecrets,
     }),
     health: { ready: () => ({ ok: true, reasons: [] }) },
     onShutdown: () => {

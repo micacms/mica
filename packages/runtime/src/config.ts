@@ -30,17 +30,29 @@ export class ConfigError extends Error {
 /** Hostnames that are this machine, and nowhere else. */
 export const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]", "::1", "0:0:0:0:0:0:0:1"]);
 
+/** Whether a URL points at this machine: then plain HTTP is allowed, for a trial or a test. */
+export function isLoopbackUrl(url: string): boolean {
+  return LOOPBACK.has(new URL(url).hostname.replace(/^\[|\]$/g, ""));
+}
+
 /** The variables the runtime itself reads. Apps spread this into their schema. */
 export const runtimeEnv = {
-  NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   MICA_LOG_LEVEL: z.enum(["debug", "info", "warn", "error", "silent"]).default("info"),
 
   /** The listen address. The app sets the default. */
   HOST: z.string().optional(),
   PORT: z.coerce.number().int().min(1).max(65535).default(DEFAULT_PORT),
 
-  /** Public origin of the CMS itself. Used for cookies, CORS and media URLs. */
-  MICA_PUBLIC_URL: z.string().url().default(DEFAULT_BASE_URL),
+  /** Public origin of the CMS itself, without a path. Used for cookies, CORS and media URLs. */
+  MICA_PUBLIC_URL: z
+    .string()
+    .url()
+    .refine((value) => {
+      const url = new URL(value);
+      return url.pathname === "/" && !url.search && !url.hash;
+    }, "must be an origin such as https://cms.example.com, without a path")
+    .transform((value) => new URL(value).origin)
+    .default(DEFAULT_BASE_URL),
 
   /** The content root this Mica serves: a directory in a Git working tree. Each app sets it. */
   MICA_CONTENT_ROOT: z.string(),
@@ -56,10 +68,6 @@ export const runtimeEnv = {
 
   /** Read the client IP from X-Forwarded-For. Only enable behind a proxy. */
   MICA_TRUST_PROXY: bool(false),
-  /** Extra browser origins allowed to call the admin API (dev Vite server). */
-  MICA_ADMIN_ORIGINS: z.string().optional(),
-  /** Overrides where the built admin SPA is served from. */
-  MICA_ADMIN_DIR: z.string().optional(),
 };
 
 const runtimeSchema = z.object(runtimeEnv);
@@ -72,9 +80,11 @@ export type RuntimeEnv = z.infer<typeof runtimeSchema>;
 export function deriveRuntime<T extends RuntimeEnv>(env: T) {
   return {
     ...env,
-    isProduction: env.NODE_ENV === "production",
+    /** The public URL is this machine: a trial or a test, where plain HTTP and curl are allowed. */
+    isLoopback: isLoopbackUrl(env.MICA_PUBLIC_URL),
     contentRoot: path.resolve(env.MICA_CONTENT_ROOT),
-    adminOrigins: list(env.MICA_ADMIN_ORIGINS),
+    /** More browser origins for the admin API: only the local editor's development setting fills it. */
+    adminOrigins: [] as string[],
   };
 }
 

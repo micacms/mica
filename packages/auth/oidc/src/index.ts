@@ -43,7 +43,7 @@ export function createOidcAuth(deps: OidcAuthDeps): OidcAuth {
   const oidc = createOidcService({ config, logger });
   const loginLimiter = createRateLimiter({
     limit: config.MICA_SIGNIN_MAX_ATTEMPTS,
-    windowMs: config.MICA_SIGNIN_WINDOW_MS,
+    windowMs: config.MICA_SIGNIN_WINDOW_MINUTES * 60_000,
   });
 
   const gate = { sessions, admission };

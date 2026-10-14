@@ -356,7 +356,8 @@ export interface MediaUsage {
 export interface SystemInfo {
   cms: {
     version: string;
-    environment: string;
+    /** "self-hosted" or "local editor". */
+    mode: string;
     node: string;
     platform: string;
     startedAt: string;
@@ -420,7 +421,6 @@ export interface SystemInfo {
     admission: string | null;
     trustProxy: boolean;
     adminOrigins: string[];
-    generatedSecrets: string[];
     memoryBytes: number;
   };
 }

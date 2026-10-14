@@ -75,7 +75,7 @@ async function setup(
   const developer = seedRepository(host, name, files);
   const dataDir = mkdtempSync(join(tmpdir(), "mica-data-"));
   const layout = cloneLayout(dataDir);
-  const remote = parseRemote(host.url(name), true);
+  const remote = parseRemote(host.url(name));
   const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username: "oauth2", token });
   const open = () => openClone({ layout, url: remote.url, branch: "main", root: "content", env, logger });
   const git = await open();
@@ -89,7 +89,7 @@ async function setup(
     locks: createWorkspaceLocks(),
     logger,
     groupOf,
-    secrets: [token],
+    secrets: () => [token],
     syncSeconds: 60,
     ...(onModelChange ? { onModelChange } : {}),
   });
@@ -134,7 +134,7 @@ describe("the clone", () => {
   it("is cloned again when the URL changed and it holds no work", async () => {
     const s = await setup();
     seedRepository(host, `${s.name}-other`, { ...SEED, "content/theme.json": '{"color":"blue"}\n' });
-    const remote = parseRemote(host.url(`${s.name}-other`), true);
+    const remote = parseRemote(host.url(`${s.name}-other`));
     const env = managedEnvironment({ remote, cloneDir: s.repo, username: "oauth2", token: TOKEN });
     await openClone({ layout: s.layout, url: remote.url, branch: "main", root: "content", env, logger });
     assert.equal(read(s, "content/theme.json"), '{"color":"blue"}\n');
@@ -144,7 +144,7 @@ describe("the clone", () => {
     const s = await setup();
     writeIn(s.repo, "content/theme.json", '{"color":"draft"}\n');
     seedRepository(host, `${s.name}-moved`, SEED);
-    const remote = parseRemote(host.url(`${s.name}-moved`), true);
+    const remote = parseRemote(host.url(`${s.name}-moved`));
     const env = managedEnvironment({ remote, cloneDir: s.repo, username: "oauth2", token: TOKEN });
     await assert.rejects(
       openClone({ layout: s.layout, url: remote.url, branch: "main", root: "content", env, logger }),
@@ -360,7 +360,7 @@ describe("sync", () => {
 
   it("reports an authentication failure without the token", async () => {
     const s = await setup();
-    const remote = parseRemote(host.url(s.name), true);
+    const remote = parseRemote(host.url(s.name));
     const env = managedEnvironment({ remote, cloneDir: s.repo, username: "oauth2", token: "wrong-token-123" });
     const git = await openClone({ layout: s.layout, url: remote.url, branch: "main", root: "content", env, logger });
     const workspace = createManagedWorkspace({
@@ -373,7 +373,7 @@ describe("sync", () => {
       locks: createWorkspaceLocks(),
       logger,
       groupOf,
-      secrets: ["wrong-token-123"],
+      secrets: () => ["wrong-token-123"],
       syncSeconds: 60,
     });
     const state = await workspace.sync();
@@ -388,7 +388,7 @@ describe("the credential helper", () => {
     const other = await startGitHost("another-token-77");
     try {
       seedRepository(other, "elsewhere", SEED);
-      const remote = parseRemote(host.url(s.name), true);
+      const remote = parseRemote(host.url(s.name));
       const env = managedEnvironment({ remote, cloneDir: s.repo, username: "oauth2", token: TOKEN });
       await assert.rejects(gitRunner(s.repo, { env }).run(["ls-remote", other.url("elsewhere")]));
       const leaked = other.authorizations.filter((header) =>
@@ -489,7 +489,7 @@ describe("recovery at start", () => {
     seedRepository(host, name, { ...SEED, ".gitattributes": "content/**/*.jpg filter=lfs\n" });
     const dataDir = mkdtempSync(join(tmpdir(), "mica-data-"));
     const layout = cloneLayout(dataDir);
-    const remote = parseRemote(host.url(name), true);
+    const remote = parseRemote(host.url(name));
     const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username: "oauth2", token: TOKEN });
     await assert.rejects(openClone({ layout, url: remote.url, branch: "main", root: "content", env, logger }), CloneRefusal);
     assert.deepEqual(readdirSync(dataDir), []);

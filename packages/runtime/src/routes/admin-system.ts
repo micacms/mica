@@ -100,7 +100,7 @@ export function adminSystemRoutes(): Hono<Env> {
     return c.json({
       cms: {
         version: VERSION,
-        environment: config.NODE_ENV,
+        mode: repository.owner === "managed" ? "self-hosted" : "local editor",
         node: process.version,
         platform: `${process.platform}/${process.arch}`,
         startedAt: new Date(Date.now() - uptimeSeconds * 1000).toISOString(),
@@ -140,7 +140,6 @@ export function adminSystemRoutes(): Hono<Env> {
         admission: operational.admission ?? null,
         trustProxy: config.MICA_TRUST_PROXY,
         adminOrigins: config.adminOrigins,
-        generatedSecrets: operational.generatedSecrets ?? [],
         memoryBytes: process.memoryUsage().rss,
       },
     });
