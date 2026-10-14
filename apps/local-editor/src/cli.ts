@@ -29,6 +29,7 @@
 import { existsSync, readdirSync, realpathSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
+import { parseArgs, type ParseArgsOptionsConfig } from "node:util";
 
 import { MANIFEST_PATH } from "@micacms/core/internal";
 import { DEFAULT_PORT, SchemaError, VERSION } from "@micacms/runtime";
@@ -56,11 +57,25 @@ export interface Options {
 
 export type Command = "start" | "check" | "import";
 
-/** The options of each command. A bare path is always the content root. */
-const ALLOWED: Record<Command, ReadonlySet<string>> = {
-  start: new Set(["content", "port", "host", "open"]),
-  check: new Set(["content"]),
-  import: new Set(["content", "from", "map", "order", "collection"]),
+/** Every option of the CLI, for `util.parseArgs`. */
+const OPTIONS = {
+  content: { type: "string", short: "c" },
+  port: { type: "string", short: "p" },
+  host: { type: "string" },
+  open: { type: "boolean" },
+  from: { type: "string" },
+  map: { type: "string", multiple: true },
+  order: { type: "string", multiple: true },
+  collection: { type: "string", multiple: true },
+  help: { type: "boolean", short: "h" },
+  version: { type: "boolean", short: "v" },
+} as const satisfies ParseArgsOptionsConfig;
+
+/** The options of each command. A path without an option is always the content root. */
+const ALLOWED: Record<Command, ReadonlyArray<keyof typeof OPTIONS>> = {
+  start: ["content", "port", "host", "open", "help", "version"],
+  check: ["content", "help", "version"],
+  import: ["content", "from", "map", "order", "collection", "help", "version"],
 };
 
 const USAGE = `
@@ -100,85 +115,53 @@ const USAGE = `
 `;
 
 export function parse(argv: string[], command: Command = "start"): Options {
-  const options: Options = { map: {}, order: {}, collections: [] };
-  const allow = (name: string, flag: string) => {
-    if (!ALLOWED[command].has(name)) fail(`${command} has no option ${flag}.`);
-  };
-
-  for (let index = 0; index < argv.length; index++) {
-    const flag = argv[index]!;
-    const value = (): string => {
-      const next = argv[++index];
-      if (next === undefined || next.startsWith("-")) fail(`${flag} needs a value.`);
-      return next!;
-    };
-    const pair = (): [string, string] => {
-      const text = value();
-      const at = text.indexOf("=");
-      if (at < 1 || at === text.length - 1) fail(`${flag} takes name=value, for example team.image.alt=alt.`);
-      return [text.slice(0, at), text.slice(at + 1)];
-    };
-
-    switch (flag) {
-      case "-c":
-      case "--content":
-        allow("content", flag);
-        options.content = value();
-        break;
-      case "-p":
-      case "--port":
-        allow("port", flag);
-        options.port = value();
-        break;
-      case "--host":
-        allow("host", flag);
-        options.host = value();
-        break;
-      case "--open":
-      case "--no-open":
-        allow("open", flag);
-        options.open = flag === "--open";
-        break;
-      case "--from":
-        allow("from", flag);
-        options.from = value();
-        break;
-      case "--map": {
-        allow("map", flag);
-        const [to, from] = pair();
-        options.map[to] = from;
-        break;
-      }
-      case "--order": {
-        allow("order", flag);
-        const [name, field] = pair();
-        options.order[name] = field;
-        break;
-      }
-      case "--collection":
-        allow("collection", flag);
-        options.collections.push(value());
-        break;
-      case "-h":
-      case "--help":
-        process.stdout.write(`${USAGE}\n`);
-        process.exit(0);
-
-      case "-v":
-      case "--version":
-        process.stdout.write(`${VERSION}\n`);
-        process.exit(0);
-
-      default:
-        // A bare path is the content root, so `npx mica start ./site/content`
-        // does what it looks like it does.
-        if (flag.startsWith("-")) fail(`Unknown option "${flag}".`);
-        if (options.content !== undefined) fail(`${command} takes one content directory, not "${options.content}" and "${flag}".`);
-        options.content = flag;
+  let parsed;
+  try {
+    parsed = parseArgs({ args: argv, options: OPTIONS, allowPositionals: true, allowNegative: true, strict: true, tokens: true });
+  } catch (error) {
+    // Node names the option: "Unknown option '--x'", "Option '-c, --content <value>' argument missing".
+    fail(`${(error as Error).message.split(/\.\s|\n/)[0]!.replace(/\.$/, "")}.`);
+  }
+  for (const token of parsed.tokens) {
+    if (token.kind === "option" && !ALLOWED[command].includes(token.name as keyof typeof OPTIONS)) {
+      fail(`${command} has no option ${token.rawName}.`);
     }
   }
 
-  return options;
+  const { values, positionals } = parsed;
+  if (values.help) {
+    process.stdout.write(`${USAGE}\n`);
+    process.exit(0);
+  }
+  if (values.version) {
+    process.stdout.write(`${VERSION}\n`);
+    process.exit(0);
+  }
+
+  // A bare path is the content root, so `npx mica start ./site/content` does what it looks like it does.
+  const directories = [...(values.content === undefined ? [] : [values.content]), ...positionals];
+  if (directories.length > 1) fail(`${command} takes one content directory, not ${directories.map((dir) => `"${dir}"`).join(" and ")}.`);
+
+  /** `--map a=b --map c=d` as `{ a: "b", c: "d" }`. */
+  const pairs = (flag: string, texts: string[] = []): Record<string, string> =>
+    Object.fromEntries(
+      texts.map((text) => {
+        const at = text.indexOf("=");
+        if (at < 1 || at === text.length - 1) fail(`${flag} takes name=value, for example team.image.alt=alt.`);
+        return [text.slice(0, at), text.slice(at + 1)];
+      }),
+    );
+
+  return {
+    ...(directories[0] !== undefined ? { content: directories[0] } : {}),
+    ...(values.port !== undefined ? { port: values.port } : {}),
+    ...(values.host !== undefined ? { host: values.host } : {}),
+    ...(values.open !== undefined ? { open: values.open } : {}),
+    ...(values.from !== undefined ? { from: values.from } : {}),
+    map: pairs("--map", values.map),
+    order: pairs("--order", values.order),
+    collections: values.collection ?? [],
+  };
 }
 
 /**
