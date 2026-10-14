@@ -27,6 +27,7 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 - **No server-side session revocation.** Sessions are encrypted cookies. Mica has no database. To end every session at once, change `MICA_SESSION_SECRET` and restart. Every editor must then sign in again.
 - **The local editor is open to local processes.** Any process on the developer's machine can call the local API. Such a process can already change the files in the working tree.
 - **A publish is immediate.** There is no review step. If you need one, point Mica at a staging branch and merge on your own schedule.
+- **The website's templates decide whether an editor can run script.** Rich text cannot add script: Markdoc escapes HTML. A template can still do it. Do not put a script address in a field, for example for analytics: every editor could then load their own script on every page. Keep such addresses in code. When a template writes content into a `<script>` element, for example JSON-LD, escape `<` as `\u003c`, so that a text cannot end the element.
 
 ## What Mica does for you
 

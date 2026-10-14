@@ -153,6 +153,8 @@ new one when it is first written, and keeps it after that.
 **Markdoc, not HTML.** A `.mdoc` file is readable in a diff, carries no styling
 decisions that belong to the website, and cannot inject script into a build:
 Markdoc escapes raw HTML and renders an undeclared `{% tag %}` as nothing.
+The website's templates still decide: a field that holds a script address, or
+content written unescaped into a `<script>` element, lets an editor run script.
 
 **Media is colocated**, so an entry is self-contained and renaming it is a
 folder move. **Order is a file**, so moving one entry, however far, is one
