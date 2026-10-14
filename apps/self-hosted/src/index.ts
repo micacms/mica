@@ -9,6 +9,7 @@ import { createOidcAuth } from "@micacms/auth-oidc";
 import { MANIFEST_PATH, type Site } from "@micacms/core";
 import {
   ConfigError,
+  ConflictError,
   contentFiles,
   createApp,
   createLogger,
@@ -23,6 +24,7 @@ import {
   type Env,
   type Logger,
   type RuntimeContext,
+  type WorkspaceLocks,
 } from "@micacms/runtime";
 import { Hono } from "hono";
 
@@ -34,6 +36,7 @@ import { coarseGroups, contentGroups, revalidator } from "./workspace/content-gr
 import { redact } from "./workspace/credentials.js";
 import { classifyFailure, describeFailure } from "./workspace/failures.js";
 import { managedEnvironment } from "./workspace/isolation.js";
+import { takeLease, type Lease } from "./workspace/lease.js";
 import { createManagedWorkspace, type ManagedWorkspace } from "./workspace/managed.js";
 
 const EX_USAGE = 64;
@@ -43,6 +46,21 @@ const EX_CONFIG = 78;
 function refuse(message: string): never {
   process.stderr.write(`\n${message}\n\n`);
   process.exit(EX_CONFIG);
+}
+
+/** How long a stop waits for a running sync or publication, within the server's 15 seconds. */
+const SHUTDOWN_WAIT_MS = 10_000;
+
+/** The content files, with every write refused while the clone is read-only (`SyncState.readOnly`). */
+function refuseWritesWhile(files: ContentFiles, readOnly: () => string | null): ContentFiles {
+  return {
+    ...files,
+    async apply(input) {
+      const reason = readOnly();
+      if (reason) throw new ConflictError(reason, []);
+      return files.apply(input);
+    },
+  };
 }
 
 /**
@@ -105,6 +123,8 @@ async function serve(): Promise<void> {
   const dispatcher = createDispatcher();
   let ctx: RuntimeContext | null = null;
   let managed: ManagedWorkspace | null = null;
+  let locks: WorkspaceLocks | null = null;
+  let lease: Lease | null = null;
 
   startServer({
     app: dispatcher.app,
@@ -116,9 +136,25 @@ async function serve(): Promise<void> {
     },
     shutdown: async () => {
       managed?.stop();
+      // A sync or a publication that runs now finishes, so that it leaves no Git lock behind (#229).
+      if (locks) {
+        const idle = Promise.all([locks.remote.run(async () => {}), locks.tree.write(async () => {})]);
+        await Promise.race([idle, new Promise((resolve) => setTimeout(resolve, SHUTDOWN_WAIT_MS).unref())]);
+      }
       await ctx?.shutdown();
+      await lease?.release();
     },
   });
+
+  // One Mica per volume: a second one waits for this lease to expire, then refuses.
+  try {
+    lease = await takeLease(config.dataDir, logger, (holder) =>
+      refuse(`Another Mica took over this data volume: ${holder}. This one stops, so that only one writes to the clone.`),
+    );
+  } catch (error) {
+    if (error instanceof CloneRefusal) refuse(error.message);
+    throw error;
+  }
 
   const layout = cloneLayout(config.dataDir);
   const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token });
@@ -138,7 +174,8 @@ async function serve(): Promise<void> {
 
   const tree = { git, prefix: root, contentRoot: config.contentRoot };
   const files = contentFiles({ root: config.contentRoot });
-  const locks = createWorkspaceLocks();
+  const workspaceLocks = createWorkspaceLocks();
+  locks = workspaceLocks;
 
   // The model at HEAD groups the files for the first sync, and is read again
   // after it. Only the second read may stop the start: a model this image
@@ -162,7 +199,7 @@ async function serve(): Promise<void> {
     tree,
     branch,
     root,
-    locks,
+    locks: workspaceLocks,
     logger,
     groupOf: (path) => groups.of(path),
     revalidate: (paths) => revalidate.run(paths),
@@ -206,11 +243,11 @@ async function serve(): Promise<void> {
   ctx = createRuntimeContext({
     config,
     model,
-    files,
+    files: refuseWritesWhile(files, () => workspace.state().readOnly),
     schemaRevision,
     logger,
     policy: workspace.policy,
-    locks,
+    locks: workspaceLocks,
     tree,
     onModel: (next) => {
       groups.of = contentGroups(next);
@@ -240,6 +277,7 @@ async function serve(): Promise<void> {
           reasons.push(reason[state.error.code] ?? "sync_failing");
         }
         if (state.restartRequired) reasons.push("restart_required");
+        if (state.readOnly) reasons.push("read_only");
         return { ok: true, reasons };
       },
     },

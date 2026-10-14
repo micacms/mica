@@ -40,6 +40,7 @@ The reason codes:
 | `branch_not_found` | The branch does not exist at the Git host (0.6.0). | Create the branch, or correct `MICA_REPOSITORY_BRANCH`. |
 | `sync_failing` | Another sync problem. | Read the log, and run `docker compose run --rm mica check`. |
 | `restart_required` | `.gitattributes` changed at the Git host. Mica keeps the old version of the branch until a restart checks it. | Restart the container. |
+| `read_only` | A sync failed while it changed the files, and Mica could not undo it. Editors cannot save or publish. | Read the log, then restart the container: the start finishes the sync. |
 
 While a sync fails, editors can still edit and save: their work is in the clone. Publish works again when the Git host accepts the push.
 

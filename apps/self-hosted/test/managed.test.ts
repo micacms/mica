@@ -502,17 +502,13 @@ describe("recovery at start", () => {
     await assert.rejects(s.open(), CloneRefusal);
   });
 
-  it("removes an old index.lock and keeps a young one", async () => {
+  // The start holds the volume's lease, so no other process owns a lock (#229).
+  it("removes every lock file that a stop or a crash left", async () => {
     const s = await setup();
-    const lock = join(s.repo, ".git", "index.lock");
-    writeFileSync(lock, "");
+    const locks = [join(s.repo, ".git", "index.lock"), join(s.repo, ".git", "refs", "heads", "main.lock")];
+    for (const lock of locks) writeFileSync(lock, "");
     await s.open();
-    assert.ok(existsSync(lock), "a young lock was removed");
-
-    const old = new Date(Date.now() - 60 * 60_000);
-    utimesSync(lock, old, old);
-    await s.open();
-    assert.ok(!existsSync(lock), "an old lock stayed");
+    for (const lock of locks) assert.ok(!existsSync(lock), lock);
   });
 
   it("deletes the temporary files of an interrupted save", async () => {
@@ -520,6 +516,38 @@ describe("recovery at start", () => {
     writeIn(s.repo, "content/posts/a/index.json.mica-123-0", "half");
     await s.open();
     assert.ok(!existsSync(join(s.repo, "content/posts/a/index.json.mica-123-0")));
+  });
+});
+
+describe("a fast-forward that cannot be undone (#229)", () => {
+  it("makes the clone read-only until a restart, and keeps the marker for the start", async () => {
+    const s = await setup();
+    // Git fails in the fast-forward and again in its rollback, as with a full disk.
+    const failing: GitRunner = {
+      run: (args, call) => (args[0] === "merge" || args[0] === "restore" ? Promise.reject(new Error("No space left on device")) : s.git.run(args, call)),
+      tryRun: (args, call) => s.git.tryRun(args, call),
+    };
+    const workspace = createManagedWorkspace({
+      layout: s.layout,
+      url: host.url(s.name),
+      git: failing,
+      tree: { git: failing, prefix: "content", contentRoot: join(s.repo, "content") },
+      branch: "main",
+      root: "content",
+      locks: createWorkspaceLocks(),
+      logger,
+      groupOf,
+      secrets: [TOKEN],
+      syncSeconds: 60,
+    });
+    upstream(s, (dir) => writeIn(dir, "content/posts/b/index.json", '{"title":"B, upstream"}\n'));
+
+    const state = await workspace.sync();
+    assert.match(state.readOnly ?? "", /restarts it/);
+    assert.equal(workspace.policy.publishAvailability().enabled, false);
+    assert.ok(existsSync(s.layout.operationFile), "the start must find the marker");
+    // No second attempt while the clone is between two versions.
+    assert.equal((await workspace.sync()).readOnly, state.readOnly);
   });
 });
 

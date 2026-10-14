@@ -5,7 +5,7 @@
  */
 
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, rm, stat, writeFile, rename } from "node:fs/promises";
+import { mkdir, readFile, readdir, rm, writeFile, rename } from "node:fs/promises";
 import { basename, join } from "node:path";
 
 import { ConfigError, gitRunner, type GitRunner, type Logger } from "@micacms/runtime";
@@ -14,7 +14,7 @@ import { writeIsolationAttributes } from "./isolation.js";
 import { lfsUnderRoot } from "./lfs.js";
 import { changedBetween, draftPaths, restorePaths } from "./restore.js";
 
-/** The longest a Git call may run. A lock older than this has no owner left. */
+/** The longest a Git call may run. */
 export const LONGEST_GIT_CALL_MS = 10 * 60_000;
 
 export interface CloneLayout {
@@ -103,7 +103,7 @@ export async function openClone(options: OpenCloneOptions): Promise<GitRunner> {
   }
 
   await writeIsolationAttributes(join(layout.repositoryDir, ".git"));
-  await removeStaleLock(layout, logger);
+  await removeLocks(layout, logger);
   await recover(git, options);
   return git;
 }
@@ -187,14 +187,18 @@ export function lfsRefusal(file: string, root: string): CloneRefusal {
   );
 }
 
-async function removeStaleLock(layout: CloneLayout, logger: Logger): Promise<void> {
-  const lock = join(layout.repositoryDir, ".git", "index.lock");
-  const found = await stat(lock).catch(() => null);
-  if (!found) return;
-  // A younger lock can belong to a process that still runs, for example during a rolling deploy.
-  if (Date.now() - found.mtimeMs < LONGEST_GIT_CALL_MS) return;
-  await rm(lock, { force: true });
-  logger.warn("Removed a stale index.lock", { lock });
+/**
+ * Removes every lock file in `.git` that a stop or a crash left. The caller
+ * holds the volume's lease (`lease.ts`), so no other process owns one.
+ */
+async function removeLocks(layout: CloneLayout, logger: Logger): Promise<void> {
+  const gitDir = join(layout.repositoryDir, ".git");
+  for (const entry of await readdir(gitDir, { withFileTypes: true, recursive: true })) {
+    if (!entry.isFile() || !entry.name.endsWith(".lock")) continue;
+    const lock = join(entry.parentPath, entry.name);
+    await rm(lock, { force: true });
+    logger.warn("Removed a lock file that a stop or a crash left", { lock });
+  }
 }
 
 interface OperationMarker {

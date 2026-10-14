@@ -190,7 +190,7 @@ What Mica does with the repository:
 The volume:
 
 - Mount the volume at `MICA_DATA_DIR` (`/data` in the image), never at its `repository` folder. Mica makes a new clone next to the old one and renames it, and a mount point cannot be renamed.
-- Run one Mica for each volume. Mica has no lock file, so it cannot stop a second container on the same volume.
+- Run one Mica for each volume. A second Mica on the same volume waits up to 45 seconds for the first one to stop, then refuses to start. Deploy with the strategy "recreate", which stops the old container before it starts the new one, not with a rolling update. `docker compose up -d` does that.
 - Make the volume about twice the size of the content: the objects in `.git` and the files. `.git` grows with each media change from the website. To make it smaller, publish or discard all drafts, stop Mica, delete `MICA_DATA_DIR/repository`, and start Mica. Mica clones again.
 
 The volume holds the clone and the unpublished drafts. If you lose it, unpublished work is gone. Nobody is signed out, and everything published is in the repository. Tell editors to publish often: the drafts are not an archive.

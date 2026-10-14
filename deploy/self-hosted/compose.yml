@@ -18,7 +18,8 @@
 # which is already replicated, versioned and off-site. The volume holds the
 # clone, and in it the drafts that are saved and not yet published: losing the
 # volume loses those and nothing else. There are no accounts in it, and no
-# passwords — Mica has neither. Run one Mica per volume.
+# passwords — Mica has neither. Run one Mica per volume: a second one on the
+# same volume waits for the first to stop, then refuses to start.
 
 services:
   mica:
