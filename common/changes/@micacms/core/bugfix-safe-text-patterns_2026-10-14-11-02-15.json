@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "Refuse a text pattern that repeats a group with a repeat inside, such as (a+)+: it can take very long on a short value.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}
