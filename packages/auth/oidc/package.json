@@ -1,4 +1,5 @@
 {
+  "private": true,
   "name": "@micacms/auth-oidc",
   "version": "0.8.0",
   "type": "module",

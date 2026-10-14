@@ -266,9 +266,10 @@ git push --atomic origin main v0.2.0  # the commit and the tag, or neither
 The tag is the trigger and the only one — a merge to `main` publishes nothing.
 [`.github/workflows/release.yml`](./.github/workflows/release.yml) checks the
 tag against the manifests, runs the build, the typecheck and the tests again,
-publishes the six packages to npm — with provenance once this repository is
-public, which is the only condition npm will verify one under — and opens a
-GitHub release
+pushes the image, publishes the four packages to npm (`@micacms/core`,
+`@micacms/astro`, `@micacms/editor` and `@micacms/runtime`) — with provenance
+once this repository is public, which is the only condition npm will verify one
+under — and opens a GitHub release
 whose notes are the `CHANGELOG.md` section for that version. Write that section
 first: the release fails without it.
 

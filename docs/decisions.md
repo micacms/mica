@@ -765,9 +765,12 @@ the draft store and nothing about people. See "Sessions are encrypted cookies".
 and `@micacms/core/node`, `@micacms/astro`, the `@micacms/editor` CLI, the self-hosted image contract (environment variables,
 port, volume, `/health` and `/ready`), the content format and the manifest
 protocol.
-`@micacms/runtime`, `@micacms/auth-oidc` and `@micacms/editor-ui` are internal
-(`@micacms/connectors` was, until 0.5.0 removed it): published only because the apps install
-them, pinned exactly by the apps, and free to break in a minor.
+`@micacms/runtime` is internal: published only because `@micacms/editor`
+installs it, pinned exactly, and free to break in a minor. Since 0.9 (#225),
+`@micacms/editor-ui` and `@micacms/auth-oidc` are not published: the editor
+ships the UI's build in its `dist/admin`, and the image builds both from
+source. A change to the editor UI records its change file for
+`@micacms/editor`.
 
 **Why:** all packages share one lockstep version, so a public `runtime` would
 turn every refactor of its helpers into a major for every package, `core`

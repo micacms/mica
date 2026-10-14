@@ -1,8 +1,7 @@
 # @micacms/auth-oidc
 
-> **Internal.** Published only because the Mica apps install it, and pinned
-> exactly by them. It has no semver promise: any release can break its API. Use
-> `@micacms/core`, `@micacms/astro` or the `@micacms/editor` CLI instead.
+> **Internal, not published.** The self-hosted image builds it from source.
+> Versions up to 0.8 are on npm, deprecated.
 
 The server-only OIDC gate for Mica: the authorization code flow with PKCE,
 sessions in an encrypted cookie, admission rules over provider claims, and the middleware

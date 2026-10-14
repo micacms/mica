@@ -50,7 +50,6 @@
     {
       "packageName": "@micacms/editor-ui",
       "projectFolder": "packages/editor-ui",
-      "versionPolicyName": "mica",
       "tags": ["packages"]
     },
     {
@@ -62,7 +61,6 @@
     {
       "packageName": "@micacms/auth-oidc",
       "projectFolder": "packages/auth/oidc",
-      "versionPolicyName": "mica",
       "tags": ["packages"]
     },
 

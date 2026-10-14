@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor",
+      "comment": "`@micacms/editor` ships the built editor UI in `dist/admin`, and no longer depends on `@micacms/editor-ui`, which is not published any more. `@micacms/auth-oidc` is not published either.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

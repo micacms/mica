@@ -28,7 +28,7 @@
     "README.md"
   ],
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-editor-ui.mjs",
     "dev": "tsx watch --env-file=dev.env --clear-screen=false --include ../../examples/company-site/content/.mica/schema.json src/index.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.test.json",
@@ -36,12 +36,12 @@
   },
   "dependencies": {
     "@micacms/core": "workspace:*",
-    "@micacms/editor-ui": "workspace:*",
     "@micacms/runtime": "workspace:*",
     "hono": "^4.13.7",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@micacms/editor-ui": "workspace:*",
     "@types/node": "^22.20.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"

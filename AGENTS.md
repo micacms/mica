@@ -58,7 +58,7 @@ Ask the user before you:
 - Update `docs/decisions.md` when the change adds or changes an architectural decision, trade-off, known gap, or deferred item.
 - Keep README files and examples consistent with the current behavior.
 - Update `CHANGELOG.md` when a new version is created. Do not add routine unreleased changes unless the user asks for them.
-- Record a change file with `rush change` when a change touches a published package; use the bump type `none` when the release notes should not mention it.
+- Record a change file with `rush change` when a change touches a published package; use the bump type `none` when the release notes should not mention it. `@micacms/editor-ui` is not published: `@micacms/editor` ships it, so record its changes for `@micacms/editor`.
 - Use `rush version-bump` to release the pending change files, or `rush release-version --version <version>` to set an explicit version. Do not edit package versions separately. The `/release` skill (`.claude/skills/release/`) walks the whole flow — bump choice, changelog section, verification.
 
 ## Subagents
