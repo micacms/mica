@@ -3,9 +3,10 @@
  * Relation field. Stores entry slugs, so a reference is readable both in the
  * JSON payload and in the diff a reviewer reads.
  *
- * The chosen entries come first, in their stored order, with buttons to move
- * them. Below them, a combobox (the ARIA combobox pattern) finds an entry by
- * its title or URL as the editor types.
+ * The chosen entries come first, in their stored order. They change their order
+ * as every list does (`useReorder`): a handle to drag or to move with the
+ * keyboard, and arrows. Below them, a combobox (the ARIA combobox pattern) finds
+ * an entry by its title or URL as the editor types.
  */
 
 import { computed, nextTick, onMounted, ref } from "vue";
@@ -14,10 +15,13 @@ import type { RelationField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
 import type { EntrySummary } from "@/api";
+import ReorderArrows from "@/components/ReorderArrows.vue";
+import ReorderHandle from "@/components/ReorderHandle.vue";
 import { useField, type FieldProps } from "@/composables/useField";
+import { useReorder } from "@/composables/useReorder";
 import { announce } from "@/lib/announce";
 import { entryOptions } from "@/lib/entry-options";
-import { matchEntries, moveItem } from "@/lib/order";
+import { matchEntries } from "@/lib/order";
 import { useSchema } from "@/stores/schema";
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
@@ -64,20 +68,17 @@ function store(slugs: string[]): void {
 }
 
 const input = ref<HTMLInputElement | null>(null);
-const list = ref<HTMLElement | null>(null);
 
-/**
- * The row buttons use `aria-disabled`, not `disabled`: a button that becomes
- * disabled, or a row that Vue moves, would drop the keyboard focus.
- */
-async function move(index: number, to: number, direction: "up" | "down"): Promise<void> {
-  if (locked.value || to < 0 || to >= selected.value.length) return;
-  const slug = selected.value[index]!;
-  store(moveItem(selected.value, index, to));
-  announce(`"${titleFor(slug)}" is now at position ${to + 1} of ${selected.value.length}.`);
-  await nextTick();
-  list.value?.querySelector<HTMLElement>(`[data-move="${CSS.escape(`${slug}:${direction}`)}"]`)?.focus();
-}
+const reorder = useReorder<string>({
+  scope: () => `relation-${props.path}`,
+  items: () => selected.value,
+  show: store,
+  // The form keeps the order: the next save writes it.
+  commit: () => {},
+  id: (slug) => slug,
+  label: titleFor,
+  disabled: () => locked.value,
+});
 
 async function remove(slug: string): Promise<void> {
   if (locked.value) return;
@@ -166,35 +167,30 @@ function onInput(event: Event): void {
     </p>
 
     <template v-else>
+      <p v-if="field.multiple" :id="`${inputId}-order-help`" class="sr-only">
+        To move an entry with the keyboard, press Space on its handle, then the arrow keys, Home or End, and Space again
+        to drop it. Escape puts it back. The arrows at the end of the row move it one step.
+      </p>
       <ol
         v-if="selected.length > 0"
-        ref="list"
         class="mb-2 divide-y divide-line rounded-sm border border-line bg-raised"
         :aria-label="`Chosen ${targetLabel.toLowerCase()}`"
       >
-        <li v-for="(slug, index) in selected" :key="slug" class="flex items-center gap-2 px-3 py-1.5 text-sm">
+        <li
+          v-for="(slug, index) in selected"
+          :key="slug"
+          :class="['flex items-center gap-2 py-1.5 pr-1.5 text-sm', field.multiple ? 'pl-1' : 'pl-3', reorder.isMoving(slug) && 'bg-accent-soft']"
+          v-bind="field.multiple ? reorder.row(slug) : {}"
+        >
+          <ReorderHandle
+            v-if="field.multiple"
+            :label="titleFor(slug)"
+            :described-by="`${inputId}-order-help`"
+            :disabled="locked"
+            v-bind="reorder.handle(slug)"
+          />
           <span class="min-w-0 flex-1 truncate">{{ titleFor(slug) }}</span>
           <span class="shrink-0 font-mono text-[11px] text-muted">{{ slug }}</span>
-          <template v-if="field.multiple && selected.length > 1">
-            <button
-              type="button"
-              :data-move="`${slug}:up`"
-              class="btn-ghost px-1.5 py-0.5 text-xs aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
-              :aria-disabled="locked || index === 0 || undefined"
-              @click="move(index, index - 1, 'up')"
-            >
-              <span aria-hidden="true">↑</span><span class="sr-only">Move "{{ titleFor(slug) }}" up</span>
-            </button>
-            <button
-              type="button"
-              :data-move="`${slug}:down`"
-              class="btn-ghost px-1.5 py-0.5 text-xs aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
-              :aria-disabled="locked || index === selected.length - 1 || undefined"
-              @click="move(index, index + 1, 'down')"
-            >
-              <span aria-hidden="true">↓</span><span class="sr-only">Move "{{ titleFor(slug) }}" down</span>
-            </button>
-          </template>
           <button
             type="button"
             class="btn-ghost px-1.5 py-0.5 text-xs aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
@@ -203,6 +199,15 @@ function onInput(event: Event): void {
           >
             Remove<span class="sr-only"> "{{ titleFor(slug) }}"</span>
           </button>
+          <ReorderArrows
+            v-if="field.multiple"
+            :label="titleFor(slug)"
+            :target="reorder.target(slug)"
+            :first="index === 0"
+            :last="index === selected.length - 1"
+            :disabled="locked"
+            @move="reorder.step(slug, $event)"
+          />
         </li>
       </ol>
 

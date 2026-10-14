@@ -23,8 +23,9 @@ can do the same by clicking.
 Two more tests run [axe](https://github.com/dequelabs/axe-core) on every view
 of the editor, and on the open relation picker and link dialog: one in the
 light mode and one in the dark mode. A serious or critical finding fails them
-(#108). A fourth test ends a session while a form has
-changes, and checks that the changes come back after the next sign-in.
+(#108). A fourth test orders the entries of a collection and the items of a list with
+the same controls, and puts both orders back. A fifth test ends a session while
+a form has changes, and checks that the changes come back after the next sign-in.
 
 ## Run it
 
@@ -42,7 +43,7 @@ It has no `test` script, so `rush test` does not run it: it needs the stack.
 A failed run keeps a screenshot and a trace in `test-results/`; open the trace
 with `./node_modules/.bin/playwright show-trace`.
 
-Each run uses five of the 50 sign-in attempts per 15 minutes. The
+Each run uses six of the 50 sign-in attempts per 15 minutes. The
 [OIDC test](../oidc/README.md#run-it) says when to restart the `mica` service.
 
 ## What it does not check

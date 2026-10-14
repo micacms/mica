@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "Every list changes its order in the same way: the entries of a collection, the items of a list, the chosen entries of a relation, and the files of a media field. A handle drags an item or moves it with the keyboard, and arrow buttons move it one step. The \"Move to position\" dialog is gone.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor-ui",
+  "email": "alexander@muedespacher.ch"
+}
