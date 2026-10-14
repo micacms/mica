@@ -36,7 +36,7 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 - Every write needs a matching CSRF token, and Mica refuses cross-origin writes.
 - Sign-in attempts are rate limited.
 - Responses carry a same-origin `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: same-origin`.
-- The editor loads nothing from another origin. Its font is served by Mica itself.
+- The editor loads nothing from another origin. Its fonts are served by Mica itself.
 - Mica refuses SVG files, because they can contain scripts: it does not accept them as uploads and does not show them in the editor. Media files are served in a sandbox, and files that are not images are sent as downloads.
 - The self-hosted Mica refuses to start when no admission rule is set.
 

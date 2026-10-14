@@ -49,7 +49,7 @@ watch(() => props.loading, arrive, { flush: "post" });
           {{ backLabel ?? "Back" }}
         </RouterLink>
 
-        <h1 ref="heading" tabindex="-1" class="truncate font-display text-2xl font-normal leading-8 tracking-tight">
+        <h1 ref="heading" tabindex="-1" class="truncate text-[22px] leading-7 font-semibold">
           {{ title }}
         </h1>
         <p v-if="subtitle" class="mt-1 truncate text-xs text-muted">{{ subtitle }}</p>

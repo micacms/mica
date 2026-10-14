@@ -56,7 +56,7 @@ async function discard(): Promise<void> {
     <p class="min-w-0 flex-1 text-sm">
       {{ words[edit.state] }}
       <span v-if="edit.savedAt" class="text-xs text-muted">Saved {{ relativeTime(edit.savedAt) }}.</span>
-      <span v-if="missing.length > 0" class="block text-xs text-warning">
+      <span v-if="missing.length > 0" class="block text-xs font-medium text-warning">
         Not ready to publish: {{ missing.join(" ") }}
       </span>
     </p>

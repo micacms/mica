@@ -115,14 +115,14 @@ const pending = computed(
 
 const state = computed(() =>
   isNew.value
-    ? { label: "Not saved yet", tone: "border-accent bg-accent-soft text-accent" }
+    ? { label: "Not saved yet", tone: "status-unsaved" }
     : dirty.value
-      ? { label: "Unsaved changes", tone: "border-accent bg-accent-soft text-accent" }
+      ? { label: "Unsaved changes", tone: "status-unsaved" }
       : pending.value
-        ? { label: "Saved · not published", tone: "text-warning" }
+        ? { label: "Saved · not published", tone: "status-draft" }
         : staging.knowsPublished.value
-          ? { label: "Published", tone: "text-success" }
-          : { label: "Saved", tone: "text-muted" },
+          ? { label: "Published", tone: "status-published" }
+          : { label: "Saved", tone: "" },
 );
 
 const title = computed(() => {
@@ -342,8 +342,7 @@ async function remove(): Promise<void> {
       :back-label="definition.label"
     >
       <template v-if="!definition.readOnly">
-        <span :class="['badge', state.tone]">
-          <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+        <span :class="['status', state.tone]">
           {{ state.label }}
         </span>
         <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save()">
@@ -392,7 +391,7 @@ async function remove(): Promise<void> {
               {{ linkers.length }} other entr{{ linkers.length === 1 ? "y or page links" : "ies or pages link" }} to it:
               {{ linkers.map(describeReferrer).join(", ") }}.
             </p>
-            <p v-if="linkers.some((item) => item.readOnly)" class="mt-1 text-xs text-warning">
+            <p v-if="linkers.some((item) => item.readOnly)" class="mt-1 text-xs font-medium text-warning">
               This version of Mica cannot change
               {{ linkers.filter((item) => item.readOnly).map(describeReferrer).join(", ") }}. Their links keep the old
               URL until a developer changes them.
@@ -401,7 +400,7 @@ async function remove(): Promise<void> {
               <input v-model="updateLinks" type="checkbox" class="h-4 w-4" />
               Update their links when I save
             </label>
-            <p v-if="!updateLinks" class="mt-1 text-xs text-warning">
+            <p v-if="!updateLinks" class="mt-1 text-xs font-medium text-warning">
               Their links then point to a URL that does not exist, and Publish waits until they are changed.
             </p>
           </template>

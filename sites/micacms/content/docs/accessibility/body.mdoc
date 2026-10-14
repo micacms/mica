@@ -6,7 +6,7 @@ The editor aims to conform to [WCAG 2.2](https://www.w3.org/TR/WCAG22/) at level
 
 ## How Mica checks it
 
-- **Automated checks.** On every pull request, a browser test runs [axe](https://github.com/dequelabs/axe-core) on every view of the editor: sign-in, overview, collection, entry, settings, media, Publish and System. It also checks the open relation picker and the link dialog. A serious or critical finding stops the change.
+- **Automated checks.** On every pull request, a browser test runs [axe](https://github.com/dequelabs/axe-core) on every view of the editor: sign-in, overview, collection, entry, settings, media, Publish and System. It also checks the open relation picker and the link dialog. It runs once in the light mode and once in the dark mode. A serious or critical finding stops the change.
 - **Design rules.** Each form field has a visible label. Each control has a visible keyboard focus, and an icon button has a name for screen readers and a tooltip. A field that you cannot change stays readable and focusable. Colour is never the only sign of a difference.
 
 Automated checks find only a part of the problems. They do not replace tests with people who use assistive technology.
@@ -16,6 +16,7 @@ Automated checks find only a part of the problems. They do not replace tests wit
 - Each page has its own title. After you move to a different page, the focus goes to the page heading, and a screen reader announces the page.
 - After you sign in, a "Skip to the content" link is the first item on each page.
 - The menu on a small screen opens and closes with the keyboard. Escape closes it.
+- The editor follows the light or dark mode of your system.
 - You can order entries with the mouse (drag the handle), with the keyboard (Space on the handle, then the arrow keys, Home or End, then Space), or with the position button next to each entry. Each move saves once.
 - A relation field finds entries as you type, and you can put the chosen entries in a different order with buttons.
 - The link dialog of rich text is a dialog, not a browser prompt.

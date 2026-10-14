@@ -208,7 +208,7 @@ const folderOf = (path: string): string => {
   <Teleport to="body">
     <div
       v-if="open"
-      class="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 sm:items-center sm:p-6"
+      class="fixed inset-0 z-50 flex items-end justify-center bg-scrim p-0 sm:items-center sm:p-6"
       @click.self="emit('close')"
       @keydown="onKeydown"
     >
@@ -289,7 +289,7 @@ const folderOf = (path: string): string => {
                 ]"
                 @click="toggle(item)"
               >
-                <span class="block aspect-4/3 bg-canvas">
+                <span class="media-backdrop block aspect-4/3">
                   <img
                     v-if="isImage(item)"
                     :src="api.media.url(item.path)"

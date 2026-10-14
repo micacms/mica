@@ -66,7 +66,7 @@ onMounted(async () => {
               class="card block p-4 transition hover:border-line-strong hover:bg-raised"
             >
               <p class="text-sm text-muted">{{ collection.label }}</p>
-              <p class="mt-1 text-[30px] font-light leading-9 tabular-nums">{{ collection.total }}</p>
+              <p class="mt-1 text-[30px] font-normal leading-9 tabular-nums">{{ collection.total }}</p>
               <p class="mt-1 text-xs text-muted">
                 {{ collection.total === 1 ? "entry" : "entries" }}
               </p>
@@ -76,7 +76,7 @@ onMounted(async () => {
           <li>
             <RouterLink :to="{ name: 'media' }" class="card block p-4 transition hover:border-line-strong hover:bg-raised">
               <p class="text-sm text-muted">Media</p>
-              <p class="mt-1 text-[30px] font-light leading-9 tabular-nums">{{ overview.media.files }}</p>
+              <p class="mt-1 text-[30px] font-normal leading-9 tabular-nums">{{ overview.media.files }}</p>
               <p class="mt-1 text-xs text-muted">{{ overview.media.readable }}</p>
             </RouterLink>
           </li>

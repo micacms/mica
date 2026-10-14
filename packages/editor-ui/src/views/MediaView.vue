@@ -303,7 +303,7 @@ async function copyPath(path: string): Promise<void> {
                 ]"
                 @click="selected = selected?.path === item.path ? null : item"
               >
-                <span class="block aspect-4/3 bg-canvas">
+                <span class="media-backdrop block aspect-4/3">
                   <img
                     v-if="isImage(item)"
                     :src="api.media.url(item.path)"
@@ -332,7 +332,7 @@ async function copyPath(path: string): Promise<void> {
       <aside v-if="selected" class="card h-fit p-4 lg:sticky lg:top-5">
         <h2 class="text-sm font-semibold">File details</h2>
 
-        <div class="mt-3 overflow-hidden rounded-lg border border-line bg-canvas">
+        <div class="media-backdrop mt-3 overflow-hidden rounded-lg border border-line">
           <img
             v-if="isImage(selected)"
             :src="api.media.url(selected.path)"
@@ -368,7 +368,7 @@ async function copyPath(path: string): Promise<void> {
 
         <div class="mt-3 border-t border-line pt-3">
           <p class="field-label">Used by</p>
-          <p v-if="usageProblem" class="mt-1 text-xs text-warning">{{ usageProblem }}</p>
+          <p v-if="usageProblem" class="mt-1 text-xs font-medium text-warning">{{ usageProblem }}</p>
           <p v-else-if="usedBy === null" class="mt-1 text-xs text-muted">Checking…</p>
           <p v-else-if="usedBy.length === 0" class="mt-1 text-xs text-muted">Nothing uses this file.</p>
           <ul v-else class="mt-1 space-y-0.5 text-xs">
@@ -418,7 +418,7 @@ async function copyPath(path: string): Promise<void> {
       the website when you publish. Until then, Discard on the Publish page brings
       {{ confirming?.length === 1 ? "it" : "them" }} back.
     </p>
-    <p v-if="confirming?.some((path) => neverPublished.has(path))" class="mt-2 text-warning">
+    <p v-if="confirming?.some((path) => neverPublished.has(path))" class="mt-2 font-medium text-warning">
       {{ confirming.filter((path) => neverPublished.has(path)).map((path) => path.split("/").at(-1)).join(", ") }}
       {{ confirming.filter((path) => neverPublished.has(path)).length === 1 ? "was" : "were" }} never published: deleting
       cannot be undone.

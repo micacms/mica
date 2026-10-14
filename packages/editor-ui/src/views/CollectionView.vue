@@ -373,7 +373,7 @@ function applyPosition(): void {
                 >
                   {{ entry.title }}
                 </RouterLink>
-                <span v-if="pendingStates.states.has(entry.slug)" class="ml-2 text-xs text-warning">
+                <span v-if="pendingStates.states.has(entry.slug)" class="status status-draft ml-2">
                   {{ pendingStates.states.get(entry.slug) === "new" ? "New" : "Changed" }} · not published
                 </span>
                 <span class="block font-mono text-xs text-muted">/{{ entry.slug }}</span>

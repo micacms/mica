@@ -428,7 +428,7 @@ const buttons = computed<ToolbarButton[]>(() => {
           :class="[
             'h-7 min-w-7 rounded px-1.5 text-xs font-semibold transition',
             button.isActive()
-              ? 'bg-ink text-surface'
+              ? 'bg-primary text-on-primary'
               : 'text-muted hover:bg-raised hover:text-ink',
           ]"
           @click="button.run()"
