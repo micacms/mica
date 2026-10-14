@@ -85,14 +85,9 @@ export function createWorkingTreeStagingService(
   const policy = deps.policy ?? developerPolicy({ publishEnabled: deps.publishEnabled, logger });
   const locks = deps.locks ?? createWorkspaceLocks();
 
-  /** `source` is what the result holds: the whole working tree, or HEAD with a selection. */
-  const analyse = async (tree: GitTree, treeChanges: TreeChange[], source: ContentSource = files) => {
-    const { changes, validation } = await analyseChanges(
-      model,
-      source,
-      treeChanges,
-      headSource(tree),
-    );
+  /** `source` is what the result holds: the whole working tree, or a selection of it. */
+  const analyse = async (tree: GitTree, treeChanges: TreeChange[], source: ContentSource = files, validate = true) => {
+    const { changes, validation } = await analyseChanges(model, source, treeChanges, headSource(tree), { validate });
 
     // The field validator cannot see a merge conflict: the file holds Git's conflict format.
     for (const change of treeChanges) {
@@ -239,7 +234,8 @@ export function createWorkingTreeStagingService(
         await policy.prepare(tree);
 
         const revision = await locks.tree.write(async () => {
-          const pending = await withRevisions((await analyse(tree, await listTreeChanges(tree))).changes);
+          const listed = await listTreeChanges(tree);
+          const pending = await withRevisions((await analyse(tree, listed, files, false)).changes);
           if (unreviewed(pending, input.paths).length > 0) {
             throw new ApiError(
               "conflict",
@@ -255,9 +251,11 @@ export function createWorkingTreeStagingService(
             );
           }
 
-          const selected = (await listTreeChanges(tree)).filter((change) => change.path in input.paths);
-          // Checked against what the commit will hold: drafts left behind are not on the site.
-          const result = overlaySource(headSource(tree), files, selected.map((change) => change.path));
+          const selected = listed.filter((change) => change.path in input.paths);
+          // Checked against what the commit will hold: the working tree, with the drafts left behind as
+          // HEAD has them. Every other file is the same in both, and the working tree is fast to read.
+          const behind = listed.filter((change) => !(change.path in input.paths)).map((change) => change.path);
+          const result = overlaySource(files, headSource(tree), behind);
           const { validation } = await analyse(tree, selected, result);
           if (!validation.ok) {
             throw new ApiError("validation_failed", describeProblems(validation.problems), {
@@ -299,7 +297,7 @@ export function createWorkingTreeStagingService(
       return locks.tree.write(async () => {
         const listed = await listTreeChanges(tree);
         // A discarded draft cannot come back, so it takes the review check of Publish.
-        if (unreviewed(await withRevisions((await analyse(tree, listed)).changes), reviewed).length > 0) {
+        if (unreviewed(await withRevisions((await analyse(tree, listed, files, false)).changes), reviewed).length > 0) {
           throw new ApiError("conflict", "Some of these changes were edited after you reviewed them. Review them again, then discard.");
         }
         const current = new Map(listed.map((change) => [change.path, change]));

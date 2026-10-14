@@ -1090,7 +1090,13 @@ collections or accept unmeasured performance.
 **What would change it:** an adopter above the target; then measure their
 shape first, and raise the numbers only with the budget tests.
 
-**1.0 status:** blocker; the budget tests are in #72.
+**Built in 0.9 (#236):** the budget tests use a fixture of that size: the
+entry list, the status and Publish with a deletion and a URL change, the media
+usage check, and five editors that save and publish at the same time. Publish
+reads the unchanged files from the working tree and only the drafts that stay
+behind from Git (#234), so a deletion costs about half a second at the target.
+
+**1.0 status:** done.
 
 ---
 
@@ -1720,9 +1726,10 @@ it. A slug field with `maxLength` now validates the file name too.
 ### P2 — A view reads what it shows
 
 **Decided:** each view reads in proportion to what it shows, not to the size of
-the site, and a test holds it there (`runtime/test/budgets.test.ts`, 300
-entries in 3 collections and 1,000 images, with a counting file layer and a
-counting Git runner):
+the site, and a test holds it there (`runtime/test/budgets.test.ts`, at the
+1.0 target: 1,000 entries in one collection, 1,300 in all, 5,000 files, and 5
+editors that save and publish at the same time, with a counting file layer and
+a counting Git runner):
 
 - Opening an entry reads that entry's files (`readCollectionEntry`), and
   nothing else of its collection. Its response has no list `position`.

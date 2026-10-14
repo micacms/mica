@@ -1,8 +1,9 @@
 /**
- * Read budgets at the stated scale (#72): 300 entries in 3 collections, in the
- * folder layout with rich text and media, and 1,000 images. A counting file
- * layer and a counting Git runner record what each view reads; the budgets say
- * what a view may touch, and a generous time limit catches a slow path.
+ * Budgets at the 1.0 scale target (#72, #236): 1,000 entries in one collection,
+ * 1,300 entries and 5,000 files in all, and 5 editors at the same time. A
+ * counting file layer and a counting Git runner record what each operation
+ * reads; the budgets say what it may touch, and a generous time limit catches a
+ * slow path.
  */
 
 import assert from "node:assert/strict";
@@ -20,8 +21,10 @@ import { contentFiles, gitRunner, type ContentFiles, type GitRunner } from "../s
 import { createLogger } from "../src/lib/logger.js";
 import { pngBytes, TEST_ORIGIN, testConfig } from "./helpers.js";
 
-const ENTRIES_PER_COLLECTION = 100;
-const SHARED_IMAGES = 700;
+/** Entries per collection: one at the target, two small ones. Each entry has three files. */
+const ENTRIES: Record<string, number> = { news: 1_000, projects: 150, team: 150 };
+/** With the entries' files, 5,000 files in the content root. */
+const SHARED_IMAGES = 1_100;
 
 const fields = {
   title: text({ required: true }),
@@ -93,7 +96,7 @@ before(() => {
   const png = pngBytes();
 
   for (const name of Object.keys(site.collections)) {
-    for (let index = 0; index < ENTRIES_PER_COLLECTION; index++) {
+    for (let index = 0; index < ENTRIES[name]!; index++) {
       const slugValue = `${name}-${index}`;
       write(`${name}/${slugValue}/index.json`, JSON.stringify({ title: `${name} ${index}`, slug: slugValue, cover: "media/cover.png" }));
       write(`${name}/${slugValue}/body.mdoc`, `Text of ${name} ${index}.\n`);
@@ -126,7 +129,7 @@ after(async () => {
   if (root) rmSync(root, { recursive: true, force: true });
 });
 
-describe("read budgets at 300 entries and 1,000 images", () => {
+describe("read budgets at the 1.0 target", () => {
   it("opening an entry reads only that entry", async () => {
     const { ms } = await measure(async () => assert.equal((await request("/api/admin/collections/news/entries/news-42")).status, 200));
     // No listing of the collection: the reads stay inside the entry.
@@ -148,7 +151,9 @@ describe("read budgets at 300 entries and 1,000 images", () => {
   it("the media list reads no file", async () => {
     const { ms } = await measure(async () => {
       const response = await request("/api/admin/media");
-      assert.equal(((await response.json()) as { items: unknown[] }).items.length, 1_000);
+      // The shared images and one cover in each entry's folder.
+      const entries = Object.values(ENTRIES).reduce((sum, count) => sum + count, 0);
+      assert.equal(((await response.json()) as { items: unknown[] }).items.length, SHARED_IMAGES + entries);
     });
     assert.equal(log.readBinary.length, 0);
     assert.equal(log.read.length, 0);
@@ -180,5 +185,64 @@ describe("read budgets at 300 entries and 1,000 images", () => {
     } finally {
       execFileSync("git", ["checkout", "-q", "--", "content"], { cwd: root });
     }
+  });
+});
+
+describe("write budgets at the 1.0 target", () => {
+  const git = (...args: string[]) => execFileSync("git", args, { cwd: root, encoding: "utf8" }).trim();
+  const pending = async () => (await ctx.services.staging.status()).changes;
+  const publishAll = async (message: string) => {
+    const paths = Object.fromEntries((await pending()).map((change) => [change.path, change.revision ?? null]));
+    return ctx.services.staging.publish({ message, paths });
+  };
+
+  it("lists 1,000 entries without reading a file's bytes", async () => {
+    const { ms } = await measure(async () => {
+      const response = await request("/api/admin/collections/news/entries");
+      assert.equal(((await response.json()) as { items: unknown[] }).items.length, ENTRIES["news"]);
+    });
+    assert.equal(log.readBinary.length, 0);
+    assert.ok(ms < 3_000, `${ms} ms`);
+  });
+
+  it("shows and publishes a deletion without a Git call for each file", async () => {
+    await ctx.services.content.remove("news", "news-10");
+    const status = await measure(pending);
+    assert.ok(log.git.length <= 12, log.git.join("\n"));
+    assert.ok(status.ms < 5_000, `status: ${status.ms} ms`);
+
+    const published = await measure(() => publishAll("Delete news 10"));
+    assert.ok(log.git.length <= 40, `${log.git.length} Git calls`);
+    assert.ok(published.ms < 5_000, `publish: ${published.ms} ms`);
+    assert.equal(git("status", "--porcelain"), "");
+  });
+
+  it("shows a URL change and checks a media deletion within budget", async () => {
+    const entry = await ctx.services.content.get("news", "news-11");
+    await ctx.services.content.save("news", { slug: "news-11", data: { ...entry!.data, slug: "news-11-moved" } });
+    const status = await measure(pending);
+    assert.ok(status.ms < 5_000, `status: ${status.ms} ms`);
+    await publishAll("Move news 11");
+
+    const uses = await measure(() => ctx.services.content.mediaUses(["news/news-12/media/cover.png", "media/image-5.png"]));
+    assert.equal(log.readBinary.length, 0);
+    assert.ok(uses.ms < 5_000, `media uses: ${uses.ms} ms`);
+  });
+
+  it("lets five editors save and publish at the same time", async () => {
+    const editor = async (index: number) => {
+      for (let round = 0; round < 3; round++) {
+        const slug = `news-${100 + index}`;
+        const entry = await ctx.services.content.get("news", slug);
+        await ctx.services.content.save("news", { slug, data: { ...entry!.data, title: `Editor ${index}, round ${round}` } });
+        const mine = (await pending()).filter((change) => change.path.startsWith(`news/${slug}/`));
+        const paths = Object.fromEntries(mine.map((change) => [change.path, change.revision ?? null]));
+        await ctx.services.staging.publish({ message: `Editor ${index}, round ${round}`, paths });
+      }
+    };
+    const { ms } = await measure(() => Promise.all([0, 1, 2, 3, 4].map(editor)));
+    assert.equal(git("status", "--porcelain"), "");
+    assert.equal(Number(git("rev-list", "--count", "--grep=round", "HEAD")), 15);
+    assert.ok(ms < 30_000, `${ms} ms`);
   });
 });
