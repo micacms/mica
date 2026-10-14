@@ -86,7 +86,8 @@ RUN mkdir -p /data && chown -R node:node /data
 # directories plus symlinks into the pnpm store it carries; the symlinks are
 # recreated here by the script `rush deploy` wrote next to the files, so
 # nothing depends on Docker preserving link targets across COPY --from.
-COPY --from=build --chown=node:node /deploy ./
+# Owned by root, so that the `node` user cannot change the app's own code.
+COPY --from=build /deploy ./
 RUN node create-links.js create
 
 # The system software has its notices too: apk knows each package's license.

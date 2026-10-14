@@ -41,3 +41,10 @@ describe("imagePathsFromEntry", () => {
     assert.deepEqual(data["gallery"], []);
   });
 });
+
+describe("an image path out of the content root (#213, N15)", () => {
+  it("never reaches Astro's image()", () => {
+    const fields = { cover: media({ accept: "image" }) };
+    assert.throws(() => imagePathsFromEntry(fields, { cover: "../../etc/x.png" }, "news/a/index.json"), /relative segment/);
+  });
+});

@@ -4,7 +4,7 @@
  */
 
 import assert from "node:assert/strict";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { beforeEach, afterEach, describe, it } from "node:test";
@@ -177,5 +177,20 @@ describe("commit", () => {
 
     assert.equal(await read("projects/haus-a/index.json"), '{ "title": "Haus A" }');
     assert.equal(await read("projects/haus-a/media/photo.jpg"), "not really a jpeg");
+  });
+});
+
+// The local editor's working tree can hold a symbolic link (#213, N11).
+describe("a symbolic link out of the content root", () => {
+  it("is not followed for a read, a write or a delete", async () => {
+    const outside = await mkdtemp(join(tmpdir(), "mica-outside-"));
+    await writeFile(join(outside, "secret.txt"), "outside", "utf8");
+    await symlink(outside, join(root, "projects", "linked"));
+
+    await assert.rejects(files.read("projects/linked/secret.txt"), /symbolic link/);
+    await assert.rejects(files.apply({ changes: [{ type: "write", path: "projects/linked/new.txt", contents: "x" }] }), /symbolic link/);
+    await assert.rejects(files.apply({ changes: [{ type: "deleteTree", path: "projects/linked" }] }), /symbolic link/);
+    assert.equal(await readFile(join(outside, "secret.txt"), "utf8"), "outside");
+    await rm(outside, { recursive: true, force: true });
   });
 });

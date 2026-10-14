@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "`contentPath` refuses `.git` as a path segment, and a `media()` value must stay inside the content root.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

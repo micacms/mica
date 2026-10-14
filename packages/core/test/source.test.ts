@@ -130,6 +130,13 @@ describe("contentPath", () => {
   });
 });
 
+describe("contentPath and Git's folder (#213)", () => {
+  it("refuses .git as a segment, in any case", () => {
+    for (const path of [".git/config", "a/.git/HEAD", ".GIT/config"]) assert.throws(() => contentPath(path), ContentPathError, path);
+    assert.equal(contentPath(".github/workflows"), ".github/workflows");
+  });
+});
+
 describe("within", () => {
   it("refuses the root itself unless asked, however the path names it", () => {
     const base = "/srv/content";

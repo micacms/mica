@@ -399,6 +399,21 @@ describe("content", () => {
     assert.deepEqual(JSON.parse(file("projects/_order.json")), ["doppelt-2", "doppelt"]);
   });
 
+  // A route parameter is one folder name (#213, N12, N16).
+  it("refuses a slug that names two folders, and a name that is not a collection", async () => {
+    await create({ title: "Victim", summary: "Text." });
+    const response = await harness.request("/api/admin/collections/projects/entries/victim%2Fmedia", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ data: { title: "Moved", slug: "moved" }, revision: null }),
+    });
+    assert.ok(response.status >= 400 && response.status < 500, String(response.status));
+    assert.match(file("projects/victim/index.json"), /Victim/);
+
+    const unknown = await harness.request("/api/admin/collections/constructor/entries");
+    assert.ok(unknown.status >= 400 && unknown.status < 500, String(unknown.status));
+  });
+
   it("refuses to delete an entry that a colleague saved after it was opened", async () => {
     await create({ title: "Kept" });
     const { body } = await get("kept");

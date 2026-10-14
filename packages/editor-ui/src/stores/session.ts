@@ -25,6 +25,17 @@ const ended = ref(false);
 /** A sign-in redirect is under way: the forms have kept their changes, so leaving is safe. */
 const leaving = ref(false);
 
+/** Unsaved form values that `useKeptChanges` keeps in this tab: they do not stay after a sign-out. */
+function forgetKeptChanges(): void {
+  try {
+    for (const key of Object.keys(window.sessionStorage)) {
+      if (key.startsWith("mica:kept:")) window.sessionStorage.removeItem(key);
+    }
+  } catch {
+    // No storage, so nothing was kept.
+  }
+}
+
 export function useSession() {
   return {
     /** Who this is, where anybody asked. Null in local mode. */
@@ -111,6 +122,7 @@ export function useSession() {
       } finally {
         identity.value = null;
         active.value = false;
+        forgetKeptChanges();
       }
 
       // Mica's session is gone either way. If the provider offers to end its

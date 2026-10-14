@@ -33,7 +33,7 @@ const CONTROL = /[\u0000-\u001f\u007f]/;
 
 /**
  * The check every source applies before a path reaches a filesystem. A leading
- * or trailing `/` is dropped; `.`, `..`, empty segments, `\`, control
+ * or trailing `/` is dropped; `.`, `..`, `.git`, empty segments, `\`, control
  * characters and a drive letter are refused. The root itself (`""`) is only a
  * path for reading and listing.
  */
@@ -52,6 +52,8 @@ export function contentPath(path: string, options: { allowRoot?: boolean } = {})
   for (const segment of segments) {
     if (segment === "") refuse("contains an empty segment");
     if (segment === "." || segment === "..") refuse("contains a relative segment");
+    // With an empty content root, the clone's own `.git` would be content.
+    if (segment.toLowerCase() === ".git") refuse("names Git's own folder");
   }
   return clean;
 }

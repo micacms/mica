@@ -116,7 +116,7 @@ The test `packages/astro/test/richtext.test.ts` renders this configuration. The 
 ```yaml
 - run: npm ci
 # Every entry as Mica and the website read it: fields, media, links and layout.
-- run: npx mica check
+- run: npx --no mica check
 - run: npm run build
 # The build writes the model. A difference means that src/mica.ts changed and content/.mica/schema.json was not committed.
 - run: git diff --exit-code content/.mica/schema.json

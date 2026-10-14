@@ -122,15 +122,17 @@ export function adminMediaRoutes(): Hono<Env> {
       }
     }
 
-    const prepared = await Promise.all(
-      files.map((file) =>
-        ctx.services.media.prepare({
+    // One after another: each file is copied while it is checked, so only one copy is in memory at a time.
+    const prepared = [];
+    for (const file of files) {
+      prepared.push(
+        await ctx.services.media.prepare({
           file,
           directory,
           accept: accept === "image" || accept === "document" ? accept : "any",
         }),
-      ),
-    );
+      );
+    }
 
     await ctx.site.contentRepository.apply({
       changes: prepared.map((item) => ({
@@ -149,7 +151,8 @@ export function adminMediaRoutes(): Hono<Env> {
    */
   app.get("/file/*", async (c) => {
     const { media } = c.get("ctx").services;
-    const mediaPath = c.req.path.replace(/^.*\/file\//, "");
+    // Only the route's own prefix: a collection named `file` has `…/file/…` in its paths too.
+    const mediaPath = c.req.path.slice(c.req.path.indexOf("/file/") + "/file/".length);
 
     let decoded: string;
     try {

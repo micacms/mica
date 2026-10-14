@@ -43,7 +43,7 @@ Added in 0.5.0.
 npx mica check [content dir]
 ```
 
-Checks every entry against the model: fields that do not validate, missing media, relations to entries that do not exist, and files that Mica does not read. It prints each problem. Use it in CI.
+Checks every entry against the model: fields that do not validate, missing media, relations to entries that do not exist, and files that Mica does not read. It prints each problem. Use it in CI as `npm run check` or `npx --no mica check`: when `@micacms/editor` is missing, for example because CI installs no development dependencies, a plain `npx mica` can download and run an unrelated package called `mica`.
 
 ### import
 

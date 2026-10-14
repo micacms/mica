@@ -177,7 +177,7 @@ export async function compareSources(
   target: CompareTarget,
 ): Promise<Omit<Comparison, "revisions">> {
   if (target.kind === "singleton") {
-    const def = model.singletons[target.name];
+    const def = Object.hasOwn(model.singletons, target.name) ? model.singletons[target.name] : undefined;
     if (!def) throw badRequest(`There is no singleton called "${target.name}".`);
     return {
       before: await readSingleton(published, def, target.name),
@@ -185,7 +185,7 @@ export async function compareSources(
     };
   }
 
-  const def = model.collections[target.collection];
+  const def = Object.hasOwn(model.collections, target.collection) ? model.collections[target.collection] : undefined;
   if (!def) throw badRequest(`There is no collection called "${target.collection}".`);
 
   if (target.kind === "entry") {
