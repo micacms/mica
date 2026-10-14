@@ -65,7 +65,7 @@ When Mica is down, your website stays up: the website does not call Mica. Mica l
 - It signs in with the OIDC authorization code flow, with PKCE, `state` and `nonce`.
 - Session cookies are `HttpOnly` and `SameSite=Lax`. Over https they are also `Secure`, with a `__Host-` name, so that another subdomain cannot set or replace them.
 - Over https, every response carries `Strict-Transport-Security`. The self-hosted Mica refuses to start with an `http://` public address, except on this machine.
-- Every write needs a matching CSRF token, and Mica refuses cross-origin writes.
+- Mica refuses every write from another origin, and every write but the sign-out needs a matching CSRF token. The sign-out needs none, so that it works also with an expired session.
 - Sign-in attempts are rate limited.
 - Responses carry a same-origin `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: same-origin`.
 - The editor loads nothing from another origin. Its fonts are served by Mica itself.
