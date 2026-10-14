@@ -18,7 +18,7 @@ The website never calls Mica. Mica never needs to know where the website is host
 
 A website installs `@micacms/core` and `@micacms/astro`, and `@micacms/editor` as a development tool. These are the public packages. The other packages are internal: the two applications install them.
 
-Two applications compose them. `@micacms/editor` is the local one: loopback only, no authentication, no user, no database, and it refuses to run in production. `@micacms/self-hosted` is the Docker image, behind OpenID Connect, with its own Git clone on the data volume. It fetches and fast-forwards on its own, and never merges. It pushes to any Git host over HTTPS. Git history shows the editor as author and Mica as committer.
+Two applications compose them. `@micacms/editor` is the local one: loopback only, no authentication, no user, no database, and it refuses an address on another machine. `@micacms/self-hosted` is the Docker image, behind OpenID Connect, with its own Git clone on the data volume. It fetches and fast-forwards on its own, and never merges. It pushes to any Git host over HTTPS. Git history shows the editor as author and Mica as committer.
 
 See [Choose how to run Mica](/docs/choose-how-to-run/) for how to pick one.
 

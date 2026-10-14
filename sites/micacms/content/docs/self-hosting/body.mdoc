@@ -116,13 +116,15 @@ MICA_TRUST_PROXY=true
 MICA_SESSION_SECRET=
 ```
 
-- `MICA_PUBLIC_URL` must be exactly what the browser shows. `https://` turns on Secure cookies. Mica refuses plain-HTTP discovery in production.
+- `MICA_PUBLIC_URL` must be exactly what the browser shows, without a path. `https://` turns on Secure cookies. Mica allows plain-HTTP discovery only for a provider on this machine.
 - Set `MICA_TRUST_PROXY=true` only behind a proxy that you control. Mica then uses the last address in `X-Forwarded-For`, which is the address that the proxy saw. This is correct for one proxy, such as Caddy or nginx. Behind a CDN and a proxy, all clients have the address of the CDN.
-- `MICA_SESSION_SECRET` must have at least 32 characters. Make one:
+- `MICA_SESSION_SECRET` must have at least 32 characters, also for a trial. Make one:
 
 ```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+openssl rand -base64 48
 ```
+
+Each secret can also come from a file, such as a Docker secret: `MICA_SESSION_SECRET_FILE`, `MICA_OIDC_CLIENT_SECRET_FILE` and `MICA_REPOSITORY_TOKEN_FILE`. Mica reads the token file for each Git call, so a short-lived token can change without a restart.
 
 [Configuration](/docs/configuration/) lists every variable, with its default.
 
@@ -306,7 +308,7 @@ The System page and the log show the message of the Git host, without the token.
 - "assigns Git LFS to files under the content root": keep LFS out of the content root.
 - "The clone on the data volume is for …": the URL or the branch changed, and the clone holds drafts. Start with the old configuration and publish, or copy the drafts out and delete the volume.
 - No content model: build the Astro project, commit `.mica/schema.json`, and push it to `MICA_REPOSITORY_BRANCH`.
-- "Missing required production secrets" or "Nothing says who may edit this site": set `MICA_SESSION_SECRET` or an admission rule.
+- "MICA_SESSION_SECRET: is required" or "Nothing says who may edit this site": set `MICA_SESSION_SECRET` or an admission rule.
 
 **The repository refused the token** (`/ready` has `auth_failed`). The token is wrong, expired, or revoked. Make a new token, put it in `.env`, and restart. If `MICA_REPOSITORY_USERNAME` is set to an empty value, remove it.
 
@@ -327,8 +329,6 @@ The System page and the log show the message of the Git host, without the token.
 **"Some of these changes were edited while they were being published".** A colleague saved one of the files during the publication. Look at the changes again, then publish.
 
 **The disk is full.** The clone grows with each media change. See "The volume" above.
-
-**Editors are signed out after a restart.** `MICA_SESSION_SECRET` is not set, so Mica made a temporary one. Set it.
 
 **"That account has no access to this site" after the sign-in.** The person signed in, but no rule admits them. Set `MICA_LOG_LEVEL=debug`, restart, and sign in again: the log gives the reason. Make sure that the groups claim arrives, or add the person to `MICA_ADMIT_EMAILS` or `MICA_ADMIT_SUBJECTS`.
 

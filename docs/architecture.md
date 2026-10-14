@@ -319,8 +319,7 @@ structural: `@micacms/editor` has no dependency path to `openid-client`, and a
 test walks the graph to keep it that way.
 
 It is the most dangerous state the software has, so it is contained: refused
-when `NODE_ENV=production`; refused when `MICA_PUBLIC_URL` is any host but
-localhost; refused when `HOST` is anything but the loopback address; and a
+when `MICA_PUBLIC_URL` is any host but localhost; refused when `HOST` is anything but the loopback address; and a
 **Host allowlist** in front of everything, so a DNS-rebound name gets a 403
 where the old local session cookie used to be the accidental defence. The
 Origin check handles cross-site writes as before.

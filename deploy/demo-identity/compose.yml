@@ -140,9 +140,7 @@ services:
       - "set -a; . /seed/oidc.env; set +a; exec node dist/index.js"
 
     environment:
-      # Development, on purpose: Mica refuses plain-HTTP OIDC discovery under NODE_ENV=production,
-      # and a certificate for ZITADEL is too much for a local rig. All else is the deployed shape.
-      NODE_ENV: development
+      # Plain-HTTP discovery is allowed for a provider on this machine. All else is the deployed shape.
       MICA_LOG_LEVEL: debug
 
       MICA_PUBLIC_URL: http://localhost:6422

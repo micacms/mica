@@ -108,9 +108,7 @@ services:
     network_mode: "service:keycloak"
 
     environment:
-      # Development, on purpose: Mica refuses plain-HTTP OIDC discovery under
-      # NODE_ENV=production, and a certificate for Keycloak is too much for a test rig.
-      NODE_ENV: development
+      # Plain-HTTP discovery is allowed for a provider on this machine.
       MICA_LOG_LEVEL: debug
 
       MICA_PUBLIC_URL: http://localhost:6422
