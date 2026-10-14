@@ -33,7 +33,7 @@ after(() => host.close());
 
 function environment(dataDir: string, overrides: NodeJS.ProcessEnv = {}): NodeJS.ProcessEnv {
   return {
-    NODE_ENV: "development",
+    MICA_PUBLIC_URL: "http://localhost:6422",
     MICA_LOG_LEVEL: "silent",
     MICA_SESSION_SECRET: "0".repeat(32),
     MICA_DATA_DIR: dataDir,
@@ -99,7 +99,7 @@ describe("check", () => {
   it("writes nothing to an existing clone", async () => {
     const dataDir = mkdtempSync(join(tmpdir(), "mica-check-"));
     const layout = cloneLayout(dataDir);
-    const remote = parseRemote(host.url("site"), true);
+    const remote = parseRemote(host.url("site"));
     await openClone({
       layout,
       url: remote.url,

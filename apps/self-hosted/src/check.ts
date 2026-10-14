@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { memorySource } from "@micacms/core";
 import { ConfigError, GitError, gitRunner, loadSchema, SchemaError, type GitRunner } from "@micacms/runtime";
 
-import { loadConfig, type RepositoryConfig } from "./config.js";
+import { currentToken, loadConfig, type RepositoryConfig } from "./config.js";
 import { cloneLayout } from "./workspace/clone.js";
 import { redact } from "./workspace/credentials.js";
 import { classifyFailure, describeFailure, readPush } from "./workspace/failures.js";
@@ -37,8 +37,8 @@ export async function runCheck(
     throw error;
   }
 
-  const { remote, branch, root, token, username } = config.repository;
-  const clean = (text: string) => redact(text, [token]);
+  const { remote, branch, root, token, tokenFile, username } = config.repository;
+  const clean = (text: string) => redact(text, [currentToken(config.repository)]);
   let failures = 0;
   const pass = (what: string, detail = "") => say(`ok    ${what}${detail ? `: ${detail}` : ""}`);
   const fail = (what: string, detail: string) => {
@@ -51,7 +51,7 @@ export async function runCheck(
   const scratch = mkdtempSync(join(tmpdir(), "mica-check-"));
   try {
     const git = gitRunner(scratch, {
-      env: managedEnvironment({ remote, cloneDir: scratch, username, token }),
+      env: managedEnvironment({ remote, cloneDir: scratch, username, token, tokenFile }),
       timeoutMs: 120_000,
     });
     await git.run(["init", "--quiet"]);
@@ -135,14 +135,14 @@ async function checkVolume(
   repository: RepositoryConfig,
   pass: (what: string, detail?: string) => void,
 ): Promise<void> {
-  const { remote, root, token, username } = repository;
+  const { remote, root, token, tokenFile, username } = repository;
   const layout = cloneLayout(dataDir);
   if (!existsSync(join(layout.repositoryDir, ".git"))) {
     pass("data volume", `no clone yet in ${layout.repositoryDir}; the first start makes it`);
     return;
   }
   const git = gitRunner(layout.repositoryDir, {
-    env: { ...managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token }), GIT_OPTIONAL_LOCKS: "0" },
+    env: { ...managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token, tokenFile }), GIT_OPTIONAL_LOCKS: "0" },
   });
   const drafts = await draftPaths(git, root).catch(() => null);
   pass(

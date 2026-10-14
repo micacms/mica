@@ -223,9 +223,9 @@ export function originGuard(): MiddlewareHandler<Env> {
       if (!allowedOrigins(config).includes(normaliseOrigin(origin))) {
         throw new ApiError("forbidden", "Request origin is not allowed.");
       }
-    } else if (config.isProduction) {
+    } else if (!config.isLoopback) {
       // A browser always sends Origin on writes; its absence means the request
-      // did not come from one. Tolerated in development for curl-based testing.
+      // did not come from one. Tolerated on this machine, for curl-based testing.
       throw new ApiError("forbidden", "Missing Origin header.");
     }
 

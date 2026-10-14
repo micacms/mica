@@ -86,7 +86,8 @@ export interface ManagedWorkspaceOptions {
   /** Checks the drafts again before a rejected publication is made again. Throws an `ApiError`. */
   revalidate?(contentPaths: string[]): Promise<void>;
   /** Removed from every message that leaves this module. */
-  secrets?: string[];
+  /** The secret values to remove from messages, as they are now: a token file can change. */
+  secrets?: () => string[];
   syncSeconds: number;
   /** After a fast-forward brought a new content model: the app uses it at once. */
   onModelChange?(): Promise<void>;
@@ -127,7 +128,7 @@ const REACHABILITY = new Set<SyncProblem["code"]>(["auth", "network", "repo_not_
 export function createManagedWorkspace(options: ManagedWorkspaceOptions): ManagedWorkspace {
   const { git, layout, locks, logger, branch, root } = options;
   const upstreamRef = `origin/${branch}`;
-  const clean = (text: string) => redact(text, options.secrets ?? []);
+  const clean = (text: string) => redact(text, options.secrets?.() ?? []);
 
   const state: SyncState = {
     head: null,

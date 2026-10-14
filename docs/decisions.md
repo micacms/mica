@@ -833,8 +833,8 @@ peer of `astro`.
 ### P2 — Every Mica configuration name starts with `MICA_`
 
 **Decided:** before the first release candidate, every Mica-specific variable
-gets the `MICA_` prefix, and the names are then frozen for 1.x. `NODE_ENV`,
-`PORT` and `HOST` keep their names, because they are conventions that Node
+gets the `MICA_` prefix, and the names are then frozen for 1.x. `PORT` and
+`HOST` keep their names, because they are conventions that Node
 libraries and hosting platforms already use. 0.6 removed the old names, with no
 aliases and no warning. The local editor reads no `.env` file; it reads the process
 environment, and its flags win over it.
@@ -872,6 +872,40 @@ add aliases with a warning for one minor.
 `micacms.com/docs/configuration` that a test keeps complete, and the local
 editor reads no `.env` file, and its flags win over the environment (#113).
 The runtime has no default content root any more; each app sets it.
+
+**1.0 status:** done.
+
+---
+
+### P2 — No development mode: the address decides, and secrets can come from files
+
+**Decided:** `NODE_ENV` is not part of the configuration. Plain HTTP is allowed
+only for an address on this machine (`localhost`, `127.0.0.1`, `[::1]`): the
+public URL, the OIDC issuer and the repository URL. A write without an `Origin`
+header is allowed only when the public URL is on this machine. The self-hosted
+image always needs `MICA_PUBLIC_URL`, an origin without a path, and
+`MICA_SESSION_SECRET`. `MICA_SESSION_SECRET_FILE`,
+`MICA_OIDC_CLIENT_SECRET_FILE` and `MICA_REPOSITORY_TOKEN_FILE` read a secret
+from a file; Mica reads the token file for each Git call. A duration names its
+unit, in whole units: `MICA_SIGNIN_WINDOW_MINUTES`. `MICA_ADMIN_ORIGINS` and
+`MICA_ADMIN_DIR` belong to the local editor only.
+
+**Why:** `NODE_ENV` changed security in three ways, and `NODE_ENV=test`
+generated a session secret and only warned. Whether a connection can be read on
+the way depends on where it goes, not on a mode. A generated secret signs
+everybody out at each restart. A short-lived token, such as a GitHub App token
+that lasts one hour, needs a new value without a restart. A public URL with a
+path broke the sign-in (`//api/auth/callback`).
+
+**Consequence:** a trial on one machine sets a session secret too. A test rig
+reaches its provider and Git host on `localhost`, through a shared network
+namespace. The image still sets `NODE_ENV=production` for the libraries it
+uses.
+
+**What would change it:** a test rig that cannot use `localhost`; then an
+explicit setting for that one rule, not a mode.
+
+**Built:** 0.9 (#233).
 
 **1.0 status:** done.
 

@@ -116,12 +116,12 @@ match what discovery returned and the token is rejected. `network_mode:
 service:keycloak` makes `localhost:8080` mean the same thing in both places.
 It is also why both ports are published on the `keycloak` service.
 
-**Why `NODE_ENV=development`.** Mica refuses plain-HTTP OIDC discovery when
-`NODE_ENV=production` — correctly, since an ID token over http is one anybody
-on the path can read. Giving Keycloak a certificate is more machinery than a
-local rig deserves, so the rig relaxes that one flag. What is under test is
-the self-hosted composition: a real provider, a real redirect, and a real
-admission check against a real group claim.
+**Why plain HTTP works here.** Mica allows plain-HTTP OIDC discovery only for
+a provider on this machine, because an ID token over http to another host is
+one anybody on the path can read. `localhost:8080` is this machine, so the rig
+needs no certificate. What is under test is the self-hosted composition: a
+real provider, a real redirect, and a real admission check against a real
+group claim.
 
 ---
 

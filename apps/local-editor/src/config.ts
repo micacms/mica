@@ -11,6 +11,8 @@ import {
   ConfigError,
   deriveRuntime,
   describeConfigIssues,
+  isLoopbackUrl,
+  list,
   LOOPBACK,
   runtimeEnv,
   withoutBlanks,
@@ -18,7 +20,6 @@ import {
 } from "@micacms/runtime";
 
 const {
-  NODE_ENV,
   MICA_LOG_LEVEL,
   HOST,
   PORT,
@@ -26,13 +27,10 @@ const {
   MICA_CONTENT_ROOT,
   MICA_LOCAL_PUBLISH,
   MICA_MAX_UPLOAD_BYTES,
-  MICA_ADMIN_ORIGINS,
-  MICA_ADMIN_DIR,
 } = runtimeEnv;
 
 const schema = z
   .object({
-    NODE_ENV,
     MICA_LOG_LEVEL,
     HOST,
     PORT,
@@ -40,8 +38,10 @@ const schema = z
     MICA_CONTENT_ROOT,
     MICA_LOCAL_PUBLISH,
     MICA_MAX_UPLOAD_BYTES,
-    MICA_ADMIN_ORIGINS,
-    MICA_ADMIN_DIR,
+    /** Development of the editor itself: the Vite server's origin, allowed to call the API. */
+    MICA_ADMIN_ORIGINS: z.string().optional(),
+    /** Development of the editor itself: a built editor to serve instead of the packaged one. */
+    MICA_ADMIN_DIR: z.string().optional(),
 
     /**
      * Set only by the `mica` bin: a terminal gets one banner, a log collector
@@ -57,10 +57,11 @@ const schema = z
       // There is no proxy in front of a loopback server to trust.
       MICA_TRUST_PROXY: false,
     }),
+    adminOrigins: list(env.MICA_ADMIN_ORIGINS),
     HOST: env.HOST ?? "127.0.0.1",
   }));
 
-export type LocalConfig = RuntimeConfig & { MICA_CLI: boolean; MICA_OPEN: boolean };
+export type LocalConfig = RuntimeConfig & { MICA_CLI: boolean; MICA_OPEN: boolean; MICA_ADMIN_DIR?: string | undefined };
 
 /** Reads the process environment only: a site's `.env` holds the site's settings, not the editor's. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): LocalConfig {
@@ -70,15 +71,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): LocalConfig {
   const config = parsed.data;
 
   // The local editor has no authentication, so it must never be reachable from another machine.
-  if (config.isProduction) {
-    throw new ConfigError(
-      "The local editor has no authentication, and NODE_ENV=production.\n" +
-        "  There is no identity provider and no user: every request is allowed.\n" +
-        "  A deployment runs @micacms/self-hosted with an OIDC provider instead —\n" +
-        "  see https://micacms.com/docs/self-hosting/.",
-    );
-  }
-
   const host = new URL(config.MICA_PUBLIC_URL).hostname;
   if (!LOOPBACK.has(host)) {
     throw new ConfigError(
@@ -95,6 +87,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): LocalConfig {
       `The local editor has no authentication, but HOST is "${config.HOST}".\n` +
         "  It binds to the loopback address and nothing else. Use HOST=127.0.0.1,\n" +
         "  or run @micacms/self-hosted with an identity provider.",
+    );
+  }
+
+  // Another origin may write through the browser, with no sign-in: only this machine's.
+  const remote = config.adminOrigins.filter((origin) => !URL.canParse(origin) || !isLoopbackUrl(origin));
+  if (remote.length > 0) {
+    throw new ConfigError(
+      `The local editor has no authentication, but MICA_ADMIN_ORIGINS names ${remote.join(", ")}.\n` +
+        "  Only an origin on this machine may call it, such as http://localhost:5173.",
     );
   }
 

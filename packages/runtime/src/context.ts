@@ -49,8 +49,6 @@ export interface OperationalInfo {
   dataDir?: string;
   sessionTtlHours?: number;
   sessionIdleHours?: number;
-  /** Names of the secrets this process generated for itself. */
-  generatedSecrets?: string[];
 }
 
 /** What /ready asks the composition. */
@@ -114,7 +112,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
     options.logger ??
     createLogger({
       level: config.MICA_LOG_LEVEL,
-      pretty: !config.isProduction,
+      pretty: process.stdout.isTTY === true,
     });
 
   const schemaRevision = options.schemaRevision ?? null;

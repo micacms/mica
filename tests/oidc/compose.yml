@@ -31,7 +31,7 @@ services:
       retries: 30
 
   # The repository: a real Git host. Plain HTTP on localhost, which Mica
-  # accepts only with NODE_ENV=development.
+  # accepts only for an address on this machine.
   forgejo:
     image: data.forgejo.org/forgejo/forgejo:15.0.9
     network_mode: "service:dex"
@@ -97,9 +97,8 @@ services:
     mem_limit: 512m
 
     environment:
-      # Plain-HTTP discovery is allowed only outside production, and only for
-      # a provider on localhost. Everything else is production-shaped.
-      NODE_ENV: development
+      # Plain-HTTP discovery is allowed only for a provider on this machine.
+      # Everything else is production-shaped.
       MICA_LOG_LEVEL: info
 
       MICA_PUBLIC_URL: http://localhost:6422

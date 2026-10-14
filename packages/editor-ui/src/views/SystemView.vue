@@ -66,7 +66,7 @@ function report(): string {
   if (!data) return "";
 
   const lines = [
-    `Mica ${data.cms.version} (${data.cms.environment})`,
+    `Mica ${data.cms.version} (${data.cms.mode})`,
     `Node ${data.cms.node} on ${data.cms.platform}, up ${formatDuration(data.cms.uptimeSeconds)}`,
     `Schema — ${data.schema.totals.collections} collections, ` +
       `${data.schema.totals.singletons} singletons, ${data.schema.totals.total} fields`,
@@ -110,7 +110,7 @@ async function copyReport(): Promise<void> {
 <template>
   <PageHeader
     title="System"
-    :subtitle="info ? `Mica ${info.cms.version} · ${info.cms.environment}` : null"
+    :subtitle="info ? `Mica ${info.cms.version} · ${info.cms.mode}` : null"
   >
     <button type="button" class="btn-ghost" :disabled="loading" @click="load">Refresh</button>
     <button type="button" class="btn-secondary" :disabled="!info" @click="copyReport">
@@ -131,7 +131,7 @@ async function copyReport(): Promise<void> {
           <div class="card p-4">
             <dt class="text-sm text-muted">Version</dt>
             <dd class="mt-1 text-2xl font-semibold tabular-nums">{{ info.cms.version }}</dd>
-            <dd class="mt-1 text-xs text-muted">{{ info.cms.environment }}</dd>
+            <dd class="mt-1 text-xs text-muted">{{ info.cms.mode }}</dd>
           </div>
 
           <div class="card p-4">
@@ -387,15 +387,6 @@ async function copyReport(): Promise<void> {
         <h2 id="deployment-heading" class="text-sm font-semibold">Deployment</h2>
         <p class="mt-1 text-xs text-muted">
           How this Mica is configured. Secrets are never shown — only whether they are set.
-        </p>
-
-        <p
-          v-if="info.deployment.generatedSecrets.length"
-          class="mt-3 rounded-md border border-warning/15 bg-warning-soft px-4 py-3 text-xs text-warning"
-        >
-          Running with generated development secrets
-          ({{ info.deployment.generatedSecrets.join(", ") }}). Everyone is signed out on restart —
-          set these before this deployment is used for real.
         </p>
 
         <dl class="spec mt-3">

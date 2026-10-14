@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/auth-oidc",
+      "comment": "`MICA_SESSION_SECRET` is always required. `MICA_SIGNIN_WINDOW_MS` is now `MICA_SIGNIN_WINDOW_MINUTES`. Plain-HTTP discovery is allowed only for an issuer on this machine.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/auth-oidc",
+  "email": "alexander@muedespacher.ch"
+}

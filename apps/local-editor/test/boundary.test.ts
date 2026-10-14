@@ -111,7 +111,7 @@ describe("the running composition", () => {
 
     // Composed the way src/index.ts composes it.
     const ctx = createRuntimeContext({
-      config: loadConfig({ NODE_ENV: "test", MICA_LOG_LEVEL: "silent", MICA_CONTENT_ROOT: contentRoot }),
+      config: loadConfig({ MICA_LOG_LEVEL: "silent", MICA_CONTENT_ROOT: contentRoot }),
       model,
       files: contentFiles({ root: contentRoot }),
       logger: createLogger({ level: "silent", pretty: false }),

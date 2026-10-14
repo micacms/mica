@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor",
+      "comment": "The local editor ignores `NODE_ENV`; it stays limited to this machine by its address and its host. `MICA_ADMIN_ORIGINS` and `MICA_ADMIN_DIR` are local-editor settings now.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

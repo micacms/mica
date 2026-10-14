@@ -17,7 +17,9 @@ export interface ManagedEnvironmentOptions {
   /** Absolute path of the clone. Git refuses a repository with another owner unless it is named. */
   cloneDir: string;
   username: string;
-  token?: string;
+  token?: string | null;
+  /** A file with the token, read by the helper for each call. */
+  tokenFile?: string | null;
 }
 
 /** The committer of every publication; the author is the editor. */
@@ -25,10 +27,12 @@ export const MICA_IDENTITY = { name: "Mica CMS", email: "mica@localhost" } as co
 
 /**
  * Answers only Git's `get`, with the username and token from the environment of
- * that `git` process.
+ * that `git` process, or the token from the file that it names.
  */
 const HELPER =
-  '!f() { test "$1" = get || exit 0; echo "username=$MICA_GIT_USERNAME"; echo "password=$MICA_GIT_TOKEN"; }; f';
+  '!f() { test "$1" = get || exit 0; echo "username=$MICA_GIT_USERNAME"; ' +
+  'if [ -n "$MICA_GIT_TOKEN_FILE" ]; then printf "password=%s\\n" "$(cat "$MICA_GIT_TOKEN_FILE")"; ' +
+  'else echo "password=$MICA_GIT_TOKEN"; fi; }; f';
 
 export function managedEnvironment(options: ManagedEnvironmentOptions): NodeJS.ProcessEnv {
   const { remote } = options;
@@ -36,7 +40,7 @@ export function managedEnvironment(options: ManagedEnvironmentOptions): NodeJS.P
   const config: Array<[string, string]> = [
     // Clear every other helper, then add ours for the configured host only.
     ["credential.helper", ""],
-    ...(options.token
+    ...(options.token || options.tokenFile
       ? ([[`credential.${remote.scheme}://${remote.hostKey}.helper`, HELPER]] as Array<[string, string]>)
       : []),
     ["core.hooksPath", devNull],
@@ -73,10 +77,9 @@ export function managedEnvironment(options: ManagedEnvironmentOptions): NodeJS.P
     env[`GIT_CONFIG_KEY_${index}`] = key;
     env[`GIT_CONFIG_VALUE_${index}`] = value;
   });
-  if (options.token) {
-    env.MICA_GIT_USERNAME = options.username;
-    env.MICA_GIT_TOKEN = options.token;
-  }
+  if (options.token || options.tokenFile) env.MICA_GIT_USERNAME = options.username;
+  if (options.token) env.MICA_GIT_TOKEN = options.token;
+  else if (options.tokenFile) env.MICA_GIT_TOKEN_FILE = options.tokenFile;
   return env;
 }
 

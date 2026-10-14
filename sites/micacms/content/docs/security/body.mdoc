@@ -64,7 +64,7 @@ When Mica is down, your website stays up: the website does not call Mica. Mica l
 
 - It signs in with the OIDC authorization code flow, with PKCE, `state` and `nonce`.
 - Session cookies are `HttpOnly` and `SameSite=Lax`. Over https they are also `Secure`, with a `__Host-` name, so that another subdomain cannot set or replace them.
-- Over https, every response carries `Strict-Transport-Security`. In production, the self-hosted Mica refuses to start with an `http://` public address, except on localhost.
+- Over https, every response carries `Strict-Transport-Security`. The self-hosted Mica refuses to start with an `http://` public address, except on this machine.
 - Every write needs a matching CSRF token, and Mica refuses cross-origin writes.
 - Sign-in attempts are rate limited.
 - Responses carry a same-origin `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: same-origin`.
@@ -75,7 +75,7 @@ When Mica is down, your website stays up: the website does not call Mica. Mica l
 ## Hardening a self-hosted deployment
 
 1. Put Mica behind a reverse proxy with HTTPS.
-2. Set `MICA_PUBLIC_URL` to the `https://` address. In production, Mica refuses anything else.
+2. Set `MICA_PUBLIC_URL` to the `https://` address. Mica refuses anything else, except an address on this machine for a trial.
 3. Set `MICA_TRUST_PROXY=true` only behind a proxy that you control. Otherwise, clients can spoof their address and avoid the rate limit.
 4. Give the repository token access to that one repository only: on GitHub, a fine-grained token with Contents read and write; on GitLab, a project access token with `read_repository` and `write_repository`. The token can push anything in that repository, CI files included: see "What the repository token can reach" above.
 5. Generate `MICA_SESSION_SECRET` with at least 32 random characters, for example `openssl rand -base64 48`, and keep it out of Git.

@@ -76,7 +76,6 @@ export function testConfig(
   overrides: Partial<RuntimeConfig> = {},
 ): RuntimeConfig {
   return {
-    NODE_ENV: "test",
     MICA_LOG_LEVEL: "silent",
     HOST: "127.0.0.1",
     PORT: 6422,
@@ -85,9 +84,7 @@ export function testConfig(
     MICA_LOCAL_PUBLISH: true,
     MICA_MAX_UPLOAD_BYTES: 25 * 1024 * 1024,
     MICA_TRUST_PROXY: false,
-    MICA_ADMIN_ORIGINS: undefined,
-    MICA_ADMIN_DIR: undefined,
-    isProduction: false,
+    isLoopback: true,
     contentRoot,
     adminOrigins: [],
     ...overrides,

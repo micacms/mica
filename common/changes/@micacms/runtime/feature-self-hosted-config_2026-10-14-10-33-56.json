@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "`NODE_ENV` is no longer read: plain HTTP and a write without an Origin header are allowed only for an address on this machine. `MICA_PUBLIC_URL` must be an origin without a path. `MICA_ADMIN_ORIGINS` and `MICA_ADMIN_DIR` moved to the local editor. `isProduction` is now `isLoopback`.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

@@ -1,9 +1,13 @@
 /**
  * The self-hosted configuration: the runtime and auth fragments, plus the
- * repository and the data directory.
+ * repository and the data directory. The environment is parsed once; the
+ * repository settings are built from the parsed values.
+ *
+ * Plain HTTP is allowed only for addresses on this machine, as in a trial or a
+ * test. There is no development mode: `NODE_ENV` changes nothing.
  */
 
-import { randomBytes } from "node:crypto";
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { z } from "zod";
 
@@ -12,8 +16,8 @@ import {
   ConfigError,
   deriveRuntime,
   describeConfigIssues,
+  isLoopbackUrl,
   loadEnvFile,
-  LOOPBACK,
   runtimeEnv,
   withoutBlanks,
   type RuntimeConfig,
@@ -28,14 +32,21 @@ const {
   ...runtimeFields
 } = runtimeEnv;
 
+/** Secrets that can come from a file, such as a Docker or Kubernetes secret: `<NAME>_FILE`. */
+const FILE_SECRETS = ["MICA_SESSION_SECRET", "MICA_OIDC_CLIENT_SECRET"] as const;
+
 const fields = {
   ...runtimeFields,
   ...authEnv,
+  MICA_SESSION_SECRET_FILE: z.string().optional(),
+  MICA_OIDC_CLIENT_SECRET_FILE: z.string().optional(),
 
   MICA_DATA_DIR: z.string().default("./data"),
   /** The HTTPS clone URL, without credentials. */
   MICA_REPOSITORY_URL: z.string().optional(),
   MICA_REPOSITORY_TOKEN: z.string().optional(),
+  /** A file with the token, read for each Git call: a short-lived token can change without a restart. */
+  MICA_REPOSITORY_TOKEN_FILE: z.string().optional(),
   /** Defaults by host: `x-access-token` (GitHub), `oauth2` (GitLab), `mica`. */
   MICA_REPOSITORY_USERNAME: z.string().optional(),
   MICA_REPOSITORY_BRANCH: z.string().default("main"),
@@ -46,65 +57,32 @@ const fields = {
 /** Every variable the image reads. Built from the schema's fields, so the two cannot drift. */
 export const KNOWN = new Set(Object.keys(fields));
 
-const schema = z.object(fields).transform((env) => {
-  const dataDir = path.resolve(env.MICA_DATA_DIR);
-  const root = env.MICA_REPOSITORY_ROOT.replace(/^\/+|\/+$/g, "");
-  const runtime = deriveRuntime({
-    ...env,
-    MICA_CONTENT_ROOT: path.join(dataDir, "repository", root),
-    MICA_LOCAL_PUBLISH: true,
-  });
-  return {
-    ...deriveAuth(runtime),
-    // A container has to bind every interface to be reachable at all.
-    HOST: env.HOST ?? "0.0.0.0",
-    dataDir,
-  };
-});
+const schema = z.object(fields);
 
 export interface RepositoryConfig {
   remote: Remote;
   branch: string;
   /** Content root, repository-relative, without leading or trailing slashes. */
   root: string;
-  token: string;
+  /** `MICA_REPOSITORY_TOKEN`, or null when `tokenFile` holds the token. */
+  token: string | null;
+  tokenFile: string | null;
   username: string;
   syncSeconds: number;
+}
+
+/** The token as it is now: a token file is read again for each call. */
+export function currentToken(repository: RepositoryConfig): string {
+  return repository.token ?? readFileSync(repository.tokenFile!, "utf8").trim();
 }
 
 export type SelfHostedConfig = RuntimeConfig &
   AuthConfig & {
     dataDir: string;
     repository: RepositoryConfig;
-    MICA_SESSION_SECRET?: string | undefined;
-    /** Names of the secrets this process generated for itself. */
-    devSecrets: string[];
     /** `MICA_*` names in the environment that nothing reads: likely typos. */
     unknownVariables: string[];
   };
-
-/**
- * Over plain HTTP the session cookie is not Secure and travels in clear text,
- * so production refuses it. Loopback stays allowed, for a trial on one machine.
- */
-function requireHttps(
-  config: { isProduction: boolean; MICA_PUBLIC_URL: string },
-  env: NodeJS.ProcessEnv,
-): void {
-  // The default is a localhost address, which would pass the loopback rule below.
-  if (config.isProduction && !env["MICA_PUBLIC_URL"]) {
-    throw new ConfigError(
-      "MICA_PUBLIC_URL is not set. In production it must be the https:// address the browser shows.",
-    );
-  }
-  const url = new URL(config.MICA_PUBLIC_URL);
-  if (!config.isProduction || url.protocol === "https:" || LOOPBACK.has(url.hostname)) return;
-
-  throw new ConfigError(
-    `MICA_PUBLIC_URL is ${config.MICA_PUBLIC_URL}, but production needs an https:// address.\n` +
-      "  Put Mica behind a reverse proxy that terminates TLS, and set MICA_PUBLIC_URL to its https:// address.",
-  );
-}
 
 /**
  * Git's rules for a branch name, enough to refuse anything that could act as an
@@ -123,91 +101,126 @@ function isBranchName(name: string): boolean {
   );
 }
 
-/** All repository problems at once, so an operator fixes them in one pass. */
-function repositoryProblems(env: NodeJS.ProcessEnv, development: boolean): { problems: string[]; repository?: RepositoryConfig } {
-  const problems: string[] = [];
+/** Puts the contents of `<NAME>_FILE` into `<NAME>`, for each secret that can come from a file. */
+function readSecretFiles(env: NodeJS.ProcessEnv, problems: string[]): NodeJS.ProcessEnv {
+  const result = { ...env };
+  for (const name of FILE_SECRETS) {
+    const file = env[`${name}_FILE`];
+    if (!file) continue;
+    if (env[name]) {
+      problems.push(`${name} and ${name}_FILE are both set. Set one of them.`);
+      continue;
+    }
+    try {
+      result[name] = readFileSync(file, "utf8").trim();
+    } catch (error) {
+      problems.push(`${name}_FILE names ${file}, which cannot be read: ${(error as Error).message}`);
+    }
+  }
+  return result;
+}
 
-  const url = env["MICA_REPOSITORY_URL"];
+/** All repository problems at once, so an operator fixes them in one pass. */
+function repositoryOf(env: z.infer<typeof schema>, problems: string[]): RepositoryConfig | null {
   let remote: Remote | undefined;
-  if (!url) {
+  if (!env.MICA_REPOSITORY_URL) {
     problems.push("MICA_REPOSITORY_URL is not set. It is the HTTPS clone URL of the content repository.");
   } else {
     try {
-      remote = parseRemote(url, development);
+      remote = parseRemote(env.MICA_REPOSITORY_URL);
     } catch (error) {
       problems.push((error as Error).message);
     }
   }
 
-  const token = env["MICA_REPOSITORY_TOKEN"];
-  if (!token) {
+  const token = env.MICA_REPOSITORY_TOKEN ?? null;
+  const tokenFile = env.MICA_REPOSITORY_TOKEN_FILE ?? null;
+  if (token && tokenFile) {
+    problems.push("MICA_REPOSITORY_TOKEN and MICA_REPOSITORY_TOKEN_FILE are both set. Set one of them.");
+  } else if (!token && !tokenFile) {
     problems.push(
       "MICA_REPOSITORY_TOKEN is not set. GitHub: a fine-grained token with Contents: read and write.\n" +
         "    GitLab: a project access token with read_repository and write_repository, and a role that may\n" +
-        "    push to the branch.",
+        "    push to the branch. MICA_REPOSITORY_TOKEN_FILE can name a file with the token instead.",
     );
+  } else if (tokenFile) {
+    try {
+      readFileSync(tokenFile, "utf8");
+    } catch (error) {
+      problems.push(`MICA_REPOSITORY_TOKEN_FILE names ${tokenFile}, which cannot be read: ${(error as Error).message}`);
+    }
   }
 
-  const branch = env["MICA_REPOSITORY_BRANCH"] ?? "main";
+  const branch = env.MICA_REPOSITORY_BRANCH;
   if (!isBranchName(branch)) problems.push(`MICA_REPOSITORY_BRANCH is not a branch name: "${branch}".`);
 
-  const root = (env["MICA_REPOSITORY_ROOT"] ?? "content").replace(/^\/+|\/+$/g, "");
+  const root = env.MICA_REPOSITORY_ROOT.replace(/^\/+|\/+$/g, "");
   if (root.split("/").some((segment) => segment === ".." || segment === ".")) {
     problems.push(`MICA_REPOSITORY_ROOT must be a path inside the repository: "${root}".`);
   }
 
-  if (problems.length > 0 || !remote || !token) return { problems };
+  if (!remote) return null;
   return {
-    problems,
-    repository: {
-      remote,
-      branch,
-      root,
-      token,
-      username: env["MICA_REPOSITORY_USERNAME"] ?? defaultUsername(remote),
-      syncSeconds: Number(env["MICA_REPOSITORY_SYNC_SECONDS"] ?? 60),
-    },
+    remote,
+    branch,
+    root,
+    token,
+    tokenFile,
+    username: env.MICA_REPOSITORY_USERNAME ?? defaultUsername(remote),
+    syncSeconds: env.MICA_REPOSITORY_SYNC_SECONDS,
   };
 }
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConfig {
   // Tests pass an explicit object and must not pick up a `.env` in the working directory.
   if (env === process.env) loadEnvFile();
-  const present = withoutBlanks(env);
+  const problems: string[] = [];
+  const present = readSecretFiles(withoutBlanks(env), problems);
 
-  const { problems, repository } = repositoryProblems(present, (present["NODE_ENV"] ?? "development") === "development");
-  if (problems.length > 0) {
+  // The default is a localhost address: a deployment that forgets the variable would sign in nowhere.
+  if (!present["MICA_PUBLIC_URL"]) {
+    problems.push(
+      "MICA_PUBLIC_URL is not set. It is the https:// address the browser shows, or http://localhost:6422 for a trial on this machine.",
+    );
+  }
+
+  const parsed = schema.safeParse(present);
+  if (!parsed.success) throw new ConfigError(describeConfigIssues(parsed.error));
+  const repository = repositoryOf(parsed.data, problems);
+
+  if (problems.length > 0 || !repository) {
     throw new ConfigError(
       `Mica cannot start:\n${problems.map((problem) => `  - ${problem}`).join("\n")}\n` +
         "  See deploy/self-hosted/.env.example.",
     );
   }
 
-  const parsed = schema.safeParse(present);
-  if (!parsed.success) throw new ConfigError(describeConfigIssues(parsed.error));
-
-  const config = parsed.data;
+  const dataDir = path.resolve(parsed.data.MICA_DATA_DIR);
+  const runtime = deriveRuntime({
+    ...parsed.data,
+    MICA_CONTENT_ROOT: path.join(dataDir, "repository", repository.root),
+    MICA_LOCAL_PUBLISH: true,
+  });
+  const config = {
+    ...deriveAuth(runtime),
+    // A container has to bind every interface to be reachable at all.
+    HOST: parsed.data.HOST ?? "0.0.0.0",
+    dataDir,
+    sessionSecret: parsed.data.MICA_SESSION_SECRET,
+  };
 
   requireAuthConfig(config);
-  requireHttps(config, present);
-
-  // In development a generated secret lets a trial run work from a clean
-  // checkout; sessions end on restart.
-  const missing: string[] = [];
-  if (!config.MICA_SESSION_SECRET) missing.push("MICA_SESSION_SECRET");
-
-  if (config.isProduction && missing.length > 0) {
+  // Over plain HTTP the session cookie is not Secure and travels in clear text.
+  if (!config.MICA_PUBLIC_URL.startsWith("https://") && !isLoopbackUrl(config.MICA_PUBLIC_URL)) {
     throw new ConfigError(
-      `Missing required production secrets: ${missing.join(", ")}.\n` +
-        `Generate them with:  node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`,
+      `MICA_PUBLIC_URL is ${config.MICA_PUBLIC_URL}, but an address on another machine needs https://.\n` +
+        "  Put Mica behind a reverse proxy that terminates TLS, and set MICA_PUBLIC_URL to its https:// address.",
     );
   }
 
   return {
     ...config,
-    repository: repository!,
-    sessionSecret: config.MICA_SESSION_SECRET ?? randomBytes(32).toString("hex"),
-    devSecrets: missing,
+    repository,
     unknownVariables: Object.keys(env)
       .filter((name) => name.startsWith("MICA_") && !KNOWN.has(name))
       .sort(),

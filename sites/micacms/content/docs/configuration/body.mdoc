@@ -1,4 +1,6 @@
-Mica reads its settings from environment variables. Every name starts with `MICA_`, except `NODE_ENV`, `PORT` and `HOST`, which Node and hosting platforms already use. A blank value counts as not set.
+Mica reads its settings from environment variables. Every name starts with `MICA_`, except `PORT` and `HOST`, which hosting platforms already use. A blank value counts as not set. `NODE_ENV` changes nothing in Mica.
+
+Plain HTTP is allowed only for an address on this machine (`localhost`, `127.0.0.1` or `[::1]`), as in a trial or a test. Everything else needs `https://`. A duration has its unit in the name, in whole units: `_HOURS`, `_MINUTES` or `_SECONDS`. A secret can come from a file, such as a Docker or Kubernetes secret: set the variable with `_FILE` at the end of its name to the file's path.
 
 The self-hosted image reads the environment and a `.env` file in its working directory. The compose file passes the `.env` beside it. The local editor reads the environment only: a site's `.env` holds the site's settings, not the editor's. Its flags win over the environment.
 
@@ -6,10 +8,10 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 
 ## Self-hosted image: required
 
-- `MICA_PUBLIC_URL`: the address that the browser shows, with `https://`. It sets the cookie scope, the Origin check and the OIDC redirect. Required in production.
-- `MICA_SESSION_SECRET`: at least 32 characters. It signs the session cookie, so a new value signs everybody out. Required in production. In development, Mica makes one at each start.
+- `MICA_PUBLIC_URL`: the address that the browser shows, an origin with `https://` and no path, such as `https://cms.example.com`. For a trial on this machine: `http://localhost:6422`. It sets the cookie scope, the Origin check and the OIDC redirect.
+- `MICA_SESSION_SECRET`: at least 32 characters, for example from `openssl rand -base64 48`. It encrypts the session cookie, so a new value signs everybody out. Or `MICA_SESSION_SECRET_FILE`: a file that holds it.
 - `MICA_REPOSITORY_URL`: the HTTPS clone URL of the content repository, without credentials.
-- `MICA_REPOSITORY_TOKEN`: the token for Git over HTTPS. GitHub: a fine-grained token with Contents: read and write. GitLab: a project access token with `read_repository` and `write_repository`.
+- `MICA_REPOSITORY_TOKEN`: the token for Git over HTTPS. GitHub: a fine-grained token with Contents: read and write. GitLab: a project access token with `read_repository` and `write_repository`. Or `MICA_REPOSITORY_TOKEN_FILE`: a file that holds it. Mica reads the file for each Git call, so a short-lived token, such as a GitHub App token, can change without a restart.
 - `MICA_OIDC_ISSUER` and `MICA_OIDC_CLIENT_ID`: the OpenID Connect provider and the client that you registered there.
 - At least one of `MICA_ADMIT_GROUPS`, `MICA_ADMIT_DOMAINS`, `MICA_ADMIT_EMAILS` and `MICA_ADMIT_SUBJECTS`. Mica does not start without a rule that says who may edit.
 
@@ -23,7 +25,7 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 
 ## Self-hosted image: sign-in and sessions
 
-- `MICA_OIDC_CLIENT_SECRET`: the client secret. Leave it out for a public client with PKCE only.
+- `MICA_OIDC_CLIENT_SECRET`: the client secret. Leave it out for a public client with PKCE only. Or `MICA_OIDC_CLIENT_SECRET_FILE`: a file that holds it.
 - `MICA_OIDC_SCOPE`: the scopes that Mica asks for. Default: `openid profile email`.
 - `MICA_OIDC_GROUPS_CLAIM`: the claim that holds the person's groups. Default: `groups`.
 - `MICA_ADMIT_GROUPS`: groups whose members may edit, separated by commas.
@@ -33,11 +35,10 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 - `MICA_SESSION_TTL_HOURS`: the longest session, in hours. Default: `8`.
 - `MICA_SESSION_IDLE_HOURS`: a session without a request ends after this many hours. Default: `4`.
 - `MICA_SIGNIN_MAX_ATTEMPTS`: sign-in starts from one address in the window. Default: `10`.
-- `MICA_SIGNIN_WINDOW_MS`: the window for that limit, in milliseconds. Default: `900000` (15 minutes).
+- `MICA_SIGNIN_WINDOW_MINUTES`: the window for that limit, in minutes. Default: `15`.
 
 ## Self-hosted image: the server
 
-- `NODE_ENV`: `production` in the image. Production refuses plain HTTP and a missing session secret.
 - `HOST`: the address to listen on. Default in the image: `0.0.0.0`.
 - `PORT`: the port to listen on. Default: `6422`.
 - `MICA_TRUST_PROXY`: read the client address from `X-Forwarded-For`. Set it to `true` only behind a proxy that you control. Default: `false`.
@@ -59,9 +60,10 @@ It also reads these variables:
 - `MICA_PUBLIC_URL`: the editor's own address. It must be on this computer. Default: `http://localhost:` and the port.
 - `MICA_LOCAL_PUBLISH`: `false` shows the pending changes, but Publish does not commit or push. Default: `true`.
 - `MICA_MAX_UPLOAD_BYTES` and `MICA_LOG_LEVEL`, as for the image.
-- `NODE_ENV`: `production` stops the editor, because it has no sign-in.
 
 ## For work on Mica itself
+
+The local editor only, not the image:
 
 - `MICA_ADMIN_ORIGINS`: more browser origins that may call the admin API, separated by commas. The Vite dev server of the editor UI needs it.
 - `MICA_ADMIN_DIR`: serve the editor UI from another directory.
