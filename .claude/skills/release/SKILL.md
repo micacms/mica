@@ -4,7 +4,7 @@ description: Cut a Mica release end to end — suggest the bump from the pending
 argument-hint: "[patch|minor|major|X.Y.Z-rc.N]"
 ---
 
-Cut one Mica release. Everything publishes in lockstep — six npm packages
+Cut one Mica release. Everything publishes in lockstep — four npm packages
 and the Docker image carry one version — and pushing the tag is what
 publishes, so nothing here pushes without the user saying so.
 

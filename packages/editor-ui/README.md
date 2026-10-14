@@ -1,8 +1,8 @@
 # @micacms/editor-ui
 
-> **Internal.** Published only because the Mica apps install it, and pinned
-> exactly by them. It has no semver promise: any release can break its API. Use
-> `@micacms/core`, `@micacms/astro` or the `@micacms/editor` CLI instead.
+> **Internal, not published.** `@micacms/editor` ships this build in its
+> `dist/admin`, and the self-hosted image builds it from source. Versions up to
+> 0.8 are on npm, deprecated.
 
 The Mica editor SPA — the Vue administration UI, shipped as **built assets**
 in `dist/` and served by a composing app (`@micacms/editor` locally,
