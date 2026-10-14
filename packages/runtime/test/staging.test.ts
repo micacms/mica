@@ -535,7 +535,7 @@ describe("publish", () => {
     writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Secret words","slug":"haus-a"}');
     await service.publish({ message: "Publish", paths: await reviewed(service), editor: "anna@example.com" });
     writeFileSync(join(contentRoot, "projects/haus-b/index.json"), '{"title":"Draft","slug":"haus-b"}');
-    await service.discard(["projects/haus-b/index.json"], "ben@example.com");
+    await service.discard({ "projects/haus-b/index.json": (await reviewed(service))["projects/haus-b/index.json"]! }, "ben@example.com");
 
     const published = lines.find((line) => line.message === "Published");
     assert.equal(published?.fields?.editor, "anna@example.com");
@@ -579,11 +579,7 @@ describe("discard", () => {
     writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Edited","slug":"haus-a"}');
     writeFileSync(join(contentRoot, "projects/haus-b/index.json"), '{"title":"New","slug":"haus-b"}');
 
-    const { discarded } = await service.discard([
-      "projects/haus-a/index.json",
-      "projects/haus-b/index.json",
-      "projects/not-in-the-change-list/index.json",
-    ]);
+    const { discarded } = await service.discard(await reviewed(service));
 
     assert.deepEqual(discarded, ["projects/haus-a/index.json", "projects/haus-b/index.json"]);
     assert.equal(
@@ -597,9 +593,45 @@ describe("discard", () => {
     const { contentRoot, service } = makeRepo();
     unlinkSync(join(contentRoot, "projects/haus-a/index.json"));
 
-    const { discarded } = await service.discard(["projects/haus-a/index.json"]);
+    const { discarded } = await service.discard(await reviewed(service));
     assert.deepEqual(discarded, ["projects/haus-a/index.json"]);
     assert.equal(existsSync(join(contentRoot, "projects/haus-a/index.json")), true);
+  });
+
+  // Two editors: the second saves after the first opened the Publish page.
+  it("refuses a draft that was saved again after the review, and keeps it", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"First","slug":"haus-a"}');
+    const seen = await reviewed(service);
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Second","slug":"haus-a"}');
+
+    await assert.rejects(service.discard(seen), (error: unknown) => error instanceof ApiError && error.code === "conflict");
+    assert.match(readFileSync(join(contentRoot, "projects/haus-a/index.json"), "utf8"), /Second/);
+  });
+
+  it("refuses part of an entry, and a path that is not pending", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Edited","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/notes.mdoc"), "A colleague's new file.\n");
+    const seen = await reviewed(service);
+
+    await assert.rejects(service.discard({ "projects/haus-a/index.json": seen["projects/haus-a/index.json"]! }), ApiError);
+    await assert.rejects(service.discard({ "projects/haus-z/index.json": null }), ApiError);
+    assert.ok(existsSync(join(contentRoot, "projects/haus-a/notes.mdoc")));
+  });
+});
+
+describe("the comparison's revisions", () => {
+  it("are the revisions of the compared document's files, which Publish takes back", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Seen","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), '{"title":"Other","slug":"haus-b"}');
+
+    const comparison = await service.compare({ kind: "entry", collection: "projects", slug: "haus-a" });
+    assert.deepEqual(Object.keys(comparison.revisions), ["projects/haus-a/index.json"]);
+
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Not seen","slug":"haus-a"}');
+    await assert.rejects(service.publish({ message: "Publish", paths: comparison.revisions }), ApiError);
   });
 });
 

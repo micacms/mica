@@ -8,7 +8,7 @@ import { computed, ref } from "vue";
 
 import { api, ApiError } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
-import { problemsByEdit, type Edit } from "@/lib/edits";
+import { problemsByEdit, reviewedPaths, type Edit } from "@/lib/edits";
 import { relativeTime } from "@/lib/format";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
@@ -37,7 +37,8 @@ const words: Record<Edit["state"], string> = {
 async function discard(): Promise<void> {
   discarding.value = true;
   try {
-    await api.staging.discard(props.edit.fileChanges.map((change) => change.path));
+    // At the revisions of the change list: a colleague's later save is refused, not discarded.
+    await api.staging.discard(reviewedPaths([props.edit]));
     toast.success("Discarded the changes.");
     confirming.value = false;
     // Before the refresh: it removes the edit, and with it this notice, which then cannot emit.

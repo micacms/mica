@@ -479,24 +479,32 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       return { revision: await revisionAfterWrite(base) };
     },
 
-    async reorder(
-      collectionName: string,
-      slugs: string[],
-    ): Promise<void> {
+    /** The revision of a collection's order file, or null without one. */
+    async orderRevision(collectionName: string): Promise<string | null> {
+      requireCollection(collectionName);
+      return workspace.revision(`${collectionName}/${ORDER_FILE}`);
+    },
+
+    /** Writes the order. `expectedRevision` is the order the editor saw: a colleague's move in between is a conflict. */
+    async reorder(collectionName: string, slugs: string[], expectedRevision: string | null): Promise<string> {
       const def = writable(requireCollection(collectionName), `collections.${collectionName}`);
       if (!def.sortable) {
         throw new ContentError(`The "${def.label}" collection is not manually sortable.`);
       }
 
-      await workspace.apply({
-        changes: [
-          {
-            type: "write",
-            path: `${collectionName}/${ORDER_FILE}`,
-            contents: `${JSON.stringify(slugs, null, 2)}\n`,
-          },
-        ],
-      });
+      const path = `${collectionName}/${ORDER_FILE}`;
+      try {
+        await workspace.apply({
+          changes: [{ type: "write", path, contents: `${JSON.stringify(slugs, null, 2)}\n` }],
+          expect: { [path]: expectedRevision },
+        });
+      } catch (error) {
+        if (error instanceof ConflictError) {
+          throw new ConflictError("Someone changed this order after you opened it. Reload to see the current order.", [path]);
+        }
+        throw error;
+      }
+      return (await workspace.revision(path))!;
     },
 
     requireCollection,

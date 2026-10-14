@@ -17,7 +17,7 @@ import { compareRows } from "@/lib/compare";
 
 const props = withDefaults(
   defineProps<{
-    comparison: Comparison;
+    comparison: Pick<Comparison, "before" | "after">;
     /** The owning document's fields; null for an order comparison. */
     fields: FieldMap | null;
     /** The visible names of the two sides. */

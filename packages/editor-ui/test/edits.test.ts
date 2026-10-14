@@ -139,6 +139,16 @@ describe("toEdits", () => {
     assert.deepEqual(reviewedPaths(edits), { "pages/a/index.json": "r1", "pages/a/old.png": null });
   });
 
+  it("takes the revisions of the comparison on the page, and sends a file it did not show as unseen", () => {
+    const owner = { kind: "entry", collection: "pages", slug: "a", label: "a" } as const;
+    const edits = toEdits([
+      { path: "pages/a/index.json", kind: "update", owner, revision: "r2" },
+      { path: "pages/a/body.mdoc", kind: "create", owner, revision: "r9" },
+    ]);
+    const shown = () => ({ "pages/a/index.json": "r1" });
+    assert.deepEqual(reviewedPaths(edits, shown), { "pages/a/index.json": "r1", "pages/a/body.mdoc": "" });
+  });
+
   it("keeps an edit with the new edits it needs, both ways", () => {
     const page = (slug: string) => ({ kind: "entry", collection: "pages", slug, label: slug }) as const;
     const edits = toEdits([

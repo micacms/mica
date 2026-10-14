@@ -127,6 +127,9 @@ interface LoadedComparison {
 
 const comparisons = ref<Record<string, LoadedComparison>>({});
 
+/** The revisions of the comparison on the page: Publish and Discard send these, not a newer list's. */
+const shownRevisions = (edit: Edit) => comparisons.value[edit.key]?.comparison?.revisions ?? {};
+
 /** The compared document's fields — null for an order comparison. */
 function fieldsFor(target: CompareTarget): FieldMap | null {
   if (target.kind === "entry") return schema.collection(target.collection)?.fields ?? null;
@@ -214,7 +217,7 @@ async function publish(): Promise<void> {
   try {
     // Exactly what the editor sees here, at the revision they see it: a file
     // saved again since makes the server refuse rather than publish it unseen.
-    const outcome = await api.staging.publish(summary.value.trim(), reviewedPaths(chosen.value));
+    const outcome = await api.staging.publish(summary.value.trim(), reviewedPaths(chosen.value, shownRevisions));
     typed.value = null;
 
     if (outcome.state === "published") {
@@ -233,8 +236,8 @@ async function publish(): Promise<void> {
   } catch (error) {
     if (error instanceof ApiError) {
       toast.error(error.message, error.issues[0]?.message);
-      // A conflict or a validation refusal means the list moved: show the truth.
-      await staging.refresh();
+      // A conflict or a validation refusal means the list moved: show the truth, comparisons included.
+      await refresh();
     } else {
       toast.error("Could not publish.");
     }
@@ -268,12 +271,17 @@ async function discard(): Promise<void> {
 
   discarding.value = true;
   try {
-    await api.staging.discard(edit.fileChanges.map((change) => change.path));
+    await api.staging.discard(reviewedPaths([edit], shownRevisions));
     toast.success(`Discarded the changes to ${edit.label}.`);
     discardTarget.value = null;
     await staging.refresh();
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not discard.");
+    // Someone saved again: show their version before anything is discarded.
+    if (error instanceof ApiError && error.status === 409) {
+      discardTarget.value = null;
+      await refresh();
+    }
   } finally {
     discarding.value = false;
   }

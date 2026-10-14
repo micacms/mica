@@ -142,9 +142,27 @@ export function publishSummary(edits: Edit[]): string {
   return `${verb} ${named}`.slice(0, 500);
 }
 
-/** What Publish sends for the chosen edits: every file of each, at the revision the editor saw. */
-export function reviewedPaths(edits: Edit[]): Record<string, string | null> {
-  return Object.fromEntries(edits.flatMap((edit) => edit.fileChanges.map((change) => [change.path, change.revision ?? null])));
+/**
+ * What Publish and Discard send for the chosen edits: every file of each, at
+ * the revision the editor saw. With `shown`, an edit with a comparison takes
+ * its revisions from the comparison on the page, not from a newer change list;
+ * a file that the comparison did not show goes as unseen, and the server
+ * refuses it. Without `shown`, the change list's revisions go.
+ */
+export function reviewedPaths(
+  edits: Edit[],
+  shown: (edit: Edit) => Record<string, string | null> | undefined = () => undefined,
+): Record<string, string | null> {
+  const UNSEEN = "";
+  return Object.fromEntries(
+    edits.flatMap((edit) => {
+      const revisions = edit.target ? shown(edit) : undefined;
+      return edit.fileChanges.map((change) => [
+        change.path,
+        revisions ? (change.path in revisions ? revisions[change.path]! : UNSEEN) : (change.revision ?? null),
+      ]);
+    }),
+  );
 }
 
 /** The chosen edits plus everything they need, however deep. */

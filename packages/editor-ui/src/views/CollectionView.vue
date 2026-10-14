@@ -78,7 +78,9 @@ function searchableText(value: unknown): string {
 async function load(): Promise<void> {
   loading.value = true;
   try {
-    entries.value = (await api.entries.list(props.collection)).items;
+    const listed = await api.entries.list(props.collection);
+    entries.value = listed.items;
+    orderRevision = listed.orderRevision;
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not load the entries.");
   } finally {
@@ -103,10 +105,11 @@ async function saveOrder(next: EntrySummary[], moved: EntrySummary): Promise<voi
 
   reordering.value = true;
   try {
-    await api.entries.reorder(
+    ({ revision: orderRevision } = await api.entries.reorder(
       props.collection,
       next.map((entry) => entry.slug),
-    );
+      orderRevision,
+    ));
     savedOrder = next.map((entry) => entry.slug).join("/");
     void staging.refresh();
   } catch (error) {
@@ -119,6 +122,8 @@ async function saveOrder(next: EntrySummary[], moved: EntrySummary): Promise<voi
 
 /** The order on the server, so that a move that ends where it started saves nothing. */
 let savedOrder = "";
+/** The revision of the order the editor sees: a colleague's move in between is a conflict, not an overwrite. */
+let orderRevision: string | null = null;
 watch(loading, (isLoading) => {
   if (!isLoading) savedOrder = entries.value.map((entry) => entry.slug).join("/");
 });

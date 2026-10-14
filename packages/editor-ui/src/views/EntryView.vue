@@ -314,15 +314,17 @@ async function askDelete(): Promise<void> {
 }
 
 async function remove(): Promise<void> {
-  if (!props.slug) return;
+  if (!props.slug || !revision.value) return;
   try {
-    await api.entries.remove(props.collection, props.slug);
+    await api.entries.remove(props.collection, props.slug, revision.value);
     unsaved.release();
     toast.success("Deleted.");
     void staging.refresh();
     await router.replace({ name: "collection", params: { collection: props.collection } });
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not delete this entry.");
+    // A colleague saved since: show their version, as for a save.
+    if (error instanceof ApiError && error.status === 409) await showConflict(props.slug, error.message);
+    else toast.error(error instanceof ApiError ? error.message : "Could not delete this entry.");
   } finally {
     confirmDelete.value = false;
   }
