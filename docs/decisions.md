@@ -784,7 +784,7 @@ installs it, pinned exactly, and free to break in a minor. Since 0.9 (#225),
 `@micacms/editor-ui` and `@micacms/auth-oidc` are not published: the editor
 ships the UI's build in its `dist/admin`, and the image builds both from
 source. A change to the editor UI records its change file for
-`@micacms/editor`.
+`@micacms/editor`, and a change to the OIDC gate for `@micacms/runtime`.
 
 **Why:** all packages share one lockstep version, so a public `runtime` would
 turn every refactor of its helpers into a major for every package, `core`

@@ -52,12 +52,16 @@ work.
 | `@micacms/core`           | The field DSL, the content model, the authoring format, and how content is read |
 | `@micacms/astro`          | Content Layer loader, dev integration, Markdoc rendering                              |
 | `@micacms/runtime`        | The single-site Hono API and services, the working tree's files and Git, authentication-neutral |
-| `@micacms/editor-ui`      | The Vue admin SPA, shipped as built assets                                            |
-| `@micacms/auth-oidc`      | The server-only OIDC gate: sign-in, cookie sessions, admission                               |
+| `@micacms/editor-ui`      | The Vue admin SPA; not published: `@micacms/editor` and the image ship its build |
+| `@micacms/auth-oidc`      | The server-only OIDC gate: sign-in, cookie sessions, admission; not published, part of the image |
 | `@micacms/editor`         | `apps/local-editor` — the `npx` composition: loopback, no auth, no database           |
 | `@micacms/self-hosted`    | `apps/self-hosted` — the Docker composition: runtime + UI behind OIDC, on its own clone |
 | `examples/company-site` | A complete Astro site that uses every field kind: an example to read, not a dependency |
 | `examples/starter`      | The minimal starter for `npm create astro -- --template micacms/mica/examples/starter` |
+
+Four packages are published: `@micacms/core`, `@micacms/astro`, `@micacms/editor`
+and `@micacms/runtime`. Semver covers the first three; `@micacms/runtime` is
+published because `@micacms/editor` depends on it, and is internal.
 
 **Why the core package is not inside the Astro package.** The editor, the
 server and the build all need the model, and a Hono server depending on an
