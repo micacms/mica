@@ -111,35 +111,41 @@ img.ProseMirror-separator {
   display: block;
 }
 
-/* The Mica brand tokens: the Stone theme, and Basalt when the system is dark. The editor is the calm surface of the brand. */
+/*
+ * The Mica brand tokens, each with its light (Stone) and dark (Basalt) value. The editor is the
+ * calm surface of the brand. `color-scheme` picks the value: the system's, or the one that the
+ * editor chose under Appearance (`data-theme`, see useColorScheme.ts).
+ */
 :root {
-  --mica-ground: #f4f0e6;
-  --mica-surface: #fffcf4;
-  --mica-subtle: #ede6d6;
-  --mica-ink: #1c2522;
-  --mica-ink-muted: #3a4642;
-  --mica-ink-subtle: #55615c;
-  --mica-line: #e2d6be;
-  --mica-line-strong: #857b69;
-  --mica-primary: #17694f;
-  --mica-primary-hover: #0e4a37;
-  --mica-on-primary: #fffcf4;
-  --mica-primary-soft: #dcebdf;
+  color-scheme: light dark;
+  --mica-ground: light-dark(#f4f0e6, #121816);
+  --mica-surface: light-dark(#fffcf4, #1a2320);
+  --mica-subtle: light-dark(#ede6d6, #161e1b);
+  --mica-ink: light-dark(#1c2522, #f1ebdd);
+  --mica-ink-muted: light-dark(#3a4642, #cfc7b6);
+  --mica-ink-subtle: light-dark(#55615c, #a9a291);
+  --mica-line: light-dark(#e2d6be, #2f3a36);
+  --mica-line-strong: light-dark(#857b69, #76837d);
+  --mica-primary: light-dark(#17694f, #6cc9a1);
+  --mica-primary-hover: light-dark(#0e4a37, #8ddbb8);
+  --mica-on-primary: light-dark(#fffcf4, #0e1f18);
+  --mica-primary-soft: light-dark(#dcebdf, #1d3a2e);
   --mica-glint: #f2c230;
   --mica-on-glint: #1c2522;
-  --mica-glint-soft: #fbebb5;
-  --mica-strata: #2f5b80;
-  --mica-strata-soft: #dce6ee;
-  --mica-danger: #a3402f;
-  --mica-danger-hover: #7e2e21;
-  --mica-on-danger: #fffcf4;
-  --mica-danger-soft: #f6ded8;
-  --mica-shadow: rgb(28 37 34 / 14%);
-  --mica-scrim: rgb(28 37 34 / 40%);
+  --mica-glint-soft: light-dark(#fbebb5, #3d3216);
+  --mica-strata: light-dark(#2f5b80, #8db8dd);
+  --mica-strata-soft: light-dark(#dce6ee, #1b2c3a);
+  --mica-danger: light-dark(#a3402f, #f2998a);
+  --mica-danger-hover: light-dark(#7e2e21, #f7b5aa);
+  --mica-on-danger: light-dark(#fffcf4, #2a0f0a);
+  --mica-danger-soft: light-dark(#f6ded8, #3a1d18);
+  /* The wordmark: Shale on light grounds, Stone on dark ones (brand guide, Logo). */
+  --mica-wordmark: light-dark(#1c2522, #f4f0e6);
+  --mica-shadow: light-dark(rgb(28 37 34 / 14%), rgb(0 0 0 / 50%));
+  --mica-scrim: light-dark(rgb(28 37 34 / 40%), rgb(0 0 0 / 60%));
   /* Behind image previews, in both themes, so that a transparent logo shows. */
   --mica-checker-light: #fffcf4;
   --mica-checker-dark: #e9e2d2;
-  color-scheme: light;
 
   --mica-font-sans: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
   --mica-font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
@@ -156,31 +162,12 @@ img.ProseMirror-separator {
   --mica-dur-2: var(--mica-duration-base);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --mica-ground: #121816;
-    --mica-surface: #1a2320;
-    --mica-subtle: #161e1b;
-    --mica-ink: #f1ebdd;
-    --mica-ink-muted: #cfc7b6;
-    --mica-ink-subtle: #a9a291;
-    --mica-line: #2f3a36;
-    --mica-line-strong: #76837d;
-    --mica-primary: #6cc9a1;
-    --mica-primary-hover: #8ddbb8;
-    --mica-on-primary: #0e1f18;
-    --mica-primary-soft: #1d3a2e;
-    --mica-glint-soft: #3d3216;
-    --mica-strata: #8db8dd;
-    --mica-strata-soft: #1b2c3a;
-    --mica-danger: #f2998a;
-    --mica-danger-hover: #f7b5aa;
-    --mica-on-danger: #2a0f0a;
-    --mica-danger-soft: #3a1d18;
-    --mica-shadow: rgb(0 0 0 / 50%);
-    --mica-scrim: rgb(0 0 0 / 60%);
-    color-scheme: dark;
-  }
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
 }
 
 /* The class names that the views use, on the brand tokens. */
@@ -217,6 +204,7 @@ img.ProseMirror-separator {
   --color-info-soft: var(--mica-strata-soft);
   /* Behind dialogs and the mobile menu: dark in both themes. */
   --color-scrim: var(--mica-scrim);
+  --color-wordmark: var(--mica-wordmark);
 
   --font-sans: var(--mica-font-sans);
   --font-mono: var(--mica-font-mono);

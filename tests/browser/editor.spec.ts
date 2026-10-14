@@ -139,6 +139,30 @@ test("an editor whose session ends signs in again and keeps the unsaved changes"
   await expect(page.getByText("Saved · not published")).toBeHidden();
 });
 
+test("the appearance follows the system, or the choice that the browser keeps", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.locator("input[name=login]").fill("alice@gmail.com");
+  await page.locator("input[name=password]").fill("password");
+  await page.locator("button[type=submit]").click();
+  await expect(page).toHaveURL(/\/admin\/$/);
+
+  const html = page.locator("html");
+  await expect(html).not.toHaveAttribute("data-theme");
+  await expect(page.getByRole("radio", { name: "System" })).toBeChecked();
+
+  // The radio buttons are hidden; their labels take the click.
+  await page.locator('label[title="Dark"]').click();
+  await expect(html).toHaveAttribute("data-theme", "dark");
+  await page.reload();
+  await expect(html).toHaveAttribute("data-theme", "dark");
+  await expect(page.getByRole("radio", { name: "Dark" })).toBeChecked();
+
+  await page.locator('label[title="System"]').click();
+  await expect(html).not.toHaveAttribute("data-theme");
+});
+
 test("entries and list items change their order in the same way", async ({ page }) => {
   await page.goto("/admin/");
   await page.getByRole("button", { name: "Sign in" }).click();

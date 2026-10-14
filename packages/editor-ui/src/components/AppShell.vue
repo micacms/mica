@@ -22,9 +22,12 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Monitor,
+  Moon,
   Send,
   Settings,
   SlidersHorizontal,
+  Sun,
 } from "@lucide/vue";
 
 import { announcement } from "@/lib/announce";
@@ -32,8 +35,17 @@ import { useSchema } from "@/stores/schema";
 import { useSession } from "@/stores/session";
 import { useStaging } from "@/stores/staging";
 import Wordmark from "./Wordmark.vue";
+import { useColorScheme, type ColorScheme } from "@/composables/useColorScheme";
 
 const route = useRoute();
+
+/* Appearance: the system's light or dark mode, or a choice that this browser keeps. */
+const { scheme, choose } = useColorScheme();
+const appearances: Array<{ value: ColorScheme; label: string; icon: typeof Sun }> = [
+  { value: "system", label: "System", icon: Monitor },
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+];
 const router = useRouter();
 const session = useSession();
 const staging = useStaging();
@@ -232,6 +244,30 @@ async function signOut(): Promise<void> {
           </a>
         </div>
       </nav>
+
+      <fieldset class="border-t border-line px-3 py-2.5">
+        <legend class="sr-only">Appearance</legend>
+        <p class="mb-1.5 text-xs font-semibold text-muted" aria-hidden="true">Appearance</p>
+        <div class="grid grid-cols-3 gap-0.5 rounded-full border border-line bg-surface p-0.5">
+          <label
+            v-for="option in appearances"
+            :key="option.value"
+            :title="option.label"
+            class="flex h-7 cursor-pointer items-center justify-center rounded-full text-ink-soft transition hover:text-ink has-[:checked]:bg-primary has-[:checked]:text-on-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-info"
+          >
+            <input
+              type="radio"
+              name="appearance"
+              class="sr-only"
+              :value="option.value"
+              :checked="scheme === option.value"
+              @change="choose(option.value)"
+            />
+            <component :is="option.icon" :size="14" aria-hidden="true" />
+            <span class="sr-only">{{ option.label }}</span>
+          </label>
+        </div>
+      </fieldset>
 
       <!-- Absent entirely where there is no provider: see the note above. -->
       <div v-if="session.showsIdentity.value" class="border-t border-line p-2">
