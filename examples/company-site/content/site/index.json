@@ -19,7 +19,6 @@
   },
   "analytics": {
     "provider": "none",
-    "siteId": null,
-    "scriptUrl": null
+    "siteId": null
   }
 }

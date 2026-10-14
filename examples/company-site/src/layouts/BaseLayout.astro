@@ -63,6 +63,27 @@ const themeVars = [
 ].join(";");
 
 const analytics = settings.analytics;
+/**
+ * The script addresses are code, not content: a field for one would let any
+ * editor run their own script on every page.
+ */
+const ANALYTICS_SCRIPTS = {
+  plausible: "https://plausible.io/js/script.js",
+  matomo: "https://cdn.matomo.cloud/harborlane.matomo.cloud/matomo.js",
+};
+
+// `<` escaped, so that no text from the content can end the script element.
+const structuredData = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "ProfessionalService",
+  name: settings.companyName,
+  description: metaDescription || undefined,
+  url: canonical,
+  email: settings.email || undefined,
+  telephone: settings.phone || undefined,
+  address: settings.address ? { "@type": "PostalAddress", streetAddress: settings.address.replace(/\n/g, ", ") } : undefined,
+  sameAs: settings.social.map((link) => link.url),
+}).replaceAll("<", "\\u003c");
 ---
 
 <!doctype html>
@@ -88,33 +109,18 @@ const analytics = settings.analytics;
     {favicon && <link rel="icon" href={favicon} />}
 
     {/* Structured data helps a company show up correctly in search. */}
-    <script
-      type="application/ld+json"
-      set:html={JSON.stringify({
-        "@context": "https://schema.org",
-        "@type": "ProfessionalService",
-        name: settings.companyName,
-        description: metaDescription || undefined,
-        url: canonical,
-        email: settings.email || undefined,
-        telephone: settings.phone || undefined,
-        address: settings.address
-          ? { "@type": "PostalAddress", streetAddress: settings.address.replace(/\n/g, ", ") }
-          : undefined,
-        sameAs: settings.social.map((link) => link.url),
-      })}
-    />
+    <script is:inline type="application/ld+json" set:html={structuredData} />
 
     {
       /* Analytics is opt-in from the CMS and always a plain script tag — no
          tag manager, nothing that could rewrite the page. */
-      analytics?.provider === "plausible" && analytics.scriptUrl && (
-        <script defer data-domain={analytics.siteId} src={analytics.scriptUrl} is:inline />
+      analytics?.provider === "plausible" && analytics.siteId && (
+        <script defer data-domain={analytics.siteId} src={ANALYTICS_SCRIPTS.plausible} is:inline />
       )
     }
     {
-      analytics?.provider === "matomo" && analytics.scriptUrl && (
-        <script defer src={analytics.scriptUrl} data-site-id={analytics.siteId} is:inline />
+      analytics?.provider === "matomo" && analytics.siteId && (
+        <script defer src={ANALYTICS_SCRIPTS.matomo} data-site-id={analytics.siteId} is:inline />
       )
     }
   </head>

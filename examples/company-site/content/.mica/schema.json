@@ -665,11 +665,8 @@
             },
             "siteId": {
               "kind": "text",
-              "label": "Site ID"
-            },
-            "scriptUrl": {
-              "kind": "url",
-              "label": "Script URL"
+              "label": "Site ID",
+              "description": "The script address is in the website's code, not here."
             }
           }
         }
