@@ -537,7 +537,7 @@ describe("a fast-forward that cannot be undone (#229)", () => {
       locks: createWorkspaceLocks(),
       logger,
       groupOf,
-      secrets: [TOKEN],
+      secrets: () => [TOKEN],
       syncSeconds: 60,
     });
     upstream(s, (dir) => writeIn(dir, "content/posts/b/index.json", '{"title":"B, upstream"}\n'));

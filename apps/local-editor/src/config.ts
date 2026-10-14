@@ -11,6 +11,7 @@ import {
   ConfigError,
   deriveRuntime,
   describeConfigIssues,
+  isLoopbackUrl,
   list,
   LOOPBACK,
   runtimeEnv,
@@ -86,6 +87,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): LocalConfig {
       `The local editor has no authentication, but HOST is "${config.HOST}".\n` +
         "  It binds to the loopback address and nothing else. Use HOST=127.0.0.1,\n" +
         "  or run @micacms/self-hosted with an identity provider.",
+    );
+  }
+
+  // Another origin may write through the browser, with no sign-in: only this machine's.
+  const remote = config.adminOrigins.filter((origin) => !URL.canParse(origin) || !isLoopbackUrl(origin));
+  if (remote.length > 0) {
+    throw new ConfigError(
+      `The local editor has no authentication, but MICA_ADMIN_ORIGINS names ${remote.join(", ")}.\n` +
+        "  Only an origin on this machine may call it, such as http://localhost:5173.",
     );
   }
 

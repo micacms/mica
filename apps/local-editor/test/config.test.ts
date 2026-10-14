@@ -29,6 +29,11 @@ describe("the local editor's containment", () => {
     }
   });
 
+  it("refuses an admin origin on another machine", () => {
+    assert.throws(() => loadConfig({ ...base, MICA_ADMIN_ORIGINS: "https://evil.example" }), /MICA_ADMIN_ORIGINS/);
+    assert.deepEqual(loadConfig({ ...base, MICA_ADMIN_ORIGINS: "http://localhost:5173" }).adminOrigins, ["http://localhost:5173"]);
+  });
+
   // The URL check does not cover the socket: a `localhost` URL can still listen on every interface.
   it("binds to loopback, and refuses to be talked out of it", () => {
     assert.equal(loadConfig({ ...base }).HOST, "127.0.0.1");
