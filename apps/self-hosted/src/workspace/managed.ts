@@ -66,6 +66,11 @@ export interface SyncState {
   /** The last publication the host refused, turned back into drafts. */
   refused: { reason: string; at: string } | null;
   error: SyncProblem | null;
+  /**
+   * Why the clone takes no saves and no syncs until a restart: a fast-forward
+   * failed and could not be undone. The start finishes it (`recover`).
+   */
+  readOnly: string | null;
 }
 
 export interface ManagedWorkspaceOptions {
@@ -133,6 +138,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     pendingPush: null,
     refused: null,
     error: null,
+    readOnly: null,
   };
   /** Groups whose editor chose "Keep my version"; applied at the next fast-forward. */
   const kept = new Set<string>();
@@ -270,12 +276,23 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
         await git.run(["merge", "--ff-only", "--quiet", to], { env: { GIT_NO_LAZY_FETCH: "1" } });
       } catch (error) {
         // A fast-forward that fails during the checkout has already changed files.
-        await restorePaths(git, layout.repositoryDir, from, upstream);
-        if ((await git.run(["rev-parse", "HEAD"])) !== from) {
-          await git.run(["update-ref", `refs/heads/${branch}`, from]);
+        try {
+          await restorePaths(git, layout.repositoryDir, from, upstream);
+          if ((await git.run(["rev-parse", "HEAD"])) !== from) {
+            await git.run(["update-ref", `refs/heads/${branch}`, from]);
+          }
+          await rm(layout.operationFile, { force: true });
+          await writeBackKept(layout);
+        } catch (rollback) {
+          // The clone is between two versions. The marker stays, so the next start
+          // finishes the fast-forward; a save before that could be overwritten.
+          state.readOnly =
+            "Mica could not finish bringing its copy of the website up to date. Saving and publishing wait " +
+            "until the person who runs Mica restarts it.";
+          logger.error("A fast-forward failed and could not be undone; read-only until a restart", {
+            error: clean(String(rollback)),
+          });
         }
-        await rm(layout.operationFile, { force: true });
-        await writeBackKept(layout);
         const stderr = error instanceof GitError ? error.stderr : String(error);
         throw new RemoteFailure("fast_forward_failed", clean(firstLines(stderr)) || "Git could not fast-forward.");
       }
@@ -464,6 +481,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
 
   /** For a caller that holds the remote lock. */
   const syncHeld = async (syncOptions: { skipHold?: boolean } = {}): Promise<SyncState> => {
+    if (state.readOnly) return snapshot();
     try {
       await fetch();
       // A reachability failure ends here; other failures last until a whole sync succeeds.
@@ -529,6 +547,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     owner: "managed",
 
     publishAvailability(): PublishAvailability {
+      if (state.readOnly) return { enabled: false, reason: state.readOnly };
       if (state.restartRequired) {
         return {
           enabled: false,

@@ -50,6 +50,8 @@ export function managedEnvironment(options: ManagedEnvironmentOptions): NodeJS.P
     // No automatic gc inside a commit that holds the tree lock; the sync runs
     // `git -c gc.auto=… gc --auto` instead.
     ["gc.auto", "0"],
+    // Never in the background: a stop would leave its lock files behind.
+    ["gc.autoDetach", "false"],
     ["safe.directory", options.cloneDir],
     ["user.name", MICA_IDENTITY.name],
     ["user.email", MICA_IDENTITY.email],
