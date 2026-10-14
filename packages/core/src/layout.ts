@@ -15,6 +15,8 @@
  *   media/                          shared media
  */
 
+import type { FieldMap } from "./types.js";
+
 export class FormatError extends Error {
   override name = "FormatError";
 }
@@ -54,6 +56,21 @@ export function documentPath(name: string): string[] {
     throw new FormatError(`"${name}" is not a rich-text document.`);
   }
   return name.slice(0, -DOCUMENT_EXTENSION.length).split(".");
+}
+
+/**
+ * Whether the model declares a sidecar's path: it leads, through objects and
+ * repeater rows, to a rich-text field. A save deletes such a file when the field
+ * is empty or its row is gone, and keeps any other `.mdoc` file (#217).
+ */
+export function declaresDocument(fields: FieldMap, path: readonly string[]): boolean {
+  const [head = "", ...rest] = path;
+  const field = fields[head];
+  if (!field) return false;
+  if (rest.length === 0) return field.kind === "richText";
+  if (field.kind === "object") return declaresDocument(field.fields, rest);
+  if (field.kind === "repeater") return rest.length > 1 && declaresDocument(field.fields, rest.slice(1));
+  return false;
 }
 
 /** The folder of a collection entry, or of a singleton without `slug`: `team/anna-vogt`, `site`. */

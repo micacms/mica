@@ -187,7 +187,7 @@ describe("mica check", () => {
     write("news/hello/content.mdoc", "Wrong name.\n");
     write("news/hello/sections.kone.text.mdoc", "Nested.\n");
     const warnings = problems(await checkContent(root), "warning");
-    assert.deepEqual(warnings, ["news/hello/content.mdoc: Not read: no rich-text field has this name."]);
+    assert.deepEqual(warnings, ["news/hello/content.mdoc: Not read: no rich-text field has this name. Mica keeps the file."]);
   });
 
   it("warns about a Markdoc file whose row key no row has (#220)", async () => {

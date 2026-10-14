@@ -284,8 +284,8 @@ function fieldSchema(
   };
 
   if (neverNull(field)) {
-    // A missing multi-value field is an empty list; a missing boolean is its default.
-    const fallback: unknown = field.kind === "boolean" ? (field.default ?? false) : [];
+    // A missing multi-value field is an empty list; a missing boolean is false, never its default (#221).
+    const fallback: unknown = field.kind === "boolean" ? false : [];
     // A required list needs one value; a boolean is never empty.
     const filled =
       field.required && options.enforceRequired !== false && field.kind !== "boolean"

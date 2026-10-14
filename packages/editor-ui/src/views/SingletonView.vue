@@ -8,7 +8,7 @@
 import { computed, nextTick, onMounted, provide, ref, watch } from "vue";
 import { useRoute } from "vue-router";
 
-import { withDefaults as fillDefaults } from "@micacms/core";
+import { withEmptyValues } from "@micacms/core";
 
 import { api, ApiError, type SingletonDetail } from "@/api";
 import FieldList from "@/components/fields/FieldList.vue";
@@ -91,8 +91,8 @@ async function load(): Promise<void> {
   loadError.value = null;
   try {
     const detail = await api.singletons.get(props.name);
-    // Defaults fill in fields added to the model since the file was written.
-    values.value = structuredClone(fillDefaults(definition.value?.fields ?? {}, detail.data));
+    // A field added to the model since the file was written opens empty.
+    values.value = structuredClone(withEmptyValues(definition.value?.fields ?? {}, detail.data));
     revision.value = detail.revision;
     location.value = detail.path;
     form.reset();
@@ -160,7 +160,7 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
     // Not over changes that the editor made while the request ran.
     const detail = await api.singletons.get(props.name);
     if (!dirty.value) {
-      values.value = structuredClone(fillDefaults(definition.value?.fields ?? {}, detail.data));
+      values.value = structuredClone(withEmptyValues(definition.value?.fields ?? {}, detail.data));
       revision.value = detail.revision;
       markClean();
     }

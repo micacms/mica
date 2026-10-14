@@ -7,7 +7,7 @@ The model is code, and the content is files. When you change the model, some cha
 | Add a field that is not required | Yes | Nothing. Old entries have no value. |
 | Change a label, a description, `listed`, `group`, `width` or a limit | Yes | Nothing. Run `npx mica check`: a new limit can make an old value wrong. |
 | Add an option to a `select()` | Yes | Nothing. |
-| Remove a field | Yes | Nothing. The value stays in the file until the next save of that entry. |
+| Remove a field | Yes | Nothing. Mica keeps the value in the file, and the website does not get it. To delete it, use `remove-field.mjs`. |
 | Add a required field | No | `npx mica check` reports each old entry without a value, and an editor cannot publish a change to it before it has one. Give them a value with `fill-field.mjs`, or let editors do it. |
 | Rename a field | No | The editor and Astro do not see the old key, so the value seems to be lost. It is still in the file. Use `rename-field.mjs`. For a rich-text field, it renames the `.mdoc` file. |
 | Change `text()` or `textarea()` to `richText()` | No | The value moves from the JSON file to a `.mdoc` file. Use `text-to-rich-text.mjs`. |
@@ -145,6 +145,43 @@ for (const slug of await collectionSlugs(fileSystemSource(root), collection)) {
 ```
 
 The value is JSON: a text in double quotes, a number, `true`, or a list. The script does not fill a rich-text field, because rich text is a file: write it in the editor.
+
+### Delete a removed field
+
+Mica keeps a value whose field is not in the model: a save does not delete it, because the model and the content can arrive in different commits. To delete the content of a field on purpose, remove the field from the model, run `npx astro sync`, then:
+
+```bash
+node scripts/remove-field.mjs content team phone
+```
+
+```js
+// Deletes a top-level field and its .mdoc file from every entry of a collection, after it left the model.
+// Mica keeps a field that the model does not declare, so this is how its content goes. node remove-field.mjs <content root> <collection> <key>
+import { existsSync } from "node:fs";
+import { readFile, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+
+import { collectionSlugs, documentName, entryFolder, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
+import { fileSystemSource } from "@micacms/core/node";
+
+const [root, collection, key] = process.argv.slice(2);
+const manifest = JSON.parse(await readFile(join(root, MANIFEST_PATH), "utf8"));
+const def = manifest.collections[collection];
+if (!def) throw new Error(`The model has no collection "${collection}".`);
+if (def.fields[key]) throw new Error(`"${key}" is still in the model. Remove it there, and run \`npx astro sync\` first.`);
+
+for (const slug of await collectionSlugs(fileSystemSource(root), collection)) {
+  const base = join(root, entryFolder(collection, slug));
+  const file = join(base, INDEX_FILE);
+  if (!existsSync(file)) continue;
+  const data = JSON.parse(await readFile(file, "utf8"));
+  if (key in data) {
+    delete data[key];
+    await writeFile(file, `${JSON.stringify(data, null, 2)}\n`);
+  }
+  await rm(join(base, documentName([key])), { force: true });
+}
+```
 
 ## There is no automatic rename
 

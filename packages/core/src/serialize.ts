@@ -13,6 +13,10 @@
  *      fields are rich text, and `documentName` says where each one lives. A
  *      missing sidecar means the field is empty. In a repeater, the row's key
  *      names the file (`row-key.ts`), so a reorder renames nothing.
+ *
+ * A key that the model does not declare stays in the file, after the declared
+ * ones (#217): the model and the content can arrive in different commits, and
+ * a save must not delete content that a newer model reads.
  */
 
 import { documentName, type PathSegment } from "./layout.js";
@@ -26,28 +30,29 @@ export interface SerializedEntry {
   documents: Record<string, string>;
 }
 
+/** `stored`: the entry's `index.json` as it is now, whose undeclared keys stay. */
 export function serializeEntry(
   fields: FieldMap,
   data: Record<string, unknown>,
+  stored: Record<string, unknown> = {},
 ): SerializedEntry {
   const documents: Record<string, string> = {};
-  const structured = project(fields, data, [], documents);
+  const structured = project(fields, data, [], documents, stored);
 
   return { data: `${JSON.stringify(structured, null, 2)}\n`, documents };
 }
 
 /**
- * Rebuilds a payload in model order, lifting rich text out into `documents`.
- *
- * Keys the model no longer declares are dropped, matching `fieldsSchema`, which
- * strips them. Retiring a field therefore removes it from the repository at the
- * next save rather than leaving an orphan the format cannot explain.
+ * Rebuilds a payload in model order, lifting rich text out into `documents`,
+ * then adds the keys of `stored` that the model does not declare, in their
+ * stored order.
  */
 function project(
   fields: FieldMap,
   data: Record<string, unknown>,
   path: readonly PathSegment[],
   documents: Record<string, string>,
+  stored: Record<string, unknown>,
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {};
 
@@ -61,7 +66,11 @@ function project(
       continue;
     }
 
-    result[key] = projectValue(field, value, here, documents);
+    result[key] = projectValue(field, value, here, documents, stored[key]);
+  }
+
+  for (const [key, value] of Object.entries(stored)) {
+    if (!(key in fields) && key !== ROW_KEY) result[key] = value;
   }
 
   return result;
@@ -72,18 +81,27 @@ function projectValue(
   value: unknown,
   path: readonly PathSegment[],
   documents: Record<string, string>,
+  stored: unknown,
 ): unknown {
   if (field.kind === "object") {
-    return project(field.fields, asRecord(value), path, documents);
+    return project(field.fields, asRecord(value), path, documents, asRecord(stored));
   }
 
   if (field.kind === "repeater") {
     const rows = Array.isArray(value) ? value : [];
-    if (!needsRowKey(field.fields)) return rows.map((row) => project(field.fields, asRecord(row), path, documents));
+    // A row without a key has no identity across a reorder: its undeclared keys are not kept.
+    if (!needsRowKey(field.fields)) return rows.map((row) => project(field.fields, asRecord(row), path, documents, {}));
     const keys = rowKeys(rows);
+    const storedRows = Array.isArray(stored) ? stored.map(asRecord) : [];
     return rows.map((row, index) => ({
       [ROW_KEY]: keys[index],
-      ...project(field.fields, asRecord(row), [...path, keys[index]!], documents),
+      ...project(
+        field.fields,
+        asRecord(row),
+        [...path, keys[index]!],
+        documents,
+        storedRows.find((candidate) => candidate[ROW_KEY] === keys[index]) ?? {},
+      ),
     }));
   }
 

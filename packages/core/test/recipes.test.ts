@@ -88,6 +88,20 @@ describe("the migration recipes", () => {
     assert.equal(json(root, "people/ben/index.json").role, "Consultant");
   });
 
+  it("remove a field and its file, and refuse one that is still in the model", () => {
+    const root = content({
+      "people/ana/index.json": { name: "Ana", phone: "+41 00", role: "Lead" },
+      "people/ana/phone.mdoc": "Old text.\n",
+    });
+    run("remove-field.mjs", root, "people", "phone");
+    assert.deepEqual(json(root, "people/ana/index.json"), { name: "Ana", role: "Lead" });
+    assert.throws(() => readFileSync(join(root, "people/ana/phone.mdoc")));
+
+    const refused = spawnSync(process.execPath, [join(RECIPES, "remove-field.mjs"), root, "people", "role"], { encoding: "utf8" });
+    assert.notEqual(refused.status, 0);
+    assert.match(refused.stderr, /still in the model/);
+  });
+
   it("are on the website as they are here", () => {
     const page = readFileSync(PAGE, "utf8");
     for (const recipe of readdirSync(RECIPES)) {
