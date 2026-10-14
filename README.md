@@ -233,8 +233,12 @@ mandatory cloud services.
 ### Updating dependencies
 
 Dependabot opens pull requests for the GitHub Actions and the image's base
-(`.github/dependabot.yml`). It cannot update the Rush lockfile, so npm packages
-are updated by hand:
+(`.github/dependabot.yml`). It cannot update the Rush lockfile, so
+`.github/workflows/dependencies.yml` does: on the 3rd of each month it runs
+`rush update --full` and opens a pull request. Close and reopen that pull
+request to start CI. Every Monday the same workflow audits what Mica ships,
+the editor's bundled libraries included, and opens an issue on a high or
+critical finding. By hand:
 
 ```bash
 rush update --full     # newest versions inside the ranges in each package.json
