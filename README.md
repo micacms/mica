@@ -255,8 +255,8 @@ verifies it, and its comment becomes the package's changelog entry (bump type
 rush version-bump                 # consume the change files: bump every
                                   # manifest, write the package changelogs
 git commit -am "Release 0.2.0"
-git tag -a v0.2.0 -m "Release 0.2.0"  # annotated: --follow-tags pushes it
-git push origin main --follow-tags
+git tag -a v0.2.0 -m "Release 0.2.0"
+git push --atomic origin main v0.2.0  # the commit and the tag, or neither
 ```
 
 The tag is the trigger and the only one — a merge to `main` publishes nothing.

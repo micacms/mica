@@ -79,12 +79,14 @@ ghcr.io, so never run it without the user explicitly asking):
 ```bash
 git commit -am "Release X.Y.Z"
 git tag -a vX.Y.Z -m "Release X.Y.Z"
-git push origin main --follow-tags
+git push --atomic origin main vX.Y.Z
 ```
 
-The release workflow re-runs the full CI gate before publishing, checks the
-tag against every manifest, and builds the GitHub release notes from the
-CHANGELOG section written in step 2.
+`--atomic` pushes the commit and the tag together or neither, so a tag never
+publishes a commit that is not on `main`. The release workflow checks the tag
+against every manifest and the CHANGELOG section, and re-runs the full CI gate
+without any write right. Then it pushes the image, publishes npm behind the
+`release` environment, and creates the GitHub release from that section.
 
 ## A release candidate (`X.Y.Z-rc.N`)
 
