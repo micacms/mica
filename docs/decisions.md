@@ -385,15 +385,17 @@ database. One model removed about 2,000 lines and the `@micacms/connectors`
 package.
 
 **Consequence:** the data volume holds the clone and, in it, the unpublished
-drafts — back it up as before. A clone that does not match the configuration
-is thrown away only when it holds no draft and no unpushed commit; otherwise
-Mica refuses to start and says how to get the work out. One Mica per volume:
+drafts — back it up as before. A clone for another branch is thrown away only
+when it holds no draft and no unpushed commit; otherwise Mica refuses to start
+and says how to get the work out. A new URL keeps the clone, which fetches from
+it (#230). One Mica per volume:
 a lease file with a heartbeat names the process that uses the clone, and a
 second one waits for the lease to expire, then refuses (#229). A lease without
 a heartbeat expires after 30 seconds, so a crash does not block the restart.
 With the lease held, the start removes every Git lock file that a stop left.
 A fast-forward that fails and cannot be undone makes Mica read-only until a
-restart finishes it. For a hosted offering later, a clean clone can move to a new node,
+restart finishes it. `compact` makes a new clone when it holds no work, so
+that the volume gets smaller. For a hosted offering later, a clean clone can move to a new node,
 and the drafts pin a site to its volume, as the SQLite file did.
 
 **What would change it:** sites whose media outgrows a full checkout of the
@@ -418,7 +420,11 @@ changes with the drafts **per entry group** — an entry with its files, a
 singleton, an order — and fast-forwards only when none overlap. An overlap is
 a conflict the editor resolves: "Keep my version" (the draft moves onto the
 new head) or "Use the website's version" (the draft is discarded). Mica never
-merges, rebases, stashes or pulls on the server.
+merges, rebases, stashes or pulls on the server. A rewritten branch (a force
+push or a reset) is followed: the drafts, and a publication that never reached
+the host, are put aside, the clone moves to the new head, and the drafts are
+written back and shown as conflicts (#230). Those conflicts are kept in memory
+only; after a restart, the drafts stay but show as plain drafts.
 
 **Why:** a server has no person to resolve a merge, and a draft is a set of
 whole files, so file-level choices are enough. Mica checks itself because

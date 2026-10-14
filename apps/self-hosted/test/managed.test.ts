@@ -2,6 +2,7 @@
 
 import assert from "node:assert/strict";
 import {
+  cpSync,
   existsSync,
   lstatSync,
   mkdtempSync,
@@ -133,26 +134,35 @@ describe("the clone", () => {
     assert.ok(host.authorizations.some((header) => header.startsWith("Basic ")));
   });
 
-  it("is cloned again when the URL changed and it holds no work", async () => {
+  it("keeps the clone and its draft when the repository moved to a new URL", async () => {
     const s = await setup();
+    writeIn(s.repo, "content/theme.json", '{"color":"draft"}\n');
+    cpSync(host.bare(s.name), host.bare(`${s.name}-moved`), { recursive: true });
+    const remote = parseRemote(host.url(`${s.name}-moved`));
+    const env = managedEnvironment({ remote, cloneDir: s.repo, username: "oauth2", token: TOKEN });
+    const before = head(s);
+    await openClone({ layout: s.layout, url: remote.url, branch: "main", root: null, env, logger });
+    assert.equal(devGit(s.repo, "config", "--get", "remote.origin.url"), remote.url);
+
+    const state = await s.workspace.sync();
+    assert.equal(state.error, null, state.error?.message);
+    assert.equal(head(s), before);
+    assert.equal(read(s, "content/theme.json"), '{"color":"draft"}\n');
+  });
+
+  it("follows a new URL with another history, and keeps the drafts as conflicts", async () => {
+    const s = await setup();
+    writeIn(s.repo, "content/posts/a/index.json", '{"title":"Draft"}\n');
     seedRepository(host, `${s.name}-other`, { ...SEED, "content/theme.json": '{"color":"blue"}\n' });
     const remote = parseRemote(host.url(`${s.name}-other`));
     const env = managedEnvironment({ remote, cloneDir: s.repo, username: "oauth2", token: TOKEN });
-    await openClone({ layout: s.layout, url: remote.url, branch: "main", root: "content", env, logger });
-    assert.equal(read(s, "content/theme.json"), '{"color":"blue"}\n');
-  });
+    await openClone({ layout: s.layout, url: remote.url, branch: "main", root: null, env, logger });
 
-  it("refuses to start when the URL changed and it holds a draft", async () => {
-    const s = await setup();
-    writeIn(s.repo, "content/theme.json", '{"color":"draft"}\n');
-    seedRepository(host, `${s.name}-moved`, SEED);
-    const remote = parseRemote(host.url(`${s.name}-moved`));
-    const env = managedEnvironment({ remote, cloneDir: s.repo, username: "oauth2", token: TOKEN });
-    await assert.rejects(
-      openClone({ layout: s.layout, url: remote.url, branch: "main", root: "content", env, logger }),
-      (error: unknown) => error instanceof CloneRefusal && /content\/theme\.json/.test((error as Error).message),
-    );
-    assert.equal(read(s, "content/theme.json"), '{"color":"draft"}\n');
+    const state = await s.workspace.sync();
+    assert.equal(state.error, null, state.error?.message);
+    assert.equal(read(s, "content/theme.json"), '{"color":"blue"}\n');
+    assert.equal(read(s, "content/posts/a/index.json"), '{"title":"Draft"}\n');
+    assert.deepEqual(state.conflicts.map((conflict) => conflict.key), ["posts/a"]);
   });
 
   it("refuses Git LFS under the content root", async () => {
@@ -296,22 +306,69 @@ describe("sync", () => {
     assert.equal(read(s, "content/posts/a/index.json"), '{"title":"Mine"}\n');
   });
 
-  it("reports a rewritten branch instead of following it", async () => {
+  /** A developer rewrites the branch: the clone's head is no longer on it. */
+  function rewrite(s: Setup, color: string): string {
+    devGit(s.developer, "fetch", "--quiet", "origin");
+    devGit(s.developer, "reset", "--hard", "--quiet", "origin/main^");
+    writeIn(s.developer, "content/theme.json", `{"color":"${color}"}\n`);
+    devGit(s.developer, "commit", "--quiet", "-am", "Rewritten");
+    devGit(s.developer, "push", "--quiet", "--force", "origin", "HEAD:main");
+    return devGit(s.developer, "rev-parse", "HEAD");
+  }
+
+  it("follows a rewritten branch", async () => {
     const s = await setup();
     upstream(s, (dir) => writeIn(dir, "content/theme.json", '{"color":"one"}\n'));
     await s.workspace.sync();
-    // A developer rewrites the branch: the clone's head is no longer on it.
-    devGit(s.developer, "reset", "--hard", "HEAD^");
-    writeIn(s.developer, "content/theme.json", '{"color":"rewritten"}\n');
-    devGit(s.developer, "commit", "--quiet", "-am", "Rewritten");
-    devGit(s.developer, "push", "--quiet", "--force", "origin", "main");
+    const to = rewrite(s, "rewritten");
 
     const state = await s.workspace.sync();
-    assert.equal(state.error?.code, "diverged");
-    assert.equal(read(s, "content/theme.json"), '{"color":"one"}\n');
+    assert.equal(state.error, null, state.error?.message);
+    assert.equal(head(s), to);
+    assert.equal(read(s, "content/theme.json"), '{"color":"rewritten"}\n');
+    assert.deepEqual(state.conflicts, []);
   });
 
-  it("does not push again a publication that a force push took back, and refuses to publish", async () => {
+  it("keeps the drafts on a rewritten branch as conflicts until an editor chooses", async () => {
+    const s = await setup();
+    upstream(s, (dir) => writeIn(dir, "content/theme.json", '{"color":"one"}\n'));
+    await s.workspace.sync();
+    writeIn(s.repo, "content/posts/a/index.json", '{"title":"Draft"}\n');
+    writeIn(s.repo, "content/posts/new/index.json", '{"title":"New"}\n');
+    rewrite(s, "rewritten");
+
+    const state = await s.workspace.sync();
+    assert.equal(state.error, null, state.error?.message);
+    assert.equal(read(s, "content/posts/a/index.json"), '{"title":"Draft"}\n');
+    assert.equal(read(s, "content/posts/new/index.json"), '{"title":"New"}\n');
+    assert.deepEqual(state.conflicts.map((conflict) => conflict.key).sort(), ["posts/a", "posts/new"]);
+    assert.equal(s.workspace.policy.publishAvailability().enabled, false);
+    // A timed sync does not clear them.
+    assert.equal((await s.workspace.sync()).conflicts.length, 2);
+
+    assert.equal((await s.workspace.resolve("posts/a", "website")).conflicts.length, 1);
+    assert.equal(read(s, "content/posts/a/index.json"), '{"title":"A"}\n');
+    assert.deepEqual((await s.workspace.resolve("posts/new", "mine")).conflicts, []);
+    assert.equal(read(s, "content/posts/new/index.json"), '{"title":"New"}\n');
+  });
+
+  it("keeps a publication that never reached the host when the branch is rewritten", async () => {
+    const s = await setup();
+    upstream(s, (dir) => writeIn(dir, "content/theme.json", '{"color":"one"}\n'));
+    await s.workspace.sync();
+    writeIn(s.repo, "content/posts/a/index.json", '{"title":"Unpushed"}\n');
+    const tree = { git: s.git, prefix: "content", contentRoot: join(s.repo, "content") };
+    await commitPaths(tree, ["posts/a/index.json"], "Edit A", { name: "E", email: "e@example.com" });
+    const to = rewrite(s, "rewritten");
+
+    const state = await s.workspace.sync();
+    assert.equal(state.error, null, state.error?.message);
+    assert.equal(head(s), to);
+    assert.equal(read(s, "content/posts/a/index.json"), '{"title":"Unpushed"}\n');
+    assert.deepEqual(state.conflicts.map((conflict) => conflict.key), ["posts/a"]);
+  });
+
+  it("does not push again a publication that a force push took back", async () => {
     const s = await setup();
     writeIn(s.repo, "content/posts/a/index.json", '{"title":"Published"}\n');
     const tree = { git: s.git, prefix: "content", contentRoot: join(s.repo, "content") };
@@ -324,9 +381,10 @@ describe("sync", () => {
     devGit(s.developer, "push", "--quiet", "--force", "origin", "HEAD:main");
 
     const state = await s.workspace.sync();
-    assert.equal(state.error?.code, "diverged");
+    assert.equal(state.error, null, state.error?.message);
     assert.notEqual(devGit(host.bare(s.name), "rev-parse", "main"), revision);
-    await assert.rejects(s.workspace.policy.prepare(tree), ApiError);
+    assert.notEqual(read(s, "content/posts/a/index.json"), '{"title":"Published"}\n');
+    assert.deepEqual(state.conflicts, []);
   });
 
   it("reads an upstream file whose name starts with a colon", async () => {
