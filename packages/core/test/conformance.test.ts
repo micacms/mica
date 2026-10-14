@@ -20,7 +20,7 @@ import {
   relativizeMedia,
   serializeEntry,
   type FieldMap,
-} from "../dist/index.js";
+} from "../dist/internal.js";
 import { fileSystemSource } from "../dist/node.js";
 
 const FIXTURES = join(import.meta.dirname, "fixtures/format");
