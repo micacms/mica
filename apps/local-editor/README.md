@@ -39,13 +39,12 @@ site's dev server hot-reloads, and Publish turns the reviewed changes into one
 commit pushed with your own Git configuration (`MICA_LOCAL_PUBLISH=false`
 keeps Publish out of the editor entirely).
 
-## Two more commands
+## More commands
 
 ```bash
 npx @micacms/editor init     # add Mica to the Astro project in this directory
 npx @micacms/editor check    # check every entry against the model
-npx @micacms/editor migrate-layout   # move entries after a layout change, and key repeater rows
-npx @micacms/editor import           # move Astro collections into Mica
+npx @micacms/editor import   # move Astro collections into Mica
 ```
 
 `init` writes a starter `src/mica.ts` and `src/content.config.ts`, and never

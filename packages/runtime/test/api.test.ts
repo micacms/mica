@@ -451,11 +451,10 @@ describe("content", () => {
       path: string;
     };
     assert.equal(body.revision, null);
-    // A plain file, because `settings` declares no rich text and no media.
-    assert.equal(body.path, "settings.json");
+    assert.equal(body.path, "settings");
   });
 
-  it("saves a singleton to its own file", async () => {
+  it("saves a singleton to its own folder", async () => {
     const read = await harness.request("/api/admin/singletons/settings");
     const current = (await read.json()) as { data: Record<string, unknown>; revision: string | null };
 
@@ -469,7 +468,7 @@ describe("content", () => {
     });
 
     assert.equal(response.status, 200);
-    assert.match(file("settings.json"), /"siteName": "Mica"/);
+    assert.match(file("settings/index.json"), /"siteName": "Mica"/);
   });
 
   it("refuses a singleton save based on a stale revision", async () => {

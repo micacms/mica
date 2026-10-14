@@ -43,19 +43,7 @@ Added in 0.5.0.
 npx mica check [content dir]
 ```
 
-Checks every entry against the model: fields that do not validate, missing media, relations to entries that do not exist, entries in the wrong layout, and files that Mica does not read. It prints each problem. Use it in CI.
-
-### migrate-layout
-
-Added in 0.6.0.
-
-```bash
-npx mica migrate-layout [content dir]
-```
-
-Moves the entries that a model change left in the other layout: a file entry (`<slug>.json`) becomes a folder entry (`<slug>/index.json`), or the reverse. See [Change the model](/docs/model-changes/).
-
-It also converts content from Mica 0.8 or earlier: it gives each repeater row with rich text its key, and renames the row's `.mdoc` files from the row number to the key (`sections.0.body.mdoc` becomes `sections.k3f9a2.body.mdoc`). It changes nothing else in the entry. Until you run it, Mica refuses to read such an entry. See [Fields](/docs/reference-fields/).
+Checks every entry against the model: fields that do not validate, missing media, relations to entries that do not exist, and files that Mica does not read. It prints each problem. Use it in CI.
 
 ### import
 
@@ -79,9 +67,9 @@ Moves Astro content collections into Mica, from Astro's data store. Without name
 | Code | Meaning |
 | --- | --- |
 | `0` | Done. `check` found no error. |
-| `1` | `check` found an error or no model, `migrate-layout` found a conflict, `import` failed, or `start` could not start, for example because the port is in use. |
+| `1` | `check` found an error or no model, `import` failed, or `start` could not start, for example because the port is in use. |
 | `64` | Wrong use: an unknown command or option, a missing value, no content directory, or `init` cannot run here. |
-| `78` | Configuration: `start` found no content model, a model that it cannot read, entries in the wrong layout, or a setting that the local editor does not allow, such as a `HOST` that is not on this computer. |
+| `78` | Configuration: `start` found no content model, a model that it cannot read, or a setting that the local editor does not allow, such as a `HOST` that is not on this computer. |
 
 ## The self-hosted image
 

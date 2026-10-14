@@ -15,6 +15,7 @@ import type {
   SingletonOptions,
   Site,
 } from "./types.js";
+import { MEDIA_DIR } from "./layout.js";
 import { textPattern } from "./pattern.js";
 import { RICH_TEXT_TOOLBARS } from "./rich-text.js";
 
@@ -67,14 +68,16 @@ const NAME_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
 
 /**
  * Names that would collide with the structure of the protocol manifest, which
- * keys collections and singletons by name alongside its own metadata. Rejected
- * here rather than producing a confusing shadowing later.
+ * keys collections and singletons by name alongside its own metadata, or with
+ * the shared media folder beside their folders. Rejected here rather than
+ * producing a confusing shadowing later.
  */
 const RESERVED_NAMES = new Set([
   "collections",
   "singletons",
   "protocolVersion",
   "generatedBy",
+  MEDIA_DIR,
 ]);
 
 function assertValidSite(site: Site): void {

@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@micacms/astro",
-      "comment": "Templates do not get the `_key` of repeater rows. The build stops on content from Mica 0.8 or earlier that names repeater rows by number, until you run `npx mica migrate-layout`.",
+      "comment": "Templates do not get the `_key` of repeater rows.",
       "type": "patch"
     }
   ],

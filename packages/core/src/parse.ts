@@ -10,13 +10,13 @@
  * say"; `validateFields` answers "may it be published".
  */
 
-import { FormatError, documentPath, type PathSegment } from "./layout.js";
+import { FormatError, documentPath } from "./layout.js";
 import { withDefaults } from "./defaults.js";
 import { ROW_KEY } from "./row-key.js";
 import type { AnyField, FieldMap } from "./types.js";
 
 export interface EntryFiles {
-  /** Contents of `index.json`, or of the standalone `<slug>.json`. */
+  /** Contents of `index.json`. */
   data: string;
   /** Rich-text sidecars, keyed by file name relative to the entry. */
   documents?: Record<string, string>;
@@ -59,19 +59,15 @@ function parseJson(text: string): Record<string, unknown> {
  * Walks the model in step with the data so that a path is only followed where
  * the model agrees it leads somewhere — `sections.k3f9a2.body` has to pass
  * through a repeater called `sections`, a row with that key, and land on a
- * rich-text field called `body`. A row number instead of a key is the format
- * from before the keys: it places nothing here, and the reader refuses the entry
- * (`RowNumberError`), as it refuses an entry in the other layout.
+ * rich-text field called `body`.
  */
 function place(
   fields: FieldMap,
   data: Record<string, unknown>,
-  path: readonly PathSegment[],
+  path: readonly string[],
   contents: string,
 ): void {
-  const [head, ...rest] = path;
-  if (typeof head !== "string") return;
-
+  const [head = "", ...rest] = path;
   const field: AnyField | undefined = fields[head];
   if (!field) return;
 
@@ -90,7 +86,7 @@ function place(
   if (field.kind === "repeater") {
     const [segment, ...tail] = rest;
     const rows = data[head];
-    if (typeof segment !== "string" || !Array.isArray(rows)) return;
+    if (!Array.isArray(rows)) return;
 
     const row = rows.find((item) => item !== null && typeof item === "object" && (item as Record<string, unknown>)[ROW_KEY] === segment);
     if (row === null || typeof row !== "object" || Array.isArray(row)) return;

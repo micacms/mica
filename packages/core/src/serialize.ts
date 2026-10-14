@@ -20,7 +20,7 @@ import { needsRowKey, ROW_KEY, rowKeys } from "./row-key.js";
 import type { AnyField, FieldMap } from "./types.js";
 
 export interface SerializedEntry {
-  /** Contents of `index.json`, or of the standalone `<slug>.json`. */
+  /** Contents of `index.json`. */
   data: string;
   /** Rich-text sidecars, keyed by file name relative to the entry. */
   documents: Record<string, string>;

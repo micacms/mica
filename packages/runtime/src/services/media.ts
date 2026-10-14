@@ -13,9 +13,6 @@ import { imageSize } from "image-size";
 import { ApiError, badRequest } from "../lib/errors.js";
 import { detectFileType, isAccepted, isImageType, SVG_TYPE, VIDEO_TYPE } from "../lib/file-type.js";
 
-/** Where uploads go when they are not attached to a particular entry. */
-export const SHARED_MEDIA_DIR = "media";
-
 export interface MediaServiceDeps {
   files: ContentFiles;
   maxBytes: number;
@@ -58,7 +55,7 @@ export function createMediaService(deps: MediaServiceDeps) {
       accept?: "image" | "document" | "any";
     }): Promise<{ file: MediaFile; contents: Uint8Array }> {
       const { file } = input;
-      const directory = uploadDirectory(input.directory ?? SHARED_MEDIA_DIR);
+      const directory = uploadDirectory(input.directory ?? MEDIA_DIR);
 
       if (file.size === 0) throw badRequest("The file is empty.");
       if (file.size > maxBytes) {

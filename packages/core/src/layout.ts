@@ -1,87 +1,38 @@
 /**
- * How a collection entry or a singleton is laid out in the repository.
+ * How a collection entry or a singleton is laid out in the repository: a
+ * folder with `index.json`, its rich text and its media.
  *
- * The layout is *derived from the model*, never declared. A content directory
- * is therefore reproducible: given the same model, two Mica versions agree on
- * where every file belongs, and a human reading the repository can predict the
- * path of anything without consulting the CMS.
- *
- *   projects/                       collection, directory layout
- *   └── buchholzstrasse/
+ *   projects/                       collection
+ *   └── buchholzstrasse/            entry
  *       ├── index.json              structured fields
  *       ├── description.mdoc        one rich-text field
  *       └── media/                  colocated media
  *           └── exterior.jpg
  *
- *   team/                           collection, file layout
- *   └── anna-vogt.json
+ *   site/                           singleton
+ *   └── index.json
  *
- *   site.json                       singleton, file layout
+ *   media/                          shared media
  */
-
-import type { FieldMap } from "./types.js";
 
 export class FormatError extends Error {
   override name = "FormatError";
 }
 
-/** File name holding the structured fields of a directory-shaped entry. */
+/** File name holding the structured fields of an entry. */
 export const INDEX_FILE = "index.json";
 
-/** Directory holding media colocated with a directory-shaped entry. */
+/** Directory holding media colocated with an entry, and the shared media folder at the content root. */
 export const MEDIA_DIR = "media";
 
 /** Extension of a rich-text sidecar. */
 export const DOCUMENT_EXTENSION = ".mdoc";
 
-/**
- * `directory` when the entry owns more than one file, `file` when a single
- * JSON document says everything there is to say about it.
- */
-export type EntryLayout = "file" | "directory";
-
-/** Layouts that a manifest recorded, for field maps read back from it. */
-const recorded = new WeakMap<FieldMap, EntryLayout>();
-
-/**
- * Makes `entryLayout(fields)` return the layout the manifest recorded. A reader
- * calls it, so that a field kind it does not know cannot change where it
- * looks for the entries.
- */
-export function recordLayout(fields: FieldMap, layout: EntryLayout): void {
-  recorded.set(fields, layout);
-}
-
-/** The recorded layout of these fields, or the one they imply. */
-export function entryLayout(fields: FieldMap): EntryLayout {
-  return recorded.get(fields) ?? deriveLayout(fields);
-}
-
-/**
- * A model needs a directory when it can produce sidecar files: rich text is
- * written to `.mdoc`, and media is colocated under `media/`. Anything else
- * fits in one JSON document, which keeps small singletons and flat collections
- * — a team list, a set of links — readable as a single file.
- */
-export function deriveLayout(fields: FieldMap): EntryLayout {
-  return needsSidecars(fields) ? "directory" : "file";
-}
-
-function needsSidecars(fields: FieldMap): boolean {
-  for (const field of Object.values(fields)) {
-    if (field.kind === "richText" || field.kind === "media") return true;
-    if (field.kind === "object" || field.kind === "repeater") {
-      if (needsSidecars(field.fields)) return true;
-    }
-  }
-  return false;
-}
-
 /* ------------------------------------------------------------------ *
  * Paths
  * ------------------------------------------------------------------ */
 
-/** A path segment: a field key, or a repeater row: its key, or its number in content from before the keys. */
+/** A path segment: a field key, a repeater row's key, or a row's index in the data. */
 export type PathSegment = string | number;
 
 /**
@@ -98,63 +49,33 @@ export function documentName(path: readonly PathSegment[]): string {
 }
 
 /** The reverse of `documentName`, for reading a directory back. */
-export function documentPath(name: string): PathSegment[] {
+export function documentPath(name: string): string[] {
   if (!name.endsWith(DOCUMENT_EXTENSION)) {
     throw new FormatError(`"${name}" is not a rich-text document.`);
   }
-  return name
-    .slice(0, -DOCUMENT_EXTENSION.length)
-    .split(".")
-    .map((segment) => (/^\d+$/.test(segment) ? Number(segment) : segment));
+  return name.slice(0, -DOCUMENT_EXTENSION.length).split(".");
+}
+
+/** The folder of a collection entry, or of a singleton without `slug`: `team/anna-vogt`, `site`. */
+export function entryFolder(name: string, slug?: string): string {
+  return slug === undefined ? name : `${name}/${slug}`;
+}
+
+/** The file with the structured fields of a collection entry or a singleton. */
+export function entryDataPath(name: string, slug?: string): string {
+  return `${entryFolder(name, slug)}/${INDEX_FILE}`;
 }
 
 /**
- * Where one entry of a collection lives, relative to the content root.
- *
- * `file` layout yields a path to the JSON document itself; `directory` layout
- * yields the directory, whose structured fields are in `index.json`.
- */
-export function collectionEntryPath(fields: FieldMap, collection: string, slug: string): string {
-  return entryLayout(fields) === "directory"
-    ? `${collection}/${slug}`
-    : `${collection}/${slug}.json`;
-}
-
-/** Where one singleton lives, relative to the content root. */
-export function singletonPath(fields: FieldMap, name: string): string {
-  return entryLayout(fields) === "directory" ? name : `${name}.json`;
-}
-
-/**
- * Every file of an entry, keyed by path relative to the content root.
- *
- * `base` is a `collectionEntryPath` or a `singletonPath`. Media is not included:
- * it is written and moved by the media pipeline, not by the serializer, which
- * only records the paths that reference it.
+ * Every file of an entry, keyed by path relative to the content root. Media is
+ * not included: it is written and moved by the media pipeline, not by the
+ * serializer, which only records the paths that reference it.
  */
 export function entryFiles(
-  fields: FieldMap,
-  base: string,
+  folder: string,
   serialized: { data: string; documents: Record<string, string> },
 ): Record<string, string> {
-  const files: Record<string, string> = {};
-
-  if (entryLayout(fields) === "file") {
-    files[base] = serialized.data;
-    // A file-shaped entry has no sidecars by construction; if one appears, the
-    // layout rule and the serializer have drifted apart.
-    const stray = Object.keys(serialized.documents)[0];
-    if (stray) {
-      throw new FormatError(
-        `Entry "${base}" has file layout but produced the sidecar "${stray}".`,
-      );
-    }
-    return files;
-  }
-
-  files[`${base}/${INDEX_FILE}`] = serialized.data;
-  for (const [name, contents] of Object.entries(serialized.documents)) {
-    files[`${base}/${name}`] = contents;
-  }
+  const files: Record<string, string> = { [`${folder}/${INDEX_FILE}`]: serialized.data };
+  for (const [name, contents] of Object.entries(serialized.documents)) files[`${folder}/${name}`] = contents;
   return files;
 }

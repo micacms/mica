@@ -3,19 +3,18 @@
 import type { Author } from "../workspace/files.js";
 import {
   type Collection,
-  collectionEntryPath,
   collectReferences,
   type ContentChange,
   type ContentSource,
   createReferenceCheck,
-  entryLayout,
+  entryDataPath,
+  entryFolder,
   entryTitle,
   type FieldIssue,
   type FieldMap,
   isValidSlug,
-  LayoutError,
   markdocImages,
-  misplacedFiles,
+  MEDIA_DIR,
   ORDER_FILE,
   type PublishResult,
   readCollection,
@@ -26,7 +25,6 @@ import {
   resolveMarkdocTarget,
   resolveSlugField,
   richTextValues,
-  singletonPath,
   type Site,
   validateFields,
 } from "@micacms/core";
@@ -170,15 +168,11 @@ export async function compareSources(
   staged: ContentSource,
   target: CompareTarget,
 ): Promise<Comparison> {
-  // During a layout migration, or the row keys of #220, HEAD still has the old files: then there is no "before".
-  const before = <T>(read: () => Promise<T>): Promise<T | null> =>
-    read().catch((error: unknown) => (error instanceof LayoutError ? null : Promise.reject(error)));
-
   if (target.kind === "singleton") {
     const def = model.singletons[target.name];
     if (!def) throw badRequest(`There is no singleton called "${target.name}".`);
     return {
-      before: await before(() => readSingleton(published, def, target.name)),
+      before: await readSingleton(published, def, target.name),
       after: await readSingleton(staged, def, target.name),
     };
   }
@@ -191,7 +185,7 @@ export async function compareSources(
     for (const slug of [target.slug, from]) {
       if (!isValidSlug(slug)) throw badRequest(`"${slug}" is not a slug.`);
     }
-    const old = await before(() => readCollectionEntry(published, def, target.collection, from));
+    const old = await readCollectionEntry(published, def, target.collection, from);
     const after = await readCollectionEntry(staged, def, target.collection, target.slug);
     if (from === target.slug) return { before: old, after };
 
@@ -211,7 +205,7 @@ export async function compareSources(
     };
   };
 
-  return { before: await before(() => ordering(published)), after: await ordering(staged) };
+  return { before: await ordering(published), after: await ordering(staged) };
 }
 
 /**
@@ -236,12 +230,8 @@ export async function analyseChanges(
    */
   const entriesByCollection = new Map<string, Map<string, Record<string, unknown> | null>>();
 
-  const collectionsChanged = new Set<string>();
   const ordersChanged = new Set<string>();
-  for (const owner of owners) {
-    if (owner.kind === "entry" || owner.kind === "order") collectionsChanged.add(owner.collection);
-    if (owner.kind === "order") ordersChanged.add(owner.collection);
-  }
+  for (const owner of owners) if (owner.kind === "order") ordersChanged.add(owner.collection);
   // A changed order file must still parse: the website's build reads it.
   await Promise.all(
     [...ordersChanged].map(async (name) => {
@@ -252,16 +242,6 @@ export async function analyseChanges(
         const path = (error as { path?: string }).path ?? `${name}/${ORDER_FILE}`;
         problems.push({ path, label: `${def.label}: order`, issues: [{ path: "", message: (error as Error).message }] });
       }
-    }),
-  );
-  // An entry in the other layout is lost content: name it where the collection changes.
-  await Promise.all(
-    [...collectionsChanged].map(async (name) => {
-      const def = model.collections[name]!;
-      const misplaced = await misplacedFiles(source, def.fields, name, "collection").catch(() => []);
-      if (misplaced.length === 0) return;
-      const error = new LayoutError(misplaced, name, entryLayout(def.fields));
-      problems.push({ path: misplaced[0]!, label: def.label, issues: [{ path: "", message: error.message }] });
     }),
   );
 
@@ -286,7 +266,7 @@ export async function analyseChanges(
           // An unreadable entry is a problem at the path it names.
           read.set(slug, null);
           problems.push({
-            path: (error as { path?: string }).path ?? entryDataPath(def, name, slug),
+            path: (error as { path?: string }).path ?? entryDataPath(name, slug),
             label: def.label,
             issues: [{ path: "", message: (error as Error).message }],
           });
@@ -308,10 +288,8 @@ export async function analyseChanges(
   const addNeeds = (dataPath: string, fields: Collection["fields"], data: Record<string, unknown>): void => {
     const needed = new Set<string>();
     for (const reference of collectReferences(fields, data)) {
-      const def = reference.kind === "relation" ? model.collections[reference.collection] : undefined;
-      const path =
-        reference.kind === "media" ? reference.path : def ? entryDataPath(def, reference.collection, reference.slug) : null;
-      if (path && path !== dataPath && created.has(path)) needed.add(path);
+      const path = reference.kind === "media" ? reference.path : entryDataPath(reference.collection, reference.slug);
+      if (path !== dataPath && created.has(path)) needed.add(path);
     }
     // An image in rich text needs its new file too, for example an upload to the shared folder.
     for (const text of richTextValues(fields, data)) {
@@ -323,7 +301,7 @@ export async function analyseChanges(
     if (needed.size > 0) needsByPath.set(dataPath, [...needed]);
   };
   /** The folder of a data file, from which its rich text reads a relative path. */
-  const folderOf = (dataPath: string): string => (dataPath.includes("/") ? dataPath.slice(0, dataPath.lastIndexOf("/")) : "");
+  const folderOf = (dataPath: string): string => dataPath.slice(0, dataPath.lastIndexOf("/"));
 
   const validated = new Set<string>();
   // Each linked entry is looked up by its data file: only the targets that a changed document names.
@@ -340,17 +318,17 @@ export async function analyseChanges(
       const data = entriesByCollection.get(owner.collection)?.get(owner.slug);
       if (!data) continue;
 
-      const entryData = entryDataPath(def, owner.collection, owner.slug);
+      const entryData = entryDataPath(owner.collection, owner.slug);
       addNeeds(entryData, def.fields, data);
       if (published) {
         const { collection, slug } = owner;
-        publishedOf.set(entryDataPath(def, collection, slug), () => readCollectionEntry(published, def, collection, slug).catch(() => null));
+        publishedOf.set(entryData, () => readCollectionEntry(published, def, collection, slug).catch(() => null));
       }
       const result = validateFields(def.fields, data);
       const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data, folderOf(entryData)))];
       if (issues.length > 0) {
         problems.push({
-          path: entryDataPath(def, owner.collection, owner.slug),
+          path: entryData,
           label: labelEntry(def, owner.slug, titles.get(key)),
           issues,
         });
@@ -361,13 +339,11 @@ export async function analyseChanges(
       validated.add(`singleton:${owner.name}`);
 
       const def = model.singletons[owner.name]!;
-      const dataPath = singletonPath(def.fields, owner.name);
+      const dataFile = entryDataPath(owner.name);
       try {
         const data = await readSingleton(source, def, owner.name);
         if (data === null) continue;
 
-        // The data file, not the folder: a folder-layout singleton's change is `<name>/index.json`.
-        const dataFile = entryLayout(def.fields) === "directory" ? `${dataPath}/index.json` : dataPath;
         addNeeds(dataFile, def.fields, data);
         if (published) {
           const name = owner.name;
@@ -375,10 +351,10 @@ export async function analyseChanges(
         }
         const result = validateFields(def.fields, data);
         const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data, folderOf(dataFile)))];
-        if (issues.length > 0) problems.push({ path: dataPath, label: def.label, issues });
+        if (issues.length > 0) problems.push({ path: dataFile, label: def.label, issues });
       } catch (error) {
         problems.push({
-          path: (error as { path?: string }).path ?? dataPath,
+          path: (error as { path?: string }).path ?? dataFile,
           label: def.label,
           issues: [{ path: "", message: (error as Error).message }],
         });
@@ -392,7 +368,7 @@ export async function analyseChanges(
   const renamed = new Map(
     owners.flatMap((owner) =>
       owner.kind === "entry" && owner.renamedFrom
-        ? [[entryDataPath(model.collections[owner.collection]!, owner.collection, owner.slug), owner] as const]
+        ? [[entryDataPath(owner.collection, owner.slug), owner] as const]
         : [],
     ),
   );
@@ -454,30 +430,14 @@ export function classifyPath(model: Site, path: string): ChangeOwner {
       return { kind: "order", collection: head, label: `${collection.label}: order` };
     }
 
-    if (entryLayout(collection.fields) === "directory") {
-      const slug = segments[1]!;
-      if (segments.length >= 3 && isValidSlug(slug)) {
-        return { kind: "entry", collection: head, slug, label: slug };
-      }
-    } else if (segments.length === 2 && segments[1]!.endsWith(".json")) {
-      const slug = segments[1]!.slice(0, -".json".length);
-      if (isValidSlug(slug)) return { kind: "entry", collection: head, slug, label: slug };
-    }
+    const slug = segments[1]!;
+    if (segments.length >= 3 && isValidSlug(slug)) return { kind: "entry", collection: head, slug, label: slug };
   }
 
-  const singletonDir = model.singletons[head];
-  if (singletonDir && segments.length > 1) {
-    return { kind: "singleton", name: head, label: singletonDir.label };
-  }
-  if (head.endsWith(".json")) {
-    const name = head.slice(0, -".json".length);
-    const singleton = model.singletons[name];
-    if (singleton && segments.length === 1) {
-      return { kind: "singleton", name, label: singleton.label };
-    }
-  }
+  const singleton = model.singletons[head];
+  if (singleton && segments.length > 1) return { kind: "singleton", name: head, label: singleton.label };
 
-  if (head === "media") return { kind: "media", label: "Shared media" };
+  if (head === MEDIA_DIR) return { kind: "media", label: "Shared media" };
 
   return { kind: "other", label: path };
 }
@@ -609,19 +569,14 @@ function similarity(def: Collection, a: Record<string, unknown>, b: Record<strin
   return compared === 0 ? 0 : equal / compared;
 }
 
-/**
- * Entry data with media paths as the files store them: relative to the entry,
- * where it has a folder.
- */
+/** Entry data with media paths as the files store them: relative to the entry's folder. */
 function onDisk(
   def: Collection,
   collection: string,
   slug: string,
   data: Record<string, unknown>,
 ): Record<string, unknown> {
-  return entryLayout(def.fields) === "directory"
-    ? relativizeMedia(def.fields, data, collectionEntryPath(def.fields, collection, slug))
-    : data;
+  return relativizeMedia(def.fields, data, entryFolder(collection, slug));
 }
 
 function isEmpty(value: unknown): boolean {
@@ -702,7 +657,7 @@ async function brokenByRemoval(
       ? `The URL changes from "${entry.slug}" to "${entry.renamedTo}", and ${from.join(", ")} still link to "${entry.slug}". Change those links first, or publish them together.`
       : `Still linked from ${from.join(", ")}. Remove those links first, or publish them together.`;
     problems.push({
-      path: entry && def ? entryDataPath(def, entry.collection, entry.slug) : target,
+      path: entry ? entryDataPath(entry.collection, entry.slug) : target,
       label: entry && def ? labelEntry(def, entry.slug, titles.get(target)) : target,
       issues: [{ path: "", message }],
     });
@@ -712,11 +667,6 @@ async function brokenByRemoval(
 
 function labelEntry(def: Collection, slug: string, title: string | undefined): string {
   return `${def.labelSingular ?? def.label}: ${title ?? slug}`;
-}
-
-function entryDataPath(def: Collection, collection: string, slug: string): string {
-  const base = collectionEntryPath(def.fields, collection, slug);
-  return entryLayout(def.fields) === "directory" ? `${base}/index.json` : base;
 }
 
 export function describeProblems(problems: StagingProblem[]): string {

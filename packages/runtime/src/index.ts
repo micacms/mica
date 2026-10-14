@@ -30,7 +30,6 @@ export { startServer, type StartServerOptions } from "./server.js";
 export { actorOf, clientIp, type Env } from "./http.js";
 export {
   checkSchema,
-  layoutProblems,
   loadSchema,
   readOnlyParts,
   SchemaError,

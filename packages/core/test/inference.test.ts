@@ -82,8 +82,8 @@ describe("inferred entry types", () => {
   it("take an entry's URL from its file name, whatever the file holds", async () => {
     const site = defineSite({ collections: { team: collection({ label: "Team", fields: { name: text(), slug: slug() } }) } });
     const source = memorySource({
-      "team/anna.json": JSON.stringify({ name: "Anna", slug: "anna-vogt" }),
-      "team/ben.json": JSON.stringify({ name: "Ben", slug: null }),
+      "team/anna/index.json": JSON.stringify({ name: "Anna", slug: "anna-vogt" }),
+      "team/ben/index.json": JSON.stringify({ name: "Ben", slug: null }),
     });
     const entries = await readCollection(source, site.collections.team, "team");
     assert.deepEqual(entries.map((entry) => entry.data["slug"]), ["anna", "ben"]);

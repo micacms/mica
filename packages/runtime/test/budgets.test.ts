@@ -129,9 +129,9 @@ after(async () => {
 describe("read budgets at 300 entries and 1,000 images", () => {
   it("opening an entry reads only that entry", async () => {
     const { ms } = await measure(async () => assert.equal((await request("/api/admin/collections/news/entries/news-42")).status, 200));
-    // One listing of the collection for the layout check; the reads stay inside the entry.
-    assert.deepEqual(log.list.filter((path) => path === "news"), ["news"]);
-    const touched = [...log.read, ...log.readBinary, ...log.list.filter((path) => path !== "news")];
+    // No listing of the collection: the reads stay inside the entry.
+    assert.deepEqual(log.list.filter((path) => path === "news"), []);
+    const touched = [...log.read, ...log.readBinary, ...log.list];
     assert.ok(touched.every((path) => path.startsWith("news/news-42") || path === ".mica/schema.json"), touched.join(", "));
     assert.equal(log.readBinary.length, 0);
     assert.ok(ms < 1_500, `${ms} ms`);

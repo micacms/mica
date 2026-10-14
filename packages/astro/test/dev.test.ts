@@ -92,8 +92,8 @@ function createContext(projectRoot: string, watcher?: ReturnType<typeof createWa
 /** A project directory with one entry per collection. */
 async function project(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "mica-dev-"));
-  await writeEntry(dir, "projects/haus-a.json", { title: "Haus A", slug: "haus-a" });
-  await writeEntry(dir, "team/anna.json", { name: "Anna", slug: "anna" });
+  await writeEntry(dir, "projects/haus-a/index.json", { title: "Haus A", slug: "haus-a" });
+  await writeEntry(dir, "team/anna/index.json", { name: "Anna", slug: "anna" });
   return dir;
 }
 
@@ -226,7 +226,7 @@ describe("a draft that is not valid yet", () => {
 
   it("is left out with a warning in dev, and the rest of the collection loads", async () => {
     const dir = await project();
-    await writeEntry(dir, "projects/haus-b.json", { slug: "haus-b" });
+    await writeEntry(dir, "projects/haus-b/index.json", { slug: "haus-b" });
     try {
       const context = createContext(dir, createWatcher());
       refuseHausB(context);
@@ -241,7 +241,7 @@ describe("a draft that is not valid yet", () => {
 
   it("fails a build", async () => {
     const dir = await project();
-    await writeEntry(dir, "projects/haus-b.json", { slug: "haus-b" });
+    await writeEntry(dir, "projects/haus-b/index.json", { slug: "haus-b" });
     try {
       const context = createContext(dir);
       refuseHausB(context);
@@ -264,8 +264,8 @@ describe("reloading in dev", () => {
 
       assert.deepEqual(watcher.added, [join(dir, "content")]);
 
-      await writeEntry(dir, "projects/haus-b.json", { title: "Haus B", slug: "haus-b" });
-      watcher.emit("add", join(dir, "content", "projects", "haus-b.json"));
+      await writeEntry(dir, "projects/haus-b/index.json", { title: "Haus B", slug: "haus-b" });
+      watcher.emit("add", join(dir, "content", "projects", "haus-b", "index.json"));
 
       await waitFor(() => context.entries.size === 2, "the reload");
     } finally {
@@ -286,7 +286,7 @@ describe("reloading in dev", () => {
       // A project may also have ordinary Astro collections, and Mica's own
       // collections are independent of each other. Neither is any reason to
       // re-read this one.
-      watcher.emit("change", join(dir, "content", "team", "anna.json"));
+      watcher.emit("change", join(dir, "content", "team", "anna", "index.json"));
       watcher.emit("change", join(dir, "src", "notes", "one.md"));
       await new Promise((done) => setTimeout(done, 80));
 
@@ -325,7 +325,7 @@ describe("reloading in dev", () => {
       const before = context.loads.length;
 
       // One save: the entry, its rich-text sidecar and the collection order.
-      watcher.emit("change", join(dir, "content", "projects", "haus-a.json"));
+      watcher.emit("change", join(dir, "content", "projects", "haus-a", "index.json"));
       watcher.emit("change", join(dir, "content", "projects", "haus-a.mdoc"));
       watcher.emit("change", join(dir, "content", "projects", "_order.json"));
 
@@ -353,14 +353,14 @@ describe("reloading in dev", () => {
       await micaCollections(site).projects.loader.load(context);
 
       failNext = true;
-      watcher.emit("change", join(dir, "content", "projects", "haus-a.json"));
+      watcher.emit("change", join(dir, "content", "projects", "haus-a", "index.json"));
       await waitFor(() => context.logs.some((l) => l.startsWith('warn: Left out "projects/haus-a"')), "the warning");
       assert.equal(context.entries.size, 0);
 
       // The dev server has to stay up: the next save is very likely the fix.
       failNext = false;
       const before = context.loads.length;
-      watcher.emit("change", join(dir, "content", "projects", "haus-a.json"));
+      watcher.emit("change", join(dir, "content", "projects", "haus-a", "index.json"));
       await waitFor(() => context.loads.length > before, "the next attempt");
     } finally {
       await rm(dir, { recursive: true, force: true });

@@ -1040,7 +1040,9 @@ shape first, and raise the numbers only with the budget tests.
 **Decided:** fixes, security fixes included, go into the next release of the
 latest 1.x minor. An earlier minor gets none: the upgrade within 1.x is the
 fix. 0.x reaches its end of life when 1.0 ships, with no backports. The window
-for 1.x after a 2.0 is decided at 2.0.
+for 1.x after a 2.0 is decided at 2.0. Before 1.0, a change to the content
+format, the manifest or an API comes with no migration: no command, no
+converter and no reader that accepts the old shape.
 
 **Why:** one maintainer, one lockstep version and one branch, `main`. Each
 extra supported line needs a release branch, backports and a release flow that
@@ -1048,7 +1050,8 @@ works from it. A minor in 1.x has no breaking change by definition, so moving
 to the latest minor is safe. No known deployment depends on 0.x.
 
 **Consequence:** an adopter who cannot take a minor gets no security fix.
-A 0.x deployment must take the breaking upgrade to 1.0 to get any fix. Agencies
+A 0.x deployment must take the breaking upgrade to 1.0 to get any fix, and
+converts its content by hand. Agencies
 cannot plan a 2.0 upgrade window yet.
 
 **What would change it:** a second maintainer, or adopters who need a fixed
@@ -1137,35 +1140,31 @@ the format specification (#58).
 
 ---
 
-### P2 — A layout change is migrated by a command, not by a lenient reader
+### P2 — Each entry and each singleton is a folder
 
-**Decided:** `npx @micacms/editor migrate-layout` rewrites every entry whose
-layout no longer matches the model, in the working tree, and the developer
-commits the result with the model change. The reader stays strict: an entry in
-the other layout is an error (#64). The manifest records each collection's
-layout, so a change shows in the diff of `.mica/schema.json`. The command
-removes a sidecar only when no field still refers to it, and lists each file it
-removes.
+**Decided:** an entry of a collection is the folder `<collection>/<slug>/`, and
+a singleton is the folder `<name>/`. The folder holds `index.json` with the
+structured fields, one `.mdoc` file for each rich-text field, and the entry's
+own media in `media/`. The shared `media/` folder sits beside these folders at
+the content root, so `media` is a reserved name. The manifest records no
+layout. A file where an entry folder belongs is not read; `mica check` warns
+about it.
 
-**Why:** a model change is always a developer's change in the site repository,
-so the developer is there to run a command. A reader that accepts both layouts
-would make both shapes part of the content format for all of 1.x, in `core` and
-in the Astro loader, and entries that nobody edits would keep the old layout
-forever.
+**Why:** one rule for every entry is one rule to learn and to code, and a new
+field only adds a file beside `index.json`. It is also what Astro does: the
+glob loader gives `<slug>/index.json` the ID `<slug>`, and Astro's guide keeps
+an entry's images beside it. The alternative, one `<slug>.json` file for an
+entry without rich text or media, makes the first such field move every entry
+of the collection, and gives the reader, the writer, the runtime, the Astro
+loader and the CLI two paths each.
 
-**Consequence:** a developer who changes the model and forgets the command gets
-a failing build and editor, not silent data loss. The command is part of the
-semver-covered CLI.
+**Consequence:** a small collection has one folder for each entry, and a
+developer sees many files named `index.json`.
 
-**What would change it:** model changes made where nobody can run a command,
-for example from the editor itself.
+**What would change it:** nothing in 1.x; the rule is part of the content
+format.
 
-**Built:** the manifest records `layout` for each collection and singleton
-(#60). In 0.6, the reader refuses an entry in the other layout (`LayoutError`),
-so the Astro build fails, the local editor refuses to start, the self-hosted
-app logs a warning (a refusal there would loop on its own drafts), and a list
-request answers 409 (#64); `mica migrate-layout` moves the entries (#65). In 0.9 the command also gives
-repeater rows their keys (#220, next decision).
+**Built:** 0.9 (#219).
 
 **1.0 status:** done.
 
@@ -1175,28 +1174,22 @@ repeater rows their keys (#220, next decision).
 
 **Decided:** a row of a `repeater()` whose fields hold rich text stores a key,
 `_key`, as its first property: a letter, then 3 to 15 letters or digits. The
-row's `.mdoc` files name the row by this key, `sections.k3f9a2.body.mdoc`, not
-by its number. The editor gives a new row and a copied row a new key, and the
-writer replaces a key that is missing, not valid, or used by an earlier row.
-Rows without rich text get no key. The Astro loader leaves the key out of the
-data that templates get. The reader refuses an entry with a file that names a
-row by its number and that a row and a rich-text field still read
-(`RowNumberError`, a layout error), and `npx mica migrate-layout` converts the
-entry (#220). A numbered file that nothing reads is ignored, as before.
+row's `.mdoc` files name the row by this key, `sections.k3f9a2.body.mdoc`. The
+editor gives a new row and a copied row a new key, and the writer replaces a
+key that is missing, not valid, or used by an earlier row. Rows without rich
+text get no key. The Astro loader leaves the key out of the data that
+templates get. A `.mdoc` file whose row does not exist is not read; `mica
+check` warns about it, and the next save deletes it.
 
-**Why:** with row numbers, moving one row renamed the files of every row after
-it: a noisy diff in which a new order looked like changed text. Blocks, a
+**Why:** with row numbers, moving one row would rename the files of every row
+after it: a noisy diff in which a new order looks like changed text. Blocks, a
 deferred feature, build on repeaters with rich text and need rows that keep
 their identity.
 
-**Consequence:** such rows have one more property in `index.json`. Content from
-0.8 or earlier is converted once with `migrate-layout`. Until then, the Astro
-build and `mica check` fail and name the command, the editor answers a request
-for such content with the same message (409), and the Publish page shows a
-converted entry with no "before". Unlike the layout check, the editors start:
-finding the files would mean reading every entry at the start. A person who edits the JSON by hand
-keeps the keys. A change to two different rows of one entry is still one
-change to the entry: revisions cover the whole entry folder.
+**Consequence:** such rows have one more property in `index.json`. A person
+who edits the JSON by hand keeps the keys. A change to two different rows of
+one entry is still one change to the entry: revisions cover the whole entry
+folder.
 
 **What would change it:** rich text stored inside the JSON.
 
@@ -1234,10 +1227,9 @@ format.
 
 ### P2 — The manifest changes only when the model changes
 
-**Decided:** `.mica/schema.json` holds the model, `protocolVersion`,
-`generatedBy` without a package version (`"@micacms/astro"`), and the `layout`
-of each collection and singleton. Nothing else: no package version, no
-timestamp, no build data. The history of the model is the Git history of the
+**Decided:** `.mica/schema.json` holds the model, `protocolVersion`, and
+`generatedBy` without a package version (`"@micacms/astro"`). Nothing else: no
+package version, no timestamp, no build data. The history of the model is the Git history of the
 file, and a running Mica tells models apart by the fingerprint it logs and
 shows. There is no separate JSON Schema for the file: `checkSchema` validates
 it when Mica starts, and `mica check` runs the same check in CI.
@@ -1266,9 +1258,9 @@ same source as the types.
 not know, Mica still starts. The collection or singleton that contains the
 kind opens read-only, with a warning that names the upgrade; every other
 collection stays editable. A manifest with a newer `protocolVersion` is still
-refused, because that is the signal for a change that cannot degrade. Mica
-reads each collection's layout from the manifest (see the layout entry), not
-from fields it cannot interpret.
+refused, because that is the signal for a change that cannot degrade. The
+fields do not choose where entries are, so Mica finds them without
+interpreting the unknown kind.
 
 **Why:** a developer upgrades `@micacms/astro` with the site, and the operator
 upgrades the image on another schedule. Refusing to start locks out every
@@ -1283,9 +1275,7 @@ the same time.
 **Built (#60):** `readOnlyParts` in the runtime names the parts. Writes and
 uploads are refused with the reason, and Publish refuses their pending
 changes. The editor shows a notice and a placeholder for the unknown field;
-`mica check` reports the part as an error and checks the rest. Entries are
-read where the manifest's `layout` says. A collection whose recorded `layout`
-is not the one this build derives is read-only too.
+`mica check` reports the part as an error and checks the rest.
 
 **What would change it:** editors who are often blocked by this; then lock
 only the field, with a tested round trip of unknown values.
@@ -1334,9 +1324,8 @@ view goes into the shared `media/` folder at the content root and is stored as
 never another entry's. An upload in a new entry is staged under the slug, and
 moves with it if the slug changes before the first save.
 
-**Why:** this is what the docs say and what the layout rule assumes: a `media()`
-field forces the directory layout because its files sit beside the entry. An
-entry's files then go with it on a delete or a rename, and `media/x.jpg` stays
+**Why:** this is what the docs say and what the layout rule assumes: an
+entry's files sit in its folder. They then go with it on a delete or a rename, and `media/x.jpg` stays
 valid after a slug change. Site-wide files, such as a logo, still have one
 place.
 
@@ -1344,8 +1333,7 @@ place.
 the Media view, or stored twice. Deleting an entry deletes its files.
 
 **What would change it:** editors who mostly reuse images across entries; then
-default the picker's upload to the shared folder, which the layout rule would
-no longer justify.
+default the picker's upload to the shared folder.
 
 **Built in 0.7.0 (#102):** the entry and settings forms send their own folder
 (`<collection>/<slug>/media`, `<name>/media`) with an upload, and the picker
@@ -1612,9 +1600,8 @@ the site, and a test holds it there (`runtime/test/budgets.test.ts`, 300
 entries in 3 collections and 1,000 images, with a counting file layer and a
 counting Git runner):
 
-- Opening an entry reads that entry's files (`readCollectionEntry`), and lists
-  its collection once to refuse an entry in the other layout. Its response has
-  no list `position`.
+- Opening an entry reads that entry's files (`readCollectionEntry`), and
+  nothing else of its collection. Its response has no list `position`.
 - The free-URL check asks only whether the candidate's data file exists
   (`stat`), then `-2`, `-3` and so on.
 - The media list, the dashboard and the System page read no file: sizes come
@@ -1623,8 +1610,7 @@ counting Git runner):
   `/admin/media/info`, cached by path, size and last change. The file route
   sends an ETag and answers 304.
 - The change list reads the changed entries and, for a rename, the candidates
-  on the published side; the layout of a changed collection is one listing, and
-  a changed `_order.json` is parsed. A deletion still reads every collection,
+  on the published side, and a changed `_order.json` is parsed. A deletion still reads every collection,
   because a link to the deleted entry or file can be anywhere.
 - A full collection is read eight entries at a time.
 - The editor refreshes the change list after its own writes and when the

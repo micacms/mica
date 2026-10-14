@@ -73,7 +73,7 @@ admin bundle stays free of `node:` imports.
 One module defines collections and singletons over a shared field system. Five
 things are derived from it, and none of them can drift: TypeScript types for the
 website, Zod validators the server checks writes against, the admin's navigation
-and forms, the Astro collections, and the layout on disk. Details in
+and forms, the Astro collections, and the files on disk. Details in
 [content-model.md](./content-model.md).
 
 It imports nothing from Astro, and `src/content.config.ts` is the only file that
@@ -117,7 +117,7 @@ singleton read-only, with the reason in the editor and in the startup log, so
 an image that is older than the site's `@micacms/astro` still serves the rest.
 
 Beside the model, the manifest records `generatedBy` (the package, without a
-version) and each collection's and singleton's `layout`. It holds nothing that
+version). It holds nothing that
 changes without a model change, because Mica loads the model again whenever the
 file changes.
 
@@ -134,8 +134,13 @@ content/
 │       ├── index.json
 │       ├── summary.mdoc
 │       └── media/exterior.jpg
-└── theme.json
+├── theme/
+│   └── index.json                      a singleton
+└── media/                              shared media
 ```
+
+**One folder for each entry and each singleton**: its structured fields are
+in `index.json`, and its rich text and media are beside it.
 
 **JSON for structure, Markdoc for prose.** A field's value is JSON unless it is
 rich text, in which case it is a sibling `.mdoc` and _absent_ from the JSON.
@@ -150,7 +155,7 @@ decisions that belong to the website, and cannot inject script into a build:
 Markdoc escapes raw HTML and renders an undeclared `{% tag %}` as nothing.
 
 **Media is colocated**, so an entry is self-contained and renaming it is a
-directory move. **Order is a file**, so moving one entry, however far, is one
+folder move. **Order is a file**, so moving one entry, however far, is one
 save and a one-line diff rather than a rewrite of every entry in the collection.
 
 ### Saved and Published are different words

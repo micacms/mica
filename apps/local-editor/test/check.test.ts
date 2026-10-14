@@ -60,11 +60,11 @@ const problems = (report: CheckReport, level: "error" | "warning") =>
 beforeEach(() => {
   root = mkdtempSync(path.join(tmpdir(), "mica-check-"));
   write(MANIFEST_PATH, createManifest(site, "test"));
-  write("team/anna.json", { name: "Anna", slug: "anna" });
+  write("team/anna/index.json", { name: "Anna", slug: "anna" });
   write("news/hello/index.json", { title: "Hello", slug: "hello", author: "anna", cover: "media/cover.jpg" });
   write("news/hello/media/cover.jpg", "jpeg");
   write("news/hello/body.mdoc", "Hello, **world**.\n");
-  write("settings.json", { siteName: "Example" });
+  write("settings/index.json", { siteName: "Example" });
 });
 
 afterEach(() => rmSync(root, { recursive: true, force: true }));
@@ -121,7 +121,7 @@ describe("mica check", () => {
     });
     write(MANIFEST_PATH, createManifest(withAlt, "test"));
     rmSync(path.join(root, "team"), { recursive: true });
-    rmSync(path.join(root, "settings.json"));
+    rmSync(path.join(root, "settings"), { recursive: true });
     rmSync(path.join(root, "news/hello/body.mdoc"));
     write("news/hello/index.json", { title: "Hello", slug: "hello", cover: { path: "media/cover.jpg", alt: "A cover" } });
     assert.deepEqual((await checkContent(root)).problems, []);
@@ -133,21 +133,15 @@ describe("mica check", () => {
   });
 
   it("warns about a slug field that does not match the entry's name, and accepts an empty one", async () => {
-    write("team/anna.json", { name: "Anna", slug: "anna-vogt" });
+    write("team/anna/index.json", { name: "Anna", slug: "anna-vogt" });
     assert.ok(problems(await checkContent(root), "warning").some((line) => line.includes('"anna-vogt", but the entry is named "anna"')));
-    write("team/anna.json", { name: "Anna", slug: null });
+    write("team/anna/index.json", { name: "Anna", slug: null });
     assert.deepEqual((await checkContent(root)).problems, []);
   });
 
-  // A model that gains or loses rich text or media changes the layout, and every stored entry is then lost.
-  it("reports entries and singletons stored in the other layout as errors", async () => {
-    write("news/old.json", { title: "Old", slug: "old" });
-    write("team/bob/index.json", { name: "Bob", slug: "bob" });
-    write("settings/index.json", { siteName: "Other" });
-    const errors = problems(await checkContent(root), "error");
-    assert.ok(errors.some((line) => line.startsWith('news/old.json: Not read: entries of "news" are folders')), errors.join("\n"));
-    assert.ok(errors.some((line) => line.startsWith('team/bob: Not read: entries of "team" are <slug>.json files')), errors.join("\n"));
-    assert.ok(errors.some((line) => line.startsWith('settings/index.json: Not read: "Website" is stored as settings.json')), errors.join("\n"));
+  it("warns about a file where an entry folder belongs", async () => {
+    write("news/notes.json", { title: "Notes" });
+    assert.deepEqual(problems(await checkContent(root), "warning"), ['news/notes.json: Not read. Each entry of "news" is a folder with index.json.']);
   });
 
   it("reports an order file the build cannot read", async () => {
@@ -203,20 +197,13 @@ describe("mica check", () => {
     assert.deepEqual(warnings, ["news/hello/sections.kgone.text.mdoc: Not read: the list has no such row. The next save in Mica deletes the file."]);
   });
 
-  it("refuses a Markdoc file that names its repeater row by number, and names the command (#220)", async () => {
-    write("news/hello/index.json", { title: "Hello", slug: "hello", sections: [{ heading: "One" }] });
-    write("news/hello/sections.0.text.mdoc", "Nested.\n");
-    const errors = problems(await checkContent(root), "error");
-    assert.ok(errors.some((line) => line.includes("by its number") && line.includes("migrate-layout")), errors.join("\n"));
-  });
-
   it("reports JSON that does not parse, and an empty singleton", async () => {
-    write("team/anna.json", "{ name: Anna");
-    rmSync(path.join(root, "settings.json"));
+    write("team/anna/index.json", "{ name: Anna");
+    rmSync(path.join(root, "settings"), { recursive: true });
     rmSync(path.join(root, "news/hello/body.mdoc"));
     const report = await checkContent(root);
-    assert.ok(problems(report, "error").some((line) => line.startsWith("team/anna.json: Content is not valid JSON")));
-    assert.ok(problems(report, "warning").some((line) => line.startsWith('settings.json: No content for "Website" yet.')));
+    assert.ok(problems(report, "error").some((line) => line.startsWith("team/anna/index.json: Content is not valid JSON")));
+    assert.ok(problems(report, "warning").some((line) => line.startsWith('settings/index.json: No content for "Website" yet.')));
   });
 
   it("warns about what Markdoc renders differently, outside code only", async () => {

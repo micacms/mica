@@ -40,9 +40,9 @@ describe("a field kind this build does not know", () => {
 
   before(async () => {
     harness = await createHarness({}, { site });
-    mkdirSync(join(harness.contentRoot, "gallery"), { recursive: true });
+    mkdirSync(join(harness.contentRoot, "gallery/summer"), { recursive: true });
     writeFileSync(
-      join(harness.contentRoot, "gallery/summer.json"),
+      join(harness.contentRoot, "gallery/summer/index.json"),
       JSON.stringify({ title: "Summer", slug: "summer", photos: { grid: [1, 2] } }),
     );
   });
@@ -102,15 +102,13 @@ describe("a field kind this build does not know", () => {
   });
 });
 
-describe("a recorded layout that fields this build does not know imply", () => {
-  // A newer kind that needs sidecars turns a collection into folders; this build must look there.
+describe("a collection whose new field kind keeps files beside the entry", () => {
   const folders = checkSchema({
     protocolVersion: 1,
     generatedBy: "@micacms/astro",
     collections: {
       albums: {
         type: "collection",
-        layout: "directory",
         label: "Albums",
         fields: { title: { kind: "text" }, slug: { kind: "slug", from: "title" }, pictures: { kind: "photoGrid" } },
       },
@@ -127,7 +125,7 @@ describe("a recorded layout that fields this build does not know imply", () => {
 
   after(() => harness.close());
 
-  it("reads the entries where the manifest says they are", async () => {
+  it("reads the entries from their folders", async () => {
     const list = (await (await harness.request("/api/admin/collections/albums/entries")).json()) as {
       items: Array<{ slug: string }>;
     };

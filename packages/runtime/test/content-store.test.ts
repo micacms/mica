@@ -46,7 +46,6 @@ const site = defineSite({
       },
     }),
     team: collection({
-      // No rich text and no media: file layout.
       label: "Team",
       fields: { name: text({ required: true }), slug: slug({ from: "name" }) },
     }),
@@ -74,7 +73,7 @@ const files = async (path: string) => (await readdir(join(root, path))).sort();
 const read = (path: string) => readFile(join(root, path), "utf8");
 
 describe("saving an entry", () => {
-  it("writes the entry as the layout describes it", async () => {
+  it("writes the entry's fields and rich text into its folder", async () => {
     const saved = await store.save("projects", {
       data: { title: "Haus A", description: "# Overview" },
     });
@@ -85,10 +84,11 @@ describe("saving an entry", () => {
     assert.equal(await read("projects/haus-a/description.mdoc"), "# Overview\n");
   });
 
-  it("writes a file-shaped collection as one JSON document", async () => {
+  it("gives an entry without rich text or media a folder too", async () => {
     await store.save("team", { data: { name: "Anna Vogt" } });
 
-    assert.deepEqual(await files("team"), ["anna-vogt.json"]);
+    assert.deepEqual(await files("team"), ["anna-vogt"]);
+    assert.deepEqual(await files("team/anna-vogt"), ["index.json"]);
   });
 
   it("derives a slug from the title and keeps it unique", async () => {
@@ -408,11 +408,11 @@ describe("singletons", () => {
   it("saves and reads back", async () => {
     await store.saveSingleton("theme", { primaryColor: "#123456" });
 
-    assert.equal(await read("theme.json"), '{\n  "primaryColor": "#123456"\n}\n');
+    assert.equal(await read("theme/index.json"), '{\n  "primaryColor": "#123456"\n}\n');
     assert.deepEqual(await store.getSingleton("theme"), { primaryColor: "#123456" });
   });
 
-  it("uses directory layout when the singleton has rich text", async () => {
+  it("keeps a singleton's rich text in its folder", async () => {
     await store.saveSingleton("about", { intro: "Hello." });
 
     assert.deepEqual(await files("about"), ["index.json", "intro.mdoc"]);
@@ -466,7 +466,7 @@ describe("a URL change with its links", () => {
 
     assert.equal(saved.relinked, 2);
     assert.equal(JSON.parse(await read("projects/haus-a/index.json")).lead, "anna-meier");
-    assert.equal(JSON.parse(await read("home.json")).owner, "anna-meier");
+    assert.equal(JSON.parse(await read("home/index.json")).owner, "anna-meier");
     assert.equal(await read("projects/haus-a/description.mdoc"), body);
   });
 
@@ -502,7 +502,7 @@ describe("a URL change with its links", () => {
     const racing: typeof files = {
       ...files,
       async apply(input) {
-        await writeFile(join(root, "home.json"), JSON.stringify({ owner: "anna", note: "colleague" }));
+        await writeFile(join(root, "home/index.json"), JSON.stringify({ owner: "anna", note: "colleague" }));
         return files.apply(input);
       },
     };
@@ -512,7 +512,7 @@ describe("a URL change with its links", () => {
       raced.save("team", { slug: "anna", data: { name: "Anna", slug: "anna-meier" }, expectedRevision: revision, updateLinks: true }),
       /An entry or page that links here changed while you saved/,
     );
-    assert.equal(JSON.parse(await read("team/anna.json")).slug, "anna");
-    assert.equal(JSON.parse(await read("home.json")).note, "colleague");
+    assert.equal(JSON.parse(await read("team/anna/index.json")).slug, "anna");
+    assert.equal(JSON.parse(await read("home/index.json")).note, "colleague");
   });
 });

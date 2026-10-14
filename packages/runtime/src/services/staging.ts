@@ -106,7 +106,7 @@ export function createWorkingTreeStagingService(
     // By the first path segment, so that a stray file in a read-only collection is caught too.
     for (const change of changes) {
       const head = change.path.split("/")[0] ?? "";
-      const reason = deps.readOnly?.get(`collections.${head}`) ?? deps.readOnly?.get(`singletons.${head.replace(/\.json$/, "")}`);
+      const reason = deps.readOnly?.get(`collections.${head}`) ?? deps.readOnly?.get(`singletons.${head}`);
       if (reason) {
         validation.problems.push({ path: change.path, label: change.owner.label, issues: [{ path: "", message: reason }] });
       }

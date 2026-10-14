@@ -4,7 +4,6 @@
   "collections": {
     "docs": {
       "type": "collection",
-      "layout": "directory",
       "name": "docs",
       "label": "Documentation",
       "labelSingular": "Document",
@@ -78,7 +77,6 @@
     },
     "releases": {
       "type": "collection",
-      "layout": "directory",
       "name": "releases",
       "label": "Releases",
       "labelSingular": "Release",
@@ -135,7 +133,6 @@
   "singletons": {
     "site": {
       "type": "singleton",
-      "layout": "file",
       "name": "site",
       "label": "Website",
       "description": "Product identity, links, and default metadata.",
@@ -199,7 +196,6 @@
     },
     "navigation": {
       "type": "singleton",
-      "layout": "file",
       "name": "navigation",
       "label": "Navigation",
       "description": "Header and footer navigation.",
@@ -263,7 +259,6 @@
     },
     "home": {
       "type": "singleton",
-      "layout": "directory",
       "name": "home",
       "label": "Home page",
       "description": "All copy on the home page, from top to bottom.",
@@ -713,7 +708,6 @@
     },
     "imprint": {
       "type": "singleton",
-      "layout": "directory",
       "name": "imprint",
       "label": "Imprint",
       "description": "The legal notice: who is responsible for the website, and how to reach them.",

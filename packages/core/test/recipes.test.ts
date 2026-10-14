@@ -45,10 +45,10 @@ const json = (root: string, path: string) => JSON.parse(readFileSync(join(root, 
 
 describe("the migration recipes", () => {
   it("rename a field and keep its place in the file", () => {
-    const root = content({ "people/ana.json": { name: "Ana", title: "Lead", slug: "ana" }, "people/ben.json": { name: "Ben" } });
+    const root = content({ "people/ana/index.json": { name: "Ana", title: "Lead", slug: "ana" }, "people/ben/index.json": { name: "Ben" } });
     run("rename-field.mjs", root, "people", "title", "role");
-    assert.deepEqual(Object.entries(json(root, "people/ana.json")), [["name", "Ana"], ["role", "Lead"], ["slug", "ana"]]);
-    assert.deepEqual(json(root, "people/ben.json"), { name: "Ben" });
+    assert.deepEqual(Object.entries(json(root, "people/ana/index.json")), [["name", "Ana"], ["role", "Lead"], ["slug", "ana"]]);
+    assert.deepEqual(json(root, "people/ben/index.json"), { name: "Ben" });
   });
 
   it("move text into a Markdoc file, one paragraph per line, with markup kept as text", () => {
@@ -66,7 +66,7 @@ describe("the migration recipes", () => {
     run("rename-field.mjs", root, "notes", "text", "body");
     assert.equal(readFileSync(join(root, "notes/one/body.mdoc"), "utf8"), "Hello.\n");
 
-    const taken = content({ "people/ana.json": { name: "Ana", title: "Lead", role: "Lead" } });
+    const taken = content({ "people/ana/index.json": { name: "Ana", title: "Lead", role: "Lead" } });
     const result = spawnSync(process.execPath, [join(RECIPES, "rename-field.mjs"), taken, "people", "title", "role"], { encoding: "utf8" });
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /has "role" already/);
@@ -82,10 +82,10 @@ describe("the migration recipes", () => {
   });
 
   it("fill a field only where it is empty", () => {
-    const root = content({ "people/ana.json": { name: "Ana", role: "Lead" }, "people/ben.json": { name: "Ben", role: null } });
+    const root = content({ "people/ana/index.json": { name: "Ana", role: "Lead" }, "people/ben/index.json": { name: "Ben", role: null } });
     run("fill-field.mjs", root, "people", "role", '"Consultant"');
-    assert.equal(json(root, "people/ana.json").role, "Lead");
-    assert.equal(json(root, "people/ben.json").role, "Consultant");
+    assert.equal(json(root, "people/ana/index.json").role, "Lead");
+    assert.equal(json(root, "people/ben/index.json").role, "Consultant");
   });
 
   it("are on the website as they are here", () => {

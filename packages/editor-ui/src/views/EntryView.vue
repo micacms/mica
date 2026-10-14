@@ -133,10 +133,7 @@ const title = computed(() => {
   return isNew.value ? `New ${def.labelSingular.toLowerCase()}` : "Untitled";
 });
 
-/**
- * Where this entry lives, from the server: a directory with rich text or media,
- * else one `.json` file.
- */
+/** The entry's folder, from the server. */
 const location = computed(() => entry.value?.path ?? "Not saved yet");
 
 function setBaseline(detail: EntryDetail): void {

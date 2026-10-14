@@ -62,9 +62,9 @@ const files: Record<string, string> = {
     year: null,
     cover: null,
   }),
-  "team/anna-vogt.json": JSON.stringify({ name: "Anna Vogt", slug: "anna-vogt" }),
-  "team/bea-frei.json": JSON.stringify({ name: "Bea Frei", slug: "bea-frei" }),
-  "theme.json": JSON.stringify({ primaryColor: "#123456" }),
+  "team/anna-vogt/index.json": JSON.stringify({ name: "Anna Vogt", slug: "anna-vogt" }),
+  "team/bea-frei/index.json": JSON.stringify({ name: "Bea Frei", slug: "bea-frei" }),
+  "theme/index.json": JSON.stringify({ primaryColor: "#123456" }),
 };
 
 /**
@@ -221,7 +221,7 @@ describe("collections", () => {
     assert.equal(entry?.description, "# Haus A\n\nA housing project.");
   });
 
-  it("loads file-shaped entries from a flat directory", async () => {
+  it("loads entries without rich text or media from their folders", async () => {
     const collections = build();
     const context = createContext(collections.team.schema);
     await collections.team.loader.load(context);
@@ -377,13 +377,6 @@ describe("collections", () => {
     await assert.rejects(() => collections.projects.loader.load(context), /Broken references:\n {2}projects\/haus-a: cover/);
   });
 
-  it("fails the build when an entry is in the other layout, instead of hiding it", async () => {
-    const collections = build({ "projects/haus-c.json": JSON.stringify({ title: "Haus C", slug: "haus-c" }) });
-    const context = createContext(collections.projects.schema);
-
-    await assert.rejects(() => collections.projects.loader.load(context), /projects\/haus-c\.json.*migrate-layout/);
-  });
-
   it("fails the build when an entry does not satisfy the model", async () => {
     const collections = build({ "projects/haus-a/index.json": JSON.stringify({ slug: "haus-a" }) });
     const context = createContext(collections.projects.schema);
@@ -404,7 +397,7 @@ describe("singletons", () => {
   });
 
   it("warns rather than fails when the singleton has no content yet", async () => {
-    const collections = build({}, ["theme.json"]);
+    const collections = build({}, ["theme/index.json"]);
     const context = createContext(collections.theme.schema);
     await collections.theme.loader.load(context);
 

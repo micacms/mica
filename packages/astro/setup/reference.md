@@ -10,7 +10,6 @@ The guides link here. Read the section that a step names.
 | `npx astro sync` | Runs the Mica loaders, which write the model to `content/.mica/schema.json` |
 | `npx mica check` | Checks every entry against `content/.mica/schema.json`. Exit code 1 on an error |
 | `npx mica import` | Moves Astro collections into Mica, from Astro's data store. See [content-collections.md](./content-collections.md#6-convert-the-entries) |
-| `npx mica migrate-layout` | Moves entries into the layout of the model, after the first or the last rich-text or media field of a collection was added or removed. Also gives repeater rows with rich text their keys, in content from Mica 0.8 or earlier |
 | `npx mica start` | Opens the editor in the browser. Only for the user; do not run it yourself |
 
 `mica check` reads the model from `content/.mica/schema.json`. After every
@@ -87,21 +86,20 @@ list of choices, use `select({ multiple: true, options })`.
 
 ## The files on disk
 
-A collection whose fields include `richText()` or `media()` stores each entry
-as a folder. Any other collection stores each entry as one JSON file.
+Each entry and each singleton is a folder with `index.json`.
 
 ```
 content/
 ├── .mica/schema.json            the model; written by `astro sync`, commit it
-├── news/                        has rich text or media: a folder per entry
+├── news/                        a collection: a folder per entry
 │   ├── _order.json              optional: the manual order of a sortable collection
 │   └── hello-world/             the folder name is the slug
 │       ├── index.json           all fields except rich text
 │       ├── body.mdoc            one file per rich-text field, named after it
 │       └── media/cover.jpg      the entry's own files
-├── team/                        plain fields: one file per entry
-│   └── anna-vogt.json           the file name is the slug
-└── settings.json                a singleton (a folder with index.json if it has rich text or media)
+├── settings/                    a singleton
+│   └── index.json
+└── media/                       shared media, such as a logo
 ```
 
 - A slug has lowercase letters, digits and single hyphens: `hello-world`. The
@@ -130,27 +128,26 @@ that `@micacms/core` resolves from its `node_modules`.
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
-import { collectionEntryPath, entryFiles, serializeEntry, singletonPath } from "@micacms/core";
+import { entryFiles, entryFolder, serializeEntry } from "@micacms/core";
 
 const ROOT = "content";
 const model = JSON.parse(await readFile(join(ROOT, ".mica/schema.json"), "utf8"));
 
-export async function writeEntry(collection, slug, data) {
-  const fields = model.collections[collection].fields;
-  const base = collectionEntryPath(fields, collection, slug);
-  for (const [path, contents] of Object.entries(entryFiles(fields, base, serializeEntry(fields, data)))) {
+async function write(folder, fields, data) {
+  for (const [path, contents] of Object.entries(entryFiles(folder, serializeEntry(fields, data)))) {
     await mkdir(dirname(join(ROOT, path)), { recursive: true });
     await writeFile(join(ROOT, path), contents);
   }
 }
 
-// A singleton: `content/<name>.json`, or `content/<name>/index.json` with rich text or media.
+// An entry: `content/<collection>/<slug>/index.json`, and a `.mdoc` file for each rich-text field.
+export async function writeEntry(collection, slug, data) {
+  await write(entryFolder(collection, slug), model.collections[collection].fields, data);
+}
+
+// A singleton: `content/<name>/index.json`.
 export async function writeSingleton(name, data) {
-  const fields = model.singletons[name].fields;
-  for (const [path, contents] of Object.entries(entryFiles(fields, singletonPath(fields, name), serializeEntry(fields, data)))) {
-    await mkdir(dirname(join(ROOT, path)), { recursive: true });
-    await writeFile(join(ROOT, path), contents);
-  }
+  await write(entryFolder(name), model.singletons[name].fields, data);
 }
 
 // The manual order of a sortable collection. Slugs that it does not name come after.

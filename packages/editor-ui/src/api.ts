@@ -176,10 +176,7 @@ export interface EntrySummary {
 }
 
 export interface EntryDetail extends Omit<EntrySummary, "position"> {
-  /**
-   * Relative to the content root: a directory when the entry has rich text or
-   * media beside it, else one `.json` file.
-   */
+  /** The entry's folder, relative to the content root. */
   path: string;
   /**
    * The version the form was opened against, sent back with the save. `null` means a new entry,

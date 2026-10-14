@@ -4,7 +4,6 @@
   "collections": {
     "posts": {
       "type": "collection",
-      "layout": "directory",
       "name": "posts",
       "label": "Posts",
       "labelSingular": "Post",
@@ -59,7 +58,6 @@
   "singletons": {
     "site": {
       "type": "singleton",
-      "layout": "file",
       "name": "site",
       "label": "Website",
       "fields": {

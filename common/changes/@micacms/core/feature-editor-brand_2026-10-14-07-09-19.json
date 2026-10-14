@@ -2,7 +2,7 @@
   "changes": [
     {
       "packageName": "@micacms/core",
-      "comment": "Rich text in a repeater row is stored in a file named by the row's key, such as `sections.k3f9a2.body.mdoc`, not by its number, so a new order of the rows changes only `index.json`. Rows with rich text have a `_key` in the JSON. Content from earlier versions is converted once with `npx mica migrate-layout`; until then, Mica refuses to read it.",
+      "comment": "Rich text in a repeater row is stored in a file named by the row's key, such as `sections.k3f9a2.body.mdoc`, not by its number, so a new order of the rows changes only `index.json`. Rows with rich text have a `_key` in the JSON.",
       "type": "minor"
     }
   ],
