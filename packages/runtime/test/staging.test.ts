@@ -438,6 +438,25 @@ describe("publish", () => {
     assert.match(result.pushError!, /git push -u upstream HEAD/);
   });
 
+  it("names the first push of a new project, whose branch has no upstream", async () => {
+    // A project from the starter: commits, and an empty repository on the host.
+    const { root, contentRoot, service } = makeRepo();
+    const bare = temp("mica-bare-");
+    git(bare, "init", "-q", "--bare", "-b", "main");
+    git(root, "remote", "add", "origin", bare);
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"First","slug":"haus-a"}');
+
+    await assert.rejects(
+      service.publish({ message: "First", paths: await reviewed(service) }),
+      (error: unknown) => error instanceof ApiError && /\(`git push -u origin HEAD`\)/.test(error.message),
+    );
+
+    git(root, "push", "-q", "-u", "origin", "HEAD");
+    const result = await service.publish({ message: "First", paths: await reviewed(service) });
+    assert.equal(result.state, "published");
+    assert.equal(git(bare, "rev-parse", "main"), result.revision);
+  });
+
   it("marks its commit with Mica's trailer, under the editor's summary", async () => {
     const { root, contentRoot, service } = makeRepo();
     writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Marked","slug":"haus-a"}');

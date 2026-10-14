@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "When Publish waits for commits that no remote has, it names git push -u origin HEAD for a branch without an upstream.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

@@ -20,7 +20,13 @@ npm run mica   # the editor, at http://localhost:6422
 ```
 
 Change the post in the editor and save: the website shows it at once. Publish
-commits the change and pushes it; add a remote first (`git remote add origin <url>`).
+commits the change and pushes it. Before the first Publish, create an empty
+repository on your Git host and push the starter's commit once:
+
+```bash
+git remote add origin <url>
+git push -u origin main
+```
 
 ## What is where
 

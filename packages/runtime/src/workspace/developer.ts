@@ -60,10 +60,14 @@ export function developerPolicy(options: DeveloperPolicyOptions): OwnerPolicy {
 async function refuseOtherCommits(tree: GitTree): Promise<void> {
   const other = (await unpushedCommits(tree))?.other ?? 0;
   if (other === 0) return;
+  // A new project's first commits: its branch has no upstream yet, so a plain `git push` fails too.
+  const upstream = await tree.git.tryRun(["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{upstream}"]);
+  const remote = (await tree.git.tryRun(["remote"]))?.split("\n").find(Boolean) ?? "origin";
+  const push = upstream === null ? `git push -u ${remote} HEAD` : "git push";
   throw new ApiError(
     "conflict",
     `Publishing would also send ${other} change${other === 1 ? "" : "s"} that ${other === 1 ? "was" : "were"} not made in Mica ` +
-      "and that the website does not have yet. Send them with Git first (`git push`), or move them to another branch. " +
+      `and that the website does not have yet. Send them with Git first (\`${push}\`), or move them to another branch. ` +
       "Then publish again.",
   );
 }
