@@ -55,6 +55,8 @@ npx mica migrate-layout [content dir]
 
 Moves the entries that a model change left in the other layout: a file entry (`<slug>.json`) becomes a folder entry (`<slug>/index.json`), or the reverse. See [Change the model](/docs/model-changes/).
 
+It also converts content from Mica 0.8 or earlier: it gives each repeater row with rich text its key, and renames the row's `.mdoc` files from the row number to the key (`sections.0.body.mdoc` becomes `sections.k3f9a2.body.mdoc`). It changes nothing else in the entry. Until you run it, Mica refuses to read such an entry. See [Fields](/docs/reference-fields/).
+
 ### import
 
 Added in 0.6.0.

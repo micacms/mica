@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "Under Appearance at the end of the menu, an editor chooses the light or the dark mode, or the mode of the system. The browser keeps the choice.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor-ui",
+  "email": "alexander@muedespacher.ch"
+}

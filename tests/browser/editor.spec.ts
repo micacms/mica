@@ -138,3 +138,82 @@ test("an editor whose session ends signs in again and keeps the unsaved changes"
   await page.getByRole("alertdialog").getByRole("button", { name: "Discard", exact: true }).click();
   await expect(page.getByText("Saved · not published")).toBeHidden();
 });
+
+test("the appearance follows the system, or the choice that the browser keeps", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.locator("input[name=login]").fill("alice@gmail.com");
+  await page.locator("input[name=password]").fill("password");
+  await page.locator("button[type=submit]").click();
+  await expect(page).toHaveURL(/\/admin\/$/);
+
+  const html = page.locator("html");
+  await expect(html).not.toHaveAttribute("data-theme");
+  await expect(page.getByRole("radio", { name: "System" })).toBeChecked();
+
+  // The radio buttons are hidden; their labels take the click.
+  await page.locator('label[title="Dark"]').click();
+  await expect(html).toHaveAttribute("data-theme", "dark");
+  await page.reload();
+  await expect(html).toHaveAttribute("data-theme", "dark");
+  await expect(page.getByRole("radio", { name: "Dark" })).toBeChecked();
+
+  await page.locator('label[title="System"]').click();
+  await expect(html).not.toHaveAttribute("data-theme");
+});
+
+test("entries and list items change their order in the same way", async ({ page }) => {
+  await page.goto("/admin/");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.locator("input[name=login]").fill("alice@gmail.com");
+  await page.locator("input[name=password]").fill("password");
+  await page.locator("button[type=submit]").click();
+  await expect(page).toHaveURL(/\/admin\/$/);
+
+  // A collection: an arrow moves an entry one step and saves; the focus stays on the entry's arrows.
+  await page.goto("/admin/collections/pages");
+  const titles = page.locator("tbody tr td:nth-child(2) a");
+  await expect(titles.nth(0)).toHaveText("About us");
+  await page.getByRole("button", { name: "Move “About us” down", exact: true }).click();
+  await expect(titles.nth(1)).toHaveText("About us");
+  await expect(page.getByRole("button", { name: "Move “About us” down", exact: true })).toBeFocused();
+
+  // The handle and the keyboard move it back, so the order is as it was and nothing stays pending.
+  // While the first move saves, the controls are disabled.
+  const handle = page.getByRole("button", { name: "Move “About us”", exact: true });
+  await expect(handle).toBeEnabled();
+  await handle.focus();
+  await page.keyboard.press("Space");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("Space");
+  await expect(titles.nth(0)).toHaveText("About us");
+
+  // A list in a form has the same controls: the arrows at the end of the row, the handle at its start.
+  await page.goto("/admin/collections/pages/services");
+  const sections = page.getByRole("group", { name: "Extra sections" });
+  const headings = sections.locator("li [aria-expanded]");
+  await expect(headings.nth(0)).toHaveText("Our approach");
+  await sections.getByRole("button", { name: "Move “Our approach” down", exact: true }).click();
+  await expect(headings.nth(1)).toHaveText("Our approach");
+  await sections.getByRole("button", { name: "Move “Our approach”", exact: true }).focus();
+  await page.keyboard.press("Space");
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Space");
+  await expect(headings.nth(0)).toHaveText("Our approach");
+  // The form is back as it was: there is nothing to save.
+  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
+
+  // The chosen entries of a relation: the same controls again.
+  await page.goto("/admin/collections/projects/order-to-cash-review");
+  const team = page.getByRole("list", { name: "Chosen team" }).getByRole("listitem");
+  await expect(team.nth(0)).toContainText("Amara Okafor");
+  await page.getByRole("button", { name: "Move “Amara Okafor” down", exact: true }).click();
+  await expect(team.nth(1)).toContainText("Amara Okafor");
+  await page.getByRole("button", { name: "Move “Amara Okafor”", exact: true }).focus();
+  await page.keyboard.press("Space");
+  await page.keyboard.press("ArrowUp");
+  await page.keyboard.press("Space");
+  await expect(team.nth(0)).toContainText("Amara Okafor");
+  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
+});

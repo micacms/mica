@@ -12,6 +12,7 @@ import { z } from "zod";
 import type { AnyField, FieldMap } from "./types.js";
 import { textPattern } from "./pattern.js";
 import { isValidSlug } from "./slugify.js";
+import { needsRowKey, ROW_KEY } from "./row-key.js";
 
 export interface SchemaOptions {
   /**
@@ -22,6 +23,11 @@ export interface SchemaOptions {
    * check is relaxed, and publishing re-validates strictly.
    */
   enforceRequired?: boolean;
+  /**
+   * When false, the `_key` of a repeater row is dropped. The keys name the rows'
+   * rich-text files; a website's templates do not need them. Default: kept.
+   */
+  rowKeys?: boolean;
   /**
    * Resolves an image path the way a site framework does, such as Astro's
    * `image()`. `media({ accept: "image" })` then gives the resolved image, and
@@ -228,7 +234,10 @@ function innerSchema(
       return fieldsSchema(field.fields, options);
 
     case "repeater": {
-      let list = z.array(fieldsSchema(field.fields, options), { error: `${name} must be a list.` });
+      let row = fieldsSchema(field.fields, options);
+      // A key that is not text is dropped; the next save writes a new one.
+      if (options.rowKeys !== false && needsRowKey(field.fields)) row = row.extend({ [ROW_KEY]: z.string().optional().catch(undefined) });
+      let list = z.array(row, { error: `${name} must be a list.` });
       if (field.min !== undefined) list = list.min(field.min, { error: countLimit(name, "least", field.min, "item") });
       if (field.max !== undefined) list = list.max(field.max, { error: countLimit(name, "most", field.max, "item") });
       return list;

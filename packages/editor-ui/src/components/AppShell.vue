@@ -22,17 +22,30 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
+  Monitor,
+  Moon,
   Send,
   Settings,
   SlidersHorizontal,
+  Sun,
 } from "@lucide/vue";
 
 import { announcement } from "@/lib/announce";
 import { useSchema } from "@/stores/schema";
 import { useSession } from "@/stores/session";
 import { useStaging } from "@/stores/staging";
+import Wordmark from "./Wordmark.vue";
+import { useColorScheme, type ColorScheme } from "@/composables/useColorScheme";
 
 const route = useRoute();
+
+/* Appearance: the system's light or dark mode, or a choice that this browser keeps. */
+const { scheme, choose } = useColorScheme();
+const appearances: Array<{ value: ColorScheme; label: string; icon: typeof Sun }> = [
+  { value: "system", label: "System", icon: Monitor },
+  { value: "light", label: "Light", icon: Sun },
+  { value: "dark", label: "Dark", icon: Moon },
+];
 const router = useRouter();
 const session = useSession();
 const staging = useStaging();
@@ -150,7 +163,7 @@ async function signOut(): Promise<void> {
     <!-- Backdrop for the mobile overlay -->
     <div
       v-if="menuOpen"
-      class="fixed inset-0 z-20 bg-ink/25 lg:hidden"
+      class="fixed inset-0 z-20 bg-scrim lg:hidden"
       aria-hidden="true"
       @click="menuOpen = false"
     />
@@ -160,13 +173,13 @@ async function signOut(): Promise<void> {
       ref="drawer"
       :inert="drawerHidden"
       :class="[
-        'fixed inset-y-0 left-0 z-30 flex w-[220px] shrink-0 flex-col border-r border-creme/10 bg-aubergine text-creme transition-transform lg:static lg:translate-x-0',
+        'fixed inset-y-0 left-0 z-30 flex w-[220px] shrink-0 flex-col border-r border-line bg-sidebar text-ink-soft transition-transform lg:static lg:translate-x-0',
         menuOpen ? 'translate-x-0' : '-translate-x-full',
       ]"
       @keydown="onDrawerKeydown"
     >
-      <div class="flex h-14 items-center border-b border-creme/10 px-3">
-        <img src="/brand/micacms-wordmark-light.svg" alt="micacms" class="h-5 w-auto" />
+      <div class="flex h-14 items-center border-b border-line px-3">
+        <Wordmark class="h-5" />
       </div>
 
       <nav class="flex-1 space-y-5 overflow-y-auto px-2 py-3" aria-label="Main">
@@ -180,7 +193,7 @@ async function signOut(): Promise<void> {
             <span class="flex-1">Publish</span>
             <span
               v-if="staging.editCount.value > 0"
-              class="rounded-full bg-creme px-1.5 py-0.5 font-mono text-[10px] font-semibold leading-none text-aubergine"
+              class="rounded-full bg-glint px-1.5 py-0.5 font-mono text-[11px] font-medium leading-none text-on-glint"
               :aria-label="`${staging.editCount.value} pending edit${staging.editCount.value === 1 ? '' : 's'}`"
             >
               {{ staging.editCount.value }}
@@ -232,17 +245,41 @@ async function signOut(): Promise<void> {
         </div>
       </nav>
 
+      <fieldset class="border-t border-line px-3 py-2.5">
+        <legend class="sr-only">Appearance</legend>
+        <p class="mb-1.5 text-xs font-semibold text-muted" aria-hidden="true">Appearance</p>
+        <div class="grid grid-cols-3 gap-0.5 rounded-full border border-line bg-surface p-0.5">
+          <label
+            v-for="option in appearances"
+            :key="option.value"
+            :title="option.label"
+            class="flex h-7 cursor-pointer items-center justify-center rounded-full text-ink-soft transition hover:text-ink has-[:checked]:bg-primary has-[:checked]:text-on-primary has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-info"
+          >
+            <input
+              type="radio"
+              name="appearance"
+              class="sr-only"
+              :value="option.value"
+              :checked="scheme === option.value"
+              @change="choose(option.value)"
+            />
+            <component :is="option.icon" :size="14" aria-hidden="true" />
+            <span class="sr-only">{{ option.label }}</span>
+          </label>
+        </div>
+      </fieldset>
+
       <!-- Absent entirely where there is no provider: see the note above. -->
-      <div v-if="session.showsIdentity.value" class="border-t border-creme/10 p-2">
+      <div v-if="session.showsIdentity.value" class="border-t border-line p-2">
         <div class="flex items-center gap-2.5 rounded-md px-2 py-2">
           <span
-            class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-creme text-[10px] font-semibold text-aubergine"
+            class="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-[11px] font-semibold text-on-primary"
             aria-hidden="true"
           >
             {{ initials }}
           </span>
           <span class="min-w-0 flex-1">
-            <span class="block truncate text-xs font-medium text-creme/80">
+            <span class="block truncate text-xs font-medium text-ink-soft">
               {{ session.identity.value?.name || session.identity.value?.email }}
             </span>
           </span>
@@ -270,10 +307,10 @@ async function signOut(): Promise<void> {
           <Menu :size="20" aria-hidden="true" />
           <span class="sr-only">Toggle navigation</span>
         </button>
-        <img src="/brand/micacms-wordmark.svg" alt="micacms" class="h-5 w-auto" />
+        <Wordmark class="h-5" />
       </header>
 
-      <main id="main" tabindex="-1" class="min-w-0 flex-1 bg-surface focus:outline-none">
+      <main id="main" tabindex="-1" class="min-w-0 flex-1 bg-ground focus:outline-none">
         <div v-if="session.ended.value" role="alert" class="flex flex-wrap items-center gap-3 border-b border-line bg-danger-soft px-4 py-2.5 text-sm sm:px-6">
           <span class="min-w-0 flex-1">
             Your session ended, so Mica cannot save. Your changes stay in this tab: sign in again, and you can restore them.
@@ -305,22 +342,22 @@ async function signOut(): Promise<void> {
 }
 
 .nav-heading {
-  @apply px-2 pb-1.5 font-mono text-[10px] font-medium uppercase tracking-[.08em] text-creme/60;
+  @apply px-3 pb-1.5 text-xs font-semibold text-muted;
 }
 
 .nav-link {
-  @apply flex h-9 items-center gap-2.5 rounded-md px-2 text-[13px] text-creme/70
-    transition hover:bg-creme/5 hover:text-creme/90;
+  @apply flex h-9 items-center gap-2.5 rounded-full px-3 text-sm text-ink-soft
+    transition hover:bg-surface hover:text-ink;
   transition-duration: var(--mica-duration-fast);
   transition-timing-function: var(--mica-ease-standard);
 }
 
 .nav-link.router-link-active {
-  @apply bg-creme/12 text-creme;
+  @apply bg-primary font-semibold text-on-primary;
 }
 
 .sidebar-signout {
-  @apply flex items-center justify-start gap-2.5 rounded-md px-2 py-1.5 text-xs text-creme/65 transition
-    hover:bg-creme/5 hover:text-creme/90 disabled:opacity-40;
+  @apply flex items-center justify-start gap-2.5 rounded-full px-3 py-1.5 text-xs text-ink-soft transition
+    hover:bg-surface hover:text-ink disabled:opacity-40;
 }
 </style>

@@ -43,8 +43,8 @@ The ports are 5556 (Dex), 6422 (Mica) and 3000 (Forgejo). When port 3000 is in u
 token would go, which Forgejo accepts. Run `down -v` to start again from the
 example content.
 
-The login rate limit is 10 attempts in 15 minutes. One run uses 7, and the
-browser test uses 1, so restart the `mica` service before you run them again.
+The login rate limit of this stack is 50 attempts in 15 minutes. One run uses
+7, and the browser test uses 7. After a few runs, restart the `mica` service.
 
 ## What it does not check
 

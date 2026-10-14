@@ -189,11 +189,25 @@ describe("mica check", () => {
   });
 
   it("warns about a Markdoc file that no rich-text field reads, and accepts a nested one", async () => {
-    write("news/hello/index.json", { title: "Hello", slug: "hello", sections: [{ heading: "One" }] });
+    write("news/hello/index.json", { title: "Hello", slug: "hello", sections: [{ _key: "kone", heading: "One" }] });
     write("news/hello/content.mdoc", "Wrong name.\n");
-    write("news/hello/sections.0.text.mdoc", "Nested.\n");
+    write("news/hello/sections.kone.text.mdoc", "Nested.\n");
     const warnings = problems(await checkContent(root), "warning");
     assert.deepEqual(warnings, ["news/hello/content.mdoc: Not read: no rich-text field has this name."]);
+  });
+
+  it("warns about a Markdoc file whose row key no row has (#220)", async () => {
+    write("news/hello/index.json", { title: "Hello", slug: "hello", sections: [{ _key: "kone", heading: "One" }] });
+    write("news/hello/sections.kgone.text.mdoc", "Orphan.\n");
+    const warnings = problems(await checkContent(root), "warning");
+    assert.deepEqual(warnings, ["news/hello/sections.kgone.text.mdoc: Not read: the list has no such row. The next save in Mica deletes the file."]);
+  });
+
+  it("refuses a Markdoc file that names its repeater row by number, and names the command (#220)", async () => {
+    write("news/hello/index.json", { title: "Hello", slug: "hello", sections: [{ heading: "One" }] });
+    write("news/hello/sections.0.text.mdoc", "Nested.\n");
+    const errors = problems(await checkContent(root), "error");
+    assert.ok(errors.some((line) => line.includes("by its number") && line.includes("migrate-layout")), errors.join("\n"));
   });
 
   it("reports JSON that does not parse, and an empty singleton", async () => {

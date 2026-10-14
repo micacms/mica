@@ -1,19 +1,22 @@
 <script setup lang="ts">
 /**
- * Repeating group of fields.
+ * Repeating group of fields. The rows reorder as the entries of a collection
+ * do (`useReorder`): a handle to drag or to move with the keyboard, and arrows.
  *
- * Reordering is done with buttons rather than drag-and-drop: it works with a
- * keyboard, on a tablet, and with a screen reader, none of which are true of a
- * drag handle without a great deal more code.
+ * A row with rich text carries a key that names its `.mdoc` files (#220): a new
+ * row gets one, and a copy gets a new one.
  */
 
-import { computed, ref } from "vue";
-import { ArrowDown, ArrowUp, ChevronDown, Copy, Plus, Trash2 } from "@lucide/vue";
+import { computed, ref, toRaw } from "vue";
+import { ChevronDown, Copy, Plus, Trash2 } from "@lucide/vue";
 
-import { defaultValues, type RepeaterField } from "@micacms/core";
+import { defaultValues, needsRowKey, newRowKey, ROW_KEY, type RepeaterField } from "@micacms/core";
 
 import FieldList from "./FieldList.vue";
+import ReorderArrows from "@/components/ReorderArrows.vue";
+import ReorderHandle from "@/components/ReorderHandle.vue";
 import { humanise, useField, type FieldProps } from "@/composables/useField";
+import { useReorder } from "@/composables/useReorder";
 
 const props = defineProps<
   FieldProps & { modelValue: unknown; collection?: string; entrySlug?: string }
@@ -23,11 +26,42 @@ const emit = defineEmits<{ "update:modelValue": [Record<string, unknown>[]] }>()
 const field = computed(() => props.field as RepeaterField);
 const { label, error, locked } = useField(props);
 
-const collapsed = ref(new Set<number>());
+/** The ids of the collapsed rows. */
+const collapsed = ref(new Set<string>());
 
 const rows = computed<Record<string, unknown>[]>(() =>
   Array.isArray(props.modelValue) ? (props.modelValue as Record<string, unknown>[]) : [],
 );
+
+/*
+ * A row's id in this form: its key when it has one, else an id of the row object
+ * that an edit passes on to the row's next object. Moving a row keeps its id, so
+ * its inputs and its rich-text editor move with it. By the raw object: the rows
+ * arrive as reactive proxies, and an edit emits a plain object.
+ */
+const ids = new WeakMap<object, string>();
+let lastId = 0;
+function rowId(row: Record<string, unknown>): string {
+  const key = row[ROW_KEY];
+  if (typeof key === "string" && key !== "") return key;
+  const raw = toRaw(row);
+  let id = ids.get(raw);
+  if (!id) {
+    id = `row-${++lastId}`;
+    ids.set(raw, id);
+  }
+  return id;
+}
+
+const keyed = computed(() => needsRowKey(field.value.fields));
+
+/** A row as it is added: a new key first when its fields hold rich text. */
+function withKey(row: Record<string, unknown>): Record<string, unknown> {
+  if (!keyed.value) return row;
+  const taken = new Set(rows.value.map((item) => item[ROW_KEY]).filter((key): key is string => typeof key === "string"));
+  const { [ROW_KEY]: _old, ...rest } = row;
+  return { [ROW_KEY]: newRowKey(taken), ...rest };
+}
 
 const atMax = computed(() => field.value.max !== undefined && rows.value.length >= field.value.max);
 const atMin = computed(() => field.value.min !== undefined && rows.value.length <= field.value.min);
@@ -50,43 +84,48 @@ function emitRows(next: Record<string, unknown>[]): void {
 
 function add(): void {
   // A new row starts as a complete skeleton so every input is bound.
-  emitRows([...rows.value, defaultValues(field.value.fields)]);
+  emitRows([...rows.value, withKey(defaultValues(field.value.fields))]);
 }
 
 function duplicate(index: number): void {
   const source = rows.value[index];
   if (!source) return;
   const next = [...rows.value];
-  next.splice(index + 1, 0, structuredClone(source));
+  // A JSON copy: a row is plain data, and `structuredClone` refuses Vue's proxies.
+  next.splice(index + 1, 0, withKey(JSON.parse(JSON.stringify(source)) as Record<string, unknown>));
   emitRows(next);
 }
 
 function remove(index: number): void {
+  const row = rows.value[index];
   emitRows(rows.value.filter((_, position) => position !== index));
-  collapsed.value = new Set(
-    [...collapsed.value].filter((item) => item !== index).map((item) => (item > index ? item - 1 : item)),
-  );
-}
-
-function move(index: number, direction: -1 | 1): void {
-  const target = index + direction;
-  if (target < 0 || target >= rows.value.length) return;
-
-  const next = [...rows.value];
-  [next[index], next[target]] = [next[target]!, next[index]!];
-  emitRows(next);
+  if (row) collapsed.value = new Set([...collapsed.value].filter((id) => id !== rowId(row)));
 }
 
 function updateRow(index: number, value: Record<string, unknown>): void {
-  emitRows(rows.value.map((row, position) => (position === index ? value : row)));
+  const row = rows.value[index];
+  if (row) ids.set(toRaw(value), rowId(row));
+  emitRows(rows.value.map((item, position) => (position === index ? value : item)));
 }
 
-function toggle(index: number): void {
+function toggle(row: Record<string, unknown>): void {
+  const id = rowId(row);
   const next = new Set(collapsed.value);
-  if (next.has(index)) next.delete(index);
-  else next.add(index);
+  if (next.has(id)) next.delete(id);
+  else next.add(id);
   collapsed.value = next;
 }
+
+const reorder = useReorder<Record<string, unknown>>({
+  scope: () => `rows-${props.path}`,
+  items: () => rows.value,
+  show: emitRows,
+  // The form keeps the order: the next save writes it.
+  commit: () => {},
+  id: rowId,
+  label: (row) => summaryFor(row, rows.value.indexOf(row)),
+  disabled: () => locked.value,
+});
 </script>
 
 <template>
@@ -98,20 +137,36 @@ function toggle(index: number): void {
 
     <p v-if="field.description" class="field-hint -mt-1 mb-2">{{ field.description }}</p>
 
+    <p :id="`${path}-order-help`" class="sr-only">
+      To move an item with the keyboard, press Space on its handle, then the arrow keys, Home or End, and Space again
+      to drop it. Escape puts it back. The arrows at the end of the row move it one step.
+    </p>
+
     <ol v-if="rows.length" class="space-y-2">
-      <li v-for="(row, index) in rows" :key="index" class="card overflow-hidden">
-        <div class="flex items-center gap-1 bg-canvas/60 px-3 py-2">
+      <li
+        v-for="(row, index) in rows"
+        :key="rowId(row)"
+        :class="['card overflow-hidden', reorder.isMoving(row) && 'ring-2 ring-accent']"
+        v-bind="reorder.row(row)"
+      >
+        <div class="flex items-center gap-1 bg-canvas/60 py-2 pr-2 pl-1">
+          <ReorderHandle
+            :label="summaryFor(row, index)"
+            :described-by="`${path}-order-help`"
+            :disabled="locked"
+            v-bind="reorder.handle(row)"
+          />
           <button
             type="button"
             class="flex min-w-0 flex-1 items-center gap-2 text-left"
-            :aria-expanded="!collapsed.has(index)"
-            @click="toggle(index)"
+            :aria-expanded="!collapsed.has(rowId(row))"
+            @click="toggle(row)"
           >
             <ChevronDown
               :size="16"
               :class="[
                 'h-4 w-4 shrink-0 text-muted transition',
-                !collapsed.has(index) && 'rotate-180',
+                !collapsed.has(rowId(row)) && 'rotate-180',
               ]"
               aria-hidden="true"
             />
@@ -125,26 +180,6 @@ function toggle(index: number): void {
           </button>
 
           <div class="flex shrink-0 items-center gap-0.5">
-            <button
-              type="button"
-              class="btn-ghost px-1.5 py-1"
-              :disabled="locked || index === 0"
-              @click="move(index, -1)"
-            >
-              <ArrowUp :size="16" aria-hidden="true" />
-              <span class="sr-only">Move "{{ summaryFor(row, index) }}" up</span>
-            </button>
-
-            <button
-              type="button"
-              class="btn-ghost px-1.5 py-1"
-              :disabled="locked || index === rows.length - 1"
-              @click="move(index, 1)"
-            >
-              <ArrowDown :size="16" aria-hidden="true" />
-              <span class="sr-only">Move "{{ summaryFor(row, index) }}" down</span>
-            </button>
-
             <button
               type="button"
               class="btn-ghost px-1.5 py-1"
@@ -164,10 +199,19 @@ function toggle(index: number): void {
               <Trash2 :size="16" aria-hidden="true" />
               <span class="sr-only">Remove "{{ summaryFor(row, index) }}"</span>
             </button>
+
+            <ReorderArrows
+              :label="summaryFor(row, index)"
+              :target="reorder.target(row)"
+              :first="index === 0"
+              :last="index === rows.length - 1"
+              :disabled="locked"
+              @move="reorder.step(row, $event)"
+            />
           </div>
         </div>
 
-        <div v-show="!collapsed.has(index)" class="border-t border-line p-4">
+        <div v-show="!collapsed.has(rowId(row))" class="border-t border-line p-4">
           <FieldList
             :fields="field.fields"
             :model-value="row"

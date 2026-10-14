@@ -140,7 +140,10 @@ content/
 **JSON for structure, Markdoc for prose.** A field's value is JSON unless it is
 rich text, in which case it is a sibling `.mdoc` and _absent_ from the JSON.
 Keys are written in model order, so the file is byte-identical for the same
-input and a diff shows only what changed.
+input and a diff shows only what changed. In a repeater, a row with rich text
+has a key, `_key`, that names its `.mdoc` files (`sections.k3f9a2.body.mdoc`),
+so a new order of the rows changes only the JSON. A row without a key gets a
+new one when it is first written, and keeps it after that.
 
 **Markdoc, not HTML.** A `.mdoc` file is readable in a diff, carries no styling
 decisions that belong to the website, and cannot inject script into a build:

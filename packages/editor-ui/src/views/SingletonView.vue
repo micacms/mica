@@ -75,12 +75,12 @@ const pending = computed(() => staging.edits.value.find((edit) => edit.key === `
 
 const state = computed(() =>
   dirty.value
-    ? { label: "Unsaved changes", tone: "border-accent bg-accent-soft text-accent" }
+    ? { label: "Unsaved changes", tone: "status-unsaved" }
     : pending.value
-      ? { label: "Saved · not published", tone: "text-warning" }
+      ? { label: "Saved · not published", tone: "status-draft" }
       : staging.knowsPublished.value
-        ? { label: "Published", tone: "text-success" }
-        : { label: "Saved", tone: "text-muted" },
+        ? { label: "Published", tone: "status-published" }
+        : { label: "Saved", tone: "" },
 );
 
 /** Why the settings could not be loaded. The form then stays hidden: an empty form would save over them. */
@@ -156,6 +156,14 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
     kept.forget();
     toast.success("Settings saved.");
     void staging.refresh();
+    // Read back what the server wrote, such as the keys it gave to new rows (#220): the next save keeps them.
+    // Not over changes that the editor made while the request ran.
+    const detail = await api.singletons.get(props.name);
+    if (!dirty.value) {
+      values.value = structuredClone(fillDefaults(definition.value?.fields ?? {}, detail.data));
+      revision.value = detail.revision;
+      markClean();
+    }
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
       conflict.value = "loading";
@@ -182,8 +190,7 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
   <template v-if="definition">
     <PageHeader :title="definition.label" :subtitle="location" :loading="loading">
       <template v-if="!definition.readOnly && !loadError">
-        <span :class="['badge', state.tone]">
-          <span class="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+        <span :class="['status', state.tone]">
           {{ state.label }}
         </span>
         <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save()">

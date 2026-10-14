@@ -43,6 +43,8 @@ The first `slug()` among the fields of a collection is the entry's slug. It is a
 
 The fields of a collection decide its layout. Without `richText()` and `media()` fields, each entry is one `<slug>.json` file. With one of them, also inside an `object()` or a `repeater()`, each entry is a folder `<slug>/` with `index.json`, the `.mdoc` files and the entry's media. When a model change moves a collection from one layout to the other, run `npx mica migrate-layout`. See [Change the model](/docs/model-changes/).
 
+Each rich-text field has its own `.mdoc` file, named by the field's path: `body.mdoc`, `seo.intro.mdoc`. In a `repeater()`, each row with rich text has a key, `_key`, in `index.json`, and the file names the row by its key: `sections.k3f9a2.body.mdoc`. Then a new order of the rows changes only `index.json`. Mica writes the key; do not change it. Your templates do not get it. Content from Mica 0.8 or earlier names the row by its number (`sections.0.body.mdoc`); Mica refuses to read it until you run `npx mica migrate-layout`.
+
 ## Collections and singletons
 
 ```ts

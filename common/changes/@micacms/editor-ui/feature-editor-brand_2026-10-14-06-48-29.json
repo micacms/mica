@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor-ui",
+      "comment": "The editor has the new Mica look: green actions, a light sidebar, the Instrument Sans and IBM Plex Mono fonts, status labels with a coloured dot, and a dark theme that follows the system setting.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor-ui",
+  "email": "alexander@muedespacher.ch"
+}

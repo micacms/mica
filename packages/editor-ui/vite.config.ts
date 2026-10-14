@@ -24,7 +24,8 @@ function thirdPartyNotices(): Plugin {
         const root = packageRoot(fileURLToPath(import.meta.resolve(name)));
         if (root) roots.add(root);
       }
-      const intro = "The Inter font is under the SIL Open Font License: fonts/InterVariable-LICENSE.txt.\n\n";
+      const intro =
+        "The Instrument Sans and IBM Plex Mono fonts are under the SIL Open Font License: fonts/InstrumentSans-LICENSE.txt and fonts/IBMPlexMono-LICENSE.txt.\n\n";
       const source = formatNotices([...roots].map(readPackage), intro);
       this.emitFile({ type: "asset", fileName: "THIRD_PARTY_NOTICES.txt", source });
     },

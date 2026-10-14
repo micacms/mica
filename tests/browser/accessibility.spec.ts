@@ -3,6 +3,7 @@
  *
  * A serious or critical finding fails the run. axe finds only a part of the
  * problems; the accessibility statement on the website lists the known gaps.
+ * The editor follows the system's light or dark mode, so both are checked.
  */
 
 import { AxeBuilder } from "@axe-core/playwright";
@@ -28,41 +29,44 @@ async function check(page: Page, view: string): Promise<void> {
   expect.soft(blocking, `${view}: serious or critical accessibility findings`).toEqual([]);
 }
 
-test("every view of the editor passes the automated accessibility checks", async ({ page }) => {
-  await page.goto("/admin/");
-  await check(page, "Sign in");
+for (const colorScheme of ["light", "dark"] as const) {
+  test(`every view of the editor passes the automated accessibility checks in ${colorScheme} mode`, async ({ page }) => {
+    await page.emulateMedia({ colorScheme });
+    await page.goto("/admin/");
+    await check(page, "Sign in");
 
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.locator("input[name=login]").fill("alice@gmail.com");
-  await page.locator("input[name=password]").fill("password");
-  await page.locator("button[type=submit]").click();
-  await expect(page).toHaveURL(/\/admin\/$/);
-  await check(page, "Overview");
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await page.locator("input[name=login]").fill("alice@gmail.com");
+    await page.locator("input[name=password]").fill("password");
+    await page.locator("button[type=submit]").click();
+    await expect(page).toHaveURL(/\/admin\/$/);
+    await check(page, "Overview");
 
-  const views: Array<[string, string]> = [
-    ["Collection", "/admin/collections/projects"],
-    ["Entry", "/admin/collections/projects/order-to-cash-review"],
-    ["Entry with one relation", "/admin/collections/news/we-are-hiring-a-junior-consultant"],
-    ["Singleton", "/admin/singletons/site"],
-    ["Media", "/admin/media"],
-    ["Publish", "/admin/changes"],
-    ["System", "/admin/system"],
-  ];
-  for (const [view, path] of views) {
-    await page.goto(path);
-    await check(page, view);
-  }
+    const views: Array<[string, string]> = [
+      ["Collection", "/admin/collections/projects"],
+      ["Entry", "/admin/collections/projects/order-to-cash-review"],
+      ["Entry with one relation", "/admin/collections/news/we-are-hiring-a-junior-consultant"],
+      ["Singleton", "/admin/singletons/site"],
+      ["Media", "/admin/media"],
+      ["Publish", "/admin/changes"],
+      ["System", "/admin/system"],
+    ];
+    for (const [view, path] of views) {
+      await page.goto(path);
+      await check(page, view);
+    }
 
-  // The relation picker, open: a combobox and its list of entries.
-  await page.goto("/admin/collections/projects/order-to-cash-review");
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-  await page.getByRole("combobox", { name: /Team/ }).focus();
-  await expect(page.getByRole("listbox")).toBeVisible();
-  await check(page, "Relation picker");
+    // The relation picker, open: a combobox and its list of entries.
+    await page.goto("/admin/collections/projects/order-to-cash-review");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await page.getByRole("combobox", { name: /Team/ }).focus();
+    await expect(page.getByRole("listbox")).toBeVisible();
+    await check(page, "Relation picker");
 
-  // The link dialog of rich text.
-  await page.getByRole("button", { name: "Link" }).first().click();
-  await expect(page.getByRole("dialog", { name: "Link" })).toBeVisible();
-  await check(page, "Link dialog");
-  await page.keyboard.press("Escape");
-});
+    // The link dialog of rich text.
+    await page.getByRole("button", { name: "Link" }).first().click();
+    await expect(page.getByRole("dialog", { name: "Link" })).toBeVisible();
+    await check(page, "Link dialog");
+    await page.keyboard.press("Escape");
+  });
+}

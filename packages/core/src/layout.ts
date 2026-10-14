@@ -81,14 +81,14 @@ function needsSidecars(fields: FieldMap): boolean {
  * Paths
  * ------------------------------------------------------------------ */
 
-/** A path segment: a field key, or a repeater row index. */
+/** A path segment: a field key, or a repeater row: its key, or its number in content from before the keys. */
 export type PathSegment = string | number;
 
 /**
  * The sidecar file name for one rich-text field.
  *
  * Dotted rather than nested, so every file of an entry sits directly beside its
- * `index.json`: `body.mdoc`, `sections.0.body.mdoc`. Field keys are validated as
+ * `index.json`: `body.mdoc`, `sections.k3f9a2.body.mdoc`. Field keys are validated as
  * lowerCamelCase by `defineSite`, so a segment can never introduce a separator
  * or escape the entry directory.
  */

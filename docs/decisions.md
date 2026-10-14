@@ -1164,7 +1164,43 @@ for example from the editor itself.
 (#60). In 0.6, the reader refuses an entry in the other layout (`LayoutError`),
 so the Astro build fails, the local editor refuses to start, the self-hosted
 app logs a warning (a refusal there would loop on its own drafts), and a list
-request answers 409 (#64); `mica migrate-layout` moves the entries (#65).
+request answers 409 (#64); `mica migrate-layout` moves the entries (#65). In 0.9 the command also gives
+repeater rows their keys (#220, next decision).
+
+**1.0 status:** done.
+
+---
+
+### P2 — A repeater row with rich text has a key that names its files
+
+**Decided:** a row of a `repeater()` whose fields hold rich text stores a key,
+`_key`, as its first property: a letter, then 3 to 15 letters or digits. The
+row's `.mdoc` files name the row by this key, `sections.k3f9a2.body.mdoc`, not
+by its number. The editor gives a new row and a copied row a new key, and the
+writer replaces a key that is missing, not valid, or used by an earlier row.
+Rows without rich text get no key. The Astro loader leaves the key out of the
+data that templates get. The reader refuses an entry with a file that names a
+row by its number and that a row and a rich-text field still read
+(`RowNumberError`, a layout error), and `npx mica migrate-layout` converts the
+entry (#220). A numbered file that nothing reads is ignored, as before.
+
+**Why:** with row numbers, moving one row renamed the files of every row after
+it: a noisy diff in which a new order looked like changed text. Blocks, a
+deferred feature, build on repeaters with rich text and need rows that keep
+their identity.
+
+**Consequence:** such rows have one more property in `index.json`. Content from
+0.8 or earlier is converted once with `migrate-layout`. Until then, the Astro
+build and `mica check` fail and name the command, the editor answers a request
+for such content with the same message (409), and the Publish page shows a
+converted entry with no "before". Unlike the layout check, the editors start:
+finding the files would mean reading every entry at the start. A person who edits the JSON by hand
+keeps the keys. A change to two different rows of one entry is still one
+change to the entry: revisions cover the whole entry folder.
+
+**What would change it:** rich text stored inside the JSON.
+
+**Built:** 0.9 (#220).
 
 **1.0 status:** done.
 

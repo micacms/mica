@@ -605,7 +605,7 @@ function plural(count: number, one: string, many: string): string {
                 </span>
                 <span
                   v-if="edit.key.startsWith('media:') && edit.state === 'new' && !neededKeys.has(edit.key)"
-                  class="text-xs text-warning"
+                  class="text-xs font-medium text-warning"
                 >
                   · not in any field yet
                 </span>

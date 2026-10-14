@@ -6,18 +6,22 @@
  * the preview URL follows from it and the filename is its last segment, so
  * there is nothing to resolve and no registry to keep in step. With the `alt`
  * option, each value is `{ path, alt }`, and an alt-text input sits under the
- * preview.
+ * preview. Several files change their order as every list does (`useReorder`),
+ * in reading order: a handle, and arrows for earlier and later.
  */
 
 import { computed, inject, ref } from "vue";
-import { ArrowLeft, ArrowRight, Plus, X } from "@lucide/vue";
+import { Plus, X } from "@lucide/vue";
 
 import type { MediaField } from "@micacms/core";
 
 import FieldShell from "./FieldShell.vue";
 import MediaPicker from "@/components/MediaPicker.vue";
+import ReorderArrows from "@/components/ReorderArrows.vue";
+import ReorderHandle from "@/components/ReorderHandle.vue";
 import { api, type MediaItem } from "@/api";
 import { useField, type FieldProps } from "@/composables/useField";
+import { useReorder } from "@/composables/useReorder";
 import { MEDIA_FOLDER } from "@/lib/media-folder";
 
 interface Value {
@@ -96,14 +100,17 @@ function removeAt(index: number): void {
   update(values.value.filter((_, position) => position !== index));
 }
 
-function move(index: number, direction: -1 | 1): void {
-  const target = index + direction;
-  if (target < 0 || target >= values.value.length) return;
-
-  const next = [...values.value];
-  [next[index], next[target]] = [next[target]!, next[index]!];
-  update(next);
-}
+const reorder = useReorder<Value>({
+  scope: () => `media-${props.path}`,
+  items: () => values.value,
+  show: update,
+  // The form keeps the order: the next save writes it.
+  commit: () => {},
+  id: (value) => value.path,
+  label: (value) => value.path.split("/").pop() ?? value.path,
+  disabled: () => locked.value,
+  layout: "grid",
+});
 
 function setAlt(index: number, event: Event): void {
   const text = (event.target as HTMLInputElement).value;
@@ -122,6 +129,10 @@ function setAlt(index: number, event: Event): void {
     :error-id="errorId"
   >
     <div :aria-describedby="describedBy">
+      <p v-if="field.multiple" :id="`${inputId}-order-help`" class="sr-only">
+        To move a file with the keyboard, press Space on its handle, then the arrow keys, Home or End, and Space again
+        to drop it. Escape puts it back. The arrows move it one step earlier or later.
+      </p>
       <ul
         v-if="items.length"
         :class="[
@@ -133,11 +144,13 @@ function setAlt(index: number, event: Event): void {
       >
         <li
           v-for="(item, index) in items"
-          :key="`${item.path}-${index}`"
+          :key="item.path"
           :class="[
             'group relative overflow-hidden rounded-lg border border-line bg-canvas',
             field.multiple ? '' : field.alt ? 'w-64' : 'w-40',
+            field.multiple && reorder.isMoving(values[index]!) && 'ring-2 ring-accent',
           ]"
+          v-bind="field.multiple ? reorder.row(values[index]!) : {}"
         >
           <div class="aspect-4/3">
             <img
@@ -184,28 +197,17 @@ function setAlt(index: number, event: Event): void {
           <!-- Controls are always in the DOM so they are reachable by keyboard,
                and only fade in visually on hover/focus. -->
           <div
-            class="absolute inset-x-0 top-0 flex justify-end gap-0.5 bg-gradient-to-b from-ink/50 to-transparent p-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
+            class="absolute inset-x-0 top-0 flex items-start gap-0.5 bg-gradient-to-b from-scrim to-transparent p-1 opacity-0 transition group-hover:opacity-100 group-focus-within:opacity-100"
           >
-            <button
-              v-if="field.multiple && index > 0"
-              type="button"
-              class="rounded-sm bg-raised/90 px-1.5 text-xs font-semibold hover:bg-raised"
+            <ReorderHandle
+              v-if="field.multiple"
+              overlay
+              :label="item.filename"
+              :described-by="`${inputId}-order-help`"
               :disabled="locked"
-              @click="move(index, -1)"
-            >
-              <ArrowLeft :size="14" aria-hidden="true" />
-              <span class="sr-only">Move {{ item.filename }} earlier</span>
-            </button>
-            <button
-              v-if="field.multiple && index < items.length - 1"
-              type="button"
-              class="rounded-sm bg-raised/90 px-1.5 text-xs font-semibold hover:bg-raised"
-              :disabled="locked"
-              @click="move(index, 1)"
-            >
-              <ArrowRight :size="14" aria-hidden="true" />
-              <span class="sr-only">Move {{ item.filename }} later</span>
-            </button>
+              v-bind="reorder.handle(values[index]!)"
+            />
+            <span class="flex-1" />
             <button
               type="button"
               class="rounded-sm bg-raised/90 px-1.5 text-xs font-semibold text-danger hover:bg-raised"
@@ -215,6 +217,17 @@ function setAlt(index: number, event: Event): void {
               <X :size="14" aria-hidden="true" />
               <span class="sr-only">Remove {{ item.filename }}</span>
             </button>
+            <ReorderArrows
+              v-if="field.multiple"
+              overlay
+              layout="grid"
+              :label="item.filename"
+              :target="reorder.target(values[index]!)"
+              :first="index === 0"
+              :last="index === items.length - 1"
+              :disabled="locked"
+              @move="reorder.step(values[index]!, $event)"
+            />
           </div>
         </li>
       </ul>

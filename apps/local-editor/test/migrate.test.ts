@@ -6,12 +6,15 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
-import { collection, createManifest, defineSite, MANIFEST_PATH, media, richText, singleton, slug, text } from "@micacms/core";
+import { collection, createManifest, defineSite, MANIFEST_PATH, media, repeater, richText, singleton, slug, text } from "@micacms/core";
 
-import { checkContent } from "../src/check.js";
+import { checkContent, type CheckReport } from "../src/check.js";
 import { formatMigration, migrateLayout } from "../src/migrate.js";
 
 let root = "";
+
+/** Every problem of a report, errors and warnings, as "path: message". */
+const problems = (report: CheckReport) => report.problems.map((problem) => `${problem.path}: ${problem.message}`);
 
 const write = (file: string, contents: string | object) => {
   const target = path.join(root, file);
@@ -102,9 +105,41 @@ describe("mica migrate-layout", () => {
     assert.equal(JSON.parse(readFileSync(path.join(root, "team/anna/index.json"), "utf8")).name, "New");
   });
 
-  it("says so when there is nothing to move", async () => {
+  it("says so when there is nothing to change", async () => {
     write(MANIFEST_PATH, createManifest(model(false), "test"));
     write("team/anna.json", { name: "Anna", slug: "anna" });
-    assert.match(formatMigration(await migrateLayout(root)), /Nothing to move/);
+    assert.match(formatMigration(await migrateLayout(root)), /Nothing to change/);
+  });
+
+  it("gives repeater rows with rich text their keys and names their files by the keys (#220)", async () => {
+    const site = defineSite({
+      collections: {
+        pages: collection({
+          label: "Pages",
+          fields: { title: text(), slug: slug({ from: "title" }), sections: repeater({ fields: { heading: text(), text: richText() } }) },
+        }),
+      },
+      singletons: {},
+    });
+    write(MANIFEST_PATH, createManifest(site, "test"));
+    write("pages/about/index.json", { title: "About", slug: "about", sections: [{ heading: "One", extra: "kept" }, { heading: "Two" }] });
+    write("pages/about/sections.0.text.mdoc", "First.\n");
+    write("pages/about/sections.1.text.mdoc", "Second.\n");
+    write("pages/about/sections.7.text.mdoc", "A row that is gone.\n");
+    assert.ok(problems(await checkContent(root)).some((line) => line.includes("migrate-layout")));
+
+    const result = await migrateLayout(root);
+    const rows = JSON.parse(readFileSync(path.join(root, "pages/about/index.json"), "utf8")).sections as Array<Record<string, unknown>>;
+    assert.deepEqual(result.keyed, [{ entry: "pages/about/index.json", renamed: 2 }]);
+    assert.deepEqual(result.kept, ["pages/about/sections.7.text.mdoc (no row or rich-text field reads it)"]);
+    assert.deepEqual(Object.keys(rows[0]!), ["_key", "heading", "extra"]);
+    assert.equal(readFileSync(path.join(root, `pages/about/sections.${rows[1]!["_key"]}.text.mdoc`), "utf8"), "Second.\n");
+    assert.equal(existsSync(path.join(root, "pages/about/sections.0.text.mdoc")), false);
+    // The key the model does not have is kept, and only reported, as before.
+    assert.deepEqual(problems(await checkContent(root)), [
+      "pages/about/index.json: sections.0.extra: the model has no such field. Mica drops it on the next save.",
+      "pages/about/sections.7.text.mdoc: Not read: the list has no such row. The next save in Mica deletes the file.",
+    ]);
+    assert.doesNotMatch(formatMigration(await migrateLayout(root)), /keyed|error/);
   });
 });

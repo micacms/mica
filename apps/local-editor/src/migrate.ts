@@ -1,11 +1,12 @@
 /**
  * `mica migrate-layout`: moves the entries that a model change left in the
- * other layout. The developer runs it in the working tree and commits the
- * result with the model change; Git is the undo.
+ * other layout, and gives the repeater rows with rich text their keys (#220).
+ * The developer runs it in the working tree and commits the result with the
+ * model change; Git is the undo.
  */
 
 import { existsSync } from "node:fs";
-import { mkdir, readdir, rename, rm, rmdir } from "node:fs/promises";
+import { mkdir, readdir, rename, rm, rmdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -13,10 +14,12 @@ import {
   DOCUMENT_EXTENSION,
   entryLayout,
   INDEX_FILE,
+  keyRepeaterRows,
   MEDIA_DIR,
   misplacedFiles,
   readCollection,
   readSingleton,
+  singletonPath,
   type ContentSource,
   type FieldMap,
   type Site,
@@ -33,13 +36,15 @@ export interface LayoutMigration {
   kept: string[];
   /** Entries not moved, because the target already exists. */
   conflicts: string[];
+  /** Entries whose repeater rows got keys, with the number of rich-text files renamed. */
+  keyed: Array<{ entry: string; renamed: number }>;
 }
 
 /** Moves every entry in the other layout into the layout that the model gives. */
 export async function migrateLayout(root: string): Promise<LayoutMigration> {
   const files = contentFiles({ root });
   const site = await loadSchema(files);
-  const result: LayoutMigration = { moved: [], removed: [], kept: [], conflicts: [] };
+  const result: LayoutMigration = { moved: [], removed: [], kept: [], conflicts: [], keyed: [] };
 
   const parts: Array<[string, FieldMap, "collection" | "singleton"]> = [
     ...Object.entries(site.collections).map(([name, def]) => [name, def.fields, "collection"] as [string, FieldMap, "collection"]),
@@ -65,9 +70,60 @@ export async function migrateLayout(root: string): Promise<LayoutMigration> {
     }
   }
 
+  // Before the media check, which reads every entry: the reader refuses rows named by number.
+  await keyRows(root, files, site, result);
   const used = await usedMedia(files, site);
   for (const folder of formerFolders) await emptyFolder(root, folder, used, result);
   return result;
+}
+
+/**
+ * Gives every repeater row with rich text a key, and names its files by the
+ * key instead of the row number. Only the keys and the file names change.
+ */
+async function keyRows(root: string, files: ContentSource, site: Site, result: LayoutMigration): Promise<void> {
+  const folders: Array<[string, FieldMap]> = [];
+  for (const [name, def] of Object.entries(site.collections)) {
+    if (entryLayout(def.fields) !== "directory") continue;
+    for (const item of await files.list(name)) if (item.type === "directory") folders.push([`${name}/${item.name}`, def.fields]);
+  }
+  for (const [name, def] of Object.entries(site.singletons)) {
+    if (entryLayout(def.fields) === "directory") folders.push([singletonPath(def.fields, name), def.fields]);
+  }
+
+  for (const [folder, fields] of folders) {
+    const indexPath = `${folder}/${INDEX_FILE}`;
+    const raw = await files.read(indexPath);
+    if (raw === null) continue;
+    let stored: unknown;
+    try {
+      stored = JSON.parse(raw);
+    } catch {
+      result.conflicts.push(`${indexPath}: not valid JSON, so its rows got no keys. Fix it and run the command again.`);
+      continue;
+    }
+    if (stored === null || typeof stored !== "object" || Array.isArray(stored)) continue;
+
+    const documents = (await files.list(folder))
+      .filter((item) => item.type === "file" && item.name.endsWith(DOCUMENT_EXTENSION))
+      .map((item) => item.name);
+    const { data, renames, changed } = keyRepeaterRows(fields, stored as Record<string, unknown>, documents);
+    const taken = Object.entries(renames).filter(([, to]) => documents.includes(to));
+    if (taken.length > 0) {
+      for (const [from, to] of taken) result.conflicts.push(`${folder}/${from}: ${to} exists too. Merge the two by hand.`);
+      continue;
+    }
+
+    // A numbered file that no row or rich-text field reads: the reader ignores it, and so does the command.
+    for (const name of documents) {
+      if (!renames[name] && /\.\d+\./.test(name)) result.kept.push(`${folder}/${name} (no row or rich-text field reads it)`);
+    }
+    if (!changed && Object.keys(renames).length === 0) continue;
+
+    if (changed) await writeFile(within(root, indexPath), `${JSON.stringify(data, null, 2)}\n`);
+    for (const [from, to] of Object.entries(renames)) await rename(within(root, `${folder}/${from}`), within(root, `${folder}/${to}`));
+    result.keyed.push({ entry: indexPath, renamed: Object.keys(renames).length });
+  }
 }
 
 /**
@@ -125,8 +181,11 @@ export function formatMigration(result: LayoutMigration): string {
   for (const { from, to } of result.moved) lines.push(`  moved    ${from} -> ${to}`);
   for (const file of result.removed) lines.push(`  removed  ${file}`);
   for (const file of result.kept) lines.push(`  kept     ${file}`);
+  for (const { entry, renamed } of result.keyed) {
+    lines.push(`  keyed    ${entry}${renamed > 0 ? ` (${renamed} rich-text ${renamed === 1 ? "file" : "files"} renamed)` : ""}`);
+  }
   for (const conflict of result.conflicts) lines.push(`  error    ${conflict}`);
-  if (lines.length === 0) return "Every entry is in the layout of the model. Nothing to move.\n";
+  if (lines.length === 0) return "Every entry is in the layout of the model, and every row has its key. Nothing to change.\n";
   lines.push("", "Next: run `npx mica check`, look at `git status`, and commit the result with the model change.");
   return `${lines.join("\n")}\n`;
 }

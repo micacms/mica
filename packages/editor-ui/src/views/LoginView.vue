@@ -21,6 +21,7 @@ import { computed, onMounted, ref } from "vue";
 import { useRoute } from "vue-router";
 
 import { useSession } from "@/stores/session";
+import Wordmark from "@/components/Wordmark.vue";
 
 const session = useSession();
 const route = useRoute();
@@ -74,7 +75,7 @@ function signIn(): void {
   <div v-else class="grid min-h-full place-items-center p-6">
     <div class="w-full max-w-sm">
       <div class="mb-7 flex flex-col items-center gap-4 text-center">
-        <img src="/brand/micacms-wordmark.svg" alt="micacms" class="h-8 w-auto" />
+        <Wordmark class="h-8" />
         <div>
           <h1 class="text-lg font-semibold tracking-tight">Sign in to Mica</h1>
           <p class="mt-0.5 text-sm text-muted">Manage your website content.</p>

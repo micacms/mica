@@ -170,7 +170,7 @@ export async function compareSources(
   staged: ContentSource,
   target: CompareTarget,
 ): Promise<Comparison> {
-  // During a layout migration HEAD still has the old layout: then there is no "before".
+  // During a layout migration, or the row keys of #220, HEAD still has the old files: then there is no "before".
   const before = <T>(read: () => Promise<T>): Promise<T | null> =>
     read().catch((error: unknown) => (error instanceof LayoutError ? null : Promise.reject(error)));
 
@@ -191,7 +191,7 @@ export async function compareSources(
     for (const slug of [target.slug, from]) {
       if (!isValidSlug(slug)) throw badRequest(`"${slug}" is not a slug.`);
     }
-    const old = await readCollectionEntry(published, def, target.collection, from);
+    const old = await before(() => readCollectionEntry(published, def, target.collection, from));
     const after = await readCollectionEntry(staged, def, target.collection, target.slug);
     if (from === target.slug) return { before: old, after };
 

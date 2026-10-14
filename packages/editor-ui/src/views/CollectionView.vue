@@ -7,16 +7,16 @@
  * not on the website yet; removed entries are counted above the list.
  */
 
-import { computed, nextTick, onMounted, ref, watch } from "vue";
-import { GripVertical, ListOrdered, Plus } from "@lucide/vue";
+import { computed, onMounted, ref, watch } from "vue";
+import { Plus } from "@lucide/vue";
 
 import { api, ApiError, type EntrySummary } from "@/api";
-import InputDialog from "@/components/InputDialog.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
-import { announce } from "@/lib/announce";
+import ReorderArrows from "@/components/ReorderArrows.vue";
+import ReorderHandle from "@/components/ReorderHandle.vue";
+import { useReorder } from "@/composables/useReorder";
 import { previewValue } from "@/lib/format";
-import { moveItem } from "@/lib/order";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
@@ -94,8 +94,8 @@ watch(() => props.collection, load);
  *
  * The order is a `_order.json` file listing slugs, so moving one entry is a
  * one-line diff rather than a rewrite of every entry in the collection. Each
- * move saves once, however far the entry goes: by drag, by the keyboard on
- * the handle, or with "Move to position".
+ * move saves once, however far the entry goes: by drag or by the keyboard on
+ * the handle, or one step with an arrow.
  */
 async function saveOrder(next: EntrySummary[], moved: EntrySummary): Promise<void> {
   entries.value = next;
@@ -108,7 +108,6 @@ async function saveOrder(next: EntrySummary[], moved: EntrySummary): Promise<voi
       next.map((entry) => entry.slug),
     );
     savedOrder = next.map((entry) => entry.slug).join("/");
-    announce(`"${moved.title}" is now at position ${next.indexOf(moved) + 1} of ${next.length}.`);
     void staging.refresh();
   } catch (error) {
     toast.error(error instanceof ApiError ? error.message : "Could not save the new order.");
@@ -128,134 +127,15 @@ watch(loading, (isLoading) => {
 const sortable = computed(() => (definition.value?.sortable ?? false) && !definition.value?.readOnly);
 const canReorder = computed(() => sortable.value && !search.value);
 
-/* The keyboard: Space picks the entry up, the arrows, Home and End move it, Space drops it, Escape puts it back. */
-
-const lifted = ref<{ slug: string; original: EntrySummary[] } | null>(null);
-
-async function focusRow(slug: string, control: "handle" | "position" = "handle"): Promise<void> {
-  await nextTick();
-  document.querySelector<HTMLElement>(`[data-${control}="${CSS.escape(slug)}"]`)?.focus();
-}
-
-function putBack(): void {
-  const current = lifted.value;
-  if (!current) return;
-  entries.value = current.original;
-  lifted.value = null;
-  const entry = entries.value.find((item) => item.slug === current.slug);
-  if (entry) announce(`"${entry.title}" is back at position ${entries.value.indexOf(entry) + 1}.`);
-}
-
-function onHandleKeydown(event: KeyboardEvent, entry: EntrySummary): void {
-  // Only the entry that was picked up moves; a key on another handle puts it back first.
-  if (lifted.value && lifted.value.slug !== entry.slug) putBack();
-
-  const index = entries.value.indexOf(entry);
-  const count = entries.value.length;
-
-  if (!lifted.value) {
-    if (event.key !== " " && event.key !== "Enter") return;
-    event.preventDefault();
-    lifted.value = { slug: entry.slug, original: entries.value };
-    announce(`Picked up "${entry.title}", position ${index + 1} of ${count}. Use the arrow keys, Home or End, then Space to drop.`);
-    return;
-  }
-
-  const to = { ArrowUp: index - 1, ArrowDown: index + 1, Home: 0, End: count - 1 }[event.key];
-  if (to !== undefined) {
-    event.preventDefault();
-    if (to < 0 || to >= count || to === index) return;
-    entries.value = moveItem(entries.value, index, to);
-    announce(`Position ${to + 1} of ${count}.`);
-    void focusRow(entry.slug);
-  } else if (event.key === " " || event.key === "Enter") {
-    event.preventDefault();
-    lifted.value = null;
-    void saveOrder(entries.value, entry).then(() => focusRow(entry.slug));
-  } else if (event.key === "Escape") {
-    event.preventDefault();
-    putBack();
-    void focusRow(entry.slug);
-  }
-}
-
-/**
- * Leaving the handle puts a picked-up entry back. Vue also blurs the handle
- * when it moves the row, and `focusRow` returns the focus before this check.
- */
-function onHandleBlur(): void {
-  window.setTimeout(() => {
-    const current = lifted.value;
-    if (current && (document.activeElement as HTMLElement | null)?.dataset["handle"] !== current.slug) putBack();
-  }, 0);
-}
-
-/* The mouse: the handle arms its row, the row moves as it is dragged over others, and a drop saves. */
-
-const armed = ref<string | null>(null);
-const dragging = ref<EntrySummary | null>(null);
-let dragOriginal: EntrySummary[] = [];
-let dropped = false;
-
-function onDragStart(event: DragEvent, entry: EntrySummary): void {
-  dragging.value = entry;
-  dragOriginal = entries.value;
-  dropped = false;
-  event.dataTransfer?.setData("text/plain", entry.slug);
-  if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
-}
-
-function onDragOver(event: DragEvent, entry: EntrySummary): void {
-  const moving = dragging.value;
-  if (!moving) return;
-  if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
-  if (moving === entry) return;
-  entries.value = moveItem(entries.value, entries.value.indexOf(moving), entries.value.indexOf(entry));
-}
-
-function onDrop(): void {
-  dropped = true;
-}
-
-// A drag that ends outside the list, or with Escape, puts the order back.
-function onDragEnd(event: DragEvent): void {
-  const moved = dragging.value;
-  dragging.value = null;
-  armed.value = null;
-  if (!moved) return;
-  if (!dropped || event.dataTransfer?.dropEffect === "none") {
-    entries.value = dragOriginal;
-    return;
-  }
-  void saveOrder(entries.value, moved);
-}
-
-/* "Move to position…" */
-
-const moving = ref<EntrySummary | null>(null);
-const positionValue = ref("");
-const positionError = ref<string | null>(null);
-
-function askPosition(entry: EntrySummary): void {
-  moving.value = entry;
-  positionValue.value = String(entries.value.indexOf(entry) + 1);
-  positionError.value = null;
-}
-
-function applyPosition(): void {
-  const entry = moving.value;
-  if (!entry) return;
-  const count = entries.value.length;
-  const position = Number(positionValue.value);
-  if (!Number.isInteger(position) || position < 1 || position > count) {
-    positionError.value = `Type a whole number from 1 to ${count}.`;
-    return;
-  }
-  moving.value = null;
-  void saveOrder(moveItem(entries.value, entries.value.indexOf(entry), position - 1), entry).then(() =>
-    focusRow(entry.slug, "position"),
-  );
-}
+const reorder = useReorder<EntrySummary>({
+  scope: () => `entries-${props.collection}`,
+  items: () => entries.value,
+  show: (next) => (entries.value = next),
+  commit: saveOrder,
+  id: (entry) => entry.slug,
+  label: (entry) => entry.title,
+  disabled: () => reordering.value,
+});
 </script>
 
 <template>
@@ -293,7 +173,7 @@ function applyPosition(): void {
       </div>
       <p id="order-help" class="sr-only">
         To move an entry with the keyboard, press Space on its handle, then the arrow keys, Home or End, and Space
-        again to drop it. Escape puts it back.
+        again to drop it. Escape puts it back. The arrows at the end of the row move it one step.
       </p>
 
       <div class="card overflow-hidden">
@@ -329,42 +209,25 @@ function applyPosition(): void {
                 {{ definition.fields[column]?.label ?? column }}
               </th>
               <th v-if="canReorder" scope="col" class="w-0 px-2 py-2">
-                <span class="sr-only">Position</span>
+                <span class="sr-only">Move up or down</span>
               </th>
             </tr>
           </thead>
 
           <tbody class="divide-y divide-line">
             <tr
-              v-for="entry in matching"
+              v-for="(entry, index) in matching"
               :key="entry.slug"
-              :draggable="armed === entry.slug"
-              :class="[
-                'transition hover:bg-canvas',
-                (lifted?.slug === entry.slug || dragging === entry) && 'bg-accent-soft',
-              ]"
-              @dragstart="onDragStart($event, entry)"
-              @dragover.prevent="onDragOver($event, entry)"
-              @drop.prevent="onDrop"
-              @dragend="onDragEnd"
+              :class="['transition hover:bg-canvas', canReorder && reorder.isMoving(entry) && 'bg-accent-soft']"
+              v-bind="canReorder ? reorder.row(entry) : {}"
             >
               <td v-if="canReorder" class="w-0 py-2.5 pl-2">
-                <button
-                  type="button"
-                  :data-handle="entry.slug"
-                  class="btn-ghost cursor-grab px-1 py-0.5"
-                  :aria-label="`Move “${entry.title}”`"
-                  title="Drag, or press Space and use the arrow keys"
-                  :aria-pressed="lifted?.slug === entry.slug"
-                  aria-describedby="order-help"
+                <ReorderHandle
+                  :label="entry.title"
+                  described-by="order-help"
                   :disabled="reordering"
-                  @pointerdown="armed = entry.slug"
-                  @pointerup="armed = null"
-                  @keydown="onHandleKeydown($event, entry)"
-                  @blur="onHandleBlur"
-                >
-                  <GripVertical :size="16" aria-hidden="true" />
-                </button>
+                  v-bind="reorder.handle(entry)"
+                />
               </td>
               <td class="px-4 py-2.5">
                 <RouterLink
@@ -373,7 +236,7 @@ function applyPosition(): void {
                 >
                   {{ entry.title }}
                 </RouterLink>
-                <span v-if="pendingStates.states.has(entry.slug)" class="ml-2 text-xs text-warning">
+                <span v-if="pendingStates.states.has(entry.slug)" class="status status-draft ml-2">
                   {{ pendingStates.states.get(entry.slug) === "new" ? "New" : "Changed" }} · not published
                 </span>
                 <span class="block font-mono text-xs text-muted">/{{ entry.slug }}</span>
@@ -388,17 +251,14 @@ function applyPosition(): void {
               </td>
 
               <td v-if="canReorder" class="w-0 px-2 py-2.5">
-                <button
-                  type="button"
-                  :data-position="entry.slug"
-                  class="btn-ghost px-1 py-0.5"
-                  title="Move to a position"
+                <ReorderArrows
+                  :label="entry.title"
+                  :target="reorder.target(entry)"
+                  :first="index === 0"
+                  :last="index === matching.length - 1"
                   :disabled="reordering"
-                  @click="askPosition(entry)"
-                >
-                  <ListOrdered :size="16" aria-hidden="true" />
-                  <span class="sr-only">Move "{{ entry.title }}" to a position</span>
-                </button>
+                  @move="reorder.step(entry, $event)"
+                />
               </td>
             </tr>
           </tbody>
@@ -406,19 +266,6 @@ function applyPosition(): void {
       </div>
     </div>
 
-    <InputDialog
-      v-model="positionValue"
-      :open="moving !== null"
-      :title="`Move “${moving?.title ?? ''}”`"
-      :label="`Position, from 1 to ${entries.length}`"
-      type="number"
-      :min="1"
-      :max="entries.length"
-      :error="positionError"
-      confirm-label="Move"
-      @confirm="applyPosition"
-      @cancel="moving = null"
-    />
   </template>
 
   <div v-else class="p-8 text-center text-sm text-muted">
