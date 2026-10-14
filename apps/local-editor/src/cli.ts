@@ -54,7 +54,8 @@ const USAGE = `
     $ npx @micacms/editor start [content dir]   open the editor
     $ npx @micacms/editor init                  add Mica to this Astro project
     $ npx @micacms/editor check [content dir]   check every entry against the model
-    $ npx @micacms/editor migrate-layout [dir]  move entries into the layout of the model
+    $ npx @micacms/editor migrate-layout [dir]  move entries into the layout of the model,
+                                                and name rich-text files by row keys
     $ npx @micacms/editor import [names]        move Astro collections into Mica
         --from <file>         Astro's data store (default: node_modules/.astro/data-store.json)
         --map <c.field=key>   take a field from another key; @body is the Markdown body

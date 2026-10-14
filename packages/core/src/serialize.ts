@@ -6,14 +6,17 @@
  *   1. Structured fields go to JSON, in *model order* rather than in whatever
  *      order the payload happens to have. Serialising the same content twice
  *      produces byte-identical output, so a Git diff shows editorial change
- *      and nothing else.
+ *      and nothing else. One exception: a repeater row with rich text and no
+ *      key gets a new key each time, until the key is stored.
  *   2. A rich-text field goes to its own `.mdoc` sidecar and is *absent* from
  *      the JSON. There is no pointer to reconcile: the model already says which
  *      fields are rich text, and `documentName` says where each one lives. A
- *      missing sidecar means the field is empty.
+ *      missing sidecar means the field is empty. In a repeater, the row's key
+ *      names the file (`row-key.ts`), so a reorder renames nothing.
  */
 
 import { documentName, type PathSegment } from "./layout.js";
+import { needsRowKey, ROW_KEY, rowKeys } from "./row-key.js";
 import type { AnyField, FieldMap } from "./types.js";
 
 export interface SerializedEntry {
@@ -76,7 +79,12 @@ function projectValue(
 
   if (field.kind === "repeater") {
     const rows = Array.isArray(value) ? value : [];
-    return rows.map((row, index) => project(field.fields, asRecord(row), [...path, index], documents));
+    if (!needsRowKey(field.fields)) return rows.map((row) => project(field.fields, asRecord(row), path, documents));
+    const keys = rowKeys(rows);
+    return rows.map((row, index) => ({
+      [ROW_KEY]: keys[index],
+      ...project(field.fields, asRecord(row), [...path, keys[index]!], documents),
+    }));
   }
 
   if (field.kind === "media" && field.alt) {

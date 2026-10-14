@@ -156,6 +156,14 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
     kept.forget();
     toast.success("Settings saved.");
     void staging.refresh();
+    // Read back what the server wrote, such as the keys it gave to new rows (#220): the next save keeps them.
+    // Not over changes that the editor made while the request ran.
+    const detail = await api.singletons.get(props.name);
+    if (!dirty.value) {
+      values.value = structuredClone(fillDefaults(definition.value?.fields ?? {}, detail.data));
+      revision.value = detail.revision;
+      markClean();
+    }
   } catch (error) {
     if (error instanceof ApiError && error.status === 409) {
       conflict.value = "loading";

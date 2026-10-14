@@ -6,6 +6,7 @@
  * storage-shape skeleton for a field map, honouring declared defaults.
  */
 
+import { isRowKey, ROW_KEY } from "./row-key.js";
 import type { AnyField, FieldMap } from "./types.js";
 
 export function defaultValue(field: AnyField): unknown {
@@ -86,9 +87,12 @@ export function withDefaults(
 
     if (field.kind === "repeater") {
       const rows = Array.isArray(value) ? value : [];
-      result[key] = rows.map((row) =>
-        withDefaults(field.fields, row as Record<string, unknown>),
-      );
+      result[key] = rows.map((row) => {
+        const record = row as Record<string, unknown>;
+        const filled = withDefaults(field.fields, record);
+        // The row's key names its rich-text files: it stays with the row.
+        return isRowKey(record?.[ROW_KEY]) ? { [ROW_KEY]: record[ROW_KEY], ...filled } : filled;
+      });
       continue;
     }
 

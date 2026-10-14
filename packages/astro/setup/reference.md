@@ -10,7 +10,7 @@ The guides link here. Read the section that a step names.
 | `npx astro sync` | Runs the Mica loaders, which write the model to `content/.mica/schema.json` |
 | `npx mica check` | Checks every entry against `content/.mica/schema.json`. Exit code 1 on an error |
 | `npx mica import` | Moves Astro collections into Mica, from Astro's data store. See [content-collections.md](./content-collections.md#6-convert-the-entries) |
-| `npx mica migrate-layout` | Moves entries into the layout of the model, after the first or the last rich-text or media field of a collection was added or removed |
+| `npx mica migrate-layout` | Moves entries into the layout of the model, after the first or the last rich-text or media field of a collection was added or removed. Also gives repeater rows with rich text their keys, in content from Mica 0.8 or earlier |
 | `npx mica start` | Opens the editor in the browser. Only for the user; do not run it yourself |
 
 `mica check` reads the model from `content/.mica/schema.json`. After every
@@ -109,8 +109,10 @@ content/
   they differ, Mica uses the name.
 - A media path in the JSON is relative to the entry's folder (`media/cover.jpg`),
   or starts with `/` and is relative to the content root (`/shared/logo.png`).
-- A rich-text field in a repeater or an object gets a dotted file name:
-  `sections.0.body.mdoc`.
+- A rich-text field in an object gets a dotted file name: `seo.intro.mdoc`. In
+  a repeater, each row with rich text has a key, `"_key"`, as its first value: a
+  letter, then 3 to 15 letters or digits, different for each row of the list.
+  The file names the row by its key: `sections.k3f9a2.body.mdoc`.
 - An empty field is `null` in the JSON. An empty list is `[]`, an unset
   boolean is `false`, and an `object()` holds its empty fields.
 - Markdoc is Markdown plus `{% tags %}`. Raw HTML is not rendered: Markdoc
@@ -166,6 +168,11 @@ export async function writeOrder(collection, slugs) {
 //   body: "The first article.",
 // });
 ```
+
+`serializeEntry` gives each repeater row with rich text a new key when the row
+has none. If the script writes an entry a second time, keep the keys: read the
+`_key` of each row from the entry's `index.json` and put it into the data.
+Otherwise the old `.mdoc` files of those rows stay behind.
 
 The script does not copy media files. Copy each file to
 `content/<collection>/<slug>/media/<file>` yourself. Delete the script when the

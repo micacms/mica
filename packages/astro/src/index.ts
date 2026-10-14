@@ -308,7 +308,7 @@ export function micaCollections<S extends Site>(
   for (const [name, def] of Object.entries(site.collections) as [string, Collection][]) {
     collections[name] = {
       type: "content_layer",
-      schema: ({ image }) => fieldsSchema(def.fields, { image }).extend({ _mica: metaSchema(image) }),
+      schema: ({ image }) => fieldsSchema(def.fields, { image, rowKeys: false }).extend({ _mica: metaSchema(image) }),
       loader: {
         name: `mica:${name}`,
         load: async (context) => {
@@ -374,7 +374,7 @@ export function micaCollections<S extends Site>(
   for (const [name, def] of Object.entries(site.singletons) as [string, Singleton][]) {
     collections[name] = {
       type: "content_layer",
-      schema: ({ image }) => fieldsSchema(def.fields, { image }).extend({ _mica: z.object({ images: imagesSchema(image) }) }),
+      schema: ({ image }) => fieldsSchema(def.fields, { image, rowKeys: false }).extend({ _mica: z.object({ images: imagesSchema(image) }) }),
       loader: {
         name: `mica:${name}`,
         load: async (context) => {

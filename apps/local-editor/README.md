@@ -44,7 +44,7 @@ keeps Publish out of the editor entirely).
 ```bash
 npx @micacms/editor init     # add Mica to the Astro project in this directory
 npx @micacms/editor check    # check every entry against the model
-npx @micacms/editor migrate-layout   # move entries after a layout change
+npx @micacms/editor migrate-layout   # move entries after a layout change, and key repeater rows
 npx @micacms/editor import           # move Astro collections into Mica
 ```
 

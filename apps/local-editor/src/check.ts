@@ -20,9 +20,12 @@ import {
   MANIFEST_PATH,
   markdocImages,
   misplacedFiles,
+  needsRowKey,
   ORDER_FILE,
+  readsDocument,
   type PathSegment,
   readCollectionEntry,
+  ROW_KEY,
   readSingleton,
   resolveMarkdocTarget,
   resolveSlugField,
@@ -271,6 +274,11 @@ async function checkEntry(
       warning(path, "Not read: no rich-text field has this name.");
       continue;
     }
+    // A row of the file's name must exist: a key that a hand edit or a merge lost hides the text.
+    if (!readsDocument(fields, raw, item.name)) {
+      warning(path, "Not read: the list has no such row. The next save in Mica deletes the file.");
+      continue;
+    }
     const text = (await files.read(path)) ?? "";
     for (const message of markdocWarnings(text)) warning(path, message);
     for (const target of markdocImages(text)) {
@@ -360,24 +368,26 @@ function unknownKeys(fields: FieldMap, raw: Record<string, unknown>, path: PathS
     } else if (field.kind === "object" && isRecord(value)) {
       messages.push(...unknownKeys(field.fields, value, [...path, key]));
     } else if (field.kind === "repeater" && Array.isArray(value)) {
+      // A row with rich text has a key that names its files (#220).
+      const keyed = needsRowKey(field.fields);
       value.forEach((row, index) => {
-        if (isRecord(row)) messages.push(...unknownKeys(field.fields, row, [...path, key, index]));
+        if (!isRecord(row)) return;
+        const own = keyed ? Object.fromEntries(Object.entries(row).filter(([name]) => name !== ROW_KEY)) : row;
+        messages.push(...unknownKeys(field.fields, own, [...path, key, index]));
       });
     }
   }
   return messages;
 }
 
-/** Whether a sidecar's dotted path leads to a rich-text field. */
+/** Whether a sidecar's dotted path leads to a rich-text field. After a repeater comes its row: a key, or a number. */
 function namesRichText(fields: FieldMap, path: PathSegment[]): boolean {
-  let map: FieldMap | undefined = fields;
-  for (const [index, segment] of path.entries()) {
-    if (typeof segment === "number") continue;
-    const field: AnyField | undefined = map?.[segment];
-    if (!field) return false;
-    if (index === path.length - 1) return field.kind === "richText";
-    map = field.kind === "object" || field.kind === "repeater" ? field.fields : undefined;
-  }
+  const [head, ...rest] = path;
+  const field: AnyField | undefined = typeof head === "string" ? fields[head] : undefined;
+  if (!field) return false;
+  if (rest.length === 0) return field.kind === "richText";
+  if (field.kind === "object") return namesRichText(field.fields, rest);
+  if (field.kind === "repeater") return namesRichText(field.fields, rest.slice(1));
   return false;
 }
 

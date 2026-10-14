@@ -12,6 +12,7 @@ import { collectReferences, resolveSlugField } from "./define.js";
 import { DOCUMENT_EXTENSION, FormatError, INDEX_FILE, entryLayout, type EntryLayout } from "./layout.js";
 import { isValidSlug } from "./slugify.js";
 import { parseEntry } from "./parse.js";
+import { numberedDocuments } from "./row-key.js";
 import { isWebAddress, markdocImages, resolveMarkdocTarget, richTextDocuments } from "./rich-text.js";
 import type { Collection, FieldMap, Singleton, Site } from "./types.js";
 import type { FieldIssue } from "./validation.js";
@@ -65,6 +66,22 @@ export class LayoutError extends ContentReadError {
         "Run `npx mica migrate-layout`, check the result, and commit it.",
       paths[0]!,
     );
+  }
+}
+
+/**
+ * Rich-text files that name a repeater row by its number, as content from Mica
+ * 0.8 or earlier does (#220). A layout error, so that it is handled as one:
+ * `mica migrate-layout` converts the files.
+ */
+export class RowNumberError extends LayoutError {
+  override name = "RowNumberError";
+  constructor(paths: string[], name: string) {
+    super(paths, name, "directory");
+    const shown = paths.length > 5 ? [...paths.slice(0, 5), `and ${paths.length - 5} more`] : paths;
+    this.message =
+      `"${name}" has files that name a repeater row by its number: ${shown.join(", ")}. ` +
+      "Mica names rows by their key now. Run `npx mica migrate-layout`, check the result, and commit it.";
   }
 }
 
@@ -306,6 +323,9 @@ async function readEntry(
   let parsed: Record<string, unknown>;
   try {
     parsed = parseEntry(fields, { data, documents });
+    // Valid JSON now: `parseEntry` has read it.
+    const numbered = numberedDocuments(fields, JSON.parse(data) as Record<string, unknown>, Object.keys(documents));
+    if (numbered.length > 0) throw new RowNumberError(numbered.map((name) => `${base}/${name}`), label);
   } catch (error) {
     // A `FormatError` names the problem but not the file, and a build that
     // says only "Content is not valid JSON" is close to useless.

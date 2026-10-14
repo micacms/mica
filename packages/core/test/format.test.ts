@@ -21,8 +21,11 @@ import {
   documentPath,
   entryFiles,
   entryLayout,
+  fieldsSchema,
   FormatError,
   isProtocolManifest,
+  isRowKey,
+  keyRepeaterRows,
   media,
   number,
   object,
@@ -36,6 +39,7 @@ import {
   slug,
   text,
   url,
+  withDefaults,
   type FieldMap,
 } from "../dist/index.js";
 
@@ -75,6 +79,7 @@ describe("layout", () => {
     assert.equal(documentName(["sections", 0, "body"]), "sections.0.body.mdoc");
     assert.deepEqual(documentPath("body.mdoc"), ["body"]);
     assert.deepEqual(documentPath("sections.0.body.mdoc"), ["sections", 0, "body"]);
+    assert.deepEqual(documentPath("sections.kbrief.body.mdoc"), ["sections", "kbrief", "body"]);
   });
 
   it("refuses a file name that is not a document", () => {
@@ -126,8 +131,8 @@ const payload = {
   body: "# Overview\n\nA housing project.",
   seo: { metaTitle: "Buchholzstrasse", intro: "Short intro." },
   sections: [
-    { heading: "Brief", body: "The brief was..." },
-    { heading: "Result", body: null },
+    { _key: "kbrief", heading: "Brief", body: "The brief was..." },
+    { _key: "kresult", heading: "Result", body: null },
   ],
   cover: "media/exterior.jpg",
 };
@@ -138,11 +143,11 @@ describe("serializeEntry", () => {
 
     assert.deepEqual(Object.keys(documents).sort(), [
       "body.mdoc",
-      "sections.0.body.mdoc",
+      "sections.kbrief.body.mdoc",
       "seo.intro.mdoc",
     ]);
     assert.equal(documents["body.mdoc"], "# Overview\n\nA housing project.\n");
-    assert.equal(documents["sections.0.body.mdoc"], "The brief was...\n");
+    assert.equal(documents["sections.kbrief.body.mdoc"], "The brief was...\n");
   });
 
   it("keeps rich text out of the JSON entirely", () => {
@@ -237,7 +242,7 @@ describe("parseEntry", () => {
   it("ignores a document whose path no longer names a rich-text field", () => {
     const parsed = parseEntry(fields, {
       data: '{ "title": "A" }',
-      documents: { "retired.mdoc": "x", "sections.9.body.mdoc": "y", "title.mdoc": "z" },
+      documents: { "retired.mdoc": "x", "sections.kgone.body.mdoc": "y", "title.mdoc": "z" },
     });
 
     assert.equal(parsed["title"], "A");
@@ -252,6 +257,99 @@ describe("parseEntry", () => {
   it("reports malformed content rather than throwing a bare SyntaxError", () => {
     assert.throws(() => parseEntry(fields, { data: "{ not json" }), FormatError);
     assert.throws(() => parseEntry(fields, { data: "[]" }), FormatError);
+  });
+});
+
+/* ------------------------------------------------------------------ *
+ * Repeater row keys (#220)
+ * ------------------------------------------------------------------ */
+
+describe("repeater row keys", () => {
+  const rows = (data: string) => (JSON.parse(data) as { sections: Array<Record<string, unknown>> }).sections;
+
+  it("gives a key to each row with rich text, and none to a row without", () => {
+    const linkFields: FieldMap = { ...fields, links: repeater({ fields: { label: text() } }) };
+    const { data } = serializeEntry(linkFields, {
+      ...payload,
+      sections: [{ heading: "A", body: "x" }, { heading: "B" }],
+      links: [{ label: "Home" }],
+    });
+    const parsed = JSON.parse(data) as { sections: Array<Record<string, unknown>>; links: Array<Record<string, unknown>> };
+
+    assert.equal(parsed.sections.every((row) => isRowKey(row["_key"])), true);
+    assert.notEqual(parsed.sections[0]!["_key"], parsed.sections[1]!["_key"]);
+    assert.deepEqual(Object.keys(parsed.sections[0]!), ["_key", "heading"]);
+    assert.deepEqual(parsed.links, [{ label: "Home" }]);
+  });
+
+  it("changes only the JSON when rows are reordered", () => {
+    const before = serializeEntry(fields, payload);
+    const after = serializeEntry(fields, { ...payload, sections: [...payload.sections].reverse() });
+
+    assert.deepEqual(after.documents, before.documents);
+    assert.deepEqual(rows(after.data).map((row) => row["_key"]), ["kresult", "kbrief"]);
+  });
+
+  it("replaces a key that is not valid or that an earlier row has", () => {
+    const { data, documents } = serializeEntry(fields, {
+      ...payload,
+      sections: [
+        { _key: "kbrief", body: "one" },
+        { _key: "kbrief", body: "two" },
+        { _key: "123", body: "three" },
+      ],
+    });
+    const keys = rows(data).map((row) => row["_key"] as string);
+
+    assert.equal(keys[0], "kbrief");
+    assert.equal(new Set(keys).size, 3);
+    assert.equal(keys.every(isRowKey), true);
+    assert.equal(documents[`sections.${keys[1]}.body.mdoc`], "two\n");
+  });
+
+  it("places nothing from a document that names its row by number: the reader refuses it", () => {
+    const parsed = parseEntry(fields, { data: '{ "sections": [{ "heading": "A" }] }', documents: { "sections.0.body.mdoc": "x" } });
+    assert.equal((parsed["sections"] as Array<Record<string, unknown>>)[0]!["body"], null);
+  });
+
+  it("keys nested repeaters, and the file name carries both keys", () => {
+    const nested: FieldMap = { groups: repeater({ fields: { items: repeater({ fields: { body: richText() } }) } }) };
+    const { data, documents } = serializeEntry(nested, { groups: [{ _key: "kgroup", items: [{ _key: "kitem", body: "x" }] }] });
+
+    assert.deepEqual(Object.keys(documents), ["groups.kgroup.items.kitem.body.mdoc"]);
+    assert.deepEqual(parseEntry(nested, { data, documents }), { groups: [{ _key: "kgroup", items: [{ _key: "kitem", body: "x" }] }] });
+  });
+
+  it("keeps the key through defaults and validation, and leaves it out for templates", () => {
+    const row = { _key: "kbrief", heading: "Brief" };
+    const filled = withDefaults(fields, { sections: [row] }) as { sections: Array<Record<string, unknown>> };
+    assert.equal(filled.sections[0]!["_key"], "kbrief");
+
+    const saved = fieldsSchema(fields, { enforceRequired: false }).parse({ sections: [row] }) as { sections: Array<Record<string, unknown>> };
+    assert.equal(saved.sections[0]!["_key"], "kbrief");
+
+    const template = fieldsSchema(fields, { enforceRequired: false, rowKeys: false }).parse({ sections: [row] }) as {
+      sections: Array<Record<string, unknown>>;
+    };
+    assert.equal("_key" in template.sections[0]!, false);
+  });
+
+  it("converts stored content to keys and renames its documents, and changes nothing else", () => {
+    const stored = { title: "A", sections: [{ heading: "One", note: "kept" }, { heading: "Two" }] };
+    const result = keyRepeaterRows(fields, stored, ["body.mdoc", "sections.0.body.mdoc", "sections.1.body.mdoc"]);
+    const [first, second] = result.data["sections"] as Array<Record<string, unknown>>;
+
+    assert.equal(result.changed, true);
+    assert.deepEqual(Object.keys(first!), ["_key", "heading", "note"]);
+    assert.deepEqual(result.renames, {
+      "sections.0.body.mdoc": `sections.${first!["_key"]}.body.mdoc`,
+      "sections.1.body.mdoc": `sections.${second!["_key"]}.body.mdoc`,
+    });
+    assert.deepEqual(stored.sections[0], { heading: "One", note: "kept" });
+
+    const again = keyRepeaterRows(fields, result.data, Object.values(result.renames));
+    assert.equal(again.changed, false);
+    assert.deepEqual(again.renames, {});
   });
 });
 
