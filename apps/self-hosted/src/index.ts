@@ -8,7 +8,7 @@
 import { join } from "node:path";
 
 import { createOidcAuth } from "@micacms/auth-oidc";
-import { MANIFEST_PATH, type Site } from "@micacms/core/internal";
+import { MANIFEST_PATH, memorySource, type Site } from "@micacms/core/internal";
 import {
   ConfigError,
   ConflictError,
@@ -80,6 +80,17 @@ function createDispatcher() {
   const app = new Hono<Env>();
   app.all("*", (c) => current.fetch(c.req.raw, c.env));
   return { app, serve: (next: Hono<Env>) => void (current = next) };
+}
+
+/** Whether the token may push: logged, because only Publish needs it. */
+async function checkWrite(workspace: ManagedWorkspace, logger: Logger, clean: (text: string) => string): Promise<void> {
+  const write = await workspace.checkWrite();
+  if (write.kind === "pushed") return logger.info("The write check passed");
+  const writeCheck =
+    write.kind === "failed"
+      ? `failed: ${describeFailure(write.failure)}`
+      : `refused: ${clean(write.kind === "remote-rejected" ? write.reason : "non-fast-forward")}`;
+  logger.warn("The write check did not pass; Publish will fail", { writeCheck });
 }
 
 async function readModel(config: SelfHostedConfig, files: ContentFiles): Promise<Site> {
@@ -177,19 +188,16 @@ async function serve(): Promise<void> {
   const workspaceLocks = createWorkspaceLocks();
   locks = workspaceLocks;
 
-  // The model at HEAD groups the files for the first sync, and is read again
-  // after it. Only the second read may stop the start: a model this image
-  // cannot read must not block the fetch of a fix.
-  const startModel = await loadSchema(files).catch((error: unknown) => {
+  // Mica starts with the model at the clone's head and syncs in the background.
+  // Only without a readable model does the start wait for a sync, which may bring a fix.
+  let model = await loadSchema(files).catch((error: unknown) => {
     if (!(error instanceof SchemaError)) throw error;
-    logger.warn("The content model at the clone's head cannot be read; syncing with a coarse grouping", {
-      message: error.message,
-    });
+    logger.warn("The content model at the clone's head cannot be read; syncing first", { message: error.message });
     return null;
   });
-  const groups = { of: startModel ? contentGroups(startModel) : coarseGroups };
+  const groups = { of: model ? contentGroups(model) : coarseGroups };
   const revalidate = {
-    run: startModel ? revalidator(startModel, files, tree) : async (_paths: string[]) => {},
+    run: model ? revalidator(model, files, tree) : async (_paths: string[]) => {},
   };
 
   managed = createManagedWorkspace({
@@ -209,33 +217,25 @@ async function serve(): Promise<void> {
     onModelChange: async () => {
       await ctx?.refreshModel({ force: true });
     },
+    modelProblem: async (manifest) => {
+      try {
+        await loadSchema(memorySource({ [MANIFEST_PATH]: manifest }, "sync"));
+        return null;
+      } catch (error) {
+        if (error instanceof SchemaError) return error.message;
+        throw error;
+      }
+    },
   });
 
-  let synced;
-  try {
-    synced = await managed.sync({ skipHold: true });
-  } catch (error) {
-    if (error instanceof CloneRefusal) refuse(error.message);
-    throw error;
+  if (!model) {
+    const synced = await managed.sync({ skipHold: true });
+    if (synced.error) logger.warn("The sync at the start failed", { code: synced.error.code, message: synced.error.message });
+    model = await readModel(config, files);
+    groups.of = contentGroups(model);
+    revalidate.run = revalidator(model, files, tree);
   }
-  if (synced.error) {
-    // A clone is in place, so editing works; Mica keeps trying.
-    logger.warn("Starting without a fresh sync", { code: synced.error.code, message: synced.error.message });
-  }
-
-  const model = await readModel(config, files);
-  groups.of = contentGroups(model);
-  revalidate.run = revalidator(model, files, tree);
   const schemaRevision = await files.revision(MANIFEST_PATH);
-
-  const write = await managed.checkWrite();
-  const writeCheck =
-    write.kind === "pushed"
-      ? "ok"
-      : write.kind === "failed"
-        ? `failed: ${describeFailure(write.failure)}`
-        : `refused: ${clean(write.kind === "remote-rejected" ? write.reason : "non-fast-forward")}`;
-  if (write.kind !== "pushed") logger.warn("The write check did not pass; Publish will fail", { writeCheck });
 
   const auth = createOidcAuth({ config, logger });
   const workspace = managed;
@@ -276,6 +276,7 @@ async function serve(): Promise<void> {
     }),
   );
   workspace.start();
+  void checkWrite(workspace, logger, clean);
 
   logger.info("Mica CMS started", {
     url: config.MICA_PUBLIC_URL,
@@ -288,7 +289,6 @@ async function serve(): Promise<void> {
     branch,
     root,
     head: workspace.state().head,
-    writeCheck,
     // Shows when a website was built against a different model than the CMS serves.
     schemaFingerprint: await schemaFingerprint(model),
     collections: Object.keys(model.collections).length,

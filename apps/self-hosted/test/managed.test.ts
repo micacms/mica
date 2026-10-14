@@ -70,6 +70,7 @@ async function setup(
   token = TOKEN,
   files: Record<string, string> = SEED,
   onModelChange?: () => Promise<void>,
+  modelProblem?: (manifest: string) => Promise<string | null>,
 ): Promise<Setup> {
   const name = `site-${++counter}`;
   const developer = seedRepository(host, name, files);
@@ -92,6 +93,7 @@ async function setup(
     secrets: () => [token],
     syncSeconds: 60,
     ...(onModelChange ? { onModelChange } : {}),
+    ...(modelProblem ? { modelProblem } : {}),
   });
   return { name, developer, layout, git, repo: layout.repositoryDir, workspace, open };
 }
@@ -335,13 +337,28 @@ describe("sync", () => {
     assert.equal(head(s), to);
   });
 
-  it("forgets a held attributes change once a start applies it", async () => {
+  it("brings in an attributes change without a restart, and holds one that adds LFS", async () => {
     const s = await setup();
-    upstream(s, (dir) => writeIn(dir, "content/.gitattributes", "*.txt text\n"));
-    assert.equal((await s.workspace.sync()).restartRequired, true);
-    const started = await s.workspace.sync({ skipHold: true });
-    assert.equal(started.restartRequired, false);
-    assert.equal(s.workspace.policy.publishAvailability().enabled, true);
+    const plain = upstream(s, (dir) => writeIn(dir, "content/.gitattributes", "*.txt text\n"));
+    assert.equal((await s.workspace.sync()).error, null);
+    assert.equal(head(s), plain);
+
+    upstream(s, (dir) => writeIn(dir, "content/.gitattributes", "*.jpg filter=lfs\n"));
+    assert.equal((await s.workspace.sync()).error?.code, "lfs_refused");
+    assert.equal(head(s), plain);
+  });
+
+  it("holds a new model that this image cannot read, unless the start has no other", async () => {
+    const s = await setup(TOKEN, SEED, undefined, async (manifest) => (manifest.includes('"x":2') ? "too new" : null));
+    const before = head(s);
+    const to = upstream(s, (dir) => writeIn(dir, "content/.mica/schema.json", '{"protocolVersion":1,"x":2}\n'));
+    const held = await s.workspace.sync();
+    assert.equal(held.error?.code, "model_unreadable");
+    assert.match(held.error!.message, /too new/);
+    assert.equal(head(s), before);
+
+    assert.equal((await s.workspace.sync({ skipHold: true })).error, null);
+    assert.equal(head(s), to);
   });
 
   it("brings a model change in at once, and tells the app", async () => {
@@ -353,7 +370,6 @@ describe("sync", () => {
 
     const state = await s.workspace.sync();
     assert.equal(state.error, null, state.error?.message);
-    assert.equal(state.restartRequired, false);
     assert.equal(head(s), to);
     assert.equal(told, 1);
   });

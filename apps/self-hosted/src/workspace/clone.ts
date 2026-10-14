@@ -15,8 +15,12 @@ import { writeIsolationAttributes } from "./isolation.js";
 import { lfsUnderRoot } from "./lfs.js";
 import { changedBetween, draftPaths, restorePaths } from "./restore.js";
 
-/** The longest a Git call may run. */
+/** The longest a local Git call may run. */
 export const LONGEST_GIT_CALL_MS = 10 * 60_000;
+/** The longest a fetch or a push may run; the low-speed limit stops a stalled one sooner (`isolation.ts`). */
+export const NETWORK_CALL_MS = 5 * 60_000;
+/** The longest the first clone may run: a repository with many images is large. */
+const CLONE_MS = 60 * 60_000;
 
 export interface CloneLayout {
   dataDir: string;
@@ -149,7 +153,7 @@ async function cloneFresh(options: OpenCloneOptions): Promise<string> {
     "--",
     options.url,
     temporary,
-  ]);
+  ], { timeoutMs: CLONE_MS });
 
   let root: string;
   try {
@@ -162,7 +166,7 @@ async function cloneFresh(options: OpenCloneOptions): Promise<string> {
 
     // `checkout` fetches the missing blobs in one batch; `restore` would fetch
     // them one request at a time.
-    await git.run(["checkout", "--force", "--quiet", "HEAD"]);
+    await git.run(["checkout", "--force", "--quiet", "HEAD"], { timeoutMs: CLONE_MS });
     await rename(temporary, layout.repositoryDir);
   } catch (error) {
     await rm(temporary, { recursive: true, force: true });

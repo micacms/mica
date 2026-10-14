@@ -1,11 +1,11 @@
 {
   "changes": [
     {
-      "packageName": "@micacms/editor-ui",
+      "packageName": "@micacms/editor",
       "comment": "Import the internals of @micacms/core from @micacms/core/internal.",
       "type": "none"
     }
   ],
-  "packageName": "@micacms/editor-ui",
+  "packageName": "@micacms/editor",
   "email": "alexander@muedespacher.ch"
 }

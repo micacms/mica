@@ -1,11 +1,11 @@
 {
   "changes": [
     {
-      "packageName": "@micacms/editor-ui",
+      "packageName": "@micacms/editor",
       "comment": "The System page shows whether Mica runs self-hosted or as the local editor, instead of `NODE_ENV`.",
       "type": "patch"
     }
   ],
-  "packageName": "@micacms/editor-ui",
+  "packageName": "@micacms/editor",
   "email": "alexander@muedespacher.ch"
 }

@@ -10,7 +10,6 @@ export function readiness(state: SyncState): { degraded: boolean; reasons: strin
   const reasons: string[] = [];
   if (state.error) reasons.push(state.error.code === "auth" ? "auth_failed" : state.error.code === "unknown" ? "sync_failing" : state.error.code);
   if (state.pendingPush) reasons.push("pending_push");
-  if (state.restartRequired) reasons.push("restart_required");
   if (state.readOnly) reasons.push("read_only");
   const degraded = reasons.length > 0;
   if (state.conflicts.length > 0) reasons.push("conflict");

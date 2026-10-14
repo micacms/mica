@@ -56,6 +56,16 @@ export function managedEnvironment(options: ManagedEnvironmentOptions): NodeJS.P
     ["gc.auto", "0"],
     // Never in the background: a stop would leave its lock files behind.
     ["gc.autoDetach", "false"],
+    // A transfer that stays below 1 kB/s for a minute stops, so a stalled network does not block Publish.
+    ["http.lowSpeedLimit", "1000"],
+    ["http.lowSpeedTime", "60"],
+    // A repack of a repository with many large images stays within a small container's memory.
+    ["pack.threads", "1"],
+    ["pack.windowMemory", "256m"],
+    ["core.bigFileThreshold", "16m"],
+    // Faster status and index writes for a tree with many files.
+    ["feature.manyFiles", "true"],
+    ["core.untrackedCache", "true"],
     ["safe.directory", options.cloneDir],
     ["user.name", MICA_IDENTITY.name],
     ["user.email", MICA_IDENTITY.email],

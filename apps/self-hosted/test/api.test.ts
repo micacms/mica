@@ -38,7 +38,6 @@ describe("health", () => {
       head: "abc",
       lastSyncAt: "2026-10-14T10:00:00.000Z",
       behind: 0,
-      restartRequired: false,
       conflicts: [],
       pendingPush: null,
       refused: null,

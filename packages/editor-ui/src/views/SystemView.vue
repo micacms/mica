@@ -81,7 +81,6 @@ function report(): string {
       ? [
           `Last sync ${data.repository.sync.lastSyncAt ?? "never"}` +
             (data.repository.sync.error ? `, failing since ${data.repository.sync.error.since}: ${data.repository.sync.error.message}` : ""),
-          ...(data.repository.sync.restartRequired ? ["Restart needed: the Git attributes changed"] : []),
           ...(data.repository.sync.refused ? [`Last publication refused: ${data.repository.sync.refused.reason}`] : []),
         ]
       : []),
@@ -325,13 +324,6 @@ async function copyReport(): Promise<void> {
           the site can be rebuilt from it without this server.
         </p>
 
-        <p
-          v-if="info.repository.sync?.restartRequired"
-          class="mt-3 rounded-md border border-warning/15 bg-warning-soft px-4 py-3 text-xs text-warning"
-        >
-          Restart needed: the Git attributes changed in the repository. Editing goes on; publishing
-          waits for the restart.
-        </p>
         <p
           v-if="info.repository.sync?.refused"
           class="mt-3 rounded-md border border-danger/15 bg-danger-soft px-4 py-3 text-xs text-danger"

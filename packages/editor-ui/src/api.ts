@@ -261,7 +261,6 @@ export interface SyncStatus {
   behind: number;
   error: { code: string; message: string; since: string } | null;
   /** A `.gitattributes` changed on the website; a restart applies it. A new content model needs none. */
-  restartRequired: boolean;
   /** Published in Mica, not yet in the repository. Mica retries it. */
   pendingPush: { revision: string; reason: string } | null;
   /** The last publication the repository refused. It is a draft again. */

@@ -1,11 +1,11 @@
 {
   "changes": [
     {
-      "packageName": "@micacms/editor-ui",
+      "packageName": "@micacms/editor",
       "comment": "Sign-out removes the unsaved form values that the tab kept, and an upload goes in batches of 4 files.",
       "type": "patch"
     }
   ],
-  "packageName": "@micacms/editor-ui",
+  "packageName": "@micacms/editor",
   "email": "alexander@muedespacher.ch"
 }
