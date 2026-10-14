@@ -1,0 +1,98 @@
+{
+  "protocolVersion": 1,
+  "generatedBy": "fixture",
+  "collections": {
+    "pages": {
+      "type": "collection",
+      "label": "Pages",
+      "fields": {
+        "title": {
+          "kind": "text",
+          "required": true
+        },
+        "slug": {
+          "kind": "slug",
+          "from": "title"
+        },
+        "seo": {
+          "kind": "object",
+          "fields": {
+            "description": {
+              "kind": "textarea"
+            },
+            "intro": {
+              "kind": "richText"
+            }
+          }
+        },
+        "sections": {
+          "kind": "repeater",
+          "fields": {
+            "heading": {
+              "kind": "text"
+            },
+            "text": {
+              "kind": "richText"
+            }
+          }
+        },
+        "facts": {
+          "kind": "repeater",
+          "fields": {
+            "label": {
+              "kind": "text"
+            },
+            "value": {
+              "kind": "number"
+            }
+          }
+        },
+        "kind": {
+          "kind": "select",
+          "options": [
+            {
+              "label": "Page",
+              "value": "page"
+            },
+            {
+              "label": "Landing page",
+              "value": "landing"
+            }
+          ]
+        },
+        "audiences": {
+          "kind": "select",
+          "multiple": true,
+          "options": [
+            {
+              "label": "Buyers",
+              "value": "buyers"
+            },
+            {
+              "label": "Press",
+              "value": "press"
+            }
+          ]
+        },
+        "related": {
+          "kind": "relation",
+          "collection": "pages",
+          "multiple": true
+        },
+        "accent": {
+          "kind": "color"
+        },
+        "place": {
+          "kind": "coordinates"
+        },
+        "contact": {
+          "kind": "email"
+        },
+        "website": {
+          "kind": "url"
+        }
+      }
+    }
+  },
+  "singletons": {}
+}

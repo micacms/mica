@@ -1,0 +1,24 @@
+{
+  "protocolVersion": 1,
+  "generatedBy": "fixture",
+  "collections": {
+    "team": {
+      "type": "collection",
+      "label": "Team",
+      "fields": {
+        "name": {
+          "kind": "text",
+          "required": true
+        },
+        "slug": {
+          "kind": "slug",
+          "from": "name"
+        },
+        "role": {
+          "kind": "text"
+        }
+      }
+    }
+  },
+  "singletons": {}
+}

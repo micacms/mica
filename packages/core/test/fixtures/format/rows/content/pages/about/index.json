@@ -1,0 +1,42 @@
+{
+  "title": "About us",
+  "slug": "about",
+  "seo": {
+    "description": "Who we are."
+  },
+  "sections": [
+    {
+      "_key": "kintro",
+      "heading": "Who we are"
+    },
+    {
+      "_key": "k7f3a9",
+      "heading": "How we work"
+    }
+  ],
+  "facts": [
+    {
+      "label": "Founded",
+      "value": 2019
+    },
+    {
+      "label": "People",
+      "value": 12
+    }
+  ],
+  "kind": "page",
+  "audiences": [
+    "buyers",
+    "press"
+  ],
+  "related": [
+    "contact"
+  ],
+  "accent": "#17694f",
+  "place": {
+    "lat": 47.3769,
+    "lng": 8.5417
+  },
+  "contact": "hello@example.com",
+  "website": "https://example.com"
+}

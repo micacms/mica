@@ -1,0 +1,54 @@
+{
+  "protocolVersion": 1,
+  "generatedBy": "fixture",
+  "collections": {
+    "posts": {
+      "type": "collection",
+      "label": "Posts",
+      "sortable": true,
+      "fields": {
+        "title": {
+          "kind": "text",
+          "required": true
+        },
+        "slug": {
+          "kind": "slug",
+          "from": "title"
+        },
+        "publishDate": {
+          "kind": "date"
+        },
+        "cover": {
+          "kind": "media",
+          "accept": "image",
+          "alt": "required"
+        },
+        "tags": {
+          "kind": "tags"
+        },
+        "body": {
+          "kind": "richText"
+        }
+      }
+    }
+  },
+  "singletons": {
+    "site": {
+      "type": "singleton",
+      "label": "Website",
+      "fields": {
+        "name": {
+          "kind": "text",
+          "required": true
+        },
+        "live": {
+          "kind": "boolean"
+        },
+        "logo": {
+          "kind": "media",
+          "accept": "image"
+        }
+      }
+    }
+  }
+}

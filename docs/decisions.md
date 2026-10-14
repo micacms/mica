@@ -1173,8 +1173,9 @@ migration.
 **What would change it:** the first site where the forms become unusable, or
 where translators need to see only their language.
 
-**1.0 status:** accepted for 1.0; the pattern is in #125, the layout rule in
-the format specification (#58).
+**1.0 status:** accepted for 1.0; the pattern is in #125. The file names of
+an object's rich text (`body.de.mdoc`) are in `docs/content-format.md`,
+section 3 (#58).
 
 ---
 
@@ -1419,7 +1420,7 @@ moves the files it uses from a folder that has no entry into its own
 video makes the repository large, and the editor cannot show one. A new shared
 upload that no field uses is marked on the Publish page.
 
-**1.0 status:** accepted for 1.0; the path forms are in #58.
+**1.0 status:** accepted for 1.0; the path forms are in `docs/content-format.md`, section 6 (#58).
 
 ---
 

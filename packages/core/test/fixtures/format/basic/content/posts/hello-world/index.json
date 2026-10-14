@@ -1,0 +1,12 @@
+{
+  "title": "Hello, world",
+  "slug": "hello-world",
+  "publishDate": "2026-10-14",
+  "cover": {
+    "path": "media/cover.jpg",
+    "alt": "A desk by a window"
+  },
+  "tags": [
+    "news"
+  ]
+}
