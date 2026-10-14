@@ -76,8 +76,7 @@ stay paths from the content root.
 The loaders also check references: a relation to a missing entry, or a missing
 file of a media field that is not an image, is a warning in the build log.
 `strict: true` makes it fail the build. A missing image file always fails the
-build, as with Astro's own `image()`. An entry in the other layout always fails the build, with the
-files and `npx mica migrate-layout`.
+build, as with Astro's own `image()`.
 
 ## Relations
 

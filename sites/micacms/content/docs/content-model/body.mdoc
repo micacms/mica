@@ -1,4 +1,4 @@
-One model defines the editor screens, validation rules, Astro collections, TypeScript types, and file layout. Because there is only one model, these five things cannot disagree.
+One model defines the editor screens, validation rules, Astro collections, TypeScript types, and files. Because there is only one model, these five things cannot disagree.
 
 The model is a plain TypeScript module, `src/mica.ts` by convention. It imports nothing from Astro, so a script or a test can read it without a build system. A field carries editorial meaning that a validator cannot: `text({ label: "Title", maxLength: 120 })` has a label, a width, and a group. Mica makes the Zod validators from the model, never the other way.
 
@@ -79,21 +79,26 @@ A relation field stores the slug of the target entry. `defineSite` refuses a rel
 
 ## The file layout
 
-The fields decide the layout, so all entries of a collection have the same layout. Entries with only structured fields use one JSON file. Rich text and media need a directory with an `index.json` file.
+Each entry and each singleton is a folder with an `index.json` file. Rich text and media go into the same folder. Astro does the same: its `glob()` loader gives `house-a/index.json` the ID `house-a`.
 
 ```text
 content/
 ├── .mica/schema.json        the model, written by the Astro build
-├── projects/                rich text and media: a folder for each entry
+├── projects/                a collection: a folder for each entry
 │   ├── _order.json
 │   └── house-a/
 │       ├── index.json       the structured fields
 │       ├── summary.mdoc     one file for each rich-text field
 │       └── media/exterior.jpg
-├── team/                    structured fields only: one file for each entry
-│   └── anna-vogt.json
-└── navigation.json          a singleton
+├── team/
+│   └── anna-vogt/
+│       └── index.json       structured fields only
+├── navigation/
+│   └── index.json           a singleton
+└── media/                   shared media, for example a logo
 ```
+
+The shared `media/` folder is beside the folders of the collections and singletons, so `media` is not a valid name for a collection or a singleton.
 
 Keys stay in model order. A repeat save of the same values gives the same bytes. This keeps the Git diff focused.
 
@@ -101,7 +106,7 @@ Keys stay in model order. A repeat save of the same values gives the same bytes.
 
 Run an Astro build after each model change and commit the new `.mica/schema.json` with the model. The website uses the new model at once. `astro check` finds a template that uses an old field name; `astro build` does not check types. Mica reads the new model without a restart: an open page tells the editor to save and load the page again. A new required field makes old entries invalid until an editor adds the value. The build reports this problem before deployment. Some changes need more steps: see [Model changes](/docs/model-changes/).
 
-The first rich-text or media field in a collection or singleton changes its layout from `<slug>.json` to `<slug>/index.json`. Removing the last such field changes it back. The existing files do not move, so the build fails and the local editor refuses to start, and both name the files. Run `npx mica migrate-layout`: it moves each entry, and lists the rich-text and media files that it removes because no field reads them any more. Run `npx mica check`, and commit the result with the model change.
+A new rich-text or media field adds a file to the folder of each entry when an editor fills it in.
 
 ## Next
 

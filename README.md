@@ -130,9 +130,8 @@ content/projects/haus-am-zuerichsee/
     └── exterior.jpg    referenced as media/exterior.jpg
 ```
 
-The layout is derived from the model: a collection with rich text or media
-stores each entry as a directory, one without stores each entry as a single
-`.json` file. Keys are written in model order, so a diff shows only what
+Each entry and each singleton is a folder with `index.json`, its `.mdoc`
+files and its media. Keys are written in model order, so a diff shows only what
 changed. Collection order is a `_order.json` listing slugs, so dragging one
 entry is a one-line diff rather than a rewrite of every entry.
 

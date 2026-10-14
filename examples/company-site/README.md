@@ -95,7 +95,7 @@ the file name says otherwise.
 | `relation` with `multiple`                               | `projects.team`, `events.speakers`                           | `events/*/index.json`                                       | `src/pages/events/[slug].astro`    |
 | `media` with `alt: "required"`                           | `news.coverImage`, `team.portrait`                           | `news/we-are-hiring-a-junior-consultant/index.json`         | `src/pages/news/[slug].astro`      |
 | `media` with `multiple` (gallery)                        | `projects.gallery`                                           | `projects/erp-selection-for-a-regional-retailer/index.json` | `src/pages/projects/[slug].astro`  |
-| `color`                                                  | `theme.primaryColor`, `theme.accentColor`                    | `theme.json`                                                | `src/layouts/BaseLayout.astro`     |
+| `color`                                                  | `theme.primaryColor`, `theme.accentColor`                    | `theme/index.json`                                          | `src/layouts/BaseLayout.astro`     |
 | `tags` with `max`, `maxLength`, `suggestions`, `default` | `projects.tags`, `news.tags`, `events.tags` (with `default`) | `events/*/index.json`                                       | `src/components/TagList.astro`     |
 
 ### Editor features
@@ -103,7 +103,7 @@ the file name says otherwise.
 | Feature                                  | Where it is used                                                                                                                                                  |
 | ---------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Manual order (`sortable`, `_order.json`) | `pages` and `team` in `src/mica.ts`; `content/pages/_order.json` and `content/team/_order.json`                                                                   |
-| Settings with a media folder             | the `site` singleton: `content/site/index.json` is a folder entry because the singleton has a `logo` media field                                                  |
+| Settings with a media folder             | the `site` singleton: its `logo` media field keeps the file in `content/site/media/`                                                                              |
 | A URL that other entries link to         | the `slug` of a project: `content/news/our-2026-sme-operations-benchmark/body.mdoc` links to `/projects/order-to-cash-review/`                                    |
 | A read-only field                        | `projects.code` (Project number) in `src/mica.ts`                                                                                                                 |
 | Groups and widths                        | `site` (group "Contact"), `events.venue` (group "Where"), `width: "half"` on many fields                                                                          |

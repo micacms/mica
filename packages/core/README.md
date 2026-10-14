@@ -39,9 +39,8 @@ group. Zod is generated from the DSL, not the other way round.
 
 ## What it also decides
 
-- **The layout on disk.** A collection with rich text or media stores each
-  entry as a directory (`index.json`, one `.mdoc` per rich-text field,
-  `media/`); one with neither stores each entry as a single `.json` file.
+- **The files on disk.** Each entry and each singleton is a folder:
+  `index.json`, one `.mdoc` per rich-text field, and `media/`.
   `serializeEntry` and `parseEntry` are the round trip, and they are
   byte-stable: equal content produces equal bytes, whatever order the keys
   arrived in.
