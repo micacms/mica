@@ -1,0 +1,161 @@
+# The dependencies between pull requests (#211).
+#
+#   - Every Monday, the audit of what Mica ships (scripts/audit.mjs). A finding
+#     opens one issue, or comments on the open one.
+#   - On the 3rd of each month, `rush update --full`: the newest versions inside
+#     the ranges in each package.json, as one pull request. Dependabot cannot
+#     update the Rush lockfile, so this does.
+#
+# The jobs that install packages run their scripts, so they have read rights
+# only. The jobs that write an issue or a pull request install nothing.
+
+name: Dependencies
+
+on:
+  schedule:
+    - cron: "17 5 * * 1" # the audit
+    - cron: "41 5 3 * *" # the update
+  workflow_dispatch:
+    inputs:
+      job:
+        description: What to run
+        type: choice
+        options: [audit, update]
+
+permissions: {}
+
+jobs:
+  audit:
+    if: github.event.schedule == '17 5 * * 1' || inputs.job == 'audit'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    outputs:
+      failed: ${{ steps.audit.outputs.failed }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - run: node common/scripts/install-run-rush.js install
+
+      - name: Audit what Mica ships
+        id: audit
+        run: |
+          if ! node scripts/audit.mjs > audit.txt 2>&1; then echo "failed=true" >> "$GITHUB_OUTPUT"; fi
+          cat audit.txt
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: audit
+          path: audit.txt
+
+  report:
+    needs: audit
+    if: needs.audit.outputs.failed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: audit
+
+      - name: Open or update the issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="Dependency audit: a high or critical finding in what Mica ships"
+          { echo "The weekly audit found an advisory in what Mica ships ($RUN)."; echo; echo '```'; cat audit.txt; echo '```'; } > body.md
+          number=$(gh issue list --state open --search "\"$title\" in:title" --json number --jq '.[0].number')
+          if [ -n "$number" ]; then
+            gh issue comment "$number" --body-file body.md
+          else
+            gh issue create --title "$title" --label dependencies --label security --body-file body.md
+          fi
+
+  update:
+    if: github.event.schedule == '41 5 3 * *' || inputs.job == 'update'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    outputs:
+      changed: ${{ steps.diff.outputs.changed }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - run: node common/scripts/install-run-rush.js update --full
+
+      - name: Whether the lockfile changed
+        id: diff
+        run: |
+          if git diff --quiet -- common/config/rush; then echo "changed=false" >> "$GITHUB_OUTPUT"; else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
+          git diff --stat -- common/config/rush
+
+      # The same gate as a pull request: a pull request that this workflow opens does not start CI by itself.
+      - if: steps.diff.outputs.changed == 'true'
+        run: |
+          node common/scripts/install-run-rush.js build
+          node common/scripts/install-run-rush.js typecheck
+          node common/scripts/install-run-rush.js test
+
+      - if: steps.diff.outputs.changed == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: lockfile
+          path: common/config/rush/
+
+  pull-request:
+    needs: update
+    if: needs.update.outputs.changed == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      # Credentials for the push. This job runs no code from a dependency.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: lockfile
+          path: common/config/rush/
+
+      - name: Open or update the pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          branch="chore/dependencies-$(date -u +%Y-%m)"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch -c "$branch"
+          git add common/config/rush
+          git commit -m "Update the dependencies inside their ranges"
+          git push --force origin "$branch"
+          if [ -z "$(gh pr list --head "$branch" --json number --jq '.[0].number')" ]; then
+            {
+              echo "## Description"
+              echo
+              echo "\`rush update --full\`: the newest versions inside the ranges in each package.json. Build, typecheck and test passed in the workflow run."
+              echo
+              echo "CI does not start by itself on a pull request that a workflow opens. Close and reopen this pull request to start it."
+            } > body.md
+            gh pr create --base main --head "$branch" --title "Update the dependencies inside their ranges" --body-file body.md
+          fi
