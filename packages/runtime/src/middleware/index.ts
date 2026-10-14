@@ -18,6 +18,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { ApiError, badRequest } from "../lib/errors.js";
 import { clientIp, type Env } from "../http.js";
 import { randomToken } from "../lib/id.js";
+import { ContentError } from "../services/content-store.js";
 
 /** Attaches the container, a request id and a scoped logger; logs the result. */
 export function requestContext(ctx: Env["Variables"]["ctx"]): MiddlewareHandler<Env> {
@@ -92,8 +93,12 @@ export function securityHeaders(): MiddlewareHandler<Env> {
   };
 }
 
-/** Files in one upload request; the Media view sends a selection in one request. */
-export const MAX_FILES_PER_UPLOAD = 10;
+/**
+ * Files in one upload request. The editor sends a larger selection in batches.
+ * Few, because the whole request is in memory: 4 files of 25 MB stay far below
+ * the container's 512 MB.
+ */
+export const MAX_FILES_PER_UPLOAD = 4;
 
 /** Far more than any entry's JSON, and small enough to refuse a flood early. */
 export const MAX_JSON_BYTES = 2 * 1024 * 1024;
@@ -144,8 +149,8 @@ export function errorHandler(): ErrorHandler<Env> {
       return c.json(error.toBody(), error.status as ContentfulStatusCode, error.headers);
     }
 
-    // A path that could leave the content root is the client's mistake, not a bug.
-    if (error instanceof ContentPathError) {
+    // A path that could leave the content root, or a name that the model does not have, is the client's mistake, not a bug.
+    if (error instanceof ContentPathError || error instanceof ContentError) {
       logger.warn("Refused content path", { message: error.message });
       const refused = badRequest(error.message);
       return c.json(refused.toBody(), refused.status as ContentfulStatusCode);

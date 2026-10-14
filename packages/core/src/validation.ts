@@ -13,6 +13,17 @@ import type { AnyField, FieldMap } from "./types.js";
 import { textPattern } from "./pattern.js";
 import { isValidSlug } from "./slugify.js";
 import { needsRowKey, ROW_KEY } from "./row-key.js";
+import { contentPath } from "./source.js";
+
+/** Whether a path from the content root stays inside it. */
+function insideContentRoot(path: string): boolean {
+  try {
+    contentPath(path);
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 export interface SchemaOptions {
   /**
@@ -217,7 +228,13 @@ function innerSchema(
 
     case "media": {
       const image = field.accept === "image" ? options.image?.() : undefined;
-      const path = image ?? z.string({ error: `${name} must be a file path.` }).min(1, { error: `${name} must be a file path.` });
+      const path =
+        image ??
+        z
+          .string({ error: `${name} must be a file path.` })
+          .min(1, { error: `${name} must be a file path.` })
+          // A `..` from a hand edit would point the website's build at a file outside the content root.
+          .refine(insideContentRoot, { error: `${name} must be a file inside the content root.` });
       const one = field.alt ? mediaWithAlt(field.alt, name, options, path, image !== undefined) : plainMedia(path);
       if (!field.multiple) return one;
       let list = z.array(one, { error: `${name} must be a list of files.` });

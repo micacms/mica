@@ -6,10 +6,10 @@
  */
 
 import { createHash } from "node:crypto";
-import { mkdir, readFile, readdir, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
-import { dirname, resolve } from "node:path";
+import { mkdir, readFile, readdir, realpath, rename, rm, stat, unlink, writeFile } from "node:fs/promises";
+import { dirname, resolve, sep } from "node:path";
 
-import { contentPath, type ContentSource } from "@micacms/core/internal";
+import { contentPath, ContentPathError, type ContentSource } from "@micacms/core/internal";
 import { isMissing, within } from "@micacms/core/node";
 
 export class FilesError extends Error {
@@ -91,11 +91,33 @@ export interface ContentFilesOptions {
 
 export function contentFiles(options: ContentFilesOptions): ContentFiles {
   const base = resolve(options.root);
-  const full = (path: string, allowRoot = false) => within(base, path, { allowRoot });
+  let realBase: Promise<string> | undefined;
+
+  /**
+   * The path on disk. `within` checks the text of the path; a symbolic link in
+   * the working tree could still lead out of the root, so the real location of
+   * the deepest part that exists must stay inside the real root.
+   */
+  const full = async (path: string, allowRoot = false): Promise<string> => {
+    const absolute = within(base, path, { allowRoot });
+    realBase ??= realpath(base).catch(() => base);
+    const root = await realBase;
+    for (let probe = absolute; ; probe = dirname(probe)) {
+      const real = await realpath(probe).catch((error: unknown) => (isMissing(error) ? null : Promise.reject(error)));
+      if (real === null) {
+        if (dirname(probe) === probe) return absolute;
+        continue;
+      }
+      if (real !== root && !real.startsWith(root + sep)) {
+        throw new ContentPathError(`Content path "${path}" leads out of the content root through a symbolic link.`);
+      }
+      return absolute;
+    }
+  };
 
   const readBytes = async (path: string): Promise<Uint8Array | null> => {
     try {
-      return await readFile(full(path));
+      return await readFile(await full(path));
     } catch (error) {
       if (isMissing(error)) return null;
       throw error;
@@ -114,7 +136,7 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
 
     async stat(path) {
       try {
-        const info = await stat(full(path));
+        const info = await stat(await full(path));
         return info.isFile() ? { size: info.size, modifiedAt: info.mtime.toISOString() } : null;
       } catch (error) {
         if (isMissing(error)) return null;
@@ -125,7 +147,7 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
     async list(path) {
       let items;
       try {
-        items = await readdir(full(path, true), { withFileTypes: true });
+        items = await readdir(await full(path, true), { withFileTypes: true });
       } catch (error) {
         if (isMissing(error)) return [];
         throw error;
@@ -159,7 +181,7 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
       try {
         for (const change of input.changes) {
           if (change.type === "write") {
-            const target = full(change.path);
+            const target = await full(change.path);
             const previous = await readBytes(change.path);
 
             undo.push(async () => {
@@ -177,7 +199,7 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
             continue;
           }
 
-          const target = full(change.path);
+          const target = await full(change.path);
 
           if (change.type === "delete") {
             const previous = await readBytes(change.path);
@@ -194,7 +216,7 @@ export function contentFiles(options: ContentFilesOptions): ContentFiles {
           const saved = await snapshotTree(this, change.path);
           undo.push(async () => {
             for (const [path, bytes] of saved) {
-              const restored = full(path);
+              const restored = await full(path);
               await mkdir(dirname(restored), { recursive: true });
               await writeFile(restored, bytes);
             }

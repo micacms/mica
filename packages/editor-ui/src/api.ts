@@ -27,7 +27,7 @@ export class ApiError extends Error {
 }
 
 /** Files per upload request; matches `MAX_FILES_PER_UPLOAD` in the runtime. */
-const UPLOAD_BATCH = 10;
+const UPLOAD_BATCH = 4;
 
 /** The CSRF cookie is readable by design — it is echoed back as a header. `__Host-` over https. */
 function csrfToken(): string {

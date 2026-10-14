@@ -16,7 +16,8 @@ jobs:
           cache: npm
       - run: npm ci
       # Every entry as Mica and the website read it: fields, media, links and layout.
-      - run: npx mica check
+      # `--no`: never download a package of the same name when @micacms/editor is missing.
+      - run: npx --no mica check
       - run: npm run build
       # The build writes the model. A difference means that src/mica.ts changed and content/.mica/schema.json was not committed.
       - run: git diff --exit-code content/.mica/schema.json

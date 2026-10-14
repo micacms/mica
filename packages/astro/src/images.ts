@@ -6,7 +6,7 @@
 
 import { posix } from "node:path";
 
-import type { FieldMap } from "@micacms/core/internal";
+import { contentPath, type FieldMap } from "@micacms/core/internal";
 
 /**
  * Rewrites the paths of `media({ accept: "image" })` fields, which the reader
@@ -20,6 +20,8 @@ export function imagePathsFromEntry(
   const from = posix.dirname(dataFile);
   const relative = (path: unknown): unknown => {
     if (typeof path !== "string" || path === "") return path;
+    // Astro's `image()` reads any path it is given: a `..` must not reach it.
+    contentPath(path);
     const result = posix.relative(from, path);
     return result.startsWith(".") ? result : `./${result}`;
   };

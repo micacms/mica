@@ -127,7 +127,7 @@ export function initProject(project: string): InitResult {
       ? "Add the website's collections and singletons to the model in src/mica.ts."
       : "Replace the starter model in src/mica.ts (news, settings) with the website's model.",
     "Write the model to content/.mica/schema.json: npx astro sync",
-    "Check the content: npx mica check",
+    "Check the content: npm run check",
     "When the content is in place, open the editor in a browser: npx mica start",
   );
   return result;

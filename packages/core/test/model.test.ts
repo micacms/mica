@@ -345,6 +345,16 @@ describe("defineSite", () => {
   });
 });
 
+describe("media paths (#213, N15)", () => {
+  it("must stay inside the content root", () => {
+    const fields = { cover: media() };
+    assert.equal(validateFields(fields, { cover: "news/a/media/x.jpg" }).ok, true);
+    const outside = validateFields(fields, { cover: "../../etc/passwd" });
+    assert.equal(outside.ok, false);
+    assert.match(outside.ok ? "" : outside.issues[0]!.message, /inside the content root/);
+  });
+});
+
 describe("model checks (#222)", () => {
   const fields = { title: text(), slug: slug() };
   const throws = (build: () => unknown, pattern: RegExp) => assert.throws(build, (error: unknown) => error instanceof ModelError && pattern.test(error.message));

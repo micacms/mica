@@ -7,9 +7,9 @@
 
 import { existsSync } from "node:fs";
 import { realpath, rm } from "node:fs/promises";
-import { join, relative, sep } from "node:path";
+import { relative, sep } from "node:path";
 
-import type { ContentChange, ContentSource, DirectoryEntry } from "@micacms/core/internal";
+import { contentPath, type ContentChange, type ContentSource, type DirectoryEntry } from "@micacms/core/internal";
 import { within } from "@micacms/core/node";
 
 import type { Author } from "./files.js";
@@ -327,9 +327,13 @@ function relativeToContent(repoPath: string, prefix: string): string | null {
   return repoPath.startsWith(`${prefix}/`) ? repoPath.slice(prefix.length + 1) : null;
 }
 
-/** A content-root-relative path as Git sees it, from the repository root. */
+/**
+ * A content-root-relative path as Git sees it, from the repository root.
+ * `contentPath` first: `path.join` would resolve a `..` out of the content root.
+ */
 export function inRepo(prefix: string, path: string): string {
-  return prefix === "" ? path : join(prefix, path).split(sep).join("/");
+  const clean = contentPath(path);
+  return prefix === "" ? clean : `${prefix}/${clean}`;
 }
 
 function toPosix(path: string): string {

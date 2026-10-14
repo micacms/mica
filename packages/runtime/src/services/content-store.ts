@@ -93,15 +93,22 @@ export interface SavedEntry {
 /** `readOnly` comes from `readOnlyParts`: its collections and singletons are read, never written. */
 export function createContentStore(site: Site, workspace: ContentFiles, readOnly: ReadonlyMap<string, string> = new Map()) {
   const requireCollection = (name: string): Collection => {
-    const def = site.collections[name];
+    // `hasOwn`: a name such as `constructor` is not a collection.
+    const def = Object.hasOwn(site.collections, name) ? site.collections[name] : undefined;
     if (!def) throw new ContentError(`Unknown collection "${name}".`);
     return def;
   };
 
   const requireSingleton = (name: string): Singleton => {
-    const def = site.singletons[name];
+    const def = Object.hasOwn(site.singletons, name) ? site.singletons[name] : undefined;
     if (!def) throw new ContentError(`Unknown singleton "${name}".`);
     return def;
+  };
+
+  /** An existing entry's URL: one folder name. `a%2Fb` from a route parameter would name two. */
+  const existingSlug = (collectionName: string, slug: string): string => {
+    if (!isValidSlug(slug)) throw new ContentPathError(`"${slug}" is not an entry of "${collectionName}".`);
+    return slug;
   };
 
   const writable = <T>(def: T, key: string): T => {
@@ -366,6 +373,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
 
     async save(collectionName: string, input: SaveEntryInput): Promise<SavedEntry> {
       const def = writable(requireCollection(collectionName), `collections.${collectionName}`);
+      if (input.slug !== undefined) existingSlug(collectionName, input.slug);
       const data = validate(def, input.data, "This entry");
 
       const slugKey = resolveSlugField(def)!;
@@ -468,9 +476,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     ): Promise<void> {
       writable(requireCollection(collectionName), `collections.${collectionName}`);
       // One path segment: an empty slug or `a/b` would delete more than one entry.
-      if (slug === "" || slug.includes("/") || slug === "." || slug === "..") {
-        throw new ContentPathError(`"${slug}" is not an entry of "${collectionName}".`);
-      }
+      existingSlug(collectionName, slug);
       const base = entryFolder(collectionName, slug);
 
       await workspace.apply({
@@ -582,6 +588,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     /** Entries and settings pages that link to `slug`: the warning before a delete or a URL change. */
     async findReferences(collectionName: string, slug: string): Promise<Referrer[]> {
       requireCollection(collectionName);
+      existingSlug(collectionName, slug);
       return (await referrers(collectionName, slug)).map((found) => found.referrer);
     },
   };
