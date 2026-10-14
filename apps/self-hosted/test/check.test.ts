@@ -28,6 +28,10 @@ before(async () => {
     "content/.mica/schema.json": JSON.stringify(createManifest(defineSite({ collections: {} }), "test")),
     "content/theme.json": "{}\n",
   });
+  seedRepository(host, "two-sites", {
+    "one/content/.mica/schema.json": JSON.stringify(createManifest(defineSite({ collections: {} }), "test")),
+    "two/content/.mica/schema.json": JSON.stringify(createManifest(defineSite({ collections: {} }), "test")),
+  });
 });
 after(() => host.close());
 
@@ -77,6 +81,7 @@ describe("check", () => {
     assert.equal(code, 0, output);
     assert.match(output, /ok {4}read access/);
     assert.match(output, /ok {4}push rights/);
+    assert.match(output, /ok {4}content root: content\n/);
     assert.match(output, /ok {4}content model/);
     assert.match(output, /no clone yet/);
   });
@@ -94,6 +99,18 @@ describe("check", () => {
     const { code, output } = await check(environment("/tmp/unused", { MICA_REPOSITORY_URL: "" }));
     assert.equal(code, 78);
     assert.match(output, /MICA_REPOSITORY_URL is not set/);
+  });
+
+  it("needs MICA_CONTENT_PATH when the repository has more than one content root", async () => {
+    const dataDir = mkdtempSync(join(tmpdir(), "mica-check-"));
+    const two = { MICA_REPOSITORY_URL: host.url("two-sites") };
+    const { code, output } = await check(environment(dataDir, two));
+    assert.equal(code, 1);
+    assert.match(output, /FAIL {2}content root: .*one\/content, two\/content.*\n.*Set MICA_CONTENT_PATH/);
+
+    const chosen = await check(environment(dataDir, { ...two, MICA_CONTENT_PATH: "two/content" }));
+    assert.equal(chosen.code, 0, chosen.output);
+    assert.match(chosen.output, /ok {4}content root: two\/content/);
   });
 
   it("writes nothing to an existing clone", async () => {

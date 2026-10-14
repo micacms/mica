@@ -58,13 +58,12 @@ Use a project access token, not a personal one, and give it a short expiry.
 MICA_REPOSITORY_URL=https://github.com/acme/website.git
 MICA_REPOSITORY_TOKEN=github_pat_...
 MICA_REPOSITORY_BRANCH=main
-MICA_REPOSITORY_ROOT=content
 ```
 
-- `MICA_REPOSITORY_URL` is the HTTPS clone URL. Do not put credentials in it: Mica refuses `https://user:token@host/…`. Plain `http://` works only with `NODE_ENV=development` and a loopback host, for tests.
-- `MICA_REPOSITORY_TOKEN` is the password for Git over HTTPS. Mica gives it only to this host and never writes it into the clone or a log. Mica reads it at the start, so a new token needs a restart.
+- `MICA_REPOSITORY_URL` is the HTTPS clone URL. Do not put credentials in it: Mica refuses `https://user:token@host/…`. Plain `http://` works only with a loopback host, for tests.
+- `MICA_REPOSITORY_TOKEN` is the password for Git over HTTPS. Mica gives it only to this host and never writes it into the clone or a log. Mica reads it at the start, so a new token needs a restart. With `MICA_REPOSITORY_TOKEN_FILE` instead, Mica reads the file for each Git call, and a new token needs no restart.
 - `MICA_REPOSITORY_BRANCH` defaults to `main`.
-- `MICA_REPOSITORY_ROOT` defaults to `content`. Mica reads and writes only below the root, even if the token can write more. Thus nobody can use the token through Mica to change the website's source, its CI configuration, or its dependencies. The token itself can: see "What the repository token can reach" in [Security](/docs/security/).
+- The content root is the directory in the repository with the `.mica/schema.json`, such as `content`. When the repository has more than one, set `MICA_CONTENT_PATH` to the one that Mica edits. Mica reads and writes only below the root, even if the token can write more. Thus nobody can use the token through Mica to change the website's source, its CI configuration, or its dependencies. The token itself can: see "What the repository token can reach" in [Security](/docs/security/).
 - `MICA_REPOSITORY_USERNAME` is optional. The default depends on the host: `x-access-token` for GitHub, `oauth2` for GitLab, and `mica` for other hosts.
 - `MICA_REPOSITORY_SYNC_SECONDS` is optional. It sets how often Mica fetches the branch. The default is 60.
 - `MICA_DATA_DIR` is optional. It sets where Mica keeps its clone: in `MICA_DATA_DIR/repository`. The image uses the `/data` volume.
@@ -261,7 +260,7 @@ git --git-dir=website.git remote update --prune
 
 To restore, clone. There is nothing to import, and you do not need Mica to read the files.
 
-For unpublished work, back up the `/data` volume. First publish all drafts, or stop the container. Then copy the volume. A copy made during a Git write can be inconsistent. For the drafts only, copy the content root of the clone: `MICA_DATA_DIR/repository/<MICA_REPOSITORY_ROOT>`.
+For unpublished work, back up the `/data` volume. First publish all drafts, or stop the container. Then copy the volume. A copy made during a Git write can be inconsistent. For the drafts only, copy the content root of the clone: `MICA_DATA_DIR/repository/<content root>`.
 
 Do not run `git fetch` or `git push` through `docker compose exec`: that shell has no credentials and none of Mica's isolation. Use it only for `GIT_OPTIONAL_LOCKS=0 git status` and `git diff`. Without that variable, `git status` can lock the index and make a Mica commit fail.
 

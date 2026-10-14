@@ -50,7 +50,8 @@ const fields = {
   /** Defaults by host: `x-access-token` (GitHub), `oauth2` (GitLab), `mica`. */
   MICA_REPOSITORY_USERNAME: z.string().optional(),
   MICA_REPOSITORY_BRANCH: z.string().default("main"),
-  MICA_REPOSITORY_ROOT: z.string().default("content"),
+  /** The content root in the repository. Only necessary when it has more than one `.mica/schema.json`. */
+  MICA_CONTENT_PATH: z.string().optional(),
   MICA_REPOSITORY_SYNC_SECONDS: z.coerce.number().int().min(5).max(86_400).default(60),
 };
 
@@ -62,8 +63,8 @@ const schema = z.object(fields);
 export interface RepositoryConfig {
   remote: Remote;
   branch: string;
-  /** Content root, repository-relative, without leading or trailing slashes. */
-  root: string;
+  /** The content root, repository-relative, without leading or trailing slashes; null to find it in the clone. */
+  root: string | null;
   /** `MICA_REPOSITORY_TOKEN`, or null when `tokenFile` holds the token. */
   token: string | null;
   tokenFile: string | null;
@@ -154,9 +155,9 @@ function repositoryOf(env: z.infer<typeof schema>, problems: string[]): Reposito
   const branch = env.MICA_REPOSITORY_BRANCH;
   if (!isBranchName(branch)) problems.push(`MICA_REPOSITORY_BRANCH is not a branch name: "${branch}".`);
 
-  const root = env.MICA_REPOSITORY_ROOT.replace(/^\/+|\/+$/g, "");
-  if (root.split("/").some((segment) => segment === ".." || segment === ".")) {
-    problems.push(`MICA_REPOSITORY_ROOT must be a path inside the repository: "${root}".`);
+  const root = env.MICA_CONTENT_PATH?.replace(/^\/+|\/+$/g, "") ?? null;
+  if (root !== null && (root === "" || root.split("/").some((segment) => segment === ".." || segment === "."))) {
+    problems.push(`MICA_CONTENT_PATH must name a directory in the repository, such as content: "${env.MICA_CONTENT_PATH}".`);
   }
 
   if (!remote) return null;
@@ -198,7 +199,8 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
   const dataDir = path.resolve(parsed.data.MICA_DATA_DIR);
   const runtime = deriveRuntime({
     ...parsed.data,
-    MICA_CONTENT_ROOT: path.join(dataDir, "repository", repository.root),
+    // Without MICA_CONTENT_PATH, the start finds the root in the clone and sets `contentRoot` again.
+    MICA_CONTENT_ROOT: path.join(dataDir, "repository", repository.root ?? ""),
     MICA_LOCAL_PUBLISH: true,
   });
   const config = {

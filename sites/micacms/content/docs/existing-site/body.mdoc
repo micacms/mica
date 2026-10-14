@@ -88,7 +88,7 @@ Run `npx mica check` and `npx astro build`, and compare `dist` with `../dist-bef
 
 The website can read its content from a second repository. Then editors and their commits stay out of the code repository. This setup is not part of Mica's tests.
 
-- **Content repository.** It has the `content/` folder, with `content/.mica/schema.json`. Point the self-hosted Mica at it. The default `MICA_REPOSITORY_ROOT` is `content`.
+- **Content repository.** It has the `content/` folder, with `content/.mica/schema.json`. Point the self-hosted Mica at it. Mica finds the content root by its `.mica/schema.json`.
 - **Website repository.** It has the model and the pages. Its CI checks out the content repository inside the project, and the model uses that path:
 
 ```yaml

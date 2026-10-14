@@ -103,7 +103,7 @@ describe("the root comes from the model", () => {
   it("stays out of the manifest — it describes this project, not Mica's", () => {
     const manifest = createManifest(site, "test") as unknown as Record<string, unknown>;
 
-    // Mica is told where content lives by its own REPOSITORY_ROOT. A developer's
+    // Mica finds the content root by this file, or MICA_CONTENT_PATH names it. A developer's
     // local path arriving in the manifest could only mislead.
     assert.equal(manifest["root"], undefined);
     assert.deepEqual(Object.keys(manifest).sort(), [

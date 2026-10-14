@@ -12,7 +12,8 @@ import { memorySource } from "@micacms/core/internal";
 import { ConfigError, GitError, gitRunner, loadSchema, SchemaError, type GitRunner } from "@micacms/runtime";
 
 import { currentToken, loadConfig, type RepositoryConfig } from "./config.js";
-import { cloneLayout } from "./workspace/clone.js";
+import { CloneRefusal, cloneLayout } from "./workspace/clone.js";
+import { contentRootAt } from "./workspace/content-root.js";
 import { redact } from "./workspace/credentials.js";
 import { classifyFailure, describeFailure, readPush } from "./workspace/failures.js";
 import { managedEnvironment } from "./workspace/isolation.js";
@@ -37,7 +38,7 @@ export async function runCheck(
     throw error;
   }
 
-  const { remote, branch, root, token, tokenFile, username } = config.repository;
+  const { remote, branch, token, tokenFile, username } = config.repository;
   const clean = (text: string) => redact(text, [currentToken(config.repository)]);
   let failures = 0;
   const pass = (what: string, detail = "") => say(`ok    ${what}${detail ? `: ${detail}` : ""}`);
@@ -46,8 +47,9 @@ export async function runCheck(
     say(`FAIL  ${what}: ${detail}`);
   };
 
-  say(`Repository ${remote.url} (branch ${branch}, content root ${root || "/"})`);
+  say(`Repository ${remote.url} (branch ${branch})`);
 
+  let root: string | null = null;
   const scratch = mkdtempSync(join(tmpdir(), "mica-check-"));
   try {
     const git = gitRunner(scratch, {
@@ -66,12 +68,19 @@ export async function runCheck(
     }
 
     await checkWrite(git, branch, clean, pass, fail);
-    await checkContent(git, root, pass, fail);
+    try {
+      root = await contentRootAt(git, "FETCH_HEAD", config.repository.root);
+      pass("content root", root);
+      await checkContent(git, root, pass, fail);
+    } catch (error) {
+      if (!(error instanceof CloneRefusal)) throw error;
+      fail("content root", error.message);
+    }
   } finally {
     rmSync(scratch, { recursive: true, force: true });
   }
 
-  await checkVolume(config.dataDir, config.repository, pass);
+  await checkVolume(config.dataDir, { ...config.repository, root }, pass);
 
   say(failures === 0 ? "All checks passed." : `${failures} check${failures === 1 ? "" : "s"} failed.`);
   return failures === 0 ? 0 : 1;
@@ -104,11 +113,11 @@ async function checkContent(
   pass: (what: string, detail?: string) => void,
   fail: (what: string, detail: string) => void,
 ): Promise<void> {
-  const manifest = await git.tryRun(["show", `FETCH_HEAD:${root ? `${root}/` : ""}.mica/schema.json`]);
+  const manifest = await git.tryRun(["show", `FETCH_HEAD:${root}/.mica/schema.json`]);
   if (manifest === null) {
     fail(
       "content model",
-      `no ${root ? `${root}/` : ""}.mica/schema.json on the branch. Build the site once, commit the content root with ` +
+      `no ${root}/.mica/schema.json on the branch. Build the site once, commit the content root with ` +
         ".mica/schema.json, and push it.",
     );
   } else {
@@ -144,7 +153,7 @@ async function checkVolume(
   const git = gitRunner(layout.repositoryDir, {
     env: { ...managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token, tokenFile }), GIT_OPTIONAL_LOCKS: "0" },
   });
-  const drafts = await draftPaths(git, root).catch(() => null);
+  const drafts = await draftPaths(git, root ?? "").catch(() => null);
   pass(
     "data volume",
     drafts === null ? `${layout.repositoryDir} could not be read` : `a clone with ${drafts.length} unpublished draft files`,

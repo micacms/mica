@@ -82,9 +82,8 @@ describe("unknown variables", () => {
 
 describe("repository configuration", () => {
   it("clones into the data directory, with defaults that keep a token away from the site's source", () => {
-    const config = loadConfig({ ...base });
+    const config = loadConfig({ ...base, MICA_CONTENT_PATH: "content" });
     assert.equal(config.repository.branch, "main");
-    assert.equal(config.repository.root, "content");
     assert.equal(config.repository.remote.hostKey, "gitlab.com");
     assert.equal(config.contentRoot, join("/tmp/mica-test-unused", "repository", "content"));
   });
@@ -130,9 +129,15 @@ describe("repository configuration", () => {
     refuses({ ...env, MICA_REPOSITORY_TOKEN_FILE: "/nonexistent/token" }, /cannot be read/);
   });
 
-  it("refuses a branch name Git would read as something else, and a root outside the repository", () => {
+  it("refuses a branch name Git would read as something else, and a content path outside the repository", () => {
     refuses({ ...base, MICA_REPOSITORY_BRANCH: "--upload-pack=x" }, /not a branch name/);
-    refuses({ ...base, MICA_REPOSITORY_ROOT: "../etc" }, /inside the repository/);
+    refuses({ ...base, MICA_CONTENT_PATH: "../etc" }, /must name a directory in the repository/);
+    refuses({ ...base, MICA_CONTENT_PATH: "/" }, /must name a directory in the repository/);
+  });
+
+  it("finds the content root in the clone unless MICA_CONTENT_PATH names it", () => {
+    assert.equal(loadConfig({ ...base }).repository.root, null);
+    assert.equal(loadConfig({ ...base, MICA_CONTENT_PATH: "/site/content/" }).repository.root, "site/content");
   });
 
 });

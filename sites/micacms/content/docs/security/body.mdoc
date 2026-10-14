@@ -34,7 +34,7 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 
 ## What the repository token can reach
 
-Mica writes only below `MICA_REPOSITORY_ROOT`. The token can do more: it can push to the whole repository, the website's code and its CI files included, such as `.github/workflows/` or `.gitlab-ci.yml`. A CI file runs with the secrets of your CI. So a person who steals the token can change what your build does. The content root is not a limit for the token.
+Mica writes only below the content root. The token can do more: it can push to the whole repository, the website's code and its CI files included, such as `.github/workflows/` or `.gitlab-ci.yml`. A CI file runs with the secrets of your CI. So a person who steals the token can change what your build does. The content root is not a limit for the token.
 
 - Keep the token only in the container's environment, give it an expiry, and replace it when a person who saw it leaves.
 - Let the production deployment run only from a protected branch, with its own secrets, for example with a GitHub environment or a GitLab protected environment.

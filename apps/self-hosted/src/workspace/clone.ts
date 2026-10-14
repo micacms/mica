@@ -10,6 +10,7 @@ import { basename, join } from "node:path";
 
 import { ConfigError, gitRunner, type GitRunner, type Logger } from "@micacms/runtime";
 
+import { contentRootAt } from "./content-root.js";
 import { writeIsolationAttributes } from "./isolation.js";
 import { lfsUnderRoot } from "./lfs.js";
 import { changedBetween, draftPaths, restorePaths } from "./restore.js";
@@ -46,13 +47,20 @@ export interface OpenCloneOptions {
   layout: CloneLayout;
   url: string;
   branch: string;
-  root: string;
+  /** `MICA_CONTENT_PATH`, or null to find the root in the clone. */
+  root: string | null;
   env: NodeJS.ProcessEnv;
   logger: Logger;
 }
 
-/** Makes or finds the clone, recovers it, and returns a runner for it. */
-export async function openClone(options: OpenCloneOptions): Promise<GitRunner> {
+export interface OpenedClone {
+  git: GitRunner;
+  /** The content root, repository-relative. */
+  root: string;
+}
+
+/** Makes or finds the clone, recovers it, and returns a runner for it and the content root. */
+export async function openClone(options: OpenCloneOptions): Promise<OpenedClone> {
   const { layout, logger } = options;
   const git = runner(layout.repositoryDir, options.env);
   await removeUnfinishedClones(layout);
@@ -64,8 +72,7 @@ export async function openClone(options: OpenCloneOptions): Promise<GitRunner> {
       );
     }
     await refuseRescuedDrafts(layout);
-    await cloneFresh(options);
-    return git;
+    return { git, root: await cloneFresh(options) };
   }
 
   if ((await git.tryRun(["rev-parse", "--git-dir"])) === null) {
@@ -89,7 +96,7 @@ export async function openClone(options: OpenCloneOptions): Promise<GitRunner> {
           `  It holds work that is not published${ahead > 0 ? " (one commit not pushed)" : ""}:\n` +
           `${listed}${drafts.length > 10 ? "\n    …" : ""}\n` +
           "  Start Mica with the old configuration and publish, or copy the drafts out with\n" +
-          `    docker compose cp mica:${layout.repositoryDir}/${options.root} ./mica-drafts\n` +
+          `    docker compose cp mica:${layout.repositoryDir} ./mica-drafts\n` +
           "  and delete the volume.",
       );
     }
@@ -98,21 +105,21 @@ export async function openClone(options: OpenCloneOptions): Promise<GitRunner> {
       branch,
     });
     await rm(layout.repositoryDir, { recursive: true, force: true });
-    await cloneFresh(options);
-    return git;
+    return { git, root: await cloneFresh(options) };
   }
 
   await writeIsolationAttributes(join(layout.repositoryDir, ".git"));
   await removeLocks(layout, logger);
-  await recover(git, options);
-  return git;
+  const root = await contentRootAt(git, "HEAD", options.root);
+  await recover(git, options, root);
+  return { git, root };
 }
 
 /**
  * Clones into a temporary directory, so a clone stopped half-way never looks
- * like one whose files were deleted.
+ * like one whose files were deleted. Returns the content root.
  */
-async function cloneFresh(options: OpenCloneOptions): Promise<void> {
+async function cloneFresh(options: OpenCloneOptions): Promise<string> {
   const { layout } = options;
   await mkdir(layout.dataDir, { recursive: true });
   // Recovery markers belong to the clone they were written for, never to this one.
@@ -137,12 +144,14 @@ async function cloneFresh(options: OpenCloneOptions): Promise<void> {
     temporary,
   ]);
 
+  let root: string;
   try {
     const git = runner(temporary, options.env);
     await writeIsolationAttributes(join(temporary, ".git"));
 
-    const lfs = await lfsUnderRoot(git, "HEAD", options.root);
-    if (lfs) throw lfsRefusal(lfs, options.root);
+    root = await contentRootAt(git, "HEAD", options.root);
+    const lfs = await lfsUnderRoot(git, "HEAD", root);
+    if (lfs) throw lfsRefusal(lfs, root);
 
     // `checkout` fetches the missing blobs in one batch; `restore` would fetch
     // them one request at a time.
@@ -153,7 +162,8 @@ async function cloneFresh(options: OpenCloneOptions): Promise<void> {
     throw error;
   }
   const head = await runner(layout.repositoryDir, options.env).run(["rev-parse", "HEAD"]);
-  options.logger.info("Cloned the content repository", { head });
+  options.logger.info("Cloned the content repository", { head, root });
+  return root;
 }
 
 const UNFINISHED = ".unfinished-";
@@ -181,7 +191,7 @@ async function refuseRescuedDrafts(layout: CloneLayout): Promise<void> {
 
 export function lfsRefusal(file: string, root: string): CloneRefusal {
   return new CloneRefusal(
-    `${file} assigns Git LFS to files under the content root (${root || "the repository root"}).\n` +
+    `${file} assigns Git LFS to files under the content root (${root}).\n` +
       "  Mica does not support Git LFS yet: it would commit whole files where LFS\n" +
       "  should hold pointers. Keep LFS out of the content root.",
   );
@@ -218,7 +228,7 @@ export async function writeMarker(file: string, value: unknown): Promise<void> {
   await rename(temporary, file);
 }
 
-async function recover(git: GitRunner, options: OpenCloneOptions): Promise<void> {
+async function recover(git: GitRunner, options: OpenCloneOptions, root: string): Promise<void> {
   const { layout, logger } = options;
 
   const operation = await readMarker<OperationMarker>(layout.operationFile);
@@ -238,7 +248,7 @@ async function recover(git: GitRunner, options: OpenCloneOptions): Promise<void>
   }
 
   // Temporary files of a save that a crash interrupted.
-  for (const path of await draftPaths(git, options.root)) {
+  for (const path of await draftPaths(git, root)) {
     if (/\.mica-\d+-\d+$/.test(path)) await rm(join(layout.repositoryDir, path), { force: true });
   }
 }

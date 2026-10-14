@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/astro",
+      "comment": "Remove the root option of micaCollections: the content root is set only in defineSite({ root }).",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

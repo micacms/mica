@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor",
+      "comment": "Without a path, the CLI finds the content root by its .mica/schema.json; with more than one, it asks for the path.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}
