@@ -1,6 +1,28 @@
 # Change Log - @micacms/astro
 
-This log was last generated on Tue, 13 Oct 2026 19:37:59 GMT and should not be manually modified.
+This log was last generated on Wed, 14 Oct 2026 11:51:45 GMT and should not be manually modified.
+
+## 0.9.0
+Wed, 14 Oct 2026 11:51:45 GMT
+
+### Minor changes
+
+- The build stops on a field option that @micacms/core does not know, such as a typo.
+- Remove the root option of micaCollections: the content root is set only in defineSite({ root }).
+- Read every entry and singleton from its own folder.
+
+### Patches
+
+- The setup guide pushes the branch once before the first Publish.
+- An image path outside the content root never reaches Astro's `image()`. The package no longer has the keyword `astro-integration`, so `astro add` does not write a broken configuration.
+- In astro dev, a change to src/mica.ts logs how to load the new model: Astro does not reload it by itself.
+- Templates do not get the `_key` of repeater rows.
+- A missing value reaches templates empty, never with its default.
+
+### Updates
+
+- A test of the loader at 1,000 entries.
+- Import the internals of @micacms/core from @micacms/core/internal.
 
 ## 0.8.0
 Tue, 13 Oct 2026 19:37:59 GMT

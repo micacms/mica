@@ -1,6 +1,40 @@
 # Change Log - @micacms/editor
 
-This log was last generated on Tue, 13 Oct 2026 19:37:59 GMT and should not be manually modified.
+This log was last generated on Wed, 14 Oct 2026 11:51:45 GMT and should not be manually modified.
+
+## 0.9.0
+Wed, 14 Oct 2026 11:51:45 GMT
+
+### Minor changes
+
+- Each command takes only its own options, and a path is always the content root: import takes --collection for the collections to import. check and import exit with 78 without a readable model. The help says npx mica, and mica init writes the starter's model.
+- `@micacms/editor` ships the built editor UI in `dist/admin`, and no longer depends on `@micacms/editor-ui`, which is not published any more. `@micacms/auth-oidc` is not published either.
+- The editor has the new Mica look: green actions, a light sidebar, the Instrument Sans and IBM Plex Mono fonts, status labels with a coloured dot, and a dark theme that follows the system setting.
+- `mica check` reads files named by row keys, and warns about a file whose row does not exist.
+- Every list changes its order in the same way: the entries of a collection, the items of a list, the chosen entries of a relation, and the files of a media field. A handle drags an item or moves it with the keyboard, and arrow buttons move it one step. The "Move to position" dialog is gone.
+- Under Appearance at the end of the menu, an editor chooses the light or the dark mode, or the mode of the system. The browser keeps the choice.
+- Without a path, the CLI finds the content root by its .mica/schema.json; with more than one, it asks for the path.
+- The local editor ignores `NODE_ENV`; it stays limited to this machine by its address and its host. `MICA_ADMIN_ORIGINS` and `MICA_ADMIN_DIR` are local-editor settings now.
+- Remove `mica migrate-layout`. `mica check` reads every entry and singleton from its own folder.
+
+### Patches
+
+- Publish and Discard send the revisions of the comparison on the page, and Delete and Reorder send the revision the editor saw. A colleague's later save shows as a conflict instead of being published, discarded or overwritten unseen.
+- Sign-out removes the unsaved form values that the tab kept, and an upload goes in batches of 4 files.
+- `mica init` names `npm run check` for the content check.
+- No restart notice: Mica brings in a .gitattributes change without a restart.
+- A singleton field that is new in the model opens empty, not with its default.
+- `mica check` says that Mica keeps a key or a `.mdoc` file that the model does not declare.
+- `mica check` reports what the manifest reader leaves out, and an unknown field option.
+- The System page shows whether Mica runs self-hosted or as the local editor, instead of `NODE_ENV`.
+- The Media view and the media field upload one file for each request.
+
+### Updates
+
+- Build with Vite 8, the major that Astro uses.
+- Import the internals of @micacms/core from @micacms/core/internal.
+- Import the internals of @micacms/core from @micacms/core/internal.
+- Describe the entry path as the entry folder.
 
 ## 0.8.0
 Tue, 13 Oct 2026 19:37:59 GMT

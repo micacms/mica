@@ -2,6 +2,64 @@
   "name": "@micacms/runtime",
   "entries": [
     {
+      "version": "0.9.0",
+      "tag": "@micacms/runtime_v0.9.0",
+      "date": "Wed, 14 Oct 2026 11:51:45 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "When Publish waits for commits that no remote has, it names git push -u origin HEAD for a branch without an upstream."
+          },
+          {
+            "comment": "Discard, Delete and Reorder check the revision that the editor saw, as Publish does: a colleague's later save is a conflict (409), not lost. The comparison returns the revisions of the files it shows."
+          },
+          {
+            "comment": "Security: the content files refuse a symbolic link out of the content root; a route slug is one folder name; a name such as `constructor` is not a collection (400, not 500); `headSource` paths go through `contentPath`; an upload request carries at most 4 files, prepared one after another; the media route removes only its own prefix."
+          },
+          {
+            "comment": "The Publish page shows an entry with no \"before\" while the published version still names repeater rows by number."
+          },
+          {
+            "comment": "Publish reads unchanged files from the working tree and only the drafts that stay behind from Git: a deletion no longer starts one Git process for each file of the site."
+          }
+        ],
+        "none": [
+          {
+            "comment": "The sign-in code exports its discovery, for the check command of the self-hosted image."
+          },
+          {
+            "comment": "Import the internals of @micacms/core from @micacms/core/internal."
+          }
+        ],
+        "minor": [
+          {
+            "comment": "/ready has the status degraded (HTTP 200) when something needs a person, and lastSyncAt."
+          },
+          {
+            "comment": "A Git call can have its own time limit. SyncStatus has no restartRequired any more."
+          },
+          {
+            "comment": "Saves keep undeclared keys and `.mdoc` files, and a URL change moves every file of the entry. A singleton without a file opens with its defaults."
+          },
+          {
+            "comment": "`checkSchema` and `readOnlyParts` moved to `@micacms/core` (`readManifest`)."
+          },
+          {
+            "comment": "Self-hosted sign-in: `MICA_SESSION_SECRET` is always required. `MICA_SIGNIN_WINDOW_MS` is now `MICA_SIGNIN_WINDOW_MINUTES`. Plain-HTTP discovery is allowed only for an issuer on this machine."
+          },
+          {
+            "comment": "`NODE_ENV` is no longer read: plain HTTP and a write without an Origin header are allowed only for an address on this machine. `MICA_PUBLIC_URL` must be an origin without a path. `MICA_ADMIN_ORIGINS` and `MICA_ADMIN_DIR` moved to the local editor. `isProduction` is now `isLoopback`."
+          },
+          {
+            "comment": "No whole media file in memory: an upload is one file that streams to disk, the file route streams, revisions are cached streamed hashes, and a URL change copies media on disk. ContentFiles has readHead, readStream and receive instead of readBinary, and apply returns what its after callback reads under the lock."
+          },
+          {
+            "comment": "Read and write every entry and singleton in its own folder. Opening an entry no longer lists its collection."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.8.0",
       "tag": "@micacms/runtime_v0.8.0",
       "date": "Tue, 13 Oct 2026 19:37:59 GMT",

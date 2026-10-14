@@ -1,6 +1,26 @@
 # Change Log - @micacms/core
 
-This log was last generated on Tue, 13 Oct 2026 19:37:59 GMT and should not be manually modified.
+This log was last generated on Wed, 14 Oct 2026 11:51:45 GMT and should not be manually modified.
+
+## 0.9.0
+Wed, 14 Oct 2026 11:51:45 GMT
+
+### Minor changes
+
+- Rich text in a repeater row is stored in a file named by the row's key, such as `sections.k3f9a2.body.mdoc`, not by its number, so a new order of the rows changes only `index.json`. Rows with rich text have a `_key` in the JSON.
+- A save keeps the keys and the `.mdoc` files that the model does not declare, so content for a newer field is not lost. A `default` fills a field only in a new entry; a read fills a missing value with its empty value. `withDefaults` is now `withEmptyValues`, `emptyValue` and `declaresDocument` are new, and `serializeEntry` takes the stored JSON. New recipe `remove-field.mjs`.
+- The model refuses two names that differ only in case, a `slugField` that is not a slug, a lower bound above an upper one, and a default that is not a valid value. `readManifest` reads a manifest for every reader: an unknown field option makes its collection read-only, and a manifest without the protocol envelope is refused. Slugs without `_order.json` are in code-unit order; text sorts in one fixed collation; date bounds and sorts compare dates. Option types are the field types without `kind`, an object is never null, and `multiple` is `true` or absent.
+- The main entry point exports only the public API: the model and its types, validation, the content format, the readers and the model file. Mica's own packages use the new `@micacms/core/internal`, which semver does not cover. Removed: `getCollection`, `getSingleton`, `uniqueSlug`, `toIssues` and the export of `HEX_COLOR`.
+- Keep every entry and every singleton in its own folder with `index.json`; a singleton is `content/<name>/index.json`. `media` is a reserved name for a collection or a singleton, because the shared media folder sits beside their folders. The manifest records no layout. `entryFolder` and `entryDataPath` are new. Removed: `collectionEntryPath`, `singletonPath`, `entryLayout`, `deriveLayout`, `recordLayout`, `misplacedFiles`, `LayoutError`, `RowNumberError`, `keyRepeaterRows`, `numberedDocuments`, `EntryLayout` and `ManifestLayout`. Changed: `entryFiles(folder, serialized)` and `collectionSlugs(source, name)`.
+
+### Patches
+
+- Refuse a text pattern that repeats a group with a repeat inside, such as (a+)+: it can take very long on a short value.
+- `contentPath` refuses `.git` as a path segment, and a `media()` value must stay inside the content root.
+
+### Updates
+
+- Conformance fixtures for the content format specification.
 
 ## 0.8.0
 Tue, 13 Oct 2026 19:37:59 GMT

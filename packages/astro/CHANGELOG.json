@@ -2,6 +2,49 @@
   "name": "@micacms/astro",
   "entries": [
     {
+      "version": "0.9.0",
+      "tag": "@micacms/astro_v0.9.0",
+      "date": "Wed, 14 Oct 2026 11:51:45 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "The setup guide pushes the branch once before the first Publish."
+          },
+          {
+            "comment": "An image path outside the content root never reaches Astro's `image()`. The package no longer has the keyword `astro-integration`, so `astro add` does not write a broken configuration."
+          },
+          {
+            "comment": "In astro dev, a change to src/mica.ts logs how to load the new model: Astro does not reload it by itself."
+          },
+          {
+            "comment": "Templates do not get the `_key` of repeater rows."
+          },
+          {
+            "comment": "A missing value reaches templates empty, never with its default."
+          }
+        ],
+        "minor": [
+          {
+            "comment": "The build stops on a field option that @micacms/core does not know, such as a typo."
+          },
+          {
+            "comment": "Remove the root option of micaCollections: the content root is set only in defineSite({ root })."
+          },
+          {
+            "comment": "Read every entry and singleton from its own folder."
+          }
+        ],
+        "none": [
+          {
+            "comment": "A test of the loader at 1,000 entries."
+          },
+          {
+            "comment": "Import the internals of @micacms/core from @micacms/core/internal."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.8.0",
       "tag": "@micacms/astro_v0.8.0",
       "date": "Tue, 13 Oct 2026 19:37:59 GMT",

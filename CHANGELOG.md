@@ -10,6 +10,144 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.9.0] — 2026-10-14
+
+A review of the whole project, and the changes that came from it. The content
+format is simpler: one folder for each entry and each singleton, rich text in a
+repeater row named by the row's key, and a save that keeps what the model does
+not declare. A specification describes the format, and tests check it against
+fixtures. `@micacms/core` exports a smaller public API, and four packages are
+published. Publish, Discard, Delete and Reorder check the revision that the
+editor saw, so a colleague's later save shows as a conflict. The self-hosted
+image finds its content root, repairs its clone after a force push, and reports
+problems in `/ready`. The budget tests use the 1.0 target: 1,000 entries in a
+collection, 5,000 files and 5 editors. The editor has a new look with a dark
+mode.
+
+Read Breaking before upgrading from 0.8. This release has no migration: move
+the content files to the new layout by hand, or start again from your Git
+history.
+
+### Breaking
+
+- **One folder for each entry and each singleton.** An entry is
+  `<collection>/<slug>/index.json`, a singleton is `<name>/index.json`, and
+  `media` is a reserved name. The manifest records no layout.
+  `mica migrate-layout` is removed. Removed: `collectionEntryPath`,
+  `singletonPath`, `entryLayout`, `deriveLayout`, `recordLayout`,
+  `misplacedFiles` and `LayoutError`. New: `entryFolder` and
+  `entryDataPath` (`@micacms/core`, `@micacms/astro`, `@micacms/editor`,
+  `@micacms/runtime`).
+- **Rich text in a repeater row** is stored in a file named by the row's key,
+  such as `sections.k3f9a2.body.mdoc`, and a row with rich text has a `_key`
+  in the JSON. A new order of the rows changes only `index.json`
+  (`@micacms/core`).
+- **A save keeps what the model does not declare**, the keys and the `.mdoc`
+  files. A `default` fills a field only in a new entry; a read fills a missing
+  value with its empty value. `withDefaults` is now `withEmptyValues`, and
+  `serializeEntry` takes the stored JSON (`@micacms/core`, `@micacms/runtime`).
+- **Stricter model rules.** The model refuses two names that differ only in
+  case, a `slugField` that is not a slug, a lower bound above an upper one, a
+  default that is not a valid value, and a text `pattern` that repeats a group
+  with a repeat inside, such as `(a+)+`. An unknown field option stops the
+  build, and makes its collection read-only in an older editor
+  (`@micacms/core`, `@micacms/astro`).
+- **The public API of `@micacms/core` is smaller.** The main entry point has
+  the model, validation, the content format, the readers and the model file.
+  Removed: `getCollection`, `getSingleton`, `uniqueSlug` and `toIssues`.
+- **Four published packages:** `@micacms/core`, `@micacms/astro`,
+  `@micacms/editor` (with the built editor UI) and `@micacms/runtime`.
+  `@micacms/editor-ui` and `@micacms/auth-oidc` are no longer published.
+- **The content root is set in one place**, `defineSite({ root })`.
+  `micaCollections` has no `root` option (`@micacms/astro`).
+- **Self-hosted configuration:**
+  - `MICA_REPOSITORY_ROOT` is removed. The image finds the content root by its
+    `.mica/schema.json`; `MICA_CONTENT_PATH` names it only when the repository
+    has more than one. The top of the repository cannot be the content root.
+  - `MICA_PUBLIC_URL` and `MICA_SESSION_SECRET` are always required.
+    `MICA_PUBLIC_URL` must be an origin without a path.
+  - `NODE_ENV` changes nothing. Plain HTTP is allowed only for an address on
+    this machine.
+  - `MICA_SIGNIN_WINDOW_MS` is now `MICA_SIGNIN_WINDOW_MINUTES`.
+  - `MICA_ADMIN_ORIGINS` and `MICA_ADMIN_DIR` are local-editor settings only.
+- **`/ready`** has the status `degraded` (still HTTP 200) when something needs
+  a person, one reason for each problem, and `lastSyncAt`.
+  `restart_required` is removed; `lfs_refused`, `model_unreadable`,
+  `pending_push`, `conflict` and others are new (`@micacms/runtime`).
+- **The CLI.** Each command takes only its own options, and a path is always
+  the content root. `mica import` takes `--collection <name>` in place of names.
+  `check` and `import` exit with 78 without a readable model
+  (`@micacms/editor`).
+- **Uploads** are one file for each request, sent as the request body.
+  Internal: `ContentFiles` has `readHead`, `readStream` and `receive` in place
+  of `readBinary` (`@micacms/runtime`, `@micacms/editor`).
+
+### Added
+
+- **A specification of the content format** in `docs/content-format.md`, with
+  fixtures that a test reads and writes back byte for byte (`@micacms/core`).
+- **A new look for the editor:** green actions, a light sidebar, the
+  Instrument Sans and IBM Plex Mono fonts, status labels with a coloured dot,
+  and a dark mode. Under Appearance, an editor chooses light, dark or the mode
+  of the system (`@micacms/editor`).
+- **One way to change an order** for the entries of a collection, the items of
+  a list, the chosen entries of a relation and the files of a media field: a
+  handle drags an item or moves it with the keyboard, and arrow buttons move it
+  one step (`@micacms/editor`).
+- **The self-hosted image:**
+  - finds its content root in the clone;
+  - follows a rewritten branch (a force push or a reset) and a new repository
+    URL, and keeps the drafts as conflicts until an editor chooses;
+  - starts with the model in its clone and syncs in the background, and holds
+    a new version that it cannot use (LFS under the content root, or a model
+    that it cannot read);
+  - runs only once for each data volume, with a lease, and finishes the work
+    that a stop or a crash interrupted;
+  - reads `MICA_SESSION_SECRET_FILE`, `MICA_OIDC_CLIENT_SECRET_FILE` and
+    `MICA_REPOSITORY_TOKEN_FILE`; the token file is read for each Git call;
+  - has a `compact` command that makes the clone small again;
+  - `check` also tests the identity provider, shows the redirect URI, and
+    checks the data volume and the clone.
+- **The CLI finds the content root** by its `.mica/schema.json` when no path
+  is given (`@micacms/editor`).
+- **In `astro dev`**, a change to `src/mica.ts` logs how to load the new model
+  (`@micacms/astro`).
+- **New recipe** `remove-field.mjs` (`@micacms/core`).
+
+### Changed
+
+- **Publish, Discard, Delete and Reorder check the revision that the editor
+  saw.** A colleague's later save is a conflict, not lost or published unseen
+  (`@micacms/runtime`, `@micacms/editor`).
+- **Faster at the 1.0 target.** Publish with a deletion reads the unchanged
+  files from the working tree, not one Git process for each file. The budget
+  tests use 1,000 entries in one collection, 5,000 files and five editors at
+  the same time (`@micacms/runtime`).
+- **No whole media file in memory.** An upload streams to disk, the file route
+  streams, a revision is a cached, streamed hash, and a URL change copies the
+  media on disk (`@micacms/runtime`).
+- **A slow network does not block** the start, the sync or Publish: a sync
+  skips its turn while one runs, a stalled transfer stops, and Git has
+  settings for large repositories with many images.
+- **`mica init` writes the starter's model**, the same one as
+  `examples/starter` and the getting-started page (`@micacms/editor`).
+- **The release workflow** builds without write rights and publishes from a
+  separate job; dependencies are audited every week and updated every month.
+
+### Fixed
+
+- **Security:** the content files refuse a symbolic link out of the content
+  root and the `.git` folder; a route slug is one folder name; a `media()`
+  value stays inside the content root; a name such as `constructor` is not a
+  collection; sign-out removes the unsaved form values that the tab kept
+  (`@micacms/core`, `@micacms/runtime`, `@micacms/editor`, `@micacms/astro`).
+- **The first Publish of a new project** names `git push -u origin HEAD`
+  when the branch has no upstream (`@micacms/runtime`).
+- **`astro add`** no longer writes a broken configuration: the package has no
+  `astro-integration` keyword (`@micacms/astro`).
+- A missing value reaches templates empty, never with its default, and
+  templates do not get the `_key` of repeater rows (`@micacms/astro`).
+
 ## [0.8.0] — 2026-10-13
 
 Ready for others. Rich text edits tables and images, and a toolbar takes a
