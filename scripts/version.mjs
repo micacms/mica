@@ -127,9 +127,9 @@ function main(argv) {
     "",
     "  Next:",
     "    git commit -am \"Release " + version + "\"",
-    // Annotated, because `--follow-tags` pushes only annotated tags.
     "    git tag -a v" + version + ' -m "Release ' + version + '"',
-    "    git push origin main --follow-tags",
+    // Atomic: the commit and the tag arrive together, or neither does.
+    "    git push --atomic origin main v" + version,
     "",
     "  Pushing the tag publishes. Nothing before that does.",
     "",
