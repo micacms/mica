@@ -48,7 +48,8 @@ const news = await getCollection("news");
 ```
 
 `getCollection("news")` is fully typed from the model, with no code generation
-step — so renaming a field breaks the build rather than the page.
+step — so renaming a field makes `astro check` fail at each page that uses the
+old name. `astro build` alone does not check types.
 
 ## What `micaCollections` does
 

@@ -88,7 +88,8 @@ export const collections = micaCollections(site);
 ```
 
 Pages then use ordinary Astro — `getCollection("projects")`, fully typed, no
-code generation. Renaming a field breaks the build rather than the page.
+code generation. Renaming a field makes `astro check` fail at each page that
+uses the old name; `astro build` alone does not check types.
 
 `micaCollections` returns a plain object, so Mica's collections and your own sit
 side by side:

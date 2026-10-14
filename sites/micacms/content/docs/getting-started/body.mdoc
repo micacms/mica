@@ -46,17 +46,38 @@ npm install @micacms/astro @micacms/core
 Create `src/mica.ts`. The model is plain TypeScript and imports nothing from Astro.
 
 ```ts
-import { collection, defineSite, richText, slug, text } from "@micacms/core";
+/**
+ * The content model. Mica builds the editor's forms from it, checks every save
+ * against it, and gives the pages their types. Change it here, and the build
+ * writes `content/.mica/schema.json` for Mica to read: commit that file too.
+ */
+
+import { collection, date, defineSite, media, richText, singleton, slug, tags, text, textarea } from "@micacms/core";
 
 export const site = defineSite({
   root: "./content",
   collections: {
-    news: collection({
-      label: "News",
+    posts: collection({
+      label: "Posts",
+      labelSingular: "Post",
+      defaultSort: { field: "publishDate", direction: "desc" },
       fields: {
-        title: text({ required: true, listed: true }),
-        slug: slug({ from: "title" }),
-        body: richText(),
+        title: text({ label: "Title", required: true, maxLength: 120, listed: true }),
+        slug: slug({ label: "URL", from: "title" }),
+        publishDate: date({ label: "Date", required: true, listed: true, width: "half" }),
+        tags: tags({ label: "Tags", width: "half" }),
+        cover: media({ label: "Cover image", accept: "image", alt: "required" }),
+        excerpt: textarea({ label: "Teaser", rows: 3, maxLength: 300 }),
+        body: richText({ label: "Text" }),
+      },
+    }),
+  },
+  singletons: {
+    site: singleton({
+      label: "Website",
+      fields: {
+        title: text({ label: "Site name", required: true }),
+        description: textarea({ label: "Description", rows: 2, maxLength: 160 }),
       },
     }),
   },
@@ -114,23 +135,23 @@ Use normal Astro Content Layer calls.
 ```astro
 ---
 import { getCollection } from "astro:content";
-const news = await getCollection("news");
+const posts = await getCollection("posts");
 ---
 
-{news.map((article) => <h2>{article.data.title}</h2>)}
+{posts.map((post) => <h2>{post.data.title}</h2>)}
 ```
 
-The model sets the type of `article.data`. If you rename a field, `npm run check` (`astro check`) fails at each template that uses the old name. `astro build` does not check types: it renders the old name as empty.
+The model sets the type of `post.data`. If you rename a field, `npm run check` (`astro check`) fails at each template that uses the old name. `astro build` does not check types: it renders the old name as empty.
 
 A rich-text field holds Markdoc text. `renderRichText` turns it into HTML:
 
 ```astro
 ---
 import { renderRichText } from "@micacms/astro";
-const html = renderRichText(article.data.body);
+const html = renderRichText(post.data.body);
 ---
 
-<article set:html={html} />
+<div set:html={html} />
 ```
 
 A relation field holds the target's slug. `related` and `relatedAll` from `@micacms/astro/relations` return the entries, typed, and leave out a missing one with a warning in `astro dev`:
@@ -138,7 +159,7 @@ A relation field holds the target's slug. `related` and `relatedAll` from `@mica
 ```astro
 ---
 import { related } from "@micacms/astro/relations";
-const author = await related("team", article.data.author);
+const author = await related("team", post.data.author);
 ---
 ```
 
@@ -147,7 +168,7 @@ const author = await related("team", article.data.author);
 Create an entry, fill in the form, and press **Save**. Save writes files into your checkout, and the Astro dev server reloads them at once. Run `git status` and `git diff` after a save. You should see the whole change as JSON, Markdoc and media files, uncommitted:
 
 ```text
-content/news/we-are-hiring/
+content/posts/we-are-hiring/
 ├── index.json      the fields
 ├── body.mdoc       the rich text, one file for each field
 └── media/

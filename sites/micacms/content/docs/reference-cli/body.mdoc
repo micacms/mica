@@ -2,7 +2,9 @@ This page lists the commands of `@micacms/editor` (the local editor) and of the 
 
 ## The local editor
 
-Run each command with `npx @micacms/editor <command>`. When `@micacms/editor` is installed in the project, `npx mica <command>` is the same. `npx @micacms/editor --help` shows the same list.
+Install the editor in the project with `npm install --save-dev @micacms/editor`, then run each command with `npx mica <command>`. Before it is installed, `npx @micacms/editor <command>` does the same. `npx mica --help` shows the same list.
+
+A path without an option is always the content root. Each command takes only its own options, and refuses the others with exit code 64.
 
 The content root is the path that you give, or `MICA_CONTENT_ROOT`, or the directory with a `.mica/schema.json`, or `./content`, in this order. Mica looks for `.mica/schema.json` at most three levels below the current directory, and not in `node_modules` or a hidden directory. If it finds more than one, give the path.
 
@@ -43,22 +45,27 @@ Added in 0.5.0.
 npx mica check [content dir]
 ```
 
-Checks every entry against the model: fields that do not validate, missing media, relations to entries that do not exist, and files that Mica does not read. It prints each problem. Use it in CI as `npm run check` or `npx --no mica check`: when `@micacms/editor` is missing, for example because CI installs no development dependencies, a plain `npx mica` can download and run an unrelated package called `mica`.
+Checks every entry against the model: fields that do not validate, missing media, relations to entries that do not exist, and files that Mica does not read. It prints each problem. It exits with 0 when there is no error, 1 when there is one, and 78 when it cannot read the model.
+
+| Option | Effect |
+| --- | --- |
+| `-c`, `--content <dir>` | The content root. A path without a flag does the same. | Use it in CI as `npm run check` or `npx --no mica check`: when `@micacms/editor` is missing, for example because CI installs no development dependencies, a plain `npx mica` can download and run an unrelated package called `mica`.
 
 ### import
 
 Added in 0.6.0.
 
 ```bash
-npx mica import [names] [options]
+npx mica import [content dir] [options]
 ```
 
-Moves Astro content collections into Mica, from Astro's data store. Without names, it imports every collection that the model defines. See [Add Mica to an existing site](/docs/existing-site/).
+Moves Astro content collections into Mica, from Astro's data store. Without `--collection`, it imports every collection that the model defines. It exits with 78 when it cannot read the model. See [Add Mica to an existing site](/docs/existing-site/).
 
 | Option | Effect |
 | --- | --- |
+| `-c`, `--content <dir>` | The content root. A path without a flag does the same. |
+| `--collection <name>` | Imports only this collection. Use it more than once. |
 | `--from <file>` | Astro's data store. Default: `node_modules/.astro/data-store.json`, else `.astro/data-store.json`. |
-| `-c`, `--content <dir>` | The content root. |
 | `--map <c.field=key>` | Takes a Mica field from another key. `@body` is the Markdown body. Use it more than once. |
 | `--order <c=field>` | The first order of a sortable collection, by a field. |
 

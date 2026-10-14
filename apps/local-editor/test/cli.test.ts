@@ -79,6 +79,15 @@ describe("arguments", () => {
     assert.equal(plain["MICA_PUBLIC_URL"], `http://localhost:${DEFAULT_PORT}`);
   });
 
+  it("takes the import options, and the content root as a bare path there too", () => {
+    const options = parse(["./site/content", "--collection", "news", "--collection", "team", "--map", "news.cover.alt=alt", "--order", "team=order", "--from", "store.json"], "import");
+    assert.equal(options.content, "./site/content");
+    assert.deepEqual(options.collections, ["news", "team"]);
+    assert.deepEqual(options.map, { "news.cover.alt": "alt" });
+    assert.deepEqual(options.order, { team: "order" });
+    assert.equal(options.from, "store.json");
+  });
+
   it("takes the content root from a flag or from a bare path", () => {
     assert.equal(parse(["--content", "./site/content"]).content, "./site/content");
     assert.equal(parse(["-c", "./site/content"]).content, "./site/content");
@@ -130,12 +139,12 @@ describe("running it", () => {
   it("prints the help without a command, and refuses a word that is no command", () => {
     const help = run([]);
     assert.equal(help.status, 0);
-    assert.match(help.stdout, /npx @micacms\/editor start/);
+    assert.match(help.stdout, /npx mica start/);
 
     // A directory named like a command must not run it: a path needs `start`.
     const word = run(["./site"]);
     assert.equal(word.status, 64);
-    assert.match(word.stderr, /Unknown command "\.\/site"\. To open the editor: npx @micacms\/editor start/);
+    assert.match(word.stderr, /Unknown command "\.\/site"\. To open the editor: npx mica start/);
   });
 
   it("prints its version", () => {
@@ -158,7 +167,7 @@ describe("running it", () => {
     assert.equal(result.status, 64);
     assert.match(result.stderr, /definitely-not-here/);
     // And says what that directory is, rather than only that it is missing.
-    assert.match(result.stderr, /npx @micacms\/editor start \.\/path\/to\/content/);
+    assert.match(result.stderr, /npx mica start \.\/path\/to\/content/);
   });
 
   it("says how to publish a model when the project has not", () => {
@@ -171,6 +180,30 @@ describe("running it", () => {
     assert.match(result.stderr, /no content model/i);
     // The fix is in the Astro project, not in Mica's configuration.
     assert.match(result.stderr, /astro sync/);
+  });
+
+  it("refuses an option of another command, and a second content directory", () => {
+    const port = run(["check", "--port", "4321"]);
+    assert.equal(port.status, 64);
+    assert.match(port.stderr, /check has no option --port/);
+
+    const two = run(["check", "./a", "./b"]);
+    assert.equal(two.status, 64);
+    assert.match(two.stderr, /one content directory/);
+  });
+
+  it("answers a missing model with exit 78 and a message, in check and import", () => {
+    const project = mkdtempSync(path.join(tmpdir(), "mica-cli-"));
+    mkdirSync(path.join(project, "content"));
+
+    const check = run(["check"], project);
+    assert.equal(check.status, 78);
+    assert.match(check.stdout, /Could not read the content model/);
+
+    const imported = run(["import"], project);
+    assert.equal(imported.status, 78);
+    assert.match(imported.stderr, /npx astro sync/);
+    assert.doesNotMatch(imported.stderr, /    at /);
   });
 
   it("gets past its own checks once the model is published", () => {

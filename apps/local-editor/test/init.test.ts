@@ -6,7 +6,9 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, it } from "node:test";
 
-import { collection, date, defineSite, media, richText, singleton, slug, text } from "@micacms/core/internal";
+import { pathToFileURL } from "node:url";
+
+import { createManifest, MANIFEST_PATH, type Site } from "@micacms/core/internal";
 
 import { initProject, InitError, MODEL } from "../src/init.js";
 
@@ -43,12 +45,25 @@ describe("mica init", () => {
     assert.ok(result.next.some((step) => step.includes("...micaCollections(site)")));
   });
 
-  it("writes a starter model that defineSite accepts", () => {
-    const body = MODEL.replace(/^import[\s\S]*?from "@micacms\/core";/, "").replace("export const site =", "return");
-    const site = new Function("collection", "date", "defineSite", "media", "richText", "singleton", "slug", "text", body)(
-      collection, date, defineSite, media, richText, singleton, slug, text,
-    );
-    assert.deepEqual(Object.keys(site.collections), ["news"]);
+  it("writes the starter's model, and the starter's schema.json is the one that model writes", async () => {
+    const starter = path.resolve(import.meta.dirname, "../../../examples/starter");
+    assert.equal(MODEL, readFileSync(path.join(starter, "src/mica.ts"), "utf8"));
+
+    // Here, so that `@micacms/core` resolves from this package.
+    const dir = mkdtempSync(path.join(import.meta.dirname, ".starter-"));
+    try {
+      writeFileSync(path.join(dir, "mica.ts"), MODEL);
+      const { site } = (await import(pathToFileURL(path.join(dir, "mica.ts")).href)) as { site: Site };
+      const written = JSON.parse(readFileSync(path.join(starter, "content", MANIFEST_PATH), "utf8")) as unknown;
+      assert.deepEqual(JSON.parse(JSON.stringify(createManifest(site, "@micacms/astro"))), written);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("is the model that the getting-started page shows", () => {
+    const page = readFileSync(path.resolve(import.meta.dirname, "../../../sites/micacms/content/docs/getting-started/body.mdoc"), "utf8");
+    assert.ok(page.includes(`\`\`\`ts\n${MODEL}\`\`\``), "the page shows another model");
   });
 
   it("keeps a legacy src/content/config.ts instead of adding a second config", () => {

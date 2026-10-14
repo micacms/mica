@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * `npx @micacms/editor start` — Mica against a project on this machine.
+ * `npx mica start` — Mica against a project on this machine.
  *
  * The point of this file is that adopting Mica should not mean adopting this
  * repository. Everything it does is set environment variables and hand over to
@@ -31,7 +31,7 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 
 import { MANIFEST_PATH } from "@micacms/core/internal";
-import { DEFAULT_PORT, VERSION } from "@micacms/runtime";
+import { DEFAULT_PORT, SchemaError, VERSION } from "@micacms/runtime";
 
 import { checkContent, formatReport } from "./check.js";
 import { formatInit, initProject, InitError } from "./init.js";
@@ -44,29 +44,54 @@ export interface Options {
   host?: string;
   /** Undefined means "decide from the terminal" — see `shouldOpenBrowser`. */
   open?: boolean;
+  /** `import`: Astro's data store. */
+  from?: string;
+  /** `import`: `collection.field` → the key in Astro's data. */
+  map: Record<string, string>;
+  /** `import`: collection → the field that gives the first order. */
+  order: Record<string, string>;
+  /** `import`: the collections to import; empty for all. */
+  collections: string[];
 }
+
+export type Command = "start" | "check" | "import";
+
+/** The options of each command. A bare path is always the content root. */
+const ALLOWED: Record<Command, ReadonlySet<string>> = {
+  start: new Set(["content", "port", "host", "open"]),
+  check: new Set(["content"]),
+  import: new Set(["content", "from", "map", "order", "collection"]),
+};
 
 const USAGE = `
   mica — edit your Astro project's content, on this machine
 
   Usage
-    $ npx @micacms/editor start [content dir]   open the editor
-    $ npx @micacms/editor init                  add Mica to this Astro project
-    $ npx @micacms/editor check [content dir]   check every entry against the model
-    $ npx @micacms/editor import [names]        move Astro collections into Mica
-        --from <file>         Astro's data store (default: node_modules/.astro/data-store.json)
-        --map <c.field=key>   take a field from another key; @body is the Markdown body
-        --order <c=field>     the initial order of a sortable collection
+    $ npx mica start [content dir]    open the editor
+    $ npx mica init                   add Mica to this Astro project
+    $ npx mica check [content dir]    check every entry against the model
+    $ npx mica import [content dir]   move Astro collections into Mica
 
-  With @micacms/editor installed in the project, \`npx mica\` is the same command.
+  Before @micacms/editor is installed in the project: npx @micacms/editor <command>.
 
   Options of start
-    -c, --content <dir>   The content root (default: the directory with a .mica/schema.json)
-    -p, --port <number>   Port to listen on (default: ${DEFAULT_PORT})
-        --host <address>  Address to bind (default: 127.0.0.1)
-        --no-open         Do not open the browser
-    -h, --help            Show this
-    -v, --version         Print the version
+    -c, --content <dir>      The content root (default: the directory with a .mica/schema.json)
+    -p, --port <number>      Port to listen on (default: ${DEFAULT_PORT})
+        --host <address>     Address to bind (default: 127.0.0.1)
+        --no-open            Do not open the browser
+
+  Options of check
+    -c, --content <dir>      The content root
+
+  Options of import
+    -c, --content <dir>      The content root
+        --collection <name>  Import only this collection; use it more than once
+        --from <file>        Astro's data store (default: node_modules/.astro/data-store.json)
+        --map <c.field=key>  Take a field from another key; @body is the Markdown body
+        --order <c=field>    The initial order of a sortable collection
+
+    -h, --help               Show this
+    -v, --version            Print the version
 
   There is no sign-in here, because there is nothing to sign in to: this mode
   has no identity provider, no account and no user. That is right for your own
@@ -74,8 +99,11 @@ const USAGE = `
   container with an identity provider. See https://micacms.com/docs/self-hosting/.
 `;
 
-export function parse(argv: string[]): Options {
-  const options: Options = {};
+export function parse(argv: string[], command: Command = "start"): Options {
+  const options: Options = { map: {}, order: {}, collections: [] };
+  const allow = (name: string, flag: string) => {
+    if (!ALLOWED[command].has(name)) fail(`${command} has no option ${flag}.`);
+  };
 
   for (let index = 0; index < argv.length; index++) {
     const flag = argv[index]!;
@@ -84,24 +112,52 @@ export function parse(argv: string[]): Options {
       if (next === undefined || next.startsWith("-")) fail(`${flag} needs a value.`);
       return next!;
     };
+    const pair = (): [string, string] => {
+      const text = value();
+      const at = text.indexOf("=");
+      if (at < 1 || at === text.length - 1) fail(`${flag} takes name=value, for example team.image.alt=alt.`);
+      return [text.slice(0, at), text.slice(at + 1)];
+    };
 
     switch (flag) {
       case "-c":
       case "--content":
+        allow("content", flag);
         options.content = value();
         break;
       case "-p":
       case "--port":
+        allow("port", flag);
         options.port = value();
         break;
       case "--host":
+        allow("host", flag);
         options.host = value();
         break;
       case "--open":
-        options.open = true;
-        break;
       case "--no-open":
-        options.open = false;
+        allow("open", flag);
+        options.open = flag === "--open";
+        break;
+      case "--from":
+        allow("from", flag);
+        options.from = value();
+        break;
+      case "--map": {
+        allow("map", flag);
+        const [to, from] = pair();
+        options.map[to] = from;
+        break;
+      }
+      case "--order": {
+        allow("order", flag);
+        const [name, field] = pair();
+        options.order[name] = field;
+        break;
+      }
+      case "--collection":
+        allow("collection", flag);
+        options.collections.push(value());
         break;
       case "-h":
       case "--help":
@@ -114,10 +170,11 @@ export function parse(argv: string[]): Options {
         process.exit(0);
 
       default:
-        // A bare path is the content root, so `npx @micacms/editor start ./site/content`
+        // A bare path is the content root, so `npx mica start ./site/content`
         // does what it looks like it does.
-        if (!flag.startsWith("-")) options.content = flag;
-        else fail(`Unknown option "${flag}".`);
+        if (flag.startsWith("-")) fail(`Unknown option "${flag}".`);
+        if (options.content !== undefined) fail(`${command} takes one content directory, not "${options.content}" and "${flag}".`);
+        options.content = flag;
     }
   }
 
@@ -136,7 +193,7 @@ function report(title: string, lines: string[]): void {
 }
 
 function fail(message: string): never {
-  report(message, ["Run `npx @micacms/editor --help` to see every command and option."]);
+  report(message, ["Run `npx mica --help` to see every command and option."]);
   process.exit(64); // EX_USAGE
 }
 
@@ -145,7 +202,7 @@ function fail(message: string): never {
  * welcome: an interactive terminal that somebody is sitting at. A script, a
  * container and a CI job all get a server and no surprises.
  */
-export function shouldOpenBrowser(options: Options, env: NodeJS.ProcessEnv): boolean {
+export function shouldOpenBrowser(options: Pick<Options, "open">, env: NodeJS.ProcessEnv): boolean {
   if (options.open !== undefined) return options.open;
   return Boolean(process.stdout.isTTY) && !env["CI"];
 }
@@ -157,7 +214,7 @@ const set = (value: string | undefined): string | undefined => (value?.trim() ? 
  * The content root: the flag or path, else `MICA_CONTENT_ROOT`, else the one
  * directory with a `.mica/schema.json` under `cwd`, else `./content`.
  */
-export function contentRoot(options: Options, env: NodeJS.ProcessEnv, cwd = process.cwd()): string {
+export function contentRoot(options: Pick<Options, "content">, env: NodeJS.ProcessEnv, cwd = process.cwd()): string {
   const given = options.content ?? set(env["MICA_CONTENT_ROOT"]);
   if (given) return path.resolve(cwd, given);
   const found = contentRootsUnder(cwd);
@@ -179,7 +236,7 @@ export function contentRootsUnder(dir: string, depth = 3): string[] {
 }
 
 /** What the server reads: a flag wins over the environment, and the environment over a default. */
-export function serverEnvironment(options: Options, env: NodeJS.ProcessEnv, content: string): Record<string, string> {
+export function serverEnvironment(options: Pick<Options, "port" | "host" | "open">, env: NodeJS.ProcessEnv, content: string): Record<string, string> {
   const port = options.port ?? set(env["PORT"]) ?? String(DEFAULT_PORT);
   return {
     // The checks ran on this path, so it is the one the server gets.
@@ -202,9 +259,9 @@ export async function main(): Promise<void> {
   // The first word is always a command, so that a directory named `init` is not one.
   if (command === undefined || command === "-h" || command === "--help") return void process.stdout.write(`${USAGE}\n`);
   if (command === "-v" || command === "--version") return void process.stdout.write(`${VERSION}\n`);
-  if (command !== "start") fail(`Unknown command "${command}". To open the editor: npx @micacms/editor start`);
+  if (command !== "start") fail(`Unknown command "${command}". To open the editor: npx mica start`);
 
-  const options = parse(rest);
+  const options = parse(rest, "start");
   const content = contentRoot(options, process.env);
 
   if (!existsSync(content)) {
@@ -212,7 +269,7 @@ export async function main(): Promise<void> {
       "Mica edits the directory your Astro project publishes content into —",
       "the `root` in your `defineSite({ root: \"./content\" })`.",
       "",
-      "  npx @micacms/editor start ./path/to/content",
+      "  npx mica start ./path/to/content",
       "",
       "If this is a new project, create the directory and Mica writes the first",
       "entry into it.",
@@ -229,7 +286,7 @@ export async function main(): Promise<void> {
       "",
       "  npx astro sync         # or build, or start the dev server once",
       "",
-      "If you have not defined a model yet, run `npx @micacms/editor init`, or see",
+      "If you have not defined a model yet, run `npx mica init`, or see",
       "https://micacms.com/docs/getting-started/.",
     ]);
     process.exit(78); // EX_CONFIG
@@ -254,49 +311,35 @@ function init(argv: string[]): void {
 }
 
 async function check(argv: string[]): Promise<void> {
-  const root = contentRoot(parse(argv), process.env);
+  const root = contentRoot(parse(argv, "check"), process.env);
   const result = await checkContent(root);
   process.stdout.write(formatReport(result, root));
+  // Without a model nothing was checked: a configuration problem, not a content one.
+  if (!result.model) process.exit(78); // EX_CONFIG
   if (result.problems.some((problem) => problem.level === "error")) process.exit(1);
 }
 
 async function importCommand(argv: string[]): Promise<void> {
+  const options = parse(argv, "import");
   // `astro sync` and `astro build` write the store into node_modules; `astro dev` into .astro.
-  const found = ["node_modules/.astro/data-store.json", ".astro/data-store.json"].find((file) => existsSync(file));
-  const options = { store: found ?? "node_modules/.astro/data-store.json", map: {} as Record<string, string>, order: {} as Record<string, string>, only: [] as string[], content: undefined as string | undefined };
-  for (let index = 0; index < argv.length; index++) {
-    const flag = argv[index]!;
-    const value = (): string => {
-      const next = argv[++index];
-      if (next === undefined || next.startsWith("-")) fail(`${flag} needs a value.`);
-      return next!;
-    };
-    const pair = (text: string): [string, string] => {
-      const at = text.indexOf("=");
-      if (at < 1 || at === text.length - 1) fail(`${flag} takes name=value, for example team.image.alt=alt.`);
-      return [text.slice(0, at), text.slice(at + 1)];
-    };
-    if (flag === "--from") options.store = value();
-    else if (flag === "--content" || flag === "-c") options.content = value();
-    else if (flag === "--map") { const [to, from] = pair(value()); options.map[to] = from; }
-    else if (flag === "--order") { const [name, field] = pair(value()); options.order[name] = field; }
-    else if (flag.startsWith("-")) fail(`Unknown option "${flag}".`);
-    else options.only.push(flag);
-  }
+  const stores = ["node_modules/.astro/data-store.json", ".astro/data-store.json"];
+  const store = options.from ?? stores.find((file) => existsSync(file)) ?? stores[0]!;
   try {
     const result = await importCollections({
-      root: contentRoot({ content: options.content }, process.env),
+      root: contentRoot(options, process.env),
       project: process.cwd(),
-      store: path.resolve(options.store),
+      store: path.resolve(store),
       map: options.map,
       order: options.order,
-      only: options.only,
+      only: options.collections,
     });
     process.stdout.write(formatImport(result));
   } catch (error) {
     if (!(error instanceof ImportError)) throw error;
-    report(error.message, []);
-    process.exit(1);
+    // Without a model nothing can be imported: a configuration problem.
+    const noModel = error.cause instanceof SchemaError;
+    report(error.message, noModel ? ["Write the content model first: npx astro sync"] : []);
+    process.exit(noModel ? 78 : 1); // EX_CONFIG
   }
 }
 

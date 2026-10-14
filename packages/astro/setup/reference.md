@@ -208,7 +208,10 @@ const settings = await getEntry("settings", "settings");
 - A date is a `"YYYY-MM-DD"` string. `new Date()` reads it as UTC midnight,
   so format it in UTC, or it shows the day before west of UTC:
   `new Date(value).toLocaleDateString("en-GB", { timeZone: "UTC" })`.
-- A relation is a slug: `await getEntry("team", article.data.author)`.
+- A relation is a slug. `related` from `@micacms/astro/relations` returns the
+  entry, typed, and leaves out a missing one with a warning in `astro dev`:
+  `await related("team", article.data.author)`. `relatedAll` does the same for
+  a list.
 - Do not depend on the order of `getCollection()`. Sort by a date field, or
   by position for a `sortable` collection:
   `entries.sort((a, b) => a.data._mica.position - b.data._mica.position)`.

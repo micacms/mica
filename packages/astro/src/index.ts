@@ -250,11 +250,34 @@ export function micaCollections<S extends Site>(
 
   /** Collections whose watcher is already registered, so a reload adds none. */
   const watching = new Set<string>();
+  let watchingModel = false;
+
+  /**
+   * Astro reloads the content config when that file changes, not when a file
+   * that it imports does (Astro 7.3), and Mica cannot make it reload. So a
+   * change to the model says how to load it.
+   */
+  const watchModel = (context: LoaderContext): void => {
+    const watcher = context.watcher;
+    const project = context.config?.root && fileURLToPath(context.config.root);
+    if (!watcher || !project || watchingModel) return;
+    watchingModel = true;
+
+    const models = [".ts", ".mts", ".js", ".mjs"].map((extension) => join(project, "src", `mica${extension}`));
+    watcher.on("change", (path: string) => {
+      if (!models.includes(path)) return;
+      context.logger.warn(
+        `${relative(project, path)} changed. Astro does not load a new content model by itself: ` +
+          "save src/content.config.ts, or restart `astro dev`.",
+      );
+    });
+  };
 
   const watch = (context: LoaderContext, name: string, reload: () => Promise<void>): void => {
     const watcher = context.watcher;
     if (!watcher || options.source || watching.has(name)) return;
     watching.add(name);
+    watchModel(context);
 
     const base = rootFor(context);
     watcher.add(base);

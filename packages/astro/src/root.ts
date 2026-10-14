@@ -1,8 +1,8 @@
 /**
  * Where the content root is, said once.
  *
- * The collections, the dev integration and the manifest writer all have to
- * agree on this directory, and a disagreement between them produces an empty
+ * The loaders, their dev watcher and the manifest writer all have to agree on
+ * this directory, and a disagreement between them produces an empty
  * build rather than an error — the worst kind of failure. So the project states
  * it once, in `defineSite({ root })`, and everything here resolves that one
  * string the same way.

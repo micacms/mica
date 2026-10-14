@@ -102,9 +102,9 @@ here may change later. The usual items:
   names, now also `src/mica.ts` and `content/`. A word in a text, such as
   "hidden", then becomes CSS, and the CSS changes when an editor changes a
   text. Recommend excluding both, in the stylesheet with
-  `@import "tailwindcss"`, with paths from that file:
-  `@source not "./mica.ts";` and `@source not "../content";`. Visitors see no
-  difference.
+  `@import "tailwindcss"`. The paths are from that file; for
+  `src/styles/global.css`: `@source not "../mica.ts";` and
+  `@source not "../../content";`. Visitors see no difference.
 
 What cannot move as it is, with the options to propose:
 
@@ -166,7 +166,7 @@ lowerCamelCase.
 
 1. Run `npx mica init`. It keeps your `src/content.config.ts` and prints the
    lines to add.
-2. Replace the starter model in `src/mica.ts` (`news` and `settings`) with the
+2. Replace the starter model in `src/mica.ts` (`posts` and `site`) with the
    model the user agreed to.
 3. In `src/content.config.ts`, remove the definitions of the collections that
    Mica now manages, and add `...micaCollections(site)`. Keep the others.
@@ -239,7 +239,7 @@ components, stylesheets and endpoints such as `rss.xml.js`. See
   `<Image {...entry.data.cover} />`. See
   [reference.md](./reference.md#images).
 - A reference was `{ collection, id }` and is now a slug:
-  `getEntry("authors", entry.data.author)`.
+  `related("authors", entry.data.author)` from `@micacms/astro/relations`.
 - `entry.id` is the slug. If ids had folders, update the links, and add
   `redirects` in `astro.config` if the user wants the old URLs to keep working.
 - A spread such as `{...post.data}` now also passes `_mica` and the new types.

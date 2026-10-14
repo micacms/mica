@@ -56,7 +56,7 @@ the lines to add. Add them so that the existing collections stay.
 
 ## 3. Write the model
 
-Replace the starter model in `src/mica.ts` (`news` and `settings`) with the
+Replace the starter model in `src/mica.ts` (`posts` and `site`) with the
 model the user agreed to. See
 [reference.md](./reference.md#the-content-model) for the field types and the
 rules. Then publish it and check it:
