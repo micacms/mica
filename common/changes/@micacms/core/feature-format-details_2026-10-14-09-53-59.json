@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "A save keeps the keys and the `.mdoc` files that the model does not declare, so content for a newer field is not lost. A `default` fills a field only in a new entry; a read fills a missing value with its empty value. `withDefaults` is now `withEmptyValues`, `emptyValue` and `declaresDocument` are new, and `serializeEntry` takes the stored JSON. New recipe `remove-field.mjs`.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

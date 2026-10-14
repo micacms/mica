@@ -351,6 +351,41 @@ describe("concurrency", () => {
   });
 });
 
+// The content arrived before the model that reads it (#217).
+describe("a model that is older than the content", () => {
+  it("keeps the keys and the rich text that it does not declare, also on a URL change", async () => {
+    await store.save("projects", { data: { title: "Haus A", description: "Body." } });
+    const stored = JSON.parse(await read("projects/haus-a/index.json"));
+    await writeFile(join(root, "projects/haus-a/index.json"), JSON.stringify({ ...stored, client: "Stadt Zürich" }));
+    await writeFile(join(root, "projects/haus-a/summary.mdoc"), "From a newer model.\n");
+
+    const revision = await store.revisionOf("projects", "haus-a");
+    await store.save("projects", { slug: "haus-a", data: { title: "Haus A", description: "" }, expectedRevision: revision });
+    assert.equal(JSON.parse(await read("projects/haus-a/index.json")).client, "Stadt Zürich");
+    // The declared rich text that was cleared goes; the undeclared file stays.
+    assert.deepEqual(await files("projects/haus-a"), ["index.json", "summary.mdoc"]);
+
+    const before = await store.revisionOf("projects", "haus-a");
+    await store.save("projects", { slug: "haus-a", data: { title: "Haus A", slug: "haus-b" }, expectedRevision: before });
+    assert.equal(JSON.parse(await read("projects/haus-b/index.json")).client, "Stadt Zürich");
+    assert.equal(await read("projects/haus-b/summary.mdoc"), "From a newer model.\n");
+  });
+});
+
+describe("defaults (#221)", () => {
+  it("fill a singleton that has no file yet, and never a cleared value", async () => {
+    const withDefault = defineSite({
+      collections: {},
+      singletons: { banner: singleton({ label: "Banner", fields: { text: richText({ default: "Hello" }) } }) },
+    });
+    const banner = createContentStore(withDefault, contentFiles({ root }));
+    assert.deepEqual(await banner.getSingleton("banner"), { text: "Hello" });
+
+    await banner.saveSingleton("banner", { text: "" });
+    assert.deepEqual(await banner.getSingleton("banner"), { text: null });
+  });
+});
+
 describe("deleting an entry", () => {
   it("removes the whole directory", async () => {
     await store.save("projects", { data: { title: "Haus A", description: "Body." } });

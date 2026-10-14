@@ -12,7 +12,10 @@ import {
   collectReferences,
   type ContentEntry,
   ContentPathError,
+  declaresDocument,
+  defaultValues,
   DOCUMENT_EXTENSION,
+  documentPath,
   entryDataPath,
   entryFiles,
   entryFolder,
@@ -38,7 +41,6 @@ import {
   type Site,
   slugify,
   validateFields,
-  withDefaults,
 } from "@micacms/core";
 
 import { ConflictError, FilesError, type ContentFiles, type FileChange } from "../workspace/files.js";
@@ -125,21 +127,32 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
   };
 
   /**
-   * Deletes for `.mdoc` files not in `keep`, so a cleared rich-text field does
-   * not come back on the next read. Media stays: an unreferenced upload is not
-   * garbage.
+   * Deletes for the `.mdoc` files that the model declares and the save does not
+   * write, so a cleared rich-text field does not come back on the next read. A
+   * file that the model does not declare stays (#217). Media stays: an
+   * unreferenced upload is not garbage.
    */
-  const staleDocuments = async (base: string, keep: Set<string>): Promise<FileChange[]> => {
+  const staleDocuments = async (fields: FieldMap, base: string, keep: Set<string>): Promise<FileChange[]> => {
     const changes: FileChange[] = [];
 
     for (const item of await workspace.list(base)) {
-      if (item.type !== "file") continue;
-      if (!item.name.endsWith(DOCUMENT_EXTENSION)) continue;
-      if (keep.has(item.name)) continue;
+      if (item.type !== "file" || !item.name.endsWith(DOCUMENT_EXTENSION) || keep.has(item.name)) continue;
+      if (!declaresDocument(fields, documentPath(item.name))) continue;
       changes.push({ type: "delete", path: `${base}/${item.name}` });
     }
 
     return changes;
+  };
+
+  /** The entry's `index.json` as it is now, whose undeclared keys a save keeps; empty without one. */
+  const storedData = async (folder: string): Promise<Record<string, unknown>> => {
+    try {
+      const value: unknown = JSON.parse((await workspace.read(`${folder}/${INDEX_FILE}`)) ?? "{}");
+      return value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
+    } catch {
+      // Not JSON: the save replaces it, as before.
+      return {};
+    }
   };
 
   /**
@@ -347,8 +360,8 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     async getSingleton(name: string): Promise<Record<string, unknown>> {
       const def = requireSingleton(name);
       const data = await readSingleton(workspace, def, name);
-      // A singleton with no file yet opens as an empty form, not a 404.
-      return withDefaults(def.fields, data);
+      // A singleton with no file yet opens as a new one: an empty form with its defaults, not a 404.
+      return data ?? defaultValues(def.fields);
     },
 
     async save(collectionName: string, input: SaveEntryInput): Promise<SavedEntry> {
@@ -378,7 +391,11 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
 
       // The editor uses root-relative media paths; store them relative to the
       // entry (the old directory on a rename).
-      const serialized = serializeEntry(def.fields, relativizeMedia(def.fields, data, previousBase ?? base));
+      const serialized = serializeEntry(
+        def.fields,
+        relativizeMedia(def.fields, data, previousBase ?? base),
+        await storedData(previousBase ?? base),
+      );
       const files = entryFiles(base, serialized);
 
       const changes: FileChange[] = Object.entries(files).map(([path, contents]) => ({
@@ -393,11 +410,11 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
 
       if (previousBase) {
         changes.push({ type: "deleteTree", path: previousBase });
-        await moveMedia(workspace, previousBase, base, changes);
+        await moveFiles(workspace, def.fields, previousBase, base, changes);
         const order = await renameInOrder(collectionName, input.slug!, slug);
         if (order) changes.push(order);
       } else {
-        changes.push(...(await staleDocuments(base, new Set(Object.keys(serialized.documents)))));
+        changes.push(...(await staleDocuments(def.fields, base, new Set(Object.keys(serialized.documents)))));
       }
 
       // Only the data file of each referrer changes; its rich text and media stay as they are.
@@ -414,7 +431,11 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
           const current = await found.read();
           const next = current && relinkReferences(found.fields, current, collectionName, input.slug!, slug);
           if (!next) continue;
-          const { data: contents } = serializeEntry(found.fields, relativizeMedia(found.fields, next, found.folder));
+          const { data: contents } = serializeEntry(
+            found.fields,
+            relativizeMedia(found.fields, next, found.folder),
+            await storedData(found.folder),
+          );
           changes.push({ type: "write", path: dataFile, contents });
           referrerRevisions[dataFile] = revision;
           relinked += 1;
@@ -467,12 +488,12 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       const data = validate(def, payload, `The "${def.label}" settings`);
 
       const base = entryFolder(name);
-      const serialized = serializeEntry(def.fields, relativizeMedia(def.fields, data, base));
+      const serialized = serializeEntry(def.fields, relativizeMedia(def.fields, data, base), await storedData(base));
 
       const changes: FileChange[] = Object.entries(entryFiles(base, serialized)).map(
         ([path, contents]) => ({ type: "write", path, contents }),
       );
-      changes.push(...(await staleDocuments(base, new Set(Object.keys(serialized.documents)))));
+      changes.push(...(await staleDocuments(def.fields, base, new Set(Object.keys(serialized.documents)))));
 
       await workspace.apply({ changes, expect: await expectDocument(options.expectedRevision, base) });
 
@@ -601,19 +622,30 @@ function pickSlug(
   return normalised === current ? current : normalised;
 }
 
-/** Copies colocated media to the renamed entry; the caller deletes the old directory. */
-async function moveMedia(
+/**
+ * Copies the files of a renamed entry that the save does not write: its media,
+ * and files that the model does not declare. The caller deletes the old folder.
+ */
+async function moveFiles(
   files: ContentFiles,
+  fields: FieldMap,
   from: string,
   to: string,
   changes: FileChange[],
 ): Promise<void> {
-  for (const item of await files.list(`${from}/media`)) {
-    if (item.type !== "file") continue;
-
-    const bytes = await files.readBinary(`${from}/media/${item.name}`);
-    if (bytes === null) continue;
-
-    changes.push({ type: "write", path: `${to}/media/${item.name}`, contents: bytes });
-  }
+  const walk = async (dir: string): Promise<void> => {
+    for (const item of await files.list(`${from}${dir}`)) {
+      const relative = `${dir}/${item.name}`;
+      if (item.type === "directory") {
+        await walk(relative);
+        continue;
+      }
+      // Written by the save from the data: `index.json`, and the rich text that the model declares.
+      if (relative === `/${INDEX_FILE}`) continue;
+      if (dir === "" && item.name.endsWith(DOCUMENT_EXTENSION) && declaresDocument(fields, documentPath(item.name))) continue;
+      const bytes = await files.readBinary(`${from}${relative}`);
+      if (bytes !== null) changes.push({ type: "write", path: `${to}${relative}`, contents: bytes });
+    }
+  };
+  await walk("");
 }

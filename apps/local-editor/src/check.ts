@@ -10,6 +10,7 @@ import { relative } from "node:path";
 import {
   type AnyField,
   type ContentSource,
+  declaresDocument,
   DOCUMENT_EXTENSION,
   documentPath,
   entryDataPath,
@@ -238,8 +239,8 @@ async function checkEntry(
   for (const item of await files.list(folder)) {
     if (item.type !== "file" || !item.name.endsWith(DOCUMENT_EXTENSION)) continue;
     const path = `${folder}/${item.name}`;
-    if (!namesRichText(fields, documentPath(item.name))) {
-      warning(path, "Not read: no rich-text field has this name.");
+    if (!declaresDocument(fields, documentPath(item.name))) {
+      warning(path, "Not read: no rich-text field has this name. Mica keeps the file.");
       continue;
     }
     // A row of the file's name must exist: a key that a hand edit or a merge lost hides the text.
@@ -323,40 +324,36 @@ function visit(
   }
 }
 
-/** Keys in the stored JSON that the model does not have; Mica drops them on the next save. */
-function unknownKeys(fields: FieldMap, raw: Record<string, unknown>, path: PathSegment[]): string[] {
+/**
+ * Keys in the stored JSON that the model does not have. A save keeps them (#217),
+ * except in a list row without a key, which has no identity across a reorder.
+ */
+function unknownKeys(fields: FieldMap, raw: Record<string, unknown>, path: PathSegment[], kept = true): string[] {
   const messages: string[] = [];
   for (const [key, value] of Object.entries(raw)) {
     const at = [...path, key].join(".");
     const field = fields[key];
     if (!field) {
-      messages.push(`${at}: the model has no such field. Mica drops it on the next save.`);
+      messages.push(
+        kept
+          ? `${at}: the model has no such field. Mica keeps it in the file, and the website does not get it.`
+          : `${at}: the model has no such field. Mica drops it on the next save.`,
+      );
     } else if (field.kind === "richText") {
       messages.push(`${at}: rich text belongs in ${[...path, key].join(".")}${DOCUMENT_EXTENSION}, not in the JSON.`);
     } else if (field.kind === "object" && isRecord(value)) {
-      messages.push(...unknownKeys(field.fields, value, [...path, key]));
+      messages.push(...unknownKeys(field.fields, value, [...path, key], kept));
     } else if (field.kind === "repeater" && Array.isArray(value)) {
       // A row with rich text has a key that names its files (#220).
       const keyed = needsRowKey(field.fields);
       value.forEach((row, index) => {
         if (!isRecord(row)) return;
         const own = keyed ? Object.fromEntries(Object.entries(row).filter(([name]) => name !== ROW_KEY)) : row;
-        messages.push(...unknownKeys(field.fields, own, [...path, key, index]));
+        messages.push(...unknownKeys(field.fields, own, [...path, key, index], kept && keyed));
       });
     }
   }
   return messages;
-}
-
-/** Whether a sidecar's dotted path leads to a rich-text field. After a repeater comes its row: a key, or a number. */
-function namesRichText(fields: FieldMap, path: PathSegment[]): boolean {
-  const [head, ...rest] = path;
-  const field: AnyField | undefined = typeof head === "string" ? fields[head] : undefined;
-  if (!field) return false;
-  if (rest.length === 0) return field.kind === "richText";
-  if (field.kind === "object") return namesRichText(field.fields, rest);
-  if (field.kind === "repeater") return namesRichText(field.fields, rest.slice(1));
-  return false;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

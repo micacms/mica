@@ -17,6 +17,7 @@ import {
   createManifest,
   defineSite,
   documentName,
+  declaresDocument,
   documentPath,
   entryDataPath,
   entryFiles,
@@ -37,7 +38,7 @@ import {
   slug,
   text,
   url,
-  withDefaults,
+  withEmptyValues,
   type FieldMap,
 } from "../dist/index.js";
 
@@ -291,9 +292,9 @@ describe("repeater row keys", () => {
     assert.deepEqual(parseEntry(nested, { data, documents }), { groups: [{ _key: "kgroup", items: [{ _key: "kitem", body: "x" }] }] });
   });
 
-  it("keeps the key through defaults and validation, and leaves it out for templates", () => {
+  it("keeps the key through a read and validation, and leaves it out for templates", () => {
     const row = { _key: "kbrief", heading: "Brief" };
-    const filled = withDefaults(fields, { sections: [row] }) as { sections: Array<Record<string, unknown>> };
+    const filled = withEmptyValues(fields, { sections: [row] }) as { sections: Array<Record<string, unknown>> };
     assert.equal(filled.sections[0]!["_key"], "kbrief");
 
     const saved = fieldsSchema(fields, { enforceRequired: false }).parse({ sections: [row] }) as { sections: Array<Record<string, unknown>> };
@@ -309,6 +310,46 @@ describe("repeater row keys", () => {
 /* ------------------------------------------------------------------ *
  * Protocol
  * ------------------------------------------------------------------ */
+
+describe("what the model does not declare (#217)", () => {
+  const fields: FieldMap = {
+    title: text(),
+    seo: object({ fields: { metaTitle: text() } }),
+    sections: repeater({ fields: { heading: text(), body: richText() } }),
+    links: repeater({ fields: { label: text() } }),
+  };
+
+  it("stays in the file after the declared keys: at the top, in objects and in keyed rows", () => {
+    const stored = {
+      title: "Old",
+      newer: "from a newer model",
+      seo: { metaTitle: "Old", ogImage: "/media/a.jpg" },
+      sections: [{ _key: "kone", heading: "One", layout: "wide" }],
+      links: [{ label: "A", rel: "nofollow" }],
+    };
+    const data = { title: "New", seo: { metaTitle: "New" }, sections: [{ _key: "kone", heading: "One" }], links: [{ label: "A" }] };
+    const written = JSON.parse(serializeEntry(fields, data, stored).data);
+
+    assert.deepEqual(Object.keys(written), ["title", "seo", "sections", "links", "newer"]);
+    assert.deepEqual(written.seo, { metaTitle: "New", ogImage: "/media/a.jpg" });
+    assert.deepEqual(written.sections, [{ _key: "kone", heading: "One", layout: "wide" }]);
+    // A row without a key has no identity across a reorder.
+    assert.deepEqual(written.links, [{ label: "A" }]);
+  });
+
+  it("names the rich-text files that the model declares, and no others", () => {
+    assert.equal(declaresDocument(fields, ["sections", "kone", "body"]), true);
+    assert.equal(declaresDocument(fields, ["sections", "kone", "heading"]), false);
+    assert.equal(declaresDocument(fields, ["summary"]), false);
+  });
+});
+
+describe("defaults (#221)", () => {
+  it("do not fill a cleared rich-text field on read", () => {
+    const fields: FieldMap = { body: richText({ default: "Write here." }), live: boolean({ default: true }) };
+    assert.deepEqual(parseEntry(fields, { data: "{}" }), { body: null, live: false });
+  });
+});
 
 describe("protocol manifest", () => {
   const site = defineSite({

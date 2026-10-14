@@ -1,33 +1,47 @@
 /**
- * Empty-value construction.
+ * Empty values and defaults.
  *
- * The admin SPA needs a fully-populated object before it can bind inputs — a
- * missing key would make a control uncontrolled. These helpers produce the
- * storage-shape skeleton for a field map, honouring declared defaults.
+ * The editor needs a fully-populated object before it can bind inputs — a
+ * missing key would make a control uncontrolled. A read fills a missing value
+ * with the field's empty value. A default fills a field only when an entry is
+ * created (#221): a changed default never changes stored entries unseen, and a
+ * cleared field stays cleared.
  */
 
 import { isRowKey, ROW_KEY } from "./row-key.js";
 import type { AnyField, FieldMap } from "./types.js";
 
-export function defaultValue(field: AnyField): unknown {
+/** The value of a field that holds nothing. */
+export function emptyValue(field: AnyField): unknown {
   switch (field.kind) {
     case "boolean":
-      return field.default ?? false;
-
+      return false;
     case "repeater":
+    case "tags":
       return [];
-
     case "object":
-      return defaultValues(field.fields);
-
+      return emptyValues(field.fields);
     case "select":
-      if (field.multiple) return Array.isArray(field.default) ? field.default : [];
-      return typeof field.default === "string" ? field.default : null;
-
     case "media":
     case "relation":
       return field.multiple ? [] : null;
+    default:
+      return null;
+  }
+}
 
+/** A new entry's value for a field: its default, or its empty value. */
+export function defaultValue(field: AnyField): unknown {
+  switch (field.kind) {
+    case "object":
+      return defaultValues(field.fields);
+    case "boolean":
+      return field.default ?? false;
+    case "select":
+      if (field.multiple) return Array.isArray(field.default) ? field.default : [];
+      return typeof field.default === "string" ? field.default : null;
+    case "tags":
+      return field.default ? [...field.default] : [];
     case "text":
     case "textarea":
     case "richText":
@@ -35,34 +49,28 @@ export function defaultValue(field: AnyField): unknown {
     case "url":
     case "color":
     case "date":
-      return field.default ?? null;
-
     case "number":
       return field.default ?? null;
-
-    case "slug":
-    case "coordinates":
-      return null;
-
-    case "tags":
-      return field.default ? [...field.default] : [];
+    default:
+      return emptyValue(field);
   }
 }
 
+/** A new entry: every field at its default. */
 export function defaultValues(fields: FieldMap): Record<string, unknown> {
-  const result: Record<string, unknown> = {};
-  for (const [key, field] of Object.entries(fields)) {
-    result[key] = defaultValue(field);
-  }
-  return result;
+  return Object.fromEntries(Object.entries(fields).map(([key, field]) => [key, defaultValue(field)]));
+}
+
+function emptyValues(fields: FieldMap): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(fields).map(([key, field]) => [key, emptyValue(field)]));
 }
 
 /**
- * Fills keys missing from `data` with their defaults and drops keys no longer
- * present in the model. Applied when loading an entry written under an older
- * version of the schema, so form binding never sees an absent key.
+ * `data` with every field of the model: a missing value is empty, never a
+ * default, and a key that the model does not declare is left out. The stored
+ * file keeps such a key (`serializeEntry`).
  */
-export function withDefaults(
+export function withEmptyValues(
   fields: FieldMap,
   data: Record<string, unknown> | null | undefined,
 ): Record<string, unknown> {
@@ -73,15 +81,12 @@ export function withDefaults(
     const value = source[key];
 
     if (value === undefined) {
-      result[key] = defaultValue(field);
+      result[key] = emptyValue(field);
       continue;
     }
 
     if (field.kind === "object") {
-      result[key] = withDefaults(
-        field.fields,
-        (value ?? {}) as Record<string, unknown>,
-      );
+      result[key] = withEmptyValues(field.fields, (value ?? {}) as Record<string, unknown>);
       continue;
     }
 
@@ -89,7 +94,7 @@ export function withDefaults(
       const rows = Array.isArray(value) ? value : [];
       result[key] = rows.map((row) => {
         const record = row as Record<string, unknown>;
-        const filled = withDefaults(field.fields, record);
+        const filled = withEmptyValues(field.fields, record);
         // The row's key names its rich-text files: it stays with the row.
         return isRowKey(record?.[ROW_KEY]) ? { [ROW_KEY]: record[ROW_KEY], ...filled } : filled;
       });

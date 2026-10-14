@@ -3,15 +3,16 @@
  *
  * The inverse of `serializeEntry`. Deliberately tolerant: content in Git can be
  * edited by hand, by a script, or by an older version of Mica, so parsing
- * repairs what it can — missing keys become defaults, unknown keys are dropped —
- * and refuses only what it cannot interpret at all.
+ * repairs what it can — a missing value is empty, and a key that the model does
+ * not declare is left out of the payload — and refuses only what it cannot
+ * interpret at all.
  *
  * Validation is a separate step. `parseEntry` answers "what does this entry
  * say"; `validateFields` answers "may it be published".
  */
 
 import { FormatError, documentPath } from "./layout.js";
-import { withDefaults } from "./defaults.js";
+import { withEmptyValues } from "./defaults.js";
 import { ROW_KEY } from "./row-key.js";
 import type { AnyField, FieldMap } from "./types.js";
 
@@ -23,7 +24,7 @@ export interface EntryFiles {
 }
 
 export function parseEntry(fields: FieldMap, files: EntryFiles): Record<string, unknown> {
-  const data = withDefaults(fields, parseJson(files.data));
+  const data = withEmptyValues(fields, parseJson(files.data));
 
   for (const [name, contents] of Object.entries(files.documents ?? {})) {
     // A sidecar whose path no longer names a rich-text field is left alone

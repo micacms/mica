@@ -31,7 +31,7 @@ import {
   uniqueSlug,
   url,
   validateFields,
-  withDefaults,
+  withEmptyValues,
 } from "../dist/index.js";
 
 /* Type-level assertions — these fail at `rush typecheck`, not at runtime. */
@@ -206,16 +206,19 @@ describe("defaults", () => {
     });
   });
 
-  it("backfills keys added to the model after an entry was written", () => {
-    const stored = { title: "Old" };
-    const filled = withDefaults(fields, stored);
+  it("fills a missing value with the empty value on read, never with the default (#221)", () => {
+    const stored = { title: "Old", unknown: "kept in the file" };
+    const filled = withEmptyValues(fields, stored);
     assert.equal(filled.title, "Old");
+    assert.equal(filled.live, false);
     assert.deepEqual(filled.seo, { metaTitle: null });
     assert.deepEqual(filled.rows, []);
+    assert.equal("unknown" in filled, false);
+    assert.equal(withEmptyValues(fields, {}).title, null);
   });
 
-  it("backfills inside existing repeater rows", () => {
-    const filled = withDefaults(
+  it("fills inside existing repeater rows", () => {
+    const filled = withEmptyValues(
       { rows: repeater({ fields: { label: text(), extra: text() } }) },
       { rows: [{ label: "a" }] },
     );
