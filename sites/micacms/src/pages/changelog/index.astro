@@ -12,29 +12,29 @@ const [releases, site] = await Promise.all([getReleases(), getSite()]);
     title="What changed, and why."
     lead="Mica releases all packages and the CMS together. The project is pre-1.0, so read the note before each upgrade."
   />
-  <section class="section bg-surface">
+  <section class="section">
     <div class="wrap">
       {releases.map((release, index) => (
         <article class:list={["grid gap-6 border-t border-line py-12 md:grid-cols-[190px_1fr] md:gap-14", index === 0 && "border-t-0 pt-0"]}>
           <aside class="flex flex-wrap content-start items-center gap-3 md:block">
-            <span class="inline-block rounded-md border border-line bg-canvas px-2.5 py-1 font-mono text-xs font-medium text-ink">v{release.data.version}</span>
-            <time class="text-xs text-muted md:mt-3 md:block" datetime={release.data.publishDate}>{formatDate(release.data.publishDate)}</time>
+            <span class="inline-block rounded-sm bg-strata-soft px-2.5 py-1 font-mono text-[14px] font-medium text-ink">v{release.data.version}</span>
+            <time class="text-[14px] text-ink-muted md:mt-3 md:block" datetime={release.data.publishDate}>{formatDate(release.data.publishDate)}</time>
             {release.data.latest && (
-              <b class="flex items-center gap-2 text-[11px] font-normal text-muted md:mt-4">
-                <span class="inline-block h-1.5 w-1.5 rounded-full bg-accent"></span> Current
+              <b class="inline-flex w-fit items-center gap-2 rounded-full bg-primary-soft py-0.5 pr-2.5 pl-2 text-[13px] leading-4.5 font-semibold text-ink md:mt-4 md:flex">
+                <span class="h-2 w-2 rounded-full bg-primary" aria-hidden="true"></span> Current
               </b>
             )}
           </aside>
           <div>
-            <h2 class="display text-[1.6rem] leading-snug">{release.data.title}</h2>
-            <p class="lead mb-7 mt-2 max-w-2xl">{release.data.summary}</p>
+            <h2 class="title-2 m-0">{release.data.title}</h2>
+            <p class="lead mt-3 mb-7 max-w-2xl">{release.data.summary}</p>
             <RichText text={release.data.body} images={release.data._mica.images} />
           </div>
         </article>
       ))}
-      <div class="mt-6 rounded-xl border border-line bg-canvas p-5 text-sm text-muted">
+      <div class="mt-6 rounded-md bg-strata-soft p-5 text-[15px] text-ink">
         The complete source changelog is in the repository.
-        <a class="ml-1 font-medium text-accent underline decoration-accent/30 underline-offset-4" href={`${site.githubUrl}/blob/main/CHANGELOG.md`}>Read CHANGELOG.md</a>
+        <a class="link ml-1" href={`${site.githubUrl}/blob/main/CHANGELOG.md`}>Read CHANGELOG.md</a>
       </div>
     </div>
   </section>

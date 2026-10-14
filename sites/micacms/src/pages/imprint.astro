@@ -12,23 +12,23 @@ const imprint = await getImprint();
 >
   <PageHeader eyebrow={imprint.eyebrow} title={imprint.title} lead={imprint.lead} />
 
-  <section class="section bg-surface">
+  <section class="section">
     <div class="wrap grid gap-10 md:grid-cols-[190px_1fr] md:gap-14">
-      <h2 class="text-lg font-semibold text-ink">Responsible</h2>
+      <h2 class="title-3 m-0">Responsible</h2>
       <div class="max-w-2xl">
-        <address class="text-[15px] not-italic leading-relaxed text-ink-soft">
+        <address class="text-[17px] leading-relaxed text-ink not-italic">
           {imprint.entityName}<br />
           {imprint.street}<br />
           {imprint.postalCode} {imprint.city}<br />
           {imprint.country}
         </address>
-        <p class="mt-5 text-[15px]">
-          <a class="font-medium text-accent underline decoration-accent/30 underline-offset-4 transition hover:decoration-accent" href={`mailto:${imprint.email}`}>{imprint.email}</a>
+        <p class="mt-5">
+          <a class="link" href={`mailto:${imprint.email}`}>{imprint.email}</a>
         </p>
 
         {imprint.sections.map((section) => (
           <div class="mt-12 border-t border-line pt-10">
-            <h2 class="mb-3 text-lg font-semibold text-ink">{section.title}</h2>
+            <h2 class="title-3 mt-0 mb-3">{section.title}</h2>
             <RichText text={section.body} />
           </div>
         ))}

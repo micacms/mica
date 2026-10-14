@@ -5,11 +5,11 @@ interface Props { eyebrow?: string | null; title: string; lead?: string | null; 
 const { eyebrow, title, lead, back } = Astro.props;
 ---
 
-<section class="border-b border-line bg-surface">
+<section class="border-b border-line">
   <div class="wrap py-14 md:py-20">
-    {back && <a class="mb-8 inline-flex items-center gap-1.5 text-sm text-muted transition hover:text-ink" href={back.href}><ArrowLeft size={16} aria-hidden="true" /> {back.label}</a>}
+    {back && <a class="mb-8 inline-flex items-center gap-1.5 text-[15px] text-ink-muted transition hover:text-ink" href={back.href}><ArrowLeft size={16} aria-hidden="true" /> {back.label}</a>}
     {eyebrow && <p class="eyebrow">{eyebrow}</p>}
-    <h1 class="display max-w-3xl text-4xl leading-tight">{title}</h1>
+    <h1 class="title-1 m-0 max-w-3xl">{title}</h1>
     {lead && <p class="lead mt-5 max-w-2xl">{lead}</p>}
     <slot />
   </div>

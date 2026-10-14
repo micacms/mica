@@ -6,12 +6,11 @@ type Model = typeof site;
 export type SiteSettings = InferSingleton<Model["singletons"]["site"]>;
 export type Navigation = InferSingleton<Model["singletons"]["navigation"]>;
 export type Home = InferSingleton<Model["singletons"]["home"]>;
-export type Product = InferSingleton<Model["singletons"]["product"]>;
 export type Imprint = InferSingleton<Model["singletons"]["imprint"]>;
 
 const globals = new Map<string, unknown>();
 
-async function getGlobal<T>(name: "site" | "navigation" | "home" | "product" | "imprint"): Promise<T> {
+async function getGlobal<T>(name: "site" | "navigation" | "home" | "imprint"): Promise<T> {
   if (!globals.has(name)) {
     const entry = await getEntry(name, name);
     if (!entry) throw new Error(`Missing Mica singleton: ${name}`);
@@ -23,14 +22,7 @@ async function getGlobal<T>(name: "site" | "navigation" | "home" | "product" | "
 export const getSite = () => getGlobal<SiteSettings>("site");
 export const getNavigation = () => getGlobal<Navigation>("navigation");
 export const getHome = () => getGlobal<Home>("home");
-export const getProduct = () => getGlobal<Product>("product");
 export const getImprint = () => getGlobal<Imprint>("imprint");
-
-export async function getFeatures() {
-  return [...(await getCollection("features"))].sort(
-    (a, b) => a.data._mica.position - b.data._mica.position,
-  );
-}
 
 /** The sections of the documentation, in the order the index and the sidebar show them. */
 export const DOC_SECTIONS = [

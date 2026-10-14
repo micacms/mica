@@ -1,0 +1,57 @@
+---
+/**
+ * A drawing of the real editor with its real words. If the editor changes, change this too:
+ * a picture of the product that is not true is worse than none.
+ */
+import { Bold, Heading2, ImageIcon, Italic, Link, List } from "@lucide/astro";
+---
+
+<figure class="card m-0 overflow-hidden shadow-pop" aria-label="The Mica editor: a news entry, saved but not published">
+  <div class="grid min-h-[380px] sm:grid-cols-[150px_1fr]" aria-hidden="true">
+    <div class="hidden flex-col gap-1 bg-sidebar p-3 text-[13px] text-ink-muted sm:flex">
+      <picture class="mb-4 px-2 pt-1">
+        <source srcset="/brand/micacms-wordmark-light.svg" media="(prefers-color-scheme: dark)" />
+        <img src="/brand/micacms-wordmark.svg" alt="" class="h-3.5 w-auto" />
+      </picture>
+      <span class="px-2 py-1">Overview</span>
+      <span class="rounded-full bg-primary px-2.5 py-1 font-semibold text-on-primary">News</span>
+      <span class="px-2 py-1">Team</span>
+      <span class="px-2 py-1">Media</span>
+      <span class="px-2 py-1">Settings</span>
+    </div>
+    <div class="flex min-w-0 flex-col gap-4 bg-ground p-4 sm:p-5">
+      <div class="flex flex-wrap items-start justify-between gap-3">
+        <div class="flex flex-col gap-1.5">
+          <span class="text-[13px] text-ink-subtle">News /</span>
+          <span class="font-sans text-[20px] leading-7 font-semibold text-ink">New opening hours</span>
+          <span class="inline-flex w-fit items-center gap-2 rounded-full bg-glint-soft py-0.5 pr-2.5 pl-2 text-[13px] leading-4.5 font-semibold text-ink">
+            <span class="h-2 w-2 rounded-full bg-glint ring-1 ring-on-glint ring-inset"></span>Saved · not published
+          </span>
+        </div>
+        <span class="rounded-md bg-primary px-3.5 py-2 text-[14px] leading-5 font-semibold text-on-primary">Publish</span>
+      </div>
+      <div class="flex flex-col gap-4 rounded-md border border-line bg-surface p-4 text-[14px]">
+        <div class="flex flex-col gap-1.5">
+          <span class="text-[13px] font-semibold text-ink">Title</span>
+          <span class="rounded-sm border border-line-strong bg-surface px-3 py-1.5 text-ink">New opening hours</span>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <span class="text-[13px] font-semibold text-ink">Image</span>
+          <div class="flex items-center gap-3">
+            <span class="flex h-12 w-16 shrink-0 items-center justify-center rounded-sm bg-sandstone text-ink-subtle"><ImageIcon size={18} /></span>
+            <span class="min-w-0 text-[13px] text-ink-muted">Alt text: The shop door with the new opening hours</span>
+          </div>
+        </div>
+        <div class="flex flex-col gap-1.5">
+          <span class="text-[13px] font-semibold text-ink">Text</span>
+          <div class="overflow-hidden rounded-sm border border-line-strong">
+            <div class="flex items-center gap-3 border-b border-line bg-ground px-3 py-1.5 text-ink-muted">
+              <Bold size={15} /><Italic size={15} /><Heading2 size={15} /><List size={15} /><Link size={15} />
+            </div>
+            <p class="m-0 px-3 py-2.5 leading-relaxed text-ink">From 1 November we open at 8 in the morning, from Monday to Saturday.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</figure>

@@ -1,0 +1,113 @@
+---
+/**
+ * The wink to Astro: once per page, on the website only. Motion flies it up from behind the
+ * strata to its resting point, with a short trail of its past path, and two sparkles appear;
+ * as the hero scrolls away, it flies on into space. Without script it stays hidden; with
+ * reduced motion it rests.
+ */
+interface Props { class?: string; }
+const { class: className } = Astro.props;
+// From below the strata to the resting point; scrolling continues it out of the top.
+const LAUNCH = "M60 840 C 110 700, 200 560, 290 430";
+const FLIGHT = `${LAUNCH} S 390 150, 450 -100`;
+// The visible trail, as a share of the whole flight.
+const TRAIL = 0.16;
+---
+
+<svg class:list={["rocket", className]} viewBox="0 0 400 800" preserveAspectRatio="xMaxYMax meet" aria-hidden="true" data-rocket data-trail={TRAIL}>
+  <defs>
+    <path data-rocket-launch d={LAUNCH} />
+    <mask id="rocket-trail-mask" maskUnits="userSpaceOnUse" x="-100" y="-200" width="700" height="1200">
+      <path data-rocket-reveal d={FLIGHT} fill="none" stroke="#fff" stroke-width="12" pathLength="1" stroke-dasharray={`${TRAIL} 2`} />
+    </mask>
+  </defs>
+  <path data-rocket-flight class="fill-none stroke-strata" d={FLIGHT} stroke-width="2.5" stroke-dasharray="5 8" stroke-linecap="round" mask="url(#rocket-trail-mask)" />
+  <g data-rocket-body>
+    <g transform="rotate(90) scale(1.6)">
+      <path class="fill-surface stroke-ink" d="M0 -18 C 7 -10, 7 6, 4 12 L -4 12 C -7 6, -7 -10, 0 -18 Z" stroke-width="1.5" />
+      <circle class="fill-strata" cx="0" cy="-4" r="3" />
+      <path class="fill-ink" d="M-4 12 L -9 18 L -4 16 Z M4 12 L 9 18 L 4 16 Z" />
+    </g>
+  </g>
+  <g data-rocket-glint class="fill-glint">
+    <path d="M342 372 l6 13 l13 6 l-13 6 l-6 13 l-6 -13 l-13 -6 l13 -6 z" />
+    <path d="M308 358 l4 8 l8 4 l-8 4 l-4 8 l-4 -8 l-8 -4 l8 -4 z" />
+  </g>
+</svg>
+
+<style>
+  .rocket:not([data-launch]) {
+    visibility: hidden;
+  }
+
+  [data-rocket-glint] path {
+    opacity: 0;
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+</style>
+
+<script>
+  import { animate, scroll, stagger } from "motion";
+
+  const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  document.querySelectorAll<SVGSVGElement>("[data-rocket]").forEach((svg) => {
+    const flight = svg.querySelector<SVGPathElement>("[data-rocket-flight]")!;
+    const launch = svg.querySelector<SVGPathElement>("[data-rocket-launch]")!;
+    const reveal = svg.querySelector<SVGPathElement>("[data-rocket-reveal]")!;
+    const body = svg.querySelector<SVGGElement>("[data-rocket-body]")!;
+    const glint = svg.querySelector<SVGGElement>("[data-rocket-glint]")!;
+    const sparkles = glint.querySelectorAll<SVGPathElement>("path");
+    const trail = Number(svg.dataset.trail);
+    const length = flight.getTotalLength();
+    // The share of the flight at which the rocket rests until the page scrolls.
+    const rest = launch.getTotalLength() / length;
+    let launched = reduce ? 1 : 0;
+    let scrolled = 0;
+
+    const render = () => {
+      const progress = launched * rest + scrolled * (1 - rest);
+      const distance = progress * length;
+      const at = flight.getPointAtLength(distance);
+      const before = flight.getPointAtLength(Math.max(0, distance - 1));
+      const after = flight.getPointAtLength(Math.min(length, distance + 1));
+      const angle = (Math.atan2(after.y - before.y, after.x - before.x) * 180) / Math.PI;
+      body.setAttribute("transform", `translate(${at.x} ${at.y}) rotate(${angle})`);
+      // One dash of the trail's length, ending at the rocket.
+      reveal.setAttribute("stroke-dashoffset", String(trail - progress));
+      // The sparkles stay at the resting point and fade as the rocket leaves it.
+      glint.style.opacity = String(Math.max(0, 1 - scrolled * 4));
+    };
+
+    render();
+    svg.dataset.launch = "";
+    if (reduce) {
+      sparkles.forEach((sparkle) => (sparkle.style.opacity = "1"));
+      return;
+    }
+
+    animate(0, 1, {
+      duration: 2,
+      delay: 0.6,
+      ease: [0.3, 0, 0.2, 1],
+      onUpdate: (value) => {
+        launched = value;
+        render();
+      },
+    }).then(() => {
+      animate(sparkles, { opacity: [0, 1], scale: [0.3, 1] }, { duration: 0.5, delay: stagger(0.15) });
+    });
+
+    const hero = svg.closest("section");
+    if (hero) {
+      scroll(
+        (value: number) => {
+          scrolled = value;
+          render();
+        },
+        { target: hero, offset: ["start start", "end start"] },
+      );
+    }
+  });
+</script>

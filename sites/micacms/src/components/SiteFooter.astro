@@ -1,42 +1,42 @@
 ---
+import { ExternalLink } from "@lucide/astro";
 import Logo from "./Logo.astro";
-import Icon from "./Icon.astro";
+import Strata from "./Strata.astro";
 import { getNavigation, getSite } from "@/lib/content";
+
 const [navigation, site] = await Promise.all([getNavigation(), getSite()]);
 ---
 
-<footer class="border-t border-line bg-canvas">
+<footer class="border-t border-line bg-ground">
   <div class="wrap py-14">
     <div class="grid gap-12 md:grid-cols-[1fr_1.5fr]">
       <div>
         <Logo />
-        <p class="mt-4 max-w-xs text-sm leading-relaxed text-muted">
-          {site.tagline}. Content in Git. Static output. No runtime dependency.
-        </p>
-        <a class="mt-5 inline-flex items-center gap-2 rounded-full border border-line-strong px-3 py-1.5 font-mono text-[10px] text-muted transition hover:border-faint hover:text-ink" href="/changelog/">
-          <span class="inline-block h-1.5 w-1.5 rounded-full bg-accent"></span> v{site.currentVersion} · Experimental
+        <p class="mt-4 max-w-xs text-[15px] leading-relaxed text-ink-muted">{site.tagline}.</p>
+        <a class="mt-5 inline-flex items-center gap-2 rounded-full bg-strata-soft px-3 py-1 font-mono text-[13px] text-ink transition hover:bg-line" href="/changelog/">
+          <span class="h-2 w-2 rounded-full bg-glint ring-1 ring-on-glint ring-inset" aria-hidden="true"></span>v{site.currentVersion} · experimental
         </a>
       </div>
       <div class="grid grid-cols-2 gap-8 sm:grid-cols-3">
         {navigation.footerGroups.map((group) => (
           <div>
-            <h2 class="label-mono mb-3">{group.title}</h2>
+            <h2 class="mt-0 mb-3 font-sans text-[13px] font-semibold tracking-[.08em] text-ink-muted uppercase">{group.title}</h2>
             {group.links.map((link) => (
-              <a class="mb-2 flex items-center gap-1.5 text-sm text-muted transition hover:text-ink" href={link.href}>
-                {link.label}{link.href.startsWith("http") && <Icon name="external" size={12} />}
+              <a class="mb-2 flex items-center gap-1.5 text-[15px] text-ink-muted transition hover:text-ink" href={link.href}>
+                {link.label}{link.href.startsWith("http") && <ExternalLink size={13} aria-hidden="true" />}
               </a>
             ))}
           </div>
         ))}
       </div>
     </div>
-    <div class="mt-12 flex flex-col gap-2 border-t border-line pt-6 text-xs text-faint sm:flex-row sm:justify-between">
+    <div class="mt-12 flex flex-col gap-2 border-t border-line pt-6 text-[14px] text-ink-subtle sm:flex-row sm:justify-between">
       <span>
         © {new Date().getFullYear()} Mica ·
         <a class="transition hover:text-ink" href="/imprint/">Imprint</a>
       </span>
       <span>{navigation.footerNote}</span>
-      <span>Built with Mica + Astro</span>
     </div>
   </div>
+  <Strata class="h-24 md:h-32" seed={2.4} />
 </footer>

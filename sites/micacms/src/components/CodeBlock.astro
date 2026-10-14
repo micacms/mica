@@ -1,0 +1,19 @@
+---
+/** A file or a change, with its path above it. A change marks lines that start with + or -. */
+interface Props { file?: string | null; code: string; kind?: "code" | "change"; class?: string; }
+const { file, code, kind = "code", class: className } = Astro.props;
+
+function tone(line: string): string {
+  if (kind === "change") {
+    if (line.startsWith("+")) return "text-primary";
+    if (line.startsWith("-")) return "text-danger";
+    if (line.startsWith("commit ")) return "text-ink-subtle";
+  }
+  return line.trimStart().startsWith("//") ? "text-ink-subtle" : "";
+}
+---
+
+<figure class:list={["card m-0 overflow-hidden", className]}>
+  {file && <figcaption class="border-b border-line bg-strata-soft px-4 py-2 font-mono text-[13px] font-medium text-ink-muted">{file}</figcaption>}
+  <pre tabindex="0" class="m-0 overflow-x-auto p-4 font-mono text-[13px] leading-[1.7] text-ink sm:p-5 sm:text-[14px]"><code>{code.split("\n").map((line) => <span class:list={["block", tone(line)]}>{line || " "}</span>)}</code></pre>
+</figure>

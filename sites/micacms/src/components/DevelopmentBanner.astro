@@ -8,13 +8,13 @@ const site = await getSite();
   warning has to be seen, but it should not eat viewport height on every screen.
   Not dismissible — a disclaimer you can click away stops being a disclaimer.
 */}
-<div class="border-b border-line bg-canvas">
-  <p class="wrap flex flex-wrap items-center justify-center gap-x-2 gap-y-1 py-2 text-center text-xs text-ink-soft">
-    <span class="inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-accent" aria-hidden="true"></span>
-    <strong class="font-medium">Under development</strong>
+<div class="border-b border-line bg-glint-soft">
+  <p class="wrap m-0 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 py-2 text-center text-[14px] text-ink">
+    <span class="h-2 w-2 shrink-0 rounded-full bg-glint ring-1 ring-on-glint ring-inset" aria-hidden="true"></span>
+    <strong class="font-semibold">Under development</strong>
     <span>
       Mica is experimental at v{site.currentVersion} and not ready for production.
-      <a class="underline decoration-line-strong underline-offset-2 transition hover:decoration-ink" href="/changelog/">Follow the releases</a>.
+      <a class="font-medium underline underline-offset-2" href="/changelog/">Follow the releases</a>.
     </span>
   </p>
 </div>

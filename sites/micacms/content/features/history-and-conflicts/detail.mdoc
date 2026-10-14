@@ -1,7 +1,0 @@
-Every read includes an opaque revision for that content path. A save includes the revision that the editor started with. If the current entry has changed, Mica returns a conflict and keeps the editor's work in the form.
-
-Two editors on different entries do not block each other. A second deployment on a staging branch can provide a complete review workflow without adding draft states to the content format.
-
-## When the website changes an entry that has a draft
-
-The self-hosted editor fetches the branch every 60 seconds by default. Sometimes somebody changes an entry on the website while an editor has a draft of that entry. This is a conflict. The editor chooses: **Keep my version** or **Use the website's version**. Mica never merges the two versions for you.

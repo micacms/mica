@@ -16,6 +16,19 @@ const site = await getSite();
 const pageTitle = title ? `${title} — ${site.productName}` : `${site.productName} — ${site.tagline}`;
 const metaDescription = description ?? site.description;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
+// `<` escaped, so that no text from the content can end the script element.
+const structuredData = JSON.stringify({
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "Mica",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Node.js",
+  softwareVersion: site.currentVersion,
+  description: metaDescription,
+  url: canonical,
+  codeRepository: site.githubUrl,
+  license: "https://opensource.org/license/mit",
+}).replaceAll("<", "\\u003c");
 ---
 
 <!doctype html>
@@ -24,7 +37,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="generator" content={Astro.generator} />
-    <meta name="theme-color" content="#fbf5ec" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f4f0e6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121816" media="(prefers-color-scheme: dark)" />
     <title>{pageTitle}</title>
     <meta name="description" content={metaDescription} />
     <link rel="canonical" href={canonical} />
@@ -38,21 +53,10 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
     <meta property="og:url" content={canonical} />
     <meta property="og:site_name" content="Mica" />
     <meta name="twitter:card" content="summary" />
-    <script is:inline type="application/ld+json" set:html={JSON.stringify({
-      "@context": "https://schema.org",
-      "@type": "SoftwareApplication",
-      name: "Mica",
-      applicationCategory: "DeveloperApplication",
-      operatingSystem: "Node.js",
-      softwareVersion: site.currentVersion,
-      description: metaDescription,
-      url: canonical,
-      codeRepository: site.githubUrl,
-      license: "https://opensource.org/license/mit",
-    })} />
+    <script is:inline type="application/ld+json" set:html={structuredData} />
   </head>
   <body>
-    <a class="fixed left-4 top-4 z-[100] -translate-y-20 rounded-sm bg-ink px-4 py-2 text-sm font-medium text-surface transition focus:translate-y-0" href="#main">Skip to content</a>
+    <a class="fixed top-4 left-4 z-[100] -translate-y-20 rounded-md bg-primary px-4 py-2 text-[15px] font-semibold text-on-primary transition focus:translate-y-0" href="#main">Skip to content</a>
     <DevelopmentBanner />
     <SiteHeader />
     <main id="main"><slot /></main>

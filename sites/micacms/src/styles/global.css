@@ -1,111 +1,135 @@
 @import "tailwindcss";
 
-/* Inter 4.1, served by the site itself: no request to Google (#88). Licence: public/fonts/. */
+/* The fonts are served by the site itself: no request to Google (#88). Licences: public/fonts/. */
 @font-face {
-  font-family: "Inter";
+  font-family: "Bricolage Grotesque";
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 500 800;
   font-display: swap;
-  src: url("../assets/fonts/InterVariable.woff2") format("woff2");
+  src: url("../assets/fonts/BricolageGrotesque-Variable.woff2") format("woff2");
 }
 
-/* Mica design system v1.5: creme neutrals, aubergine brand */
+@font-face {
+  font-family: "Instrument Sans";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("../assets/fonts/InstrumentSans-Variable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/IBMPlexMono-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("../assets/fonts/IBMPlexMono-Medium.woff2") format("woff2");
+}
+
+/* The Mica brand tokens: the Stone theme, and Basalt in dark mode. */
 :root {
-  --mica-creme-50: #fffdf8;
-  --mica-creme-100: #fbf5ec;
-  --mica-creme-150: #f6eee2;
-  --mica-creme-200: #ede3d4;
-  --mica-creme-300: #d9cdbd;
-  --mica-creme-400: #a3968e;
-  --mica-creme-500: #716360;
-  --mica-creme-700: #4a3a3c;
-  --mica-creme-900: #2e1c21;
-  --mica-ink: #261419;
+  --mica-ground: #f4f0e6;
+  --mica-surface: #fffcf4;
+  --mica-sandstone: #e9dabf;
+  --mica-sidebar: #ede6d6;
+  --mica-ink: #1c2522;
+  --mica-ink-muted: #3a4642;
+  --mica-ink-subtle: #55615c;
+  --mica-line: #e2d6be;
+  --mica-line-strong: #857b69;
+  --mica-primary: #17694f;
+  --mica-primary-hover: #0e4a37;
+  --mica-on-primary: #fffcf4;
+  --mica-primary-soft: #dcebdf;
+  --mica-glint: #f2c230;
+  --mica-on-glint: #1c2522;
+  --mica-glint-soft: #fbebb5;
+  --mica-strata: #2f5b80;
+  --mica-strata-soft: #dce6ee;
+  --mica-danger: #a3402f;
+  --mica-danger-soft: #f6ded8;
+  --mica-band-glint: #f2c230;
+  --mica-band-sand: #e9dabf;
+  --mica-band-malachite: #17694f;
+  --mica-band-blue: #2f5b80;
+  --mica-band-shale: #1c2522;
+  --mica-shadow-pop: 0 8px 24px rgb(28 37 34 / 14%);
+  color-scheme: light;
+}
 
-  --mica-aubergine-50: #f8f1f3;
-  --mica-aubergine-100: #eedfe4;
-  --mica-aubergine-200: #dcc3cb;
-  --mica-aubergine-400: #c9b8bd;
-  --mica-aubergine-500: #7a3d58;
-  --mica-aubergine-700: #3f1f2b;
-  --mica-aubergine-900: #2a141d;
-
-  --mica-success: #166534;
-  --mica-success-bg: #dcfce7;
-  --mica-warning: #854d0e;
-  --mica-warning-bg: #fef9c3;
-  --mica-danger: #991b1b;
-  --mica-danger-action: #dc2626;
-  --mica-danger-bg: #fee2e2;
-  --mica-info: #1e40af;
-  --mica-info-bg: #dbeafe;
-
-  --mica-bg: var(--mica-creme-50);
-  --mica-surface: var(--mica-creme-50);
-  --mica-surface-raised: var(--mica-creme-100);
-  --mica-border: rgb(63 31 43 / 12%);
-  --mica-border-strong: rgb(63 31 43 / 22%);
-  --mica-text: var(--mica-ink);
-  --mica-text-muted: var(--mica-creme-500);
-  --mica-text-subtle: var(--mica-creme-400);
-  --mica-accent: var(--mica-aubergine-500);
-  --mica-accent-text: var(--mica-aubergine-500);
-  --mica-accent-bg: var(--mica-aubergine-50);
-  --mica-focus: var(--mica-aubergine-500);
-
-  --mica-font-sans: "Inter", "Inter var", system-ui, -apple-system, "Segoe UI", sans-serif;
-  --mica-font-display: var(--mica-font-sans);
-  --mica-font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --mica-duration-instant: 80ms;
-  --mica-duration-fast: 150ms;
-  --mica-duration-base: 200ms;
-  --mica-duration-slow: 350ms;
-  --mica-duration-deliberate: 500ms;
-  --mica-ease-standard: cubic-bezier(.2, 0, 0, 1);
-  --mica-ease-decelerate: cubic-bezier(0, 0, .2, 1);
-  --mica-ease-accelerate: cubic-bezier(.4, 0, 1, 1);
-  --mica-ease: var(--mica-ease-standard);
-  --mica-dur-1: var(--mica-duration-fast);
-  --mica-dur-2: var(--mica-duration-base);
+@media (prefers-color-scheme: dark) {
+  :root {
+    --mica-ground: #121816;
+    --mica-surface: #1a2320;
+    --mica-sandstone: #2a332f;
+    --mica-sidebar: #161e1b;
+    --mica-ink: #f1ebdd;
+    --mica-ink-muted: #cfc7b6;
+    --mica-ink-subtle: #a9a291;
+    --mica-line: #2f3a36;
+    --mica-line-strong: #76837d;
+    --mica-primary: #6cc9a1;
+    --mica-primary-hover: #8ddbb8;
+    --mica-on-primary: #0e1f18;
+    --mica-primary-soft: #1d3a2e;
+    --mica-glint-soft: #3d3216;
+    --mica-strata: #8db8dd;
+    --mica-strata-soft: #1b2c3a;
+    --mica-danger: #f2998a;
+    --mica-danger-soft: #3a1d18;
+    --mica-band-glint: #d9ac22;
+    --mica-band-sand: #6e6250;
+    --mica-band-malachite: #2e8a69;
+    --mica-band-blue: #4a7ba6;
+    --mica-band-shale: #46544f;
+    --mica-shadow-pop: 0 8px 24px rgb(0 0 0 / 50%);
+    color-scheme: dark;
+  }
 }
 
 @theme inline {
+  --color-ground: var(--mica-ground);
   --color-surface: var(--mica-surface);
-  --color-raised: var(--mica-surface-raised);
-  --color-canvas: var(--mica-creme-100);
-  --color-subtle: var(--mica-creme-150);
-  --color-line: var(--mica-border);
-  --color-line-strong: var(--mica-border-strong);
-  --color-ink: var(--mica-text);
-  --color-ink-soft: var(--mica-creme-700);
-  --color-muted: var(--mica-text-muted);
-  --color-faint: var(--mica-text-subtle);
-  --color-accent: var(--mica-accent-text);
-  --color-accent-soft: var(--mica-accent-bg);
-  --color-aubergine: var(--mica-aubergine-700);
-  --color-creme: var(--mica-creme-100);
-  --color-success: var(--mica-success);
-  --color-success-soft: var(--mica-success-bg);
-  --color-warning: var(--mica-warning);
-  --color-warning-soft: var(--mica-warning-bg);
+  --color-sandstone: var(--mica-sandstone);
+  --color-sidebar: var(--mica-sidebar);
+  --color-ink: var(--mica-ink);
+  --color-ink-muted: var(--mica-ink-muted);
+  --color-ink-subtle: var(--mica-ink-subtle);
+  --color-line: var(--mica-line);
+  --color-line-strong: var(--mica-line-strong);
+  --color-primary: var(--mica-primary);
+  --color-primary-hover: var(--mica-primary-hover);
+  --color-on-primary: var(--mica-on-primary);
+  --color-primary-soft: var(--mica-primary-soft);
+  --color-glint: var(--mica-glint);
+  --color-on-glint: var(--mica-on-glint);
+  --color-glint-soft: var(--mica-glint-soft);
+  --color-strata: var(--mica-strata);
+  --color-strata-soft: var(--mica-strata-soft);
   --color-danger: var(--mica-danger);
-  --color-danger-action: var(--mica-danger-action);
-  --color-danger-soft: var(--mica-danger-bg);
-  --color-info: var(--mica-info);
-  --color-info-soft: var(--mica-info-bg);
+  --color-danger-soft: var(--mica-danger-soft);
+  --color-band-glint: var(--mica-band-glint);
+  --color-band-sand: var(--mica-band-sand);
+  --color-band-malachite: var(--mica-band-malachite);
+  --color-band-blue: var(--mica-band-blue);
+  --color-band-shale: var(--mica-band-shale);
 
-  --font-sans: var(--mica-font-sans);
-  --font-display: var(--mica-font-display);
-  --font-mono: var(--mica-font-mono);
+  --font-display: "Bricolage Grotesque", "Avenir Next", system-ui, sans-serif;
+  --font-sans: "Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
 
   --radius-sm: 6px;
-  --radius-md: 6px;
-  --radius-lg: 6px;
-  --radius-xl: 6px;
-  --radius-2xl: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
 
-  --shadow-sm: 0 1px 3px rgb(63 31 43 / 10%);
-  --shadow-lg: 0 8px 24px -8px rgb(63 31 43 / 18%);
+  --shadow-pop: var(--mica-shadow-pop);
 }
 
 @layer base {
@@ -116,26 +140,26 @@
 
   body {
     margin: 0;
-    background: var(--mica-bg);
-    color: var(--mica-text);
-    font-family: var(--mica-font-sans);
-    font-size: .875rem;
-    font-optical-sizing: auto;
-    font-weight: 400;
-    line-height: 1.43;
+    background: var(--mica-ground);
+    color: var(--mica-ink);
+    font-family: var(--font-sans);
+    font-size: 17px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
 
   h1,
-  h2 {
-    font-weight: 400;
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    font-weight: 700;
+    text-wrap: balance;
   }
 
-  h3,
   h4,
   h5,
   h6 {
-    font-family: var(--mica-font-sans);
+    font-family: var(--font-sans);
     font-weight: 600;
   }
 
@@ -160,19 +184,19 @@
   }
 
   ::selection {
-    background: var(--mica-accent-bg);
-    color: var(--mica-text);
+    background: var(--mica-glint-soft);
+    color: var(--mica-ink);
   }
 
   :focus-visible {
     border-radius: 6px;
-    outline: 2px solid var(--mica-focus);
+    outline: 2px solid var(--mica-strata);
     outline-offset: 2px;
   }
 }
 
 @utility wrap {
-  @apply mx-auto w-full max-w-[1120px] px-5 sm:px-8;
+  @apply mx-auto w-full max-w-[1120px] px-4 sm:px-8;
 }
 
 @utility section {
@@ -180,51 +204,55 @@
 }
 
 @utility eyebrow {
-  @apply mb-4 block font-mono text-[11px] font-medium uppercase tracking-[.08em] text-muted;
+  @apply mb-4 block font-sans text-[13px] leading-[18px] font-semibold tracking-[.08em] text-primary uppercase;
 }
 
-@utility display {
-  @apply font-display font-normal tracking-tight text-ink;
+@utility display-1 {
+  @apply font-display text-[40px] leading-[1.02] font-extrabold tracking-[-.02em] text-ink sm:text-[52px] lg:text-[64px];
+  font-variation-settings: "opsz" 96;
+}
+
+@utility title-1 {
+  @apply font-display text-[32px] leading-[1.1] font-extrabold tracking-[-.015em] text-ink md:text-[44px];
+  font-variation-settings: "opsz" 72;
+}
+
+@utility title-2 {
+  @apply font-display text-[26px] leading-[1.18] font-bold tracking-[-.01em] text-ink md:text-[32px];
+  font-variation-settings: "opsz" 48;
+}
+
+@utility title-3 {
+  @apply font-display text-[22px] leading-[1.25] font-bold text-ink md:text-[24px];
+  font-variation-settings: "opsz" 24;
 }
 
 @utility lead {
-  @apply text-base leading-relaxed text-muted;
+  @apply text-[18px] leading-[1.6] text-ink-muted md:text-[20px];
 }
 
 @utility btn {
-  @apply inline-flex min-h-9 select-none items-center justify-center gap-2 rounded-md border
-    border-transparent px-4 py-2 text-sm font-medium transition;
-  transition-duration: var(--mica-duration-fast);
-  transition-timing-function: var(--mica-ease);
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-md border border-transparent px-5 py-2.5 text-[15px] leading-5 font-semibold select-none;
+  transition: background-color 150ms ease-out, border-color 150ms ease-out, color 150ms ease-out;
 }
 
 @utility btn-primary {
-  @apply btn bg-ink text-surface hover:bg-ink-soft;
+  @apply btn bg-primary text-on-primary hover:bg-primary-hover;
 }
 
 @utility btn-secondary {
-  @apply btn border-line bg-subtle text-ink-soft hover:border-line-strong hover:bg-raised;
+  @apply btn border-line-strong bg-surface text-ink hover:border-ink-muted;
 }
 
 @utility card {
-  @apply rounded-md border border-line bg-raised;
+  @apply rounded-lg border border-line bg-surface;
 }
 
-@utility label-mono {
-  @apply font-mono text-[11px] font-normal uppercase tracking-[.08em] text-faint;
+@utility link {
+  @apply font-medium text-primary underline decoration-primary/40 underline-offset-4 hover:text-primary-hover hover:decoration-primary-hover;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root {
-    --mica-duration-instant: 0ms;
-    --mica-duration-fast: 0ms;
-    --mica-duration-base: 0ms;
-    --mica-duration-slow: 0ms;
-    --mica-duration-deliberate: 0ms;
-    --mica-dur-1: 0ms;
-    --mica-dur-2: 0ms;
-  }
-
   html {
     scroll-behavior: auto;
   }
