@@ -1,0 +1,56 @@
+{
+  "name": "@micacms/mcp",
+  "version": "0.9.0",
+  "type": "module",
+  "description": "The Mica tools for agents over the Model Context Protocol: read the model and the content, save drafts, publish when allowed. Composed by @micacms/editor locally and @micacms/self-hosted behind OAuth.",
+  "license": "MIT",
+  "homepage": "https://micacms.com",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/micacms/mica.git",
+    "directory": "packages/mcp"
+  },
+  "bugs": "https://github.com/micacms/mica/issues",
+  "author": "Alexander Müdespacher",
+  "keywords": [
+    "mica",
+    "cms",
+    "mcp",
+    "agents"
+  ],
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch --preserveWatchOutput",
+    "typecheck": "tsc -p tsconfig.test.json",
+    "test": "tsc -p tsconfig.json && node --test --import tsx test/*.test.ts"
+  },
+  "dependencies": {
+    "@micacms/core": "workspace:*",
+    "@micacms/runtime": "workspace:*",
+    "@modelcontextprotocol/server": "^2.3.1",
+    "hono": "^4.13.7",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

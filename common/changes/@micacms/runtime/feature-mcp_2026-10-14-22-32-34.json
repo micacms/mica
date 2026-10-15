@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "The self-hosted image can let agents connect at /mcp with MICA_MCP=true. Mica is their OAuth server: a person signs in as for the editor and allows each agent on a consent page, and Mica stores no tokens. MICA_MCP_PUBLISH lets a person also allow an agent to publish.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

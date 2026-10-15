@@ -1,5 +1,5 @@
 /**
- * One lockstep version for everything Mica publishes: the four packages move
+ * One lockstep version for everything Mica publishes: the five packages move
  * together, whatever the release notes say about each. `rush version --bump`
  * consumes the change files under common/changes/, bumps every member to the
  * same next version, and writes each package's CHANGELOG from the comments.

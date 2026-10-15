@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor",
+      "comment": "Agents can edit the content: `npx mica mcp` serves the MCP tools over stdio, and `npx mica start` serves them at /mcp. Agents save drafts; `--allow-publish` or MICA_MCP_PUBLISH=true also gives them publish.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

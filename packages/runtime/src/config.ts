@@ -68,6 +68,8 @@ export const runtimeEnv = {
 
   /** Read the client IP from X-Forwarded-For. Only enable behind a proxy. */
   MICA_TRUST_PROXY: bool(false),
+  /** Agents connected over MCP get the `publish` tool. Off: they save drafts, and a person publishes them. */
+  MICA_MCP_PUBLISH: bool(false),
 };
 
 const runtimeSchema = z.object(runtimeEnv);

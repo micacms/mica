@@ -13,6 +13,7 @@ import { z } from "zod";
 
 import { authEnv, deriveAuth, requireAuthConfig, type AuthConfig } from "@micacms/auth-oidc";
 import {
+  bool,
   ConfigError,
   deriveRuntime,
   describeConfigIssues,
@@ -53,6 +54,8 @@ const fields = {
   /** The content root in the repository. Only necessary when it has more than one `.mica/schema.json`. */
   MICA_CONTENT_PATH: z.string().optional(),
   MICA_REPOSITORY_SYNC_SECONDS: z.coerce.number().int().min(5).max(86_400).default(60),
+  /** Agents can connect over MCP at `/mcp`, after a person allows each one on a consent page. */
+  MICA_MCP: bool(false),
 };
 
 /** Every variable the image reads. Built from the schema's fields, so the two cannot drift. */
@@ -81,6 +84,8 @@ export type SelfHostedConfig = RuntimeConfig &
   AuthConfig & {
     dataDir: string;
     repository: RepositoryConfig;
+    /** Agents can connect at `/mcp`. */
+    MICA_MCP: boolean;
     /** `MICA_*` names in the environment that nothing reads: likely typos. */
     unknownVariables: string[];
   };

@@ -18,7 +18,7 @@
  * still re-read on every request — see gate.ts and docs/decisions.md.
  */
 
-import { createCipheriv, createDecipheriv, hkdfSync, randomBytes, timingSafeEqual } from "node:crypto";
+import { timingSafeEqual } from "node:crypto";
 
 import type { Context } from "hono";
 import { setCookie } from "hono/cookie";
@@ -26,6 +26,7 @@ import { setCookie } from "hono/cookie";
 import { randomToken, type Env } from "@micacms/runtime";
 
 import type { AuthConfig } from "./config.js";
+import { seal as sealValue, sealingKey, unseal } from "./sealed.js";
 
 export const SESSION_COOKIE = "mica_session";
 export const CSRF_COOKIE = "mica_csrf";
@@ -60,9 +61,6 @@ const REFRESH_INTERVAL_MS = 5 * 60 * 1000;
 
 /** Browsers drop cookies over 4096 bytes; refuse rather than sign in to nothing. */
 const MAX_COOKIE_BYTES = 4000;
-
-const IV_BYTES = 12;
-const TAG_BYTES = 16;
 
 /** What the identity provider stated about the person holding this session. */
 export interface SessionIdentity {
@@ -167,9 +165,7 @@ export function createSessionService(config: AuthConfig): SessionService {
   const ttlMs = config.MICA_SESSION_TTL_HOURS * 3600_000;
   const idleMs = config.MICA_SESSION_IDLE_HOURS * 3600_000;
 
-  const key = Buffer.from(
-    hkdfSync("sha256", config.sessionSecret, "", "mica session cookie v1", 32),
-  );
+  const key = sealingKey(config.sessionSecret, "mica session cookie v1");
 
   // Only the groups a rule names are kept: an Entra token can carry hundreds,
   // and a cookie holds 4 KB. A group added to the rules later counts from the
@@ -181,10 +177,7 @@ export function createSessionService(config: AuthConfig): SessionService {
     new Date(Math.min(now + idleMs, createdAt + ttlMs)).toISOString();
 
   const seal = (record: SessionRecord): string => {
-    const iv = randomBytes(IV_BYTES);
-    const cipher = createCipheriv("aes-256-gcm", key, iv);
-    const body = Buffer.concat([cipher.update(JSON.stringify(record), "utf8"), cipher.final()]);
-    const cookie = Buffer.concat([iv, body, cipher.getAuthTag()]).toString("base64url");
+    const cookie = sealValue(key, record);
 
     if (cookie.length > MAX_COOKIE_BYTES) {
       throw new Error("The session does not fit in a cookie; the identity is too large.");
@@ -193,21 +186,9 @@ export function createSessionService(config: AuthConfig): SessionService {
   };
 
   const open = (cookieValue: string): SessionRecord | null => {
-    const raw = Buffer.from(cookieValue, "base64url");
-    if (raw.length <= IV_BYTES + TAG_BYTES) return null;
-
-    try {
-      const decipher = createDecipheriv("aes-256-gcm", key, raw.subarray(0, IV_BYTES));
-      decipher.setAuthTag(raw.subarray(raw.length - TAG_BYTES));
-      const json = Buffer.concat([
-        decipher.update(raw.subarray(IV_BYTES, raw.length - TAG_BYTES)),
-        decipher.final(),
-      ]).toString("utf8");
-      return parseRecord(json);
-    } catch {
-      // Forged, truncated, or sealed with a secret that has since rotated.
-      return null;
-    }
+    // Null when forged, truncated, or sealed with a secret that has since rotated.
+    const json = unseal(key, cookieValue);
+    return json === null ? null : parseRecord(json);
   };
 
   return {

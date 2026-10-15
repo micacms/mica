@@ -29,6 +29,11 @@ describe("safeReturnTo", () => {
     for (const raw of attempts) assert.equal(safeReturnTo(raw, PUBLIC_URL), "/admin/", JSON.stringify(raw));
   });
 
+  it("keeps an agent's consent page, with its query", () => {
+    assert.equal(safeReturnTo("/oauth/authorize?client_id=x&state=y", PUBLIC_URL), "/oauth/authorize?client_id=x&state=y");
+    assert.equal(safeReturnTo("/oauth/token", PUBLIC_URL), "/admin/");
+  });
+
   it("refuses a page of this site that is not the editor", () => {
     for (const raw of ["/", "/api/auth/logout", "/administrator", "/admin.evil", "/admin/../api/auth/me"]) {
       assert.equal(safeReturnTo(raw, PUBLIC_URL), "/admin/", raw);

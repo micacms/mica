@@ -59,6 +59,12 @@
       "tags": ["packages"]
     },
     {
+      "packageName": "@micacms/mcp",
+      "projectFolder": "packages/mcp",
+      "versionPolicyName": "mica",
+      "tags": ["packages"]
+    },
+    {
       "packageName": "@micacms/auth-oidc",
       "projectFolder": "packages/auth/oidc",
       "tags": ["packages"]

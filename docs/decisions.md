@@ -779,8 +779,10 @@ the draft store and nothing about people. See "Sessions are encrypted cookies".
 and `@micacms/core/node`, `@micacms/astro`, the `@micacms/editor` CLI, the self-hosted image contract (environment variables,
 port, volume, `/health` and `/ready`), the content format and the manifest
 protocol.
-`@micacms/runtime` is internal: published only because `@micacms/editor`
-installs it, pinned exactly, and free to break in a minor. Since 0.9 (#225),
+`@micacms/runtime` and `@micacms/mcp` are internal: published only because
+`@micacms/editor` installs them, pinned exactly, and free to break in a minor.
+The MCP tools that they serve are public: their names and inputs (see "Agents
+edit through MCP"). Since 0.9 (#225),
 `@micacms/editor-ui` and `@micacms/auth-oidc` are not published: the editor
 ships the UI's build in its `dist/admin`, and the image builds both from
 source. A change to the editor UI records its change file for
@@ -954,7 +956,107 @@ surface, not the admin API.
 
 **Trigger:** the first request for automation against a running Mica.
 
+**Fired in 0.10:** agents are the second client. They got the MCP tools, a
+separate surface on the same services, and the admin API stays internal. See
+the next entry.
+
 **1.0 status:** accepted for 1.0; #54 lists it as internal.
+
+---
+
+### P2 — Agents edit through MCP, and save drafts by default
+
+**Decided:** `@micacms/mcp` gives agents a fixed set of tools over the Model
+Context Protocol (revision 2026-07-28): read the model and the content, save
+entries and singletons, delete and reorder entries, upload media, list and
+discard the drafts, and publish. One definition on the runtime's services
+serves three entry points: `npx mica mcp` over stdio, `/mcp` in the local
+editor, and `/mcp` in the image behind OAuth (next entry). The tools are the
+same for each; only the gate in front differs. `publish` exists only with
+`MICA_MCP_PUBLISH=true` (`--allow-publish` for `mica mcp`). Without it, an
+agent saves drafts and a person publishes them in the editor.
+
+**Why:** Saved and Published must stay different words for an agent too. A
+draft is easy to review and to discard; a publication is on the website. Content
+that an agent reads can carry instructions (prompt injection), and drafts by
+default limit the worst result to a bad draft. A fixed tool set, not one tool
+for each collection, keeps the tool list the same when the model changes.
+Every write sends the revision that the agent read, as the editor does, so an
+agent never overwrites a person's newer save.
+
+**Accepted with it:** `upload_media` gets the file as base64 in the JSON
+request, so the image holds an agent's upload in memory, unlike the editor's
+uploads (#235). The request is at most a third larger than
+`MICA_MAX_UPLOAD_BYTES`, and the rate limit applies.
+
+**Consequence:** the tool names and their inputs are a contract: agents, their
+prompts and their permission rules name them. They are in the semver surface
+from 1.0. `@micacms/mcp` itself is internal, like `@micacms/runtime`: it is
+published because `@micacms/editor` installs it. The local entry points have no
+authentication, for the same reasons as the local editor: stdio has no network
+surface, and `/mcp` on loopback has the editor's Host allowlist and an Origin
+check. The image needs `MICA_MCP=true`: a new sign-in surface is opt-in.
+
+**What would change it:** a need for tools that the editor does not have, such
+as a search index or a history. That would be a change of the runtime first.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
+### P2 — A self-hosted Mica is the authorization server of its own MCP endpoint
+
+**Decided:** in the image, Mica is the OAuth 2.1 authorization server for
+`/mcp`, hosted beside it, as the MCP specification allows. The person signs in
+with the editor's own OIDC flow, the `MICA_ADMIT_*` rules decide as for the
+editor, and a consent page asks the person to allow one agent. Mica then
+issues sealed tokens (AES-256-GCM under a key from `MICA_SESSION_SECRET`, like
+the session cookie). It stores no clients, no codes and no tokens:
+
+- A client is a Client ID Metadata Document, which Mica fetches (https only, no
+  private address, no redirect, 64 kB, 5 seconds in total, cached 5 minutes),
+  or a dynamic registration that Mica seals into the client ID itself. The
+  consent page says that the name of a registered client is not confirmed.
+- The authorization endpoint first needs an admitted person who signed in in
+  the last five minutes; only then does Mica fetch a client's document. Every
+  error before the consent stays on Mica's page: anybody can register a
+  redirect URI, so a redirect there would be an open redirect. Only the
+  person's own Cancel goes back to the client.
+- A loopback redirect URI matches on any port (RFC 8252), because a native
+  client picks a free port.
+- The consent needs a sign-in from the last five minutes. A grant ends when
+  that sign-in would end: `MICA_SESSION_TTL_HOURS`. An access token lives one
+  hour, and the refresh token until the grant ends.
+- The admission rules are checked again on every request and every refresh.
+- Scopes: `content:read`, `content:write`, and `content:publish` only with
+  `MICA_MCP_PUBLISH`. An agent without a scope gets a scope challenge.
+
+**Why:** the alternative was Mica as only a resource server, with tokens from
+the identity provider. The specification requires a token for this resource
+(the audience). Google gives opaque access tokens, and other providers need
+mappers for the audience and the claims. Admission by email with Google is a
+supported setup, and it would not work. With Mica as the authorization server,
+every provider that the editor supports works, with no change at the provider.
+Mica still authenticates nobody: the provider signs the person in.
+
+**Consequence:** the same trade-offs as the session cookie. Mica cannot revoke
+one token: a copied refresh token works until the grant ends. Rotating
+`MICA_SESSION_SECRET` ends every grant. A refresh gives a new refresh token,
+but the old one stays valid until the grant ends: OAuth 2.1 requires rotation
+or sender-constrained refresh tokens for a public client, and a sealed token
+cannot be rotated without storing which ones were used. A group removed at the provider counts
+at the next sign-in, at most `MICA_SESSION_TTL_HOURS` later, so an agent must
+be allowed again after that time. A code is single-use only in the process's
+memory: after a restart, the 60-second life and PKCE are what remain. Mica
+fetches a URL that a client names, which is a server-side request; the checks
+above contain it. About 900 lines of OAuth code are new, in
+`@micacms/auth-oidc`, and the local editor still carries none of it.
+
+**What would change it:** a provider that issues tokens for Mica's audience
+with the claims, for every deployment. Then Mica could be only a resource
+server, and the consent would be the provider's.
+
+**1.0 status:** accepted for 1.0. It is part of the security review scope.
 
 ---
 
@@ -2209,6 +2311,14 @@ without a break.
   preview.
 
 ## Known gaps to close
+
+- **P3** — `npx mica mcp` beside `npx mica start` is two processes on one
+  working tree. The workspace locks are in each process, so they do not
+  exclude each other. The revisions still refuse a save over a newer one, but
+  between the check and the write there is a short window. `/mcp` in
+  `mica start` is one process and has no such window; the docs recommend it
+  while the editor runs.
+  **1.0 status:** accepted for 1.0.
 
 - **P3** — The browser test covers one path. CI drives Chromium through "sign
   in, edit, save, publish, sign out" on one singleton

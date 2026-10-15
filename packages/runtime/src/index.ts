@@ -28,7 +28,7 @@ export {
   type RuntimeEnv,
 } from "./config.js";
 export { startServer, type StartServerOptions } from "./server.js";
-export { actorOf, clientIp, type Env } from "./http.js";
+export { actorOf, AGENT_SCOPES, clientIp, editorOf, type AgentGrant, type Env } from "./http.js";
 export {
   loadSchema,
   SchemaError,
@@ -78,6 +78,8 @@ export {
   type WorkingTreeStagingDeps,
 } from "./services/staging.js";
 export { createMediaService, formatBytes, type MediaFile, type MediaService } from "./services/media.js";
+export { publishChanges } from "./services/publish.js";
+export { storeUpload, type UploadInput } from "./services/upload.js";
 export {
   createContentStore,
   ContentError,

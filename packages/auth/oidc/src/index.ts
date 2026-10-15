@@ -62,6 +62,12 @@ export function createOidcAuth(deps: OidcAuthDeps): OidcAuth {
 
 export { createAdmissionPolicy, type AdmissionPolicy, type AdmissionResult } from "./admission.js";
 export {
+  createAgentAuthorization,
+  resourceMetadataUrl,
+  type AgentAuthorization,
+  type AgentAuthorizationDeps,
+} from "./oauth/index.js";
+export {
   authEnv,
   deriveAuth,
   requireAuthConfig,

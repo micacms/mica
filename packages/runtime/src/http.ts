@@ -15,7 +15,32 @@ export interface Env {
      * route; the runtime never sets it.
      */
     access: AccessContext;
+    /** What the person allowed an agent: set by the bearer gate in front of `/mcp`, absent without one. */
+    grant: AgentGrant | undefined;
   };
+}
+
+/** The OAuth scopes of an agent's grant: the contract between the gate in front of `/mcp` and the tools. */
+export const AGENT_SCOPES = {
+  read: "content:read",
+  write: "content:write",
+  publish: "content:publish",
+} as const;
+
+/** An OAuth grant to an agent, as the gate in front of `/mcp` verified it. */
+export interface AgentGrant {
+  /** The access token itself. */
+  token: string;
+  clientId: string;
+  /** The client's own name, from its metadata. */
+  clientName: string;
+  scopes: string[];
+  /** Seconds since the epoch. */
+  expiresAt: number;
+  /** The resource the token was issued for: this Mica's `/mcp` address. */
+  resource: string;
+  /** Where a client finds the authorization server, for a scope challenge. */
+  resourceMetadataUrl: string;
 }
 
 /**

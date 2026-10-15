@@ -53,9 +53,11 @@ export interface Options {
   order: Record<string, string>;
   /** `import`: the collections to import; empty for all. */
   collections: string[];
+  /** `mcp`: offer the publish tool. */
+  allowPublish?: boolean;
 }
 
-export type Command = "start" | "check" | "import";
+export type Command = "start" | "check" | "import" | "mcp";
 
 /** Every option of the CLI, for `util.parseArgs`. */
 const OPTIONS = {
@@ -67,6 +69,7 @@ const OPTIONS = {
   map: { type: "string", multiple: true },
   order: { type: "string", multiple: true },
   collection: { type: "string", multiple: true },
+  "allow-publish": { type: "boolean" },
   help: { type: "boolean", short: "h" },
   version: { type: "boolean", short: "v" },
 } as const satisfies ParseArgsOptionsConfig;
@@ -76,6 +79,7 @@ const ALLOWED: Record<Command, ReadonlyArray<keyof typeof OPTIONS>> = {
   start: ["content", "port", "host", "open", "help", "version"],
   check: ["content", "help", "version"],
   import: ["content", "from", "map", "order", "collection", "help", "version"],
+  mcp: ["content", "allow-publish", "help", "version"],
 };
 
 const USAGE = `
@@ -86,6 +90,7 @@ const USAGE = `
     $ npx mica init                   add Mica to this Astro project
     $ npx mica check [content dir]    check every entry against the model
     $ npx mica import [content dir]   move Astro collections into Mica
+    $ npx mica mcp [content dir]      serve the tools to a coding agent, over stdio
 
   Before @micacms/editor is installed in the project: npx @micacms/editor <command>.
 
@@ -97,6 +102,10 @@ const USAGE = `
 
   Options of check
     -c, --content <dir>      The content root
+
+  Options of mcp
+    -c, --content <dir>      The content root
+        --allow-publish      Offer the publish tool too. Without it, the agent saves drafts
 
   Options of import
     -c, --content <dir>      The content root
@@ -161,6 +170,7 @@ export function parse(argv: string[], command: Command = "start"): Options {
     map: pairs("--map", values.map),
     order: pairs("--order", values.order),
     collections: values.collection ?? [],
+    ...(values["allow-publish"] !== undefined ? { allowPublish: values["allow-publish"] } : {}),
   };
 }
 
@@ -239,6 +249,7 @@ export async function main(): Promise<void> {
   if (command === "init") return init(rest);
   if (command === "check") return check(rest);
   if (command === "import") return importCommand(rest);
+  if (command === "mcp") return mcp(rest);
   // The first word is always a command, so that a directory named `init` is not one.
   if (command === undefined || command === "-h" || command === "--help") return void process.stdout.write(`${USAGE}\n`);
   if (command === "-v" || command === "--version") return void process.stdout.write(`${VERSION}\n`);
@@ -246,7 +257,17 @@ export async function main(): Promise<void> {
 
   const options = parse(rest, "start");
   const content = contentRoot(options, process.env);
+  requireContent(content);
 
+  Object.assign(process.env, serverEnvironment(options, process.env, content));
+
+  // The server is imported rather than spawned: one process, one signal
+  // handler, and a stack trace that points at the real thing.
+  await import("./index.js");
+}
+
+/** Stops with a message the person can act on when there is no content directory or no model. */
+function requireContent(content: string): void {
   if (!existsSync(content)) {
     report(`There is no content directory at ${content}.`, [
       "Mica edits the directory your Astro project publishes content into —",
@@ -274,12 +295,19 @@ export async function main(): Promise<void> {
     ]);
     process.exit(78); // EX_CONFIG
   }
+}
 
-  Object.assign(process.env, serverEnvironment(options, process.env, content));
+/** The tools over stdio. The agent starts this command; everything it prints goes to stderr. */
+async function mcp(argv: string[]): Promise<void> {
+  const options = parse(argv, "mcp");
+  const content = contentRoot(options, process.env);
+  requireContent(content);
 
-  // The server is imported rather than spawned: one process, one signal
-  // handler, and a stack trace that points at the real thing.
-  await import("./index.js");
+  Object.assign(process.env, {
+    MICA_CONTENT_ROOT: content,
+    ...(options.allowPublish ? { MICA_MCP_PUBLISH: "true" } : {}),
+  });
+  await import("./mcp.js");
 }
 
 function init(argv: string[]): void {

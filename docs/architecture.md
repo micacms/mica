@@ -52,16 +52,18 @@ work.
 | `@micacms/core`           | The field DSL, the content model, the authoring format, and how content is read |
 | `@micacms/astro`          | Content Layer loader, dev integration, Markdoc rendering                              |
 | `@micacms/runtime`        | The single-site Hono API and services, the working tree's files and Git, authentication-neutral |
+| `@micacms/mcp`            | The tools for agents over MCP, on the runtime's services: stdio and `/mcp`, without a gate of its own |
 | `@micacms/editor-ui`      | The Vue admin SPA; not published: `@micacms/editor` and the image ship its build |
-| `@micacms/auth-oidc`      | The server-only OIDC gate: sign-in, cookie sessions, admission; not published, part of the image |
+| `@micacms/auth-oidc`      | The server-only OIDC gate: sign-in, cookie sessions, admission, and the OAuth server for agents; not published, part of the image |
 | `@micacms/editor`         | `apps/local-editor` — the `npx` composition: loopback, no auth, no database           |
 | `@micacms/self-hosted`    | `apps/self-hosted` — the Docker composition: runtime + UI behind OIDC, on its own clone |
 | `examples/company-site` | A complete Astro site that uses every field kind: an example to read, not a dependency |
 | `examples/starter`      | The minimal starter for `npm create astro -- --template micacms/mica/examples/starter` |
 
-Four packages are published: `@micacms/core`, `@micacms/astro`, `@micacms/editor`
-and `@micacms/runtime`. Semver covers the first three; `@micacms/runtime` is
-published because `@micacms/editor` depends on it, and is internal.
+Five packages are published: `@micacms/core`, `@micacms/astro`, `@micacms/editor`,
+`@micacms/runtime` and `@micacms/mcp`. Semver covers the first three, and the
+names and inputs of the MCP tools; `@micacms/runtime` and `@micacms/mcp` are
+published because `@micacms/editor` depends on them, and are internal.
 
 **Why the core package is not inside the Astro package.** The editor, the
 server and the build all need the model, and a Hono server depending on an
@@ -310,6 +312,29 @@ The self-hosted app passes the OIDC surface from `@micacms/auth-oidc`; the
 local editor passes nothing and gets the unauthenticated surface, which is a
 statement of fact rather than a bypass.
 
+### Agents are a second interface, not a second app
+
+`@micacms/mcp` puts a fixed set of tools on the same services as the editor:
+read the model and the content, save, delete, reorder, upload, list and discard
+the drafts, and publish when `MICA_MCP_PUBLISH` allows it. A save is a draft, as
+in the editor, and every write sends the revision that the agent read.
+
+```
+            createMcpServer(ctx): the tools
+            /            |              \
+   stdio: mica mcp   /mcp in mica start   /mcp in the image
+   no gate           no gate: loopback,   OAuth bearer gate,
+                     Host + Origin        MICA_MCP=true
+```
+
+The tools know nothing of the transport or of the caller's authentication: the
+composing app puts its gate in front of `/mcp`, as it does in front of
+`/api/admin`. In the image, Mica is the OAuth authorization server of its own
+`/mcp`: the person signs in with the editor's flow, the admission rules decide,
+a consent page allows one agent, and Mica issues sealed tokens. It stores none
+of them, as it stores no session. The reasons are in
+[`decisions.md`](decisions.md).
+
 ### The local editor has no authentication, no user, and no database
 
 `npx @micacms/editor` has no provider, no credential and nobody to be. It does
@@ -366,7 +391,9 @@ composition root. The local editor reads the model from the checkout.
 ## What Mica deliberately does not do
 
 - **No content API.** The website reads files. Nothing to secure, rate limit,
-  cache or keep available at build time.
+  cache or keep available at build time. The MCP tools are not one: they are an
+  authoring interface, behind the same rules as the editor, and no build reads
+  them.
 - **No build webhook.** A push is the trigger, which every CI system already
   understands.
 - **No media server.** Images are repository files, processed by Astro at build

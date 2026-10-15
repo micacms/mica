@@ -1,7 +1,8 @@
 /**
- * Assembles the app: health, the admin API and the admin SPA. There is no
- * public content API and no `/media/*`; a website builds from the repository,
- * not from this server. Authentication comes from the composing app.
+ * Assembles the app: health, the admin API, the admin SPA and the composing
+ * app's own routes, such as `/mcp`. There is no public content API and no
+ * `/media/*`; a website builds from the repository, not from this server.
+ * Authentication comes from the composing app.
  */
 
 import { Hono } from "hono";
@@ -61,6 +62,8 @@ export interface CreateAppOptions {
    */
   guards?: MiddlewareHandler<Env>[];
   adminDir?: string;
+  /** More routes from the composing app, such as `/mcp`, mounted at the root. Each brings its own gate. */
+  routes?: Hono<Env>[];
 }
 
 export function createApp(ctx: RuntimeContext, options: CreateAppOptions = {}): Hono<Env> {
@@ -109,6 +112,8 @@ export function createApp(ctx: RuntimeContext, options: CreateAppOptions = {}): 
   app.all("/api/*", (c) =>
     c.json({ error: { code: "not_found" as const, message: "No such endpoint." } }, 404),
   );
+
+  for (const routes of options.routes ?? []) app.route("/", routes);
 
   const adminDir = options.adminDir;
 

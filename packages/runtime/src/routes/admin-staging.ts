@@ -10,6 +10,7 @@ import { z } from "zod";
 
 import { actorOf, editorOf, type Env } from "../http.js";
 import { ApiError, badRequest } from "../lib/errors.js";
+import { publishChanges } from "../services/publish.js";
 import { ConflictError } from "../workspace/files.js";
 
 const publishSchema = z.object({
@@ -83,22 +84,12 @@ export function adminStagingRoutes(): Hono<Env> {
   });
 
   app.post("/publish", async (c) => {
-    // Publish validates with the newest model, so a model change never needs a restart first.
-    await c.get("ctx").refreshModel({ force: true });
-    const warning = c.get("ctx").site.modelWarning;
-    if (warning) {
-      throw new ApiError(
-        "conflict",
-        `The website's new content model cannot be read, so Mica cannot publish yet. Tell the developer: ${warning.message}`,
-      );
-    }
-    const { staging } = c.get("ctx").services;
     const parsed = publishSchema.safeParse(await jsonBody(c));
     if (!parsed.success) throw badRequest("The publish payload is malformed.");
 
     const actor = actorOf(c);
     const result = await handled(() =>
-      staging.publish({
+      publishChanges(c.get("ctx"), {
         message: parsed.data.message,
         paths: parsed.data.paths,
         author: actor ? { name: actor.name || actor.email, email: actor.email } : undefined,

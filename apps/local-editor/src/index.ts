@@ -19,6 +19,8 @@ import {
   VERSION,
 } from "@micacms/runtime";
 
+import { mcpRoutes } from "@micacms/mcp";
+
 import { editorUiDist } from "./admin-dir.js";
 import { portInUse, startupBanner, supportsColor } from "./banner.js";
 import { loadConfig } from "./config.js";
@@ -70,6 +72,8 @@ async function main(): Promise<void> {
   const app = createApp(ctx, {
     guards: [hostGuard()],
     adminDir: config.MICA_ADMIN_DIR ?? editorUiDist(),
+    // No gate, as for the editor: loopback only, behind the Host allowlist.
+    routes: [mcpRoutes(ctx, { publish: config.MICA_MCP_PUBLISH, localFiles: true })],
   });
 
   const fingerprint = await schemaFingerprint(model);

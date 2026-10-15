@@ -36,6 +36,7 @@
   },
   "dependencies": {
     "@micacms/core": "workspace:*",
+    "@micacms/mcp": "workspace:*",
     "@micacms/runtime": "workspace:*",
     "hono": "^4.13.7",
     "zod": "^4.3.6"

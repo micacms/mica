@@ -84,6 +84,7 @@ export function testConfig(
     MICA_LOCAL_PUBLISH: true,
     MICA_MAX_UPLOAD_BYTES: 25 * 1024 * 1024,
     MICA_TRUST_PROXY: false,
+    MICA_MCP_PUBLISH: false,
     isLoopback: true,
     contentRoot,
     adminOrigins: [],

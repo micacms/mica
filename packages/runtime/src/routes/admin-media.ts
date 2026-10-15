@@ -13,6 +13,7 @@ import { ApiError, badRequest, notFound } from "../lib/errors.js";
 import { isImageType } from "../lib/file-type.js";
 import { editorOf, type Env } from "../http.js";
 import type { Referrer } from "../services/content-store.js";
+import { storeUpload } from "../services/upload.js";
 
 const deleteSchema = z.object({ paths: z.array(z.string().min(1)).min(1).max(500) });
 
@@ -102,10 +103,6 @@ export function adminMediaRoutes(): Hono<Env> {
     const accept = c.req.query("accept");
     // An entry's own `media/` directory or the shared one; the media service refuses anything else.
     const directory = c.req.query("directory");
-    // The media service accepts `/gallery/x/media` too; take the owner from the path it will write to.
-    const owner = (directory ?? "").replace(/^[/\\]+/, "").split(/[/\\]/)[0] ?? "";
-    const readOnly = ctx.site.readOnly.get(`collections.${owner}`) ?? ctx.site.readOnly.get(`singletons.${owner}`);
-    if (readOnly) throw new ApiError("conflict", readOnly);
     // A new entry uploads into the folder of the URL in its form; never into a saved entry's.
     const folder = /^([^/]+)\/([^/]+)\/media$/.exec((directory ?? "").replace(/^\/+/, ""));
     if (c.req.query("newEntry") === "true" && folder && ctx.site.model.collections[folder[1]!]) {
@@ -115,21 +112,15 @@ export function adminMediaRoutes(): Hono<Env> {
     }
 
     const length = Number(c.req.header("content-length"));
-    const received = await ctx.services.media.receive({
+    const file = await storeUpload(ctx, {
       body,
       name: c.req.query("name") ?? "upload",
       ...(Number.isFinite(length) ? { size: length } : {}),
-      directory,
+      ...(directory !== undefined ? { directory } : {}),
       accept: accept === "image" || accept === "document" ? accept : "any",
     });
-    try {
-      await ctx.site.contentRepository.apply({ changes: received.changes });
-    } catch (error) {
-      await ctx.services.media.discard(received.temporary);
-      throw error;
-    }
 
-    return c.json({ items: [received.file] }, 201);
+    return c.json({ items: [file] }, 201);
   });
 
   /**
