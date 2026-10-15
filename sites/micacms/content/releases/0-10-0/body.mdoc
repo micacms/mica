@@ -1,0 +1,21 @@
+Claude Code, Cursor, VS Code and other clients of the Model Context Protocol (MCP) can now edit your content. They follow the rules of the editor. Mica checks every value, and an agent never overwrites a newer save. A save is a draft, and a person publishes it.
+
+Nothing to do before you upgrade from 0.9.
+
+## Added
+
+**Tools for agents.** An agent reads the model, the content and the media, saves entries and singletons, deletes and reorders entries, uploads media, and lists or discards its drafts. Every save sends the revision that the agent read. From 1.0, the names and the inputs of the tools are part of the public API.
+
+**On your own machine.** `npx mica start` serves the tools at `/mcp`, and its banner shows how to add Mica to an agent. `npx mica mcp` serves them over stdio, for an agent that starts Mica itself.
+
+**On a self-hosted Mica.** Set `MICA_MCP=true`. Each person signs in as for the editor and allows each agent on a consent page. The access ends after `MICA_SESSION_TTL_HOURS`. Mica stores no tokens.
+
+**Publish only when you allow it.** By default, an agent cannot publish. `npx mica mcp --allow-publish` or `MICA_MCP_PUBLISH=true` gives it `publish`. On a self-hosted Mica, the person must then allow it again.
+
+**A new package, `@micacms/mcp`.** It is internal, like `@micacms/runtime`: `@micacms/editor` installs it.
+
+## Changed
+
+**One publish and one upload for every client.** The editor and the agents use the same services, so they check and refuse in the same way.
+
+Read [Edit with an agent](/docs/agents/) to set it up.

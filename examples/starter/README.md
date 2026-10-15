@@ -43,5 +43,8 @@ git push -u origin main
 
 - Add a field in `src/mica.ts`, run `npm run dev` once, and the editor shows it.
 - `npm run check` runs `mica check` and `astro check` together.
+- A coding agent can edit the content: `.mcp.json` adds Mica to it, and `AGENTS.md`
+  says how to work. The agent saves drafts; you publish them in the editor:
+  https://micacms.com/docs/agents/
 - Let editors who are not developers edit with the self-hosted editor:
   https://micacms.com/docs/self-hosting/

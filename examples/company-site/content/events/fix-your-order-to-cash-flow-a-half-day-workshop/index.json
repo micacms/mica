@@ -1,0 +1,24 @@
+{
+  "title": "Fix your order-to-cash flow: a half-day workshop",
+  "slug": "fix-your-order-to-cash-flow-a-half-day-workshop",
+  "startsAt": "2027-04-22T09:00:00+02:00",
+  "endsAt": "2027-04-22T13:00:00+02:00",
+  "format": [
+    "in-person"
+  ],
+  "capacity": 24,
+  "venue": {
+    "name": "Harbor Lane Studio",
+    "address": "Quay Street 12\nHL 40-100 Calvera, Serenza"
+  },
+  "registrationUrl": "https://harborlane.example/register/order-to-cash-workshop",
+  "speakers": [
+    "mateo-fernandez",
+    "priya-raman"
+  ],
+  "summary": "A hands-on workshop for teams that wait too long for their money. Map your own order-to-cash flow and leave with three changes to make on Monday.",
+  "tags": [
+    "workshop",
+    "operations"
+  ]
+}

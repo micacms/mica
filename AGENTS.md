@@ -14,6 +14,7 @@
 - Follow the KISS principle and common conventions of FOSS projects.
 - Prefer established patterns in this repository to new abstractions.
 - Do not do browser tests unless the user asks for them.
+- Change the content of `sites/micacms` and `examples/company-site` with the Mica MCP servers `mica-site` and `mica-example` (`.mcp.json`). They run the local build, so run `rush build` first.
 
 ## Approval required
 
