@@ -11,12 +11,9 @@ on:
   push:
     branches: [main]
     paths:
-      # The content directory is what editors change. The rest is what
-      # developers change. Both need a rebuild; nothing else does.
-      - "examples/company-site/**"
-      - "packages/**"
-      - "rush.json"
-      - "common/config/rush/**"
+      # The content directory is what editors change, and what this example
+      # shows. A code change is built by CI on its pull request.
+      - "examples/company-site/content/**"
       - ".github/workflows/build-site.yml"
 
   workflow_dispatch:

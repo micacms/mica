@@ -1,8 +1,8 @@
 name: CI
 
+# Pull requests only: a merge to main runs nothing again, and the release
+# workflow runs the whole gate before it publishes.
 on:
-  push:
-    branches: [main]
   pull_request:
 
 concurrency:
@@ -119,83 +119,3 @@ jobs:
       - name: Check the starter's content
         run: node apps/local-editor/dist/cli.js check examples/starter/content
 
-  docker:
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
-
-      # No install and no build step: the image builds itself, and the content
-      # model it needs is committed in the example project.
-      - name: Build the CMS image
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          push: false
-          load: true
-          tags: micacms/editor:ci
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      # The release builds amd64 and arm64 after npm is published; a failure
-      # there would cost a patch release, so both build here first.
-      - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
-      - name: Build the CMS image for amd64 and arm64
-        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          push: false
-          cache-from: type=gha
-
-      # Fails on a critical vulnerability that has a fix. One without a fix is
-      # listed, not fatal: it would block every pull request until upstream acts.
-      - name: Scan the CMS image
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          image-ref: micacms/editor:ci
-          scanners: vuln
-          severity: CRITICAL
-          ignore-unfixed: true
-          exit-code: "1"
-
-      # The whole deployed shape, automated: the image just built, behind a
-      # real Dex, publishing to a stand-in for the GitHub API. `--wait` is the
-      # health check; the test then signs in, is admitted or refused, edits,
-      # and publishes — see tests/oidc/README.md.
-      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        with:
-          node-version: 24
-
-      - name: Start Mica behind Dex
-        run: docker compose -f tests/oidc/compose.yml up -d --no-build --wait
-
-      - name: Sign in, edit and publish
-        run: node --test tests/oidc/flow.test.mjs
-
-      # The same stack, driven by clicking through the editor UI in Chromium —
-      # see tests/browser/README.md. Only this project's closure is installed.
-      - name: Install the browser test
-        run: |
-          node common/scripts/install-run-rush.js install --to @micacms/browser-test
-          cd tests/browser && ./node_modules/.bin/playwright install --with-deps chromium
-
-      - name: Sign in, edit and publish in a browser
-        working-directory: tests/browser
-        run: ./node_modules/.bin/playwright test
-
-      - name: Browser test report
-        if: failure()
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
-        with:
-          name: playwright-report
-          path: tests/browser/playwright-report
-          if-no-files-found: ignore
-
-      - name: Logs of the test stack
-        if: failure()
-        run: docker compose -f tests/oidc/compose.yml logs

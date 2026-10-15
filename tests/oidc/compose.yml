@@ -5,7 +5,7 @@
 #   node --test tests/oidc/flow.test.mjs
 #   docker compose -f tests/oidc/compose.yml down
 #
-# CI runs exactly this — see .github/workflows/ci.yml and README.md.
+# CI runs exactly this — see .github/workflows/image.yml and README.md.
 
 name: mica-oidc-test
 
