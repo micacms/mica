@@ -1,0 +1,5 @@
+{
+	"mcpServers": {
+		"mica": { "command": "npx", "args": ["mica", "mcp"] }
+	}
+}
