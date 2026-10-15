@@ -30,6 +30,7 @@ export const MANIFESTS = [
   { file: "packages/astro/package.json", pattern: VERSION_FIELD },
   { file: "packages/editor-ui/package.json", pattern: VERSION_FIELD },
   { file: "packages/runtime/package.json", pattern: VERSION_FIELD },
+  { file: "packages/mcp/package.json", pattern: VERSION_FIELD },
   { file: "packages/auth/oidc/package.json", pattern: VERSION_FIELD },
   { file: "apps/local-editor/package.json", pattern: VERSION_FIELD },
   { file: "apps/self-hosted/package.json", pattern: VERSION_FIELD },

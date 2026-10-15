@@ -23,7 +23,7 @@
 
 services:
   mica:
-    image: ghcr.io/micacms/mica:0.9.0
+    image: ghcr.io/micacms/mica:0.10.0
     restart: unless-stopped
 
     # Written from .env.example. Everything the deployment needs is in there.

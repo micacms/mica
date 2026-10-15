@@ -2,6 +2,18 @@
   "name": "@micacms/editor",
   "entries": [
     {
+      "version": "0.10.0",
+      "tag": "@micacms/editor_v0.10.0",
+      "date": "Thu, 15 Oct 2026 04:37:22 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "Agents can edit the content: `npx mica mcp` serves the MCP tools over stdio, and `npx mica start` serves them at /mcp. Agents save drafts; `--allow-publish` or MICA_MCP_PUBLISH=true also gives them publish."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.9.0",
       "tag": "@micacms/editor_v0.9.0",
       "date": "Wed, 14 Oct 2026 11:51:45 GMT",
