@@ -1,6 +1,13 @@
 # Change Log - @micacms/editor
 
-This log was last generated on Wed, 14 Oct 2026 11:51:45 GMT and should not be manually modified.
+This log was last generated on Thu, 15 Oct 2026 04:37:22 GMT and should not be manually modified.
+
+## 0.10.0
+Thu, 15 Oct 2026 04:37:22 GMT
+
+### Minor changes
+
+- Agents can edit the content: `npx mica mcp` serves the MCP tools over stdio, and `npx mica start` serves them at /mcp. Agents save drafts; `--allow-publish` or MICA_MCP_PUBLISH=true also gives them publish.
 
 ## 0.9.0
 Wed, 14 Oct 2026 11:51:45 GMT

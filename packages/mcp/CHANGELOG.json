@@ -1,0 +1,17 @@
+{
+  "name": "@micacms/mcp",
+  "entries": [
+    {
+      "version": "0.10.0",
+      "tag": "@micacms/mcp_v0.10.0",
+      "date": "Thu, 15 Oct 2026 04:37:22 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "New package: the Mica tools for agents over the Model Context Protocol (2026-07-28, and the 2025 revisions). Agents read the model and the content, save drafts with revisions, upload media, and publish only when allowed."
+          }
+        ]
+      }
+    }
+  ]
+}

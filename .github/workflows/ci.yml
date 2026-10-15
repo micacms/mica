@@ -47,8 +47,16 @@ jobs:
       # A change to a published package must carry a change file — the entry
       # that will become its release notes. A refactor that should not be in
       # the notes still carries one, recorded with the bump type `none`.
+      # A release pull request consumes the change files: its new version and
+      # changelogs are the record, so the check would find none.
       - name: Check for a change file
-        run: node common/scripts/install-run-rush.js change --verify
+        run: |
+          policy=common/config/rush/version-policies.json
+          if [ "$(git show origin/main:$policy | grep -m1 '"version"')" != "$(grep -m1 '"version"' $policy)" ]; then
+            echo "The release version changes: this is a release, and it consumed the change files."
+          else
+            node common/scripts/install-run-rush.js change --verify
+          fi
 
       # Fails on a high or critical advisory in what Mica ships; the websites'
       # findings are listed but do not fail. See scripts/audit.mjs.

@@ -16,7 +16,7 @@ The website never calls Mica. Mica never needs to know where the website is host
 - `@micacms/editor-ui` is the editing interface. It is not published: `@micacms/editor` and the image contain its build.
 - `@micacms/auth-oidc` is the OpenID Connect gate of the image. It is not published.
 
-A website installs `@micacms/core` and `@micacms/astro`, and `@micacms/editor` as a development tool. These are the public packages. `@micacms/runtime` is published too, because `@micacms/editor` needs it, but it is internal.
+A website installs `@micacms/core` and `@micacms/astro`, and `@micacms/editor` as a development tool. These are the public packages. `@micacms/runtime` and `@micacms/mcp` are published too, because `@micacms/editor` needs them, but they are internal.
 
 Two applications compose them. `@micacms/editor` is the local one: loopback only, no authentication, no user, no database, and it refuses an address on another machine. `@micacms/self-hosted` is the Docker image, behind OpenID Connect, with its own Git clone on the data volume. It fetches and fast-forwards on its own, and never merges. It pushes to any Git host over HTTPS. Git history shows the editor as author and Mica as committer.
 

@@ -31,6 +31,7 @@ import {
   type RuntimeContext,
 } from "@micacms/runtime";
 
+import { agentRoutes } from "../src/agents.js";
 import { loadConfig, type SelfHostedConfig } from "../src/config.js";
 
 export const TEST_ORIGIN = "http://localhost:6422";
@@ -170,6 +171,7 @@ export async function createHarness(
   const app = createApp(ctx, {
     auth: auth.surface,
     adminDir: options.adminDir ?? "/nonexistent",
+    routes: agentRoutes(config, ctx, auth, logger),
   });
 
   return {

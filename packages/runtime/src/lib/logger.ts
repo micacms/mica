@@ -34,6 +34,8 @@ export function createLogger(options: {
   level: LogLevel;
   pretty: boolean;
   bindings?: Record<string, unknown>;
+  /** Every line to stderr: over MCP's stdio transport, stdout carries the protocol. */
+  stderrOnly?: boolean;
 }): Logger {
   const threshold = ORDER[options.level];
   const bindings = options.bindings ?? {};
@@ -42,7 +44,7 @@ export function createLogger(options: {
     if (ORDER[level] < threshold) return;
 
     const payload = { ...bindings, ...fields };
-    const stream = level === "error" || level === "warn" ? process.stderr : process.stdout;
+    const stream = options.stderrOnly || level === "error" || level === "warn" ? process.stderr : process.stdout;
 
     if (options.pretty) {
       const extra = Object.keys(payload).length > 0 ? ` ${formatFields(payload)}` : "";

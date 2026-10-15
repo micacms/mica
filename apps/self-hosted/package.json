@@ -1,6 +1,6 @@
 {
   "name": "@micacms/self-hosted",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "type": "module",
   "description": "The self-hosted Mica composition: the runtime and editor UI behind an external OIDC provider, on a Git clone of the content repository that it keeps itself. What the Docker image runs.",
@@ -34,6 +34,7 @@
     "@micacms/auth-oidc": "workspace:*",
     "@micacms/core": "workspace:*",
     "@micacms/editor-ui": "workspace:*",
+    "@micacms/mcp": "workspace:*",
     "@micacms/runtime": "workspace:*",
     "hono": "^4.13.7",
     "zod": "^4.3.6"

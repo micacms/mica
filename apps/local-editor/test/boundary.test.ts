@@ -26,6 +26,7 @@ const FORBIDDEN = new Set(["openid-client", "jose", "@micacms/auth-oidc", "@mica
 const WORKSPACE_DIRS: Record<string, string> = {
   "@micacms/core": "packages/core",
   "@micacms/runtime": "packages/runtime",
+  "@micacms/mcp": "packages/mcp",
   "@micacms/editor-ui": "packages/editor-ui",
   "@micacms/editor": "apps/local-editor",
 };

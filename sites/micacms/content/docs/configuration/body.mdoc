@@ -45,6 +45,13 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 - `MICA_MAX_UPLOAD_BYTES`: the largest upload, in bytes. Default: `26214400` (25 MB).
 - `MICA_LOG_LEVEL`: `debug`, `info`, `warn`, `error` or `silent`. Default: `info`.
 
+## Self-hosted image: agents
+
+Added in 0.10.0. See [Edit with an agent](/docs/agents/).
+
+- `MICA_MCP`: `true` lets agents connect at `/mcp`. Each person allows each agent on a consent page, after they sign in. Default: `false`.
+- `MICA_MCP_PUBLISH`: `true` lets a person also allow an agent to publish. Default: `false`: agents save drafts, and people publish them.
+
 ## Local editor
 
 `npx @micacms/editor start [content directory]` takes these flags:
@@ -59,6 +66,7 @@ It also reads these variables:
 - `MICA_CONTENT_ROOT`: the content root, when no path is given.
 - `MICA_PUBLIC_URL`: the editor's own address. It must be on this computer. Default: `http://localhost:` and the port.
 - `MICA_LOCAL_PUBLISH`: `false` shows the pending changes, but Publish does not commit or push. Default: `true`.
+- `MICA_MCP_PUBLISH`: `true` gives agents the `publish` tool, at `/mcp` and in `npx mica mcp`. Default: `false`. `npx mica mcp --allow-publish` does the same.
 - `MICA_MAX_UPLOAD_BYTES` and `MICA_LOG_LEVEL`, as for the image.
 
 ## For work on Mica itself

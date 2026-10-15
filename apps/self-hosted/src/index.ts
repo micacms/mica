@@ -31,6 +31,7 @@ import {
 import { Hono } from "hono";
 
 import { editorUiDist } from "./admin-dir.js";
+import { agentRoutes } from "./agents.js";
 import { runCheck } from "./check.js";
 import { runCompact } from "./compact.js";
 import { readiness } from "./readiness.js";
@@ -274,6 +275,7 @@ async function serve(): Promise<void> {
     createApp(ctx, {
       auth: auth.surface,
       adminDir: editorUiDist(),
+      routes: agentRoutes(config, ctx, auth, logger),
     }),
   );
   workspace.start();
@@ -286,6 +288,7 @@ async function serve(): Promise<void> {
     // A rule that admits nobody and one that admits everybody look the same
     // until somebody signs in.
     admission: auth.admission.summary,
+    mcp: config.MICA_MCP ? `on${config.MICA_MCP_PUBLISH ? ", with publish" : ""}` : "off",
     repository: remote.url,
     branch,
     root,

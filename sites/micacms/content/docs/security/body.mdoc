@@ -26,6 +26,8 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 - **Removal at the provider applies at the next sign-in.** Mica checks the provider's claims when a person signs in. A person you remove from a group at the provider keeps working until the session ends: at most 8 hours, or 4 hours without activity, by default. To stop a person at once, use `MICA_ADMIT_SUBJECTS` or change the rules: Mica checks the rules on every request.
 - **No server-side session revocation.** Sessions are encrypted cookies. Mica has no database. To end every session at once, change `MICA_SESSION_SECRET` and restart. Every editor must then sign in again.
 - **The local editor is open to local processes.** Any process on the developer's machine can call the local API. Such a process can already change the files in the working tree.
+- **An agent's access cannot be ended one by one.** On a self-hosted Mica with `MICA_MCP=true`, an agent's token is sealed like a session, and Mica stores no list of them. It ends after `MICA_SESSION_TTL_HOURS`, or at once when the rules no longer admit the person. To end all of them, change `MICA_SESSION_SECRET`.
+- **Content can give instructions to an agent.** A text in the content can try to direct an agent that reads it. By default, an agent only saves drafts; `MICA_MCP_PUBLISH` lets it publish.
 - **A publish is immediate.** There is no review step. If you need one, point Mica at a staging branch and merge on your own schedule.
 - **No roles.** Every admitted editor can save, publish, discard and delete.
 - **Rate limits are in the process.** Each Mica counts on its own, and a restart resets the counts.

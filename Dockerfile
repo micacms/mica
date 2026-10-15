@@ -25,6 +25,7 @@ COPY common ./common
 COPY packages/core/package.json packages/core/
 COPY packages/astro/package.json packages/astro/
 COPY packages/runtime/package.json packages/runtime/
+COPY packages/mcp/package.json packages/mcp/
 COPY packages/auth/oidc/package.json packages/auth/oidc/
 COPY packages/editor-ui/package.json packages/editor-ui/
 COPY apps/local-editor/package.json apps/local-editor/
@@ -43,6 +44,7 @@ COPY tsconfig.base.json ./
 COPY scripts/third-party-notices.mjs scripts/third-party-notices.d.mts scripts/
 COPY packages/core packages/core
 COPY packages/runtime packages/runtime
+COPY packages/mcp packages/mcp
 COPY packages/auth/oidc packages/auth/oidc
 COPY packages/editor-ui packages/editor-ui
 COPY apps/self-hosted apps/self-hosted

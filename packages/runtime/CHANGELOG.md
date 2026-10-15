@@ -1,6 +1,13 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Wed, 14 Oct 2026 11:51:45 GMT and should not be manually modified.
+This log was last generated on Thu, 15 Oct 2026 04:37:22 GMT and should not be manually modified.
+
+## 0.10.0
+Thu, 15 Oct 2026 04:37:22 GMT
+
+### Minor changes
+
+- The self-hosted image can let agents connect at /mcp with MICA_MCP=true. Mica is their OAuth server: a person signs in as for the editor and allows each agent on a consent page, and Mica stores no tokens. MICA_MCP_PUBLISH lets a person also allow an agent to publish.
 
 ## 0.9.0
 Wed, 14 Oct 2026 11:51:45 GMT

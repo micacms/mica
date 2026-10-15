@@ -63,6 +63,26 @@ function modelSummary(collections: number, singletons: number): string {
   return parts.join(" and ") || "an empty model";
 }
 
+/** A shell word, quoted when it needs it. */
+const shellWord = (word: string): string => (/^[\w@%+=:,./-]+$/.test(word) ? word : `'${word.replaceAll("'", "'\\''")}'`);
+
+/**
+ * How to add Mica to a coding agent: the Claude Code command, and the JSON
+ * that most other agents take. `url` for `/mcp`, `args` for `npx mica mcp`.
+ */
+export function agentSetup(server: { url: string } | { args: string[] }, useColor: boolean): string[] {
+  const c = colors(useColor);
+  const [command, json] =
+    "url" in server
+      ? [`claude mcp add --transport http mica ${server.url}`, { type: "http", url: server.url }]
+      : [`claude mcp add mica -- npx ${server.args.map(shellWord).join(" ")}`, { command: "npx", args: server.args }];
+  return [
+    `  ${c.label("Claude Code".padEnd(12))} ${command}`,
+    // One line with spaces: JSON escapes a line break inside a string, so only the layout's breaks go.
+    `  ${c.label(".mcp.json".padEnd(12))} ${JSON.stringify({ mcpServers: { mica: json } }, null, 1).replace(/\n\s*/g, " ")}`,
+  ];
+}
+
 export function startupBanner(banner: Banner, useColor: boolean): string {
   const c = colors(useColor);
   const editor = `${banner.url}/admin/`;
@@ -75,6 +95,7 @@ export function startupBanner(banner: Banner, useColor: boolean): string {
     `  ${c.brand("◆")} ${c.bold("Mica")} ${c.dim(banner.version)}`,
     "",
     row("Editor", c.bold(editor)),
+    row("Agents", `${banner.url}/mcp ${c.dim("— MCP, for a coding agent")}`),
     row("Content", `${readable(banner.contentRoot)} ${c.dim(`— ${modelSummary(banner.collections, banner.singletons)}`)}`),
     row("Saving", c.dim("writes files into that directory; Publish commits and pushes them.")),
     "",
@@ -82,6 +103,9 @@ export function startupBanner(banner: Banner, useColor: boolean): string {
     `  ${c.dim("Mica keeps no state of its own here: everything you save is a file in that directory.")}`,
     "",
     `  ${c.dim("Run your site's dev server beside this to see the changes. Ctrl+C stops Mica.")}`,
+    "",
+    `  ${c.dim("To let a coding agent edit the content too, add Mica to it:")}`,
+    ...agentSetup({ url: `${banner.url}/mcp` }, useColor),
     "",
   ];
 

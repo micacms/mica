@@ -41,12 +41,21 @@ site's dev server hot-reloads, and Publish turns the reviewed changes into one
 commit pushed with your own Git configuration (`MICA_LOCAL_PUBLISH=false`
 keeps Publish out of the editor entirely).
 
+## Agents
+
+A coding agent can edit the content too, with the same rules as the editor:
+`npx mica start` serves the tools at `http://localhost:6422/mcp`, and
+`npx mica mcp` serves them over stdio, for an agent that starts Mica itself.
+An agent saves drafts; `MICA_MCP_PUBLISH=true` or `mica mcp --allow-publish`
+also gives it `publish`. See [Edit with an agent](https://micacms.com/docs/agents/).
+
 ## More commands
 
 ```bash
 npx mica init     # add Mica to the Astro project in this directory
 npx mica check    # check every entry against the model
 npx mica import   # move Astro collections into Mica
+npx mica mcp      # serve the tools to a coding agent, over stdio
 ```
 
 `init` writes a starter `src/mica.ts` and `src/content.config.ts`, and never

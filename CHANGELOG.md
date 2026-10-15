@@ -10,7 +10,45 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
-## [0.9.0] — 2026-10-14
+## [0.10.0] — 2026-10-15
+
+Coding agents can edit the content. Claude Code, Cursor, VS Code and other
+clients of the Model Context Protocol (MCP) read the content model and save
+content through a fixed set of tools. They follow the rules of the editor: Mica
+checks every value, every save sends the revision that the agent read, and a
+save is a draft. A person publishes the drafts, unless you let agents publish
+too. On your own machine, `npx mica start` serves the tools at `/mcp`, and
+`npx mica mcp` serves them over stdio. A self-hosted Mica serves them with
+`MICA_MCP=true`: each person signs in as for the editor and allows each agent.
+
+Nothing to do before upgrading from 0.9.
+
+### Added
+
+- **The Mica tools for agents.** `describe_model`, `list_entries`,
+  `get_entry`, `get_singleton`, `find_references`, `list_media`,
+  `save_entry`, `save_singleton`, `delete_entry`, `reorder_entries`,
+  `upload_media`, `get_changes`, `discard_changes`, and `publish` only when it
+  is allowed. Their names and inputs are public from 1.0 (`@micacms/mcp`,
+  `@micacms/editor`, `@micacms/runtime`).
+- **`npx mica mcp [content dir]`** serves the tools over stdio, for an agent
+  that starts Mica itself. `npx mica start` serves them at `/mcp`, and its
+  banner shows how to add Mica to an agent. `--allow-publish` and
+  `MICA_MCP_PUBLISH=true` give agents `publish` (`@micacms/editor`).
+- **Agents on a self-hosted Mica.** `MICA_MCP=true` serves `/mcp` in the
+  image. Mica is the OAuth server of the endpoint: the person signs in with
+  the editor's OIDC flow, the `MICA_ADMIT_*` rules apply, and a consent page
+  allows one agent. Mica stores no clients and no tokens; access ends after
+  `MICA_SESSION_TTL_HOURS`. With `MICA_MCP_PUBLISH=true`, a person can also
+  allow an agent to publish (`@micacms/runtime`, the image).
+- **`@micacms/mcp`**, a new internal package. It is published because
+  `@micacms/editor` installs it, and it is pinned exactly (`@micacms/mcp`).
+
+### Changed
+
+- **Internal: one publish and one upload for every client.** The editor's
+  routes and the agent tools use the same services, so they refuse and
+  validate in the same way (`@micacms/runtime`).
 
 A review of the whole project, and the changes that came from it. The content
 format is simpler: one folder for each entry and each singleton, rich text in a

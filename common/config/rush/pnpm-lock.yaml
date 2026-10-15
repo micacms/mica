@@ -15,6 +15,9 @@ importers:
       '@micacms/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@micacms/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       '@micacms/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
@@ -49,6 +52,9 @@ importers:
       '@micacms/editor-ui':
         specifier: workspace:*
         version: link:../../packages/editor-ui
+      '@micacms/mcp':
+        specifier: workspace:*
+        version: link:../../packages/mcp
       '@micacms/runtime':
         specifier: workspace:*
         version: link:../../packages/runtime
@@ -230,6 +236,34 @@ importers:
       zod:
         specifier: ^4.3.6
         version: 4.6.6
+
+  ../../packages/mcp:
+    dependencies:
+      '@micacms/core':
+        specifier: workspace:*
+        version: link:../core
+      '@micacms/runtime':
+        specifier: workspace:*
+        version: link:../runtime
+      '@modelcontextprotocol/server':
+        specifier: ^2.3.1
+        version: 2.3.1
+      hono:
+        specifier: ^4.13.7
+        version: 4.13.13
+      zod:
+        specifier: ^4.3.6
+        version: 4.6.6
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.5
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.15
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
 
   ../../packages/runtime:
     dependencies:
@@ -915,6 +949,14 @@ packages:
         optional: true
       react:
         optional: true
+
+  '@modelcontextprotocol/core@2.3.1':
+    resolution: {integrity: sha512-laVmIhPGpWi7rG9q+0UigblRN0Hws/Yjlb6qLFtVqryXVLkc4h+yN8z731POD2LnAGQlFe7/tXhUm7Bi0YB91g==}
+    engines: {node: '>=20'}
+
+  '@modelcontextprotocol/server@2.3.1':
+    resolution: {integrity: sha512-e59MfWuSssj6DoQ96JCTqdW1AXT5/XtnTl0WWd6MU1Ka434fFUGGosCLJbGNySDhHGvxQWoRWK137FXYFkYNWw==}
+    engines: {node: '>=20'}
 
   '@napi-rs/wasm-runtime@1.2.4':
     resolution: {integrity: sha512-AJxoUD2/15ESHbvpcyjU274nsAPLuOtPHCk0vKJM5pj//Fg/B1FXNWjPnXTT9PymCYYiHo4zPj0ZomXBKhoy7g==}
@@ -3124,6 +3166,15 @@ snapshots:
     optionalDependencies:
       '@types/linkify-it': 3.0.5
       '@types/markdown-it': 12.2.3
+
+  '@modelcontextprotocol/core@2.3.1':
+    dependencies:
+      zod: 4.6.6
+
+  '@modelcontextprotocol/server@2.3.1':
+    dependencies:
+      '@modelcontextprotocol/core': 2.3.1
+      zod: 4.6.6
 
   '@napi-rs/wasm-runtime@1.2.4(@emnapi/core@1.11.3)(@emnapi/runtime@1.11.3)':
     dependencies:

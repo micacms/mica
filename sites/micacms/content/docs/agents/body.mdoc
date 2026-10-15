@@ -1,0 +1,80 @@
+Added in 0.10.0.
+
+A coding agent, such as Claude Code, Cursor or VS Code, can read and change the content of your website. It connects to Mica over the Model Context Protocol (MCP), and it follows the same rules as the editor: it reads the content model, it validates every value, and it saves drafts. The website changes only when the drafts are published.
+
+## What an agent can do
+
+| Tool | What it does |
+| --- | --- |
+| `describe_model` | Reads the collections, the settings, their fields and the format of each value. |
+| `list_entries`, `get_entry`, `get_singleton` | Reads the content. |
+| `find_references`, `list_media` | Finds the links to an entry, and lists the media files. |
+| `save_entry`, `save_singleton` | Creates or changes an entry or the settings, as a draft. |
+| `delete_entry`, `reorder_entries` | Deletes an entry or changes the order, as a draft. |
+| `upload_media` | Adds an image or a PDF. |
+| `get_changes`, `discard_changes` | Shows the drafts, or throws them away. |
+| `publish` | Publishes drafts. Only when you allow it: see below. |
+
+Every read gives a revision, and every save sends it back. If you saved the same entry in the editor in the meantime, Mica refuses the agent's save, and the agent reads your version first. An agent never overwrites your work.
+
+## On your own machine
+
+There is no sign-in, as for the local editor. Choose one of two ways.
+
+**With the editor open.** `npx mica start` also serves the tools at `/mcp`. Add this address to your agent:
+
+```json
+{
+  "mcpServers": {
+    "mica": { "type": "http", "url": "http://localhost:6422/mcp" }
+  }
+}
+```
+
+For Claude Code, put this in `.mcp.json` in the project, or run `claude mcp add --transport http mica http://localhost:6422/mcp`. Use the port that `npx mica start` shows. This is the better way when you also edit in the browser: the editor and the agent then work in one process.
+
+**Without the editor.** The agent starts Mica itself, with `npx mica mcp`:
+
+```json
+{
+  "mcpServers": {
+    "mica": { "command": "npx", "args": ["mica", "mcp"] }
+  }
+}
+```
+
+`npx mica mcp ./path/to/content` names the content directory when Mica cannot find it. Do not run `npx mica mcp` and `npx mica start` on one project at the same time: two processes on one directory can miss a save that happens at the same moment.
+
+**Publish.** By default, the agent saves drafts, and you publish them in the editor or commit them with Git. To let the agent publish too, use `npx mica mcp --allow-publish`, or start the editor with `MICA_MCP_PUBLISH=true`.
+
+## On a self-hosted Mica
+
+The operator turns agents on with `MICA_MCP=true`. Then add the address of your Mica to your agent:
+
+```json
+{
+  "mcpServers": {
+    "mica": { "type": "http", "url": "https://cms.example.com/mcp" }
+  }
+}
+```
+
+The first time, your browser opens:
+
+1. You sign in, as for the editor.
+2. Mica shows which app asks for access, what it can do, and when the access ends.
+3. Select **Allow**. The browser goes back to the app, and the agent can work.
+
+The agent acts as you: Mica uses your name for the changes that it publishes. The access ends after `MICA_SESSION_TTL_HOURS` (8 hours by default). Then the browser opens again. When the operator changes the rules so that they no longer admit you, the agent stops at once. A change of your groups at the identity provider counts when the access ends.
+
+An app that registered itself, and has no address of its own, shows "Mica cannot confirm its name". Allow only an app that you started yourself.
+
+**Publish.** An agent can publish only when the operator sets `MICA_MCP_PUBLISH=true`. The agent then asks for it separately, and Mica asks you again.
+
+## Keep it safe
+
+- **Read the drafts before you publish.** The Publish page of the editor shows every change, before and after.
+- **Content can contain instructions.** An agent reads the content, and a text in it can try to tell the agent what to do. Drafts by default limit what such a text can do.
+- **Do not give the access to somebody else.** The agent's token is like your session: Mica cannot end one token. To end all of them, the operator changes `MICA_SESSION_SECRET`.
+
+More about the risks is in [Security](/docs/security/). The settings are in [Configuration](/docs/configuration/).

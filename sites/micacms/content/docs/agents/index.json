@@ -1,0 +1,7 @@
+{
+  "title": "Edit with an agent",
+  "slug": "agents",
+  "section": "edit",
+  "summary": "Let a coding agent such as Claude Code read and change the content over MCP: on your own machine, or on a self-hosted Mica after you allow it.",
+  "readTime": 5
+}
