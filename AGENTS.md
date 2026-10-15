@@ -52,6 +52,15 @@ Ask the user before you:
 - Do not claim that a check passed if you did not run it.
 - If a check cannot run, state the reason and the checks that remain.
 
+## Voice and brand
+
+- Read `docs/brand/voice.md` before you write text that people read, and use the register of the surface:
+  - Docs, READMEs, setup guides and CLI help: ASD-STE100 Simplified Technical English.
+  - Editor UI: plain and a bit warm, with editors' words and no Git words (Save, Publish, not commit, push).
+  - Website copy, release pages on micacms.com and social posts: warmer, still short. At most one wink per page, never in errors, warnings or security text.
+- Avoid the words that `voice.md` lists, such as "simply", "easy", "seamless" and "powerful", and exclamation marks.
+- Follow `docs/brand/README.md` for colours, type, logo, motif, imagery and layout. Use the tokens, never hex values. The token values are in `docs/brand/tokens.json`.
+
 ## Documentation and releases
 
 - Update related documentation when behavior, configuration, architecture, or a public API changes.
@@ -98,7 +107,7 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `examples/company-site`: example website and evolving reference project.
 - `examples/starter`: the minimal starter for `npm create astro -- --template micacms/mica/examples/starter`. It installs the published packages, so it is not a Rush project; each release sets its versions.
 - `SETUP.md`: the entry point for a coding agent that sets up Mica in a user's project, served at `micacms.com/setup.md`. Keep it valid for every version; version-specific steps go in `packages/astro/setup/`.
-- `docs`: architecture and decision documentation for contributors. The user guides move to `sites/micacms` (#117).
+- `docs`: architecture and decision documentation for contributors, and the brand book (`docs/brand`). The user guides move to `sites/micacms` (#117).
 - `deploy/self-hosted`: the reference deployment — the Compose file and its `.env.example`.
 - `deploy/demo-identity`: the demo stack with ZITADEL.
 - `tests/e2e`: manual deployed-shape environment with Keycloak. Do not treat it as an automated browser test suite.
