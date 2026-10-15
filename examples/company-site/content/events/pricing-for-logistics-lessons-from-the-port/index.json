@@ -1,0 +1,25 @@
+{
+  "title": "Pricing for logistics: lessons from the port",
+  "slug": "pricing-for-logistics-lessons-from-the-port",
+  "startsAt": "2027-06-10T17:30:00+02:00",
+  "endsAt": "2027-06-10T20:00:00+02:00",
+  "format": [
+    "in-person",
+    "online"
+  ],
+  "capacity": 80,
+  "venue": {
+    "name": "Harbourside Conference Room",
+    "address": "Dock Road 7\nHL 40-210 Calvera, Serenza"
+  },
+  "registrationUrl": "https://harborlane.example/register/pricing-evening",
+  "speakers": [
+    "amara-okafor",
+    "lars-nilsson"
+  ],
+  "summary": "An evening talk on how a logistics group found out which of its prices lost money. Join us in person or online.",
+  "tags": [
+    "workshop",
+    "strategy"
+  ]
+}
