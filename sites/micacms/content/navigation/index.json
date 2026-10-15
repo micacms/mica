@@ -39,6 +39,10 @@
           "href": "/docs/self-hosting/"
         },
         {
+          "label": "Edit with an agent",
+          "href": "/docs/agents/"
+        },
+        {
           "label": "Security",
           "href": "/docs/security/"
         }

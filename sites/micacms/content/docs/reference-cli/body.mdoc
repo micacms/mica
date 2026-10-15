@@ -27,6 +27,8 @@ Opens the editor on this machine. It has no sign-in, and it listens only on loop
 
 `start` stops with exit code 64 when the content directory does not exist, and with 78 when `.mica/schema.json` is missing. Run `npx astro sync` to write the model.
 
+From 0.10.0, `start` also serves the tools for coding agents at `http://localhost:<port>/mcp`. See [Edit with an agent](/docs/agents/).
+
 ### init
 
 Added in 0.5.0.
@@ -68,6 +70,23 @@ Moves Astro content collections into Mica, from Astro's data store. Without `--c
 | `--from <file>` | Astro's data store. Default: `node_modules/.astro/data-store.json`, else `.astro/data-store.json`. |
 | `--map <c.field=key>` | Takes a Mica field from another key. `@body` is the Markdown body. Use it more than once. |
 | `--order <c=field>` | The first order of a sortable collection, by a field. |
+
+### mcp
+
+Added in 0.10.0.
+
+```bash
+npx mica mcp [content dir] [options]
+```
+
+Serves the tools for coding agents over stdio, without the editor. The agent starts this command itself: put it in the agent's MCP configuration. It writes its log to stderr. When you start it in a terminal yourself, it shows the configuration to give to your agent. `start` shows the same for its `/mcp` address. See [Edit with an agent](/docs/agents/).
+
+| Option | Effect |
+| --- | --- |
+| `-c`, `--content <dir>` | The content root. A path without a flag does the same. |
+| `--allow-publish` | Offers the `publish` tool too. Without it, the agent saves drafts, and you publish them. `MICA_MCP_PUBLISH=true` does the same. |
+
+`mcp` stops with the same exit codes as `start` when there is no content directory or no model.
 
 ### Exit codes
 
