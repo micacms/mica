@@ -81,6 +81,31 @@
       }
     ]
   },
+  "agents": {
+    "eyebrow": "Agents",
+    "title": "Your agent edits too. It saves drafts, like everybody else.",
+    "lead": "Claude Code, Cursor, VS Code or any other MCP client can read your content model and change your content. It follows the rules of the editor. A person publishes the drafts.",
+    "points": [
+      {
+        "text": "Reads the content model, and Mica checks every value"
+      },
+      {
+        "text": "Saves drafts. Publishing by an agent is off, unless you turn it on"
+      },
+      {
+        "text": "Sends the revision it read, so it never overwrites a newer save"
+      },
+      {
+        "text": "Local: npx mica start serves the tools. Self-hosted: you opt in, and each person allows each agent"
+      }
+    ],
+    "file": ".mcp.json",
+    "code": "{\n  \"mcpServers\": {\n    \"mica\": { \"type\": \"http\", \"url\": \"http://localhost:6422/mcp\" }\n  }\n}",
+    "link": {
+      "label": "Edit with an agent",
+      "href": "/docs/agents/"
+    }
+  },
   "run": {
     "eyebrow": "Run it your way",
     "title": "On your laptop, or on your server.",

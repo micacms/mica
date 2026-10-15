@@ -175,6 +175,24 @@ export const site = defineSite({
             }),
           },
         }),
+        agents: object({
+          label: "Agents",
+          required: true,
+          fields: {
+            eyebrow: text({ label: "Eyebrow", required: true }),
+            title: text({ label: "Title", required: true }),
+            lead: textarea({ label: "Lead", required: true, rows: 3 }),
+            points: repeater({
+              label: "Points",
+              itemLabel: "text",
+              max: 5,
+              fields: { text: text({ label: "Point", required: true }) },
+            }),
+            file: text({ label: "File path", description: "Shown above the code." }),
+            code: textarea({ label: "Code", rows: 6 }),
+            link: object({ label: "Link", required: true, fields: linkFields }),
+          },
+        }),
         run: object({
           label: "Ways to run",
           required: true,

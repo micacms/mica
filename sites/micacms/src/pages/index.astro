@@ -9,7 +9,7 @@ import Strata from "@/components/Strata.astro";
 import { renderRichText } from "@micacms/astro";
 import { getHome, getSite } from "@/lib/content";
 const [home, site] = await Promise.all([getHome(), getSite()]);
-const { hero, how, audiences, run, fit, start } = home;
+const { hero, how, audiences, agents, run, fit, start } = home;
 const lead = renderRichText(hero.lead);
 ---
 
@@ -80,6 +80,23 @@ const lead = renderRichText(hero.lead);
           </article>
         ))}
       </div>
+    </div>
+  </section>
+
+  <section class="section border-t border-line bg-surface">
+    <div class="wrap grid items-center gap-10 md:grid-cols-[7fr_5fr] md:gap-14">
+      <div class="max-w-xl">
+        <p class="eyebrow">{agents.eyebrow}</p>
+        <h2 class="title-1 m-0">{agents.title}</h2>
+        <p class="lead mt-5">{agents.lead}</p>
+        <ul class="m-0 mt-6 flex list-none flex-col gap-2.5 p-0">
+          {agents.points.map((point) => (
+            <li class="flex gap-2.5"><Check size={20} class="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{point.text}</li>
+          ))}
+        </ul>
+        <a class="link mt-8 inline-flex items-center gap-1.5" href={agents.link.href}>{agents.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
+      </div>
+      <CodeBlock class="min-w-0" file={agents.file} code={agents.code ?? ""} />
     </div>
   </section>
 
