@@ -2,8 +2,8 @@
 
 The real Mica image against a real [Dex](https://dexidp.io), publishing to a
 real Git host, [Forgejo](https://forgejo.org), driven by a Node script with no
-dependencies. CI runs it on every pull request, in the `docker` job of
-[`ci.yml`](../../.github/workflows/ci.yml).
+dependencies. CI runs it on every pull request that can change the image, in
+[`image.yml`](../../.github/workflows/image.yml).
 
 It proves what unit tests cannot: a real OpenID Connect round trip — discovery,
 PKCE, `state`, `nonce`, the ID token — and a clone, a save and a publication

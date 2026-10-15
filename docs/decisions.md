@@ -2327,6 +2327,13 @@ without a break.
   hand. Add a path when a regression reaches the UI unseen.
   **1.0 status:** after 1.0. The accessibility check (#108) visits every
   view, but it edits nothing.
+
+- **P3** — CI runs on pull requests only, to save Actions minutes in a private
+  repository. A merge to `main` is not checked again, so two pull requests
+  that pass alone can break `main` together. The release workflow runs the
+  whole gate before it publishes. The image and its OIDC and browser tests
+  (`image.yml`) run only when a pull request changes what they use.
+  **1.0 status:** run CI on `main` again when the repository is public (#51).
 - **P2** — The group claim is verified by hand, not by CI. CI runs the real
   image against Dex on every pull request ([`tests/oidc/`](../tests/oidc/README.md)):
   sign-in, the email and domain rules, a refusal, CSRF and an edit. Dex's
