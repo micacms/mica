@@ -1,0 +1,14 @@
+{
+	"mcpServers": {
+		"mica-site": {
+			"type": "stdio",
+			"command": "node",
+			"args": ["apps/local-editor/dist/cli.js", "mcp", "sites/micacms/content"]
+		},
+		"mica-example": {
+			"type": "stdio",
+			"command": "node",
+			"args": ["apps/local-editor/dist/cli.js", "mcp", "examples/company-site/content"]
+		}
+	}
+}
