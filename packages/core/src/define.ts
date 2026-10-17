@@ -17,6 +17,7 @@ import type {
   Site,
 } from "./types.js";
 import { MEDIA_DIR } from "./layout.js";
+import { mapProblem } from "./map.js";
 import { isMediaFileType, MEDIA_FILE_TYPE_NAMES } from "./media-types.js";
 import { nestedRepeat, textPattern } from "./pattern.js";
 import { RICH_TEXT_TOOLBARS } from "./rich-text.js";
@@ -212,6 +213,11 @@ function checkFields(fields: FieldMap, path: string, collectionNames: Set<string
       throw new ModelError(
         `Media field "${here}" has an unknown accept. Use "image", "document", "any", or a list of: ${MEDIA_FILE_TYPE_NAMES.join(", ")}.`,
       );
+    }
+
+    if (field.kind === "coordinates" && field.map !== undefined) {
+      const problem = mapProblem(field.map);
+      if (problem) throw new ModelError(`Coordinates field "${here}" has an invalid map: ${problem}.`);
     }
 
     if (field.kind === "select" && field.options.length === 0) {

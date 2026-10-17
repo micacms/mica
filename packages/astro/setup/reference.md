@@ -78,7 +78,7 @@ in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
 | `relation()` | the slug of an entry | `collection` (required), `multiple` |
 | `media()` | a file path, or `{ path, alt }` with `alt` | `accept: "image" \| "document" \| "any"`, `multiple`, `max`, `alt: "required" \| "optional"` |
 | `color()` | `"#rrggbb"` | `presets`, `default` |
-| `coordinates()` | `{ "lat": 47.37, "lng": 8.54 }` | — |
+| `coordinates()` | `{ "lat": 47.37, "lng": 8.54 }` | `map`: a map in the editor to pick the place. `"liberty"`, `"bright"` or `"positron"` (OpenFreeMap styles), or `{ style, hosts }` with `https` addresses. Without `map`, there is no map |
 | `tags()` | `["design", "web"]` | `max`, `maxLength`, `suggestions`, `default` |
 
 For a free list of strings, such as tags or keywords, use `tags()`. For a fixed

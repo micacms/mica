@@ -10,7 +10,7 @@
  * keeps this package authentication-neutral.
  */
 
-import { ContentPathError } from "@micacms/core/internal";
+import { ContentPathError, mapHosts, type Site } from "@micacms/core/internal";
 import type { ErrorHandler, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
@@ -61,23 +61,41 @@ export function requestContext(ctx: Env["Variables"]["ctx"]): MiddlewareHandler<
 }
 
 /**
- * Same-origin only. `blob:` and `data:` images cover previews; a route that
- * needs a stricter policy, such as the sandbox on media files, sets its own.
+ * Same-origin only, unless a coordinates field has a map. `blob:` and `data:`
+ * images cover previews; a route that needs a stricter policy, such as the
+ * sandbox on media files, sets its own.
+ *
+ * A map adds the hosts that the model names for it, and `blob:` workers: the
+ * editor starts MapLibre's worker from a `blob:` address, so that the worker
+ * keeps this page's policy and not the one cached with its script.
  */
-export const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "img-src 'self' blob: data:",
-  "object-src 'none'",
-  "base-uri 'none'",
-  "frame-ancestors 'none'",
-].join("; ");
+export function contentSecurityPolicy(model: Site): string {
+  const hosts = mapHosts(model);
+  const map = hosts.length > 0 ? [`connect-src 'self' ${hosts.join(" ")}`, "worker-src 'self' blob:"] : [];
+  return [
+    "default-src 'self'",
+    ["img-src 'self' blob: data:", ...hosts].join(" "),
+    ...map,
+    "object-src 'none'",
+    "base-uri 'none'",
+    "frame-ancestors 'none'",
+  ].join("; ");
+}
+
+// The model changes rarely, and each change is a new object.
+const policies = new WeakMap<Site, string>();
+const policyFor = (model: Site): string => {
+  let policy = policies.get(model);
+  if (policy === undefined) policies.set(model, (policy = contentSecurityPolicy(model)));
+  return policy;
+};
 
 export function securityHeaders(): MiddlewareHandler<Env> {
   return async (c, next) => {
     await next();
 
     if (!c.res.headers.has("content-security-policy")) {
-      c.header("content-security-policy", CONTENT_SECURITY_POLICY);
+      c.header("content-security-policy", policyFor(c.get("ctx").site.model));
     }
     // Only for an https public URL: HSTS over plain HTTP is ignored, and on
     // localhost it would pin a developer's other projects to https.

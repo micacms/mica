@@ -15,6 +15,7 @@ export * from "./manifest.js";
 export * from "./read.js";
 export * from "./staging.js";
 export * from "./access.js";
+export * from "./map.js";
 export * from "./rich-text.js";
 export * from "./media-types.js";
 export * from "./row-key.js";

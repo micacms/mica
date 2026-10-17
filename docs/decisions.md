@@ -767,23 +767,54 @@ pass (#72).
 
 ---
 
-### P2 — No map widget in the admin
+### P2 — A coordinates field can show a map, from the hosts that the model names
 
-**Decided:** `coordinates` is two numeric inputs plus paste-parsing for
-`47.3769, 8.5417` and an "open in OpenStreetMap" link.
+**Decided:** a map is opt-in for each field: `coordinates({ map: "liberty" })`.
+The presets `"liberty"`, `"bright"` and `"positron"` are the OpenFreeMap styles
+at `https://tiles.openfreemap.org/styles/<name>`. A field can also name its own
+style: `{ style, hosts }`. The style address and each host must use `https`,
+and a host is an origin, without a path. The origin of the style is always a
+host. The editor shows the map below the two inputs, with MapLibre GL JS. A
+click sets the point, the pin can be dragged, and the scroll wheel zooms only
+with Ctrl or ⌘. The inputs, the paste and the OpenStreetMap link stay. They are
+the way to enter a value with the keyboard.
 
-**Why:** a slippy map needs a tile provider. Embedding one would make the admin
-depend on a third-party endpoint at runtime. A map belongs on the website, if the
-website wants one.
+The editor's Content-Security-Policy changes only when the model has a map.
+Then it adds the hosts to `img-src` and `connect-src`, and `blob:` to
+`worker-src`. The runtime calculates the policy from the model in use, so a new
+map changes the policy at the next page load. Mica does not fetch a style to
+find its hosts. MapLibre is in its own chunks, and only a form with a map loads
+them: about 1,040 kB (280 kB gzip) of script, a 510 kB (145 kB gzip) worker and
+83 kB of CSS.
 
-**Consequence:** editors pick coordinates elsewhere and paste them.
+**Why:** with many located entries, a value pasted from another tool is slow
+and causes errors. Sites now meet the trigger of the earlier decision, "No map
+widget in the admin": more than about 20 located entries. An opt-in for each
+field keeps the editor free of third-party hosts until the site owner chooses
+one. OpenFreeMap needs no key and no account. The model names the hosts: if
+the policy followed a fetched style, the owner of the style could widen the
+policy of the editor. MapLibre's worker starts from a `blob:` address that
+imports the worker script. A `blob:` worker keeps the policy of the page, which
+follows the model. A worker from its own address keeps the policy that came
+with its script, and the script is cached for a year.
 
-**What would change it:** a customer who sets locations often enough for this to
-chafe. MapLibre + their own tile key, behind an optional `MAP_STYLE_URL`.
+**Consequence:** the editor's browser loads the style, the tiles, the glyphs
+and the sprites from the tile host. The host sees the editor's IP address and
+the area of the map. The model is committed with the content, so a key in a
+style address (for example `?key=…`) is public. Use a key that the tile host
+limits to the address of the editor. A host that the model does not name shows
+as a map that does not load: a short message tells the editor, and the inputs
+still work. Mica 0.10 and older does not know the option, so it opens a
+collection or singleton with a map read-only. The map does not change its
+style in dark mode.
 
-**Trigger:** editor feedback, or a project with more than ~20 located entries.
+**What would change it:** a site that needs a map without a third-party host.
+Then the tiles can come from the site's own origin, for example as a PMTiles
+file.
 
-**1.0 status:** accepted for 1.0.
+**1.0 status:** accepted for 1.0. Built in 0.11 (#278). It replaces "No map
+widget in the admin" (two inputs, the paste and a link to OpenStreetMap; its
+trigger was more than about 20 located entries).
 
 ---
 

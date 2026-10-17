@@ -16,12 +16,14 @@ import {
   email,
   entryTitle,
   media,
+  mapHosts,
   mediaFileTypeOf,
   ModelError,
   number,
   object,
   relation,
   repeater,
+  resolveMap,
   RICH_TEXT_TOOLBARS,
   richText,
   richTextFeatures,
@@ -532,6 +534,52 @@ describe("rich-text toolbars", () => {
       assert.throws(
         () => defineSite({ collections: { news: collection({ label: "News", fields: { body: richText({ toolbar: toolbar as never }) } }) } }),
         (error: unknown) => error instanceof ModelError && /unknown toolbar/.test(error.message),
+      );
+    }
+  });
+});
+
+describe("coordinates maps", () => {
+  const siteWith = (fields: FieldMap) =>
+    defineSite({ collections: { places: collection({ label: "Places", fields: { title: text(), slug: slug({ from: "title" }), ...fields } }) } });
+
+  it("loads a preset from OpenFreeMap, and a style of its own from its origin and its hosts", () => {
+    assert.deepEqual(resolveMap("positron"), {
+      style: "https://tiles.openfreemap.org/styles/positron",
+      hosts: ["https://tiles.openfreemap.org"],
+      preset: "positron",
+    });
+    assert.deepEqual(resolveMap({ style: "https://maps.example.com/style.json?key=abc", hosts: ["https://tiles.example.com", "https://maps.example.com"] }), {
+      style: "https://maps.example.com/style.json?key=abc",
+      hosts: ["https://maps.example.com", "https://tiles.example.com"],
+      preset: null,
+    });
+  });
+
+  it("collects the hosts of every map, nested fields included, and none without a map", () => {
+    assert.deepEqual(mapHosts(siteWith({ where: coordinates() })), []);
+    const site = siteWith({
+      where: coordinates({ map: "liberty" }),
+      stops: repeater({ fields: { at: coordinates({ map: { style: "https://maps.example.com/style.json", hosts: ["https://tiles.example.com"] } }) } }),
+      office: object({ fields: { at: coordinates({ map: "bright" }) } }),
+    });
+    assert.deepEqual(mapHosts(site), ["https://maps.example.com", "https://tiles.example.com", "https://tiles.openfreemap.org"]);
+  });
+
+  it("refuses an unknown preset, an address that is not https, and a host that is not an origin", () => {
+    const maps: unknown[] = [
+      "satellite",
+      { style: "http://maps.example.com/style.json" },
+      { style: "not an address" },
+      { style: "https://maps.example.com/style.json", hosts: ["http://tiles.example.com"] },
+      { style: "https://maps.example.com/style.json", hosts: ["https://tiles.example.com/tiles"] },
+      { style: "https://maps.example.com/style.json", hosts: "https://tiles.example.com" },
+    ];
+    for (const map of maps) {
+      assert.throws(
+        () => siteWith({ where: coordinates({ map: map as never }) }),
+        (error: unknown) => error instanceof ModelError && /invalid map/.test(error.message),
+        JSON.stringify(map),
       );
     }
   });

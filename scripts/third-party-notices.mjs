@@ -7,7 +7,7 @@
  * calls `packageRoot` and `formatNotices` for the modules in its bundle.
  */
 
-import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from "node:fs";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -80,6 +80,30 @@ export function readPackage(folder) {
     texts.push(`(No license file in the package; the ${license} text, with the author from its package.json.)\n\n${template(holder)}`);
   }
   return { name, version, license: typeof license === "string" ? license : "see the license text", texts };
+}
+
+/** The folders of the runtime dependencies of the package in `folder`, transitively, found as Node finds them. */
+export function dependencyRoots(folder) {
+  const found = new Set();
+  const visit = (from) => {
+    const { dependencies = {} } = JSON.parse(readFileSync(path.join(from, "package.json"), "utf8"));
+    for (const name of Object.keys(dependencies)) {
+      for (let dir = realpathSync(from); ; dir = path.dirname(dir)) {
+        const candidate = path.join(dir, "node_modules", name);
+        if (existsSync(path.join(candidate, "package.json"))) {
+          const root = realpathSync(candidate);
+          if (!found.has(root)) {
+            found.add(root);
+            visit(root);
+          }
+          break;
+        }
+        if (path.dirname(dir) === dir) break;
+      }
+    }
+  };
+  visit(folder);
+  return [...found];
 }
 
 /** The notices file for a set of packages, without Mica's own. */

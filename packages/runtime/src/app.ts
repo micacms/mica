@@ -99,10 +99,13 @@ export function createApp(ctx: RuntimeContext, options: CreateAppOptions = {}): 
   // One gate and no roles: whoever the surface admits is an editor of this site.
   for (const middleware of auth.gate) app.use("/api/admin/*", middleware);
   // A model pushed or written since is used at once; editors cannot restart the server.
-  app.use("/api/admin/*", async (c, next) => {
+  const refreshModel: MiddlewareHandler<Env> = async (c, next) => {
     await c.get("ctx").refreshModel();
     await next();
-  });
+  };
+  app.use("/api/admin/*", refreshModel);
+  // The page's Content-Security-Policy allows the hosts of the model's maps, so the page needs the model in use too.
+  app.use("/admin/*", refreshModel);
 
   app.route("/api/admin", adminSystemRoutes());
   app.route("/api/admin", adminContentRoutes());

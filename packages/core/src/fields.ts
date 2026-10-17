@@ -87,7 +87,7 @@ export const FIELD_OPTIONS = {
   relation: ["collection", "multiple"],
   media: ["multiple", "accept", "max", "alt"],
   color: ["presets", "default"],
-  coordinates: [],
+  coordinates: ["map"],
   tags: ["max", "maxLength", "suggestions", "default"],
 } as const satisfies { [K in FieldKind]: readonly Exclude<keyof Extract<AnyField, { kind: K }>, (typeof COMMON_OPTIONS)[number]>[] };
 

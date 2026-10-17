@@ -371,6 +371,10 @@ JSON object with:
 - `generatedBy`: the package that wrote it, without a version.
 - `collections` and `singletons`: objects of the definitions, by name.
 
+A definition keeps every field option as the model gives it, also an option
+that changes only the editor, for example `"map": "liberty"` on a
+`coordinates` field.
+
 A reader MUST refuse a file without these four keys, and a `protocolVersion`
 above the one it knows. `protocolVersion` changes only when an older reader
 would misread a newer manifest. A field kind or a field option that a reader

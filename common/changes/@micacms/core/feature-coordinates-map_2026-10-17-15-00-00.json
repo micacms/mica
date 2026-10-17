@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "A coordinates field can show a map in the editor: `coordinates({ map: \"liberty\" })` uses an OpenFreeMap style (\"liberty\", \"bright\" or \"positron\"), and `{ style, hosts }` uses a style of your own. The style address and the hosts must use https, and each host is an origin.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

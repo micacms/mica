@@ -103,7 +103,7 @@ ones, all low or lower. #213 tracks them.
 | 3.3.1 | Cookies `Secure`, with a prefix | Pass | `packages/auth/oidc/src/session.ts`; `apps/self-hosted/src/config.ts` | `__Host-` (`__Secure-` for the transaction cookie) when Secure; `http://` only on this machine (#157, #161, #233). |
 | 3.4.1 | HSTS on all responses | Pass | `packages/runtime/src/middleware/index.ts` | `max-age=31536000` when the public URL is `https://` (#157). |
 | 3.4.2 | CORS origin fixed or allowlisted | Pass | `packages/runtime/src/app.ts`; `packages/runtime/src/middleware/index.ts` (`allowedOrigins`) | |
-| 3.4.3 | Content-Security-Policy | Pass | `packages/runtime/src/middleware/index.ts`; `packages/editor-ui/src/style.css` | `default-src 'self'`, `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'none'`; local fonts (#146). ID approximate. |
+| 3.4.3 | Content-Security-Policy | Pass | `packages/runtime/src/middleware/index.ts` (`contentSecurityPolicy`); `packages/core/src/map.ts`; `packages/editor-ui/src/style.css` | `default-src 'self'`, `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'none'`; local fonts (#146). Only when the model has a map: its hosts in `img-src` and `connect-src`, and `blob:` in `worker-src` (#278). No `'unsafe-eval'`. ID approximate. |
 | 3.5.1 | CSRF: origin check or token | Pass | `packages/runtime/src/middleware/index.ts` (`originGuard`); `packages/auth/oidc/src/gate.ts` | Origin check plus a double-submit token bound to the session. Sign-out has the origin check only (#213). |
 | 3.5.2 | No reliance on a CORS preflight | N/A | — | The preflight is not a control; see 3.5.1. |
 | 3.5.3 | No state change on GET | Pass | `packages/runtime/src/routes/`; `packages/auth/oidc/src/routes.ts` | |
@@ -112,6 +112,14 @@ ones, all low or lower. #213 tracks them.
 `nosniff`, `Referrer-Policy` and `X-Frame-Options: DENY` are set
 (`packages/runtime/src/middleware/index.ts`). They are level 2, so they are
 not counted.
+
+A `coordinates({ map })` field makes the editor's browser load a style, tiles,
+glyphs and sprites from a third-party host (#278). The host sees the editor's
+IP address and the area of the map. Without `map`, the editor loads nothing
+from another host. The model names the hosts, and each host must be an `https`
+origin (`mapProblem` in `packages/core/src/map.ts`). The model is committed
+with the content, so a key in a style address is public: use a key that the
+tile host limits to the address of the editor.
 
 ## V4 API and Web Service
 
@@ -241,6 +249,7 @@ the summary do not include them.
 | Path or option injection through the branch or the content root | Pass | `apps/self-hosted/src/config.ts` (`isBranchName`, the root check); `packages/runtime/src/workspace/tree.ts` | |
 | A second process writes to the volume | Pass | `apps/self-hosted/src/workspace/lease.ts` | A lease with a heartbeat: a second Mica waits for it to expire, then refuses to start (#229). |
 | A rich-text image or link leaves the content root | Pass | `packages/core/src/rich-text.ts` (`resolveMarkdocTarget`); `packages/astro/src/images.ts` | A path above the root resolves to nothing; only files inside the root reach Astro's `image()`. Media fields: N15. |
+| A pushed content model widens the editor's Content-Security-Policy | Pass | `packages/core/src/map.ts` (`mapProblem`, `mapHosts`); `packages/runtime/src/middleware/index.ts` | Only through `coordinates({ map })`, and only with `https` origins in `img-src` and `connect-src`. A host cannot carry a path, a space or a `;`, so it cannot add a directive. A person who can push the model can already change the content. |
 | A pushed content model runs code | Pass | `packages/core/src/manifest.ts` (`readManifest`) | The manifest is data. A text pattern that repeats a group with a repeat inside, such as `(a+)+`, is refused when the model loads (#215). Overlapping alternatives, such as `(a|a)+`, are still possible. |
 
 ## Next review

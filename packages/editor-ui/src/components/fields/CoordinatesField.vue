@@ -5,16 +5,15 @@
  * Stores neutral coordinates, never provider-specific map data, so the
  * frontend is free to render them with MapLibre, a static image, or nothing.
  *
- * No map is embedded here: a slippy map needs a tile provider, and making the
- * admin depend on a third-party endpoint at runtime would undercut the
- * "no mandatory external services" principle. Pasting a coordinate pair from
- * any map covers the actual editorial task.
+ * A map shows only when the field has `map`: it loads a tile host, and the
+ * site owner chooses that host. The inputs and paste work with or without it.
  */
 
 import { computed, ref, watch } from "vue";
 
 import type { Coordinates, CoordinatesField } from "@micacms/core/internal";
 
+import CoordinatesMap from "./CoordinatesMap.vue";
 import FieldShell from "./FieldShell.vue";
 import { useField, type FieldProps } from "@/composables/useField";
 import { coordinatesFrom } from "@/lib/format";
@@ -149,5 +148,13 @@ const previewUrl = computed(() =>
         Clear
       </button>
     </div>
+
+    <CoordinatesMap
+      v-if="field.map"
+      :map="field.map"
+      :value="current"
+      :locked="locked"
+      @pick="emit('update:modelValue', $event)"
+    />
   </FieldShell>
 </template>
