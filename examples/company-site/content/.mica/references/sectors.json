@@ -1,0 +1,23 @@
+[
+  {"id":"A","title":"Agriculture, forestry and fishing"},
+  {"id":"B","title":"Mining and quarrying"},
+  {"id":"C","title":"Manufacturing"},
+  {"id":"D","title":"Electricity, gas, steam and air conditioning supply"},
+  {"id":"E","title":"Water supply, sewerage, waste management and remediation"},
+  {"id":"F","title":"Construction"},
+  {"id":"G","title":"Wholesale and retail trade"},
+  {"id":"H","title":"Transportation and storage"},
+  {"id":"I","title":"Accommodation and food service activities"},
+  {"id":"J","title":"Information and communication"},
+  {"id":"K","title":"Financial and insurance activities"},
+  {"id":"L","title":"Real estate activities"},
+  {"id":"M","title":"Professional, scientific and technical activities"},
+  {"id":"N","title":"Administrative and support service activities"},
+  {"id":"O","title":"Public administration and defence"},
+  {"id":"P","title":"Education"},
+  {"id":"Q","title":"Human health and social work activities"},
+  {"id":"R","title":"Arts, entertainment and recreation"},
+  {"id":"S","title":"Other service activities"},
+  {"id":"T","title":"Activities of households as employers"},
+  {"id":"U","title":"Activities of extraterritorial organisations and bodies"}
+]

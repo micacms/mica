@@ -8,6 +8,7 @@
       "label": "Pages",
       "labelSingular": "Page",
       "description": "Standalone pages such as About us, Services or Contact.",
+      "url": "/{slug}/",
       "defaultSort": {
         "field": "position",
         "direction": "asc"
@@ -124,6 +125,7 @@
       "label": "Projects",
       "labelSingular": "Project",
       "description": "Client projects shown in the portfolio.",
+      "url": "/projects/{slug}/",
       "defaultSort": {
         "field": "year",
         "direction": "desc"
@@ -272,6 +274,24 @@
           "collection": "team",
           "multiple": true
         },
+        "sector": {
+          "kind": "relation",
+          "label": "Sector",
+          "collection": "sectors",
+          "description": "The client's economic sector, from the NACE list."
+        },
+        "downloads": {
+          "kind": "media",
+          "label": "Downloads",
+          "accept": [
+            "pdf",
+            "zip",
+            "csv"
+          ],
+          "multiple": true,
+          "max": 4,
+          "description": "Files that visitors can download, such as a case study."
+        },
         "featured": {
           "kind": "boolean",
           "label": "Show on the homepage"
@@ -283,6 +303,7 @@
       "name": "news",
       "label": "News",
       "labelSingular": "Article",
+      "url": "/news/{slug}/",
       "defaultSort": {
         "field": "publishDate",
         "direction": "desc"
@@ -354,6 +375,7 @@
       "label": "Events",
       "labelSingular": "Event",
       "description": "Workshops and talks, in person or online.",
+      "url": "/events/{slug}/",
       "defaultSort": {
         "field": "startsAt",
         "direction": "desc"
@@ -422,6 +444,11 @@
               "kind": "textarea",
               "label": "Address",
               "rows": 2
+            },
+            "place": {
+              "kind": "coordinates",
+              "label": "Place on the map",
+              "map": "positron"
             }
           }
         },
@@ -469,6 +496,7 @@
       "name": "team",
       "label": "Team",
       "labelSingular": "Team member",
+      "url": "/team/{slug}/",
       "defaultSort": {
         "field": "position",
         "direction": "asc"
@@ -823,6 +851,15 @@
           ]
         }
       }
+    }
+  },
+  "references": {
+    "sectors": {
+      "type": "reference",
+      "name": "sectors",
+      "label": "Sectors",
+      "file": "src/data/sectors.json",
+      "title": "name"
     }
   }
 }

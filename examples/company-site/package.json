@@ -17,6 +17,7 @@
     "@micacms/astro": "workspace:*",
     "@micacms/core": "workspace:*",
     "astro": "^7.2.2",
+    "maplibre-gl": "6.11.2",
     "sharp": "^0.35.5"
   },
   "devDependencies": {

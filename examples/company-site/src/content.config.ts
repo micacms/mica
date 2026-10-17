@@ -13,7 +13,7 @@
  */
 
 import { micaCollections } from "@micacms/astro";
-import { glob } from "astro/loaders";
+import { file, glob } from "astro/loaders";
 import { defineCollection } from "astro:content";
 import { z } from "astro/zod";
 
@@ -34,4 +34,14 @@ const glossary = defineCollection({
   }),
 });
 
-export const collections = { ...micaCollections(site), glossary };
+/**
+ * Reference data: a file of the website that Mica does not edit. The model
+ * names it under the same name, so that a relation in the editor can point to
+ * an item of it.
+ */
+const sectors = defineCollection({
+  loader: file("src/data/sectors.json"),
+  schema: z.object({ name: z.string() }),
+});
+
+export const collections = { ...micaCollections(site), glossary, sectors };
