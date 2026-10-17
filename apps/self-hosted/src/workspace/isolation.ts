@@ -3,14 +3,19 @@
  * So `git` gets an allowlisted environment, never `process.env`, and its
  * settings come from `GIT_CONFIG_*`, which beat any repository or image
  * configuration. This closes every path from repository content to code
- * execution: no hooks, filters, symlinks, or transports other than HTTPS.
+ * execution: no hooks, symlinks, or transports other than HTTPS, and no
+ * filter but Git LFS. A `filter=` attribute acts only through a driver in the
+ * configuration, and the repository cannot set one, so Mica's LFS driver is
+ * the only one. LFS reads `.lfsconfig` from the repository; the endpoint and
+ * the push rules here override it, so the content cannot send the files or
+ * the token to another server.
  */
 
 import { writeFile, mkdir } from "node:fs/promises";
 import { devNull, tmpdir } from "node:os";
 import { join } from "node:path";
 
-import type { Remote } from "./credentials.js";
+import { lfsEndpoint, type Remote } from "./credentials.js";
 
 export interface ManagedEnvironmentOptions {
   remote: Remote;
@@ -20,6 +25,8 @@ export interface ManagedEnvironmentOptions {
   token?: string | null;
   /** A file with the token, read by the helper for each call. */
   tokenFile?: string | null;
+  /** `MICA_GIT_LFS_URL`, or null for the endpoint that Git LFS derives from the clone URL. */
+  lfsUrl?: Remote | null;
 }
 
 /** The committer of every publication; the author is the editor. */
@@ -36,12 +43,16 @@ const HELPER =
 
 export function managedEnvironment(options: ManagedEnvironmentOptions): NodeJS.ProcessEnv {
   const { remote } = options;
+  const lfs = options.lfsUrl ?? null;
+  const lfsUrl = lfs?.url ?? lfsEndpoint(remote);
+  // The operator named the LFS host, so it gets the token too.
+  const hosts = [remote, ...(lfs && lfs.hostKey !== remote.hostKey ? [lfs] : [])];
 
   const config: Array<[string, string]> = [
-    // Clear every other helper, then add ours for the configured host only.
+    // Clear every other helper, then add ours for the configured hosts only.
     ["credential.helper", ""],
     ...(options.token || options.tokenFile
-      ? ([[`credential.${remote.scheme}://${remote.hostKey}.helper`, HELPER]] as Array<[string, string]>)
+      ? hosts.map((host): [string, string] => [`credential.${host.scheme}://${host.hostKey}.helper`, HELPER])
       : []),
     ["core.hooksPath", devNull],
     ["core.symlinks", "false"],
@@ -51,6 +62,18 @@ export function managedEnvironment(options: ManagedEnvironmentOptions): NodeJS.P
     ["protocol.https.allow", "always"],
     ...(remote.scheme === "http" ? ([["protocol.http.allow", "always"]] as Array<[string, string]>) : []),
     ["submodule.recurse", "false"],
+    // The one filter driver, as `git lfs install` writes it. `required`: a failed download stops the checkout.
+    ["filter.lfs.process", "git-lfs filter-process"],
+    ["filter.lfs.clean", "git-lfs clean -- %f"],
+    ["filter.lfs.smudge", "git-lfs smudge -- %f"],
+    ["filter.lfs.required", "true"],
+    // Above `.lfsconfig`, which could send the uploads somewhere else.
+    ["lfs.url", lfsUrl],
+    ["lfs.pushurl", lfsUrl],
+    // A push without all of its LFS objects would publish pointers to nothing.
+    ["lfs.allowincompletepush", "false"],
+    // Mica does not use LFS locks; this saves a request to the host for each push.
+    ["lfs.locksverify", "false"],
     // No automatic gc inside a commit that holds the tree lock; the sync runs
     // `git -c gc.auto=… gc --auto` instead.
     ["gc.auto", "0"],
@@ -94,11 +117,12 @@ export function managedEnvironment(options: ManagedEnvironmentOptions): NodeJS.P
 }
 
 /**
- * Overrides `.gitattributes` so the bytes on disk are the bytes in Git. Write
- * it before the first checkout.
+ * Overrides `.gitattributes` so the bytes on disk are the bytes in Git, except
+ * for the files that `filter=lfs` gives to Git LFS (see the top of this file).
+ * Write it before the first checkout.
  */
 export async function writeIsolationAttributes(gitDir: string): Promise<void> {
   const info = join(gitDir, "info");
   await mkdir(info, { recursive: true });
-  await writeFile(join(info, "attributes"), "* -text -ident -filter -working-tree-encoding\n");
+  await writeFile(join(info, "attributes"), "* -text -ident -working-tree-encoding\n");
 }

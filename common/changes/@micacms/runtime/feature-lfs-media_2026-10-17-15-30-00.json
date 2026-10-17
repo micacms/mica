@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "Support Git LFS under the content root: Publish sends the LFS files with git lfs push before the push, also from a checkout without the LFS pre-push hook, and the media routes say when a file is an LFS pointer that was not downloaded.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

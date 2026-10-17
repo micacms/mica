@@ -24,6 +24,7 @@ import { cloneLayout, CloneRefusal, openClone, writeMarker, type CloneLayout } f
 import { parseRemote } from "../src/workspace/credentials.js";
 import { managedEnvironment } from "../src/workspace/isolation.js";
 import { createManagedWorkspace, type ContentGroup, type ManagedWorkspace } from "../src/workspace/managed.js";
+import { draftPaths } from "../src/workspace/restore.js";
 import { devGit, refusePushes, seedRepository, startGitHost, writeIn, type GitHost } from "./git-http.js";
 
 const TOKEN = "test-token-6f1c2a";
@@ -130,7 +131,7 @@ describe("the clone", () => {
     const config = readFileSync(join(s.repo, ".git", "config"), "utf8");
     assert.ok(!config.includes(TOKEN), "the token is in .git/config");
     assert.equal(filesContaining(s.layout.dataDir, TOKEN).length, 0, "the token is in a file on the volume");
-    assert.match(readFileSync(join(s.repo, ".git", "info", "attributes"), "utf8"), /-ident -filter/);
+    assert.match(readFileSync(join(s.repo, ".git", "info", "attributes"), "utf8"), /-text -ident -working-tree-encoding/);
     assert.ok(host.authorizations.some((header) => header.startsWith("Basic ")));
   });
 
@@ -165,16 +166,10 @@ describe("the clone", () => {
     assert.deepEqual(state.conflicts.map((conflict) => conflict.key), ["posts/a"]);
   });
 
-  it("refuses Git LFS under the content root", async () => {
-    await assert.rejects(
-      setup(TOKEN, { ...SEED, ".gitattributes": "content/**/*.jpg filter=lfs diff=lfs merge=lfs -text\n" }),
-      CloneRefusal,
-    );
-  });
-
-  it("allows Git LFS outside the content root", async () => {
-    const s = await setup(TOKEN, { ...SEED, ".gitattributes": "/public/**/*.jpg filter=lfs diff=lfs merge=lfs -text\n" });
-    assert.ok(existsSync(join(s.repo, "content/theme.json")));
+  it("runs no filter that the repository names, other than Git LFS", async () => {
+    const s = await setup(TOKEN, { ...SEED, ".gitattributes": "*.json filter=upper\n" });
+    assert.equal(read(s, "content/theme.json"), '{"color":"red"}\n');
+    assert.deepEqual(await draftPaths(s.git, ""), []);
   });
 
   it("checks out a symlink as a plain file, and does not expand $Id$", async () => {
@@ -395,14 +390,10 @@ describe("sync", () => {
     assert.equal(head(s), to);
   });
 
-  it("brings in an attributes change without a restart, and holds one that adds LFS", async () => {
+  it("brings in an attributes change without a restart", async () => {
     const s = await setup();
     const plain = upstream(s, (dir) => writeIn(dir, "content/.gitattributes", "*.txt text\n"));
     assert.equal((await s.workspace.sync()).error, null);
-    assert.equal(head(s), plain);
-
-    upstream(s, (dir) => writeIn(dir, "content/.gitattributes", "*.jpg filter=lfs\n"));
-    assert.equal((await s.workspace.sync()).error?.code, "lfs_refused");
     assert.equal(head(s), plain);
   });
 
@@ -556,17 +547,6 @@ describe("recovery at start", () => {
     await s.open();
     assert.ok(!existsSync(leftover));
     assert.ok(existsSync(join(s.repo, "content/theme.json")));
-  });
-
-  it("leaves no clone behind when LFS refuses it", async () => {
-    const name = `site-lfs-${++counter}`;
-    seedRepository(host, name, { ...SEED, ".gitattributes": "content/**/*.jpg filter=lfs\n" });
-    const dataDir = mkdtempSync(join(tmpdir(), "mica-data-"));
-    const layout = cloneLayout(dataDir);
-    const remote = parseRemote(host.url(name));
-    const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username: "oauth2", token: TOKEN });
-    await assert.rejects(openClone({ layout, url: remote.url, branch: "main", root: "content", env, logger }), CloneRefusal);
-    assert.deepEqual(readdirSync(dataDir), ["volume.json"]);
   });
 
   it("refuses a volume with another layout version", async () => {

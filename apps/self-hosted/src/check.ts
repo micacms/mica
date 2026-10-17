@@ -10,7 +10,7 @@ import { dirname, join } from "node:path";
 
 import { discover, redirectUri } from "@micacms/auth-oidc";
 import { memorySource } from "@micacms/core/internal";
-import { ConfigError, GitError, gitRunner, loadSchema, SchemaError, type GitRunner } from "@micacms/runtime";
+import { ConfigError, GitError, gitRunner, lfsUnderRoot, loadSchema, SchemaError, type GitRunner } from "@micacms/runtime";
 
 import { currentToken, loadConfig, type RepositoryConfig, type SelfHostedConfig } from "./config.js";
 import { CloneRefusal, cloneLayout, VOLUME_VERSION, volumeVersion } from "./workspace/clone.js";
@@ -18,7 +18,6 @@ import { contentRootAt } from "./workspace/content-root.js";
 import { redact } from "./workspace/credentials.js";
 import { classifyFailure, describeFailure, readPush } from "./workspace/failures.js";
 import { managedEnvironment } from "./workspace/isolation.js";
-import { lfsUnderRoot } from "./workspace/lfs.js";
 import { draftPaths } from "./workspace/restore.js";
 
 /** Runs the checks, prints one line per check, and returns the exit code. */
@@ -39,7 +38,7 @@ export async function runCheck(
     throw error;
   }
 
-  const { remote, branch, token, tokenFile, username } = config.repository;
+  const { remote, branch, token, tokenFile, username, lfsUrl } = config.repository;
   const clean = (text: string) => redact(text, [currentToken(config.repository)]);
   let failures = 0;
   const pass = (what: string, detail = "") => say(`ok    ${what}${detail ? `: ${detail}` : ""}`);
@@ -55,7 +54,7 @@ export async function runCheck(
   const scratch = mkdtempSync(join(tmpdir(), "mica-check-"));
   try {
     const git = gitRunner(scratch, {
-      env: managedEnvironment({ remote, cloneDir: scratch, username, token, tokenFile }),
+      env: managedEnvironment({ remote, cloneDir: scratch, username, token, tokenFile, lfsUrl }),
       timeoutMs: 120_000,
     });
     await git.run(["init", "--quiet"]);
@@ -136,8 +135,11 @@ async function checkContent(
   }
 
   const lfs = await lfsUnderRoot(git, "FETCH_HEAD", root);
-  if (lfs) fail("Git LFS", `${lfs} assigns LFS under the content root, which Mica does not support yet.`);
-  else pass("Git LFS", "not used under the content root");
+  if (!lfs) return pass("Git LFS", "not used under the content root");
+  // A dry-run LFS push sends no request, so the first publication shows whether the host accepts the files.
+  const version = await git.tryRun(["lfs", "version"]);
+  if (version === null) fail("Git LFS", `${lfs} assigns LFS under the content root, but git-lfs is not installed in this image.`);
+  else pass("Git LFS", `${lfs} assigns LFS under the content root; ${version.split(" ")[0]} is installed`);
 }
 
 async function checkIdentityProvider(
@@ -161,7 +163,7 @@ async function checkVolume(
   pass: (what: string, detail?: string) => void,
   fail: (what: string, detail: string) => void,
 ): Promise<void> {
-  const { remote, branch, root, token, tokenFile, username } = repository;
+  const { remote, branch, root, token, tokenFile, username, lfsUrl } = repository;
   const layout = cloneLayout(dataDir);
 
   // The nearest directory that exists is where the start creates the rest.
@@ -181,7 +183,7 @@ async function checkVolume(
   }
 
   const git = gitRunner(layout.repositoryDir, {
-    env: { ...managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token, tokenFile }), GIT_OPTIONAL_LOCKS: "0" },
+    env: { ...managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token, tokenFile, lfsUrl }), GIT_OPTIONAL_LOCKS: "0" },
   });
   const head = await git.tryRun(["rev-parse", "--short", "HEAD"]);
   const drafts = await draftPaths(git, root ?? "").catch(() => null);

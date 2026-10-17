@@ -14,21 +14,24 @@ export interface Remote {
   hostKey: string;
 }
 
-/** Checks `MICA_REPOSITORY_URL`. Plain HTTP is accepted only on a loopback host, for a test. */
-export function parseRemote(raw: string): Remote {
+/**
+ * Checks `MICA_REPOSITORY_URL`, or the variable `name`. Plain HTTP is accepted
+ * only on a loopback host, for a test.
+ */
+export function parseRemote(raw: string, name = "MICA_REPOSITORY_URL"): Remote {
   let url: URL;
   try {
     url = new URL(raw);
   } catch {
     throw new ConfigError(
-      `MICA_REPOSITORY_URL is not a URL: "${raw}".\n` +
+      `${name} is not a URL: "${raw}".\n` +
         "  Use the HTTPS clone URL, for example https://gitlab.com/group/project.git",
     );
   }
 
   if (url.username || url.password) {
     throw new ConfigError(
-      "MICA_REPOSITORY_URL contains credentials. Remove them from the URL and set\n" +
+      `${name} contains credentials. Remove them from the URL and set\n` +
         "  MICA_REPOSITORY_TOKEN instead; Mica never writes a token into the clone.",
     );
   }
@@ -36,7 +39,7 @@ export function parseRemote(raw: string): Remote {
   const loopback = LOOPBACK.has(url.hostname.replace(/^\[|\]$/g, ""));
   if (url.protocol !== "https:" && !(url.protocol === "http:" && loopback)) {
     throw new ConfigError(
-      `MICA_REPOSITORY_URL must be an https:// URL, not "${url.protocol}".\n` +
+      `${name} must be an https:// URL, not "${url.protocol}".\n` +
         "  SSH remotes are not supported yet. Plain http:// works only on this machine.",
     );
   }
@@ -47,6 +50,15 @@ export function parseRemote(raw: string): Remote {
     // `URL` already drops the default port and lowercases the host, as Git does.
     hostKey: url.host,
   };
+}
+
+/**
+ * The Git LFS endpoint, as Git LFS derives it from the clone URL: the URL with
+ * `.git`, then `/info/lfs`.
+ */
+export function lfsEndpoint(remote: Remote): string {
+  const url = remote.url.replace(/\/+$/, "");
+  return `${url.endsWith(".git") ? url : `${url}.git`}/info/lfs`;
 }
 
 /**

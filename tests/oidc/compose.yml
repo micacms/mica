@@ -46,6 +46,9 @@ services:
       FORGEJO__server__DISABLE_SSH: "true"
       FORGEJO__service__DISABLE_REGISTRATION: "true"
       FORGEJO__log__LEVEL: Warn
+      # Git LFS, for the PNG files that the seed gives to it. A test secret, not for production.
+      FORGEJO__server__LFS_START_SERVER: "true"
+      FORGEJO__server__LFS_JWT_SECRET: t9C-MQHtGeRGichgWOQbsCEFvRYHTKl8IKmxM0JTv04
     volumes:
       - forgejo-data:/data
     healthcheck:

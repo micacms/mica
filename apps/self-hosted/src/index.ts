@@ -119,7 +119,7 @@ async function serve(): Promise<void> {
   }
 
   const logger: Logger = createLogger({ level: config.MICA_LOG_LEVEL, pretty: process.stdout.isTTY === true });
-  const { remote, branch, token, tokenFile, username, syncSeconds } = config.repository;
+  const { remote, branch, token, tokenFile, username, syncSeconds, lfsUrl } = config.repository;
   const secrets = () => [currentToken(config.repository)];
   const clean = (text: string) => redact(text, secrets());
   const authLabel = `oidc:${new URL(config.MICA_OIDC_ISSUER!).hostname}`;
@@ -168,7 +168,7 @@ async function serve(): Promise<void> {
   }
 
   const layout = cloneLayout(config.dataDir);
-  const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token, tokenFile });
+  const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token, tokenFile, lfsUrl });
   let opened;
   try {
     opened = await openClone({ layout, url: remote.url, branch, root: config.repository.root, env, logger });

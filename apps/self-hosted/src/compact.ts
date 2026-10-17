@@ -33,7 +33,7 @@ export async function runCompact(
   }
 
   const logger = createLogger({ level: config.MICA_LOG_LEVEL, pretty: true });
-  const { remote, branch, root, token, tokenFile, username } = config.repository;
+  const { remote, branch, root, token, tokenFile, username, lfsUrl } = config.repository;
   const layout = cloneLayout(config.dataDir);
   if (!existsSync(join(layout.repositoryDir, ".git"))) {
     say("There is no clone on the data volume. The next start makes one.");
@@ -49,7 +49,7 @@ export async function runCompact(
         url: remote.url,
         branch,
         root,
-        env: managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token, tokenFile }),
+        env: managedEnvironment({ remote, cloneDir: layout.repositoryDir, username, token, tokenFile, lfsUrl }),
         logger,
       };
       const { git } = await openClone(options);

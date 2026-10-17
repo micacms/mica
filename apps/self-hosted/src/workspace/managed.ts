@@ -15,6 +15,8 @@ import {
   ApiError,
   type Author,
   GitError,
+  lfsUnderRoot,
+  pushLfsObjects,
   recommitPaths,
   type GitRunner,
   type GitTree,
@@ -26,11 +28,11 @@ import {
   type WorkspaceLocks,
 } from "@micacms/runtime";
 
-import { lfsRefusal, NETWORK_CALL_MS, writeBackKept, writeMarker, type CloneLayout } from "./clone.js";
+import { LONGEST_GIT_CALL_MS, NETWORK_CALL_MS, writeBackKept, writeMarker, type CloneLayout } from "./clone.js";
 import { redact } from "./credentials.js";
 import { classifyFailure, describeFailure, readPush, type FailureClass, type PushOutcome } from "./failures.js";
 import { MICA_IDENTITY } from "./isolation.js";
-import { attributesPlace, lfsUnderRoot } from "./lfs.js";
+import { fetchLfsObjects } from "./lfs.js";
 import { changedBetween, draftPaths, restorePaths } from "./restore.js";
 
 /** The editor's name for a piece of content, and the key that groups its files. */
@@ -48,7 +50,7 @@ export interface ConflictGroup extends ContentGroup {
 }
 
 export interface SyncProblem {
-  code: FailureClass | "prefetch_incomplete" | "fast_forward_failed" | "diverged" | "lfs_refused" | "model_unreadable";
+  code: FailureClass | "prefetch_incomplete" | "fast_forward_failed" | "diverged" | "model_unreadable";
   message: string;
   since: string;
 }
@@ -123,7 +125,7 @@ class RemoteFailure extends Error {
 const MAX_PUSH_TRIES = 3;
 
 /** Failures that keep the clone from the website's version: Publish waits for them. */
-const HOLDS = new Set<SyncProblem["code"]>(["diverged", "lfs_refused", "model_unreadable"]);
+const HOLDS = new Set<SyncProblem["code"]>(["diverged", "model_unreadable"]);
 
 /** Failures that a successful fetch ends. */
 const REACHABILITY = new Set<SyncProblem["code"]>(["auth", "network", "repo_not_found", "branch_not_found", "unknown"]);
@@ -309,13 +311,19 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       }
     }
 
+    // The LFS files of the new version come from the clone's own LFS store.
+    if (await lfsUnderRoot(git, to, root)) {
+      try {
+        await fetchLfsObjects(git, to, LONGEST_GIT_CALL_MS);
+      } catch (error) {
+        const stderr = error instanceof GitError ? error.stderr : String(error);
+        throw new RemoteFailure("prefetch_incomplete", `Git LFS could not download the files. ${clean(firstLines(stderr))}`.trim());
+      }
+    }
+
     const upstream = await changedBetween(git, from, to);
 
     // Hold a version that Mica cannot work with; the next sync tries again.
-    if (upstream.some((path) => attributesPlace(path, root) !== null)) {
-      const lfs = await lfsUnderRoot(git, to, root);
-      if (lfs) throw new RemoteFailure("lfs_refused", lfsRefusal(lfs, root).message);
-    }
     if (upstream.includes(manifestPath) && !skipHold) {
       const manifest = await git.tryRun(["show", `${to}:${manifestPath}`]);
       const problem = manifest === null ? `The new version has no ${manifestPath}.` : await options.modelProblem?.(manifest);
@@ -424,7 +432,14 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
   const pushHeld = async (): Promise<PublishResult> => {
     for (let attempt = 1; ; attempt += 1) {
       const revision = await git.run(["rev-parse", "HEAD"]);
-      const outcome = await pushOnce(["push", "--porcelain", "origin", `HEAD:refs/heads/${branch}`]);
+      const lfsFailure = await pushLfs();
+      const outcome: PushOutcome = lfsFailure
+        ? { kind: "failed", failure: lfsFailure.failure }
+        : await pushOnce(["push", "--porcelain", "origin", `HEAD:refs/heads/${branch}`]);
+      const failed = (failure: FailureClass) => {
+        if (!lfsFailure) return describeFailure(failure);
+        return `Git LFS could not send the files. ${failure === "unknown" ? lfsFailure.detail : describeFailure(failure)}`;
+      };
 
       if (outcome.kind === "pushed") {
         state.pendingPush = null;
@@ -434,8 +449,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       }
 
       if (outcome.kind === "remote-rejected" || (outcome.kind === "failed" && outcome.failure === "write_forbidden")) {
-        const reason =
-          outcome.kind === "remote-rejected" ? clean(outcome.reason) : describeFailure("write_forbidden");
+        const reason = outcome.kind === "remote-rejected" ? clean(outcome.reason) : failed("write_forbidden");
         await undoPublication();
         state.pendingPush = null;
         state.refused = { reason, at: new Date().toISOString() };
@@ -447,7 +461,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       }
 
       if (outcome.kind === "failed" || attempt >= MAX_PUSH_TRIES) {
-        const reason = outcome.kind === "failed" ? describeFailure(outcome.failure) : "The remote kept moving.";
+        const reason = outcome.kind === "failed" ? failed(outcome.failure) : "The remote kept moving.";
         if (state.pendingPush?.reason !== reason) {
           logger.warn("A publication is committed but not pushed yet", { revision, reason });
         }
@@ -497,6 +511,26 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
       if (committed !== current) changed.push(path);
     }
     return changed;
+  };
+
+  /**
+   * Sends the LFS objects of the publication before the commit, as the LFS
+   * pre-push hook would; hooks are off. A failure, or null.
+   */
+  const pushLfs = async (): Promise<{ failure: FailureClass; detail: string } | null> => {
+    if (!(await lfsUnderRoot(git, "HEAD", root))) return null;
+    try {
+      await pushLfsObjects(git, "origin", "HEAD", NETWORK_CALL_MS);
+      return null;
+    } catch (error) {
+      if (!(error instanceof GitError)) throw error;
+      const detail = clean(firstLines(error.stderr));
+      logger.warn("Git LFS could not send the files of a publication", { error: detail });
+      // Git LFS says "Authorization error" for a 401 and a 403. The fetch before
+      // the publication proved the token, so here it means no write access.
+      const failure = /Authorization error/.test(error.stderr) ? "write_forbidden" : classifyFailure(error.stderr);
+      return { failure, detail };
+    }
   };
 
   const pushOnce = async (args: string[]): Promise<PushOutcome> => {

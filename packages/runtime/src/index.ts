@@ -110,6 +110,13 @@ export {
   type GitRunnerOptions,
 } from "./workspace/git.js";
 export {
+  assignsLfsUnder,
+  attributesPlace,
+  lfsUnderRoot,
+  lfsUnderRootInTree,
+  pushLfsObjects,
+} from "./workspace/lfs.js";
+export {
   createMutex,
   createReadWriteLock,
   createWorkspaceLocks,

@@ -5,7 +5,8 @@
  */
 
 import { execFileSync, spawn } from "node:child_process";
-import { mkdirSync, mkdtempSync, writeFileSync, chmodSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync, chmodSync } from "node:fs";
 import http from "node:http";
 import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
@@ -19,13 +20,96 @@ export interface GitHost {
   authorizations: string[];
   /** Answer 403 to every push, as a read-only token gets. */
   readOnly: boolean;
+  /** Answer 500 to every LFS request, as a host whose LFS store is down. */
+  lfsFails: boolean;
+  /** Each LFS request, as "POST batch" or "PUT object". */
+  lfsRequests: string[];
   close(): Promise<void>;
+}
+
+/**
+ * The Git LFS API, in the layout that Git LFS uses for a local remote:
+ * `<bare>/lfs/objects/ab/cd/abcd…`.
+ */
+function serveLfs(
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+  bare: string,
+  target: string,
+  base: string,
+  host: { readOnly: boolean; lfsFails: boolean },
+): void {
+  if (host.lfsFails) {
+    res.writeHead(500, { "Content-Type": "application/vnd.git-lfs+json" });
+    res.end('{"message":"The LFS store is down."}');
+    return;
+  }
+  const file = (oid: string) => join(bare, "lfs", "objects", oid.slice(0, 2), oid.slice(2, 4), oid);
+
+  if (target !== "batch" && req.method === "GET") {
+    if (!existsSync(file(target))) {
+      res.writeHead(404);
+      res.end();
+      return;
+    }
+    res.writeHead(200, { "Content-Type": "application/octet-stream" });
+    res.end(readFileSync(file(target)));
+    return;
+  }
+
+  const chunks: Buffer[] = [];
+  req.on("data", (chunk: Buffer) => chunks.push(chunk));
+  req.on("end", () => {
+    const body = Buffer.concat(chunks);
+    if (target !== "batch") {
+      mkdirSync(join(file(target), ".."), { recursive: true });
+      writeFileSync(file(target), body);
+      res.writeHead(200);
+      res.end();
+      return;
+    }
+
+    const request = JSON.parse(body.toString()) as { operation: string; objects: Array<{ oid: string; size: number }> };
+    if (request.operation === "upload" && host.readOnly) {
+      res.writeHead(403, { "Content-Type": "application/vnd.git-lfs+json" });
+      // No message, so Git LFS uses its own words for a 403.
+      res.end("{}");
+      return;
+    }
+    const header = { Authorization: req.headers.authorization ?? "" };
+    const objects = request.objects.map(({ oid, size }) => {
+      const action = { href: `${base}/info/lfs/objects/${oid}`, header };
+      if (request.operation === "upload") return existsSync(file(oid)) ? { oid, size } : { oid, size, actions: { upload: action } };
+      return existsSync(file(oid))
+        ? { oid, size, actions: { download: action } }
+        : { oid, size, error: { code: 404, message: "Object does not exist" } };
+    });
+    res.writeHead(200, { "Content-Type": "application/vnd.git-lfs+json" });
+    res.end(JSON.stringify({ transfer: "basic", objects }));
+  });
+}
+
+/** The pointer that Git commits for `bytes`, and its object id. */
+export function lfsPointer(bytes: Buffer): { oid: string; pointer: string } {
+  const oid = createHash("sha256").update(bytes).digest("hex");
+  return { oid, pointer: `version https://git-lfs.github.com/spec/v1\noid sha256:${oid}\nsize ${bytes.length}\n` };
+}
+
+/** Puts `bytes` into the host's LFS store of `<name>.git`, as a push with Git LFS does. Returns the pointer. */
+export function storeLfsObject(host: GitHost, name: string, bytes: Buffer): string {
+  const { oid, pointer } = lfsPointer(bytes);
+  const target = join(host.bare(name), "lfs", "objects", oid.slice(0, 2), oid.slice(2, 4), oid);
+  mkdirSync(join(target, ".."), { recursive: true });
+  writeFileSync(target, bytes);
+  return pointer;
 }
 
 export async function startGitHost(token: string): Promise<GitHost> {
   const root = mkdtempSync(join(tmpdir(), "mica-git-host-"));
   const authorizations: string[] = [];
-  const host = { readOnly: false };
+  const lfsRequests: string[] = [];
+  const host = { readOnly: false, lfsFails: false };
+  let port = 0;
 
   const server = http.createServer((req, res) => {
     const auth = req.headers.authorization ?? "";
@@ -43,6 +127,13 @@ export async function startGitHost(token: string): Promise<GitHost> {
     if (host.readOnly && (url.pathname.endsWith("/git-receive-pack") || url.searchParams.get("service") === "git-receive-pack")) {
       res.writeHead(403);
       res.end("remote: You are not allowed to upload code.\n");
+      return;
+    }
+
+    const lfs = /^\/(.+\.git)\/info\/lfs\/objects\/(batch|[0-9a-f]{64})$/.exec(url.pathname);
+    if (lfs) {
+      lfsRequests.push(`${req.method} ${lfs[2] === "batch" ? "batch" : "object"}`);
+      serveLfs(req, res, join(root, lfs[1]!), lfs[2]!, `http://127.0.0.1:${port}/${lfs[1]}`, host);
       return;
     }
 
@@ -94,17 +185,24 @@ export async function startGitHost(token: string): Promise<GitHost> {
   });
 
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const { port } = server.address() as AddressInfo;
+  ({ port } = server.address() as AddressInfo);
 
   return {
     url: (name) => `http://127.0.0.1:${port}/${name}.git`,
     bare: (name) => join(root, `${name}.git`),
     authorizations,
+    lfsRequests,
     get readOnly() {
       return host.readOnly;
     },
     set readOnly(value: boolean) {
       host.readOnly = value;
+    },
+    get lfsFails() {
+      return host.lfsFails;
+    },
+    set lfsFails(value: boolean) {
+      host.lfsFails = value;
     },
     close: () => new Promise((resolve) => server.close(() => resolve())),
   };

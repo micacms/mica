@@ -100,7 +100,27 @@ describe("check", () => {
     assert.match(output, /ok {4}content root: content\n/);
     assert.match(output, /ok {4}data volume: writable, no clone yet/);
     assert.match(output, /ok {4}content model/);
+    assert.match(output, /ok {4}Git LFS: not used under the content root/);
     assert.match(output, /no clone yet/);
+  });
+
+  it("names the .gitattributes file that gives the content root to Git LFS", async () => {
+    seedRepository(host, "with-lfs", {
+      "content/.mica/schema.json": JSON.stringify(createManifest(defineSite({ collections: {} }), "test")),
+      "content/.gitattributes": "*.jpg filter=lfs diff=lfs merge=lfs -text\n",
+    });
+    const { output } = await check(
+      environment(mkdtempSync(join(tmpdir(), "mica-check-")), { MICA_REPOSITORY_URL: host.url("with-lfs") }),
+    );
+    assert.match(output, /(ok|FAIL) {2,4}Git LFS: content\/\.gitattributes assigns LFS under the content root/);
+  });
+
+  it("refuses a Git LFS URL that is not HTTPS", async () => {
+    const { code, output } = await check(
+      environment(mkdtempSync(join(tmpdir(), "mica-check-")), { MICA_GIT_LFS_URL: "ftp://example.com/lfs" }),
+    );
+    assert.equal(code, 78);
+    assert.match(output, /MICA_GIT_LFS_URL must be an https:\/\/ URL/);
   });
 
   it("names the failing check, without the token", async () => {

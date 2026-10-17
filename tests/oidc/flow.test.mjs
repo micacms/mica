@@ -249,3 +249,69 @@ describe("an admitted session", () => {
     assert.equal((await alice.api("/api/auth/me")).status, 401);
   });
 });
+
+/** A 1×1 PNG, with a tail that makes each copy a different LFS object. */
+const png = (tail) =>
+  Buffer.concat([
+    Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64"),
+    Buffer.from(tail),
+  ]);
+
+/** The blob that the branch holds at `path`: for an LFS file, its pointer. */
+async function committedBlob(path) {
+  const { sha } = await forgejo(`contents/${path}?ref=main`);
+  return Buffer.from((await forgejo(`git/blobs/${sha}`)).content, "base64").toString();
+}
+
+/** The file itself, from Forgejo's LFS store when the branch holds a pointer. */
+async function servedFile(path) {
+  const response = await fetch(`${FORGEJO}/media/${path}?ref=main`, { headers: { authorization: FORGEJO_AUTH } });
+  assert.equal(response.ok, true, `Forgejo: media/${path} answered ${response.status}`);
+  return Buffer.from(await response.arrayBuffer());
+}
+
+describe("Git LFS (the seed gives *.png to LFS)", () => {
+  it("publishes an uploaded image as a pointer, with the image in the LFS store", async () => {
+    const alice = new Browser();
+    await alice.signIn("alice@gmail.com");
+
+    const image = png(`uploaded ${Date.now()}`);
+    const uploaded = await alice.fetch(`${MICA}/api/admin/media?${new URLSearchParams({ name: "lfs-upload.png", accept: "image" })}`, {
+      method: "POST",
+      headers: { origin: MICA, "x-csrf-token": alice.cookies.get("mica_csrf"), "content-type": "application/octet-stream" },
+      body: image,
+    });
+    assert.equal(uploaded.status, 201, await uploaded.clone().text());
+    const { path } = (await uploaded.json()).items[0];
+
+    const status = await (await alice.api("/api/admin/changes")).json();
+    const paths = Object.fromEntries(status.changes.map((change) => [change.path, change.revision ?? null]));
+    const published = await alice.api("/api/admin/publish", { method: "POST", body: { message: "Add an image in LFS", paths } });
+    assert.equal(published.status, 200, await published.clone().text());
+    assert.equal((await published.json()).state, "published");
+
+    assert.match(await committedBlob(`content/${path}`), /^version https:\/\/git-lfs\.github\.com\/spec\/v1\n/);
+    assert.deepEqual(await servedFile(`content/${path}`), image);
+  });
+
+  it("brings an image that the website adds to LFS into Mica with a sync", async () => {
+    const alice = new Browser();
+    await alice.signIn("alice@gmail.com");
+
+    // Forgejo gives a file to LFS when its .gitattributes says so, as a push with Git LFS does.
+    const image = png(`upstream ${Date.now()}`);
+    const created = await fetch(`${FORGEJO}/contents/content/media/lfs-upstream.png`, {
+      method: "POST",
+      headers: { authorization: FORGEJO_AUTH, "content-type": "application/json" },
+      body: JSON.stringify({ branch: "main", message: "A developer adds an image", content: image.toString("base64") }),
+    });
+    assert.equal(created.status, 201, await created.text());
+    assert.match(await committedBlob("content/media/lfs-upstream.png"), /^version https:\/\/git-lfs/);
+
+    const synced = await (await alice.api("/api/admin/sync", { method: "POST" })).json();
+    assert.equal(synced.sync.error, null, JSON.stringify(synced.sync.error));
+    const served = await alice.api("/api/admin/media/file/media/lfs-upstream.png");
+    assert.equal(served.status, 200, await served.clone().text());
+    assert.deepEqual(Buffer.from(await served.arrayBuffer()), image);
+  });
+});
