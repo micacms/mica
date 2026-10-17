@@ -32,6 +32,7 @@ import { loadConfig } from "./config.js";
 import { hostGuard } from "./guards.js";
 import { lfsSetupProblem } from "./lfs.js";
 import { openInBrowser } from "./open.js";
+import { removeStaleTemporaries } from "./temporaries.js";
 
 async function main(): Promise<void> {
   let config;
@@ -69,6 +70,9 @@ async function main(): Promise<void> {
   }
 
   const schemaRevision = await files.revision(MANIFEST_PATH);
+
+  const removed = await removeStaleTemporaries(config.contentRoot);
+  if (removed.length > 0) logger.info("Removed temporary files of an earlier Mica", { paths: removed });
 
   const ctx = createRuntimeContext({
     config,

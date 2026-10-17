@@ -8,19 +8,18 @@ import { existsSync } from "node:fs";
 import { relative } from "node:path";
 
 import {
-  type AnyField,
   type ContentSource,
   declaresDocument,
   DOCUMENT_EXTENSION,
+  documentLinks,
   documentPath,
   entryDataPath,
   entryFolder,
   type FieldMap,
   INDEX_FILE,
+  isRecord,
   isValidSlug,
-  isWebAddress,
   MANIFEST_PATH,
-  markdocImages,
   needsRowKey,
   ORDER_FILE,
   readManifest,
@@ -31,8 +30,8 @@ import {
   readCollectionEntry,
   ROW_KEY,
   readSingleton,
-  resolveMarkdocTarget,
   resolveSlugField,
+  richTextLinks,
   type Site,
   validateFields,
 } from "@micacms/core/internal";
@@ -230,28 +229,15 @@ async function checkEntry(
   const raw = JSON.parse((await files.read(dataPath))!) as Record<string, unknown>;
   for (const message of unknownKeys(fields, raw, [])) warning(dataPath, message);
 
-  visit(fields, data, [], (field, value, path) => {
-    const key = path.join(".");
-    if (field.kind === "media") {
-      for (const file of list(mediaPaths(value))) {
-        let exists = false;
-        try {
-          exists = existsSync(within(root, file));
-        } catch {
-          // A path outside the content root does not exist for Mica.
-        }
-        if (!exists) error(dataPath, `${key}: the file "${file}" does not exist under the content root.`);
-      }
+  // The images in rich text are checked below, from each file that the website reads.
+  for (const link of documentLinks(fields, data, folder)) {
+    if (link.kind === "media" && !existsUnder(root, link.path)) {
+      error(dataPath, `${link.field}: the file "${link.path}" does not exist under the content root.`);
     }
-    if (field.kind === "relation") {
-      const known = slugs.get(field.collection);
-      for (const slug of list(value)) {
-        if (known && !known.has(slug)) {
-          error(dataPath, `${key}: there is no "${slug}" in "${field.collection}".`);
-        }
-      }
+    if (link.kind === "relation" && slugs.get(link.collection)?.has(link.slug) === false) {
+      error(dataPath, `${link.field}: there is no "${link.slug}" in "${link.collection}".`);
     }
-  });
+  }
 
   for (const item of await files.list(folder)) {
     if (item.type !== "file" || !item.name.endsWith(DOCUMENT_EXTENSION)) continue;
@@ -267,25 +253,22 @@ async function checkEntry(
     }
     const text = (await files.read(path)) ?? "";
     for (const message of markdocWarnings(text)) warning(path, message);
-    for (const target of markdocImages(text)) {
-      // An address on the web is the website's business, not a file in the content.
-      if (isWebAddress(target)) continue;
-      const file = resolveMarkdocTarget(target, folder);
-      if (file === null) {
-        error(path, `The image "${target}" is outside the content root.`);
-        continue;
-      }
-      let exists = false;
-      try {
-        exists = existsSync(within(root, file));
-      } catch {
-        // A path outside the content root does not exist for Mica.
-      }
-      if (exists) continue;
+    for (const link of richTextLinks(text, folder, "")) {
+      if (link.kind !== "image" || (link.path !== null && existsUnder(root, link.path))) continue;
+      if (link.path === null) error(path, `The image "${link.target}" is outside the content root.`);
       // A `/path` can be a file of the website, such as one in Astro's `public/` folder.
-      if (target.startsWith("/")) warning(path, `The image "${target}" is not under the content root. It works on the website only if it is in public/, and the editor cannot show it.`);
-      else error(path, `The image "${target}" does not exist under the content root.`);
+      else if (link.target.startsWith("/")) warning(path, `The image "${link.target}" is not under the content root. It works on the website only if it is in public/, and the editor cannot show it.`);
+      else error(path, `The image "${link.target}" does not exist under the content root.`);
     }
+  }
+}
+
+/** Whether a file exists under the content root. A path outside it does not exist for Mica. */
+function existsUnder(root: string, path: string): boolean {
+  try {
+    return existsSync(within(root, path));
+  } catch {
+    return false;
   }
 }
 
@@ -308,37 +291,6 @@ export function markdocWarnings(source: string): string[] {
   }
   if (/\[\^[^\]]+\]/.test(prose)) messages.push("Footnotes ([^1]) are not Markdoc: they render as plain text.");
   return messages;
-}
-
-/** The paths of a media value: a path, `{ path, alt }`, or a list of either. */
-function mediaPaths(value: unknown): unknown[] {
-  const values = Array.isArray(value) ? value : [value];
-  return values.map((item) => (item !== null && typeof item === "object" ? (item as { path?: unknown }).path : item));
-}
-
-function list(value: unknown): string[] {
-  const values = Array.isArray(value) ? value : [value];
-  return values.filter((item): item is string => typeof item === "string" && item !== "");
-}
-
-/** Calls `onField` for every field with a value, nested fields included. */
-function visit(
-  fields: FieldMap,
-  data: Record<string, unknown>,
-  path: PathSegment[],
-  onField: (field: AnyField, value: unknown, path: PathSegment[]) => void,
-): void {
-  for (const [key, field] of Object.entries(fields)) {
-    const value = data[key];
-    if (value === undefined || value === null) continue;
-    onField(field, value, [...path, key]);
-    if (field.kind === "object" && isRecord(value)) visit(field.fields, value, [...path, key], onField);
-    if (field.kind === "repeater" && Array.isArray(value)) {
-      value.forEach((row, index) => {
-        if (isRecord(row)) visit(field.fields, row, [...path, key, index], onField);
-      });
-    }
-  }
 }
 
 /**
@@ -371,10 +323,6 @@ function unknownKeys(fields: FieldMap, raw: Record<string, unknown>, path: PathS
     }
   }
   return messages;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 /** The report as a person or an agent reads it. */

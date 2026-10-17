@@ -12,7 +12,7 @@ import { isRowKey, ROW_KEY } from "./row-key.js";
 import type { AnyField, FieldMap } from "./types.js";
 
 /** The value of a field that holds nothing. */
-export function emptyValue(field: AnyField): unknown {
+function emptyValue(field: AnyField): unknown {
   switch (field.kind) {
     case "boolean":
       return false;
@@ -31,7 +31,7 @@ export function emptyValue(field: AnyField): unknown {
 }
 
 /** A new entry's value for a field: its default, or its empty value. */
-export function defaultValue(field: AnyField): unknown {
+function defaultValue(field: AnyField): unknown {
   switch (field.kind) {
     case "object":
       return defaultValues(field.fields);

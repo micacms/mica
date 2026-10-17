@@ -4,10 +4,9 @@
  * is an entry that nobody wrote. The groups match the Publish page.
  */
 
-import { readOnlyParts, type Site } from "@micacms/core/internal";
+import { ownerOfPath, readOnlyParts, type Site } from "@micacms/core/internal";
 import {
   ApiError,
-  classifyPath,
   describeProblems,
   flattenProblems,
   groupOf,
@@ -21,7 +20,7 @@ import type { ContentGroup } from "./managed.js";
 
 export function contentGroups(model: Site): (path: string) => ContentGroup {
   return (path) => {
-    const owner = classifyPath(model, path);
+    const owner = ownerOfPath(model, path);
     const key = groupOf(owner, path);
     switch (owner.kind) {
       case "entry":

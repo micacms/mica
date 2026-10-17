@@ -5,7 +5,7 @@
  * paths with these same rules.
  */
 
-import type { FieldMap, RichTextFeature, RichTextToolbar } from "./types.js";
+import type { RichTextFeature, RichTextToolbar } from "./types.js";
 
 /** The features of each toolbar preset. */
 export const RICH_TEXT_TOOLBARS: Record<Exclude<RichTextToolbar, RichTextFeature[]>, readonly RichTextFeature[]> = {
@@ -18,31 +18,6 @@ export const RICH_TEXT_TOOLBARS: Record<Exclude<RichTextToolbar, RichTextFeature
 export function richTextFeatures(toolbar: RichTextToolbar | undefined): readonly RichTextFeature[] {
   if (toolbar === undefined) return RICH_TEXT_TOOLBARS.default;
   return typeof toolbar === "string" ? RICH_TEXT_TOOLBARS[toolbar] : toolbar;
-}
-
-/** Every rich-text value in a payload with its dotted field path, nested fields included. */
-export function richTextDocuments(fields: FieldMap, data: Record<string, unknown>): Array<{ field: string; text: string }> {
-  const found: Array<{ field: string; text: string }> = [];
-  const isRecord = (value: unknown): value is Record<string, unknown> =>
-    value !== null && typeof value === "object" && !Array.isArray(value);
-  const visit = (map: FieldMap, record: Record<string, unknown>, prefix: string) => {
-    for (const [key, field] of Object.entries(map)) {
-      const value = record[key];
-      const here = prefix ? `${prefix}.${key}` : key;
-      if (field.kind === "richText" && typeof value === "string") found.push({ field: here, text: value });
-      else if (field.kind === "object" && isRecord(value)) visit(field.fields, value, here);
-      else if (field.kind === "repeater" && Array.isArray(value)) {
-        value.forEach((row, index) => isRecord(row) && visit(field.fields, row, `${here}.${index}`));
-      }
-    }
-  };
-  visit(fields, data, "");
-  return found;
-}
-
-/** Every rich-text value in a payload, nested fields included. */
-export function richTextValues(fields: FieldMap, data: Record<string, unknown>): string[] {
-  return richTextDocuments(fields, data).map((document) => document.text);
 }
 
 /**

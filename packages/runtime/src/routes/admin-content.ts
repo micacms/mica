@@ -26,6 +26,14 @@ const saveSchema = z.object({
   updateLinks: z.boolean().optional(),
 });
 
+const singletonSchema = z.object({
+  data: z.record(z.string(), z.unknown()),
+  /** The revision the editor opened; absent writes unconditionally. */
+  revision: z.string().nullable().optional(),
+  /** The editor saw that a colleague saved since, and chose to save over it. Logged. */
+  keepMine: z.boolean().optional(),
+});
+
 const reorderSchema = z.object({
   slugs: z.array(z.string().min(1)).max(2000),
   /** The revision of the order the editor saw; `null`: the collection had no order file. */
@@ -48,18 +56,13 @@ export function adminContentRoutes(): Hono<Env> {
 
     // Before the list: the revision is never newer than the order the editor sees.
     const orderRevision = await content.orderRevision(collection);
-    const entries = await content.list(collection);
-    const search = c.req.query("search")?.trim().toLowerCase();
-
-    const items = entries
+    const items = (await content.list(collection))
       .map((entry): EntrySummary => ({
         slug: entry.slug,
         position: entry.position,
         title: entryTitle(def, entry.data),
         data: entry.data,
       }))
-      // Content trees are small, so an in-memory substring match is sufficient.
-      .filter((item) => !search || JSON.stringify(item.data).toLowerCase().includes(search))
       .sort(compareEntries(def));
 
     return c.json({ items, total: items.length, orderRevision });
@@ -174,12 +177,13 @@ export function adminContentRoutes(): Hono<Env> {
 
   app.put("/singletons/:name", async (c) => {
     const { content } = c.get("ctx").services;
-    const body = (await jsonBody(c)) as { data?: unknown; revision?: string | null; keepMine?: boolean };
+    const parsed = singletonSchema.safeParse(await jsonBody(c));
+    if (!parsed.success) throw badRequest("The settings payload is malformed.");
 
-    const saved = await content.saveSingleton(c.req.param("name"), body?.data ?? {}, {
-      expectedRevision: body?.revision,
+    const saved = await content.saveSingleton(c.req.param("name"), parsed.data.data, {
+      expectedRevision: parsed.data.revision,
     });
-    if (body?.keepMine === true) {
+    if (parsed.data.keepMine === true) {
       c.get("ctx").logger.info("Kept own version over a newer save", { singleton: c.req.param("name"), editor: editorOf(c) });
     }
 

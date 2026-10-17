@@ -9,7 +9,6 @@ import { createHash } from "node:crypto";
 import {
   type Collection,
   collectionSlugs,
-  collectReferences,
   type ContentEntry,
   ContentPathError,
   declaresDocument,
@@ -25,17 +24,14 @@ import {
   INDEX_FILE,
   isValidSlug,
   mapMedia,
-  markdocTargets,
   ORDER_FILE,
   readCollection,
   readCollectionEntry,
   readSingleton,
   relativizeMedia,
   relinkReferences,
-  resolveMarkdocTarget,
   resolveSlugField,
   resolveTitleField,
-  richTextValues,
   serializeEntry,
   type Singleton,
   type Site,
@@ -44,6 +40,8 @@ import {
 } from "@micacms/core/internal";
 
 import { ConflictError, FilesError, type ContentFiles, type FileChange } from "../workspace/files.js";
+import { fileUses, type Referrer } from "./links.js";
+import { linkingDocuments, moveFiles, relinkedFiles, renameInOrder, stagedUploads, storedData } from "./url-change.js";
 
 export class ContentError extends FilesError {
   override name = "ContentError";
@@ -79,10 +77,7 @@ export interface SaveEntryInput {
   updateLinks?: boolean;
 }
 
-/** An entry or settings page that links to an entry. `readOnly`: this build cannot change its links. */
-export type Referrer =
-  | { kind: "entry"; collection: string; slug: string; title: string; readOnly?: true }
-  | { kind: "singleton"; name: string; title: string; readOnly?: true };
+export type { Referrer } from "./links.js";
 
 export interface SavedEntry {
   slug: string;
@@ -156,17 +151,6 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     return changes;
   };
 
-  /** The entry's `index.json` as it is now, whose undeclared keys a save keeps; empty without one. */
-  const storedData = async (folder: string): Promise<Record<string, unknown>> => {
-    try {
-      const value: unknown = JSON.parse((await workspace.read(`${folder}/${INDEX_FILE}`)) ?? "{}");
-      return value !== null && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
-    } catch {
-      // Not JSON: the save replaces it, as before.
-      return {};
-    }
-  };
-
   /**
    * The entry's revision after a write. Throws when the entry is absent,
    * because an empty token could never match.
@@ -225,102 +209,6 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       throw new ConflictError("This content changed after you opened it. Reload to see the current version.", [dataFile]);
     }
     return files === null ? { [dataFile]: null } : Object.fromEntries(files);
-  };
-
-  /**
-   * The order file with a renamed slug in its old place, so the entry does not
-   * drop to the end of the list.
-   */
-  const renameInOrder = async (name: string, from: string, to: string): Promise<FileChange | null> => {
-    const path = `${name}/${ORDER_FILE}`;
-    const raw = await workspace.read(path);
-    if (raw === null) return null;
-
-    let listed: unknown;
-    try {
-      listed = JSON.parse(raw);
-    } catch {
-      // Reading the collection reports a malformed order file; a save need not.
-      return null;
-    }
-    if (!Array.isArray(listed) || !listed.includes(from)) return null;
-
-    const order = listed.map((slug: unknown) => (slug === from ? to : slug));
-    return { type: "write", path, contents: `${JSON.stringify(order, null, 2)}\n` };
-  };
-
-  /** Entries and settings pages whose relations point at `collection`/`slug`, with what a relink needs. */
-  const referrers = async (collection: string, slug: string) => {
-    const found: Array<{
-      referrer: Referrer;
-      fields: FieldMap;
-      folder: string;
-      /** Reads the data again, so that a relink starts from what is on disk now. */
-      read: () => Promise<Record<string, unknown> | null>;
-    }> = [];
-    const readOnlyMark = (key: string) => (readOnly.has(key) ? { readOnly: true as const } : {});
-    const points = (fields: FieldMap, data: Record<string, unknown>) =>
-      collectReferences(fields, data).some(
-        (reference) => reference.kind === "relation" && reference.collection === collection && reference.slug === slug,
-      );
-
-    for (const [name, def] of Object.entries(site.collections)) {
-      if (!linksTo(def.fields, collection)) continue;
-      for (const entry of await readCollection(workspace, def, name)) {
-        if (!points(def.fields, entry.data)) continue;
-        found.push({
-          referrer: {
-            kind: "entry",
-            collection: name,
-            slug: entry.slug,
-            title: entryTitle(def, entry.data),
-            ...readOnlyMark(`collections.${name}`),
-          },
-          fields: def.fields,
-          folder: entryFolder(name, entry.slug),
-          read: () => readCollectionEntry(workspace, def, name, entry.slug),
-        });
-      }
-    }
-    for (const [name, def] of Object.entries(site.singletons)) {
-      if (!linksTo(def.fields, collection)) continue;
-      const data = await readSingleton(workspace, def, name);
-      if (!data || !points(def.fields, data)) continue;
-      found.push({
-        referrer: { kind: "singleton", name, title: def.label, ...readOnlyMark(`singletons.${name}`) },
-        fields: def.fields,
-        folder: entryFolder(name),
-        read: () => readSingleton(workspace, def, name),
-      });
-    }
-    return found;
-  };
-
-  /**
-   * Files that a new entry uses from `<collection>/<other slug>/media/`:
-   * uploads made before the URL was final. Each gets a free name in the
-   * entry's own `media/` folder. From a folder where no entry lives they move;
-   * from another entry's folder (a colleague saved that URL first) they are
-   * copied, because that entry may use them too.
-   */
-  const stagedUploads = async (def: Collection, collection: string, data: Record<string, unknown>, base: string) => {
-    const moves: Array<{ from: string; to: string; keep: boolean }> = [];
-    const taken = new Set((await workspace.list(`${base}/media`)).map((item) => item.name));
-    for (const reference of collectReferences(def.fields, data)) {
-      if (reference.kind !== "media") continue;
-      const match = /^([^/]+)\/([^/]+)\/media\/([^/]+)$/.exec(reference.path);
-      if (!match || match[1] !== collection || `${collection}/${match[2]}` === base) continue;
-      if (moves.some((move) => move.from === reference.path)) continue;
-      const keep = (await workspace.read(entryDataPath(collection, match[2]!))) !== null;
-      if ((await workspace.stat(reference.path)) === null) continue;
-      const extension = match[3]!.includes(".") ? match[3]!.slice(match[3]!.lastIndexOf(".")) : "";
-      const stem = match[3]!.slice(0, match[3]!.length - extension.length);
-      let name = match[3]!;
-      for (let n = 2; taken.has(name); n += 1) name = `${stem}-${n}${extension}`;
-      taken.add(name);
-      moves.push({ from: reference.path, to: `${base}/media/${name}`, keep });
-    }
-    return moves;
   };
 
   /** Whether an entry has this URL: its data file exists. A folder with only uploads is not one. */
@@ -391,7 +279,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       data[slugKey] = slug;
       const base = entryFolder(collectionName, slug);
       // A new entry's uploads went into the folder of the URL it had then.
-      const staged = input.slug === undefined ? await stagedUploads(def, collectionName, data, base) : [];
+      const staged = input.slug === undefined ? await stagedUploads(workspace, def, collectionName, data, base) : [];
       if (staged.length > 0) {
         const moved = new Map(staged.map((item) => [item.from, item.to]));
         Object.assign(data, mapMedia(def.fields, data, (value) => (typeof value === "string" ? (moved.get(value) ?? value) : value)));
@@ -407,7 +295,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       const serialized = serializeEntry(
         def.fields,
         relativizeMedia(def.fields, data, previousBase ?? base),
-        await storedData(previousBase ?? base),
+        await storedData(workspace, previousBase ?? base),
       );
       const files = entryFiles(base, serialized);
 
@@ -425,36 +313,23 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
         // The copies first: they read from the old folder.
         await moveFiles(workspace, def.fields, previousBase, base, changes);
         changes.push({ type: "deleteTree", path: previousBase });
-        const order = await renameInOrder(collectionName, input.slug!, slug);
+        const order = await renameInOrder(workspace, collectionName, input.slug!, slug);
         if (order) changes.push(order);
       } else {
         changes.push(...(await staleDocuments(def.fields, base, new Set(Object.keys(serialized.documents)))));
       }
 
-      // Only the data file of each referrer changes; its rich text and media stay as they are.
-      // A read-only part is left alone: this build may not write it.
-      let relinked = 0;
+      // The other documents that link here follow too; the entry itself followed above.
       const referrerRevisions: Record<string, string | null> = {};
       if (previousLinks(input, slug)) {
-        for (const found of await referrers(collectionName, input.slug!)) {
-          if (found.referrer.readOnly) continue;
-          if (found.referrer.kind === "entry" && found.referrer.collection === collectionName && found.referrer.slug === input.slug) continue;
-          // The revision before the read: a save in between makes the write refuse, not overwrite it.
-          const dataFile = `${found.folder}/${INDEX_FILE}`;
-          const revision = await workspace.revision(dataFile);
-          const current = await found.read();
-          const next = current && relinkReferences(found.fields, current, collectionName, input.slug!, slug);
-          if (!next) continue;
-          const { data: contents } = serializeEntry(
-            found.fields,
-            relativizeMedia(found.fields, next, found.folder),
-            await storedData(found.folder),
-          );
-          changes.push({ type: "write", path: dataFile, contents });
-          referrerRevisions[dataFile] = revision;
-          relinked += 1;
-        }
+        const linking = (await linkingDocuments(site, workspace, readOnly, collectionName, input.slug!)).filter(
+          ({ referrer }) => !(referrer.kind === "entry" && referrer.collection === collectionName && referrer.slug === input.slug),
+        );
+        const relinks = await relinkedFiles(workspace, linking, collectionName, input.slug!, slug);
+        changes.push(...relinks.changes);
+        Object.assign(referrerRevisions, relinks.revisions);
       }
+      const relinked = Object.keys(referrerRevisions).length;
 
       const title = entryTitle(def, data);
       const expected = await expectDocument(input.expectedRevision, previousBase ?? base);
@@ -499,7 +374,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       const data = validate(def, payload, `The "${def.label}" settings`);
 
       const base = entryFolder(name);
-      const serialized = serializeEntry(def.fields, relativizeMedia(def.fields, data, base), await storedData(base));
+      const serialized = serializeEntry(def.fields, relativizeMedia(def.fields, data, base), await storedData(workspace, base));
 
       const changes: FileChange[] = Object.entries(entryFiles(base, serialized)).map(
         ([path, contents]) => ({ type: "write", path, contents }),
@@ -554,49 +429,15 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
      * Where each file is used: in a media field, or as an image or a link in rich
      * text. A file that something uses is not deleted.
      */
-    async mediaUses(paths: string[]): Promise<{ uses: Record<string, Referrer[]>; unreadable: string[] }> {
-      const wanted = new Set(paths);
-      /** Collections and settings that could not be read: a use there cannot be ruled out. */
-      const unreadable: string[] = [];
-      const uses: Record<string, Referrer[]> = Object.fromEntries(paths.map((path) => [path, []]));
-      const check = (referrer: Referrer, fields: FieldMap, data: Record<string, unknown>, folder: string) => {
-        const found = new Set<string>();
-        for (const reference of collectReferences(fields, data)) {
-          if (reference.kind === "media" && wanted.has(reference.path)) found.add(reference.path);
-        }
-        for (const text of richTextValues(fields, data)) {
-          for (const target of markdocTargets(text)) {
-            const path = resolveMarkdocTarget(target, folder);
-            if (path && wanted.has(path)) found.add(path);
-          }
-        }
-        for (const path of found) uses[path]!.push(referrer);
-      };
-
-      for (const [name, def] of Object.entries(site.collections)) {
-        const entries = await readCollection(workspace, def, name).catch(() => null);
-        if (!entries) {
-          unreadable.push(def.label);
-          continue;
-        }
-        for (const entry of entries) {
-          check({ kind: "entry", collection: name, slug: entry.slug, title: entryTitle(def, entry.data) }, def.fields, entry.data, entryFolder(name, entry.slug));
-        }
-      }
-      for (const [name, def] of Object.entries(site.singletons)) {
-        const data = await readSingleton(workspace, def, name).catch(() => undefined);
-        if (data === undefined) unreadable.push(def.label);
-        if (!data) continue;
-        check({ kind: "singleton", name, title: def.label }, def.fields, data, entryFolder(name));
-      }
-      return { uses, unreadable };
+    mediaUses(paths: string[]): Promise<{ uses: Record<string, Referrer[]>; unreadable: string[] }> {
+      return fileUses(site, workspace, paths);
     },
 
     /** Entries and settings pages that link to `slug`: the warning before a delete or a URL change. */
     async findReferences(collectionName: string, slug: string): Promise<Referrer[]> {
       requireCollection(collectionName);
       existingSlug(collectionName, slug);
-      return (await referrers(collectionName, slug)).map((found) => found.referrer);
+      return (await linkingDocuments(site, workspace, readOnly, collectionName, slug)).map((found) => found.referrer);
     },
   };
 }
@@ -606,15 +447,6 @@ export type ContentStore = ReturnType<typeof createContentStore>;
 /** Whether a save is a URL change whose links should follow. */
 function previousLinks(input: SaveEntryInput, slug: string): boolean {
   return input.updateLinks === true && input.slug !== undefined && input.slug !== slug;
-}
-
-/** Whether a field map has a relation to `collection`, nested fields included. */
-function linksTo(fields: FieldMap, collection: string): boolean {
-  return Object.values(fields).some(
-    (field) =>
-      (field.kind === "relation" && field.collection === collection) ||
-      ((field.kind === "object" || field.kind === "repeater") && linksTo(field.fields, collection)),
-  );
 }
 
 /** The slug from the payload's slug field, or one derived from the title. */
@@ -642,31 +474,4 @@ function pickSlug(
   }
 
   return normalised === current ? current : normalised;
-}
-
-/**
- * Copies the files of a renamed entry that the save does not write: its media,
- * and files that the model does not declare. The caller deletes the old folder.
- */
-async function moveFiles(
-  files: ContentFiles,
-  fields: FieldMap,
-  from: string,
-  to: string,
-  changes: FileChange[],
-): Promise<void> {
-  const walk = async (dir: string): Promise<void> => {
-    for (const item of await files.list(`${from}${dir}`)) {
-      const relative = `${dir}/${item.name}`;
-      if (item.type === "directory") {
-        await walk(relative);
-        continue;
-      }
-      // Written by the save from the data: `index.json`, and the rich text that the model declares.
-      if (relative === `/${INDEX_FILE}`) continue;
-      if (dir === "" && item.name.endsWith(DOCUMENT_EXTENSION) && declaresDocument(fields, documentPath(item.name))) continue;
-      changes.push({ type: "copy", from: `${from}${relative}`, path: `${to}${relative}` });
-    }
-  };
-  await walk("");
 }

@@ -196,7 +196,7 @@ function shellWord(word: string): string {
 }
 
 /** The trailer that marks a commit that Mica made for a publication. */
-export const PUBLISHED_WITH_MICA = "Published-with: Mica";
+const PUBLISHED_WITH_MICA = "Published-with: Mica";
 
 /** A publication's commit message: the editor's summary, and Mica's trailer. */
 export function publicationMessage(summary: string): string {
@@ -296,16 +296,43 @@ export function overlaySource(base: ContentSource, top: ContentSource, paths: It
  * an upload, or what a save put aside. Seen during a save or after a crash.
  * Never content.
  */
-const TEMPORARY_FILE = /\.mica-\d+-\d+(?:\/|$)/;
+const TEMPORARY_FILE = /^(.*?\.mica-(\d+)-\d+)(?:\/|$)/;
+
+/** The temporary file or folder that `path` is or is in, with the process that made it; null for content. */
+export function temporaryOf(path: string): { path: string; pid: number } | null {
+  const match = TEMPORARY_FILE.exec(path);
+  return match ? { path: match[1]!, pid: Number(match[2]) } : null;
+}
+
+/** One record of `git status --porcelain=v1 -z`, with paths from the repository root. */
+export interface StatusEntry {
+  /** The status in the index and in the working tree, such as `?` or `M`. */
+  x: string;
+  y: string;
+  path: string;
+  /** The source path of a rename or a copy. */
+  from?: string;
+}
+
+/** Parses `git status --porcelain=v1 -z`. `-z` never changes a path; a rename or a copy has its source in the next field. */
+export function parseStatusEntries(raw: string): StatusEntry[] {
+  const fields = raw.split("\0").filter((field) => field !== "");
+  const entries: StatusEntry[] = [];
+  for (let at = 0; at < fields.length; at += 1) {
+    const field = fields[at]!;
+    const entry: StatusEntry = { x: field[0] ?? " ", y: field[1] ?? " ", path: field.slice(3) };
+    if (entry.x === "R" || entry.x === "C") entry.from = fields[++at]!;
+    entries.push(entry);
+  }
+  return entries;
+}
 
 /**
- * Parses `git status --porcelain=v1 -z` into content-root-relative changes.
- * `-z` never changes a path; a rename is two fields and becomes a create and a
- * delete. `.mica/` is excluded: the developer commits the manifest, and the
- * drift check guards model changes.
+ * The changes in `git status --porcelain=v1 -z`, relative to the content root.
+ * A rename becomes a create and a delete. `.mica/` is excluded: the developer
+ * commits the manifest, and the drift check guards model changes.
  */
 export function parseStatus(raw: string, prefix: string): TreeChange[] {
-  const fields = raw.split("\0").filter((field) => field !== "");
   const changes: TreeChange[] = [];
 
   const push = (
@@ -315,7 +342,7 @@ export function parseStatus(raw: string, prefix: string): TreeChange[] {
   ) => {
     const path = relativeToContent(repoPath, prefix);
     if (path === null || path === ".mica" || path.startsWith(".mica/")) return;
-    if (TEMPORARY_FILE.test(path)) return;
+    if (temporaryOf(path)) return;
     changes.push({
       path,
       kind,
@@ -324,40 +351,52 @@ export function parseStatus(raw: string, prefix: string): TreeChange[] {
     });
   };
 
-  for (let at = 0; at < fields.length; at += 1) {
-    const field = fields[at]!;
-    const x = field[0] ?? " ";
-    const y = field[1] ?? " ";
-    const repoPath = field.slice(3);
-
+  for (const { x, y, path, from } of parseStatusEntries(raw)) {
     if (x === "?" && y === "?") {
-      push(repoPath, "create", { untracked: true });
+      push(path, "create", { untracked: true });
       continue;
     }
 
     // A merge conflict state, whatever the tree holds.
     if (x === "U" || y === "U" || (x === "A" && y === "A") || (x === "D" && y === "D")) {
-      push(repoPath, "update", { conflicted: true });
+      push(path, "update", { conflicted: true });
       continue;
     }
 
     if (x === "R" || x === "C") {
-      // The next field is the source path; only a rename deletes it.
-      const from = fields[++at]!;
-      push(repoPath, "create");
-      if (x === "R") push(from, "delete");
+      // Only a rename deletes its source.
+      push(path, "create");
+      if (x === "R" && from !== undefined) push(from, "delete");
       continue;
     }
 
     if (x === "D" || y === "D") {
-      push(repoPath, "delete");
+      push(path, "delete");
       continue;
     }
 
-    push(repoPath, x === "A" ? "create" : "update");
+    push(path, x === "A" ? "create" : "update");
   }
 
   return changes;
+}
+
+/**
+ * The temporary files and folders under the content root (`temporaryOf`),
+ * from the content root, untracked ones included.
+ */
+export async function listTemporaries(tree: GitTree): Promise<Array<{ path: string; pid: number }>> {
+  const raw = await tree.git.run(
+    [LITERAL, "status", "--porcelain=v1", "-z", "-uall", "--no-renames", "--", tree.prefix === "" ? "." : tree.prefix],
+    { env: { GIT_OPTIONAL_LOCKS: "0" } },
+  );
+  const found = new Map<string, number>();
+  for (const { path } of parseStatusEntries(raw)) {
+    const inContent = relativeToContent(path, tree.prefix);
+    const temporary = inContent === null ? null : temporaryOf(inContent);
+    if (temporary) found.set(temporary.path, temporary.pid);
+  }
+  return [...found].map(([path, pid]) => ({ path, pid }));
 }
 
 function relativeToContent(repoPath: string, prefix: string): string | null {

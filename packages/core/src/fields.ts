@@ -41,7 +41,7 @@ import type {
  * below is what keeps this list honest: adding a kind to the union without
  * adding it here stops compiling.
  */
-export const FIELD_KINDS = [
+const FIELD_KINDS = [
   "text",
   "textarea",
   "richText",

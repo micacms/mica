@@ -8,7 +8,7 @@ import { existsSync } from "node:fs";
 import { mkdir, readFile, readdir, rm, writeFile, rename } from "node:fs/promises";
 import { basename, join } from "node:path";
 
-import { ConfigError, gitRunner, type GitRunner, type Logger } from "@micacms/runtime";
+import { ConfigError, gitRunner, temporaryOf, type GitRunner, type Logger } from "@micacms/runtime";
 
 import { contentRootAt } from "./content-root.js";
 import { writeIsolationAttributes } from "./isolation.js";
@@ -278,8 +278,8 @@ async function recover(git: GitRunner, options: OpenCloneOptions, root: string):
 
   // Temporary files and folders of a save that a crash interrupted.
   for (const path of await draftPaths(git, root)) {
-    const temporary = /^(.*?\.mica-\d+-\d+)(?:\/|$)/.exec(path);
-    if (temporary) await rm(join(layout.repositoryDir, temporary[1]!), { recursive: true, force: true });
+    const temporary = temporaryOf(path);
+    if (temporary) await rm(join(layout.repositoryDir, temporary.path), { recursive: true, force: true });
   }
 }
 

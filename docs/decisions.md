@@ -977,7 +977,7 @@ source. A change to the editor UI records its change file for
 **Why:** all packages share one lockstep version, so a public `runtime` would
 turn every refactor of its helpers into a major for every package, `core`
 included. Adopters lose data when the format or the image contract breaks, not
-when `classifyPath` changes; a small surface puts the stability work there, and
+when `analyseChanges` changes; a small surface puts the stability work there, and
 it is what one maintainer can keep.
 
 **Consequence:** npm has no "internal" flag. An internal package at 1.4.0 looks
@@ -1830,6 +1830,16 @@ deletion is slow; then index the references.
 
 **Built in 0.6 (#69, #111).**
 
+**Changed in 0.11 (#224):** one rule finds the links of a document:
+`documentLinks` in core gives its relations, its media fields, and the images
+and links to content files in its rich text. The reference check, the media
+uses, the removal check, the Publish needs and `mica check` all use it. A link
+in rich text to a new file, such as a new PDF in the shared folder, is a need:
+Publish takes the file along. A deletion of a file that rich text links to is
+refused like one that a media field uses, and so is a deletion of an entry
+whose media another document uses. A link in rich text to a file that does not
+exist is not a problem: `/about` can be a page of the website.
+
 **Changed in 0.7.0 (#70):** when the URL in an entry's form differs from the
 saved one, the entry page names the entries and settings pages that link to it
 and offers "Update their links when I save" (on by default). The save then
@@ -1989,9 +1999,8 @@ its note.
 
 **Decided:** the Media view deletes a file, or a selection of files, when no
 entry and no settings page uses it: not in a media field, and not as an image
-or a link in rich text (`mediaUses` in the content store; a rich-text target
-starting with `/` is from the content root, others from the document's
-folder). A used file is refused, with the entries and pages that use it. The
+or a link in rich text (`documentLinks` in core; a rich-text target starting
+with `/` is from the content root, others from the document's folder). A used file is refused, with the entries and pages that use it. The
 delete is a pending change: Publish removes the file from the website, and
 Discard on the Publish page brings it back. The log names who deleted.
 
@@ -2002,11 +2011,10 @@ gone, so the editor first removes it there.
 **Consequence:** each check reads every entry and settings page once. That is
 fine at the stated scale, and the read budgets (#72) cover it. Only files in a
 `media/` folder can be deleted here. When a collection cannot be read, the
-delete is refused, because a use there cannot be ruled out. Two gaps stay: the
-check at Publish reads fields, not rich text, so a file that a save starts to
-use in rich text after the check can still be published as deleted; and rich
-text is scanned for links, images, references and tag attributes, not for a
-path written another way.
+delete is refused, because a use there cannot be ruled out. Since 0.11 (#224)
+the check at Publish reads rich text too. One gap stays: rich text is scanned
+for links, images, references and tag attributes, not for a path written
+another way.
 
 **What would change it:** a site large enough that the scan is slow; then an
 index of references, as for the check at Publish.
@@ -2073,7 +2081,9 @@ a counting Git runner):
   and the dimensions. The file route streams. A URL change copies the media on
   disk, and a save puts what it overwrites or deletes aside under a temporary
   name, not in memory, to undo a failure. A save returns the revision that it
-  reads under its own write lock.
+  reads under its own write lock. A temporary file is named
+  `*.mica-<pid>-<n>`; at start, the self-hosted Mica removes all of them, and
+  the local editor removes those of a process that no longer runs (#224).
 
 **Why:** 0.5 took the network out of reads, but opening one entry still read
 its whole collection, and the media list read every image. At a few hundred
