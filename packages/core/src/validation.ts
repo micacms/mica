@@ -223,7 +223,12 @@ function innerSchema(
         const range = `${name}: the ${word} must be between -${limit} and ${limit}.`;
         return z.number({ error: `${name}: the ${word} must be a number.` }).min(-limit, { error: range }).max(limit, { error: range });
       };
-      return z.object({ lat: axis("latitude", 90), lng: axis("longitude", 180) }, { error: `${name} needs a latitude and a longitude.` });
+      const zoomRange = `${name}: the zoom must be between 0 and 22.`;
+      const zoom = z.number({ error: `${name}: the zoom must be a number.` }).min(0, { error: zoomRange }).max(22, { error: zoomRange });
+      return z.object(
+        { lat: axis("latitude", 90), lng: axis("longitude", 180), zoom: zoom.optional() },
+        { error: `${name} needs a latitude and a longitude.` },
+      );
     }
 
     case "media": {

@@ -777,7 +777,10 @@ and a host is an origin, without a path. The origin of the style is always a
 host. The editor shows the map below the two inputs, with MapLibre GL JS. A
 click sets the point, the pin can be dragged, and the scroll wheel zooms only
 with Ctrl or ⌘. The inputs, the paste and the OpenStreetMap link stay. They are
-the way to enter a value with the keyboard.
+the way to enter a value with the keyboard. A field with a map also stores the
+zoom of the map, in whole steps from 0 to 22: `{ lat, lng, zoom }`. A click, a
+drag or a zoom by the editor changes it; typing a place keeps it. The key is
+optional, so a value without it stays valid.
 
 The editor's Content-Security-Policy changes only when the model has a map.
 Then it adds the hosts to `img-src` and `connect-src`, and `blob:` to
@@ -815,6 +818,36 @@ file.
 **1.0 status:** accepted for 1.0. Built in 0.11 (#278). It replaces "No map
 widget in the admin" (two inputs, the paste and a link to OpenStreetMap; its
 trigger was more than about 20 located entries).
+
+---
+
+### P2 — Website components have no styles, and live in `@micacms/astro/components`
+
+**Decided:** components for the values of a model ship as Astro components in
+`@micacms/astro/components`, not as a package of their own. They add no CSS:
+a site gives them their size and look with `class` or `style`. A library that a
+component needs, such as `maplibre-gl` for `<LocationMap>`, is an optional peer
+dependency: a site installs it only when it uses the component. The first
+component is `<LocationMap place={entry.data.location} />`. It shows the stored
+zoom, else its `zoom` prop, else 14, and loads MapLibre only when the map comes
+near the screen. Until then, and without JavaScript, it holds a link to the
+place on OpenStreetMap. `mapView()` of `@micacms/astro` gives the same view
+for a site that draws its own map.
+
+**Why:** each site would write the same map code, with the same pitfalls: the
+worker that a bundler moves, the scroll that zooms instead of the page, the
+page without JavaScript. A subpath needs no new package to release, and the
+0.9 review found the package count already high. Without styles, a component
+fits every site's design.
+
+**Consequence:** a page with a map loads the style and the tiles from the tile
+host, so its visitors' browsers contact that host. The site's privacy notice
+names it. The component is Astro only.
+
+**What would change it:** components for a second framework, or a component
+with dependencies large enough that a package of their own pays off.
+
+**1.0 status:** built in 0.11.
 
 ---
 

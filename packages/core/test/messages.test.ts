@@ -100,4 +100,11 @@ describe("validation messages", () => {
       "Size must be one of: s.",
     ]);
   });
+
+  it("take a zoom with coordinates, from 0 to 22", () => {
+    const fields = { place: coordinates({ label: "Place", map: "liberty" }) };
+    assert.deepEqual(messages(fields, { place: { lat: 47.37, lng: 8.54, zoom: 15 } }), []);
+    assert.deepEqual(messages(fields, { place: { lat: 47.37, lng: 8.54 } }), []);
+    assert.deepEqual(messages(fields, { place: { lat: 47.37, lng: 8.54, zoom: 23 } }), ["Place: the zoom must be between 0 and 22."]);
+  });
 });

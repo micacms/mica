@@ -45,9 +45,10 @@ function worker(): string {
 
 /** Six decimals are about 10 cm: enough for a place, and short in the file. */
 const round = (value: number) => Math.round(value * 1e6) / 1e6;
-const pointOf = (at: LngLat): Coordinates => {
+/** The place with the map's zoom, in whole steps, as a website shows it. */
+const pointOf = (at: LngLat, zoom: number): Coordinates => {
   const wrapped = at.wrap();
-  return { lat: round(wrapped.lat), lng: round(wrapped.lng) };
+  return { lat: round(wrapped.lat), lng: round(wrapped.lng), zoom: Math.round(zoom) };
 };
 const onEarth = (value: Coordinates | null): value is Coordinates =>
   value !== null && Math.abs(value.lat) <= 90 && Math.abs(value.lng) <= 180;
@@ -56,7 +57,9 @@ const onEarth = (value: Coordinates | null): value is Coordinates =>
 export function createPickerMap(options: PickerMapOptions): PickerMap {
   setWorkerUrl(worker());
 
-  const start = onEarth(options.value) ? { center: [options.value.lng, options.value.lat] as [number, number], zoom: PLACE_ZOOM } : WORLD;
+  const start = onEarth(options.value)
+    ? { center: [options.value.lng, options.value.lat] as [number, number], zoom: options.value.zoom ?? PLACE_ZOOM }
+    : WORLD;
   const map = new MapLibreMap({
     container: options.container,
     style: options.style,
@@ -83,12 +86,18 @@ export function createPickerMap(options: PickerMapOptions): PickerMap {
   const pin = document.createElement("div");
   pin.className = "size-[18px] cursor-grab rounded-full border-[3px] border-surface bg-primary shadow-sm";
   const marker = new Marker({ element: pin, draggable: !locked });
-  marker.on("dragend", () => options.onPick(pointOf(marker.getLngLat())));
+  marker.on("dragend", () => options.onPick(pointOf(marker.getLngLat(), map.getZoom())));
 
   map.on("click", (event) => {
     if (locked) return;
     place(event.lngLat);
-    options.onPick(pointOf(event.lngLat));
+    options.onPick(pointOf(event.lngLat, map.getZoom()));
+  });
+
+  // The zoom is part of the value: a zoom by the editor changes it; a jump to the value does not.
+  map.on("zoomend", (event) => {
+    if (locked || !pinned || !event.originalEvent) return;
+    options.onPick(pointOf(marker.getLngLat(), map.getZoom()));
   });
 
   function place(at: LngLat | [number, number]): void {
@@ -105,7 +114,7 @@ export function createPickerMap(options: PickerMapOptions): PickerMap {
     }
     const at: [number, number] = [value.lng, value.lat];
     place(at);
-    if (!map.getBounds().contains(at)) map.jumpTo({ center: at, zoom: Math.max(map.getZoom(), PLACE_ZOOM) });
+    if (!map.getBounds().contains(at)) map.jumpTo({ center: at, zoom: value.zoom ?? Math.max(map.getZoom(), PLACE_ZOOM) });
   }
 
   show(options.value);

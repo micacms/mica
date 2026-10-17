@@ -185,7 +185,7 @@ A path that leads above the content root MUST NOT be resolved.
 | `media({ multiple: true })` | list of paths | `[]` | |
 | `media({ alt })` | `{ "path": …, "alt": … }`, keys in this order | `null` | section 2.1 |
 | `color()` | `#rgb`, `#rrggbb` or `#rrggbbaa` | `null` | `"#17694f"` |
-| `coordinates()` | `{ "lat": …, "lng": … }` | `null` | `{ "lat": 47.3769, "lng": 8.5417 }` |
+| `coordinates()` | `{ "lat": …, "lng": … }`, and `"zoom"` (0 to 22) from a field with a map, keys in this order | `null` | `{ "lat": 47.3769, "lng": 8.5417, "zoom": 15 }` |
 | `tags()` | list of strings | `[]` | `["news"]` |
 | `object()` | object of its fields | an object of empty values | section 5 |
 | `repeater()` | list of rows (section 5) | `[]` | section 5 |

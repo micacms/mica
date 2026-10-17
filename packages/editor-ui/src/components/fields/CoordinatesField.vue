@@ -27,8 +27,9 @@ const { inputId, label, error, describedBy, hintId, errorId, locked } = useField
 const current = computed<Coordinates | null>(() => {
   const value = props.modelValue;
   if (!value || typeof value !== "object") return null;
-  const { lat, lng } = value as Partial<Coordinates>;
-  return typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null;
+  const { lat, lng, zoom } = value as Partial<Coordinates>;
+  if (typeof lat !== "number" || typeof lng !== "number") return null;
+  return typeof zoom === "number" ? { lat, lng, zoom } : { lat, lng };
 });
 
 // Issues on the nested keys are reported as `path.lat` / `path.lng`.
@@ -52,10 +53,16 @@ watch(
   { immediate: true, deep: true },
 );
 
+/** A new place keeps the zoom that the map stored. */
+function withZoom<T extends object | null>(pair: T): T {
+  const zoom = (props.modelValue as { zoom?: unknown } | null)?.zoom;
+  return pair !== null && typeof zoom === "number" ? { ...pair, zoom } : pair;
+}
+
 function update(part: "lat" | "lng", raw: string): void {
   typed.value = { ...typed.value, [part]: raw };
   const pair = coordinatesFrom(typed.value.lat, typed.value.lng);
-  if (pair !== undefined) emit("update:modelValue", pair);
+  if (pair !== undefined) emit("update:modelValue", withZoom(pair));
 }
 
 /** Accepts "47.3769, 8.5417" as pasted from any mapping site. */
@@ -66,7 +73,7 @@ function onPaste(event: ClipboardEvent): void {
   if (!match) return;
 
   event.preventDefault();
-  emit("update:modelValue", { lat: Number(match[1]), lng: Number(match[2]) });
+  emit("update:modelValue", withZoom({ lat: Number(match[1]), lng: Number(match[2]) }));
 }
 
 const previewUrl = computed(() =>

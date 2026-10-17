@@ -1,0 +1,39 @@
+---
+/**
+ * One place on a map, without styles of its own: give it a size with `class`
+ * or `style`. MapLibre loads when the map comes near the screen. Until then,
+ * and without JavaScript, the element holds a link to the place on
+ * OpenStreetMap. The website needs `maplibre-gl` in its dependencies.
+ */
+
+import type { HTMLAttributes } from "astro/types";
+import type { Coordinates, MapPreset, MapStyle } from "@micacms/core";
+
+import { mapView } from "../dist/map.js";
+
+interface Props extends HTMLAttributes<"div"> {
+  /** The value of a `coordinates()` field. */
+  place: Coordinates;
+  /** The field's `map` option, or another style. Default: `"liberty"`. */
+  map?: MapPreset | MapStyle | undefined;
+  /** The zoom when the value stores none. Default: 14. */
+  zoom?: number | undefined;
+  /** The name of the map for a screen reader. */
+  label?: string;
+  /** The text of the link that stands in for the map. */
+  linkText?: string;
+}
+
+const { place, map, zoom, label = "Map", linkText = "Show the place on OpenStreetMap", ...attributes } = Astro.props;
+const view = mapView(place, { map, zoom });
+---
+
+<div {...attributes} data-mica-map={JSON.stringify(view)} role="region" aria-label={label}>
+  <a href={view.link}>{linkText}</a>
+</div>
+
+<script>
+  import { drawLocationMaps } from "./draw.ts";
+
+  drawLocationMaps();
+</script>
