@@ -28,7 +28,7 @@ const [releases, site] = await Promise.all([getReleases(), getSite()]);
           <div>
             <h2 class="title-2 m-0">{release.data.title}</h2>
             <p class="lead mt-3 mb-7 max-w-2xl">{release.data.summary}</p>
-            <RichText text={release.data.body} images={release.data._mica.images} />
+            <RichText text={release.data.body} from={release.data} />
           </div>
         </article>
       ))}

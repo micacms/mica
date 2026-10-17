@@ -266,13 +266,23 @@ describe("collections", () => {
     const context = createContext(collections.projects.schema);
     await collections.projects.loader.load(context);
 
-    assert.deepEqual(context.entries.get("haus-b")?._mica, {
-      id: "haus-b",
-      slug: "haus-b",
-      collection: "projects",
-      position: 1,
-      images: [],
+    assert.deepEqual(context.entries.get("haus-b")?._mica, { position: 1, images: [] });
+  });
+
+  it("gives the position in the editor's order, with the collection's default sort", async () => {
+    const sorted = defineSite({
+      collections: { projects: collection({ ...site.collections.projects, defaultSort: { field: "year", direction: "asc" } }) },
     });
+    const haus = JSON.stringify({ title: "Haus B", slug: "haus-b", year: 2020, cover: null });
+    const collections = micaCollections(sorted, {
+      source: memorySource({ ...files, "projects/haus-b/index.json": haus, "projects/_order.json": '["haus-a", "haus-b"]' }),
+    });
+    const context = createContext(collections.projects.schema);
+    await collections.projects.loader.load(context);
+
+    const position = (slug: string) => (context.entries.get(slug)?._mica as { position: number }).position;
+    assert.equal(position("haus-b"), 0, "the earlier year first, whatever the manual order says");
+    assert.equal(position("haus-a"), 1);
   });
 
   it("gives the images of the rich text to image(), as paths from the entry's file", async () => {

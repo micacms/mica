@@ -1,16 +1,16 @@
 /**
  * Typed helpers over the generated collections.
  *
- * Singletons arrive as one-entry collections, which is uniform but clumsy to
- * read in a template. These wrappers restore the ergonomics and, more usefully,
- * give the return values their model-derived types.
+ * Singletons arrive as one-entry collections; `getSingleton` reads one with
+ * its model-derived type. Collections that the editor arranges by hand come in
+ * the editor's order with `inEditorOrder`.
  */
 
-import { getCollection, getEntry } from "astro:content";
+import { getCollection } from "astro:content";
 
-import type { SingletonDocument } from "@micacms/astro";
+import { getSingleton, inEditorOrder, type SingletonDocument } from "@micacms/astro";
 
-import type { site } from "../mica";
+import { site } from "../mica";
 
 type Model = typeof site;
 
@@ -18,29 +18,9 @@ export type SiteSettings = SingletonDocument<Model, "site">;
 export type Navigation = SingletonDocument<Model, "navigation">;
 export type Theme = SingletonDocument<Model, "theme">;
 
-/**
- * One fetch per singleton per build. Astro's content store is already cached,
- * but every page renders the layout, so memoising avoids the repeated lookup.
- */
-const cache = new Map<string, unknown>();
-
-async function global<T>(name: string): Promise<T> {
-  if (!cache.has(name)) {
-    const entry = await getEntry(name as "site", name);
-    if (!entry) {
-      throw new Error(
-        `The "${name}" settings have not been saved in the CMS yet. ` +
-          `Open the CMS, fill them in, and rebuild.`,
-      );
-    }
-    cache.set(name, entry.data);
-  }
-  return cache.get(name) as T;
-}
-
-export const getSiteSettings = () => global<SiteSettings>("site");
-export const getNavigation = () => global<Navigation>("navigation");
-export const getTheme = () => global<Theme>("theme");
+export const getSiteSettings = () => getSingleton(site, "site");
+export const getNavigation = () => getSingleton(site, "navigation");
+export const getTheme = () => getSingleton(site, "theme");
 
 /* ------------------------------------------------------------------ *
  * Collection helpers
@@ -74,16 +54,14 @@ export async function getProjects(options: { featuredOnly?: boolean } = {}) {
 /** Team members in the order an editor arranged them. */
 export async function getTeam() {
   const items = await getCollection("team");
-  return [...items].sort(
-    (a, b) => a.data._mica.position - b.data._mica.position,
-  );
+  return [...items].sort(inEditorOrder);
 }
 
 export async function getFeaturedTeam() {
   const items = await getCollection("team");
   return [...items]
     .filter((item) => item.data.featured)
-    .sort((a, b) => a.data._mica.position - b.data._mica.position);
+    .sort(inEditorOrder);
 }
 
 /** Events with the upcoming ones first (soonest first), then the past ones (latest first). */
@@ -114,9 +92,7 @@ export async function getEventsOf(memberSlug: string) {
 
 export async function getPages() {
   const items = await getCollection("pages");
-  return [...items].sort(
-    (a, b) => a.data._mica.position - b.data._mica.position,
-  );
+  return [...items].sort(inEditorOrder);
 }
 
 /* ------------------------------------------------------------------ *

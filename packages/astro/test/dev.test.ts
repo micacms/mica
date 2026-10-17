@@ -30,6 +30,9 @@ import {
 
 import { micaCollections, type LoaderContext } from "../dist/index.js";
 
+// Outside CI, the loader writes the model; in CI, it only checks it. These tests write it, except where one says CI.
+delete process.env["CI"];
+
 const site = defineSite({
   root: "./content",
   collections: {
@@ -117,6 +120,23 @@ async function waitFor(condition: () => boolean, what: string, timeoutMs = 2000)
 /* ------------------------------------------------------------------ */
 
 describe("publishing the model", () => {
+  it("in CI, fails when the committed model is not the one in the code, and writes nothing", async () => {
+    const dir = await project();
+    process.env["CI"] = "true";
+    try {
+      await assert.rejects(micaCollections(site).projects.loader.load(createContext(dir)), /is not the one in the code/);
+      await assert.rejects(stat(join(dir, "content", MANIFEST_PATH)));
+
+      delete process.env["CI"];
+      await micaCollections(site).projects.loader.load(createContext(dir));
+      process.env["CI"] = "true";
+      await micaCollections(site).projects.loader.load(createContext(dir));
+    } finally {
+      delete process.env["CI"];
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("writes it into the content root, where the repository carries it to Mica", async () => {
     const dir = await project();
 

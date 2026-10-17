@@ -211,7 +211,7 @@ describe("mica check", () => {
     const warnings = problems(await checkContent(root), "warning");
     assert.deepEqual(warnings, [
       "news/hello/body.mdoc: Raw HTML (<mark>) is not rendered: Markdoc escapes it.",
-      "news/hello/body.mdoc: Markdoc tags (callout) render only if the website declares them in renderRichText(source, { config }).",
+      "news/hello/body.mdoc: Markdoc tags (callout) render only if the website declares them in renderRichText(source, entry.data, { config }).",
       "news/hello/body.mdoc: Footnotes ([^1]) are not Markdoc: they render as plain text.",
     ]);
     assert.deepEqual(markdocWarnings("Plain **Markdown** with a [link](https://example.com).\n"), []);

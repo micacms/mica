@@ -2128,8 +2128,10 @@ content that exists is used; a missing relative path is an error; a missing
 Astro's `public/` folder; an address on the web is the website's business.
 Publish brings a pending upload along that an image uses, and refuses a
 missing one. The loader gives each entry the images that exist through
-`image()` in `_mica.images`, and `renderRichText(text, { images })` writes their
-address, width and height.
+`image()` in `_mica.images`. `await renderRichText(text, entry.data)` finds
+them there, and Astro's `getImage` optimizes each one: a `srcset` and `sizes`
+in 480, 800, 1200 and 1600 px as WebP, up to the width of the original
+(since 0.11, #279). `{ optimize: false }` writes the original instead.
 
 **Why:** a table or an image made the whole field read-only, which also hid the
 text around it. Pipe tables and lone images are what Markdown and Markdoc read
@@ -2137,16 +2139,46 @@ everywhere, so the stored file stays readable in a diff. One rule keeps the
 editor, Publish and the build from disagreeing about the same image, and the
 `/path` exception keeps sites building that put images in `public/`.
 
-**Consequence:** a cell cannot hold a list or a second line. The image in a
-page is the original file, with its size, not a version that Astro optimizes.
+**Consequence:** a cell cannot hold a list or a second line. `renderRichText`
+is async, and a site needs Astro's image service (`sharp`), as for `<Image>`.
 Pasted HTML images from other pages are removed: an image must be a file in
 the media library. An image from `public/` shows no preview in the editor.
 
 **What would change it:** a site that needs rich cells (Markdoc's
-`{% table %}`), or an optimized image in text (Astro's `getImage`, which is
-async and needs a component instead of an HTML string).
+`{% table %}`).
 
-**1.0 status:** done in 0.8 (#63).
+**1.0 status:** done in 0.8 (#63). Optimized images in 0.11 (#279).
+
+---
+
+### P2 — `@micacms/astro` gives the helpers that every website writes
+
+**Decided:** `getSingleton(site, name)` reads a singleton with the type of the
+model, the Astro image types included, and fails the build while it has no
+content. The loader gives `_mica.position` in the editor's order, the
+collection's `defaultSort` included, and `inEditorOrder` sorts by it.
+`renderRichText(text, entry.data)` finds the entry's images itself. `_mica`
+holds only `position` and `images`. In CI (`CI` set), the loader does not write
+`.mica/schema.json`: it fails the build when the committed file is not the
+model in the code.
+
+**Why:** each website wrote the same singleton getter with a cast, and typed it
+with the core types, which are wrong for images. Four places sorted by the
+manual position, so a collection with `defaultSort` showed another order on the
+website than in the editor. A rich-text image without `_mica.images` was a
+silent 404. `_mica.id`, `slug` and `collection` were not used: `entry.id` and
+the collection's name say the same. Every project copied a CI step that checks
+`schema.json`; a build that wrote the file in CI deployed a model that Mica
+never saw.
+
+**Consequence:** a template that read `_mica.id`, `_mica.slug` or
+`_mica.collection` reads `entry.id` or the collection's name. `renderRichText`
+takes the entry's data, not `{ images }`. A CI build fails until the model is
+committed.
+
+**What would change it:** a second framework, which would need its own helpers.
+
+**1.0 status:** done in 0.11 (#226).
 
 ---
 

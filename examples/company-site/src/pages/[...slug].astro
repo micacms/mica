@@ -68,7 +68,7 @@ const SECTION_LAYOUTS: Record<string, string> = {
   {
     body && (
       <div class="container-prose pb-4">
-        <RichText text={body} images={page.data._mica.images} />
+        <RichText text={body} from={page.data} />
       </div>
     )
   }
@@ -86,7 +86,7 @@ const SECTION_LAYOUTS: Record<string, string> = {
             <div>
               <h2 class="text-3xl font-semibold sm:text-4xl">{section.heading}</h2>
               <div class="mt-5">
-                <RichText text={section.text} images={page.data._mica.images} />
+                <RichText text={section.text} from={page.data} />
               </div>
             </div>
 

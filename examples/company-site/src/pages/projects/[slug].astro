@@ -79,7 +79,7 @@ const addressLines = [location?.address, [location?.city, location?.country].fil
 
     <div class="container-page mt-16 grid gap-12 lg:grid-cols-[1fr_20rem] lg:gap-16">
       <div>
-        <RichText text={description} images={project.data._mica.images} />
+        <RichText text={description} from={project.data} />
       </div>
 
       <aside class="space-y-8 self-start bg-sunken p-6 sm:p-8 lg:sticky lg:top-28" style="border-radius: var(--radius-theme)">

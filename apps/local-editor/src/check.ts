@@ -289,7 +289,7 @@ export function markdocWarnings(source: string): string[] {
   const tags = [...new Set([...prose.matchAll(/\{%\s*([a-zA-Z][\w-]*)/g)].map((match) => match[1]!))];
   if (tags.length > 0) {
     messages.push(
-      `Markdoc tags (${tags.join(", ")}) render only if the website declares them in renderRichText(source, { config }).`,
+      `Markdoc tags (${tags.join(", ")}) render only if the website declares them in renderRichText(source, entry.data, { config }).`,
     );
   }
   if (/\[\^[^\]]+\]/.test(prose)) messages.push("Footnotes ([^1]) are not Markdoc: they render as plain text.");

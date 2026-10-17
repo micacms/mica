@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/astro",
+      "comment": "renderRichText(text, entry.data) is async, finds the entry's images itself and optimizes them with Astro's getImage. getSingleton(site, name) reads a singleton with its type, inEditorOrder sorts in the editor's order, and _mica holds only position and images. In CI, the build fails when the committed .mica/schema.json is not the model in the code.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}
