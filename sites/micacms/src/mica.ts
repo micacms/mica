@@ -28,6 +28,7 @@ export const site = defineSite({
     docs: collection({
       label: "Documentation",
       labelSingular: "Document",
+      url: "/docs/{slug}/",
       description: "Public guides for setup, modelling, and deployment.",
       defaultSort: { field: "position", direction: "asc" },
       sortable: true,
@@ -109,6 +110,7 @@ export const site = defineSite({
     }),
     home: singleton({
       label: "Home page",
+      url: "/",
       description: "All copy on the home page, from top to bottom.",
       fields: {
         hero: object({
@@ -279,6 +281,7 @@ export const site = defineSite({
     }),
     imprint: singleton({
       label: "Imprint",
+      url: "/imprint/",
       description: "The legal notice: who is responsible for the website, and how to reach them.",
       fields: {
         eyebrow: text({ label: "Eyebrow", required: true }),

@@ -43,6 +43,7 @@ import { fileSystemSource } from "@micacms/core/node";
 import type { ImageMetadata } from "astro";
 import { z } from "zod";
 
+import { announceDevServer, type DevServerConfig } from "./dev-server.js";
 import { imagePathsFromEntry, richTextImageSources } from "./images.js";
 import { manifestFor } from "./manifest.js";
 import { DEFAULT_CONTENT_ROOT, resolveContentRoot } from "./root.js";
@@ -151,7 +152,7 @@ export interface LoaderContext {
    * subset and the tests build a context by hand; `config.root` is what turns a
    * relative content root into a path.
    */
-  config?: { root: URL };
+  config?: { root: URL } & DevServerConfig;
   /**
    * Present only while `astro dev` runs. Astro's watcher follows the module
    * graph, and content files are not in it — no page imports
@@ -201,6 +202,18 @@ export function micaCollections<S extends Site>(
 
   /** Published once per process; a model change restarts the dev server. */
   let publishing: Promise<void> | undefined;
+
+  /** In `astro dev` only, which is when Astro passes a watcher: the local editor's "Preview" reads it. */
+  let announced = false;
+  const announce = (context: LoaderContext): void => {
+    if (announced || !context.watcher || options.source) return;
+    announced = true;
+    try {
+      announceDevServer(rootFor(context), context.config);
+    } catch (error) {
+      context.logger.warn(`The local editor cannot offer a preview: ${describe(error)}`);
+    }
+  };
 
   const publish = (context: LoaderContext): Promise<void> =>
     (publishing ??=
@@ -358,6 +371,7 @@ export function micaCollections<S extends Site>(
           };
 
           await publish(context);
+          announce(context);
           await read();
           watch(context, name, read);
         },
@@ -411,6 +425,7 @@ export function micaCollections<S extends Site>(
           };
 
           await publish(context);
+          announce(context);
           await read();
           watch(context, name, read);
         },

@@ -13,9 +13,11 @@ Set `MICA_SITE_URL` to the website's address, such as `https://example.com`. The
 
 The link opens the published page. After a Publish, the host needs a few minutes to build it.
 
-## Use the dev server with the local editor
+## Preview with the local editor
 
-Run `astro dev` beside the local editor. The dev server reads the saved drafts, so it shows a change as soon as you save it, before Publish.
+Run `astro dev` beside the local editor. The dev server reads the saved drafts, so it shows a change as soon as you save it, before Publish. With a `url` in the model, an entry shows "Preview" beside Save while the dev server runs, also a new entry. Added in 0.11.0.
+
+The local editor finds the dev server at the port and the base path of the Astro config, `http://localhost:4321` by default. If Astro takes another port because that one is busy, set `server.port` in `astro.config`. The self-hosted Mica has no preview.
 
 ## Use a staging site
 

@@ -7,8 +7,11 @@
  * bundler to work out.
  */
 
+import { createHash } from "node:crypto";
+import { realpathSync } from "node:fs";
 import { readdir, readFile } from "node:fs/promises";
-import { isAbsolute, resolve, sep } from "node:path";
+import { tmpdir } from "node:os";
+import { isAbsolute, join, resolve, sep } from "node:path";
 
 import { contentPath, ContentPathError, type ContentSource, type DirectoryEntry } from "./source.js";
 
@@ -82,4 +85,26 @@ export function within(base: string, path: string, options: { allowRoot?: boolea
 export function isMissing(error: unknown): boolean {
   const code = (error as NodeJS.ErrnoException | null)?.code;
   return code === "ENOENT" || code === "ENOTDIR";
+}
+
+/** What `astro dev` writes while it runs for a content root, for the local editor's "Preview". */
+export interface DevServerMarker {
+  pid: number;
+  /** The dev server's address with the site's base path, without a trailing slash: `http://localhost:4321`. */
+  address: string;
+}
+
+/**
+ * Where the marker of a content root is: a file in the system's temp folder,
+ * named by the content root's real path. Never in the repository, so no
+ * `.gitignore` is needed and it never shows as a change.
+ */
+export function devServerMarkerPath(contentRoot: string): string {
+  let real = resolve(contentRoot);
+  try {
+    real = realpathSync(real);
+  } catch {
+    // A content root that does not exist yet has no other name.
+  }
+  return join(tmpdir(), "mica", `dev-server-${createHash("sha256").update(real).digest("hex").slice(0, 16)}.json`);
 }

@@ -17,6 +17,9 @@ export function adminSystemRoutes(): Hono<Env> {
   const app = new Hono<Env>();
 
   /** The content model, plus the derived values that the UI would otherwise recompute. */
+  /** The dev server that shows the drafts, for "Preview". Null in the self-hosted Mica. */
+  app.get("/preview", async (c) => c.json({ address: await c.get("ctx").preview() }));
+
   app.get("/schema", (c) => {
     const { site, config } = c.get("ctx");
     /** The full address of a page, with `{slug}` for a collection's; null without both parts. */
@@ -34,6 +37,7 @@ export function adminSystemRoutes(): Hono<Env> {
         slugField: resolveSlugField(def),
         listedFields: listedFields(def),
         fields: def.fields,
+        url: def.url ?? null,
         page: page(def.url),
         readOnly: site.readOnly.get(`collections.${def.name}`) ?? null,
       })),
@@ -42,6 +46,7 @@ export function adminSystemRoutes(): Hono<Env> {
         label: def.label,
         description: def.description ?? null,
         fields: def.fields,
+        url: def.url ?? null,
         page: page(def.url),
         readOnly: site.readOnly.get(`singletons.${def.name}`) ?? null,
       })),

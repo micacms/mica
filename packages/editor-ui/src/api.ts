@@ -126,6 +126,8 @@ export interface SchemaCollection {
   slugField: string;
   listedFields: string[];
   fields: Record<string, AnyField>;
+  /** The model's `url`, such as `/news/{slug}`, or null. */
+  url: string | null;
   /** The page of an entry on the website, with `{slug}`; null without `url` in the model or `MICA_SITE_URL`. */
   page: string | null;
   /** Why this build of Mica cannot edit it, or null. Set when the model uses a newer field kind. */
@@ -137,6 +139,8 @@ export interface SchemaSingleton {
   label: string;
   description: string | null;
   fields: Record<string, AnyField>;
+  /** The model's `url`, such as `/about`, or null. */
+  url: string | null;
   /** Its page on the website; null without `url` in the model or `MICA_SITE_URL`. */
   page: string | null;
   /** Why this build of Mica cannot edit it, or null. Set when the model uses a newer field kind. */
@@ -456,6 +460,8 @@ export const api = {
   schema: () => request<Schema>("/admin/schema"),
   overview: () => request<Overview>("/admin/overview"),
   system: () => request<SystemInfo>("/admin/system"),
+  /** The dev server that shows the drafts, or null: only the local editor, while `astro dev` runs. */
+  preview: () => request<{ address: string | null }>("/admin/preview"),
 
   entries: {
     list: (collection: string, query: RequestOptions["query"] = {}) =>

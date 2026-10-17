@@ -28,6 +28,9 @@ import {
   text,
 } from "@micacms/core/internal";
 
+import { devServerMarkerPath } from "@micacms/core/node";
+
+import { devServerAddress } from "../dist/dev-server.js";
 import { micaCollections, type LoaderContext } from "../dist/index.js";
 
 // Outside CI, the loader writes the model; in CI, it only checks it. These tests write it, except where one says CI.
@@ -464,5 +467,29 @@ describe("reloading in dev", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("the dev server's marker, for the local editor's Preview", () => {
+  it("is written in astro dev only, with the address from the config, outside the repository", async () => {
+    const dir = await project();
+    const marker = devServerMarkerPath(join(dir, "content"));
+    try {
+      await micaCollections(site).projects.loader.load(createContext(dir));
+      await assert.rejects(stat(marker), "a build has no watcher, so no marker");
+
+      const context = createContext(dir, createWatcher());
+      context.config = { ...context.config!, server: { port: 4400 }, base: "/blog/" };
+      await micaCollections(site).projects.loader.load(context);
+      assert.deepEqual(JSON.parse(await readFile(marker, "utf8")), { pid: process.pid, address: "http://localhost:4400/blog" });
+      assert.equal(marker.startsWith(join(dir, "content")), false);
+    } finally {
+      await rm(marker, { force: true });
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("names the default port without a config", () => {
+    assert.equal(devServerAddress(undefined), "http://localhost:4321");
   });
 });
