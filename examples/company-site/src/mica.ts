@@ -25,12 +25,14 @@ import {
   boolean,
   collection,
   color,
+  coordinates,
   date,
   defineSite,
   email,
   media,
   number,
   object,
+  referenceSet,
   relation,
   repeater,
   richText,
@@ -57,6 +59,8 @@ export const site = defineSite({
       label: "Pages",
       labelSingular: "Page",
       description: "Standalone pages such as About us, Services or Contact.",
+      // The page of an entry: with MICA_SITE_URL the editor links to it, and the local editor shows Preview.
+      url: "/{slug}/",
       defaultSort: { field: "position", direction: "asc" },
       sortable: true,
       fields: {
@@ -128,6 +132,7 @@ export const site = defineSite({
       label: "Projects",
       labelSingular: "Project",
       description: "Client projects shown in the portfolio.",
+      url: "/projects/{slug}/",
       defaultSort: { field: "year", direction: "desc" },
       fields: {
         title: text({
@@ -221,6 +226,20 @@ export const site = defineSite({
           collection: "team",
           multiple: true,
         }),
+        // A relation to reference data: the sectors come from a file of the website, and Mica never edits them.
+        sector: relation({
+          label: "Sector",
+          collection: "sectors",
+          description: "The client's economic sector, from the NACE list.",
+        }),
+        // Files beside images: the field takes only these types, each checked from its bytes.
+        downloads: media({
+          label: "Downloads",
+          accept: ["pdf", "zip", "csv"],
+          multiple: true,
+          max: 4,
+          description: "Files that visitors can download, such as a case study.",
+        }),
         featured: boolean({
           label: "Show on the homepage",
         }),
@@ -230,6 +249,7 @@ export const site = defineSite({
     news: collection({
       label: "News",
       labelSingular: "Article",
+      url: "/news/{slug}/",
       defaultSort: { field: "publishDate", direction: "desc" },
       fields: {
         title: text({
@@ -270,6 +290,7 @@ export const site = defineSite({
       label: "Events",
       labelSingular: "Event",
       description: "Workshops and talks, in person or online.",
+      url: "/events/{slug}/",
       defaultSort: { field: "startsAt", direction: "desc" },
       fields: {
         title: text({
@@ -309,6 +330,8 @@ export const site = defineSite({
           fields: {
             name: text({ label: "Name" }),
             address: textarea({ label: "Address", rows: 2 }),
+            // A map to pick the place. It also stores the zoom, which the event page uses.
+            place: coordinates({ label: "Place on the map", map: "positron" }),
           },
         }),
         registrationUrl: url({
@@ -336,6 +359,7 @@ export const site = defineSite({
     team: collection({
       label: "Team",
       labelSingular: "Team member",
+      url: "/team/{slug}/",
       defaultSort: { field: "position", direction: "asc" },
       sortable: true,
       fields: {
@@ -519,6 +543,14 @@ export const site = defineSite({
       },
     }),
   },
-});
 
-export type SiteModel = typeof site;
+  /**
+   * Data of the website that Mica does not edit: the NACE sections, which the
+   * EU publishes. `content.config.ts` reads the file as the Astro collection
+   * `sectors`, and the build writes `content/.mica/references/sectors.json`
+   * for the editor's picker.
+   */
+  references: {
+    sectors: referenceSet({ label: "Sectors", file: "src/reference/sectors.json", title: "name" }),
+  },
+});

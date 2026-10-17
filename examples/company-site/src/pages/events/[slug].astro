@@ -1,4 +1,5 @@
 ---
+import { LocationMap } from "@micacms/astro/components";
 import { relatedAll } from "@micacms/astro/relations";
 import { getCollection, type CollectionEntry } from "astro:content";
 
@@ -77,6 +78,16 @@ const isPast = new Date(startsAt).getTime() < Date.now();
                 <span class="font-medium">{venue.name}</span>
                 {venue.address ? `\n${venue.address}` : ""}
               </address>
+              {/* No styles of its own: the size and the frame come from here. The zoom is the one the editor saved. */}
+              {venue.place && (
+                <LocationMap
+                  place={venue.place}
+                  map="positron"
+                  label={`Map: ${venue.name}`}
+                  class="mt-4 block h-56 w-full overflow-hidden border border-line"
+                  style="border-radius: var(--radius-theme)"
+                />
+              )}
             </div>
           )
         }

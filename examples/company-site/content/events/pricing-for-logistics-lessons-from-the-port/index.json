@@ -10,7 +10,12 @@
   "capacity": 80,
   "venue": {
     "name": "Harbourside Conference Room",
-    "address": "Dock Road 7\nHL 40-210 Calvera, Serenza"
+    "address": "Dock Road 7\nHL 40-210 Calvera, Serenza",
+    "place": {
+      "lat": 44.410793,
+      "lng": 8.926812,
+      "zoom": 16
+    }
   },
   "registrationUrl": "https://harborlane.example/register/pricing-evening",
   "speakers": [

@@ -47,20 +47,22 @@ To check the content without a browser, run `rushx check`. It runs
 
 | File                        | Content                                                                        |
 | --------------------------- | ------------------------------------------------------------------------------ |
-| `src/mica.ts`               | The whole content model: five collections, three singletons                    |
+| `src/mica.ts`               | The whole content model: five collections, three singletons, one reference set |
 | `src/content.config.ts`     | The model becomes collections, beside one that Mica does not own               |
 | `src/glossary/`             | Markdown for that other collection, which the developers maintain              |
+| `src/reference/sectors.json`     | Reference data: the NACE sections, which a project's sector points to          |
 | `content/`                  | The entries: JSON, Markdoc and images                                          |
 | `content/.mica/schema.json` | The model, published by the build for Mica to read                             |
+| `content/.mica/references/` | The index of the reference data, also published by the build                   |
 | `src/lib/content.ts`        | Typed helpers over the collections, and the relations seen from the other side |
 | `src/lib/images.ts`         | An absolute URL of an image, for the social-sharing meta tags                  |
 
 ## The model in one line each
 
 - **pages**: standalone pages (About us, Services, Contact, Legal notice)
-- **projects**: client work, with a gallery, a location, a team and tags
+- **projects**: client work, with a gallery, a location, a team, a sector, downloads and tags
 - **news**: articles with an author, a related project and tags
-- **events**: workshops and talks with a time, a venue, speakers and tags
+- **events**: workshops and talks with a time, a venue on a map, speakers and tags
 - **team**: people with a portrait
 - **site**, **navigation**, **theme**: singletons for settings, menus and colours
 
@@ -97,6 +99,9 @@ the file name says otherwise.
 | `media` with `multiple` (gallery)                        | `projects.gallery`                                           | `projects/erp-selection-for-a-regional-retailer/index.json` | `src/pages/projects/[slug].astro`  |
 | `color`                                                  | `theme.primaryColor`, `theme.accentColor`                    | `theme/index.json`                                          | `src/layouts/BaseLayout.astro`     |
 | `tags` with `max`, `maxLength`, `suggestions`, `default` | `projects.tags`, `news.tags`, `events.tags` (with `default`) | `events/*/index.json`                                       | `src/components/TagList.astro`     |
+| `coordinates` with `map` (stores the zoom too)           | `events.venue.place`                                         | `events/fix-your-order-to-cash-flow-a-half-day-workshop/index.json` | `src/pages/events/[slug].astro` |
+| `media` with an `accept` list (files)                    | `projects.downloads` (PDF, ZIP, CSV)                         | `projects/order-to-cash-review/index.json`                  | `src/pages/projects/[slug].astro`, `src/pages/files/[...path].ts` |
+| `relation` to a reference set                            | `projects.sector`, to `sectors`                              | `projects/*/index.json`                                     | `src/pages/projects/[slug].astro`  |
 
 ### Editor features
 
@@ -115,6 +120,11 @@ the file name says otherwise.
 | Relation helper                          | `related` and `relatedAll` from `@micacms/astro/relations` in the news, project and event pages                                                                   |
 | Rich text in a repeater                  | `content/pages/services/sections.0.text.mdoc`                                                                                                                     |
 | A collection that Mica does not own      | `src/glossary/`, defined in `src/content.config.ts`                                                                                                               |
+| Page addresses (`url`)                   | every collection in `src/mica.ts`: with `MICA_SITE_URL`, an entry shows "Open on website", and the local editor shows "Preview" while `astro dev` runs        |
+| Reference data                           | `references.sectors` in `src/mica.ts`, from `src/reference/sectors.json`, which `src/content.config.ts` also reads as the Astro collection `sectors`                  |
+| A website component without styles       | `LocationMap` from `@micacms/astro/components` in `src/pages/events/[slug].astro`; it needs `maplibre-gl`                                                        |
+| Files for download                       | `mediaFile` from `@micacms/astro` in `src/pages/files/[...path].ts` copies the downloads into the built site                                                      |
+| Optimized images in rich text            | `src/components/RichText.astro` passes the entry's data to `renderRichText`, which lets Astro optimize each image                                                |
 
 ## Making it yours
 

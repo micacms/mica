@@ -9,7 +9,12 @@
   "capacity": 24,
   "venue": {
     "name": "Harbor Lane Studio",
-    "address": "Quay Street 12\nHL 40-100 Calvera, Serenza"
+    "address": "Quay Street 12\nHL 40-100 Calvera, Serenza",
+    "place": {
+      "lat": 44.409316,
+      "lng": 8.924361,
+      "zoom": 15
+    }
   },
   "registrationUrl": "https://harborlane.example/register/order-to-cash-workshop",
   "speakers": [
