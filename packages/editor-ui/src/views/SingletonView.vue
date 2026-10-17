@@ -10,7 +10,7 @@ import { useRoute } from "vue-router";
 
 import { withEmptyValues } from "@micacms/core/internal";
 
-import { api, ApiError, type SingletonDetail } from "@/api";
+import { api, ApiError, messageOf, type SingletonDetail } from "@/api";
 import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
 import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
@@ -19,7 +19,9 @@ import PageLink from "@/components/PageLink.vue";
 import PreviewLink from "@/components/PreviewLink.vue";
 import { usePreview } from "@/composables/usePreview";
 import PendingNotice from "@/components/PendingNotice.vue";
+import ModelNotice from "@/components/ModelNotice.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
+import StatusNotice from "@/components/StatusNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
 import { fieldPathOf, useFormIssues } from "@/composables/useFormIssues";
 import { useKeptChanges } from "@/composables/useKeptChanges";
@@ -107,7 +109,7 @@ async function load(): Promise<void> {
     theirs.value = null;
     markClean();
   } catch (error) {
-    loadError.value = error instanceof ApiError ? error.message : "Could not load these settings.";
+    loadError.value = messageOf(error, "Could not load these settings.");
   } finally {
     loading.value = false;
   }
@@ -172,7 +174,7 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
       markClean();
     }
   } catch (error) {
-    if (error instanceof ApiError && error.status === 409) {
+    if (error instanceof ApiError && error.code === "conflict") {
       conflict.value = "loading";
       try {
         theirs.value = await api.singletons.get(props.name);
@@ -185,7 +187,7 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
       toast.error(error.message, `${error.issues.length} field(s) need attention.`);
       await showIssues();
     } else {
-      toast.error(error instanceof ApiError ? error.message : "Could not save these settings.");
+      toast.error(messageOf(error, "Could not save these settings."));
     }
   } finally {
     saving.value = false;
@@ -209,19 +211,16 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
     </PageHeader>
 
     <div class="mx-auto max-w-3xl px-4 py-6 sm:px-6">
-      <p v-if="loading" role="status" class="text-sm text-muted">Loading…</p>
+      <StatusNotice v-if="loading" kind="loading" />
 
-      <div v-else-if="loadError" role="alert" class="rounded-md border border-danger/15 bg-danger-soft p-4">
-        <p class="text-sm font-medium text-danger">These settings could not be loaded</p>
-        <p class="mt-1 text-xs text-muted">{{ loadError }}</p>
-        <button type="button" class="btn-secondary mt-2.5" @click="load">Try again</button>
-      </div>
+      <StatusNotice v-else-if="loadError" kind="error" title="These settings could not be loaded" :message="loadError" @retry="load" />
 
       <template v-else>
         <p v-if="definition.description" class="mb-5 text-sm text-muted">
           {{ definition.description }}
         </p>
 
+        <ModelNotice v-if="!definition.readOnly" class="mb-5" />
         <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
         <PendingNotice v-else-if="pending && !dirty" :edit="pending" @discarded="kept.forget(); load()" />
 

@@ -8,6 +8,7 @@ export {
   createRuntimeContext,
   DEFAULT_SITE_ID,
   type CreateRuntimeContextOptions,
+  type OperationalFact,
   type OperationalInfo,
   type RuntimeContext,
   type RuntimeHealth,
@@ -37,6 +38,7 @@ export {
 } from "./schema.js";
 export {
   allowedOrigins,
+  apiErrorOf,
   errorHandler,
   originGuard,
   rateLimit,
@@ -64,8 +66,11 @@ export {
   classifyPath,
   describeProblems,
   flattenProblems,
+  groupOf,
   type AnnotatedChange,
   type ChangeOwner,
+  type CompareTarget,
+  type Comparison,
   type ContentStagingService,
   type RepositoryInfo,
   type PublishInput,
@@ -75,16 +80,22 @@ export {
 } from "./services/changes.js";
 export {
   createWorkingTreeStagingService,
+  validateSelection,
+  type SelectionCheck,
   type WorkingTreeStagingDeps,
 } from "./services/staging.js";
 export { createMediaService, formatBytes, type MediaFile, type MediaService } from "./services/media.js";
 export { publishChanges } from "./services/publish.js";
+export { MODEL_UNREADABLE, refuseWhileModelUnreadable } from "./services/model-guard.js";
 export { storeUpload, type UploadInput } from "./services/upload.js";
 export {
   createContentStore,
   ContentError,
+  ReadOnlyError,
+  UnknownContentError,
   ValidationError,
   type ContentStore,
+  type Referrer,
   type SavedEntry,
   type SaveEntryInput,
 } from "./services/content-store.js";
@@ -132,9 +143,9 @@ export type {
   SyncConflict,
   SyncStatus,
 } from "./workspace/policy.js";
-export { developerPolicy, type DeveloperPolicyOptions } from "./workspace/developer.js";
 export {
   commitPaths,
+  currentBranch,
   detachedHead,
   headRevision,
   headSource,
@@ -144,8 +155,24 @@ export {
   locateTree,
   parseStatus,
   recommitPaths,
+  unpushedCommits,
   type DetachedHead,
   type GitTree,
   type TreeChange,
+  type UnpushedCommits,
 } from "./workspace/tree.js";
 export { schemaStats } from "./lib/schema-stats.js";
+export type {
+  ChangesResponse,
+  EntryDetail,
+  EntrySummary,
+  MediaUsage,
+  ModelState,
+  Overview,
+  Schema,
+  SchemaCollection,
+  SchemaReferenceSet,
+  SchemaSingleton,
+  SingletonDetail,
+  SystemInfo,
+} from "./routes/responses.js";

@@ -5,7 +5,7 @@
 > `@micacms/core`, `@micacms/astro` or the `@micacms/editor` CLI instead.
 
 The single-site Mica runtime: the Hono API, application services, the content
-files and the Git working-tree code (Git runner, locks, owner policy), deliberately **authentication-neutral**. It answers "who is
+files and the Git working-tree code (Git runner, locks, the owner policy contract), deliberately **authentication-neutral**. It answers "who is
 this request?" with whatever `AuthSurface` the composing app hands in, and
 never imports an auth implementation — that direction is what keeps
 `npx @micacms/editor` free of authentication code.

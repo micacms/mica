@@ -11,10 +11,14 @@ import type { FieldIssue } from "@micacms/core/internal";
 export type ErrorCode =
   | "bad_request"
   | "validation_failed"
+  /** A content file that Mica cannot read, such as a malformed `index.json`. The body names its `path`. */
+  | "unreadable_content"
   | "unauthenticated"
   | "forbidden"
   | "not_found"
   | "conflict"
+  /** A write while a newer content model cannot be read. Not a conflict with somebody's save: nothing to compare. */
+  | "model_unreadable"
   | "payload_too_large"
   | "unsupported_media_type"
   | "rate_limited"
@@ -25,10 +29,12 @@ export type ErrorCode =
 const STATUS: Record<ErrorCode, number> = {
   bad_request: 400,
   validation_failed: 422,
+  unreadable_content: 422,
   unauthenticated: 401,
   forbidden: 403,
   not_found: 404,
   conflict: 409,
+  model_unreadable: 409,
   payload_too_large: 413,
   unsupported_media_type: 415,
   rate_limited: 429,
@@ -41,6 +47,8 @@ export interface ApiErrorBody {
     code: ErrorCode;
     message: string;
     issues?: FieldIssue[];
+    /** The content file that the error is about, relative to the content root. */
+    path?: string;
   };
 }
 
@@ -49,18 +57,20 @@ export class ApiError extends Error {
   readonly code: ErrorCode;
   readonly status: number;
   readonly issues?: FieldIssue[];
+  readonly path?: string;
   /** Extra response headers, e.g. `Retry-After` on a rate limit. */
   readonly headers?: Record<string, string>;
 
   constructor(
     code: ErrorCode,
     message: string,
-    options: { issues?: FieldIssue[]; headers?: Record<string, string>; cause?: unknown } = {},
+    options: { issues?: FieldIssue[]; path?: string; headers?: Record<string, string>; cause?: unknown } = {},
   ) {
     super(message, { cause: options.cause });
     this.code = code;
     this.status = STATUS[code];
     this.issues = options.issues;
+    this.path = options.path;
     this.headers = options.headers;
   }
 
@@ -70,6 +80,7 @@ export class ApiError extends Error {
         code: this.code,
         message: this.message,
         ...(this.issues ? { issues: this.issues } : {}),
+        ...(this.path !== undefined ? { path: this.path } : {}),
       },
     };
   }

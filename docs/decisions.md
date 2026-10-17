@@ -324,7 +324,7 @@ beside it. See "Local Git is the local editor's, never the server's".
 and with an isolated environment instead of the developer's — see "Self-hosted
 Mica keeps its own Git clone". The runner is `workspace/git.ts`, the rules
 `services/staging.ts`, and the developer's half is the developer policy
-(`workspace/developer.ts`). The gate is no longer HEAD: Publish sends the
+(`apps/local-editor/src/developer.ts` since 0.11, #228). The gate is no longer HEAD: Publish sends the
 reviewed paths with their revisions.
 
 **1.0 status:** accepted for 1.0. The Windows CI job tests it.
@@ -620,7 +620,7 @@ repository without a folder.
 
 **Built in 0.11 (#276).** `detachedHead` in
 `packages/runtime/src/workspace/tree.ts`, the developer policy
-(`workspace/developer.ts`), `apps/local-editor/src/banner.ts`.
+(`apps/local-editor/src/developer.ts`), `apps/local-editor/src/banner.ts`.
 
 **1.0 status:** accepted for 1.0.
 
@@ -752,6 +752,19 @@ the hold, because a newer model is then the only way forward.
 **Changed in 0.11 (#275):** Mica supports Git LFS, so a `.gitattributes` change
 no longer holds a sync, and `lfs_refused` is gone. Only a model that the image
 cannot read holds it (`model_unreadable`).
+
+**Changed in 0.11 (#297):** while a newer model cannot be read, Mica refuses
+every write: a save, a delete, a new order, an upload, a discard, a choice at
+a sync conflict and Publish.
+A save with the model in use would leave out the fields that only the new
+model has, and it would still answer with success. The answer is a 409 with
+the code `model_unreadable` and the message "The content model changed, and
+this Mica cannot read it. Restart or upgrade Mica." Reads go on with the model
+in use. A sync and a retry of a push are not refused: they do not use the
+model, and a sync can bring the fix. The admin API refuses in one middleware,
+and the MCP tools in their wrapper for writes, with the same function
+(`refuseWhileModelUnreadable` in `packages/runtime/src/services/model-guard.ts`).
+The editor shows the reason beside Save and Publish.
 
 **1.0 status:** accepted for 1.0.
 
@@ -1132,6 +1145,23 @@ surface, not the admin API.
 **Fired in 0.10:** agents are the second client. They got the MCP tools, a
 separate surface on the same services, and the admin API stays internal. See
 the next entry.
+
+**Changed in 0.11 (#218, #228):** the editor imports the response types of
+the admin API from `@micacms/runtime`. The runtime is a development dependency
+of `@micacms/editor-ui`, with type imports only, so nothing of it goes into the
+bundle. The routes check their answers against the same types
+(`packages/runtime/src/routes/responses.ts`), so the editor and the server
+cannot disagree about a shape. The server names the group of each pending
+change (`groupOf`); the editor only shows it. One mapping gives the status of a
+content error, for the admin API and for the MCP tools (`apiErrorOf`): a
+conflict or a read-only part is 409, an invalid value 422, a file that Mica
+cannot read 422 with its path, an unknown collection or singleton 404, and
+another content error 400. Any other error is a bug and stays a 500. The
+editor reads JSON only from a JSON response, so a page from a proxy, such as a
+413, gives a clear message. The developer policy and `MICA_LOCAL_PUBLISH` are
+in the local editor (`apps/local-editor/src/developer.ts`); the runtime
+requires an owner policy from each app, and its operational information
+carries only facts that every app can give.
 
 **1.0 status:** accepted for 1.0; #54 lists it as internal.
 

@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "While a newer content model cannot be read, every write is refused with a 409 that says why, so that a save no longer leaves out the new fields. A content error gets its own status: 409 for a conflict, 422 for an invalid value or a file that cannot be read, 404 for an unknown collection or singleton, and 400 for the rest. The change list names the group of each change. The response types are exported for the editor, the owner policy is required, and the developer policy and MICA_LOCAL_PUBLISH move to the local editor.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

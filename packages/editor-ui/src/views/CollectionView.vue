@@ -10,11 +10,12 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { Plus } from "@lucide/vue";
 
-import { api, ApiError, type EntrySummary } from "@/api";
+import { api, messageOf, type EntrySummary } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import ReorderArrows from "@/components/ReorderArrows.vue";
 import ReorderHandle from "@/components/ReorderHandle.vue";
+import StatusNotice from "@/components/StatusNotice.vue";
 import { useReorder } from "@/composables/useReorder";
 import { previewValue } from "@/lib/format";
 import { useSchema } from "@/stores/schema";
@@ -41,6 +42,8 @@ const pendingStates = computed(() => {
 
 const entries = ref<EntrySummary[]>([]);
 const loading = ref(true);
+/** Why the entries could not be loaded: the list is then not "empty". */
+const loadError = ref<string | null>(null);
 const search = ref("");
 const reordering = ref(false);
 
@@ -66,6 +69,10 @@ const matching = computed(() => {
   );
 });
 
+const emptyTitle = computed(() =>
+  search.value ? `Nothing matches "${search.value}".` : `No ${definition.value?.label.toLowerCase()} yet.`,
+);
+
 /** The values of an entry, without its field names: "title" must not match every entry. */
 function searchableText(value: unknown): string {
   if (typeof value === "string") return value.toLowerCase();
@@ -77,12 +84,14 @@ function searchableText(value: unknown): string {
 
 async function load(): Promise<void> {
   loading.value = true;
+  loadError.value = null;
   try {
     const listed = await api.entries.list(props.collection);
     entries.value = listed.items;
     orderRevision = listed.orderRevision;
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not load the entries.");
+    entries.value = [];
+    loadError.value = messageOf(error, "Something went wrong.");
   } finally {
     loading.value = false;
   }
@@ -113,7 +122,7 @@ async function saveOrder(next: EntrySummary[], moved: EntrySummary): Promise<voi
     savedOrder = next.map((entry) => entry.slug).join("/");
     void staging.refresh();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not save the new order.");
+    toast.error(messageOf(error, "Could not save the new order."));
     await load();
   } finally {
     reordering.value = false;
@@ -149,7 +158,7 @@ const reorder = useReorder<EntrySummary>({
       :title="definition.label"
       :subtitle="
         definition.description ??
-        `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`
+        (loadError ? undefined : `${entries.length} ${entries.length === 1 ? 'entry' : 'entries'}`)
       "
     >
       <RouterLink v-if="!definition.readOnly" :to="{ name: 'entry-new', params: { collection } }" class="btn-primary">
@@ -181,13 +190,22 @@ const reorder = useReorder<EntrySummary>({
         again to drop it. Escape puts it back. The arrows at the end of the row move it one step.
       </p>
 
-      <div class="card overflow-hidden">
-        <p v-if="loading" role="status" class="px-4 py-8 text-center text-sm text-muted">Loading…</p>
+      <StatusNotice
+        v-if="loadError"
+        kind="error"
+        :title="`The ${definition.label.toLowerCase()} could not be loaded`"
+        :message="loadError"
+        @retry="load"
+      />
 
-        <div v-else-if="matching.length === 0" class="px-4 py-12 text-center">
-          <p class="text-sm font-medium">
-            {{ search ? `Nothing matches "${search}".` : `No ${definition.label.toLowerCase()} yet.` }}
-          </p>
+      <div v-else class="card overflow-hidden">
+        <StatusNotice v-if="loading" kind="loading" />
+
+        <StatusNotice
+          v-else-if="matching.length === 0"
+          kind="empty"
+          :title="emptyTitle"
+        >
           <RouterLink
             v-if="!search && !definition.readOnly"
             :to="{ name: 'entry-new', params: { collection } }"
@@ -195,7 +213,7 @@ const reorder = useReorder<EntrySummary>({
           >
             Create the first {{ definition.labelSingular.toLowerCase() }}
           </RouterLink>
-        </div>
+        </StatusNotice>
 
         <table v-else class="w-full text-sm">
           <caption class="sr-only">{{ definition.label }}</caption>

@@ -6,7 +6,17 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { FileChange } from "../src/api.js";
-import { blockedEdits, problemsByEdit, publishSummary, reviewedPaths, toEdits, withNeeds, withoutDependents } from "../src/lib/edits.js";
+import { blockedEdits, problemsByEdit, publishSummary, reviewedPaths, toEdits as groupedEdits, withNeeds, withoutDependents } from "../src/lib/edits.js";
+
+/** The group of each file, as the server sends it with the change list. */
+function groupOf({ owner, path }: Omit<FileChange, "group">): string {
+  if (owner.kind === "entry") return `entry:${owner.collection}/${owner.slug}`;
+  if (owner.kind === "singleton") return `singleton:${owner.name}`;
+  if (owner.kind === "order") return `order:${owner.collection}`;
+  return `file:${path}`;
+}
+
+const toEdits = (changes: Array<Omit<FileChange, "group">>) => groupedEdits(changes.map((change) => ({ ...change, group: groupOf(change) })));
 
 const renamed = {
   kind: "entry",
@@ -63,8 +73,8 @@ describe("toEdits", () => {
         ["entry:pages/about", 2],
         ["singleton:settings", 1],
         ["order:pages", 1],
-        ["media:media/a.png", 1],
-        ["media:media/b.png", 1],
+        ["file:media/a.png", 1],
+        ["file:media/b.png", 1],
       ],
     );
   });
@@ -158,11 +168,11 @@ describe("toEdits", () => {
       { path: "media/x.png", kind: "create", owner: { kind: "media", label: "Shared media" } },
       { path: "pages/d.json", kind: "update", owner: page("d") },
     ]);
-    assert.deepEqual(edits[0]!.needs, ["entry:pages/b", "media:media/x.png"]);
+    assert.deepEqual(edits[0]!.needs, ["entry:pages/b", "file:media/x.png"]);
 
-    assert.deepEqual([...withNeeds(["entry:pages/a"], edits)].sort(), ["entry:pages/a", "entry:pages/b", "entry:pages/c", "media:media/x.png"]);
+    assert.deepEqual([...withNeeds(["entry:pages/a"], edits)].sort(), ["entry:pages/a", "entry:pages/b", "entry:pages/c", "file:media/x.png"]);
     const all = edits.map((edit) => edit.key);
-    assert.deepEqual([...withoutDependents(all, "entry:pages/c", edits)].sort(), ["entry:pages/d", "media:media/x.png"]);
+    assert.deepEqual([...withoutDependents(all, "entry:pages/c", edits)].sort(), ["entry:pages/d", "file:media/x.png"]);
     assert.deepEqual([...blockedEdits(edits, new Map([["entry:pages/c", true]]))].sort(), ["entry:pages/a", "entry:pages/b", "entry:pages/c"]);
   });
 });

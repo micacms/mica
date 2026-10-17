@@ -11,6 +11,7 @@ import { ConfigError, contentFiles, createLogger, createRuntimeContext, loadSche
 
 import { agentSetup, colors, supportsColor } from "./banner.js";
 import { loadConfig } from "./config.js";
+import { developerPolicy } from "./developer.js";
 import { lfsSetupProblem } from "./lfs.js";
 
 /** A project mistake, not a crash: said on stderr, without a stack trace. */
@@ -48,6 +49,7 @@ async function main(): Promise<void> {
     schemaRevision: await files.revision(MANIFEST_PATH),
     logger,
     operational: () => ({ auth: "none — the local MCP server runs as the developer, over stdio" }),
+    policy: developerPolicy({ publishEnabled: config.MICA_LOCAL_PUBLISH, logger }),
   });
 
   const server = serveMcpStdio(ctx, { publish: config.MICA_MCP_PUBLISH, localFiles: true });

@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, coordinates, createManifest, defineSite, MANIFEST_PATH, number, object, referenceIndexPath, referenceSet, repeater, serializeReferenceIndex, slug, text, type FieldMap } from "@micacms/core/internal";
+import { collection, coordinates, createManifest, defineSite, MANIFEST_PATH, number, object, PROTOCOL_VERSION, referenceIndexPath, referenceSet, repeater, serializeReferenceIndex, slug, text, type FieldMap } from "@micacms/core/internal";
 import { Hono } from "hono";
 
 import { clientIp, type Env } from "../src/http.js";
@@ -14,6 +14,7 @@ import {
   securityHeaders,
 } from "../src/middleware/index.js";
 import { healthRoutes } from "../src/routes/health.js";
+import { MODEL_UNREADABLE } from "../src/services/model-guard.js";
 
 import {
   createHarness,
@@ -1059,9 +1060,127 @@ describe("a new content model", () => {
         body: JSON.stringify({ message: "Try", paths: {} }),
       });
       assert.equal(publish.status, 409);
-      assert.match(((await publish.json()) as { error: { message: string } }).error.message, /cannot be read/);
+      assert.equal(((await publish.json()) as { error: { message: string } }).error.message, MODEL_UNREADABLE);
     } finally {
       await harness.close();
     }
+  });
+});
+
+describe("while a newer content model cannot be read", () => {
+  // A save with the model in use would leave out the new fields, and still answer with success (#297).
+  it("refuses every write with a 409 that names the reason, and still reads", async () => {
+    const harness = await createHarness();
+    const json = (method: string, body: unknown): RequestInit => ({
+      method,
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    try {
+      const created = await harness.request("/api/admin/collections/projects/entries", json("POST", { data: { title: "Haus A" } }));
+      assert.equal(created.status, 201);
+      const { revision } = (await created.json()) as { revision: string };
+
+      const manifest = createManifest(testSite, "test");
+      mkdirSync(join(harness.contentRoot, ".mica"), { recursive: true });
+      writeFileSync(join(harness.contentRoot, MANIFEST_PATH), JSON.stringify({ ...manifest, protocolVersion: PROTOCOL_VERSION + 1 }));
+      await harness.ctx.refreshModel({ force: true });
+
+      const writes: Array<[string, RequestInit]> = [
+        ["/api/admin/collections/projects/entries", json("POST", { data: { title: "Haus B" } })],
+        ["/api/admin/collections/projects/entries/haus-a", json("PUT", { data: { title: "Haus A, new" }, revision })],
+        [`/api/admin/collections/projects/entries/haus-a?revision=${revision}`, { method: "DELETE" }],
+        ["/api/admin/collections/projects/reorder", json("POST", { slugs: ["haus-a"], revision: null })],
+        ["/api/admin/singletons/settings", json("PUT", { data: { siteName: "Mica" }, revision: null })],
+        [uploadPath("photo.png"), { method: "POST", body: pngBytes() }],
+        ["/api/admin/media/delete", json("POST", { paths: ["media/photo.png"] })],
+        ["/api/admin/changes/discard", json("POST", { paths: { "projects/haus-a/index.json": revision } })],
+        ["/api/admin/publish", json("POST", { message: "Try", paths: {} })],
+      ];
+      for (const [path, init] of writes) {
+        const response = await harness.request(path, init);
+        assert.equal(response.status, 409, `${init.method} ${path}`);
+        assert.deepEqual(((await response.json()) as { error: unknown }).error, { code: "model_unreadable", message: MODEL_UNREADABLE });
+      }
+
+      assert.equal((await harness.request("/api/admin/collections/projects/entries/haus-a")).status, 200);
+      assert.equal((await harness.request("/api/admin/schema")).status, 200);
+      const changes = (await (await harness.request("/api/admin/changes")).json()) as { model: { warning: string | null } };
+      assert.match(changes.model.warning ?? "", /protocol version/);
+
+      writeFileSync(join(harness.contentRoot, MANIFEST_PATH), JSON.stringify(manifest));
+      await harness.ctx.refreshModel({ force: true });
+      const saved = await harness.request("/api/admin/collections/projects/entries/haus-a", json("PUT", { data: { title: "Haus A, new" }, revision }));
+      assert.equal(saved.status, 200);
+    } finally {
+      await harness.close();
+    }
+  });
+});
+
+describe("the error mapping", () => {
+  let harness: TestHarness;
+  before(async () => {
+    harness = await createHarness();
+  });
+  after(() => harness.close());
+
+  const errorOf = async (response: Response) => ((await response.json()) as { error: { code: string; message: string; path?: string } }).error;
+
+  it("an unknown collection or singleton is 404", async () => {
+    for (const path of ["/api/admin/collections/nope/entries", "/api/admin/singletons/nope", "/api/admin/collections/nope/entries/a"]) {
+      const response = await harness.request(path);
+      assert.equal(response.status, 404, path);
+      assert.equal((await errorOf(response)).code, "not_found");
+    }
+  });
+
+  it("a content file that Mica cannot read is 422, with its path", async () => {
+    mkdirSync(join(harness.contentRoot, "projects/broken"), { recursive: true });
+    writeFileSync(join(harness.contentRoot, "projects/broken/index.json"), "{ not json");
+    try {
+      const response = await harness.request("/api/admin/collections/projects/entries/broken");
+      assert.equal(response.status, 422);
+      const error = await errorOf(response);
+      assert.equal(error.code, "unreadable_content");
+      assert.equal(error.path, "projects/broken/index.json");
+    } finally {
+      rmSync(join(harness.contentRoot, "projects/broken"), { recursive: true, force: true });
+    }
+  });
+
+  it("another content error is 400: an order for a collection that cannot sort, an entry without a title or a URL", async () => {
+    const reorder = await harness.request("/api/admin/collections/team/reorder", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ slugs: [], revision: null }),
+    });
+    assert.equal(reorder.status, 400);
+    assert.match((await errorOf(reorder)).message, /not manually sortable/);
+
+    const untitled = await harness.request("/api/admin/collections/team/entries", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ data: {} }),
+    });
+    assert.equal(untitled.status, 400);
+    assert.equal((await errorOf(untitled)).code, "bad_request");
+  });
+
+  it("an invalid value is 422 with the issues, and an outdated revision 409", async () => {
+    const invalid = await harness.request("/api/admin/collections/projects/entries", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ data: { title: "x".repeat(51) } }),
+    });
+    assert.equal(invalid.status, 422);
+    assert.equal(((await invalid.json()) as { error: { issues: Array<{ path: string }> } }).error.issues[0]?.path, "title");
+
+    const outdated = await harness.request("/api/admin/singletons/settings", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ data: { siteName: "A" }, revision: "outdated" }),
+    });
+    assert.equal(outdated.status, 409);
   });
 });

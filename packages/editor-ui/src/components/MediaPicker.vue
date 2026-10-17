@@ -19,8 +19,9 @@ import { X } from "@lucide/vue";
 
 import { acceptedFileTypes, MEDIA_FILE_TYPES, mediaFileTypeOf, type MediaAccept } from "@micacms/core/internal";
 
-import { api, ApiError, type MediaItem } from "@/api";
+import { api, messageOf, type MediaItem } from "@/api";
 import { SHARED_MEDIA, type MediaFolder } from "@/lib/media-folder";
+import StatusNotice from "@/components/StatusNotice.vue";
 import UploadList from "@/components/UploadList.vue";
 import { useUploads } from "@/composables/useUploads";
 import { useToast } from "@/stores/toast";
@@ -48,6 +49,8 @@ const toast = useToast();
 
 const all = ref<MediaItem[]>([]);
 const loading = ref(false);
+/** Why the files could not be loaded: the library is then not "empty". */
+const loadError = ref<string | null>(null);
 const uploads = useUploads();
 const uploading = uploads.busy;
 const search = ref("");
@@ -88,16 +91,19 @@ const items = computed(() => {
   });
 });
 
+const emptyTitle = computed(() => (search.value ? `Nothing matches "${search.value}".` : "No files yet."));
+
 const canConfirm = computed(() => picked.value.length > 0);
 
 const isImage = (item: MediaItem): boolean => item.mimeType.startsWith("image/");
 
 async function load(): Promise<void> {
   loading.value = true;
+  loadError.value = null;
   try {
     all.value = (await api.media.list()).items;
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not load the media library.");
+    loadError.value = messageOf(error, "Something went wrong.");
   } finally {
     loading.value = false;
   }
@@ -286,11 +292,11 @@ const folderOf = (path: string): string => {
           </label>
           <UploadList :states="uploads.states.value" :busy="uploads.busy.value" class="-mt-2 mb-4" @retry="retry" @dismiss="uploads.clear()" />
 
-          <p v-if="loading" role="status" class="py-8 text-center text-sm text-muted">Loading…</p>
+          <StatusNotice v-if="loading" kind="loading" />
 
-          <p v-else-if="items.length === 0" class="py-8 text-center text-sm text-muted">
-            {{ search ? `Nothing matches "${search}".` : "No files yet." }}
-          </p>
+          <StatusNotice v-else-if="loadError" kind="error" title="The media library could not be loaded" :message="loadError" @retry="load" />
+
+          <StatusNotice v-else-if="items.length === 0" kind="empty" :title="emptyTitle" />
 
           <ul v-else class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
             <li v-for="item in items" :key="item.path">

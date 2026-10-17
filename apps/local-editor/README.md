@@ -106,6 +106,7 @@ src/
 ├── init.ts       `mica init`: the starter files
 ├── check.ts      `mica check`: every entry against the model
 ├── index.ts      the composition: developer policy + runtime + editor UI
+├── developer.ts  the developer policy: Publish commits and pushes with your own Git
 ├── config.ts     the local slice of the environment, and the refusals
 ├── guards.ts     the Host allowlist
 └── banner.ts     what a person sees instead of log lines

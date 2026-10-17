@@ -49,6 +49,11 @@ export class ContentError extends FilesError {
   override name = "ContentError";
 }
 
+/** A collection or singleton that the model does not have. */
+export class UnknownContentError extends ContentError {
+  override name = "UnknownContentError";
+}
+
 /** A write to a collection or singleton that this build of Mica cannot interpret. */
 export class ReadOnlyError extends ContentError {
   override name = "ReadOnlyError";
@@ -95,13 +100,13 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
   const requireCollection = (name: string): Collection => {
     // `hasOwn`: a name such as `constructor` is not a collection.
     const def = Object.hasOwn(site.collections, name) ? site.collections[name] : undefined;
-    if (!def) throw new ContentError(`Unknown collection "${name}".`);
+    if (!def) throw new UnknownContentError(`Unknown collection "${name}".`);
     return def;
   };
 
   const requireSingleton = (name: string): Singleton => {
     const def = Object.hasOwn(site.singletons, name) ? site.singletons[name] : undefined;
-    if (!def) throw new ContentError(`Unknown singleton "${name}".`);
+    if (!def) throw new UnknownContentError(`Unknown singleton "${name}".`);
     return def;
   };
 

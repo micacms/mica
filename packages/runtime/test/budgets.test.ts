@@ -19,7 +19,7 @@ import { createApp } from "../src/app.js";
 import { createRuntimeContext, type RuntimeContext } from "../src/context.js";
 import { contentFiles, gitRunner, type ContentFiles, type GitRunner } from "../src/index.js";
 import { createLogger } from "../src/lib/logger.js";
-import { pngBytes, TEST_ORIGIN, testConfig } from "./helpers.js";
+import { commitOnlyPolicy, pngBytes, TEST_ORIGIN, testConfig } from "./helpers.js";
 
 /** Entries per collection: one at the target, two small ones. Each entry has three files. */
 const ENTRIES: Record<string, number> = { news: 1_000, projects: 150, team: 150 };
@@ -122,6 +122,7 @@ before(() => {
     files,
     logger: createLogger({ level: "silent", pretty: false }),
     tree: { git: countingGit(gitRunner(root), log), prefix: "content", contentRoot: content },
+    policy: commitOnlyPolicy(),
   });
   const app = createApp(ctx);
   request = async (path, init) => app.request(`${TEST_ORIGIN}${path}`, init);

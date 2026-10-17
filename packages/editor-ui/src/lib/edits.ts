@@ -28,22 +28,13 @@ export interface Edit {
   needs: string[];
 }
 
-/** Groups file changes into edits, by the owner the server named for each file. */
+/** Groups file changes into edits, by the group the server named for each file: Publish never splits one. */
 export function toEdits(fileChanges: FileChange[]): Edit[] {
   const byKey = new Map<string, Edit>();
 
   for (const change of fileChanges) {
     const owner = change.owner;
-    const key =
-      owner.kind === "entry"
-        ? `entry:${owner.collection}/${owner.slug}`
-        : owner.kind === "singleton"
-          ? `singleton:${owner.name}`
-          : owner.kind === "order"
-            ? `order:${owner.collection}`
-            : owner.kind === "media"
-              ? `media:${change.path}`
-              : `other:${change.path}`;
+    const key = change.group;
 
     let edit = byKey.get(key);
     if (!edit) {

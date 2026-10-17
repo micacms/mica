@@ -13,8 +13,9 @@ import type { FieldMap } from "@micacms/core/internal";
 import {
   api,
   ApiError,
-  type Comparison,
+  messageOf,
   type CompareTarget,
+  type Comparison,
   type FileChange,
   type PublishOutcome,
   type SyncConflict,
@@ -22,7 +23,9 @@ import {
 import ChangeComparison from "@/components/ChangeComparison.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import DeveloperDetails from "@/components/DeveloperDetails.vue";
+import ModelNotice from "@/components/ModelNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import StatusNotice from "@/components/StatusNotice.vue";
 import {
   blockedEdits,
   problemsByEdit,
@@ -159,7 +162,7 @@ async function loadComparison(edit: Edit): Promise<void> {
   } catch (error) {
     comparisons.value[edit.key] = {
       loading: false,
-      error: error instanceof ApiError ? error.message : "Could not load the comparison.",
+      error: messageOf(error, "Could not load the comparison."),
       comparison: null,
     };
   }
@@ -276,7 +279,7 @@ async function retryPush(): Promise<void> {
     }
     await staging.refresh();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not send it to the website.");
+    toast.error(messageOf(error, "Could not send it to the website."));
   } finally {
     pushing.value = false;
   }
@@ -293,7 +296,7 @@ async function discard(): Promise<void> {
     discardTarget.value = null;
     await staging.refresh();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not discard.");
+    toast.error(messageOf(error, "Could not discard."));
     // Someone saved again: show their version before anything is discarded.
     if (error instanceof ApiError && error.status === 409) {
       discardTarget.value = null;
@@ -317,7 +320,7 @@ async function syncNow(): Promise<void> {
     await api.staging.sync();
     await refresh();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not reach the website's files.");
+    toast.error(messageOf(error, "Could not reach the website's files."));
   } finally {
     syncing.value = false;
   }
@@ -343,7 +346,7 @@ async function resolve(conflict: SyncConflict, choice: "mine" | "website"): Prom
     toast.success(choice === "mine" ? `Kept your version of ${conflict.label}.` : `Took the website's version of ${conflict.label}.`);
     await refresh();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not resolve the conflict.");
+    toast.error(messageOf(error, "Could not resolve the conflict."));
   } finally {
     resolving.value = null;
   }
@@ -366,7 +369,7 @@ async function loadConflictComparison(conflict: SyncConflict): Promise<void> {
   } catch (error) {
     conflictComparisons.value[conflict.group] = {
       loading: false,
-      error: error instanceof ApiError ? error.message : "Could not load the comparison.",
+      error: messageOf(error, "Could not load the comparison."),
       comparison: null,
     };
   }
@@ -403,7 +406,10 @@ function plural(count: number, one: string, many: string): string {
   </PageHeader>
 
   <div class="mx-auto max-w-3xl space-y-5 px-4 py-6 sm:px-6">
-    <p v-if="loading" role="status" class="text-sm text-muted">Loading…</p>
+    <StatusNotice v-if="loading" kind="loading" />
+
+    <!-- An old list is not the pending changes: Publish would be refused for it. -->
+    <StatusNotice v-else-if="staging.error.value" kind="error" title="The changes could not be loaded" :message="staging.error.value" @retry="refresh" />
 
     <template v-else-if="status">
       <div v-if="published" role="status" class="rounded-md border border-success/15 bg-success-soft p-4">
@@ -423,13 +429,7 @@ function plural(count: number, one: string, many: string): string {
         </DeveloperDetails>
       </div>
 
-      <div v-if="status.model?.warning" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
-        <p class="text-sm font-medium text-warning">Publishing waits for the developer</p>
-        <p class="mt-1 text-xs text-muted">
-          The website's new content model cannot be read. You can go on saving. Tell the developer:
-          {{ status.model.warning }}
-        </p>
-      </div>
+      <ModelNotice />
 
       <!-- Publishing unavailable: still an honest, read-only list. -->
       <div

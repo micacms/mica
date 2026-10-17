@@ -6,7 +6,7 @@
 
 import { computed, ref } from "vue";
 
-import { api, ApiError } from "@/api";
+import { api, messageOf } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import { problemsByEdit, reviewedPaths, type Edit } from "@/lib/edits";
 import { relativeTime } from "@/lib/format";
@@ -45,7 +45,7 @@ async function discard(): Promise<void> {
     emit("discarded", props.edit);
     await staging.refresh();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not discard.");
+    toast.error(messageOf(error, "Could not discard."));
   } finally {
     discarding.value = false;
   }

@@ -11,7 +11,7 @@ import { useRoute, useRouter } from "vue-router";
 
 import { defaultValues, isValidSlug } from "@micacms/core/internal";
 
-import { api, ApiError, type EntryDetail, type Referrer } from "@/api";
+import { api, ApiError, messageOf, type EntryDetail, type Referrer } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
@@ -23,6 +23,7 @@ import { usePreview } from "@/composables/usePreview";
 import { pageHref } from "@/lib/pages";
 import PendingNotice from "@/components/PendingNotice.vue";
 import type { Edit } from "@/lib/edits";
+import ModelNotice from "@/components/ModelNotice.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
 import { fieldPathOf, useFormIssues } from "@/composables/useFormIssues";
@@ -141,7 +142,7 @@ const state = computed(() =>
 const title = computed(() => {
   const def = definition.value;
   if (!def) return "Entry";
-  const value = values.value[def.titleField];
+  const value = def.titleField ? values.value[def.titleField] : undefined;
   if (typeof value === "string" && value.trim()) return value.trim();
   return isNew.value ? `New ${def.labelSingular.toLowerCase()}` : "Untitled";
 });
@@ -183,7 +184,7 @@ onMounted(async () => {
       unsaved.markClean();
     }
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not open this entry.");
+    toast.error(messageOf(error, "Could not open this entry."));
     await router.replace({ name: "collection", params: { collection: props.collection } });
   } finally {
     loading.value = false;
@@ -255,9 +256,9 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
 
     await open(saved.slug);
   } catch (error) {
-    if (error instanceof ApiError && error.status === 409 && !props.slug) {
+    if (error instanceof ApiError && error.code === "conflict" && !props.slug) {
       toast.error("An entry with this URL exists already. Change the URL, then save.");
-    } else if (error instanceof ApiError && error.status === 409) {
+    } else if (error instanceof ApiError && error.code === "conflict") {
       // The form keeps the editor's work; which version stays is their decision.
       await showConflict(props.slug!, error.message);
     } else if (error instanceof ApiError && error.issues.length > 0) {
@@ -265,7 +266,7 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
       toast.error(error.message, `${error.issues.length} field(s) need attention.`);
       await showIssues();
     } else {
-      toast.error(error instanceof ApiError ? error.message : "Could not save this entry.");
+      toast.error(messageOf(error, "Could not save this entry."));
     }
   } finally {
     saving.value = false;
@@ -297,7 +298,7 @@ async function useTheirs(): Promise<void> {
     kept.forget();
     toast.success("Loaded their version.");
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not load this entry.");
+    toast.error(messageOf(error, "Could not load this entry."));
   }
 }
 
@@ -336,8 +337,8 @@ async function remove(): Promise<void> {
     await router.replace({ name: "collection", params: { collection: props.collection } });
   } catch (error) {
     // A colleague saved since: show their version, as for a save.
-    if (error instanceof ApiError && error.status === 409) await showConflict(props.slug, error.message);
-    else toast.error(error instanceof ApiError ? error.message : "Could not delete this entry.");
+    if (error instanceof ApiError && error.code === "conflict") await showConflict(props.slug, error.message);
+    else toast.error(messageOf(error, "Could not delete this entry."));
   } finally {
     confirmDelete.value = false;
   }
@@ -369,6 +370,7 @@ async function remove(): Promise<void> {
       <p v-if="loading" role="status" class="text-sm text-muted">Loading…</p>
 
       <template v-else>
+        <ModelNotice v-if="!definition.readOnly" class="mb-5" />
         <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
         <PendingNotice v-else-if="pending && !dirty" :edit="pending" @discarded="discarded" />
 

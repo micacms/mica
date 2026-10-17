@@ -5,8 +5,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, defineSite, media, referenceIndexPath, referenceSet, richText, serializeReferenceIndex, singleton, slug, text } from "@micacms/core/internal";
-import { contentFiles, createApp, createLogger, createRuntimeContext, type Env, type RuntimeContext } from "@micacms/runtime";
+import { collection, createManifest, defineSite, MANIFEST_PATH, media, PROTOCOL_VERSION, referenceIndexPath, referenceSet, richText, serializeReferenceIndex, singleton, slug, text } from "@micacms/core/internal";
+import { contentFiles, createApp, createLogger, createRuntimeContext, MODEL_UNREADABLE, type Env, type OwnerPolicy, type RuntimeContext } from "@micacms/runtime";
 import type { MiddlewareHandler } from "hono";
 
 import { mcpRoutes, SCOPES, type McpRoutesOptions } from "../src/index.js";
@@ -48,6 +48,15 @@ function git(cwd: string, ...args: string[]): string {
   return execFileSync("git", args, { cwd, encoding: "utf8" }).trim();
 }
 
+/** Commits and sends nothing anywhere: the developer's policy is the local editor's. */
+const commitOnly: OwnerPolicy = {
+  owner: "developer",
+  publishAvailability: () => ({ enabled: true }),
+  prepare: async () => {},
+  commitAuthor: () => undefined,
+  push: async (_tree, revision) => ({ state: "published", revision }),
+};
+
 function harness(options: Partial<McpRoutesOptions> = {}): Harness {
   const root = mkdtempSync(join(tmpdir(), "mica-mcp-test-"));
   git(root, "init", "-q", "-b", "main");
@@ -64,7 +73,6 @@ function harness(options: Partial<McpRoutesOptions> = {}): Harness {
       PORT: 6422,
       MICA_PUBLIC_URL: ORIGIN,
       MICA_CONTENT_ROOT: root,
-      MICA_LOCAL_PUBLISH: true,
       MICA_MAX_UPLOAD_BYTES: 1024 * 1024,
       MICA_TRUST_PROXY: false,
       MICA_MCP_PUBLISH: false,
@@ -75,6 +83,7 @@ function harness(options: Partial<McpRoutesOptions> = {}): Harness {
     model: site,
     files: contentFiles({ root }),
     logger: createLogger({ level: "silent", pretty: false }),
+    policy: commitOnly,
   });
   const app = createApp(ctx, { routes: [mcpRoutes(ctx, { publish: false, localFiles: false, ...options })] });
 
@@ -272,6 +281,40 @@ describe("local files and publish", () => {
     const published = await h.call("publish", { message: "Add the first post", paths });
     assert.equal(published.error, false, published.value);
     assert.equal(git(h.root, "log", "-1", "--format=%s"), "Add the first post");
+  });
+});
+
+describe("while a newer content model cannot be read", () => {
+  it("refuses the writes with the reason, and still reads", async () => {
+    const h = harness({ publish: true });
+    try {
+      const saved = await h.call("save_entry", { collection: "posts", data: { title: "First" } });
+      assert.equal(saved.error, false, saved.value);
+
+      mkdirSync(join(h.root, ".mica"), { recursive: true });
+      writeFileSync(join(h.root, MANIFEST_PATH), JSON.stringify({ ...createManifest(site, "test"), protocolVersion: PROTOCOL_VERSION + 1 }));
+      await h.ctx.refreshModel({ force: true });
+
+      const writes: Array<[string, Record<string, unknown>]> = [
+        ["save_entry", { collection: "posts", slug: "first", revision: saved.value.revision, data: { title: "First, new" } }],
+        ["save_singleton", { name: "settings", data: { siteName: "Mica" }, revision: null }],
+        ["delete_entry", { collection: "posts", slug: "first", revision: saved.value.revision }],
+        ["upload_media", { name: "photo.png", content: PNG }],
+        ["discard_changes", { paths: { "posts/first/index.json": saved.value.revision } }],
+        ["publish", { message: "Try", paths: { "posts/first/index.json": saved.value.revision } }],
+      ];
+      for (const [name, args] of writes) {
+        const result = await h.call(name, args);
+        assert.equal(result.error, true, name);
+        assert.equal(result.value, MODEL_UNREADABLE, name);
+      }
+
+      const read = await h.call("get_entry", { collection: "posts", slug: "first" });
+      assert.equal(read.error, false, read.value);
+      assert.equal(read.value.data.title, "First");
+    } finally {
+      h.close();
+    }
   });
 });
 

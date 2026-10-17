@@ -20,14 +20,18 @@ export function useSchema() {
     singletons: computed<SchemaSingleton[]>(() => schema.value?.singletons ?? []),
     loaded: computed(() => schema.value !== null),
 
-    /** Concurrent callers share one request. */
+    /** Concurrent callers share one request. A failed request is forgotten, so that the next call tries again. */
     async load(force = false): Promise<Schema> {
       if (schema.value && !force) return schema.value;
-      inFlight ??= api.schema().then((result) => {
-        schema.value = result;
-        inFlight = null;
-        return result;
-      });
+      inFlight ??= api
+        .schema()
+        .then((result) => {
+          schema.value = result;
+          return result;
+        })
+        .finally(() => {
+          inFlight = null;
+        });
       return inFlight;
     },
 

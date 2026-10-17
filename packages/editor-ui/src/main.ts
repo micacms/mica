@@ -3,9 +3,10 @@ import { config as zodConfig } from "zod";
 
 import App from "@/App.vue";
 import { router } from "@/router";
-import { ApiError, whenSessionExpiry, whenUnauthenticated } from "@/api";
+import { ApiError, messageOf, whenModelUnreadable, whenSessionExpiry, whenUnauthenticated } from "@/api";
 import { applyColorScheme } from "@/composables/useColorScheme";
 import { useSession } from "@/stores/session";
+import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
 import "@/style.css";
@@ -21,20 +22,26 @@ const app = createApp(App);
 // A 401 during work keeps the page and its unsaved changes; the shell offers to sign in again.
 whenUnauthenticated(() => useSession().markEnded());
 whenSessionExpiry((at) => useSession().noteExpiry(at));
+// The change list carries the reason, and the notices by Save and Publish show it.
+whenModelUnreadable(() => void useStaging().refresh());
 
 /**
- * Anything that escapes a component's own handling lands here. A 401 is the
- * session's end, which the shell already shows.
+ * Anything that escapes a component's own handling lands here, and so does a
+ * navigation that failed, such as a model that did not load: the next one
+ * tries again. A 401 is the session's end, which the shell already shows.
  */
-app.config.errorHandler = (error) => {
+function report(error: unknown): void {
   if (error instanceof ApiError && error.isUnauthenticated) return;
 
   console.error(error);
   useToast().error(
-    error instanceof ApiError ? error.message : "Something went wrong.",
+    messageOf(error, "Something went wrong."),
     error instanceof Error && !(error instanceof ApiError) ? error.message : undefined,
   );
-};
+}
+
+app.config.errorHandler = report;
+router.onError(report);
 
 app.use(router);
 app.mount("#app");

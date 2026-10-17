@@ -29,7 +29,7 @@ import {
   validateFields,
 } from "@micacms/core/internal";
 
-import { badRequest } from "../lib/errors.js";
+import { badRequest, notFound } from "../lib/errors.js";
 import type { SyncStatus } from "../workspace/policy.js";
 import type { DetachedHead, UnpushedCommits } from "../workspace/tree.js";
 
@@ -50,6 +50,8 @@ export type ChangeOwner =
 
 export interface AnnotatedChange extends ContentChange {
   owner: ChangeOwner;
+  /** The edit that the file belongs to, from `groupOf`: Publish and Discard never split one. */
+  group: string;
   /**
    * The file's revision, null for a deletion. Publish sends it back, so a file
    * saved after the review is not published unseen.
@@ -183,7 +185,7 @@ export async function compareSources(
 ): Promise<Omit<Comparison, "revisions">> {
   if (target.kind === "singleton") {
     const def = Object.hasOwn(model.singletons, target.name) ? model.singletons[target.name] : undefined;
-    if (!def) throw badRequest(`There is no singleton called "${target.name}".`);
+    if (!def) throw notFound(`There is no singleton called "${target.name}".`);
     return {
       before: await readSingleton(published, def, target.name),
       after: await readSingleton(staged, def, target.name),
@@ -191,7 +193,7 @@ export async function compareSources(
   }
 
   const def = Object.hasOwn(model.collections, target.collection) ? model.collections[target.collection] : undefined;
-  if (!def) throw badRequest(`There is no collection called "${target.collection}".`);
+  if (!def) throw notFound(`There is no collection called "${target.collection}".`);
 
   if (target.kind === "entry") {
     const from = target.from ?? target.slug;
@@ -303,15 +305,17 @@ export async function analyseChanges(
       const owner = owners[index]!;
       const needs = needsByPath.get(change.path);
       const extra = needs ? { needs } : {};
+      const group = groupOf(owner, change.path);
       if (owner.kind === "entry") {
         const def = model.collections[owner.collection]!;
         return {
           ...change,
           ...extra,
           owner: { ...owner, label: labelEntry(def, owner.slug, titles.get(`${owner.collection}/${owner.slug}`)) },
+          group,
         };
       }
-      return { ...change, ...extra, owner };
+      return { ...change, ...extra, owner, group };
     });
   if (options.validate === false) return { changes: annotate(), validation: { ok: true, problems: [] } };
 
@@ -447,6 +451,18 @@ export function ownedByTarget(owner: ChangeOwner, target: CompareTarget): boolea
   }
   if (target.kind === "singleton") return owner.kind === "singleton" && owner.name === target.name;
   return owner.kind === "order" && owner.collection === target.collection;
+}
+
+/**
+ * The key that keeps the files of one piece of content together: an entry, a
+ * singleton, an order, or one file. Publish, Discard, the Publish page and a
+ * sync conflict use the same keys.
+ */
+export function groupOf(owner: ChangeOwner, path: string): string {
+  if (owner.kind === "entry") return `entry:${owner.collection}/${owner.slug}`;
+  if (owner.kind === "singleton") return `singleton:${owner.name}`;
+  if (owner.kind === "order") return `order:${owner.collection}`;
+  return `file:${path}`;
 }
 
 /** Which piece of content a file belongs to, read from the model's path layout. */

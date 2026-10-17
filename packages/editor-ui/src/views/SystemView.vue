@@ -8,8 +8,9 @@
 import { computed, onMounted, ref } from "vue";
 import { ArrowRight } from "@lucide/vue";
 
-import { api, ApiError, type SystemInfo } from "@/api";
+import { api, messageOf, type SystemInfo } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
+import StatusNotice from "@/components/StatusNotice.vue";
 import { absoluteTime, formatBytes, formatDuration } from "@/lib/format";
 import { useToast } from "@/stores/toast";
 
@@ -17,13 +18,15 @@ const toast = useToast();
 
 const info = ref<SystemInfo | null>(null);
 const loading = ref(true);
+const loadError = ref<string | null>(null);
 
 async function load(): Promise<void> {
   loading.value = true;
+  loadError.value = null;
   try {
     info.value = await api.system();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not load the system information.");
+    loadError.value = messageOf(error, "Something went wrong.");
   } finally {
     loading.value = false;
   }
@@ -118,7 +121,9 @@ async function copyReport(): Promise<void> {
   </PageHeader>
 
   <div class="mx-auto max-w-5xl space-y-6 px-4 py-5 pb-12 sm:px-6">
-    <p v-if="loading" role="status" class="text-sm text-muted">Loading…</p>
+    <StatusNotice v-if="loading" kind="loading" />
+
+    <StatusNotice v-else-if="loadError" kind="error" title="The system information could not be loaded" :message="loadError" @retry="load" />
 
     <template v-else-if="info">
       <!-- ------------------------------------------------------ at a glance -->
@@ -173,7 +178,8 @@ async function copyReport(): Promise<void> {
       <div v-if="info.schema.warning" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
         <p class="text-sm font-medium text-warning">A newer content model cannot be read</p>
         <p class="mt-1 text-xs text-muted">
-          Mica keeps using the model below until the new one is fixed. {{ info.schema.warning }}
+          Mica shows the content with the model below, and refuses saves, uploads and Publish until it can read the new
+          one: a restart or an upgrade of Mica. {{ info.schema.warning }}
         </p>
       </div>
 
@@ -418,12 +424,9 @@ async function copyReport(): Promise<void> {
             <dt>Who may edit</dt>
             <dd class="mono">{{ info.deployment.admission }}</dd>
           </div>
-          <div v-if="info.deployment.sessionTtlHours !== null">
-            <dt>Session lifetime</dt>
-            <dd class="tabular-nums">
-              {{ info.deployment.sessionTtlHours }} h, idle out after
-              {{ info.deployment.sessionIdleHours }} h
-            </dd>
+          <div v-for="fact in info.deployment.facts" :key="fact.label">
+            <dt>{{ fact.label }}</dt>
+            <dd class="tabular-nums">{{ fact.value }}</dd>
           </div>
           <div>
             <dt>Trust proxy headers</dt>

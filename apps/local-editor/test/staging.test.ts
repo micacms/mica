@@ -1,4 +1,8 @@
-/** Uses real Git repositories, not a stubbed runner: the properties under test belong to Git. */
+/**
+ * The runtime's staging service on the developer's checkout, as the local
+ * editor composes it. Uses real Git repositories, not a stubbed runner: the
+ * properties under test belong to Git.
+ */
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
@@ -8,13 +12,20 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, describe, it } from "node:test";
 
-import { contentFiles } from "../src/index.js";
 import { collection, defineSite, singleton, slug, text } from "@micacms/core/internal";
+import {
+  ApiError,
+  classifyPath,
+  contentFiles,
+  createLogger,
+  createWorkingTreeStagingService,
+  type ContentStagingService,
+  type Logger,
+} from "@micacms/runtime";
 
-import { ApiError } from "../src/lib/errors.js";
-import { createLogger, type Logger } from "../src/lib/logger.js";
-import { createWorkingTreeStagingService } from "../src/services/staging.js";
-import { classifyPath, type ContentStagingService } from "../src/services/changes.js";
+import { developerPolicy } from "../src/developer.js";
+
+const silent = createLogger({ level: "silent", pretty: false });
 
 /** Writes a file, and the entry folder it belongs in. */
 function writeFileSync(path: string, data: string, options?: Parameters<typeof writeFile>[2]): void {
@@ -86,8 +97,8 @@ function makeRepo(
     contentRoot,
     schemaRevision: options.schemaRevision ?? null,
     ...(options.readOnly ? { readOnly: options.readOnly } : {}),
-    publishEnabled: options.publishEnabled ?? true,
-    logger: options.logger ?? createLogger({ level: "silent", pretty: false }),
+    logger: options.logger ?? silent,
+    policy: developerPolicy({ publishEnabled: options.publishEnabled ?? true, logger: options.logger ?? silent }),
   });
 
   return { root, contentRoot, service, head: () => git(root, "rev-parse", "HEAD") };
@@ -124,8 +135,8 @@ describe("status", () => {
       files: contentFiles({ root: contentRoot }),
       contentRoot,
       schemaRevision: null,
-      publishEnabled: true,
-      logger: createLogger({ level: "silent", pretty: false }),
+      logger: silent,
+      policy: developerPolicy({ publishEnabled: true, logger: silent }),
     });
 
     const status = await service.status();
@@ -702,8 +713,8 @@ describe("before/after comparison", () => {
       files: contentFiles({ root: contentRoot }),
       contentRoot,
       schemaRevision: null,
-      publishEnabled: true,
-      logger: createLogger({ level: "silent", pretty: false }),
+      logger: silent,
+      policy: developerPolicy({ publishEnabled: true, logger: silent }),
     });
 
     const { before, after } = await service.compare({
@@ -760,8 +771,8 @@ function serviceFor(contentRoot: string): ContentStagingService {
     files: contentFiles({ root: contentRoot }),
     contentRoot,
     schemaRevision: null,
-    publishEnabled: true,
-    logger: createLogger({ level: "silent", pretty: false }),
+    logger: silent,
+    policy: developerPolicy({ publishEnabled: true, logger: silent }),
   });
 }
 

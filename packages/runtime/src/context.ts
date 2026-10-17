@@ -47,8 +47,14 @@ export interface OperationalInfo {
   /** What decides who may edit, in the operator's own words. */
   admission?: string;
   dataDir?: string;
-  sessionTtlHours?: number;
-  sessionIdleHours?: number;
+  /** More facts of the composition, such as how long a session lasts, each with its label. */
+  facts?: OperationalFact[];
+}
+
+/** One line on the System page: a label and its value, in words. */
+export interface OperationalFact {
+  label: string;
+  value: string;
 }
 
 /** What /ready asks the composition. */
@@ -96,8 +102,8 @@ export interface CreateRuntimeContextOptions {
   logger?: Logger;
   operational?: () => OperationalInfo;
   health?: RuntimeHealth;
-  /** Who owns the working tree. Defaults to the developer. */
-  policy?: OwnerPolicy;
+  /** Who owns the working tree: the developer's policy in the local editor, the managed clone's in the image. */
+  policy: OwnerPolicy;
   /** Shared with the owner's own work on the tree, such as a sync. */
   locks?: WorkspaceLocks;
   /** See `WorkingTreeStagingDeps.tree`. */
@@ -148,10 +154,9 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
         contentRoot: config.contentRoot,
         schemaRevision: revision,
         readOnly,
-        publishEnabled: config.MICA_LOCAL_PUBLISH,
         logger,
         locks,
-        ...(options.policy ? { policy: options.policy } : {}),
+        policy: options.policy,
         ...(options.tree ? { tree: options.tree } : {}),
       }),
     };

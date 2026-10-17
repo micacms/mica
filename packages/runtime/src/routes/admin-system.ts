@@ -13,6 +13,7 @@ import { schemaStats } from "../lib/schema-stats.js";
 import { schemaOrigin } from "../schema.js";
 import { VERSION } from "../lib/version.js";
 import { formatBytes } from "../services/media.js";
+import type { Overview, Schema, SystemInfo } from "./responses.js";
 
 export function adminSystemRoutes(): Hono<Env> {
   const app = new Hono<Env>();
@@ -50,8 +51,8 @@ export function adminSystemRoutes(): Hono<Env> {
         description: def.description ?? null,
         sortable: def.sortable ?? false,
         defaultSort: def.defaultSort ?? null,
-        titleField: resolveTitleField(def),
-        slugField: resolveSlugField(def),
+        titleField: resolveTitleField(def) ?? null,
+        slugField: resolveSlugField(def) ?? null,
         listedFields: listedFields(def),
         fields: def.fields,
         url: def.url ?? null,
@@ -71,7 +72,7 @@ export function adminSystemRoutes(): Hono<Env> {
       references: Object.values(site.model.references ?? {}).map((def) => ({ name: def.name, label: def.label })),
       /** Which model this is, so that a page can tell that a newer one is in use. */
       revision: site.schemaRevision,
-    });
+    } satisfies Schema);
   });
 
   app.get("/overview", async (c) => {
@@ -96,7 +97,7 @@ export function adminSystemRoutes(): Hono<Env> {
         readable: formatBytes(files.reduce((sum, file) => sum + file.size, 0)),
       },
       repository: ctx.site.contentRepository.origin,
-    });
+    } satisfies Overview);
   });
 
   /**
@@ -162,15 +163,14 @@ export function adminSystemRoutes(): Hono<Env> {
         logLevel: config.MICA_LOG_LEVEL,
         maxUploadBytes: config.MICA_MAX_UPLOAD_BYTES,
         maxUploadReadable: formatBytes(config.MICA_MAX_UPLOAD_BYTES),
-        sessionTtlHours: operational.sessionTtlHours ?? null,
-        sessionIdleHours: operational.sessionIdleHours ?? null,
         auth: operational.auth,
         admission: operational.admission ?? null,
+        facts: operational.facts ?? [],
         trustProxy: config.MICA_TRUST_PROXY,
         adminOrigins: config.adminOrigins,
         memoryBytes: process.memoryUsage().rss,
       },
-    });
+    } satisfies SystemInfo);
   });
 
   return app;

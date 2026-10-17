@@ -395,9 +395,11 @@ describe("drafts in the working tree", () => {
     assert.ok(existsSync(join(harness.contentRoot, "projects/persistent/index.json")));
 
     const changes = (await (await harness.request("/api/admin/changes", { session })).json()) as {
-      changes: Array<{ path: string }>;
+      changes: Array<{ path: string; group: string }>;
     };
-    assert.ok(changes.changes.some((change) => change.path === "projects/persistent/index.json"));
+    const change = changes.changes.find((item) => item.path === "projects/persistent/index.json");
+    // The server names the edit that a file belongs to; the editor only shows it.
+    assert.equal(change?.group, "entry:projects/persistent");
   });
 });
 
