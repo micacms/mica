@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/astro",
+      "comment": "mediaFile(site, path) gives the file on disk for a media path, to read a GPX track or another file at build time.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

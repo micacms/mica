@@ -33,6 +33,8 @@ const items = ref<MediaItem[]>([]);
 const loading = ref(true);
 const uploading = ref(false);
 const search = ref("");
+/** Which files the list shows: all, images only, or the other files. */
+const show = ref<"all" | "images" | "files">("all");
 const dragging = ref(false);
 const selected = ref<MediaItem | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
@@ -146,7 +148,11 @@ const folderOf = (path: string): string => {
 
 const matching = computed(() => {
   const term = search.value.trim().toLowerCase();
-  return term ? items.value.filter((item) => item.path.toLowerCase().includes(term)) : items.value;
+  return items.value.filter(
+    (item) =>
+      (show.value === "all" || (show.value === "images") === isImage(item)) &&
+      (!term || item.path.toLowerCase().includes(term)),
+  );
 });
 
 /** Grouped by directory, in path order — the order the repository has them. */
@@ -245,6 +251,11 @@ async function copyPath(path: string): Promise<void> {
         class="input max-w-64"
         aria-label="Search media"
       />
+      <select v-model="show" class="input w-auto" aria-label="Show files">
+        <option value="all">All files</option>
+        <option value="images">Images</option>
+        <option value="files">Other files</option>
+      </select>
       <template v-if="chosen.size > 0">
         <span class="text-sm text-muted">{{ chosen.size }} selected</span>
         <button type="button" class="btn-danger" @click="askDelete([...chosen])">Delete</button>
@@ -271,7 +282,7 @@ async function copyPath(path: string): Promise<void> {
 
     <div v-else-if="matching.length === 0" class="card px-4 py-12 text-center">
       <p class="text-sm font-medium">
-        {{ search ? `Nothing matches "${search}".` : "No files yet." }}
+        {{ search ? `Nothing matches "${search}".` : show !== "all" && items.length > 0 ? "No files of this kind." : "No files yet." }}
       </p>
       <p class="mt-1 text-sm text-muted">
         Drag files anywhere on this page to upload them.
@@ -315,7 +326,7 @@ async function copyPath(path: string): Promise<void> {
                     v-else
                     class="flex h-full w-full items-center justify-center text-xs font-semibold uppercase text-muted"
                   >
-                    {{ item.mimeType.split("/")[1] }}
+                    {{ item.filename.split(".").at(-1) }}
                   </span>
                 </span>
 

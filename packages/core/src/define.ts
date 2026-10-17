@@ -17,6 +17,7 @@ import type {
   Site,
 } from "./types.js";
 import { MEDIA_DIR } from "./layout.js";
+import { isMediaFileType, MEDIA_FILE_TYPE_NAMES } from "./media-types.js";
 import { nestedRepeat, textPattern } from "./pattern.js";
 import { RICH_TEXT_TOOLBARS } from "./rich-text.js";
 import { compareDates, validateFields } from "./validation.js";
@@ -207,6 +208,12 @@ function checkFields(fields: FieldMap, path: string, collectionNames: Set<string
       }
     }
 
+    if (field.kind === "media" && field.accept !== undefined && !isValidAccept(field.accept)) {
+      throw new ModelError(
+        `Media field "${here}" has an unknown accept. Use "image", "document", "any", or a list of: ${MEDIA_FILE_TYPE_NAMES.join(", ")}.`,
+      );
+    }
+
     if (field.kind === "select" && field.options.length === 0) {
       throw new ModelError(`Select field "${here}" must declare at least one option.`);
     }
@@ -233,6 +240,12 @@ function checkFields(fields: FieldMap, path: string, collectionNames: Set<string
 }
 
 /** A lower bound above the upper bound leaves no valid value. */
+/** A group, or a list of known types without repeats. */
+function isValidAccept(accept: unknown): boolean {
+  if (accept === "image" || accept === "document" || accept === "any") return true;
+  return Array.isArray(accept) && accept.length > 0 && accept.every(isMediaFileType) && new Set(accept).size === accept.length;
+}
+
 function checkRange(field: AnyField, here: string): void {
   const pairs: Array<[unknown, unknown, string]> = [];
   if (field.kind === "number" || field.kind === "repeater") pairs.push([field.min, field.max, "min"]);

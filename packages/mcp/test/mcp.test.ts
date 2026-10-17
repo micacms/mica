@@ -191,6 +191,16 @@ describe("the MCP tools", () => {
     assert.equal(result.value.width, 1);
   });
 
+  it("uploads a GPX track for a field that takes a list of types, and refuses an image there", async () => {
+    const gpx = Buffer.from('<?xml version="1.0"?><gpx version="1.1" creator="test"></gpx>').toString("base64");
+    const track = await h.call("upload_media", { name: "Ridge.gpx", content: gpx, accept: ["gpx", "kml"] });
+    assert.equal(track.error, false, track.value);
+    assert.equal(track.value.path, "media/ridge.gpx");
+    const image = await h.call("upload_media", { name: "Cover.png", content: PNG, accept: ["gpx"] });
+    assert.equal(image.error, true);
+    assert.match(image.value, /GPX tracks/);
+  });
+
   it("does not read a file on this machine for a remote agent", async () => {
     const result = await h.call("upload_media", { name: "x.png", file: "/etc/hosts" });
     assert.equal(result.error, true);

@@ -569,6 +569,7 @@ export type SingletonDocument<
   K extends keyof S["singletons"],
 > = InferSingleton<S["singletons"][K], ImageMetadata> & { _mica: { images: RichTextImage[] } };
 
+export { mediaFile } from "./files.js";
 export { manifestFor } from "./manifest.js";
 export { DEFAULT_CONTENT_ROOT, resolveContentRoot };
 export {

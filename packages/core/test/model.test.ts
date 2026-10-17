@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  acceptedFileTypes,
+  acceptLabel,
   boolean,
   byCodeUnits,
   collection,
@@ -14,6 +16,7 @@ import {
   email,
   entryTitle,
   media,
+  mediaFileTypeOf,
   ModelError,
   number,
   object,
@@ -489,6 +492,30 @@ describe("model queries", () => {
     assert.equal(entryTitle(projects, { title: "Haus A" }), "Haus A");
     assert.equal(entryTitle(projects, { title: "   ", slug: "haus-a" }), "haus-a");
     assert.equal(entryTitle(projects, {}), "Untitled");
+  });
+});
+
+describe("media file types", () => {
+  const withAccept = (accept: unknown) => () =>
+    defineSite({ collections: { tours: collection({ label: "Tours", fields: { title: text(), slug: slug({ from: "title" }), track: media({ accept: accept as never }) } }) } });
+
+  it("takes a group or a list of known types", () => {
+    for (const accept of ["image", "document", "any", ["gpx"], ["gpx", "kml", "image"]]) assert.doesNotThrow(withAccept(accept));
+  });
+
+  it("refuses an unknown type, an empty list or a repeated type when the model loads", () => {
+    for (const accept of ["video", ["gpx", "mp4"], [], ["gpx", "gpx"]]) {
+      assert.throws(withAccept(accept), (error: unknown) => error instanceof ModelError && /unknown accept/.test(error.message));
+    }
+  });
+
+  it("resolves a group to its types, and a detected type to its name", () => {
+    assert.deepEqual(acceptedFileTypes("document"), ["pdf"]);
+    assert.deepEqual(acceptedFileTypes(undefined), acceptedFileTypes("any"));
+    assert.ok(acceptedFileTypes("any").includes("gpx"));
+    assert.equal(mediaFileTypeOf("image/webp"), "image");
+    assert.equal(mediaFileTypeOf("text/html"), undefined);
+    assert.equal(acceptLabel(["gpx", "kml", "pdf"]), "GPX tracks, KML files or PDF documents");
   });
 });
 

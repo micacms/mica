@@ -16,4 +16,5 @@ export * from "./read.js";
 export * from "./staging.js";
 export * from "./access.js";
 export * from "./rich-text.js";
+export * from "./media-types.js";
 export * from "./row-key.js";

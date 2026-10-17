@@ -10,7 +10,7 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 import { ApiError, badRequest, notFound } from "../lib/errors.js";
-import { isImageType } from "../lib/file-type.js";
+import { acceptFromQuery, isImageType } from "../lib/file-type.js";
 import { editorOf, type Env } from "../http.js";
 import type { Referrer } from "../services/content-store.js";
 import { storeUpload } from "../services/upload.js";
@@ -100,7 +100,8 @@ export function adminMediaRoutes(): Hono<Env> {
     const body = c.req.raw.body;
     if (!body) throw badRequest("No file was uploaded.");
 
-    const accept = c.req.query("accept");
+    const accept = acceptFromQuery(c.req.query("accept"));
+    if (accept === null) throw badRequest("The upload names a file type that Mica does not know.");
     // An entry's own `media/` directory or the shared one; the media service refuses anything else.
     const directory = c.req.query("directory");
     // A new entry uploads into the folder of the URL in its form; never into a saved entry's.
@@ -117,7 +118,7 @@ export function adminMediaRoutes(): Hono<Env> {
       name: c.req.query("name") ?? "upload",
       ...(Number.isFinite(length) ? { size: length } : {}),
       ...(directory !== undefined ? { directory } : {}),
-      accept: accept === "image" || accept === "document" ? accept : "any",
+      accept,
     });
 
     return c.json({ items: [file] }, 201);

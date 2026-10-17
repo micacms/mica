@@ -89,7 +89,7 @@ ones, all low or lower. #213 tracks them.
 
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
-| 2.1.1 | Validation rules documented | Partial | `sites/micacms/content/docs/reference-fields/body.mdoc`; `packages/runtime/src/routes/admin-content.ts` | The field rules are documented. Not yet: the accepted upload types (`file-type.ts`) and the 2 MB limit for JSON. |
+| 2.1.1 | Validation rules documented | Partial | `sites/micacms/content/docs/reference-fields/body.mdoc`; `packages/runtime/src/routes/admin-content.ts` | The field rules are documented. The accepted upload types are in `docs/decisions.md` ("A media field takes the file types of one table"). Not yet: the 2 MB limit for JSON. |
 | 2.2.1 | Positive input validation | Pass | `packages/runtime/src/routes/admin-content.ts`; `packages/runtime/src/services/content-store.ts` | The delete slug is checked; the save slug is not (N12). |
 | 2.2.2 | Validation on the server | Pass | `packages/runtime/src/services/content-store.ts` (`validate`); `packages/auth/oidc/src/config.ts` | |
 | 2.3.1 | Business flow in the expected order | Pass | `packages/runtime/src/routes/admin-content.ts`; `packages/runtime/src/services/staging.ts` (`unreviewed`) | Save, delete, reorder, discard and publish carry the revision that the editor saw (#216). |

@@ -227,13 +227,22 @@ export interface MediaField extends BaseField {
   kind: "media";
   /** Several files, stored as a list in the editor's order. */
   multiple?: true;
-  /** The kind of file: images (JPEG, PNG, GIF, WebP, AVIF), PDF documents, or both. Defaults to `"any"`. In Astro, an image field is an Astro image. */
-  accept?: "image" | "document" | "any";
+  /**
+   * The kind of file: `"image"` (JPEG, PNG, GIF, WebP, AVIF), `"document"` (PDF), `"any"` (every type that Mica knows), or a
+   * list of types such as `["gpx", "kml"]`. Defaults to `"any"`. In Astro, only `"image"` makes an Astro image.
+   */
+  accept?: MediaAccept;
   /** The most files, with `multiple`. */
   max?: number;
   /** Stores `{ path, alt }` and asks for alt text. `"required"` refuses an empty one. */
   alt?: "required" | "optional";
 }
+
+/** A type of file that Mica knows. `"image"` is JPEG, PNG, GIF, WebP and AVIF. */
+export type MediaFileType = "image" | "pdf" | "gpx" | "kml" | "geojson" | "zip" | "csv";
+
+/** What a `media()` field accepts: a group, or a list of types. */
+export type MediaAccept = "image" | "document" | "any" | MediaFileType[];
 
 /** What a `media({ alt })` field stores for one file. */
 export interface MediaWithAlt {

@@ -311,6 +311,8 @@ A team of twelve.
   writer MUST write the first form for a file in the entry's folder and the
   second for any other.
 - A media path MUST stay inside the content root (section 1.2).
+- The value has the same form for every file type. Which types a field takes
+  is the `accept` option of its model, not a part of the stored value.
 
 ## 7. The order of a collection
 
