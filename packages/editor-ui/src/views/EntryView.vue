@@ -17,6 +17,8 @@ import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
 import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import PageLink from "@/components/PageLink.vue";
+import { pageHref } from "@/lib/pages";
 import PendingNotice from "@/components/PendingNotice.vue";
 import type { Edit } from "@/lib/edits";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
@@ -112,6 +114,9 @@ const isNew = computed(() => !props.slug);
 const pending = computed(
   () => (props.slug && staging.edits.value.find((edit) => edit.key === `entry:${props.collection}/${props.slug}`)) || null,
 );
+
+/** Its page on the website: not for an entry that was never published, because that page does not exist yet. */
+const page = computed(() => (props.slug && pending.value?.state !== "new" ? pageHref(definition.value?.page, props.slug) : null));
 
 const state = computed(() =>
   isNew.value
@@ -340,6 +345,7 @@ async function remove(): Promise<void> {
       :back="{ name: 'collection', params: { collection } }"
       :back-label="definition.label"
     >
+      <PageLink v-if="page" :href="page" />
       <template v-if="!definition.readOnly">
         <span :class="['status', state.tone]">
           {{ state.label }}

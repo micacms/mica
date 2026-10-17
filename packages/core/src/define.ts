@@ -19,6 +19,7 @@ import type {
 import { MEDIA_DIR } from "./layout.js";
 import { mapProblem } from "./map.js";
 import { isMediaFileType, MEDIA_FILE_TYPE_NAMES } from "./media-types.js";
+import { pageUrlProblem } from "./page-url.js";
 import { nestedRepeat, textPattern } from "./pattern.js";
 import { RICH_TEXT_TOOLBARS } from "./rich-text.js";
 import { compareDates, validateFields } from "./validation.js";
@@ -129,6 +130,9 @@ function assertValidSite(site: Site): void {
       );
     }
 
+    const urlProblem = def.url === undefined ? null : pageUrlProblem(def.url, "collection");
+    if (urlProblem) throw new ModelError(`Collection "${name}" has the url "${def.url}": ${urlProblem}.`);
+
     const sortField = def.defaultSort?.field;
     if (sortField && sortField !== "position" && !def.fields[sortField]) {
       throw new ModelError(
@@ -158,6 +162,8 @@ function assertValidSite(site: Site): void {
       );
     }
     checkFields(def.fields, `singletons.${name}`, collectionNames);
+    const pageProblem = def.url === undefined ? null : pageUrlProblem(def.url, "singleton");
+    if (pageProblem) throw new ModelError(`Singleton "${name}" has the url "${def.url}": ${pageProblem}.`);
   }
 }
 

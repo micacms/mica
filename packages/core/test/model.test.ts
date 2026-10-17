@@ -20,6 +20,7 @@ import {
   mediaFileTypeOf,
   ModelError,
   number,
+  pageUrl,
   object,
   relation,
   repeater,
@@ -494,6 +495,31 @@ describe("model queries", () => {
     assert.equal(entryTitle(projects, { title: "Haus A" }), "Haus A");
     assert.equal(entryTitle(projects, { title: "   ", slug: "haus-a" }), "haus-a");
     assert.equal(entryTitle(projects, {}), "Untitled");
+  });
+});
+
+describe("page addresses", () => {
+  const withUrl = (url: unknown, kind: "collection" | "singleton") => () =>
+    kind === "collection"
+      ? defineSite({ collections: { news: collection({ label: "News", url: url as string, fields: { title: text(), slug: slug({ from: "title" }) } }) } })
+      : defineSite({ collections: {}, singletons: { about: singleton({ label: "About", url: url as string, fields: { title: text() } }) } });
+
+  it("takes a path with {slug} for a collection, and a path without one for a singleton", () => {
+    assert.doesNotThrow(withUrl("/news/{slug}", "collection"));
+    assert.doesNotThrow(withUrl("/{slug}/", "collection"));
+    assert.doesNotThrow(withUrl("/about", "singleton"));
+  });
+
+  it("refuses an address that is not a path, or names the slug wrongly", () => {
+    for (const url of ["news/{slug}", "//evil.example/{slug}", "/news", "/news/{slug}/{slug}", "/news/{year}/{slug}", "/news/{slug}?x=1"]) {
+      assert.throws(withUrl(url, "collection"), (error: unknown) => error instanceof ModelError && /has the url/.test(error.message), url);
+    }
+    assert.throws(withUrl("/team/{slug}", "singleton"), ModelError);
+  });
+
+  it("fills in the slug, encoded", () => {
+    assert.equal(pageUrl("/news/{slug}", "zürich"), "/news/z%C3%BCrich");
+    assert.equal(pageUrl("/about"), "/about");
   });
 });
 

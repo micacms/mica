@@ -1,0 +1,29 @@
+A saved change is a draft in Mica. The website shows it after Publish, when the host builds the site again. There are three ways to see a change before or right after that.
+
+## Open the page on the website
+
+Give a collection or a singleton the address of its page, and give Mica the address of the website:
+
+```ts
+news: collection({ label: "News", url: "/news/{slug}", fields: { … } }),
+about: singleton({ label: "About", url: "/about", fields: { … } }),
+```
+
+Set `MICA_SITE_URL` to the website's address, such as `https://example.com`. Then an entry shows "Open on website" beside Save, and the Publish page links to each page that it published. A new entry gets the link after its first Publish, because its page does not exist before.
+
+The link opens the published page. After a Publish, the host needs a few minutes to build it.
+
+## Use the dev server with the local editor
+
+Run `astro dev` beside the local editor. The dev server reads the saved drafts, so it shows a change as soon as you save it, before Publish.
+
+## Use a staging site
+
+For a check before the real website changes, run a second Mica on a staging branch:
+
+1. Make a branch, such as `staging`, and let the host build it as a second site.
+2. Start a second self-hosted Mica with `MICA_REPOSITORY_BRANCH=staging`.
+3. Editors publish there and check the staging site.
+4. A developer merges `staging` into `main` when the changes are ready.
+
+The deploy previews of hosts such as Netlify, Vercel and Cloudflare Pages build branches and pull requests. They show published changes on a branch. They cannot show drafts, because a draft is not on any branch.

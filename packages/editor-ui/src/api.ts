@@ -126,6 +126,8 @@ export interface SchemaCollection {
   slugField: string;
   listedFields: string[];
   fields: Record<string, AnyField>;
+  /** The page of an entry on the website, with `{slug}`; null without `url` in the model or `MICA_SITE_URL`. */
+  page: string | null;
   /** Why this build of Mica cannot edit it, or null. Set when the model uses a newer field kind. */
   readOnly: string | null;
 }
@@ -135,6 +137,8 @@ export interface SchemaSingleton {
   label: string;
   description: string | null;
   fields: Record<string, AnyField>;
+  /** Its page on the website; null without `url` in the model or `MICA_SITE_URL`. */
+  page: string | null;
   /** Why this build of Mica cannot edit it, or null. Set when the model uses a newer field kind. */
   readOnly: string | null;
 }

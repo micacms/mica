@@ -1850,9 +1850,12 @@ helper"; #109 is done by it.
 ### P2 — No draft preview in 1.0; a link to the published page
 
 **Decided:** 1.0 has no preview of unpublished changes in the self-hosted Mica.
-An optional model option, such as `url: "/news/{slug}"`, together with
-`MICA_SITE_URL`, shows "Open on website" in the entry header and after a
-publish. It is only a link. A docs page describes the staging-branch setup and
+The model option `url` names the page of an entry (`/news/{slug}`, with
+`{slug}` once) or of a singleton (`/about`). With `MICA_SITE_URL`, the editor
+shows "Open on website" in the header of a saved entry that was published
+before, and the Publish panel links to each page that it published. It is only
+a link. A `url` that this version cannot read is left out with a warning, not
+refused. The docs page "Preview changes" describes the staging-branch setup and
 the deploy previews of the common hosts. A live draft preview comes after 1.0.
 
 **Why:** drafts are uncommitted files in Mica's clone, not on any branch the
@@ -1872,7 +1875,7 @@ cost of build minutes and a second branch that Mica writes. Since 0.5.0 Mica
 pushes with Git itself, so this is a commit on a second branch rather than a
 second API.
 
-**1.0 status:** should for 1.0; the link and the docs are in #103. The live
+**1.0 status:** the link and the docs are done in 0.11 (#103). The live
 preview is after 1.0.
 
 ---

@@ -52,10 +52,12 @@ Rules that `defineSite` enforces:
 Collection options: `label` (required), `labelSingular`, `description`,
 `titleField` (the field the editor shows as the entry's title; default
 `title`, else the first `text()` field), `slugField`, `sortable` (editors can
-order the entries by hand) and `defaultSort: { field, direction }` (a field
-name or `"position"`). Without `defaultSort`, the editor lists the entries by
+order the entries by hand), `defaultSort: { field, direction }` (a field
+name or `"position"`) and `url` (the page of an entry on the website, such as
+`/news/{slug}`; with `MICA_SITE_URL`, the editor links to it). Without `defaultSort`, the editor lists the entries by
 position: the manual order, or the slugs in alphabetical order before anybody
-ordered them. Singleton options: `label`, `description`, `fields`.
+ordered them. Singleton options: `label`, `description`, `fields`, `url`
+(such as `/about`).
 
 Options of every field: `label`, `description`, `required`, `listed` (a column
 in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,

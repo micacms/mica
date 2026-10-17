@@ -8,6 +8,7 @@
 import { defineSite } from "./define.js";
 import { COMMON_OPTIONS, FIELD_OPTIONS, isFieldKind } from "./fields.js";
 import { isMediaFileType } from "./media-types.js";
+import { pageUrlProblem } from "./page-url.js";
 import { checkCompatibility, isProtocolManifest, PROTOCOL_VERSION } from "./protocol.js";
 import { RICH_TEXT_TOOLBARS } from "./rich-text.js";
 import type { Collection, FieldMap, Singleton, Site } from "./types.js";
@@ -54,6 +55,14 @@ export function readManifest(raw: unknown, origin = "the manifest"): ReadManifes
     if (field && field !== "position" && !def.fields[field]) {
       warnings.push(`"${name}" sorts by "${field}", which is not a field. The list keeps its manual order.`);
       delete def.defaultSort;
+    }
+  }
+  // Left out, not refused: only a link in the editor depends on it.
+  for (const [kind, defs] of [["collection", collections], ["singleton", singletons]] as const) {
+    for (const [name, def] of Object.entries(defs)) {
+      if (def.url === undefined || !pageUrlProblem(def.url, kind)) continue;
+      warnings.push(`"${name}" has the url "${String(def.url)}", which this version of Mica cannot read. The editor shows no link to its page.`);
+      delete def.url;
     }
   }
   // Left out, not refused: only the editor's buttons depend on it.

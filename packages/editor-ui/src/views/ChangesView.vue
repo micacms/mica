@@ -33,6 +33,7 @@ import {
   type Edit,
 } from "@/lib/edits";
 import { relativeTime } from "@/lib/format";
+import { pageOfOwner } from "@/lib/pages";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
@@ -48,7 +49,19 @@ const discardTarget = ref<Edit | null>(null);
 const discarding = ref(false);
 
 /** The last publication on this page, for the success panel. */
-const published = ref<{ revision: string | null } | null>(null);
+const published = ref<{ revision: string | null; pages: Array<{ label: string; href: string }> } | null>(null);
+
+/** The pages that the chosen changes show on, before Publish takes them off the list. */
+function pagesOf(chosenEdits: Edit[]): Array<{ label: string; href: string }> {
+  const pages = new Map<string, string>();
+  for (const edit of chosenEdits) {
+    if (edit.state === "removed") continue;
+    const owner = edit.fileChanges[0]?.owner;
+    const href = owner ? pageOfOwner(owner, schema.schema.value) : null;
+    if (href) pages.set(href, edit.label);
+  }
+  return [...pages].map(([href, label]) => ({ label, href }));
+}
 
 /** A publication in the developer's checkout that did not reach the website. */
 const pendingPush = ref<PublishOutcome | null>(null);
@@ -220,12 +233,13 @@ async function publish(): Promise<void> {
   try {
     // Exactly what the editor sees here, at the revision they see it: a file
     // saved again since makes the server refuse rather than publish it unseen.
+    const pages = pagesOf(chosen.value);
     const outcome = await api.staging.publish(summary.value.trim(), reviewedPaths(chosen.value, shownRevisions));
     typed.value = null;
 
     if (outcome.state === "published") {
       pendingPush.value = null;
-      published.value = { revision: outcome.revision };
+      published.value = { revision: outcome.revision, pages };
     } else if (isTree.value) {
       // Only the sending failed. Keep "Try again" visible: Publish again would
       // publish nothing new.
@@ -255,7 +269,7 @@ async function retryPush(): Promise<void> {
     const outcome = await api.staging.push();
     if (outcome.state === "published") {
       pendingPush.value = null;
-      published.value = { revision: outcome.revision };
+      published.value = { revision: outcome.revision, pages: [] };
     } else {
       pendingPush.value = outcome;
       toast.error("It could not be sent again.", outcome.pushError);
@@ -397,6 +411,13 @@ function plural(count: number, one: string, many: string): string {
         <p class="mt-1 text-xs text-muted">
           Your website is being rebuilt now. This usually takes a few minutes.
         </p>
+        <ul v-if="published.pages.length" class="mt-2 space-y-1 text-sm">
+          <li v-for="item in published.pages" :key="item.href">
+            <a :href="item.href" target="_blank" rel="noopener noreferrer" class="font-medium text-accent underline underline-offset-2">
+              Open {{ item.label }} on the website<span class="sr-only"> (opens a new tab)</span>
+            </a>
+          </li>
+        </ul>
         <DeveloperDetails v-if="published.revision">
           <p>Commit <span class="font-mono">{{ short(published.revision) }}</span>.</p>
         </DeveloperDetails>

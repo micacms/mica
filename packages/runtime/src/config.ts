@@ -54,6 +54,14 @@ export const runtimeEnv = {
     .transform((value) => new URL(value).origin)
     .default(DEFAULT_BASE_URL),
 
+  /** The website's address, such as https://example.com. With a model `url`, the editor links to the page of an entry. */
+  MICA_SITE_URL: z
+    .string()
+    .url()
+    .refine((value) => /^https?:$/.test(new URL(value).protocol) && !new URL(value).search && !new URL(value).hash, "must be an http or https address without ? or #")
+    .transform((value) => value.replace(/\/+$/, ""))
+    .optional(),
+
   /** The content root this Mica serves: a directory in a Git working tree. Each app sets it. */
   MICA_CONTENT_ROOT: z.string(),
 

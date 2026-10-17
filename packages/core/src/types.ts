@@ -326,6 +326,8 @@ export interface CollectionOptions {
   defaultSort?: { field: SortField; direction: "asc" | "desc" };
   /** Ordering the editor can rearrange by hand. */
   sortable?: boolean;
+  /** The page of an entry on the website, such as `/news/{slug}`. With `MICA_SITE_URL`, the editor links to it. */
+  url?: string;
 }
 
 /**
@@ -349,6 +351,8 @@ export interface SingletonOptions {
   label: string;
   description?: string;
   fields: FieldMap;
+  /** Its page on the website, such as `/about`. With `MICA_SITE_URL`, the editor links to it. */
+  url?: string;
 }
 
 export interface Singleton extends SingletonOptions {

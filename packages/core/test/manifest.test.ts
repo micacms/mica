@@ -154,6 +154,14 @@ describe("readManifest", () => {
     assert.deepEqual(loaded["more"]?.fields?.["text"]?.toolbar, []);
   });
 
+  it("leaves out a page address that this version cannot read, rather than refusing the model", () => {
+    const raw = validSite();
+    (raw.collections.pages as Record<string, unknown>)["url"] = "/pages/{year}/{slug}";
+    const read = readManifest(raw);
+    assert.equal(read.site.collections["pages"]?.url, undefined);
+    assert.match(read.warnings.join("\n"), /cannot read\. The editor shows no link/);
+  });
+
   it("keeps a default sort that names a real field", () => {
     const raw = validSite();
     (raw.collections.pages as Record<string, unknown>)["defaultSort"] = {

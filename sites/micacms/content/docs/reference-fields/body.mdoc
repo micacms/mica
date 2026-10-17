@@ -32,9 +32,9 @@ The build stops on an option that is not in these tables, for example a typo. A 
 | `object({ fields })` | An object with the given fields. | `fields`, `collapsible`, `collapsed`. |
 | `repeater({ fields })` | A list of objects. | `fields`, `min`, `max`, `itemLabel` (the key that names a row), `addLabel`. |
 | `relation({ collection })` | The slug of an entry, or a list with `multiple`. | `collection`, `multiple`. |
-| `media()` | The path of a file, or `{ path, alt }` with `alt`. A list with `multiple`. | `accept`: `"image"`, `"document"` or `"any"`. `multiple`, `max`, `alt`: `"required"` or `"optional"` (0.6.0). |
+| `media()` | The path of a file, or `{ path, alt }` with `alt`. A list with `multiple`. | `accept`: `"image"` (JPEG, PNG, GIF, WebP, AVIF), `"document"` (PDF), `"any"` (every type that Mica knows), or a list of `image`, `pdf`, `gpx`, `kml`, `geojson`, `zip` and `csv` (the list: 0.11.0). `multiple`, `max`, `alt`: `"required"` or `"optional"` (0.6.0). |
 | `color()` | A hex colour, for example `"#0f766e"`. | `presets`: colours to choose from. `default`. |
-| `coordinates()` | `{ lat, lng }`. | None. |
+| `coordinates()` | `{ lat, lng }`. With a map also `zoom`, from 0 to 22 (0.11.0). | `map`: `"liberty"`, `"bright"` or `"positron"` (OpenFreeMap), or `{ style, hosts }` for a style of your own, with `https` only. The editor's browser loads the tiles from that host. Added in 0.11.0. |
 | `tags()` | A list of short words, never null: no tags is `[]`. | `max`, `maxLength`, `suggestions`, `default`. Added in 0.8.0. |
 
 ## Defaults and empty values
@@ -63,7 +63,7 @@ import { collection, defineSite, singleton, slug, text } from "@micacms/core";
 export const site = defineSite({
   root: "./content",
   collections: {
-    news: collection({ label: "News", fields: { title: text({ required: true }), slug: slug({ from: "title" }) } }),
+    news: collection({ label: "News", url: "/news/{slug}", fields: { title: text({ required: true }), slug: slug({ from: "title" }) } }),
   },
   singletons: {
     settings: singleton({ label: "Website", fields: { tagline: text() } }),
@@ -78,7 +78,8 @@ export const site = defineSite({
 | `fields` | The fields. |
 | `titleField` | The key that names an entry in lists. Default: `title`, else the first `text()`, else the slug. |
 | `slugField` | The key of the slug. Default: the first `slug()`. |
-| `defaultSort` | `{ field, direction }` for the list in the editor. `field` is a field of the collection or `"position"`. Text sorts alphabetically in English, and a date with a time by its instant. It does not sort your pages. |
+| `defaultSort` | `{ field, direction }` for the list in the editor. `field` is a field of the collection or `"position"`. Text sorts alphabetically in English, and a date with a time by its instant. Since 0.11.0, `_mica.position` on the website follows it too: sort your pages with `inEditorOrder` from `@micacms/astro`. |
 | `sortable` | Editors can put the entries in an order. Mica keeps it in `_order.json`. |
+| `url` | The page of an entry on the website, with `{slug}` once, such as `/news/{slug}`. With `MICA_SITE_URL`, an entry shows "Open on website". See [Preview changes](/docs/previews/). Added in 0.11.0. |
 
-`singleton()` takes `label`, `description` and `fields`. `defineSite()` takes `root`, `collections` and `singletons`.
+`singleton()` takes `label`, `description`, `fields` and `url` (its page, such as `/about`, without `{slug}`; 0.11.0). `defineSite()` takes `root`, `collections` and `singletons`.
