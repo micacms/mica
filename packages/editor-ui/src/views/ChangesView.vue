@@ -176,6 +176,8 @@ const waitingToSend = computed(
 );
 /** Work in the developer's checkout that Publish would send too, so it waits. */
 const otherWork = computed(() => (isTree.value ? (status.value?.unpushed?.other ?? 0) : 0));
+/** The developer's checkout on no branch, as a content submodule usually is: Publish waits for the developer. */
+const detached = computed(() => (isTree.value ? (status.value?.detached ?? null) : null));
 
 const canPublish = computed(
   () =>
@@ -183,6 +185,7 @@ const canPublish = computed(
     chosen.value.length > 0 &&
     summary.value.trim() !== "" &&
     otherWork.value === 0 &&
+    detached.value === null &&
     !publishing.value,
 );
 
@@ -508,6 +511,21 @@ function plural(count: number, one: string, many: string): string {
         </button>
         <DeveloperDetails>
           <p>The commit is in your checkout. "Try again" runs <code>git push</code> and never commits again.</p>
+        </DeveloperDetails>
+      </div>
+
+      <div v-if="detached" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
+        <p class="text-sm font-medium text-warning">Publishing waits for the developer</p>
+        <p class="mt-1 text-xs text-muted">
+          The content folder is not ready to publish yet. You can go on saving. Ask the developer to set it up, then
+          publish.
+        </p>
+        <DeveloperDetails>
+          <p>
+            The {{ detached.superproject ? "content submodule" : "repository" }} at
+            <code>{{ detached.repository }}</code> is on a detached HEAD, so a commit would be on no branch. Check out
+            the branch with <code>{{ detached.command }}</code>, then publish.
+          </p>
         </DeveloperDetails>
       </div>
 

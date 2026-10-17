@@ -3,7 +3,8 @@
  * resets here. Publish pushes with the developer's `git`, credentials and
  * upstream; a new branch without one is pushed to `origin` and tracks it. The
  * LFS objects go first (`git lfs push`). A failed push keeps the commit. A push sends only Mica's own commits: other
- * commits that no remote has make Publish refuse.
+ * commits that no remote has make Publish refuse. On a detached HEAD, as in a submodule, Publish refuses before it
+ * commits.
  */
 
 import type { PublishResult } from "@micacms/core/internal";
@@ -12,7 +13,7 @@ import { ApiError } from "../lib/errors.js";
 import type { Logger } from "../lib/logger.js";
 import { lfsUnderRoot, pushLfsObjects } from "./lfs.js";
 import type { OwnerPolicy, PublishAvailability } from "./policy.js";
-import { currentBranch, unpushedCommits, type GitTree } from "./tree.js";
+import { currentBranch, detachedHead, unpushedCommits, type DetachedHead, type GitTree } from "./tree.js";
 
 export interface DeveloperPolicyOptions {
   /** `MICA_LOCAL_PUBLISH`. */
@@ -31,6 +32,7 @@ export function developerPolicy(options: DeveloperPolicyOptions): OwnerPolicy {
     },
 
     async prepare(tree: GitTree) {
+      await refuseDetachedHead(tree);
       await refuseOtherCommits(tree);
     },
 
@@ -39,6 +41,8 @@ export function developerPolicy(options: DeveloperPolicyOptions): OwnerPolicy {
 
     async push(tree: GitTree, revision: string): Promise<PublishResult> {
       try {
+        // A retry can find a commit that is on no branch.
+        await refuseDetachedHead(tree);
         // Checked again: a commit made in a terminal since `prepare` would go along.
         await refuseOtherCommits(tree);
         // Publishing is the request to push, so a new branch gets its upstream here.
@@ -82,6 +86,20 @@ async function pushRemote(tree: GitTree): Promise<string> {
     (await read(`branch.${branch}.remote`)) ??
     "origin"
   );
+}
+
+/** A commit on a detached HEAD is on no branch, so no push can send it to the website. */
+async function refuseDetachedHead(tree: GitTree): Promise<void> {
+  const detached = await detachedHead(tree);
+  if (detached) throw new ApiError("conflict", detachedHeadMessage(detached));
+}
+
+/** Why Publish waits on a detached HEAD, and the command that ends the wait. */
+function detachedHeadMessage(detached: DetachedHead): string {
+  const what = detached.superproject
+    ? "The content repository is a Git submodule of the website, and it is not on a branch (detached HEAD)"
+    : "The repository is not on a branch (detached HEAD)";
+  return `${what}, so Mica does not publish. Check out the branch with \`${detached.command}\`, then publish again.`;
 }
 
 /** A push sends every commit that no remote has; the developer's own commits are theirs to send. */

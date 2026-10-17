@@ -7,7 +7,7 @@
 
 import { existsSync } from "node:fs";
 import { realpath, rm } from "node:fs/promises";
-import { relative, sep } from "node:path";
+import { isAbsolute, relative, sep } from "node:path";
 
 import { contentPath, type ContentChange, type ContentSource, type DirectoryEntry } from "@micacms/core/internal";
 import { within } from "@micacms/core/node";
@@ -155,6 +155,44 @@ export function headRevision(tree: GitTree): Promise<string | null> {
 /** The checked-out branch, or null when there is none to name. */
 export function currentBranch(tree: GitTree): Promise<string | null> {
   return tree.git.tryRun(["rev-parse", "--abbrev-ref", "HEAD"]);
+}
+
+/** A repository on no branch, as a submodule is after `git submodule update`. Publish waits for a branch. */
+export interface DetachedHead {
+  /** The top of the repository that holds the content root. */
+  repository: string;
+  /** The website repository when that repository is its submodule, else null. */
+  superproject: string | null;
+  /** The command that checks out the branch, for example `git -C content switch main`. */
+  command: string;
+}
+
+/** Null while HEAD is on a branch, also on a branch without a commit. */
+export async function detachedHead(tree: GitTree, cwd = process.cwd()): Promise<DetachedHead | null> {
+  if ((await tree.git.tryRun(["symbolic-ref", "--quiet", "HEAD"])) !== null) return null;
+  const repository = await tree.git.run(["rev-parse", "--show-toplevel"]);
+  const superproject = (await tree.git.tryRun(["rev-parse", "--show-superproject-working-tree"])) || null;
+  const branch = (await branchToCheckOut(tree)) ?? "<branch>";
+  return { repository, superproject, command: `git -C ${shellWord(fromCwd(repository, cwd))} switch ${branch}` };
+}
+
+/** The remote's default branch, else a local branch at HEAD. */
+async function branchToCheckOut(tree: GitTree): Promise<string | null> {
+  const remote = await tree.git.tryRun(["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"]);
+  if (remote) return remote.replace(/^origin\//, "");
+  const local = await tree.git.tryRun(["branch", "--points-at", "HEAD", "--format=%(refname:short)"]);
+  return local?.split("\n").find(Boolean) ?? null;
+}
+
+/** A path inside `cwd` reads better as the relative one. */
+function fromCwd(target: string, cwd: string): string {
+  const path = relative(cwd, target);
+  return path === "" ? "." : path.startsWith("..") || isAbsolute(path) ? target : path;
+}
+
+/** A shell word, quoted when it needs it. */
+function shellWord(word: string): string {
+  return /^[\w@%+=:,./-]+$/.test(word) ? word : `'${word.replaceAll("'", "'\\''")}'`;
 }
 
 /** The trailer that marks a commit that Mica made for a publication. */

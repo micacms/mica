@@ -22,6 +22,8 @@ export interface Banner {
   contentRoot: string;
   collections: number;
   singletons: number;
+  /** The command that checks out the branch, when the content repository is on a detached HEAD. */
+  detached?: { submodule: boolean; command: string };
 }
 
 /** ANSI, or nothing at all when the output is not a terminal. */
@@ -98,6 +100,7 @@ export function startupBanner(banner: Banner, useColor: boolean): string {
     row("Agents", `${banner.url}/mcp ${c.dim("— MCP, for a coding agent")}`),
     row("Content", `${readable(banner.contentRoot)} ${c.dim(`— ${modelSummary(banner.collections, banner.singletons)}`)}`),
     row("Saving", c.dim("writes files into that directory; Publish commits and pushes them.")),
+    ...detachedRows(banner.detached, row, c),
     "",
     `  ${c.dim("No sign-in on your own machine — the link above opens straight into the editor.")}`,
     `  ${c.dim("Mica keeps no state of its own here: everything you save is a file in that directory.")}`,
@@ -110,6 +113,17 @@ export function startupBanner(banner: Banner, useColor: boolean): string {
   ];
 
   return `${lines.join("\n")}\n`;
+}
+
+/** Publish waits on a detached HEAD, so the banner says how to end the wait. */
+function detachedRows(
+  detached: Banner["detached"],
+  row: (label: string, value: string) => string,
+  c: ReturnType<typeof colors>,
+): string[] {
+  if (!detached) return [];
+  const what = detached.submodule ? "the content submodule" : "the repository";
+  return [row("Publish", `waits: ${what} is on a detached HEAD. Check out its branch:`), row("", c.bold(detached.command))];
 }
 
 /**

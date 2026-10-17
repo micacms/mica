@@ -285,6 +285,11 @@ export interface StagingStatus {
    * (`mica`), and other work there that blocks Publish until it is sent (`other`).
    */
   unpushed: { mica: number; other: number } | null;
+  /**
+   * The developer's checkout only: it is on no branch, as a submodule usually
+   * is, and Publish waits until the developer runs `command`.
+   */
+  detached: { repository: string; superproject: string | null; command: string } | null;
   /** File changes, not edits: count with `toEdits`, never with `.length`. */
   changes: FileChange[];
   validation: { ok: boolean; problems: StagingProblem[] };
