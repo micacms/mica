@@ -114,7 +114,9 @@ export function createPickerMap(options: PickerMapOptions): PickerMap {
     }
     const at: [number, number] = [value.lng, value.lat];
     place(at);
-    if (!map.getBounds().contains(at)) map.jumpTo({ center: at, zoom: value.zoom ?? Math.max(map.getZoom(), PLACE_ZOOM) });
+    // A zoom typed in its input moves the map; the map's own zoom comes back rounded and moves nothing.
+    const zoomed = value.zoom !== undefined && value.zoom !== Math.round(map.getZoom());
+    if (zoomed || !map.getBounds().contains(at)) map.jumpTo({ center: at, zoom: value.zoom ?? Math.max(map.getZoom(), PLACE_ZOOM) });
   }
 
   show(options.value);

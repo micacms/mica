@@ -779,8 +779,10 @@ click sets the point, the pin can be dragged, and the scroll wheel zooms only
 with Ctrl or ⌘. The inputs, the paste and the OpenStreetMap link stay. They are
 the way to enter a value with the keyboard. A field with a map also stores the
 zoom of the map, in whole steps from 0 to 22: `{ lat, lng, zoom }`. A click, a
-drag or a zoom by the editor changes it; typing a place keeps it. The key is
-optional, so a value without it stays valid.
+drag or a zoom by the editor changes it; typing a place keeps it. A third input
+beside the two shows the zoom and sets it, so a zoom from a first click at the
+world view does not stay hidden. The key is optional, so a value without it
+stays valid.
 
 The editor's Content-Security-Policy changes only when the model has a map.
 Then it adds the hosts to `img-src` and `connect-src`, and `blob:` to
