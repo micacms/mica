@@ -1,6 +1,7 @@
 import {
   boolean,
   collection,
+  coordinates,
   date,
   defineSite,
   email,
@@ -288,6 +289,7 @@ export const site = defineSite({
         postalCode: text({ label: "Postal code", required: true, width: "third" }),
         city: text({ label: "City", required: true, width: "third" }),
         country: text({ label: "Country", required: true, width: "third" }),
+        location: coordinates({ label: "Location", description: "Where the address is. The page links to it on a map.", map: "liberty" }),
         email: email({ label: "Email", required: true }),
         sections: repeater({
           label: "Further sections",
