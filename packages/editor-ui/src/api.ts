@@ -534,22 +534,18 @@ export const api = {
 
   media: {
     list: () => request<{ items: MediaItem[] }>("/admin/media"),
-    /** One request for each file, one after another. */
-    upload: async (files: File[], options: { accept?: string; directory?: string; newEntry?: boolean } = {}) => {
-      const items: MediaItem[] = [];
-      for (const file of files) {
-        const query = {
-          name: file.name,
-          accept: options.accept,
-          // Where the file goes in the repository. An entry's own `media/`
-          // directory keeps the entry self-contained and its rename cheap.
-          directory: options.directory,
-          newEntry: options.newEntry ? "true" : undefined,
-        };
-        const result = await request<{ items: MediaItem[] }>("/admin/media", { method: "POST", body: file, query });
-        items.push(...result.items);
-      }
-      return { items };
+    /** One file. `uploadEach` of `@/lib/uploads` sends many, one after another. */
+    uploadOne: async (file: File, options: { accept?: string; directory?: string; newEntry?: boolean } = {}) => {
+      const query = {
+        name: file.name,
+        accept: options.accept,
+        // Where the file goes in the repository. An entry's own `media/`
+        // directory keeps the entry self-contained and its rename cheap.
+        directory: options.directory,
+        newEntry: options.newEntry ? "true" : undefined,
+      };
+      const result = await request<{ items: MediaItem[] }>("/admin/media", { method: "POST", body: file, query });
+      return result.items[0]!;
     },
     /** One file with its dimensions; the list leaves them out, so that the server reads no file for it. */
     info: (path: string) => request<MediaItem>("/admin/media/info", { query: { path } }),
