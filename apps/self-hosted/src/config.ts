@@ -55,7 +55,7 @@ const fields = {
   MICA_CONTENT_PATH: z.string().optional(),
   MICA_REPOSITORY_SYNC_SECONDS: z.coerce.number().int().min(5).max(86_400).default(60),
   /** The Git LFS endpoint, when the host does not serve it at `<clone URL>/info/lfs`. */
-  MICA_GIT_LFS_URL: z.string().optional(),
+  MICA_REPOSITORY_LFS_URL: z.string().optional(),
   /** Agents can connect over MCP at `/mcp`, after a person allows each one on a consent page. */
   MICA_MCP: bool(false),
 };
@@ -75,7 +75,7 @@ export interface RepositoryConfig {
   tokenFile: string | null;
   username: string;
   syncSeconds: number;
-  /** `MICA_GIT_LFS_URL`, or null for the endpoint that Git LFS derives from the clone URL. */
+  /** `MICA_REPOSITORY_LFS_URL`, or null for the endpoint that Git LFS derives from the clone URL. */
   lfsUrl: Remote | null;
 }
 
@@ -170,9 +170,9 @@ function repositoryOf(env: z.infer<typeof schema>, problems: string[]): Reposito
   }
 
   let lfsUrl: Remote | null = null;
-  if (env.MICA_GIT_LFS_URL) {
+  if (env.MICA_REPOSITORY_LFS_URL) {
     try {
-      lfsUrl = parseRemote(env.MICA_GIT_LFS_URL, "MICA_GIT_LFS_URL");
+      lfsUrl = parseRemote(env.MICA_REPOSITORY_LFS_URL, "MICA_REPOSITORY_LFS_URL");
     } catch (error) {
       problems.push((error as Error).message);
     }

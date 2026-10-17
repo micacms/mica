@@ -25,7 +25,7 @@ export interface ManagedEnvironmentOptions {
   token?: string | null;
   /** A file with the token, read by the helper for each call. */
   tokenFile?: string | null;
-  /** `MICA_GIT_LFS_URL`, or null for the endpoint that Git LFS derives from the clone URL. */
+  /** `MICA_REPOSITORY_LFS_URL`, or null for the endpoint that Git LFS derives from the clone URL. */
   lfsUrl?: Remote | null;
 }
 

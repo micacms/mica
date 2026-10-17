@@ -535,9 +535,9 @@ owner sets the LFS paths in `.gitattributes`; Mica never writes that file.
 - On the server, Git LFS is the only filter. The isolation configuration
   defines the `lfs` driver with `required`, and `.git/info/attributes` no longer
   unsets `filter`. The configuration sets `lfs.url` and `lfs.pushurl` to
-  `<clone URL>/info/lfs`, or to `MICA_GIT_LFS_URL`; they override
+  `<clone URL>/info/lfs`, or to `MICA_REPOSITORY_LFS_URL`; they override
   `.lfsconfig`. The same scoped credential helper answers Git LFS. With
-  `MICA_GIT_LFS_URL` on another host, that host gets the token too.
+  `MICA_REPOSITORY_LFS_URL` on another host, that host gets the token too.
 - The clone downloads only the LFS files under the content root
   (`lfs.fetchinclude`). Files outside it stay pointers, as before.
 - A sync downloads the LFS files of the new version before the fast-forward,

@@ -117,10 +117,10 @@ describe("check", () => {
 
   it("refuses a Git LFS URL that is not HTTPS", async () => {
     const { code, output } = await check(
-      environment(mkdtempSync(join(tmpdir(), "mica-check-")), { MICA_GIT_LFS_URL: "ftp://example.com/lfs" }),
+      environment(mkdtempSync(join(tmpdir(), "mica-check-")), { MICA_REPOSITORY_LFS_URL: "ftp://example.com/lfs" }),
     );
     assert.equal(code, 78);
-    assert.match(output, /MICA_GIT_LFS_URL must be an https:\/\/ URL/);
+    assert.match(output, /MICA_REPOSITORY_LFS_URL must be an https:\/\/ URL/);
   });
 
   it("names the failing check, without the token", async () => {
