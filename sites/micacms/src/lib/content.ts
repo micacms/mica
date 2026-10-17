@@ -1,28 +1,17 @@
-import { getCollection, getEntry } from "astro:content";
-import type { InferSingleton } from "@micacms/core";
-import type { site } from "../mica";
+import { getCollection } from "astro:content";
+import { getSingleton, inEditorOrder, type SingletonDocument } from "@micacms/astro";
+import { site } from "../mica";
 
 type Model = typeof site;
-export type SiteSettings = InferSingleton<Model["singletons"]["site"]>;
-export type Navigation = InferSingleton<Model["singletons"]["navigation"]>;
-export type Home = InferSingleton<Model["singletons"]["home"]>;
-export type Imprint = InferSingleton<Model["singletons"]["imprint"]>;
+export type SiteSettings = SingletonDocument<Model, "site">;
+export type Navigation = SingletonDocument<Model, "navigation">;
+export type Home = SingletonDocument<Model, "home">;
+export type Imprint = SingletonDocument<Model, "imprint">;
 
-const globals = new Map<string, unknown>();
-
-async function getGlobal<T>(name: "site" | "navigation" | "home" | "imprint"): Promise<T> {
-  if (!globals.has(name)) {
-    const entry = await getEntry(name, name);
-    if (!entry) throw new Error(`Missing Mica singleton: ${name}`);
-    globals.set(name, entry.data);
-  }
-  return globals.get(name) as T;
-}
-
-export const getSite = () => getGlobal<SiteSettings>("site");
-export const getNavigation = () => getGlobal<Navigation>("navigation");
-export const getHome = () => getGlobal<Home>("home");
-export const getImprint = () => getGlobal<Imprint>("imprint");
+export const getSite = () => getSingleton(site, "site");
+export const getNavigation = () => getSingleton(site, "navigation");
+export const getHome = () => getSingleton(site, "home");
+export const getImprint = () => getSingleton(site, "imprint");
 
 /** The sections of the documentation, in the order the index and the sidebar show them. */
 export const DOC_SECTIONS = [
@@ -34,9 +23,7 @@ export const DOC_SECTIONS = [
 ] as const;
 
 export async function getDocs() {
-  return [...(await getCollection("docs"))].sort(
-    (a, b) => a.data._mica.position - b.data._mica.position,
-  );
+  return [...(await getCollection("docs"))].sort(inEditorOrder);
 }
 
 /** 0.1.10 is newer than 0.1.9, which is not what comparing the strings says. */

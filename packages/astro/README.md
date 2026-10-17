@@ -54,8 +54,11 @@ old name. `astro build` alone does not check types.
 ## What `micaCollections` does
 
 One loader and one Zod schema per collection and singleton. Each document
-carries a `_mica` field with what the model knows about it; a singleton becomes
-a one-entry collection, reachable with the same `getEntry` as everything else.
+carries a `_mica` field: `position`, its place in the editor's order, and
+`images`, the images of its rich text. A singleton becomes a one-entry
+collection; `getSingleton(site, "settings")` reads it with its type, and fails
+the build while it has no content. `getCollection("team").sort(inEditorOrder)`
+gives a collection in the order that the editor shows, `defaultSort` included.
 
 The loaders also do the two things that used to need an integration, because
 Astro hands a loader exactly what they require:
@@ -140,15 +143,21 @@ of its collections reloads that collection only — never a foreign loader.
 
 ## Rich text
 
-`renderRichText(source)` turns a Markdoc field into an HTML string;
-`transformRichText(source)` returns the renderable tree instead, for a project
-that wants to render with its own components.
+`await renderRichText(entry.data.body, entry.data)` turns a Markdoc field into
+an HTML string. `transformRichText` returns the renderable tree instead, for a
+project that wants to render with its own components. Both are async.
 
-An image in rich text needs its entry's images to get its address on the
-website: `renderRichText(entry.data.body, { images: entry.data._mica.images })`.
-`_mica.images` holds the images whose files are in the content, made by Astro's
-`image()`; an image with a `/path` that is not in the content, for example one
-in `public/`, keeps its path.
+The second argument is the entry's or the singleton's data: its `_mica.images`
+give each image in the text its file. Astro's image service optimizes it, as
+`<Image>` does: `srcset` and `sizes` in 480, 800, 1200 and 1600 px, as WebP, up
+to the width of the original. `{ optimize: { widths, sizes, format } }` in the
+third argument changes that, `{ optimize: false }` keeps the original, and
+`{ config }` adds Markdoc tags and nodes. An image with a `/path` that is not in
+the content, for example one in `public/`, keeps its path. A relative path that
+has no file gives a warning in the build log.
+
+Without `await`, `set:html` still renders, because Astro waits for a Promise
+there. But a check such as `{html && …}` is then always true.
 
 ## Setup guides for coding agents
 

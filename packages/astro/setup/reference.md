@@ -183,8 +183,9 @@ singleton. Pages use the normal Astro API.
 ```astro
 ---
 // src/pages/news/[slug].astro
-import { getCollection, getEntry } from "astro:content";
-import { renderRichText } from "@micacms/astro";
+import { getCollection } from "astro:content";
+import { getSingleton, renderRichText } from "@micacms/astro";
+import { site } from "../../mica";
 
 export async function getStaticPaths() {
   const news = await getCollection("news");
@@ -192,19 +193,21 @@ export async function getStaticPaths() {
 }
 
 const { article } = Astro.props;
-const settings = await getEntry("settings", "settings");
+const settings = await getSingleton(site, "settings");
+const body = await renderRichText(article.data.body, article.data);
 ---
 <h1>{article.data.title}</h1>
-<div set:html={renderRichText(article.data.body)} />
-<footer>{settings?.data.siteName}</footer>
+<div set:html={body} />
+<footer>{settings.siteName}</footer>
 ```
 
 - `entry.id` is the slug.
-- A singleton is a collection with one entry. Its id is the singleton's name:
-  `getEntry("settings", "settings")`. It is `undefined` until it has content.
-- Rich text is a Markdoc string. `renderRichText()` returns HTML in an
-  `<article>` element. There is no `render(entry)` and no `<Content />` for
-  Mica collections.
+- A singleton is a collection with one entry. Its id is the singleton's name.
+  `getSingleton(site, "settings")` returns its data with its type, and fails the
+  build while it has no content.
+- Rich text is a Markdoc string. `await renderRichText(text, entry.data)`
+  returns HTML in an `<article>` element. It is async: use `await`. There is no
+  `render(entry)` and no `<Content />` for Mica collections.
 - A date is a `"YYYY-MM-DD"` string. `new Date()` reads it as UTC midnight,
   so format it in UTC, or it shows the day before west of UTC:
   `new Date(value).toLocaleDateString("en-GB", { timeZone: "UTC" })`.
@@ -213,8 +216,8 @@ const settings = await getEntry("settings", "settings");
   `await related("team", article.data.author)`. `relatedAll` does the same for
   a list.
 - Do not depend on the order of `getCollection()`. Sort by a date field, or
-  by position for a `sortable` collection:
-  `entries.sort((a, b) => a.data._mica.position - b.data._mica.position)`.
+  in the editor's order: `entries.sort(inEditorOrder)` (from `@micacms/astro`).
+  It follows the collection's `defaultSort`, else the manual order.
 
 ### Images
 
@@ -234,8 +237,9 @@ const { cover } = article.data; // media({ accept: "image", alt: "required" })
 - A `media({ accept: "image", multiple: true })` field is an array of them.
 - On disk, the field still holds `media/cover.jpg`, or `{ path, alt }`.
 - An image in rich text (`![Alt](media/plan.png)`, from the entry's folder, or
-  `/media/logo.png` from the content root) needs the entry's images to get its
-  address: `renderRichText(entry.data.body, { images: entry.data._mica.images })`.
+  `/media/logo.png` from the content root) gets its file from the entry's data:
+  `await renderRichText(entry.data.body, entry.data)`. Astro optimizes it.
+  The site needs Astro's image service, `sharp`, as for `<Image>`.
 - A `media()` without `accept: "image"`, for example a PDF, is a path from the
   content root: `news/hello-world/media/plan.pdf`. To link to it, use
   `import.meta.glob("../../content/**/*.pdf", { query: "?url", import: "default", eager: true })`.
@@ -243,7 +247,7 @@ const { cover } = article.data; // media({ accept: "image", alt: "required" })
 ### What Markdoc renders differently from Astro's Markdown
 
 - Headings have no `id`, and code blocks are not highlighted. To add them,
-  pass Markdoc nodes in `renderRichText(source, { config })`; see
+  pass Markdoc nodes in `renderRichText(source, entry.data, { config })`; see
   https://markdoc.dev/docs/nodes. Ask the user first.
 - Raw HTML, MDX components and footnotes are not rendered. `mica check` warns
   about them.

@@ -21,6 +21,7 @@ import { dirname, join, posix, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
+  compareEntries,
   createReferenceCheck,
   entryDataPath,
   entryFolder,
@@ -82,13 +83,9 @@ export interface MicaCollectionsOptions {
  * fields, and `position` is a plausible field name.
  */
 export interface MicaMeta {
-  /** The entry slug, which is its identity in the repository. */
-  id: string;
-  slug: string;
-  collection: string;
-  /** Index in the collection's order, manual when `_order.json` says so. */
+  /** Index in the editor's order: the collection's `defaultSort`, else the manual order. Sort with `inEditorOrder`. */
   position: number;
-  /** The images in the entry's rich text, for `renderRichText(text, { images })`. */
+  /** The images in the entry's rich text, which `renderRichText(text, entry.data)` finds. */
   images: RichTextImage[];
 }
 
@@ -101,14 +98,7 @@ export interface RichTextImage {
 /** Astro's `image()` resolves each `src`, as it does for an image field. */
 const imagesSchema = (image: () => z.ZodType) => z.array(z.object({ path: z.string(), src: image() }));
 
-const metaSchema = (image: () => z.ZodType) =>
-  z.object({
-    id: z.string(),
-    slug: z.string(),
-    collection: z.string(),
-    position: z.number(),
-    images: imagesSchema(image),
-  });
+const metaSchema = (image: () => z.ZodType) => z.object({ position: z.number(), images: imagesSchema(image) });
 
 type ReferenceCheck = ReturnType<typeof createReferenceCheck>;
 
@@ -324,7 +314,10 @@ export function micaCollections<S extends Site>(
           const read = async (): Promise<void> => {
             const source = sourceFor(context);
             const check = createReferenceCheck(site, source);
-            const entries = await guard(context, source, () => readCollection(source, def, name));
+            // The website gets the editor's order, `defaultSort` included, as `_mica.position`.
+            const entries = (await guard(context, source, () => readCollection(source, def, name)))
+              .sort(compareEntries(def))
+              .map((entry, position) => ({ ...entry, position }));
 
             // A full replace, not a merge: an entry deleted from the repository
             // has to disappear from the build.
@@ -333,13 +326,7 @@ export function micaCollections<S extends Site>(
             for (const entry of entries) {
               const file = entryFile(context, name, entry.slug);
               // `images` holds paths here; the schema's `image()` makes them images.
-              const meta = {
-                id: entry.slug,
-                slug: entry.slug,
-                collection: name,
-                position: entry.position,
-                images: await imagesOf(check, def.fields, entry.data, file.inContent),
-              };
+              const meta = { position: entry.position, images: await imagesOf(check, def.fields, entry.data, file.inContent) };
 
               const data = await draftTolerant(context, `${name}/${entry.slug}`, () =>
                 context.parseData({
@@ -511,10 +498,18 @@ async function publishModel(
   const target = join(root, MANIFEST_PATH);
   const contents = `${JSON.stringify(manifestFor(site), null, 2)}\n`;
 
+  const committed = await readFile(target, "utf8").catch(() => null);
+  // In CI the file must already be committed: a build that wrote it there would deploy a model that Mica never sees.
+  if (isCi() && committed !== contents) {
+    throw new Error(
+      `The content model in ${relative(process.cwd(), target)} is not the one in the code. Run astro dev or astro build, and commit the file.`,
+    );
+  }
+
   try {
     // Only when it differs. The content root is watched in dev, and rewriting
     // an identical file on every start would ask for a reload for no reason.
-    if ((await readFile(target, "utf8").catch(() => null)) === contents) return;
+    if (committed === contents) return;
 
     await mkdir(dirname(target), { recursive: true });
     await writeFile(target, contents, "utf8");
@@ -526,6 +521,9 @@ async function publishModel(
     logger.warn(`Could not write the content model: ${describe(error)}`);
   }
 }
+
+/** CI services set `CI`, most to `true`, some to `1`. */
+const isCi = (): boolean => Boolean(process.env["CI"]) && process.env["CI"] !== "false" && process.env["CI"] !== "0";
 
 function describe(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -577,5 +575,9 @@ export {
   renderRichText,
   transformRichText,
   validateRichText,
+  type GetImage,
+  type RichTextImageOptions,
   type RichTextOptions,
+  type RichTextSource,
 } from "./richtext.js";
+export { getSingleton, inEditorOrder } from "./helpers.js";

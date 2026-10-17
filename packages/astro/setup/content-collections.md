@@ -86,8 +86,8 @@ here may change later. The usual items:
   such as `order`: recommend that editors drag the entries into order. It is
   easier, and two entries cannot get the same place. The import turns the
   numbers into `_order.json` (`--order`), the field goes, and each page that
-  sorts by it sorts by `entry.data._mica.position`: one changed line per
-  page. Other option: keep the number field, with no page change.
+  sorts by it sorts with `inEditorOrder` from `@micacms/astro`: one changed
+  line per page. Other option: keep the number field, with no page change.
 - **Alt text.** If an image has its alt text in a separate field: recommend
   the image field with alt text (`media({ accept: "image", alt: "required" })`,
   `--map <collection>.<image>.alt=<field>`). Editors see it under the image,
@@ -122,8 +122,8 @@ What cannot move as it is, with the options to propose:
   of its own, with its file in the entry's `media/` folder (`media/photo.jpg`)
   or the shared one (`/media/photo.jpg`): move the file and change the path.
   An image inside a line of text makes the field read-only. Other options: a
-  `media()` field or a `repeater()` with images. The pages pass
-  `entry.data._mica.images` to `renderRichText`.
+  `media()` field or a `repeater()` with images. The pages pass the entry's
+  data to `renderRichText`, which finds the images and lets Astro optimize them.
 - Tables with aligned columns (`| :--- |`). The editor keeps them read-only.
   Remove the alignment, or keep the field read-only.
 - Ids with folders, or ids that are not slugs. They become flat slugs, so the
@@ -224,7 +224,7 @@ components, stylesheets and endpoints such as `rss.xml.js`. See
 [reference.md](./reference.md#render-the-content-in-astro).
 
 - `render(entry)` and `<Content />` become
-  `<div set:html={renderRichText(entry.data.body)} />`.
+  `<div set:html={await renderRichText(entry.data.body, entry.data)} />`.
 - A date was a `Date` and is now a `"YYYY-MM-DD"` string:
   - Format it in UTC. If a formatter is shared, check its other callers: a
     `Date` made in local time now shows the day before.

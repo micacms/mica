@@ -41,7 +41,7 @@ const isPast = new Date(startsAt).getTime() < Date.now();
 
     <div class="container-page grid gap-12 lg:grid-cols-[1fr_20rem] lg:gap-16">
       <div>
-        <RichText text={body} images={event.data._mica.images} />
+        <RichText text={body} from={event.data} />
       </div>
 
       <aside class="space-y-8 self-start bg-sunken p-6 sm:p-8 lg:sticky lg:top-28" style="border-radius: var(--radius-theme)">

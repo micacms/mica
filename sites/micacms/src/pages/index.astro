@@ -10,7 +10,7 @@ import { renderRichText } from "@micacms/astro";
 import { getHome, getSite } from "@/lib/content";
 const [home, site] = await Promise.all([getHome(), getSite()]);
 const { hero, how, audiences, agents, run, fit, start } = home;
-const lead = renderRichText(hero.lead);
+const lead = await renderRichText(hero.lead, home);
 ---
 
 <BaseLayout>
