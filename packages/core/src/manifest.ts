@@ -7,6 +7,7 @@
 
 import { defineSite } from "./define.js";
 import { COMMON_OPTIONS, FIELD_OPTIONS, isFieldKind } from "./fields.js";
+import { isMediaFileType } from "./media-types.js";
 import { checkCompatibility, isProtocolManifest, PROTOCOL_VERSION } from "./protocol.js";
 import { RICH_TEXT_TOOLBARS } from "./rich-text.js";
 import type { Collection, FieldMap, Singleton, Site } from "./types.js";
@@ -60,13 +61,25 @@ export function readManifest(raw: unknown, origin = "the manifest"): ReadManifes
     for (const path of knownToolbars(def.fields, [])) warnings.push(`"${name}.${path}" has toolbar features that this version of Mica does not know.`);
   }
 
+  // Left out, but read-only: a newer file type changes what a field can store.
+  const unknownTypes = new Map<string, string>();
+  for (const [kind, defs] of [["collections", collections], ["singletons", singletons]] as const) {
+    for (const [name, def] of Object.entries(defs)) {
+      const found = knownAccepts(def.fields, []);
+      if (found.length === 0) continue;
+      unknownTypes.set(`${kind}.${name}`, `"${def.label}" uses ${found.join(", ")}, which this version of Mica does not know. Upgrade Mica to edit it.`);
+    }
+  }
+
   let site: Site;
   try {
     site = defineSite({ collections, singletons });
   } catch (error) {
     throw new ManifestError(`${origin} is not a valid content model.\n  ${(error as Error).message}`);
   }
-  return { site, readOnly: readOnlyParts(site), warnings };
+  const readOnly = readOnlyParts(site);
+  for (const [key, reason] of unknownTypes) if (!readOnly.has(key)) readOnly.set(key, reason);
+  return { site, readOnly, warnings };
 }
 
 function assertFieldMap(fields: unknown, at: string, origin: string): void {
@@ -138,4 +151,30 @@ function knownToolbars(fields: FieldMap, at: string[]): string[] {
     if (field.kind === "object" || field.kind === "repeater") changed.push(...knownToolbars(field.fields, [...at, key]));
   }
   return changed;
+}
+
+/**
+ * Keeps the file types that this build knows in each `accept` list, nested
+ * fields included; a list with none left loses its `accept`. Returns each
+ * unknown type as `"path" (file type name)`.
+ */
+function knownAccepts(fields: FieldMap, at: string[]): string[] {
+  const found: string[] = [];
+  for (const [key, field] of Object.entries(fields)) {
+    const raw = field as unknown as Record<string, unknown>;
+    const here = [...at, key];
+    if (field.kind === "media" && typeof raw["accept"] === "string" && !["image", "document", "any"].includes(raw["accept"])) {
+      found.push(`"${here.join(".")}" (accept ${raw["accept"]})`);
+      delete raw["accept"];
+    } else if (field.kind === "media" && Array.isArray(raw["accept"])) {
+      const accept = raw["accept"] as unknown[];
+      const unknown = accept.filter((name) => !isMediaFileType(name));
+      found.push(...unknown.map((name) => `"${here.join(".")}" (file type ${String(name)})`));
+      const kept = accept.filter(isMediaFileType);
+      if (kept.length === 0) delete raw["accept"];
+      else raw["accept"] = kept;
+    }
+    if (field.kind === "object" || field.kind === "repeater") found.push(...knownAccepts(field.fields, here));
+  }
+  return found;
 }

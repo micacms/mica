@@ -17,6 +17,8 @@
 import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
 import { X } from "@lucide/vue";
 
+import { acceptedFileTypes, MEDIA_FILE_TYPES, mediaFileTypeOf, type MediaAccept } from "@micacms/core/internal";
+
 import { api, ApiError, type MediaItem } from "@/api";
 import { SHARED_MEDIA, type MediaFolder } from "@/lib/media-folder";
 import { useStaging } from "@/stores/staging";
@@ -25,7 +27,7 @@ import { useToast } from "@/stores/toast";
 const props = withDefaults(
   defineProps<{
     open: boolean;
-    accept?: "image" | "document" | "any";
+    accept?: MediaAccept;
     multiple?: boolean;
     /** Paths already chosen by the field, shown as ticked. */
     selected?: string[];
@@ -54,9 +56,21 @@ const dragging = ref(false);
 
 let previouslyFocused: HTMLElement | null = null;
 
+/** The types this field takes; null for `"any"`, which shows every file. */
+const acceptedTypes = computed(() => (props.accept === "any" ? null : acceptedFileTypes(props.accept)));
+
+// Extensions as well as types: a browser does not know `application/gpx+xml` for a `.gpx` file.
 const acceptAttribute = computed(() =>
-  props.accept === "image" ? "image/*" : props.accept === "document" ? "application/pdf" : undefined,
+  acceptedTypes.value
+    ?.flatMap((type) => [...MEDIA_FILE_TYPES[type].mimeTypes, ...MEDIA_FILE_TYPES[type].extensions.map((extension) => `.${extension}`)])
+    .join(","),
 );
+
+const acceptText = computed(() => {
+  const labels = (acceptedTypes.value ?? []).map((type) => MEDIA_FILE_TYPES[type].label);
+  if (labels.length === 0) return "Images, documents and data files";
+  return labels.length > 1 ? `${labels.slice(0, -1).join(", ")} or ${labels.at(-1)}` : labels[0];
+});
 
 const items = computed(() => {
   const term = search.value.trim().toLowerCase();
@@ -65,8 +79,7 @@ const items = computed(() => {
     if (props.folder !== undefined && !item.path.startsWith(`${SHARED_MEDIA}/`) && !(props.folder && item.path.startsWith(`${props.folder.path}/`))) {
       return false;
     }
-    if (props.accept === "image" && !isImage(item)) return false;
-    if (props.accept === "document" && isImage(item)) return false;
+    if (acceptedTypes.value && !acceptedTypes.value.some((type) => type === mediaFileTypeOf(item.mimeType))) return false;
     // Over the whole path, so `projects/bleicherweg` finds a file by the entry
     // it belongs to and not only by its own name.
     return !term || item.path.toLowerCase().includes(term);
@@ -141,7 +154,7 @@ async function upload(files: FileList | File[] | null): Promise<void> {
   uploading.value = true;
   try {
     const { items: uploaded } = await api.media.upload(list, {
-      accept: props.accept,
+      accept: Array.isArray(props.accept) ? props.accept.join(",") : props.accept,
       ...(props.folder ? { directory: props.folder.path, newEntry: props.folder.isNew } : {}),
     });
     // An upload is a pending change of its own, even before the form is saved.
@@ -263,7 +276,7 @@ const folderOf = (path: string): string => {
               {{ uploading ? "Uploading…" : "Drop files here, or choose from your device" }}
             </span>
             <span class="text-xs text-muted">
-              {{ accept === "image" ? "Images" : accept === "document" ? "PDF documents" : "Images and documents" }}
+              {{ acceptText }}
               {{ folder ? "· stored with this content" : "· shared by all content" }}
             </span>
           </label>
@@ -301,7 +314,7 @@ const folderOf = (path: string): string => {
                     v-else
                     class="flex h-full w-full items-center justify-center text-xs font-medium uppercase text-muted"
                   >
-                    {{ item.mimeType.split("/")[1] }}
+                    {{ item.filename.split(".").at(-1) }}
                   </span>
                 </span>
 

@@ -7,7 +7,7 @@
 
 import path from "node:path";
 
-import { contentPath, ContentPathError, MEDIA_DIR, slugify } from "@micacms/core/internal";
+import { acceptLabel, contentPath, ContentPathError, MEDIA_DIR, MEDIA_FILE_TYPES, mediaFileTypeOf, slugify, type MediaAccept } from "@micacms/core/internal";
 import { HEAD_BYTES, TooLargeError, type ContentFiles, type FileChange } from "../workspace/files.js";
 import { imageSize } from "image-size";
 
@@ -75,7 +75,7 @@ export function createMediaService(deps: MediaServiceDeps) {
       size?: number;
       /** Directory to place the file in, relative to the content root. */
       directory?: string;
-      accept?: "image" | "document" | "any";
+      accept?: MediaAccept;
     }): Promise<{ file: MediaFile; changes: FileChange[]; temporary: string }> {
       const directory = uploadDirectory(input.directory ?? MEDIA_DIR);
       if (input.size !== undefined && input.size > maxBytes) throw tooLarge(input.size);
@@ -92,7 +92,7 @@ export function createMediaService(deps: MediaServiceDeps) {
       try {
         if (received.size === 0) throw badRequest("The file is empty.");
         // From the bytes, never from the browser's claim.
-        const detected = detectFileType(received.head);
+        const detected = detectFileType(received.head, input.name);
         if (!detected) {
           throw new ApiError("unsupported_media_type", "This file type is not supported.");
         }
@@ -103,10 +103,11 @@ export function createMediaService(deps: MediaServiceDeps) {
             "Mica does not keep videos: they make the website's files large. Put the video on a video service, and link to it.",
           );
         }
-        if (!isAccepted(detected.mimeType, input.accept ?? "any")) {
+        if (!isAccepted(detected.mimeType, input.accept)) {
+          const type = mediaFileTypeOf(detected.mimeType);
           throw new ApiError(
             "unsupported_media_type",
-            `A ${input.accept} was expected, but this is a ${detected.mimeType}.`,
+            `This field takes ${acceptLabel(input.accept)}. This file is ${type ? `one of the ${MEDIA_FILE_TYPES[type].label}` : `a ${detected.mimeType}`}.`,
           );
         }
 
@@ -227,6 +228,10 @@ function safeName(original: string, extension: string): string {
 const BY_EXTENSION: Record<string, string> = {
   svg: "image/svg+xml",
   pdf: "application/pdf",
+  gpx: "application/gpx+xml",
+  kml: "application/vnd.google-earth.kml+xml",
+  geojson: "application/geo+json",
+  zip: "application/zip",
   txt: "text/plain",
   csv: "text/csv",
   doc: "application/msword",
@@ -242,7 +247,7 @@ const BY_EXTENSION: Record<string, string> = {
 function typeOf(bytes: Uint8Array, name: string): string {
   const byName = mimeFromName(name);
   if (byName === SVG_TYPE) return SVG_TYPE;
-  return detectFileType(bytes)?.mimeType ?? byName;
+  return detectFileType(bytes, name)?.mimeType ?? byName;
 }
 
 const refuseSvg = () =>
@@ -278,7 +283,7 @@ function mimeFromName(name: string): string {
 
 /** Files a `media()` field could plausibly point at. */
 function isMediaName(name: string): boolean {
-  return /\.(jpe?g|png|webp|avif|gif|tiff?|pdf|docx?|xlsx?|txt|csv)$/i.test(name);
+  return /\.(jpe?g|png|webp|avif|gif|tiff?|pdf|gpx|kml|geojson|zip|docx?|xlsx?|txt|csv)$/i.test(name);
 }
 
 function dimensions(

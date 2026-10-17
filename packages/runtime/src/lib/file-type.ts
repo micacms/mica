@@ -7,6 +7,8 @@
  * from it rather than taken from the filename.
  */
 
+import { acceptedFileTypes, isMediaFileType, MEDIA_FILE_TYPES, mediaFileTypeOf, type MediaAccept } from "@micacms/core/internal";
+
 export interface DetectedType {
   mimeType: string;
   extension: string;
@@ -18,8 +20,13 @@ const startsWith = (bytes: Uint8Array, signature: number[], offset = 0): boolean
 const ascii = (bytes: Uint8Array, offset: number, length: number): string =>
   Array.from(bytes.slice(offset, offset + length), (byte) => String.fromCharCode(byte)).join("");
 
-export function detectFileType(bytes: Uint8Array): DetectedType | null {
-  if (bytes.length < 12) return null;
+/**
+ * The type of a file from its first bytes. `name` decides only for formats
+ * whose bytes do not name them: a ZIP name for a ZIP container (Office files
+ * are ZIP files too), and a CSV name for text.
+ */
+export function detectFileType(bytes: Uint8Array, name = ""): DetectedType | null {
+  if (bytes.length < 12) return textType(bytes, name);
 
   if (startsWith(bytes, [0xff, 0xd8, 0xff])) {
     return { mimeType: "image/jpeg", extension: "jpg" };
@@ -56,11 +63,53 @@ export function detectFileType(bytes: Uint8Array): DetectedType | null {
     return { mimeType: "application/pdf", extension: "pdf" };
   }
 
+  if ((startsWith(bytes, [0x50, 0x4b, 0x03, 0x04]) || startsWith(bytes, [0x50, 0x4b, 0x05, 0x06])) && hasExtension(name, "zip")) {
+    return { mimeType: "application/zip", extension: "zip" };
+  }
+
   if (isSvg(bytes)) {
     return { mimeType: "image/svg+xml", extension: "svg" };
   }
 
+  return textType(bytes, name);
+}
+
+const hasExtension = (name: string, extension: string): boolean => name.toLowerCase().endsWith(`.${extension}`);
+
+/**
+ * Text formats by their leading text: GPX and KML by the root element, GeoJSON
+ * by its `type`, CSV by its name. Only UTF-8 without NUL bytes counts as text.
+ * The text is read as text, never parsed, so no XML or JSON parser sees it.
+ */
+function textType(bytes: Uint8Array, name: string): DetectedType | null {
+  const text = utf8(bytes.slice(0, 4096));
+  if (text === null) return null;
+  const head = text.replace(/^\uFEFF/, "").trimStart();
+
+  const root = /^(?:<\?xml[^>]*\?>\s*)?(?:<!--[\s\S]*?-->\s*)*<(gpx|kml)[\s>]/i.exec(head)?.[1]?.toLowerCase();
+  if (root === "gpx") return { mimeType: "application/gpx+xml", extension: "gpx" };
+  if (root === "kml") return { mimeType: "application/vnd.google-earth.kml+xml", extension: "kml" };
+
+  if (head.startsWith("{") && GEOJSON_TYPE.test(head)) {
+    return { mimeType: "application/geo+json", extension: "geojson" };
+  }
+  if (hasExtension(name, "csv") && head !== "" && !head.startsWith("<")) {
+    return { mimeType: "text/csv", extension: "csv" };
+  }
   return null;
+}
+
+const GEOJSON_TYPE =
+  /"type"\s*:\s*"(?:FeatureCollection|Feature|Point|MultiPoint|LineString|MultiLineString|Polygon|MultiPolygon|GeometryCollection)"/;
+
+/** The text of UTF-8 bytes, or null for other bytes. A character cut at the end is left out. */
+function utf8(bytes: Uint8Array): string | null {
+  if (bytes.includes(0)) return null;
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes, { stream: true });
+  } catch {
+    return null;
+  }
 }
 
 /** SVG has no magic number, so look for a root `<svg>` in the leading text. */
@@ -78,21 +127,24 @@ function isSvg(bytes: Uint8Array): boolean {
 }
 
 // No HEIC: Astro's image service cannot read it, so a site could not show it.
-const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp", "image/avif"]);
-
-const DOCUMENT_TYPES = new Set(["application/pdf"]);
-
-export const isImageType = (mimeType: string): boolean => IMAGE_TYPES.has(mimeType);
+export const isImageType = (mimeType: string): boolean => MEDIA_FILE_TYPES.image.mimeTypes.includes(mimeType);
 
 /**
  * Whether a detected type is acceptable for a field's `accept` setting.
- * `any` deliberately does not mean "anything": only the types listed here can
- * be stored at all.
+ * `any` deliberately does not mean "anything": only the types in the table of
+ * `@micacms/core` can be stored at all.
  */
-export function isAccepted(mimeType: string, accept: "image" | "document" | "any"): boolean {
-  if (accept === "image") return IMAGE_TYPES.has(mimeType);
-  if (accept === "document") return DOCUMENT_TYPES.has(mimeType);
-  return IMAGE_TYPES.has(mimeType) || DOCUMENT_TYPES.has(mimeType);
+export function isAccepted(mimeType: string, accept: MediaAccept | undefined): boolean {
+  const type = mediaFileTypeOf(mimeType);
+  return type !== undefined && acceptedFileTypes(accept).includes(type);
+}
+
+/** The `accept` of an upload request: a group, or types separated by commas. Null for an unknown type. */
+export function acceptFromQuery(value: string | undefined): MediaAccept | null {
+  if (value === undefined || value === "" || value === "any") return "any";
+  if (value === "image" || value === "document") return value;
+  const names = value.split(",");
+  return names.every(isMediaFileType) ? names : null;
 }
 
 /** A video is large for a Git repository, and the media list cannot show one. */

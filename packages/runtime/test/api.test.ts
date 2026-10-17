@@ -667,6 +667,75 @@ describe("media", () => {
   });
 });
 
+describe("file types beside images", () => {
+  let harness: TestHarness;
+  before(async () => {
+    harness = await createHarness();
+  });
+  after(() => harness.close());
+
+  const text = (value: string) => new TextEncoder().encode(value);
+  const upload = (name: string, bytes: Uint8Array, accept?: string) =>
+    harness.request(uploadPath(name, accept ? { accept } : {}), { method: "POST", body: bytes });
+  const typeOf = async (response: Response) => ((await response.json()) as { items: Array<{ mimeType: string; path: string }> }).items[0]!;
+
+  const gpx = '<?xml version="1.0" encoding="UTF-8"?>\n<!-- exported -->\n<gpx version="1.1" creator="test"><trk><name>Ridge</name></trk></gpx>\n';
+  const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0, 0, 0, 0x08, 0, 0, 0, 0, 0, 0, 0]);
+
+  it("takes the types of the table, each from its bytes", async () => {
+    const files: Array<[string, Uint8Array, string, string]> = [
+      ["Ridge Walk.gpx", text(gpx), "gpx", "application/gpx+xml"],
+      ["places.kml", text('<?xml version="1.0"?><kml xmlns="http://www.opengis.net/kml/2.2"/>'), "kml", "application/vnd.google-earth.kml+xml"],
+      ["route.geojson", text('{ "type": "FeatureCollection", "features": [] }'), "geojson", "application/geo+json"],
+      ["plans.zip", zip, "zip", "application/zip"],
+      ["prices.csv", text("name,price\nTea,3.50\n"), "csv", "text/csv"],
+    ];
+    for (const [name, bytes, accept, mimeType] of files) {
+      const response = await upload(name, bytes, accept);
+      assert.equal(response.status, 201, name);
+      const item = await typeOf(response);
+      assert.equal(item.mimeType, mimeType, name);
+      assert.ok(item.path.endsWith(`.${accept}`), item.path);
+    }
+  });
+
+  it("refuses a file whose bytes do not match its type", async () => {
+    const refused: Array<[string, Uint8Array]> = [
+      ["page.gpx", text("<!doctype html><html><script>alert(1)</script></html>")],
+      ["other.gpx", text('<?xml version="1.0"?><rss version="2.0"/>')],
+      ["letter.docx", zip],
+      ["binary.csv", new Uint8Array([0x61, 0x2c, 0x62, 0x0a, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08])],
+      ["page.csv", text("<html><body>not a table</body></html>")],
+      ["notes.txt", text("Some notes that are long enough.\n")],
+    ];
+    for (const [name, bytes] of refused) {
+      assert.equal((await upload(name, bytes)).status, 415, name);
+    }
+  });
+
+  it("takes only the types of the field, and says which", async () => {
+    const response = await upload("track.gpx", text(gpx), "image,pdf");
+    assert.equal(response.status, 415);
+    assert.match(((await response.json()) as { error: { message: string } }).error.message, /Images or PDF documents.*GPX tracks/);
+    assert.equal((await upload("cover.png", pngBytes(), "document")).status, 415);
+    assert.equal((await upload("cover.png", pngBytes(), "gpx,image")).status, 201);
+  });
+
+  it("refuses a type that Mica does not know", async () => {
+    assert.equal((await upload("track.gpx", text(gpx), "gpx,video")).status, 400);
+  });
+
+  it("serves a file that is not an image as a download in a sandbox", async () => {
+    const item = await typeOf(await upload("served.gpx", text(gpx)));
+    const response = await harness.request(`/api/admin/media/file/${item.path}`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("content-type"), "application/gpx+xml");
+    assert.equal(response.headers.get("content-disposition"), "attachment");
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+    assert.match(response.headers.get("content-security-policy") ?? "", /sandbox/);
+  });
+});
+
 describe("media in an entry's folder, and media delete", () => {
   let harness: TestHarness;
   before(async () => {

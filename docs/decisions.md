@@ -2045,6 +2045,40 @@ then show SVGs as sandboxed previews first, and an upload opt-in with
 server-side sanitizing after that, in a 1.x minor.
 
 **1.0 status:** blocker; done in #86.
+
+---
+
+### P2 — A media field takes the file types of one table
+
+**Decided:** `@micacms/core` keeps one table of the file types that Mica
+stores: `image` (JPEG, PNG, GIF, WebP, AVIF), `pdf`, `gpx`, `kml`, `geojson`,
+`zip` and `csv`. The upload finds the type from the bytes: a signature for
+images, PDF and ZIP; the root element for GPX and KML; a GeoJSON `type` for
+GeoJSON. Only UTF-8 without NUL bytes counts as text, and the text is read,
+never parsed. The name decides only where the bytes cannot: a ZIP needs a
+`.zip` name, because Office files are ZIP files too, and CSV needs a `.csv`
+name. A field's `accept` is `"image"`, `"document"` (PDF), `"any"` (the whole
+table) or a list of names, such as `["gpx", "kml"]`. A model cannot add a type,
+and an unknown name is a model error; in a manifest from a newer Mica, it makes
+its collection read-only. Only `accept: "image"` gives an Astro image. Other
+files reach Astro as paths from the content root, and `mediaFile(site, path)`
+of `@micacms/astro` gives the file on disk for the build.
+
+**Why:** sites need GPS tracks, archives and tables beside their images. The
+editor serves every file from its own origin, so each type must have a check
+of its bytes; a type that a model could add would have none. Without an XML or
+JSON parser, a file cannot reach one. Every file that is not an image is still
+sent as an attachment, with `nosniff` and the sandbox policy.
+
+**Consequence:** Office files, plain text, audio and video stay out. A field
+with `"any"` now also takes GPX, KML, GeoJSON, ZIP and CSV files. `"document"`
+shows only PDF files in the picker.
+
+**What would change it:** a site that needs another type: it is a row in the
+table and a check of its bytes, in a minor release.
+
+**1.0 status:** done in 0.11 (#277).
+
 ---
 
 ### P2 — The website is the one source of user documentation

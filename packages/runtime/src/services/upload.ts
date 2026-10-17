@@ -2,6 +2,8 @@
  * An upload, the same for every interface that offers it: the editor and an agent.
  */
 
+import type { MediaAccept } from "@micacms/core/internal";
+
 import type { RuntimeContext } from "../context.js";
 import { ApiError } from "../lib/errors.js";
 import type { MediaFile } from "./media.js";
@@ -14,7 +16,7 @@ export interface UploadInput {
   size?: number;
   /** An entry's own `media/` folder, or the shared one when absent. */
   directory?: string;
-  accept?: "image" | "document" | "any";
+  accept?: MediaAccept;
 }
 
 /** Writes one file into the content root, or nothing. Refuses a folder of a part that this build cannot write. */

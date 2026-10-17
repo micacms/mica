@@ -176,6 +176,18 @@ describe("options that this build does not know", () => {
     assert.match(readOnlyParts(raw).get("collections.pages")!, /"cover" \(option crop\)/);
   });
 
+  it("include a file type in `accept`, which keeps the types it knows", () => {
+    const raw = validSite();
+    raw.collections.pages.fields["track"] = { kind: "media", accept: ["gpx", "fit"] };
+    raw.collections.pages.fields["video"] = { kind: "media", accept: "video" };
+
+    const read = readManifest(raw);
+    assert.match(read.readOnly.get("collections.pages")!, /"track" \(file type fit\).*"video" \(accept video\)/);
+    const fields = read.site.collections["pages"]!.fields as Record<string, { accept?: unknown }>;
+    assert.deepEqual(fields["track"]?.accept, ["gpx"]);
+    assert.equal(fields["video"]?.accept, undefined);
+  });
+
   it("are none in a manifest that this build writes", () => {
     const site = defineSite({
       collections: { pages: collection({ label: "Pages", fields: { title: text({ required: true, maxLength: 80 }), slug: slug({ from: "title" }) } }) },

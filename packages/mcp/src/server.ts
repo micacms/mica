@@ -10,7 +10,7 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 
-import { compareEntries, ContentPathError, entryFolder, entryTitle, type AccessContext } from "@micacms/core/internal";
+import { compareEntries, ContentPathError, entryFolder, entryTitle, MEDIA_FILE_TYPE_NAMES, type AccessContext, type MediaAccept, type MediaFileType } from "@micacms/core/internal";
 import { AGENT_SCOPES, ApiError, ConflictError, FilesError, publishChanges, storeUpload, VERSION, ValidationError, type RuntimeContext } from "@micacms/runtime";
 import { McpServer, type CallToolResult, type ScopeChallengeHandler } from "@modelcontextprotocol/server";
 import { z } from "zod";
@@ -106,7 +106,10 @@ const uploadInput = z.object({
   directory: z.string().optional().describe("An entry's media folder, such as projects/haus-a/media. Absent: the shared media folder."),
   content: z.string().optional().describe("The file's bytes, base64-encoded."),
   file: z.string().optional().describe("The path of the file on this machine."),
-  accept: z.enum(["image", "document", "any"]).optional().describe("The `accept` of the media field it is for."),
+  accept: z
+    .union([z.enum(["image", "document", "any"]), z.array(z.enum(MEDIA_FILE_TYPE_NAMES as [MediaFileType, ...MediaFileType[]])).min(1)])
+    .optional()
+    .describe("The `accept` of the media field it is for, as `describe_model` gives it."),
 });
 
 /** A new server with the Mica tools, for one request or one stdio connection. */
@@ -329,12 +332,12 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
     {
       title: "Upload a file",
       description:
-        `Adds an image or a PDF to the content, as a draft. The result's \`path\` is the value for a media field. ${options.localFiles ? "Give the file's path on this machine in `file`, or its bytes as base64 in `content`." : "Send its bytes as base64 in `content`."}`,
+        `Adds a file to the content, as a draft: an image, a PDF, or a GPX, KML, GeoJSON, ZIP or CSV file. The result's \`path\` is the value for a media field. ${options.localFiles ? "Give the file's path on this machine in `file`, or its bytes as base64 in `content`." : "Send its bytes as base64 in `content`."}`,
       // Without local files, `file` is not offered at all, and `uploadBody` refuses it.
       inputSchema: options.localFiles ? uploadInput : (uploadInput.omit({ file: true }) as unknown as typeof uploadInput),
       ...write,
     },
-    run(async (input: { name: string; directory?: string | undefined; content?: string | undefined; file?: string | undefined; accept?: "image" | "document" | "any" | undefined }) => {
+    run(async (input: { name: string; directory?: string | undefined; content?: string | undefined; file?: string | undefined; accept?: MediaAccept | undefined }) => {
       const { body, size, close } = await uploadBody(input, options);
       try {
         return await storeUpload(ctx, {
