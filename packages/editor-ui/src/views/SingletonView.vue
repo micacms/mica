@@ -16,6 +16,8 @@ import IssueSummary from "@/components/IssueSummary.vue";
 import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PageLink from "@/components/PageLink.vue";
+import PreviewLink from "@/components/PreviewLink.vue";
+import { usePreview } from "@/composables/usePreview";
 import PendingNotice from "@/components/PendingNotice.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
@@ -44,6 +46,8 @@ const toast = useToast();
 
 const definition = computed(() => schema.singleton(props.name));
 const page = computed(() => pageHref(definition.value?.page));
+const devServer = usePreview();
+const preview = computed(() => (devServer.address.value && definition.value?.url ? `${devServer.address.value}${definition.value.url}` : null));
 
 const values = ref<Record<string, unknown>>({});
 const revision = ref<string | null>(null);
@@ -192,6 +196,7 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
 <template>
   <template v-if="definition">
     <PageHeader :title="definition.label" :subtitle="location" :loading="loading">
+      <PreviewLink v-if="preview" :href="preview" />
       <PageLink v-if="page" :href="page" />
       <template v-if="!definition.readOnly && !loadError">
         <span :class="['status', state.tone]">

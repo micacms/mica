@@ -306,6 +306,11 @@ describe("content", () => {
     assert.ok("gallery" in projects.fields);
   });
 
+  it("gives no preview without a dev server, as in the self-hosted Mica", async () => {
+    assert.deepEqual(await (await harness.request("/api/admin/preview")).json(), { address: null });
+    assert.equal(((await (await harness.request("/api/admin/schema")).json()) as { collections: Array<{ url: unknown }> }).collections[0]?.url, null);
+  });
+
   it("gives the page address of a collection only with a url in the model and MICA_SITE_URL", async () => {
     const site = defineSite({
       collections: { ...testSite.collections, projects: collection({ ...testSite.collections["projects"]!, url: "/work/{slug}" }) },

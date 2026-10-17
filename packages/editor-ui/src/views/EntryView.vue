@@ -18,6 +18,8 @@ import IssueSummary from "@/components/IssueSummary.vue";
 import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PageLink from "@/components/PageLink.vue";
+import PreviewLink from "@/components/PreviewLink.vue";
+import { usePreview } from "@/composables/usePreview";
 import { pageHref } from "@/lib/pages";
 import PendingNotice from "@/components/PendingNotice.vue";
 import type { Edit } from "@/lib/edits";
@@ -113,6 +115,12 @@ const isNew = computed(() => !props.slug);
 /** This entry's saved changes that are not on the website yet. */
 const pending = computed(
   () => (props.slug && staging.edits.value.find((edit) => edit.key === `entry:${props.collection}/${props.slug}`)) || null,
+);
+
+const devServer = usePreview();
+/** Its page in the dev server, which reads the saved drafts: also for one that was never published. */
+const preview = computed(() =>
+  props.slug && devServer.address.value && definition.value?.url ? `${devServer.address.value}${pageHref(definition.value.url, props.slug)}` : null,
 );
 
 /** Its page on the website: not for an entry that was never published, because that page does not exist yet. */
@@ -345,6 +353,7 @@ async function remove(): Promise<void> {
       :back="{ name: 'collection', params: { collection } }"
       :back-label="definition.label"
     >
+      <PreviewLink v-if="preview" :href="preview" />
       <PageLink v-if="page" :href="page" />
       <template v-if="!definition.readOnly">
         <span :class="['status', state.tone]">
