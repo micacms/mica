@@ -10,6 +10,7 @@
  */
 
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -270,6 +271,38 @@ describe("reloading in dev", () => {
       await waitFor(() => context.entries.size === 2, "the reload");
     } finally {
       await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("reads and reloads a content root that is a Git submodule, and writes the model into it", async () => {
+    // The loader uses no Git: a submodule is a directory with a `.git` file.
+    const dir = await project();
+    const bare = await mkdtemp(join(tmpdir(), "mica-content-bare-"));
+    const git = (cwd: string, ...args: string[]) => execFileSync("git", args, { cwd, encoding: "utf8" });
+    const watcher = createWatcher();
+
+    try {
+      git(join(dir, "content"), "init", "-q", "-b", "main");
+      git(join(dir, "content"), "add", "-A");
+      git(join(dir, "content"), "-c", "user.email=test@example.com", "-c", "user.name=Test", "commit", "-q", "-m", "init");
+      git(bare, "clone", "-q", "--bare", join(dir, "content"), ".");
+      await rm(join(dir, "content"), { recursive: true, force: true });
+      git(dir, "init", "-q", "-b", "main");
+      git(dir, "-c", "protocol.file.allow=always", "submodule", "add", "-q", bare, "content");
+
+      const context = createContext(dir, watcher);
+      await micaCollections(site).projects.loader.load(context);
+      assert.deepEqual([...context.entries.keys()], ["haus-a"]);
+      assert.deepEqual(watcher.added, [join(dir, "content")]);
+      // The developer commits the model in the content repository.
+      assert.match(git(join(dir, "content"), "status", "--porcelain", "-uall"), /\?\? \.mica\/schema\.json/);
+
+      await writeEntry(dir, "projects/haus-b/index.json", { title: "Haus B", slug: "haus-b" });
+      watcher.emit("add", join(dir, "content", "projects", "haus-b", "index.json"));
+      await waitFor(() => context.entries.size === 2, "the reload");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+      await rm(bare, { recursive: true, force: true });
     }
   });
 

@@ -11,12 +11,15 @@ import {
   createApp,
   createLogger,
   createRuntimeContext,
+  detachedHead,
   loadSchema,
+  locateTree,
   SchemaError,
   schemaFingerprint,
   schemaOrigin,
   startServer,
   VERSION,
+  type DetachedHead,
 } from "@micacms/runtime";
 
 import { mcpRoutes } from "@micacms/mcp";
@@ -84,6 +87,7 @@ async function main(): Promise<void> {
   });
 
   const fingerprint = await schemaFingerprint(model);
+  const detached = config.MICA_LOCAL_PUBLISH ? await detachedCheckout(config.contentRoot) : null;
 
   startServer({
     app,
@@ -104,6 +108,7 @@ async function main(): Promise<void> {
               contentRoot: files.origin,
               collections: Object.keys(model.collections).length,
               singletons: Object.keys(model.singletons).length,
+              ...(detached ? { detached: { submodule: detached.superproject !== null, command: detached.command } } : {}),
             },
             useColor,
           ),
@@ -122,6 +127,13 @@ async function main(): Promise<void> {
         schemaFingerprint: fingerprint,
         collections: Object.keys(model.collections).length,
       });
+      if (detached) {
+        logger.warn("Publish waits: the content repository is on a detached HEAD", {
+          repository: detached.repository,
+          submoduleOf: detached.superproject,
+          command: detached.command,
+        });
+      }
     },
 
     portInUseMessage: () =>
@@ -129,6 +141,12 @@ async function main(): Promise<void> {
 
     shutdown: () => ctx.shutdown(),
   });
+}
+
+/** The content repository on a detached HEAD, as a submodule usually is; null on a branch or outside Git. */
+async function detachedCheckout(contentRoot: string): Promise<DetachedHead | null> {
+  const tree = await locateTree(contentRoot);
+  return "reason" in tree ? null : detachedHead(tree);
 }
 
 main().catch((error: unknown) => {

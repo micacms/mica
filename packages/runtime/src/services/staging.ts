@@ -25,6 +25,7 @@ import type { OwnerPolicy } from "../workspace/policy.js";
 import {
   commitPaths,
   currentBranch,
+  detachedHead,
   discardChange,
   headRevision,
   headSource,
@@ -191,6 +192,7 @@ export function createWorkingTreeStagingService(
           head: null,
           branch: null,
           unpushed: null,
+          detached: null,
           changes: [],
           validation: emptyValidation(),
           sync,
@@ -207,13 +209,18 @@ export function createWorkingTreeStagingService(
         };
       });
 
+      // A clone that Mica keeps is always on its branch.
+      const detached = policy.owner === "developer" ? await detachedHead(tree) : null;
+
       return {
         owner: policy.owner,
         publish: policy.publishAvailability(),
         head,
-        branch,
+        // Git names a detached HEAD "HEAD", which is no branch.
+        branch: detached ? null : branch,
         // A clone that Mica keeps holds only Mica's commits, and retries its own push.
         unpushed: policy.owner === "developer" ? await unpushedCommits(tree) : null,
+        detached,
         changes,
         validation,
         sync,

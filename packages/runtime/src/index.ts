@@ -135,6 +135,7 @@ export type {
 export { developerPolicy, type DeveloperPolicyOptions } from "./workspace/developer.js";
 export {
   commitPaths,
+  detachedHead,
   headRevision,
   headSource,
   inRepo,
@@ -143,6 +144,7 @@ export {
   locateTree,
   parseStatus,
   recommitPaths,
+  type DetachedHead,
   type GitTree,
   type TreeChange,
 } from "./workspace/tree.js";

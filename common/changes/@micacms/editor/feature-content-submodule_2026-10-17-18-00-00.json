@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor",
+      "comment": "Support content in a Git submodule of the website repository: when the submodule is on a detached HEAD, the start banner and the Publish page give the command that checks out its branch, and Publish waits until it is on one.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

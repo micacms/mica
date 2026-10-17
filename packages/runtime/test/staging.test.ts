@@ -724,6 +724,104 @@ describe("before/after comparison", () => {
   });
 });
 
+/** Git refuses a submodule from a local path unless the file protocol is allowed. */
+const SUBMODULE = ["-c", "protocol.file.allow=always"];
+
+function identify(dir: string): void {
+  git(dir, "config", "user.email", "test@example.com");
+  git(dir, "config", "user.name", "Test");
+}
+
+/** A website repository with its content repository as the submodule `content/`, whose root is the content root. */
+function makeWebsite(): { website: string; contentBare: string } {
+  const contentBare = temp("mica-content-bare-");
+  git(contentBare, "init", "-q", "--bare", "-b", "main");
+  const seed = temp("mica-content-seed-");
+  git(seed, "init", "-q", "-b", "main");
+  identify(seed);
+  writeFileSync(join(seed, "projects/haus-a/index.json"), JSON.stringify({ title: "Haus A", slug: "haus-a" }, null, 2));
+  git(seed, "add", "-A");
+  git(seed, "commit", "-q", "-m", "init");
+  git(seed, "push", "-q", contentBare, "main");
+
+  const website = temp("mica-website-");
+  git(website, "init", "-q", "-b", "main");
+  identify(website);
+  writeFileSync(join(website, "astro.config.mjs"), "export default {};\n");
+  git(website, ...SUBMODULE, "submodule", "add", "-q", contentBare, "content");
+  git(website, "add", "-A");
+  git(website, "commit", "-q", "-m", "Add the content");
+  return { website, contentBare };
+}
+
+function serviceFor(contentRoot: string): ContentStagingService {
+  return createWorkingTreeStagingService({
+    model,
+    files: contentFiles({ root: contentRoot }),
+    contentRoot,
+    schemaRevision: null,
+    publishEnabled: true,
+    logger: createLogger({ level: "silent", pretty: false }),
+  });
+}
+
+describe("a content root in a Git submodule", () => {
+  it("publishes into the content repository and never commits in the website repository", async () => {
+    const { website, contentBare } = makeWebsite();
+    const contentRoot = join(website, "content");
+    identify(contentRoot);
+    const service = serviceFor(contentRoot);
+    const websiteHead = git(website, "rev-parse", "HEAD");
+
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Saved","slug":"haus-a"}');
+    const status = await service.status();
+    assert.equal(status.detached, null);
+    assert.equal(status.branch, "main");
+    assert.deepEqual(status.changes.map((change) => change.path), ["projects/haus-a/index.json"]);
+
+    const result = await service.publish({ message: "Publish Haus A", paths: await reviewed(service) });
+    assert.equal(result.state, "published", result.pushError);
+    assert.equal(git(contentBare, "rev-parse", "main"), result.revision);
+    assert.equal(git(website, "rev-parse", "HEAD"), websiteHead);
+    // The submodule moved on; the website's pointer is the developer's to commit, or CI's to update.
+    assert.match(git(website, "status", "--porcelain"), /^ ?M content$/m);
+  });
+
+  it("on a detached HEAD, refuses Publish before it commits and names the command", async () => {
+    const { website, contentBare } = makeWebsite();
+    // A fresh clone of the website, as a colleague or CI gets it: the submodule is on no branch.
+    const checkout = temp("mica-website-clone-");
+    git(checkout, ...SUBMODULE, "clone", "-q", "--recurse-submodules", website, ".");
+    const contentRoot = join(checkout, "content");
+    identify(contentRoot);
+    const service = serviceFor(contentRoot);
+    const head = git(contentRoot, "rev-parse", "HEAD");
+
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Saved","slug":"haus-a"}');
+    const status = await service.status();
+    assert.ok(status.detached);
+    assert.notEqual(status.detached.superproject, null);
+    assert.equal(status.branch, null);
+    assert.match(status.detached.command, /^git -C .+content'? switch main$/);
+
+    await assert.rejects(
+      service.publish({ message: "Publish Haus A", paths: await reviewed(service) }),
+      (error: unknown) =>
+        error instanceof ApiError &&
+        error.code === "conflict" &&
+        /submodule.*not on a branch.*switch main/.test(error.message),
+    );
+    assert.equal(git(contentRoot, "rev-parse", "HEAD"), head);
+    assert.deepEqual((await service.status()).changes.map((change) => change.path), ["projects/haus-a/index.json"]);
+
+    // What the command does; the draft goes along.
+    git(contentRoot, "switch", "-q", "main");
+    const result = await service.publish({ message: "Publish Haus A", paths: await reviewed(service) });
+    assert.equal(result.state, "published", result.pushError);
+    assert.equal(git(contentBare, "rev-parse", "main"), result.revision);
+  });
+});
+
 describe("classifyPath", () => {
   const site = defineSite({
     collections: { projects: collection({ label: "Projects", fields: { title: text(), slug: slug({ from: "title" }) } }) },

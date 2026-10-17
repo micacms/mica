@@ -183,7 +183,8 @@ a save writes its files. What differs is who owns the tree:
 - **The developer's checkout** (the local editor). Save writes it, which is
   what lets the Astro dev server hot-reload it. Publish commits exactly the
   reviewed paths and pushes with the developer's own Git. Mica never fetches or
-  merges there.
+  merges there. When the content is in a Git submodule, the checkout is the
+  submodule, and Mica never commits in the website repository.
 - **Mica's own clone** (self-hosted). Mica clones the repository into its data
   volume, keeps it up to date (fetch and fast-forward, never a merge), commits
   each publication with the editor as author, and pushes it over HTTPS. A

@@ -31,7 +31,7 @@ import {
 
 import { badRequest } from "../lib/errors.js";
 import type { SyncStatus } from "../workspace/policy.js";
-import type { UnpushedCommits } from "../workspace/tree.js";
+import type { DetachedHead, UnpushedCommits } from "../workspace/tree.js";
 
 /** Where the change happened, in words an editor recognises. */
 export type ChangeOwner =
@@ -91,6 +91,11 @@ export interface StagingStatus {
    * without a remote.
    */
   unpushed: UnpushedCommits | null;
+  /**
+   * The developer's checkout on no branch, as a submodule usually is: Publish
+   * waits until the developer runs `command`. Null otherwise.
+   */
+  detached: DetachedHead | null;
   changes: AnnotatedChange[];
   validation: StagingValidation;
   /** Where a clone that Mica keeps stands against its remote. Null for the developer's checkout. */

@@ -580,6 +580,52 @@ the Git token; then a separate LFS credential.
 
 ---
 
+### P2 — The content can be in a Git submodule; Mica works in the content repository
+
+**Decided:** the content root can be in a Git submodule of the website
+repository: at the top of the submodule, or in a folder of it. Mica works in
+the repository that holds the content root, and never commits in the website
+repository.
+
+- The local editor finds the repository with `git rev-parse --show-toplevel`
+  in the content root. In a submodule, that is the submodule, so Save, Publish
+  and the push go to the content repository.
+- A submodule is usually on a detached HEAD after `git submodule update`. Then
+  the start banner and the Publish page give the command that checks out the
+  branch (`git -C <content repository> switch <branch>`), and Publish refuses
+  before it commits. The branch is the one that `origin/HEAD` names, else a
+  local branch at HEAD.
+- Mica never changes the submodule pointer in the website repository. The
+  website build gets the newest published content itself, for example with
+  `git submodule update --remote` in CI, or with a build that a push to the
+  content repository starts. Mica adds no build webhook.
+- The loader writes `.mica/schema.json` into the content root, so into the
+  submodule. The developer commits it there.
+- A self-hosted Mica clones the content repository, not the website
+  repository. It never fetches submodules (`submodule.recurse=false`).
+
+**Why:** some sites keep the content in its own repository, so that its
+history, size and access rights are separate from the code. A commit on a
+detached HEAD is on no branch: no push can send it to the website, and the
+next `git submodule update` hides it. To refuse before the commit keeps the
+drafts as drafts.
+
+**Consequence:** the website shows a publication only after its build gets the
+new content. A self-hosted Mica refuses a content repository whose top is the
+content root (see "The model sets the content root"), so its content must be
+in a folder of the content repository. The local editor accepts both.
+
+**What would change it:** demand for a self-hosted Mica on a content
+repository without a folder.
+
+**Built in 0.11 (#276).** `detachedHead` in
+`packages/runtime/src/workspace/tree.ts`, the developer policy
+(`workspace/developer.ts`), `apps/local-editor/src/banner.ts`.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
 ### P2 — A crash in the middle of a fast-forward is finished at the next start
 
 **Decided:** before a fast-forward, Mica writes `MICA_DATA_DIR/operation.json`

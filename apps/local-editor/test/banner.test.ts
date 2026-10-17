@@ -26,3 +26,16 @@ describe("how to add Mica to an agent", () => {
     assert.match(banner, /claude mcp add --transport http mica http:\/\/localhost:7000\/mcp/);
   });
 });
+
+describe("the banner on a detached HEAD", () => {
+  const base = { version: "0.11.0", url: "http://localhost:7000", contentRoot: "/tmp/content", collections: 1, singletons: 0 };
+
+  it("says that Publish waits, and gives the command that checks out the branch", () => {
+    const banner = startupBanner({ ...base, detached: { submodule: true, command: "git -C content switch main" } }, false);
+    assert.match(banner, /Publish {4}waits: the content submodule is on a detached HEAD\. Check out its branch:\n {13}git -C content switch main\n/);
+  });
+
+  it("says nothing of it on a branch", () => {
+    assert.doesNotMatch(startupBanner(base, false), /detached/);
+  });
+});

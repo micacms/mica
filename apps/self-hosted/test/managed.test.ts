@@ -187,6 +187,35 @@ describe("the clone", () => {
   });
 });
 
+describe("a content repository that a website includes as a submodule", () => {
+  /** Clones `files` as the only repository, as Mica does for MICA_REPOSITORY_URL. */
+  const cloneOf = async (files: Record<string, string>) => {
+    const name = `content-${++counter}`;
+    seedRepository(host, name, files);
+    const layout = cloneLayout(mkdtempSync(join(tmpdir(), "mica-data-")));
+    const remote = parseRemote(host.url(name));
+    const env = managedEnvironment({ remote, cloneDir: layout.repositoryDir, username: "oauth2", token: TOKEN });
+    return openClone({ layout, url: remote.url, branch: "main", root: null, env, logger });
+  };
+
+  it("finds the content root in a folder of it", async () => {
+    const { root } = await cloneOf({
+      "README.md": "The content of the website.\n",
+      "site/.mica/schema.json": '{"protocolVersion":1}\n',
+      "site/posts/a/index.json": '{"title":"A"}\n',
+    });
+    assert.equal(root, "site");
+  });
+
+  // The rule of #227: the content root holds no `.git`. A submodule whose root is the content root needs a folder for Mica.
+  it("refuses it when its top is the content root", async () => {
+    await assert.rejects(
+      cloneOf({ ".mica/schema.json": '{"protocolVersion":1}\n', "posts/a/index.json": '{"title":"A"}\n' }),
+      (error: unknown) => error instanceof CloneRefusal && /at the top of the repository/.test(error.message),
+    );
+  });
+});
+
 describe("sync", () => {
   it("fast-forwards past an upstream change and keeps a draft elsewhere byte for byte", async () => {
     const s = await setup();
