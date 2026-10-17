@@ -82,7 +82,8 @@ export function readManifest(raw: unknown, origin = "the manifest"): ReadManifes
 
   let site: Site;
   try {
-    site = defineSite({ collections, singletons });
+    const references = raw.references !== null && typeof raw.references === "object" ? raw.references : undefined;
+    site = defineSite({ collections, singletons, ...(references ? { references } : {}) });
   } catch (error) {
     throw new ManifestError(`${origin} is not a valid content model.\n  ${(error as Error).message}`);
   }

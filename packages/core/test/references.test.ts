@@ -5,8 +5,15 @@ import { describe, it } from "node:test";
 
 import {
   collectReferences,
+  createManifest,
   createReferenceCheck,
   defineSite,
+  ModelError,
+  parseReferenceIndex,
+  readManifest,
+  referenceIndexPath,
+  referenceSet,
+  serializeReferenceIndex,
   collection,
   isWebAddress,
   memorySource,
@@ -132,5 +139,47 @@ describe("images in rich text, by the shared rule", () => {
     ]);
     assert.equal((await check.issues(site.collections.news!.fields, { body }, "news/x")).length, 2);
     assert.equal((await check.issues(site.collections.news!.fields, { body })).length, 0);
+  });
+});
+
+describe("reference sets (#280)", () => {
+  const places = referenceSet({ label: "Places", file: "src/data/places.csv", id: "slug", title: "name" });
+  const site = defineSite({
+    collections: { tours: collection({ label: "Tours", fields: { title: text(), slug: slug(), summit: relation({ collection: "places" }) } }) },
+    references: { places },
+  });
+
+  it("are a target for relations, with a name of their own", () => {
+    assert.equal(site.references?.["places"]?.name, "places");
+    assert.throws(
+      () => defineSite({ collections: { places: collection({ label: "P", fields: { slug: slug() } }) }, references: { places } }),
+      (error: unknown) => error instanceof ModelError && /unique across all three/.test(error.message),
+    );
+    assert.throws(() => defineSite({ collections: {}, references: { places: referenceSet({ label: "Places", file: "" }) } }), ModelError);
+  });
+
+  it("travel in the manifest, and come back the same", () => {
+    const read = readManifest(JSON.parse(JSON.stringify(createManifest(site, "test"))));
+    assert.deepEqual(read.site.references, site.references);
+    assert.equal(read.readOnly.size, 0);
+  });
+
+  it("write their index one item to a line, and read it back", () => {
+    const items = [{ id: "piz-palue", title: "Piz Palü" }, { id: "toedi", title: "Tödi" }];
+    const text = serializeReferenceIndex(items);
+    assert.equal(text.split("\n").length, 5);
+    assert.deepEqual(parseReferenceIndex(text), items);
+    assert.throws(() => parseReferenceIndex('[{ "id": 1 }]'));
+  });
+
+  it("check a relation against the index, and name a missing index", async () => {
+    const withIndex = memorySource({ [referenceIndexPath("places")]: serializeReferenceIndex([{ id: "toedi", title: "Tödi" }]) });
+    const check = createReferenceCheck(site, withIndex);
+    const fields = site.collections["tours"]!.fields;
+    assert.deepEqual(await check.issues(fields, { summit: "toedi" }), []);
+    assert.match((await check.issues(fields, { summit: "eiger" }))[0]!.message, /"eiger" in Places, which does not exist/);
+
+    const without = createReferenceCheck(site, memorySource({}));
+    assert.match((await without.issues(fields, { summit: "toedi" }))[0]!.message, /has no index in \.mica\/references\/places\.json/);
   });
 });

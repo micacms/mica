@@ -17,7 +17,7 @@
  */
 
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join, posix, relative, sep } from "node:path";
+import { dirname, join, posix, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import {
@@ -46,6 +46,7 @@ import { z } from "zod";
 import { announceDevServer, type DevServerConfig } from "./dev-server.js";
 import { imagePathsFromEntry, richTextImageSources } from "./images.js";
 import { manifestFor } from "./manifest.js";
+import { publishReferences } from "./references.js";
 import { DEFAULT_CONTENT_ROOT, resolveContentRoot } from "./root.js";
 
 export interface MicaCollectionsOptions {
@@ -215,11 +216,15 @@ export function micaCollections<S extends Site>(
     }
   };
 
+  const projectRootOf = (context: LoaderContext): string => (context.config?.root ? fileURLToPath(context.config.root) : process.cwd());
+
   const publish = (context: LoaderContext): Promise<void> =>
     (publishing ??=
       options.publishModel === false || options.source
         ? Promise.resolve()
-        : publishModel(site, rootFor(context), context.logger));
+        : publishModel(site, rootFor(context), context.logger).then(() =>
+            site.references ? publishReferences(site.references, rootFor(context), projectRootOf(context), isCi(), context.logger) : undefined,
+          ));
 
   /** An entry's data file, from the content root and, outside tests, from the project root. */
   const entryFile = (context: LoaderContext, name: string, slug?: string) => {
@@ -267,7 +272,16 @@ export function micaCollections<S extends Site>(
     watchingModel = true;
 
     const models = [".ts", ".mts", ".js", ".mjs"].map((extension) => join(project, "src", `mica${extension}`));
+    // A reference set's file is the website's own: its index follows it.
+    const sources = Object.values(site.references ?? {}).map((set) => resolve(project, set.file));
+    for (const source of sources) watcher.add(source);
     watcher.on("change", (path: string) => {
+      if (sources.includes(path) && site.references && options.publishModel !== false) {
+        void publishReferences(site.references, rootFor(context), project, false, context.logger).catch((error: unknown) =>
+          context.logger.error(`Could not write the index of a reference set: ${describe(error)}`),
+        );
+        return;
+      }
       if (!models.includes(path)) return;
       context.logger.warn(
         `${relative(project, path)} changed. Astro does not load a new content model by itself: ` +

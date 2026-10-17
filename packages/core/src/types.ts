@@ -361,6 +361,27 @@ export interface Singleton extends SingletonOptions {
   name: string;
 }
 
+/**
+ * Data that the website reads from a file and Mica never edits, such as place
+ * names or regions. A relation can point to it as to a collection; its name is
+ * the name of the website's own Astro collection for the file.
+ */
+export interface ReferenceSetOptions {
+  label: string;
+  /** The file, from the Astro project root: JSON (a list, or an object by id) or CSV with a header row. */
+  file: string;
+  /** The key of an item's id. Default: `id`. */
+  id?: string;
+  /** The key of an item's title. Default: `title`, else the id. */
+  title?: string;
+}
+
+export interface ReferenceSet extends ReferenceSetOptions {
+  type: "reference";
+  /** Injected by `defineSite` from the key in the `references` map. */
+  name: string;
+}
+
 export interface SiteOptions {
   /**
    * Where this site's content lives, relative to the Astro project root.
@@ -375,6 +396,7 @@ export interface SiteOptions {
   root?: string;
   collections: Record<string, Collection>;
   singletons?: Record<string, Singleton>;
+  references?: Record<string, ReferenceSet>;
 }
 
 export interface Site<
@@ -385,6 +407,8 @@ export interface Site<
   root?: string;
   collections: C;
   singletons: S;
+  /** The reference sets, when the model has any. */
+  references?: Record<string, ReferenceSet>;
 }
 
 /* ------------------------------------------------------------------ *

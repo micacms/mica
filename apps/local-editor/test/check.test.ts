@@ -12,9 +12,12 @@ import {
   defineSite,
   media,
   MANIFEST_PATH,
+  referenceIndexPath,
+  referenceSet,
   relation,
   repeater,
   richText,
+  serializeReferenceIndex,
   singleton,
   slug,
   text,
@@ -93,6 +96,23 @@ describe("mica check", () => {
     assert.ok(errors.some((line) => line.startsWith("news/hello/index.json: title")), errors.join("\n"));
     assert.ok(errors.some((line) => line.includes('there is no "nobody" in "team"')), errors.join("\n"));
     assert.ok(errors.some((line) => line.includes('"news/hello/media/gone.jpg" does not exist')), errors.join("\n"));
+  });
+
+  it("checks a relation to a reference set against its index, and names a missing index (#280)", async () => {
+    const withPlaces = defineSite({
+      collections: { tours: collection({ label: "Tours", fields: { title: text(), slug: slug(), summit: relation({ collection: "places" }) } }) },
+      references: { places: referenceSet({ label: "Places", file: "src/data/places.json" }) },
+    });
+    rmSync(path.join(root, "news"), { recursive: true });
+    rmSync(path.join(root, "team"), { recursive: true });
+    rmSync(path.join(root, "settings"), { recursive: true });
+    write(MANIFEST_PATH, createManifest(withPlaces, "test"));
+    write("tours/ridge/index.json", { title: "Ridge", slug: "ridge", summit: "eiger" });
+
+    assert.deepEqual(problems(await checkContent(root), "error"), [`${referenceIndexPath("places")}: Places has no index. Build the website, and commit the file.`]);
+
+    write(referenceIndexPath("places"), serializeReferenceIndex([{ id: "toedi", title: "Tödi" }]));
+    assert.deepEqual(problems(await checkContent(root), "error"), ['tours/ridge/index.json: summit: there is no "eiger" in "places".']);
   });
 
   it("reports an image in rich text whose file is missing, and accepts one from the shared folder or the web", async () => {

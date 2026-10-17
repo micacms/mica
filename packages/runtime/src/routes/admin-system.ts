@@ -5,9 +5,10 @@
 
 import { Hono } from "hono";
 
-import { listedFields, resolveSlugField, resolveTitleField } from "@micacms/core/internal";
+import { listedFields, readReferenceIndex, resolveSlugField, resolveTitleField } from "@micacms/core/internal";
 
 import type { Env } from "../http.js";
+import { ApiError } from "../lib/errors.js";
 import { schemaStats } from "../lib/schema-stats.js";
 import { schemaOrigin } from "../schema.js";
 import { VERSION } from "../lib/version.js";
@@ -17,6 +18,22 @@ export function adminSystemRoutes(): Hono<Env> {
   const app = new Hono<Env>();
 
   /** The content model, plus the derived values that the UI would otherwise recompute. */
+  /** The id and title of each item of a reference set, from its index beside the model. */
+  app.get("/references/:name", async (c) => {
+    const { site } = c.get("ctx");
+    const name = c.req.param("name");
+    const def = Object.hasOwn(site.model.references ?? {}, name) ? site.model.references![name] : undefined;
+    if (!def) throw new ApiError("not_found", `There is no reference set "${name}".`);
+    let items;
+    try {
+      items = await readReferenceIndex(site.contentRepository, name);
+    } catch (error) {
+      throw new ApiError("conflict", `The index of ${def.label} cannot be read: ${(error as Error).message}`);
+    }
+    if (!items) throw new ApiError("not_found", `${def.label} has no index yet. Build the website, and commit .mica/references/${name}.json.`);
+    return c.json({ items });
+  });
+
   /** The dev server that shows the drafts, for "Preview". Null in the self-hosted Mica. */
   app.get("/preview", async (c) => c.json({ address: await c.get("ctx").preview() }));
 
@@ -50,6 +67,8 @@ export function adminSystemRoutes(): Hono<Env> {
         page: page(def.url),
         readOnly: site.readOnly.get(`singletons.${def.name}`) ?? null,
       })),
+      /** Data that relations point to and Mica never edits; its items come from `/references/:name`. */
+      references: Object.values(site.model.references ?? {}).map((def) => ({ name: def.name, label: def.label })),
       /** Which model this is, so that a page can tell that a newer one is in use. */
       revision: site.schemaRevision,
     });

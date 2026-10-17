@@ -12,6 +12,7 @@ import { collectReferences, resolveSlugField } from "./define.js";
 import { DOCUMENT_EXTENSION, FormatError, INDEX_FILE, entryDataPath, entryFolder } from "./layout.js";
 import { isValidSlug } from "./slugify.js";
 import { parseEntry } from "./parse.js";
+import { readReferenceIndex, referenceIndexPath } from "./references.js";
 import { isWebAddress, markdocImages, resolveMarkdocTarget, richTextDocuments } from "./rich-text.js";
 import type { Collection, FieldMap, Singleton, Site } from "./types.js";
 import type { FieldIssue } from "./validation.js";
@@ -366,6 +367,15 @@ export function createReferenceCheck(
     return entries.get(key)!;
   };
 
+  /** The ids of a reference set's index; null when the index is missing or broken. */
+  const referenceIds = new Map<string, Promise<Set<string> | null>>();
+  const idsOf = (name: string): Promise<Set<string> | null> => {
+    if (!referenceIds.has(name)) {
+      referenceIds.set(name, readReferenceIndex(source, name).then((items) => (items ? new Set(items.map((item) => item.id)) : null), () => null));
+    }
+    return referenceIds.get(name)!;
+  };
+
   const fileExists = async (path: string): Promise<boolean> => {
     const slash = path.lastIndexOf("/");
     const directory = slash === -1 ? "" : path.slice(0, slash);
@@ -408,8 +418,13 @@ export function createReferenceCheck(
       for (const reference of collectReferences(fields, data)) {
         if (reference.kind === "relation") {
           const target = site.collections[reference.collection];
+          const set = site.references?.[reference.collection];
           if (target && !(await entryExists(reference.collection, reference.slug))) {
             issues.push({ path: reference.field, message: `Links to "${reference.slug}" in ${target.label}, which does not exist.` });
+          } else if (set) {
+            const ids = await idsOf(set.name);
+            if (!ids) issues.push({ path: reference.field, message: `${set.label} has no index in ${referenceIndexPath(set.name)}. Build the website, and commit the file.` });
+            else if (!ids.has(reference.slug)) issues.push({ path: reference.field, message: `Links to "${reference.slug}" in ${set.label}, which does not exist.` });
           }
         } else if (!(await fileExists(reference.path))) {
           issues.push({ path: reference.field, message: `The file "${reference.path}" does not exist.` });

@@ -23,6 +23,9 @@ import {
   createManifest,
   defineSite,
   MANIFEST_PATH,
+  parseReferenceIndex,
+  referenceIndexPath,
+  referenceSet,
   singleton,
   slug,
   text,
@@ -491,5 +494,19 @@ describe("the dev server's marker, for the local editor's Preview", () => {
 
   it("names the default port without a config", () => {
     assert.equal(devServerAddress(undefined), "http://localhost:4321");
+  });
+});
+
+describe("reference sets in a load (#280)", () => {
+  it("write their index beside the model when the collections load", async () => {
+    const dir = await project();
+    try {
+      await writeFile(join(dir, "places.csv"), "slug,name\ntoedi,Tödi\n");
+      const withPlaces = defineSite({ ...site, references: { places: referenceSet({ label: "Places", file: "places.csv", id: "slug", title: "name" }) } });
+      await micaCollections(withPlaces).projects.loader.load(createContext(dir));
+      assert.deepEqual(parseReferenceIndex(await readFile(join(dir, "content", referenceIndexPath("places")), "utf8")), [{ id: "toedi", title: "Tödi" }]);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 });

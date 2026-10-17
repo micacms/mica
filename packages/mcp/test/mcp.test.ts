@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, defineSite, media, richText, singleton, slug, text } from "@micacms/core/internal";
+import { collection, defineSite, media, referenceIndexPath, referenceSet, richText, serializeReferenceIndex, singleton, slug, text } from "@micacms/core/internal";
 import { contentFiles, createApp, createLogger, createRuntimeContext, type Env, type RuntimeContext } from "@micacms/runtime";
 import type { MiddlewareHandler } from "hono";
 
@@ -32,6 +32,7 @@ const site = defineSite({
   singletons: {
     settings: singleton({ label: "Website", fields: { siteName: text() } }),
   },
+  references: { places: referenceSet({ label: "Places", file: "src/data/places.json" }) },
 });
 
 interface Harness {
@@ -199,6 +200,17 @@ describe("the MCP tools", () => {
     const image = await h.call("upload_media", { name: "Cover.png", content: PNG, accept: ["gpx"] });
     assert.equal(image.error, true);
     assert.match(image.value, /GPX tracks/);
+  });
+
+  it("names the reference sets, and finds their items by a part of the title (#280)", async () => {
+    const model = await h.call("describe_model");
+    assert.deepEqual(model.value.references, { places: { label: "Places" } });
+    assert.equal((await h.call("find_reference_items", { name: "places" })).error, true, "no index yet");
+
+    mkdirSync(join(h.root, ".mica/references"), { recursive: true });
+    writeFileSync(join(h.root, referenceIndexPath("places")), serializeReferenceIndex([{ id: "toedi", title: "Tödi" }, { id: "eiger", title: "Eiger" }]));
+    const found = await h.call("find_reference_items", { name: "places", query: "töd" });
+    assert.deepEqual(found.value, { items: [{ id: "toedi", title: "Tödi" }], total: 1 });
   });
 
   it("does not read a file on this machine for a remote agent", async () => {

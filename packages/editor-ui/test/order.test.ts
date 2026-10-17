@@ -38,3 +38,15 @@ describe("matchEntries", () => {
     assert.deepEqual(matchEntries(entries, "zzz"), []);
   });
 });
+
+describe("matchEntries over a reference set (#280)", () => {
+  it("finds an item among 10,000 quickly, the start of a title first", () => {
+    const items = Array.from({ length: 10_000 }, (_, index) => ({ slug: `peak-${index}`, title: `Peak ${index}` }));
+    items.push({ slug: "toedi", title: "Tödi" });
+    const started = performance.now();
+    const found = matchEntries(items, "töd");
+    assert.ok(performance.now() - started < 100);
+    assert.deepEqual(found.map((item) => item.slug), ["toedi"]);
+    assert.equal(matchEntries(items, "peak").length, 50, "at most 50 results");
+  });
+});

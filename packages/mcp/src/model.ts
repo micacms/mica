@@ -19,7 +19,8 @@ export const VALUE_FORMATS: Record<FieldKind, string> = {
   select: "The `value` of one of the `options`. With `multiple`, a list of values.",
   object: "An object with the group's `fields`.",
   repeater: "A list of objects with the row's `fields`. Keep the `_key` of a row that exists; a new row gets one.",
-  relation: "The slug of an entry in `collection`. With `multiple`, a list of slugs.",
+  relation:
+    "The slug of an entry in `collection`, or the id of an item when `collection` names a reference set (`find_reference_items`). With `multiple`, a list.",
   media:
     "The path of a file, relative to the content root, from `list_media` or `upload_media`. With `alt`, an object `{ path, alt }`. With `multiple`, a list.",
   color: "A hex colour such as #1a2b3c.",
@@ -40,6 +41,8 @@ export function describeModel(model: Site, readOnly: ReadonlyMap<string, string>
   return {
     collections: mark("collections", model.collections),
     singletons: mark("singletons", model.singletons),
+    // Data of the website that relations point to. Read only: find an item's id with `find_reference_items`.
+    references: Object.fromEntries(Object.values(model.references ?? {}).map((set) => [set.name, { label: set.label }])),
     valueFormats: VALUE_FORMATS,
   };
 }

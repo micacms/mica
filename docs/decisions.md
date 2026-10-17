@@ -2166,6 +2166,37 @@ the media library. An image from `public/` shows no preview in the editor.
 
 ---
 
+### P2 — Reference data is an index beside the model
+
+**Decided:** `defineSite({ references })` declares data of the website that
+Mica never edits: a label, the file (JSON as a list or an object by id, or CSV
+with a header row), and the keys of the id and the title. Its name is the name
+of the website's own Astro collection for the file, and shares one namespace
+with collections and singletons. A `relation()` can point to it, and stores an
+item's id. The Astro loader writes the id and title of each item to
+`.mica/references/<name>.json`, one item on each line, and in CI only checks
+it, as for the model. Mica reads the index, never the file: the relation picker
+loads it, Publish, `mica check` and the loader check each id against it, and
+the MCP tool `find_reference_items` searches it.
+
+**Why:** a site can have thousands of items that nobody edits by hand, such as
+peaks or regions from a public dataset. As entries they would be far over the
+1.0 scale target and slow every list; as a text field they would have no picker
+and no check. Mica must not run Astro, and the self-hosted Mica sees only the
+content repository, so the index must be in it. One line for each item keeps
+a changed item to one line in a diff.
+
+**Consequence:** the index is committed and grows with the data: about 40 bytes
+for each item. A source that is not a file, such as a remote loader, cannot be a
+reference set. An older Mica refuses a model with a relation to a reference set.
+
+**What would change it:** a site whose reference data comes from an API, or is
+too large for one index file.
+
+**1.0 status:** done in 0.11 (#280).
+
+---
+
 ### P2 — `@micacms/astro` gives the helpers that every website writes
 
 **Decided:** `getSingleton(site, name)` reads a singleton with the type of the
