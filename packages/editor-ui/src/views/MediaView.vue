@@ -22,6 +22,8 @@ import { computed, onMounted, ref, watch } from "vue";
 import { api, ApiError, type MediaItem, type Referrer } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import UploadList from "@/components/UploadList.vue";
+import { useUploads } from "@/composables/useUploads";
 import { useSchema } from "@/stores/schema";
 import { formatBytes } from "@/lib/format";
 import { useStaging } from "@/stores/staging";
@@ -31,7 +33,8 @@ const toast = useToast();
 
 const items = ref<MediaItem[]>([]);
 const loading = ref(true);
-const uploading = ref(false);
+const uploads = useUploads();
+const uploading = uploads.busy;
 const search = ref("");
 /** Which files the list shows: all, images only, or the other files. */
 const show = ref<"all" | "images" | "files">("all");
@@ -188,20 +191,23 @@ onMounted(load);
 async function upload(files: FileList | File[] | null): Promise<void> {
   const list = Array.from(files ?? []);
   if (list.length === 0) return;
-
-  uploading.value = true;
   try {
-    const { items: uploaded } = await api.media.upload(list);
-    toast.success(`Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}.`);
-    void staging.refresh();
-    await load();
-    selected.value = items.value.find((item) => item.path === uploaded[0]?.path) ?? null;
-  } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "The upload failed.");
+    uploads.clear();
+    await afterUpload(await uploads.run(list));
   } finally {
-    uploading.value = false;
     if (fileInput.value) fileInput.value.value = "";
   }
+}
+
+async function retry(): Promise<void> {
+  await afterUpload(await uploads.retry());
+}
+
+async function afterUpload(uploaded: MediaItem[]): Promise<void> {
+  if (uploaded.length === 0) return;
+  if (uploads.failed.value.length === 0) toast.success(`Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}.`);
+  await load();
+  selected.value = items.value.find((item) => item.path === uploaded[0]?.path) ?? null;
 }
 
 async function copyPath(path: string): Promise<void> {
@@ -243,6 +249,8 @@ async function copyPath(path: string): Promise<void> {
       upload($event.dataTransfer?.files ?? null);
     "
   >
+    <UploadList :states="uploads.states.value" :busy="uploads.busy.value" class="mb-3" @retry="retry" @dismiss="uploads.clear()" />
+
     <div class="mb-3 flex flex-wrap items-center gap-2">
       <input
         v-model="search"

@@ -2208,6 +2208,32 @@ table and a check of its bytes, in a minor release.
 
 ---
 
+### P3 — Large galleries upload one file after another, and show the originals
+
+**Decided:** files dropped on a media field, chosen in the picker or dropped in
+the Media view upload one after another, one request for each file. A file
+that fails shows its reason, the others go on, and "Try again" sends only the
+failed ones. A field with `max` uploads only the files that fit, and says how
+many it did not add. The grids load their images lazily. They show the
+original files: Mica makes no smaller previews.
+
+**Why:** the server takes one file for each request and writes under one lock,
+so parallel uploads would only wait. Before, one failed file stopped the rest,
+and the files that had arrived were not added. Previews made on the server
+need an image library, a large native dependency, and a place to keep them
+that is not the content.
+
+**Consequence:** a grid of 100 photos of 5 MB loads what comes into view, at
+full size. Over a slow connection to a self-hosted Mica, that is slow.
+
+**What would change it:** editors who work with large galleries over slow
+connections. Then previews made in the browser at upload, or an image library
+on the server, in a minor release.
+
+**1.0 status:** done in 0.11 (#282).
+
+---
+
 ### P2 — The website is the one source of user documentation
 
 **Decided:** the user guides live in `sites/micacms/content/docs` as Mica

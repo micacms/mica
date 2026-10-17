@@ -21,7 +21,8 @@ import { acceptedFileTypes, MEDIA_FILE_TYPES, mediaFileTypeOf, type MediaAccept 
 
 import { api, ApiError, type MediaItem } from "@/api";
 import { SHARED_MEDIA, type MediaFolder } from "@/lib/media-folder";
-import { useStaging } from "@/stores/staging";
+import UploadList from "@/components/UploadList.vue";
+import { useUploads } from "@/composables/useUploads";
 import { useToast } from "@/stores/toast";
 
 const props = withDefaults(
@@ -47,7 +48,8 @@ const toast = useToast();
 
 const all = ref<MediaItem[]>([]);
 const loading = ref(false);
-const uploading = ref(false);
+const uploads = useUploads();
+const uploading = uploads.busy;
 const search = ref("");
 const picked = ref<string[]>([]);
 const dialog = ref<HTMLElement | null>(null);
@@ -150,31 +152,33 @@ function confirm(): void {
 async function upload(files: FileList | File[] | null): Promise<void> {
   const list = Array.from(files ?? []);
   if (list.length === 0) return;
-
-  uploading.value = true;
   try {
-    const { items: uploaded } = await api.media.upload(list, {
-      accept: Array.isArray(props.accept) ? props.accept.join(",") : props.accept,
+    uploads.clear();
+    const uploaded = await uploads.run(props.multiple ? list : list.slice(0, 1), {
+      ...(Array.isArray(props.accept) ? { accept: props.accept.join(",") } : props.accept ? { accept: props.accept } : {}),
       ...(props.folder ? { directory: props.folder.path, newEntry: props.folder.isNew } : {}),
     });
-    // An upload is a pending change of its own, even before the form is saved.
-    void useStaging().refresh();
-
-    if (!props.multiple) {
-      if (uploaded[0]) emit("choose", [uploaded[0]]);
-      emit("close");
-      return;
-    }
-
-    await load();
-    picked.value = [...picked.value, ...uploaded.map((item) => item.path)];
-    toast.success(`Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}.`);
-  } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "The upload failed.");
+    await afterUpload(uploaded);
   } finally {
-    uploading.value = false;
     if (fileInput.value) fileInput.value.value = "";
   }
+}
+
+async function retry(): Promise<void> {
+  await afterUpload(await uploads.retry());
+}
+
+/** A single field takes the file at once; a list ticks the new files, in their order. */
+async function afterUpload(uploaded: MediaItem[]): Promise<void> {
+  if (uploaded.length === 0) return;
+  if (!props.multiple) {
+    emit("choose", [uploaded[0]!]);
+    emit("close");
+    return;
+  }
+  await load();
+  picked.value = [...picked.value, ...uploaded.map((item) => item.path).filter((path) => !picked.value.includes(path))];
+  if (uploads.failed.value.length === 0) toast.success(`Uploaded ${uploaded.length} file${uploaded.length === 1 ? "" : "s"}.`);
 }
 
 function onDrop(event: DragEvent): void {
@@ -280,6 +284,7 @@ const folderOf = (path: string): string => {
               {{ folder ? "· stored with this content" : "· shared by all content" }}
             </span>
           </label>
+          <UploadList :states="uploads.states.value" :busy="uploads.busy.value" class="-mt-2 mb-4" @retry="retry" @dismiss="uploads.clear()" />
 
           <p v-if="loading" role="status" class="py-8 text-center text-sm text-muted">Loading…</p>
 
@@ -308,6 +313,7 @@ const folderOf = (path: string): string => {
                     :src="api.media.url(item.path)"
                     alt=""
                     loading="lazy"
+                    decoding="async"
                     class="h-full w-full object-cover"
                   />
                   <span

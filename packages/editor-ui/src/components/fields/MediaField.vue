@@ -17,12 +17,15 @@ import type { MediaField } from "@micacms/core/internal";
 
 import FieldShell from "./FieldShell.vue";
 import MediaPicker from "@/components/MediaPicker.vue";
+import UploadList from "@/components/UploadList.vue";
 import ReorderArrows from "@/components/ReorderArrows.vue";
 import ReorderHandle from "@/components/ReorderHandle.vue";
 import { api, type MediaItem } from "@/api";
 import { useField, type FieldProps } from "@/composables/useField";
 import { useReorder } from "@/composables/useReorder";
+import { useUploads } from "@/composables/useUploads";
 import { MEDIA_FOLDER } from "@/lib/media-folder";
+import { addPaths, roomFor } from "@/lib/uploads";
 
 interface Value {
   path: string;
@@ -96,6 +99,54 @@ function onChoose(chosen: MediaItem[]): void {
   update(field.value.max ? next.slice(0, field.value.max) : next);
 }
 
+const uploads = useUploads();
+const dragging = ref(false);
+/** Said after a drop: why files were not added. */
+const dropNote = ref<string | null>(null);
+
+const canDrop = computed(() => !locked.value && !atLimit.value);
+
+/** Files dropped on the field upload to the form's folder, and join the field in the order of the drop. */
+async function onDrop(event: DragEvent): Promise<void> {
+  dragging.value = false;
+  dropNote.value = null;
+  const files = Array.from(event.dataTransfer?.files ?? []);
+  if (files.length === 0 || !canDrop.value) return;
+  if (mediaFolder?.value === null) {
+    dropNote.value = "Give it a title or a valid URL first. Its files then get their own folder, and you can upload here.";
+    return;
+  }
+  const room = field.value.multiple ? roomFor(paths.value.length, field.value.max) : 1;
+  const toSend = files.slice(0, room);
+  uploads.clear();
+  const folder = mediaFolder?.value;
+  const uploaded = await uploads.run(toSend, {
+    ...(Array.isArray(field.value.accept) ? { accept: field.value.accept.join(",") } : field.value.accept ? { accept: field.value.accept } : {}),
+    ...(folder ? { directory: folder.path, newEntry: folder.isNew } : {}),
+  });
+  addUploaded(uploaded, files.length - toSend.length);
+}
+
+async function retry(): Promise<void> {
+  addUploaded(await uploads.retry(), 0);
+}
+
+function addUploaded(uploaded: MediaItem[], notSent: number): void {
+  if (!field.value.multiple) {
+    if (uploaded[0]) update([{ path: uploaded[0].path, alt: null }]);
+  } else if (uploaded.length > 0) {
+    const { next, skipped } = addPaths(paths.value, uploaded.map((item) => item.path), field.value.max);
+    const byPath = new Map(values.value.map((value) => [value.path, value]));
+    update(next.map((path) => byPath.get(path) ?? { path, alt: null }));
+    notSent += skipped;
+  }
+  if (notSent > 0) {
+    dropNote.value = field.value.multiple
+      ? `This field takes at most ${field.value.max} files, so ${notSent === 1 ? "one file was" : `${notSent} files were`} not added.`
+      : "This field takes one file, so only the first one was added.";
+  }
+}
+
 function removeAt(index: number): void {
   update(values.value.filter((_, position) => position !== index));
 }
@@ -128,7 +179,13 @@ function setAlt(index: number, event: Event): void {
     :hint-id="hintId"
     :error-id="errorId"
   >
-    <div :aria-describedby="describedBy">
+    <div
+      :aria-describedby="describedBy"
+      :class="['rounded-lg', dragging && 'outline-2 outline-offset-4 outline-dashed outline-ink']"
+      @dragover.prevent="dragging = canDrop"
+      @dragleave.prevent="dragging = false"
+      @drop.prevent="onDrop"
+    >
       <p v-if="field.multiple" :id="`${inputId}-order-help`" class="sr-only">
         To move a file with the keyboard, press Space on its handle, then the arrow keys, Home or End, and Space again
         to drop it. Escape puts it back. The arrows move it one step earlier or later.
@@ -157,6 +214,8 @@ function setAlt(index: number, event: Event): void {
               v-if="item.isImage"
               :src="item.url"
               alt=""
+              loading="lazy"
+              decoding="async"
               class="h-full w-full object-cover"
             />
             <div
@@ -246,6 +305,12 @@ function setAlt(index: number, event: Event): void {
       <span v-if="atLimit" class="ml-2 text-xs text-muted">
         Maximum of {{ field.max }} reached.
       </span>
+      <span v-else-if="!locked && !items.length" class="ml-2 text-xs text-muted">
+        Or drop {{ field.multiple ? "files" : "a file" }} here.
+      </span>
+
+      <p v-if="dropNote" class="mt-2 text-xs text-muted" role="status">{{ dropNote }}</p>
+      <UploadList :states="uploads.states.value" :busy="uploads.busy.value" @retry="retry" @dismiss="uploads.clear()" />
     </div>
 
     <MediaPicker
