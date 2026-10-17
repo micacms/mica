@@ -18,4 +18,5 @@ export * from "./access.js";
 export * from "./map.js";
 export * from "./rich-text.js";
 export * from "./media-types.js";
+export * from "./page-url.js";
 export * from "./row-key.js";

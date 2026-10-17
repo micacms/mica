@@ -45,6 +45,7 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 - `MICA_TRUST_PROXY`: read the client address from `X-Forwarded-For`. Set it to `true` only behind a proxy that you control. Default: `false`.
 - `MICA_MAX_UPLOAD_BYTES`: the largest upload, in bytes. Default: `26214400` (25 MB).
 - `MICA_LOG_LEVEL`: `debug`, `info`, `warn`, `error` or `silent`. Default: `info`.
+- `MICA_SITE_URL`: the website's address, such as `https://example.com`. With a `url` in the model, an entry shows "Open on website". Added in 0.11.0.
 
 ## Self-hosted image: agents
 
@@ -68,7 +69,7 @@ It also reads these variables:
 - `MICA_PUBLIC_URL`: the editor's own address. It must be on this computer. Default: `http://localhost:` and the port.
 - `MICA_LOCAL_PUBLISH`: `false` shows the pending changes, but Publish does not commit or push. Default: `true`.
 - `MICA_MCP_PUBLISH`: `true` gives agents the `publish` tool, at `/mcp` and in `npx mica mcp`. Default: `false`. `npx mica mcp --allow-publish` does the same.
-- `MICA_MAX_UPLOAD_BYTES` and `MICA_LOG_LEVEL`, as for the image.
+- `MICA_SITE_URL`, `MICA_MAX_UPLOAD_BYTES` and `MICA_LOG_LEVEL`, as for the image.
 
 ## For work on Mica itself
 

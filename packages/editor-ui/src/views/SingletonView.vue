@@ -15,6 +15,7 @@ import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
 import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import PageLink from "@/components/PageLink.vue";
 import PendingNotice from "@/components/PendingNotice.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
@@ -23,6 +24,7 @@ import { useKeptChanges } from "@/composables/useKeptChanges";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
 import { focusField } from "@/lib/focus";
 import { MEDIA_FOLDER } from "@/lib/media-folder";
+import { pageHref } from "@/lib/pages";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
@@ -41,6 +43,7 @@ const staging = useStaging();
 const toast = useToast();
 
 const definition = computed(() => schema.singleton(props.name));
+const page = computed(() => pageHref(definition.value?.page));
 
 const values = ref<Record<string, unknown>>({});
 const revision = ref<string | null>(null);
@@ -189,6 +192,7 @@ async function save(options: { keepMine?: boolean } = {}): Promise<void> {
 <template>
   <template v-if="definition">
     <PageHeader :title="definition.label" :subtitle="location" :loading="loading">
+      <PageLink v-if="page" :href="page" />
       <template v-if="!definition.readOnly && !loadError">
         <span :class="['status', state.tone]">
           {{ state.label }}

@@ -18,7 +18,9 @@ export function adminSystemRoutes(): Hono<Env> {
 
   /** The content model, plus the derived values that the UI would otherwise recompute. */
   app.get("/schema", (c) => {
-    const { site } = c.get("ctx");
+    const { site, config } = c.get("ctx");
+    /** The full address of a page, with `{slug}` for a collection's; null without both parts. */
+    const page = (url: string | undefined) => (url && config.MICA_SITE_URL ? `${config.MICA_SITE_URL}${url}` : null);
 
     return c.json({
       collections: Object.values(site.model.collections).map((def) => ({
@@ -32,6 +34,7 @@ export function adminSystemRoutes(): Hono<Env> {
         slugField: resolveSlugField(def),
         listedFields: listedFields(def),
         fields: def.fields,
+        page: page(def.url),
         readOnly: site.readOnly.get(`collections.${def.name}`) ?? null,
       })),
       singletons: Object.values(site.model.singletons).map((def) => ({
@@ -39,6 +42,7 @@ export function adminSystemRoutes(): Hono<Env> {
         label: def.label,
         description: def.description ?? null,
         fields: def.fields,
+        page: page(def.url),
         readOnly: site.readOnly.get(`singletons.${def.name}`) ?? null,
       })),
       /** Which model this is, so that a page can tell that a newer one is in use. */

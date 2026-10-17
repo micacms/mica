@@ -306,6 +306,27 @@ describe("content", () => {
     assert.ok("gallery" in projects.fields);
   });
 
+  it("gives the page address of a collection only with a url in the model and MICA_SITE_URL", async () => {
+    const site = defineSite({
+      collections: { ...testSite.collections, projects: collection({ ...testSite.collections["projects"]!, url: "/work/{slug}" }) },
+      singletons: testSite.singletons,
+    });
+    const page = async (config: Record<string, string>) => {
+      const other = await createHarness(config, { site });
+      try {
+        const body = (await (await other.request("/api/admin/schema")).json()) as { collections: Array<{ name: string; page: string | null }> };
+        return body.collections.map((item) => [item.name, item.page]);
+      } finally {
+        other.close();
+      }
+    };
+    assert.deepEqual(await page({ MICA_SITE_URL: "https://example.com/blog" }), [
+      ["projects", "https://example.com/blog/work/{slug}"],
+      ...Object.keys(testSite.collections).filter((name) => name !== "projects").map((name) => [name, null]),
+    ]);
+    assert.deepEqual(new Set((await page({})).map(([, address]) => address)), new Set([null]));
+  });
+
   it("writes an entry to the repository, not to a table", async () => {
     const response = await create({ title: "Haus am Zürichsee", year: 2024, summary: "# Hello" });
     assert.equal(response.status, 201);
