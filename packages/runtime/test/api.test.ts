@@ -3,13 +3,13 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, createManifest, defineSite, MANIFEST_PATH, number, slug, text } from "@micacms/core/internal";
+import { collection, coordinates, createManifest, defineSite, MANIFEST_PATH, number, object, repeater, slug, text, type FieldMap } from "@micacms/core/internal";
 import { Hono } from "hono";
 
 import { clientIp, type Env } from "../src/http.js";
 import { createLogger, type Logger } from "../src/lib/logger.js";
 import {
-  CONTENT_SECURITY_POLICY,
+  contentSecurityPolicy,
   MAX_JSON_BYTES,
   securityHeaders,
 } from "../src/middleware/index.js";
@@ -101,12 +101,39 @@ describe("security headers", () => {
   it("sends a same-origin Content-Security-Policy on every response", async () => {
     const response = await harness.request("/health");
     const policy = response.headers.get("content-security-policy") ?? "";
-    assert.equal(policy, CONTENT_SECURITY_POLICY);
-    assert.match(policy, /default-src 'self'/);
-    assert.match(policy, /frame-ancestors 'none'/);
+    assert.equal(policy, "default-src 'self'; img-src 'self' blob: data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'");
     assert.equal(response.headers.get("x-frame-options"), "DENY");
+    assert.match(response.headers.get("permissions-policy") ?? "", /geolocation=\(\)/);
     // HSTS only for an https public URL; the harness runs on plain HTTP.
     assert.equal(response.headers.get("strict-transport-security"), null);
+  });
+
+  const withMap = (fields: FieldMap) =>
+    defineSite({ collections: { places: collection({ label: "Places", fields: { title: text(), slug: slug({ from: "title" }), ...fields } }) } });
+
+  it("allows the OpenFreeMap host and blob workers only for a model with a map", () => {
+    const policy = contentSecurityPolicy(withMap({ office: object({ fields: { at: coordinates({ map: "liberty" }) } }) }));
+    assert.equal(
+      policy,
+      "default-src 'self'; img-src 'self' blob: data: https://tiles.openfreemap.org; connect-src 'self' https://tiles.openfreemap.org; " +
+        "worker-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'",
+    );
+    assert.doesNotMatch(policy, /unsafe-eval/);
+  });
+
+  it("allows the origin and the hosts of a custom style, from the model in use", async () => {
+    const site = withMap({
+      stops: repeater({ fields: { at: coordinates({ map: { style: "https://maps.example.com/style.json?key=abc", hosts: ["https://tiles.example.com"] } }) } }),
+    });
+    const custom = await createHarness({}, { site });
+    try {
+      const policy = (await custom.request("/health")).headers.get("content-security-policy") ?? "";
+      assert.match(policy, /img-src 'self' blob: data: https:\/\/maps\.example\.com https:\/\/tiles\.example\.com;/);
+      assert.match(policy, /connect-src 'self' https:\/\/maps\.example\.com https:\/\/tiles\.example\.com;/);
+      assert.doesNotMatch(policy, /openfreemap|key=/);
+    } finally {
+      await custom.close();
+    }
   });
 
   it("keeps a plain request id, and replaces any other", async () => {

@@ -258,8 +258,21 @@ export interface ColorField extends BaseField {
   default?: string;
 }
 
+/** An OpenFreeMap style, loaded from `https://tiles.openfreemap.org/styles/<name>`. */
+export type MapPreset = "liberty" | "bright" | "positron";
+
+/** A map style of your own. The model is public with the content, so a key in `style` is public too. */
+export interface MapStyle {
+  /** The `https` address of the MapLibre style JSON. */
+  style: string;
+  /** The other `https` origins that the style loads tiles, glyphs and sprites from. The origin of `style` is always allowed. */
+  hosts?: string[];
+}
+
 export interface CoordinatesField extends BaseField {
   kind: "coordinates";
+  /** Shows a map below the inputs, to pick the place. The editor's browser loads the style and tiles from its host. */
+  map?: MapPreset | MapStyle;
 }
 
 /** A free list of short words, such as tags or keywords. Stored as a list of strings. */

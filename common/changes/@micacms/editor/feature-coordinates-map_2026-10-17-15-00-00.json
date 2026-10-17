@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor",
+      "comment": "A coordinates field with `map` shows a map below the inputs. Click to set the place, or drag the pin; zoom with Ctrl or Cmd and the scroll wheel. The map loads only for such a field, and the inputs still work when it cannot load.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

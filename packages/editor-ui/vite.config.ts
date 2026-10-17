@@ -1,10 +1,11 @@
+import path from "node:path";
 import { fileURLToPath, URL } from "node:url";
 
 import tailwindcss from "@tailwindcss/vite";
 import vue from "@vitejs/plugin-vue";
 import { defineConfig, type Plugin } from "vite";
 
-import { formatNotices, packageRoot, readPackage } from "../../scripts/third-party-notices.mjs";
+import { dependencyRoots, formatNotices, packageRoot, readPackage } from "../../scripts/third-party-notices.mjs";
 
 const API_TARGET = process.env.CMS_DEV_API ?? "http://localhost:6422";
 
@@ -23,6 +24,10 @@ function thirdPartyNotices(): Plugin {
       for (const name of ["tailwindcss", "vite", "@vitejs/plugin-vue"]) {
         const root = packageRoot(fileURLToPath(import.meta.resolve(name)));
         if (root) roots.add(root);
+      }
+      // MapLibre ships its dependencies inside its own files, so they are not modules of the bundle.
+      for (const root of [...roots]) {
+        if (path.basename(root) === "maplibre-gl") for (const dependency of dependencyRoots(root)) roots.add(dependency);
       }
       const intro =
         "The Instrument Sans and IBM Plex Mono fonts are under the SIL Open Font License: fonts/InstrumentSans-LICENSE.txt and fonts/IBMPlexMono-LICENSE.txt.\n\n";
@@ -44,6 +49,9 @@ export default defineConfig({
     },
   },
 
+  // MapLibre's worker imports its shared code as a module.
+  worker: { format: "es" },
+
   build: {
     outDir: "dist",
     emptyOutDir: true,
@@ -51,8 +59,9 @@ export default defineConfig({
     // The admin is one deliberate bundle: fetched once, behind a sign-in, from
     // the app that serves it — route-splitting would buy round trips, not a
     // faster first paint. The limit sits where real growth would cross it,
-    // not where a dependency bump does; today's bundle is ~510 kB.
-    chunkSizeWarningLimit: 1000,
+    // not where a dependency bump does; today's bundle is ~730 kB. MapLibre is
+    // the exception: ~1,040 kB in its own chunk, which only a form with a map loads.
+    chunkSizeWarningLimit: 1100,
     rollupOptions: {
       onwarn(warning, warn) {
         // zod ships comments that Rollup misreads as misplaced tree-shaking

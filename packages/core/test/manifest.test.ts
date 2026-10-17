@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { collection, createManifest, defineSite, ManifestError, readManifest, slug, text } from "../dist/index.js";
+import { collection, coordinates, createManifest, defineSite, ManifestError, readManifest, slug, text } from "../dist/index.js";
 
 /** The smallest manifest that satisfies `defineSite`: every collection needs a slug. */
 const validSite = () => ({
@@ -190,9 +190,20 @@ describe("options that this build does not know", () => {
 
   it("are none in a manifest that this build writes", () => {
     const site = defineSite({
-      collections: { pages: collection({ label: "Pages", fields: { title: text({ required: true, maxLength: 80 }), slug: slug({ from: "title" }) } }) },
+      collections: {
+        pages: collection({
+          label: "Pages",
+          fields: { title: text({ required: true, maxLength: 80 }), slug: slug({ from: "title" }), where: coordinates({ map: "liberty" }) },
+        }),
+      },
     });
     assert.deepEqual(readManifest(JSON.parse(JSON.stringify(createManifest(site, "test")))).readOnly.size, 0);
+  });
+
+  it("refuse a map that is not https, from a manifest as from the model", () => {
+    const raw = validSite();
+    raw.collections.pages.fields["where"] = { kind: "coordinates", map: { style: "http://maps.example.com/style.json" } };
+    assert.throws(() => readManifest(raw), (error: unknown) => error instanceof ManifestError && /invalid map/.test(error.message));
   });
 
   it("warn when only buttons or a list order are left out", () => {
