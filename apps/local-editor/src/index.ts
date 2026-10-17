@@ -25,6 +25,7 @@ import { editorUiDist } from "./admin-dir.js";
 import { portInUse, startupBanner, supportsColor } from "./banner.js";
 import { loadConfig } from "./config.js";
 import { hostGuard } from "./guards.js";
+import { lfsSetupProblem } from "./lfs.js";
 import { openInBrowser } from "./open.js";
 
 async function main(): Promise<void> {
@@ -37,6 +38,12 @@ async function main(): Promise<void> {
       process.exit(78); // EX_CONFIG
     }
     throw error;
+  }
+
+  const lfs = await lfsSetupProblem(config.contentRoot);
+  if (lfs) {
+    process.stderr.write(`\n${lfs}\n\n`);
+    process.exit(78); // EX_CONFIG
   }
 
   const logger = createLogger({ level: config.MICA_LOG_LEVEL, pretty: true });

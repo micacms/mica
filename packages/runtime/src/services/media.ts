@@ -12,7 +12,7 @@ import { HEAD_BYTES, TooLargeError, type ContentFiles, type FileChange } from ".
 import { imageSize } from "image-size";
 
 import { ApiError, badRequest } from "../lib/errors.js";
-import { detectFileType, isAccepted, isImageType, SVG_TYPE, VIDEO_TYPE } from "../lib/file-type.js";
+import { detectFileType, isAccepted, isImageType, isLfsPointer, SVG_TYPE, VIDEO_TYPE } from "../lib/file-type.js";
 
 export interface MediaServiceDeps {
   files: ContentFiles;
@@ -173,6 +173,7 @@ export function createMediaService(deps: MediaServiceDeps) {
       if (!cached) {
         const bytes = await files.readHead(path, HEAD_BYTES);
         if (!bytes) return null;
+        if (isLfsPointer(bytes)) throw notDownloaded();
         const mimeType = typeOf(bytes, path);
         if (mimeType === SVG_TYPE) throw refuseSvg();
         cached = { mimeType, ...dimensions(bytes, mimeType) };
@@ -192,6 +193,7 @@ export function createMediaService(deps: MediaServiceDeps) {
       const path = contentPath(mediaPath);
       const head = await files.readHead(path, 1024);
       if (!head) return null;
+      if (isLfsPointer(head)) throw notDownloaded();
 
       const mimeType = typeOf(head, mediaPath);
       if (mimeType === SVG_TYPE) throw refuseSvg();
@@ -249,6 +251,13 @@ function typeOf(bytes: Uint8Array, name: string): string {
   if (byName === SVG_TYPE) return SVG_TYPE;
   return detectFileType(bytes, name)?.mimeType ?? byName;
 }
+
+/** The working tree holds an LFS pointer where the file should be. */
+const notDownloaded = () =>
+  new ApiError(
+    "conflict",
+    "Mica has only a placeholder for this file, because the file itself was not downloaded. Tell the person who runs Mica.",
+  );
 
 const refuseSvg = () =>
   new ApiError(

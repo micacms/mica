@@ -12,7 +12,7 @@ import { ConfigError, gitRunner, type GitRunner, type Logger } from "@micacms/ru
 
 import { contentRootAt } from "./content-root.js";
 import { writeIsolationAttributes } from "./isolation.js";
-import { lfsUnderRoot } from "./lfs.js";
+import { limitLfsToRoot } from "./lfs.js";
 import { changedBetween, draftPaths, restorePaths } from "./restore.js";
 
 /** The longest a local Git call may run. */
@@ -127,6 +127,7 @@ export async function openClone(options: OpenCloneOptions): Promise<OpenedClone>
   await writeIsolationAttributes(join(layout.repositoryDir, ".git"));
   await removeLocks(layout, logger);
   const root = await contentRootAt(git, "HEAD", options.root);
+  await limitLfsToRoot(git, root);
   await recover(git, options, root);
   return { git, root };
 }
@@ -166,11 +167,10 @@ async function cloneFresh(options: OpenCloneOptions): Promise<string> {
     await writeIsolationAttributes(join(temporary, ".git"));
 
     root = await contentRootAt(git, "HEAD", options.root);
-    const lfs = await lfsUnderRoot(git, "HEAD", root);
-    if (lfs) throw lfsRefusal(lfs, root);
+    await limitLfsToRoot(git, root);
 
     // `checkout` fetches the missing blobs in one batch; `restore` would fetch
-    // them one request at a time.
+    // them one request at a time. The LFS filter downloads the LFS objects.
     await git.run(["checkout", "--force", "--quiet", "HEAD"], { timeoutMs: CLONE_MS });
     await rename(temporary, layout.repositoryDir);
   } catch (error) {
@@ -223,14 +223,6 @@ async function refuseRescuedDrafts(layout: CloneLayout): Promise<void> {
     `${layout.keepMineFile} says that ${layout.rescueDir} holds drafts from an interrupted "Keep my version".\n` +
       "  Start Mica with the configuration of that clone to restore them, or copy them out of the rescue\n" +
       "  directory and delete keep-mine.json.",
-  );
-}
-
-export function lfsRefusal(file: string, root: string): CloneRefusal {
-  return new CloneRefusal(
-    `${file} assigns Git LFS to files under the content root (${root}).\n` +
-      "  Mica does not support Git LFS yet: it would commit whole files where LFS\n" +
-      "  should hold pointers. Keep LFS out of the content root.",
   );
 }
 

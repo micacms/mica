@@ -147,6 +147,16 @@ export function acceptFromQuery(value: string | undefined): MediaAccept | null {
   return names.every(isMediaFileType) ? names : null;
 }
 
+const LFS_POINTER = "version https://git-lfs.github.com/spec/v1\n";
+
+/**
+ * Whether `bytes` (the head of a file) are a Git LFS pointer: the file is in
+ * LFS, and its object was not downloaded.
+ */
+export function isLfsPointer(bytes: Uint8Array): boolean {
+  return bytes.length >= LFS_POINTER.length && ascii(bytes, 0, LFS_POINTER.length) === LFS_POINTER;
+}
+
 /** A video is large for a Git repository, and the media list cannot show one. */
 export const VIDEO_TYPE = "video/mp4";
 

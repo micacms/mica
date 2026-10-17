@@ -225,7 +225,7 @@ on any failure.
 **Git is the binary, never a library.** In the local editor that brings the
 developer's credentials and remotes along. On the server, Mica runs `git` with
 an allowlisted environment and its settings from `GIT_CONFIG_*`: no hooks, no
-filters, no symlinks, HTTPS only, and a credential helper that gives the token
+filter but Git LFS, no symlinks, HTTPS only, and a credential helper that gives the token
 to the configured host alone. Nothing of the repository can make Git run code,
 and the token is never on disk.
 

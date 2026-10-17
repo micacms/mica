@@ -611,6 +611,20 @@ describe("media", () => {
     }
   });
 
+  it("says that an LFS file was not downloaded, instead of serving its pointer", async () => {
+    mkdirSync(join(harness.contentRoot, "media"), { recursive: true });
+    writeFileSync(
+      join(harness.contentRoot, "media/in-lfs.png"),
+      "version https://git-lfs.github.com/spec/v1\noid sha256:" + "a".repeat(64) + "\nsize 2048\n",
+    );
+
+    for (const path of ["/api/admin/media/file/media/in-lfs.png", "/api/admin/media/info?path=media/in-lfs.png"]) {
+      const response = await harness.request(path);
+      assert.equal(response.status, 409, path);
+      assert.match(((await response.json()) as { error: { message: string } }).error.message, /not downloaded/, path);
+    }
+  });
+
   it("serves a file sandboxed, and anything but an image as a download", async () => {
     await upload("shown.png", pngBytes());
     const image = await harness.request("/api/admin/media/file/media/shown.png");

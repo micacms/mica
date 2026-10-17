@@ -400,7 +400,8 @@ and the drafts pin a site to its volume, as the SQLite file did.
 
 **What would change it:** sites whose media outgrows a full checkout of the
 current content; then a bare clone and a draft store again (the "C" variant
-in the plan), or LFS first.
+in the plan). Git LFS keeps the history small, not the checkout (see "Git LFS
+holds the media that the site owner gives to it").
 
 **Built in 0.5.0.** `apps/self-hosted/src/workspace/` (clone, sync, push,
 credentials, isolation), on the runtime's `workspace/` (runner, tree, locks,
@@ -435,8 +436,8 @@ check would mix an entry from two sides, so the unit is the group.
 
 **Consequence:** one conflict holds the fast-forward for every editor until
 somebody chooses, so it is shown on the Dashboard, the Publish page and the
-entry's own page. A version upstream that assigns LFS under the content root,
-or has a model that the image cannot read, holds too; a new content model that
+entry's own page. A version upstream whose LFS files cannot be downloaded,
+or that has a model that the image cannot read, holds too; a new content model that
 it can read is used at once (see "The content model is read at startup, and
 again when it changes").
 
@@ -482,7 +483,8 @@ order, because a GitHub or GitLab 403 also contains the network pattern.
 never `process.env`, which holds `MICA_SESSION_SECRET` and the OIDC secret — and
 every setting comes from `GIT_CONFIG_*`: no system or global configuration,
 hooks off, symlinks as plain files, `autocrlf` off, `.git/info/attributes`
-that switch off every filter, `ident` and encoding, only the `https`
+that switch off conversion, `ident` and encoding, no filter driver but Git
+LFS's, LFS endpoints that override `.lfsconfig`, only the `https`
 transport (plain `http` only in development on loopback), no submodules,
 literal pathspecs, `safe.directory` set, and gc only after a fetch. The token
 is answered by a credential helper scoped to the configured host and port,
@@ -492,7 +494,9 @@ or in `.git/config`. Every URL in logs and errors is cleaned.
 **Why:** the repository is under someone else's control. These settings close
 every path from repository content to code execution that Git offers. Tests
 showed that an unscoped helper gives the token to any host, and that `ident`
-changes bytes on checkout.
+changes bytes on checkout. A `filter` attribute acts only through a driver in
+the configuration, and the repository cannot set configuration, so the one
+driver that Mica defines is the only one that runs.
 
 **Consequence:** the token Git needs is narrower than the REST API's: GitHub
 "Contents: read and write"; GitLab `read_repository` + `write_repository`,
@@ -518,6 +522,59 @@ own request.
 **Consequence:** the volume needs about twice the current content (objects
 and files), and grows with upstream media changes. To shrink it: publish or
 discard every draft, stop Mica, delete `MICA_DATA_DIR/repository`, start.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
+### P2 — Git LFS holds the media that the site owner gives to it
+
+**Decided:** Mica supports Git LFS for files under the content root. The site
+owner sets the LFS paths in `.gitattributes`; Mica never writes that file.
+
+- On the server, Git LFS is the only filter. The isolation configuration
+  defines the `lfs` driver with `required`, and `.git/info/attributes` no longer
+  unsets `filter`. The configuration sets `lfs.url` and `lfs.pushurl` to
+  `<clone URL>/info/lfs`, or to `MICA_REPOSITORY_LFS_URL`; they override
+  `.lfsconfig`. The same scoped credential helper answers Git LFS. With
+  `MICA_REPOSITORY_LFS_URL` on another host, that host gets the token too.
+- The clone downloads only the LFS files under the content root
+  (`lfs.fetchinclude`). Files outside it stay pointers, as before.
+- A sync downloads the LFS files of the new version before the fast-forward,
+  outside the tree lock. A failed download holds the sync
+  (`prefetch_incomplete`), and the clone keeps the old version.
+- Hooks stay off, so Mica runs `git lfs push` before each `git push`. A failed
+  LFS push stops Publish as a failed Git push does: a refusal ("Authorization
+  error") turns the publication back into drafts, another failure keeps it
+  pending, and a sync tries again.
+- The local editor and `mica mcp` stop at start when a `.gitattributes` gives
+  files under the content root to LFS and Git LFS is not installed or not set
+  up. Publish runs `git lfs push` before `git push`, so a checkout without the
+  LFS pre-push hook also sends the files.
+- A pointer in the working tree (a file that was not downloaded) gets a clear
+  error from the media routes, not a broken preview.
+
+**Why:** a site with thousands of photos makes a plain Git repository too
+large: every clone and every volume holds each version of each original.
+GitHub, GitLab and Forgejo serve Git LFS with the same token as Git. To turn
+on one filter driver keeps the rest of the isolation (see "Git on the server
+is isolated"). `.lfsconfig` is repository content, and it could send the files
+to another server.
+
+**Consequence:** the image installs `git-lfs`. The volume holds each LFS file
+twice: in the LFS store (`.git/lfs`) and in the working tree. Old versions
+stay in the store until `compact` makes a new clone. The website's build must
+check out with LFS (for example `lfs: true` in `actions/checkout`), or it sees
+pointers. LFS storage and bandwidth count against the host's quota. `check`
+does not prove LFS write access, because a dry-run LFS push sends no request;
+the first publication shows a refusal.
+
+**What would change it:** a host whose LFS API needs credentials other than
+the Git token; then a separate LFS credential.
+
+**Built in 0.11 (#275).** `apps/self-hosted/src/workspace/isolation.ts` and
+`lfs.ts`, `packages/runtime/src/workspace/lfs.ts`,
+`apps/local-editor/src/lfs.ts`.
 
 **1.0 status:** accepted for 1.0.
 
@@ -645,6 +702,10 @@ holds the fast-forward (`lfs_refused`, `model_unreadable`) until a later version
 passes. The start serves with the model at the clone's head and syncs in the
 background. Only a clone without a readable model waits for a sync that skips
 the hold, because a newer model is then the only way forward.
+
+**Changed in 0.11 (#275):** Mica supports Git LFS, so a `.gitattributes` change
+no longer holds a sync, and `lfs_refused` is gone. Only a model that the image
+cannot read holds it (`model_unreadable`).
 
 **1.0 status:** accepted for 1.0.
 
@@ -2384,13 +2445,6 @@ without a break.
   2026; the secrets are not configured yet. Self-managed hosts and GitHub
   Enterprise Server stay untested.
   **1.0 status:** blocker (#38).
-- **P2** — Git LFS under the content root is refused. Without the LFS filter,
-  Mica would commit whole files where LFS should hold pointers, so it stops
-  at start (and holds a sync) when a `.gitattributes` assigns `filter=lfs`
-  under the root. Support needs the filter configured before the first
-  checkout, `lfs.url` from the environment and `git lfs push` before each
-  push; the plan has the details.
-  **1.0 status:** after 1.0, before the first adopter with large media.
 - **P3** — Only HTTPS remotes. SSH deploy keys, a private CA
   (`http.sslCAInfo`) and a token that rotates without a restart (a GitHub App
   installation token lives an hour) are not supported yet.

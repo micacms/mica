@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor",
+      "comment": "Support Git LFS under the content root: the editor and mica mcp stop at start, and say how to fix it, when the content root uses Git LFS and Git LFS is not installed or not set up.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

@@ -22,6 +22,8 @@ wget -qO- --header "Authorization: Basic $AUTH" --header "Content-Type: applicat
 export HOME=/tmp
 mkdir -p /tmp/site
 cp -R /seed /tmp/site/content
+# The example content has no PNG files, so this gives only new ones to Git LFS.
+printf '*.png filter=lfs diff=lfs merge=lfs -text\n' > /tmp/site/content/.gitattributes
 cd /tmp/site
 git init --quiet -b main
 git add -A

@@ -54,6 +54,8 @@ const fields = {
   /** The content root in the repository. Only necessary when it has more than one `.mica/schema.json`. */
   MICA_CONTENT_PATH: z.string().optional(),
   MICA_REPOSITORY_SYNC_SECONDS: z.coerce.number().int().min(5).max(86_400).default(60),
+  /** The Git LFS endpoint, when the host does not serve it at `<clone URL>/info/lfs`. */
+  MICA_REPOSITORY_LFS_URL: z.string().optional(),
   /** Agents can connect over MCP at `/mcp`, after a person allows each one on a consent page. */
   MICA_MCP: bool(false),
 };
@@ -73,6 +75,8 @@ export interface RepositoryConfig {
   tokenFile: string | null;
   username: string;
   syncSeconds: number;
+  /** `MICA_REPOSITORY_LFS_URL`, or null for the endpoint that Git LFS derives from the clone URL. */
+  lfsUrl: Remote | null;
 }
 
 /** The token as it is now: a token file is read again for each call. */
@@ -165,6 +169,15 @@ function repositoryOf(env: z.infer<typeof schema>, problems: string[]): Reposito
     problems.push(`MICA_CONTENT_PATH must name a directory in the repository, such as content: "${env.MICA_CONTENT_PATH}".`);
   }
 
+  let lfsUrl: Remote | null = null;
+  if (env.MICA_REPOSITORY_LFS_URL) {
+    try {
+      lfsUrl = parseRemote(env.MICA_REPOSITORY_LFS_URL, "MICA_REPOSITORY_LFS_URL");
+    } catch (error) {
+      problems.push((error as Error).message);
+    }
+  }
+
   if (!remote) return null;
   return {
     remote,
@@ -174,6 +187,7 @@ function repositoryOf(env: z.infer<typeof schema>, problems: string[]): Reposito
     tokenFile,
     username: env.MICA_REPOSITORY_USERNAME ?? defaultUsername(remote),
     syncSeconds: env.MICA_REPOSITORY_SYNC_SECONDS,
+    lfsUrl,
   };
 }
 

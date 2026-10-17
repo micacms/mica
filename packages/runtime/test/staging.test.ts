@@ -2,6 +2,7 @@
 
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
+import { createHash, randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, unlinkSync, writeFileSync as writeFile } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -736,5 +737,41 @@ describe("classifyPath", () => {
     assert.deepEqual(classifyPath(site, "site/index.json"), { kind: "singleton", name: "site", label: "Website" });
     assert.deepEqual(classifyPath(site, "projects/_order.json"), { kind: "order", collection: "projects", label: "Projects: order" });
     assert.equal(classifyPath(site, "projects/notes.txt").kind, "other");
+  });
+});
+
+const hasLfs = (() => {
+  try {
+    execFileSync("git", ["lfs", "version"], { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+})();
+
+describe("publish with Git LFS", { skip: hasLfs ? false : "git-lfs is not installed" }, () => {
+  it("sends the LFS objects without the pre-push hook, and commits a pointer", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    // Set up in the repository, so the test does not depend on this machine's LFS set-up; and no hooks run.
+    git(root, "config", "filter.lfs.process", "git-lfs filter-process");
+    git(root, "config", "filter.lfs.required", "true");
+    git(root, "config", "core.hooksPath", temp("mica-no-hooks-"));
+    writeFileSync(join(contentRoot, ".gitattributes"), "*.png filter=lfs diff=lfs merge=lfs -text\n");
+    git(root, "add", "-A");
+    git(root, "commit", "-q", "-m", "Use LFS");
+    const bare = temp("mica-bare-");
+    git(bare, "init", "-q", "--bare", "-b", "main");
+    git(root, "remote", "add", "origin", bare);
+    git(root, "push", "-q", "-u", "origin", "main");
+
+    const image = randomBytes(4096);
+    mkdirSync(join(contentRoot, "projects/haus-a/media"), { recursive: true });
+    writeFile(join(contentRoot, "projects/haus-a/media/photo.png"), image);
+    const result = await service.publish({ message: "A photo", paths: await reviewed(service) });
+
+    assert.equal(result.state, "published", result.pushError);
+    assert.match(git(bare, "show", "HEAD:content/projects/haus-a/media/photo.png"), /^version https:\/\/git-lfs/);
+    const oid = createHash("sha256").update(image).digest("hex");
+    assert.deepEqual(readFileSync(join(bare, "lfs", "objects", oid.slice(0, 2), oid.slice(2, 4), oid)), image);
   });
 });

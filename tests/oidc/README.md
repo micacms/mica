@@ -24,7 +24,10 @@ And, for an admitted session:
 - Publish makes one commit on top of the old head, by the editor who pressed it,
   committed by Mica;
 - an altered session cookie is refused;
-- sign-out clears both cookies.
+- sign-out clears both cookies;
+- Git LFS: the seed gives `*.png` under the content root to LFS, and Forgejo
+  serves LFS. An uploaded PNG is published as a pointer, with the image in
+  Forgejo's LFS store. A PNG that Forgejo adds reaches Mica with a sync.
 
 All three users have the password `password`. Dex reports every address as
 verified, as Google does.
@@ -44,7 +47,7 @@ token would go, which Forgejo accepts. Run `down -v` to start again from the
 example content.
 
 The login rate limit of this stack is 50 attempts in 15 minutes. One run uses
-7, and the browser test uses 7. After a few runs, restart the `mica` service.
+9, and the browser test uses 7. After a few runs, restart the `mica` service.
 
 ## What it does not check
 

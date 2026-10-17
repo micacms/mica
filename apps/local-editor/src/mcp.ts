@@ -11,6 +11,7 @@ import { ConfigError, contentFiles, createLogger, createRuntimeContext, loadSche
 
 import { agentSetup, colors, supportsColor } from "./banner.js";
 import { loadConfig } from "./config.js";
+import { lfsSetupProblem } from "./lfs.js";
 
 /** A project mistake, not a crash: said on stderr, without a stack trace. */
 function refuse(message: string): never {
@@ -26,6 +27,8 @@ async function main(): Promise<void> {
     if (error instanceof ConfigError) refuse(error.message);
     throw error;
   }
+  const lfs = await lfsSetupProblem(config.contentRoot);
+  if (lfs) refuse(lfs);
 
   const logger = createLogger({ level: config.MICA_LOG_LEVEL, pretty: false, stderrOnly: true });
   const files = contentFiles({ root: config.contentRoot });
