@@ -69,7 +69,7 @@ type _MultiSelect = Expect<Equal<Inferred["tags"], string[]>>;
 type _SingleRelation = Expect<Equal<Inferred["author"], string | null>>;
 type _Repeater = Expect<Equal<Inferred["facts"], Array<{ label: string }>>>;
 type _Nested = Expect<Equal<Inferred["seo"], { metaTitle: string | null }>>;
-type _Coordinates = Expect<Equal<Inferred["where"], { lat: number; lng: number } | null>>;
+type _Coordinates = Expect<Equal<Inferred["where"], { lat: number; lng: number; zoom?: number } | null>>;
 /* eslint-enable @typescript-eslint/no-unused-vars */
 
 describe("slugify", () => {

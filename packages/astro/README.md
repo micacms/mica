@@ -82,6 +82,25 @@ import { mediaFile } from "@micacms/astro";
 const track = await readFile(mediaFile(site, tour.data.track), "utf8");
 ```
 
+## Components
+
+`@micacms/astro/components` has components without styles of their own, for
+the values of a model. `<LocationMap>` shows a `coordinates()` value on a map.
+It needs `maplibre-gl` in the site's dependencies, and a size from the site:
+
+```astro
+---
+import { LocationMap } from "@micacms/astro/components";
+---
+
+<LocationMap place={office.data.location} map="liberty" class="h-72 w-full" />
+```
+
+The zoom is the one that the editor stored, else the `zoom` prop, else 14.
+MapLibre loads when the map comes near the screen. Until then, and without
+JavaScript, the element holds a link to the place on OpenStreetMap. The
+visitor's browser loads the style and the tiles from the tile host.
+
 The loaders also check references: a relation to a missing entry, or a missing
 file of a media field that is not an image, is a warning in the build log.
 `strict: true` makes it fail the build. A missing image file always fails the

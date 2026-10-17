@@ -67,7 +67,7 @@ onBeforeUnmount(() => {
     </p>
     <template v-else>
       <div ref="container" class="h-64 overflow-hidden rounded-md border border-line bg-subtle" />
-      <p v-if="!locked" class="mt-1.5 text-xs text-muted">Click the map to set the place, or drag the pin.</p>
+      <p v-if="!locked" class="mt-1.5 text-xs text-muted">Click the map to set the place, or drag the pin. The website shows the map at the zoom you see here.</p>
     </template>
   </div>
 </template>

@@ -2,6 +2,7 @@
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import PageHeader from "@/components/PageHeader.astro";
 import RichText from "@/components/RichText.astro";
+import { LocationMap } from "@micacms/astro/components";
 import { getImprint } from "@/lib/content";
 const imprint = await getImprint();
 ---
@@ -22,6 +23,14 @@ const imprint = await getImprint();
           {imprint.postalCode} {imprint.city}<br />
           {imprint.country}
         </address>
+        {imprint.location && (
+          <LocationMap
+            place={imprint.location}
+            map="liberty"
+            label={`Map: ${imprint.city}`}
+            class="mt-6 block h-72 w-full overflow-hidden rounded-lg border border-line bg-surface"
+          />
+        )}
         <p class="mt-5">
           <a class="link" href={`mailto:${imprint.email}`}>{imprint.email}</a>
         </p>

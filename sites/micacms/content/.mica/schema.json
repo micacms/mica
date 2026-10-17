@@ -822,6 +822,12 @@
           "required": true,
           "width": "third"
         },
+        "location": {
+          "kind": "coordinates",
+          "label": "Location",
+          "description": "Where the address is. The page links to it on a map.",
+          "map": "liberty"
+        },
         "email": {
           "kind": "email",
           "label": "Email",

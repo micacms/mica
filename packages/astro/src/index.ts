@@ -570,6 +570,7 @@ export type SingletonDocument<
 > = InferSingleton<S["singletons"][K], ImageMetadata> & { _mica: { images: RichTextImage[] } };
 
 export { mediaFile } from "./files.js";
+export { DEFAULT_ZOOM, mapView, type MapView } from "./map.js";
 export { manifestFor } from "./manifest.js";
 export { DEFAULT_CONTENT_ROOT, resolveContentRoot };
 export {

@@ -27,35 +27,51 @@ const { inputId, label, error, describedBy, hintId, errorId, locked } = useField
 const current = computed<Coordinates | null>(() => {
   const value = props.modelValue;
   if (!value || typeof value !== "object") return null;
-  const { lat, lng } = value as Partial<Coordinates>;
-  return typeof lat === "number" && typeof lng === "number" ? { lat, lng } : null;
+  const { lat, lng, zoom } = value as Partial<Coordinates>;
+  if (typeof lat !== "number" || typeof lng !== "number") return null;
+  return typeof zoom === "number" ? { lat, lng, zoom } : { lat, lng };
 });
 
 // Issues on the nested keys are reported as `path.lat` / `path.lng`.
-const partError = (part: "lat" | "lng") =>
+const partError = (part: "lat" | "lng" | "zoom") =>
   props.issues?.find((issue) => issue.path === `${props.path}.${part}`)?.message ?? null;
 
 /**
  * What the two boxes show. It follows the value, except where the editor's text
  * means the same number ("47." is 47), so typing is never interrupted.
  */
-const typed = ref({ lat: "", lng: "" });
+const typed = ref({ lat: "", lng: "", zoom: "" });
 const textOf = (part: unknown) => (typeof part === "number" ? String(part) : "");
 const sameAs = (text: string, part: unknown) => (text.trim() === "" ? typeof part !== "number" : Number(text) === part);
 watch(
   () => props.modelValue,
   (value) => {
-    const pair = value !== null && typeof value === "object" ? (value as { lat?: unknown; lng?: unknown }) : {};
-    if (sameAs(typed.value.lat, pair.lat) && sameAs(typed.value.lng, pair.lng)) return;
-    typed.value = { lat: textOf(pair.lat), lng: textOf(pair.lng) };
+    const pair = value !== null && typeof value === "object" ? (value as { lat?: unknown; lng?: unknown; zoom?: unknown }) : {};
+    if (sameAs(typed.value.lat, pair.lat) && sameAs(typed.value.lng, pair.lng) && sameAs(typed.value.zoom, pair.zoom)) return;
+    typed.value = { lat: textOf(pair.lat), lng: textOf(pair.lng), zoom: textOf(pair.zoom) };
   },
   { immediate: true, deep: true },
 );
 
+/** A new place keeps the zoom that the map stored. */
+function withZoom<T extends object | null>(pair: T): T {
+  const zoom = (props.modelValue as { zoom?: unknown } | null)?.zoom;
+  return pair !== null && typeof zoom === "number" ? { ...pair, zoom } : pair;
+}
+
 function update(part: "lat" | "lng", raw: string): void {
   typed.value = { ...typed.value, [part]: raw };
   const pair = coordinatesFrom(typed.value.lat, typed.value.lng);
-  if (pair !== undefined) emit("update:modelValue", pair);
+  if (pair !== undefined) emit("update:modelValue", withZoom(pair));
+}
+
+/** The zoom of the map; empty leaves it to the website. It needs a place first. */
+function updateZoom(raw: string): void {
+  typed.value = { ...typed.value, zoom: raw };
+  if (!current.value) return;
+  const { lat, lng } = current.value;
+  if (raw.trim() === "") emit("update:modelValue", { lat, lng });
+  else if (!Number.isNaN(Number(raw))) emit("update:modelValue", { lat, lng, zoom: Number(raw) });
 }
 
 /** Accepts "47.3769, 8.5417" as pasted from any mapping site. */
@@ -66,7 +82,7 @@ function onPaste(event: ClipboardEvent): void {
   if (!match) return;
 
   event.preventDefault();
-  emit("update:modelValue", { lat: Number(match[1]), lng: Number(match[2]) });
+  emit("update:modelValue", withZoom({ lat: Number(match[1]), lng: Number(match[2]) }));
 }
 
 const previewUrl = computed(() =>
@@ -88,7 +104,7 @@ const previewUrl = computed(() =>
     :hint-id="hintId"
     :error-id="errorId"
   >
-    <div class="grid grid-cols-2 gap-2">
+    <div :class="['grid gap-2', field.map ? 'grid-cols-[1fr_1fr_5.5rem]' : 'grid-cols-2']">
       <div>
         <label :for="`${inputId}-lat`" class="sr-only">Latitude</label>
         <input
@@ -121,10 +137,26 @@ const previewUrl = computed(() =>
           @paste="onPaste"
         />
       </div>
+      <div v-if="field.map">
+        <label :for="`${inputId}-zoom`" class="sr-only">Zoom</label>
+        <input
+          :id="`${inputId}-zoom`"
+          type="number"
+          step="1"
+          min="0"
+          max="22"
+          placeholder="Zoom"
+          title="The zoom of the map on the website"
+          :value="typed.zoom"
+          :readonly="locked || !current"
+          :class="['input font-mono text-[13px]', partError('zoom') && 'input-invalid']"
+          @input="updateZoom(($event.target as HTMLInputElement).value)"
+        />
+      </div>
     </div>
 
-    <p v-if="partError('lat') || partError('lng')" class="field-error">
-      {{ partError("lat") ?? partError("lng") }}
+    <p v-if="partError('lat') || partError('lng') || partError('zoom')" class="field-error">
+      {{ partError("lat") ?? partError("lng") ?? partError("zoom") }}
     </p>
 
     <div class="mt-1.5 flex items-center gap-3 text-xs text-muted">

@@ -390,6 +390,8 @@ export interface Site<
 export interface Coordinates {
   lat: number;
   lng: number;
+  /** The zoom of the map when the place was set, from 0 to 22. Only a field with a map stores it. */
+  zoom?: number;
 }
 
 /* ------------------------------------------------------------------ *
