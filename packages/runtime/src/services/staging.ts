@@ -12,7 +12,7 @@
 
 import { stat } from "node:fs/promises";
 
-import { MANIFEST_PATH, memorySource, type ContentSource, type PublishResult, type Site } from "@micacms/core/internal";
+import { MANIFEST_PATH, memorySource, ownerOfPath, type ContentSource, type PublishResult, type Site } from "@micacms/core/internal";
 import { within } from "@micacms/core/node";
 
 import { ApiError, badRequest, notFound } from "../lib/errors.js";
@@ -38,8 +38,6 @@ import {
 } from "../workspace/tree.js";
 import {
   analyseChanges,
-  classifyPath,
-  compareSources,
   describeProblems,
   flattenProblems,
   type AnnotatedChange,
@@ -52,6 +50,7 @@ import {
   type StagingStatus,
   type StagingValidation,
 } from "./changes.js";
+import { compareSources } from "./compare.js";
 
 export interface WorkingTreeStagingDeps {
   model: Site;
@@ -354,7 +353,7 @@ export function createWorkingTreeStagingService(
         const revisions: Record<string, string | null> = {};
         if (!("reason" in tree) && against === "head") {
           for (const change of await listTreeChanges(tree)) {
-            if (!ownedByTarget(classifyPath(model, change.path), target)) continue;
+            if (!ownedByTarget(ownerOfPath(model, change.path), target)) continue;
             revisions[change.path] = change.kind === "delete" ? null : await files.revision(change.path);
           }
         }

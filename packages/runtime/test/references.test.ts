@@ -147,6 +147,43 @@ describe("references at Publish", () => {
     ]);
   });
 
+  it("brings a new shared file along that a link in rich text names (#224)", async () => {
+    const source = memorySource({
+      ...files,
+      "media/prices.pdf": "pdf",
+      "news/hello/body.mdoc": "See the [price list](/media/prices.pdf) and [our team](/team).\n",
+    });
+    const result = await analyseChanges(model, source, [update("news/hello/index.json"), { path: "media/prices.pdf", kind: "create" }]);
+    const byPath = new Map(result.changes.map((change) => [change.path, change.needs]));
+    assert.deepEqual(byPath.get("news/hello/index.json"), ["media/prices.pdf"]);
+    // A link to a page of the website is not a file that must exist.
+    assert.deepEqual(messages(result), []);
+  });
+
+  it("refuses to delete a shared file that rich text still links to (#224)", async () => {
+    const { "media/logo.png": _logo, ...rest } = files;
+    const source = memorySource({
+      ...rest,
+      "news/hello/index.json": JSON.stringify({ title: "Hello", slug: "hello", author: "anna", sections: [] }),
+      "news/hello/body.mdoc": "Download the [price list](../../media/prices.pdf).\n",
+    });
+    const result = await analyseChanges(model, source, [remove("media/prices.pdf")]);
+    assert.deepEqual(messages(result), [
+      "media/prices.pdf: Still linked from Article: Hello. Remove those links first, or publish them together.",
+    ]);
+  });
+
+  it("refuses to delete an entry whose media another entry still shows (#224)", async () => {
+    const source = memorySource({
+      "team/anna/index.json": JSON.stringify({ name: "Anna", slug: "anna" }),
+      "news/hello/index.json": JSON.stringify({ title: "Hello", slug: "hello", cover: "/team/gone/media/photo.jpg", sections: [] }),
+    });
+    const result = await analyseChanges(model, source, [remove("team/gone/index.json"), remove("team/gone/media/photo.jpg")]);
+    assert.deepEqual(messages(result), [
+      "team/gone/media/photo.jpg: Still linked from Article: Hello. Remove those links first, or publish them together.",
+    ]);
+  });
+
   it("accepts a deletion that nothing links to", async () => {
     // Bob is gone from the staged files; nothing links to him.
     const result = await analyseChanges(model, memorySource(files), [remove("team/bob/index.json")]);

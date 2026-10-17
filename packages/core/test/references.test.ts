@@ -1,13 +1,16 @@
-/** `collectReferences`: what Publish and the delete warning check, nested fields included. */
+/** `documentLinks`: what Publish, the media uses and the delete warning check, nested fields included. */
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
-  collectReferences,
   createManifest,
   createReferenceCheck,
   defineSite,
+  documentLinks,
+  mapFields,
+  ownerOfPath,
+  walkFields,
   ModelError,
   parseReferenceIndex,
   readManifest,
@@ -26,7 +29,6 @@ import {
   repeater,
   resolveMarkdocTarget,
   richText,
-  richTextValues,
   slug,
   text,
 } from "../dist/internal.js";
@@ -40,16 +42,16 @@ const fields = {
   sections: repeater({ fields: { contact: relation({ collection: "team" }), photos: media({ multiple: true }) } }),
 };
 
-describe("collectReferences", () => {
+describe("documentLinks", () => {
   it("finds relations and media at every level, with the field's path", () => {
-    const found = collectReferences(fields, {
+    const found = documentLinks(fields, {
       title: "Hello",
       author: "anna",
       reviewers: ["bob", ""],
       cover: { path: "news/hello/media/a.jpg", alt: null },
       seo: { image: "media/og.png" },
       sections: [{ contact: "carla", photos: ["news/hello/media/b.jpg"] }, { contact: null, photos: [] }],
-    });
+    }, "news/hello");
 
     assert.deepEqual(found, [
       { kind: "relation", field: "author", collection: "team", slug: "anna" },
@@ -62,7 +64,52 @@ describe("collectReferences", () => {
   });
 
   it("finds nothing in an empty payload", () => {
-    assert.deepEqual(collectReferences(fields, {}), []);
+    assert.deepEqual(documentLinks(fields, {}, "news/hello"), []);
+  });
+});
+
+describe("walkFields and mapFields", () => {
+  const model = {
+    title: text(),
+    seo: object({ fields: { image: media() } }),
+    sections: repeater({ fields: { photos: media({ multiple: true }) } }),
+  };
+
+  it("visit every field with its value and its path, a container before its fields", () => {
+    const seen: string[] = [];
+    walkFields(model, { title: "A", seo: { image: "a.jpg" }, sections: [{ photos: [] }, "not a row"] }, (field, value, path) => {
+      seen.push(`${path.join(".")}=${field.kind}`);
+    });
+    assert.deepEqual(seen, ["title=text", "seo=object", "seo.image=media", "sections=repeater", "sections.0.photos=media"]);
+  });
+
+  it("map every value that is not a container, and leave an absent key absent", () => {
+    const data = { seo: { image: "a.jpg" }, sections: [{ photos: ["b.jpg"] }], extra: 1 };
+    const mapped = mapFields(model, data, (field, value) => {
+      const mark = (one: unknown) => `${String(one)}!`;
+      if (field.kind !== "media" || value === undefined) return value;
+      return Array.isArray(value) ? value.map(mark) : mark(value);
+    });
+    assert.deepEqual(mapped, { seo: { image: "a.jpg!" }, sections: [{ photos: ["b.jpg!"] }], extra: 1 });
+    assert.equal("title" in mapped, false);
+  });
+});
+
+describe("ownerOfPath", () => {
+  const site = defineSite({
+    collections: { projects: collection({ label: "Projects", fields: { slug: slug() } }) },
+    singletons: { site: { type: "singleton", name: "", label: "Website", fields: { title: text() } } },
+  });
+
+  it("names the entry, singleton, order or shared media of a file", () => {
+    const entry = { kind: "entry", collection: "projects", slug: "haus-a", label: "haus-a" };
+    assert.deepEqual(ownerOfPath(site, "projects/haus-a/index.json"), entry);
+    assert.deepEqual(ownerOfPath(site, "projects/haus-a/media/a.jpg"), entry);
+    assert.deepEqual(ownerOfPath(site, "site/index.json"), { kind: "singleton", name: "site", label: "Website" });
+    assert.deepEqual(ownerOfPath(site, "projects/_order.json"), { kind: "order", collection: "projects", label: "Projects: order" });
+    assert.deepEqual(ownerOfPath(site, "media/logo.png"), { kind: "media", label: "Shared media" });
+    assert.equal(ownerOfPath(site, "projects/notes.txt").kind, "other");
+    assert.equal(ownerOfPath(site, "constructor/x/index.json").kind, "other");
   });
 });
 
@@ -94,8 +141,13 @@ describe("relinkReferences", () => {
 describe("paths in rich text", () => {
   it("finds the images and links of every rich-text value, nested ones included", () => {
     const model = { body: richText(), sections: repeater({ fields: { text: richText() } }) };
-    const texts = richTextValues(model, { body: "![A](media/a.jpg)", sections: [{ text: "[Prices](/media/prices.pdf)" }] });
-    assert.deepEqual(texts.flatMap(markdocTargets), ["media/a.jpg", "/media/prices.pdf"]);
+    const data = { body: "![A](media/a.jpg) [Site](https://example.com)", sections: [{ text: "[Prices](/media/prices.pdf) ![Out](../../../x.jpg)" }] };
+    assert.deepEqual(documentLinks(model, data, "news/hello"), [
+      { kind: "image", field: "body", target: "media/a.jpg", path: "news/hello/media/a.jpg" },
+      { kind: "image", field: "sections.0.text", target: "../../../x.jpg", path: null },
+      { kind: "link", field: "sections.0.text", target: "/media/prices.pdf", path: "media/prices.pdf" },
+    ]);
+    assert.deepEqual(markdocTargets(data.sections[0]!.text), ["/media/prices.pdf", "../../../x.jpg"]);
   });
 
   it("finds the images, and not the links", () => {

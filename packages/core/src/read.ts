@@ -8,15 +8,16 @@
  * same code over different sources.
  */
 
-import { collectReferences, resolveSlugField } from "./define.js";
+import { resolveSlugField } from "./define.js";
 import { DOCUMENT_EXTENSION, FormatError, INDEX_FILE, entryDataPath, entryFolder } from "./layout.js";
 import { isValidSlug } from "./slugify.js";
 import { parseEntry } from "./parse.js";
 import { readReferenceIndex, referenceIndexPath } from "./references.js";
-import { isWebAddress, markdocImages, resolveMarkdocTarget, richTextDocuments } from "./rich-text.js";
+import { documentLinks, type DocumentLink } from "./links.js";
 import type { Collection, FieldMap, Singleton, Site } from "./types.js";
 import type { FieldIssue } from "./validation.js";
 import type { ContentSource } from "./source.js";
+import { isRecord, mapFields } from "./walk.js";
 
 /**
  * Optional manual ordering for a collection, listing slugs in the order an
@@ -245,28 +246,12 @@ export function mapMedia(
   data: Record<string, unknown>,
   mapOne: (value: unknown) => unknown,
 ): Record<string, unknown> {
-  const visit = (map: FieldMap, record: Record<string, unknown>): Record<string, unknown> => {
-    const result: Record<string, unknown> = { ...record };
-
-    for (const [key, field] of Object.entries(map)) {
-      const value = record[key];
-
-      if (field.kind === "media") {
-        // `media({ alt })` stores `{ path, alt }`: only the path is a path.
-        const item = (one: unknown): unknown =>
-          isRecord(one) && typeof one["path"] === "string" ? { ...one, path: mapOne(one["path"]) } : mapOne(one);
-        result[key] = Array.isArray(value) ? value.map(item) : item(value);
-      } else if (field.kind === "object" && isRecord(value)) {
-        result[key] = visit(field.fields, value);
-      } else if (field.kind === "repeater" && Array.isArray(value)) {
-        result[key] = value.map((row) => (isRecord(row) ? visit(field.fields, row) : row));
-      }
-    }
-
-    return result;
-  };
-
-  return visit(fields, data);
+  // `media({ alt })` stores `{ path, alt }`: only the path is a path.
+  const item = (one: unknown): unknown =>
+    isRecord(one) && typeof one["path"] === "string" ? { ...one, path: mapOne(one["path"]) } : mapOne(one);
+  return mapFields(fields, data, (field, value) =>
+    field.kind !== "media" ? value : Array.isArray(value) ? value.map(item) : item(value),
+  );
 }
 
 /**
@@ -316,10 +301,6 @@ export function relativizeMedia(
         : `/${value}`
       : value,
   );
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
 
 async function readDocuments(
@@ -386,48 +367,59 @@ export function createReferenceCheck(
     return (await directories.get(directory)!).has(path.slice(slash + 1));
   };
 
-  /**
-   * The images of the document's rich text, read from `folder`: those whose
-   * file exists, and the problems. A missing `/path` is no problem, because it
-   * can be a file of the website, such as one in Astro's `public/` folder.
-   */
-  const richTextImages = async (fields: FieldMap, data: Record<string, unknown>, folder: string) => {
-    const found: Array<{ target: string; path: string }> = [];
-    const issues: FieldIssue[] = [];
-    for (const { field, text } of richTextDocuments(fields, data)) {
-      for (const target of markdocImages(text)) {
-        if (isWebAddress(target)) continue;
-        const path = resolveMarkdocTarget(target, folder);
-        if (path === null) issues.push({ path: field, message: `The image "${target}" is outside the content root.` });
-        else if (await fileExists(path)) found.push({ target, path });
-        else if (!target.startsWith("/")) issues.push({ path: field, message: `The image "${target}" does not exist.` });
-      }
+  /** A missing `/path` image is no problem: it can be a file of the website, such as one in Astro's `public/` folder. */
+  const imageIssue = async (link: Extract<DocumentLink, { kind: "image" }>): Promise<FieldIssue | null> => {
+    if (link.path === null) return { path: link.field, message: `The image "${link.target}" is outside the content root.` };
+    if ((await fileExists(link.path)) || link.target.startsWith("/")) return null;
+    return { path: link.field, message: `The image "${link.target}" does not exist.` };
+  };
+
+  const relationIssue = async (link: Extract<DocumentLink, { kind: "relation" }>): Promise<FieldIssue | null> => {
+    const target = site.collections[link.collection];
+    const set = site.references?.[link.collection];
+    if (target && !(await entryExists(link.collection, link.slug))) {
+      return { path: link.field, message: `Links to "${link.slug}" in ${target.label}, which does not exist.` };
     }
-    return { found, issues };
+    if (!set) return null;
+    const ids = await idsOf(set.name);
+    if (!ids) return { path: link.field, message: `${set.label} has no index in ${referenceIndexPath(set.name)}. Build the website, and commit the file.` };
+    return ids.has(link.slug) ? null : { path: link.field, message: `Links to "${link.slug}" in ${set.label}, which does not exist.` };
   };
 
   return {
-    richTextImages,
+    /** The images of the document's rich text, read from `folder`: those whose file exists, and the problems. */
+    async richTextImages(fields: FieldMap, data: Record<string, unknown>, folder: string) {
+      const found: Array<{ target: string; path: string }> = [];
+      const issues: FieldIssue[] = [];
+      for (const link of documentLinks(fields, data, folder)) {
+        if (link.kind !== "image") continue;
+        const issue = await imageIssue(link);
+        if (issue) issues.push(issue);
+        else if (link.path !== null && (await fileExists(link.path))) found.push({ target: link.target, path: link.path });
+      }
+      return { found, issues };
+    },
 
     /**
      * One issue for each broken relation and missing file, at the field's path.
      * With `folder`, the folder of the document, also each missing image in rich text.
+     * A link in rich text is not checked: `/about` can be a page of the website.
      */
     async issues(fields: FieldMap, data: Record<string, unknown>, folder?: string): Promise<FieldIssue[]> {
-      const issues: FieldIssue[] = folder === undefined ? [] : (await richTextImages(fields, data, folder)).issues;
-      for (const reference of collectReferences(fields, data)) {
-        if (reference.kind === "relation") {
-          const target = site.collections[reference.collection];
-          const set = site.references?.[reference.collection];
-          if (target && !(await entryExists(reference.collection, reference.slug))) {
-            issues.push({ path: reference.field, message: `Links to "${reference.slug}" in ${target.label}, which does not exist.` });
-          } else if (set) {
-            const ids = await idsOf(set.name);
-            if (!ids) issues.push({ path: reference.field, message: `${set.label} has no index in ${referenceIndexPath(set.name)}. Build the website, and commit the file.` });
-            else if (!ids.has(reference.slug)) issues.push({ path: reference.field, message: `Links to "${reference.slug}" in ${set.label}, which does not exist.` });
-          }
-        } else if (!(await fileExists(reference.path))) {
-          issues.push({ path: reference.field, message: `The file "${reference.path}" does not exist.` });
+      const links = documentLinks(fields, data, folder ?? "");
+      const issues: FieldIssue[] = [];
+      if (folder !== undefined) {
+        for (const link of links) {
+          const issue = link.kind === "image" ? await imageIssue(link) : null;
+          if (issue) issues.push(issue);
+        }
+      }
+      for (const link of links) {
+        if (link.kind === "relation") {
+          const issue = await relationIssue(link);
+          if (issue) issues.push(issue);
+        } else if (link.kind === "media" && !(await fileExists(link.path))) {
+          issues.push({ path: link.field, message: `The file "${link.path}" does not exist.` });
         }
       }
       return issues;

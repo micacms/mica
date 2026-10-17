@@ -15,7 +15,6 @@ import { after, describe, it } from "node:test";
 import { collection, defineSite, singleton, slug, text } from "@micacms/core/internal";
 import {
   ApiError,
-  classifyPath,
   contentFiles,
   createLogger,
   createWorkingTreeStagingService,
@@ -830,22 +829,6 @@ describe("a content root in a Git submodule", () => {
     const result = await service.publish({ message: "Publish Haus A", paths: await reviewed(service) });
     assert.equal(result.state, "published", result.pushError);
     assert.equal(git(contentBare, "rev-parse", "main"), result.revision);
-  });
-});
-
-describe("classifyPath", () => {
-  const site = defineSite({
-    collections: { projects: collection({ label: "Projects", fields: { title: text(), slug: slug({ from: "title" }) } }) },
-    singletons: { site: singleton({ label: "Website", fields: { name: text() } }) },
-  });
-
-  it("gives each file in a folder to its entry or singleton", () => {
-    const entry = { kind: "entry", collection: "projects", slug: "haus-a", label: "haus-a" };
-    assert.deepEqual(classifyPath(site, "projects/haus-a/index.json"), entry);
-    assert.deepEqual(classifyPath(site, "projects/haus-a/media/a.jpg"), entry);
-    assert.deepEqual(classifyPath(site, "site/index.json"), { kind: "singleton", name: "site", label: "Website" });
-    assert.deepEqual(classifyPath(site, "projects/_order.json"), { kind: "order", collection: "projects", label: "Projects: order" });
-    assert.equal(classifyPath(site, "projects/notes.txt").kind, "other");
   });
 });
 

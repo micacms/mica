@@ -27,7 +27,7 @@ import { contentFiles, loadSchema } from "@micacms/runtime";
 import { unflatten } from "./devalue.js";
 
 /** The `--map` value for the Markdown body. Not `$body`: a shell would expand it. */
-export const BODY = "@body";
+const BODY = "@body";
 
 /** Astro's marker for a path that `image()` resolves against the entry's file. */
 const IMAGE_MARKER = "__ASTRO_IMAGE_";

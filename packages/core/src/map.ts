@@ -7,10 +7,10 @@
 import type { FieldMap, MapPreset, MapStyle, Site } from "./types.js";
 
 /** The OpenFreeMap styles that a field can name. */
-export const MAP_PRESETS = ["liberty", "bright", "positron"] as const satisfies readonly MapPreset[];
+const MAP_PRESETS = ["liberty", "bright", "positron"] as const satisfies readonly MapPreset[];
 
 /** The one host of the presets: style, tiles, glyphs and sprites. */
-export const OPENFREEMAP_ORIGIN = "https://tiles.openfreemap.org";
+const OPENFREEMAP_ORIGIN = "https://tiles.openfreemap.org";
 
 /** A map as the editor loads it: the style address, and every origin that it can load from. */
 export interface ResolvedMap {

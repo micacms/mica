@@ -8,7 +8,7 @@
 import { rm } from "node:fs/promises";
 import { join } from "node:path";
 
-import type { GitRunner } from "@micacms/runtime";
+import { parseStatusEntries, type GitRunner } from "@micacms/runtime";
 
 /** `paths` are repository-relative. */
 export async function restorePaths(
@@ -60,10 +60,7 @@ export async function draftPaths(git: GitRunner, prefix: string): Promise<string
     ],
     { env: { GIT_OPTIONAL_LOCKS: "0" } },
   );
-  return raw
-    .split("\0")
-    .filter((field) => field.length > 3)
-    .map((field) => field.slice(3));
+  return parseStatusEntries(raw).map((entry) => entry.path);
 }
 
 /** Repository-relative paths that differ between two commits. */

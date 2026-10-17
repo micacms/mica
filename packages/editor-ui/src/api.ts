@@ -255,11 +255,8 @@ export const api = {
   preview: () => request<{ address: string | null }>("/admin/preview"),
 
   entries: {
-    list: (collection: string, query: RequestOptions["query"] = {}) =>
-      request<{ items: EntrySummary[]; total: number; orderRevision: string | null }>(
-        `/admin/collections/${collection}/entries`,
-        { query },
-      ),
+    list: (collection: string) =>
+      request<{ items: EntrySummary[]; total: number; orderRevision: string | null }>(`/admin/collections/${collection}/entries`),
     get: (collection: string, slug: string) =>
       request<EntryDetail>(`/admin/collections/${collection}/entries/${slug}`),
     create: (collection: string, body: { data: unknown; revision?: string | null }) =>
