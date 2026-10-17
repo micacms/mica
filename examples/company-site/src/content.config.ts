@@ -40,7 +40,7 @@ const glossary = defineCollection({
  * an item of it.
  */
 const sectors = defineCollection({
-  loader: file("src/data/sectors.json"),
+  loader: file("src/reference/sectors.json"),
   schema: z.object({ name: z.string() }),
 });
 

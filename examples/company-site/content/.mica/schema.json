@@ -858,7 +858,7 @@
       "type": "reference",
       "name": "sectors",
       "label": "Sectors",
-      "file": "src/data/sectors.json",
+      "file": "src/reference/sectors.json",
       "title": "name"
     }
   }

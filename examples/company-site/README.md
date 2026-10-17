@@ -50,7 +50,7 @@ To check the content without a browser, run `rushx check`. It runs
 | `src/mica.ts`               | The whole content model: five collections, three singletons, one reference set |
 | `src/content.config.ts`     | The model becomes collections, beside one that Mica does not own               |
 | `src/glossary/`             | Markdown for that other collection, which the developers maintain              |
-| `src/data/sectors.json`     | Reference data: the NACE sections, which a project's sector points to          |
+| `src/reference/sectors.json`     | Reference data: the NACE sections, which a project's sector points to          |
 | `content/`                  | The entries: JSON, Markdoc and images                                          |
 | `content/.mica/schema.json` | The model, published by the build for Mica to read                             |
 | `content/.mica/references/` | The index of the reference data, also published by the build                   |
@@ -121,7 +121,7 @@ the file name says otherwise.
 | Rich text in a repeater                  | `content/pages/services/sections.0.text.mdoc`                                                                                                                     |
 | A collection that Mica does not own      | `src/glossary/`, defined in `src/content.config.ts`                                                                                                               |
 | Page addresses (`url`)                   | every collection in `src/mica.ts`: with `MICA_SITE_URL`, an entry shows "Open on website", and the local editor shows "Preview" while `astro dev` runs        |
-| Reference data                           | `references.sectors` in `src/mica.ts`, from `src/data/sectors.json`, which `src/content.config.ts` also reads as the Astro collection `sectors`                  |
+| Reference data                           | `references.sectors` in `src/mica.ts`, from `src/reference/sectors.json`, which `src/content.config.ts` also reads as the Astro collection `sectors`                  |
 | A website component without styles       | `LocationMap` from `@micacms/astro/components` in `src/pages/events/[slug].astro`; it needs `maplibre-gl`                                                        |
 | Files for download                       | `mediaFile` from `@micacms/astro` in `src/pages/files/[...path].ts` copies the downloads into the built site                                                      |
 | Optimized images in rich text            | `src/components/RichText.astro` passes the entry's data to `renderRichText`, which lets Astro optimize each image                                                |

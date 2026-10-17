@@ -551,6 +551,6 @@ export const site = defineSite({
    * for the editor's picker.
    */
   references: {
-    sectors: referenceSet({ label: "Sectors", file: "src/data/sectors.json", title: "name" }),
+    sectors: referenceSet({ label: "Sectors", file: "src/reference/sectors.json", title: "name" }),
   },
 });
