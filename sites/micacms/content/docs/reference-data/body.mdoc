@@ -1,0 +1,63 @@
+Some data of a website is not content that people write. It comes from a file, such as a list of peaks, regions or product codes, and it can have thousands of items. Mica does not edit it, but an entry can link to an item of it. This is a reference set. Added in 0.11.0.
+
+## Declare it
+
+The website reads the file as an ordinary Astro collection:
+
+```ts
+// src/content.config.ts
+import { defineCollection } from "astro:content";
+import { file } from "astro/loaders";
+import { micaCollections } from "@micacms/astro";
+import { site } from "./mica";
+
+export const collections = {
+  ...micaCollections(site),
+  places: defineCollection({ loader: file("src/data/places.json") }),
+};
+```
+
+The model names it with the same name, and a relation points to it:
+
+```ts
+// src/mica.ts
+import { collection, defineSite, referenceSet, relation, slug, text } from "@micacms/core";
+
+export const site = defineSite({
+  collections: {
+    tours: collection({
+      label: "Tours",
+      fields: { title: text(), slug: slug({ from: "title" }), summit: relation({ collection: "places" }) },
+    }),
+  },
+  references: {
+    places: referenceSet({ label: "Places", file: "src/data/places.json", id: "slug", title: "name" }),
+  },
+});
+```
+
+- `file`: the file, from the Astro project root. JSON as a list of objects or an object by id, or CSV with a header row and a comma or a semicolon.
+- `id`: the key of an item's id. Default: `id`. The relation stores it.
+- `title`: the key that the editor shows. Default: `title`, else the id.
+
+## Commit the index
+
+`astro dev` and `astro build` write the id and the title of each item to `.mica/references/places.json` in the content root, one item on each line. Commit it, as you commit `.mica/schema.json`. Mica reads only this index, so the self-hosted Mica needs nothing but the content repository. In CI, the build fails when the committed index is not the one of the file.
+
+## Use it
+
+In the editor, the relation shows a search over the items. `npx mica check`, Publish and the build check each id against the index. On a page, read the item with Astro:
+
+```astro
+---
+import { related } from "@micacms/astro/relations";
+const summit = await related("places", tour.data.summit);
+---
+<p>{summit?.data.name}</p>
+```
+
+An agent finds an item's id with the MCP tool `find_reference_items`.
+
+## When to use it
+
+Use a reference set for data that nobody edits in Mica, or that is larger than the editor's lists are for. Data that editors change belongs in a collection.

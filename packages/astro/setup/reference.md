@@ -59,6 +59,17 @@ position: the manual order, or the slugs in alphabetical order before anybody
 ordered them. Singleton options: `label`, `description`, `fields`, `url`
 (such as `/about`).
 
+Reference sets: data from a file of the website that Mica never edits, such as
+thousands of place names. `defineSite({ references: { places: referenceSet({
+label: "Places", file: "src/data/places.json", id: "slug", title: "name" }) } })`.
+The file is JSON (a list, or an object by id) or CSV with a header row. The name
+is the name of the website's own Astro collection for that file, for example
+`file("src/data/places.json")`. A `relation({ collection: "places" })` stores
+an item's id, and the build writes `.mica/references/places.json`: commit it.
+On a page, `related("places", tour.data.summit)` reads the item. Use a reference
+set when nobody edits the data in Mica, or when it is larger than the editor's
+lists are for.
+
 Options of every field: `label`, `description`, `required`, `listed` (a column
 in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
 `"third"`).

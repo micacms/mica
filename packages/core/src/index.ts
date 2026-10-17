@@ -48,7 +48,7 @@ export {
   type TextOptions,
   type UrlOptions,
 } from "./fields.js";
-export { collection, defineSite, ModelError, singleton, type SortableBy } from "./define.js";
+export { collection, defineSite, ModelError, referenceSet, singleton, type SortableBy } from "./define.js";
 
 /* Validation. */
 export { fieldsSchema, validateFields, type FieldIssue, type SchemaOptions, type ValidationResult } from "./validation.js";

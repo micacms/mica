@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/mcp",
+      "comment": "describe_model names the reference sets, and find_reference_items searches their items.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/mcp",
+  "email": "alexander@muedespacher.ch"
+}

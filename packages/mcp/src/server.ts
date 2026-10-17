@@ -10,7 +10,7 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 
-import { compareEntries, ContentPathError, entryFolder, entryTitle, MEDIA_FILE_TYPE_NAMES, type AccessContext, type MediaAccept, type MediaFileType } from "@micacms/core/internal";
+import { compareEntries, ContentPathError, entryFolder, entryTitle, MEDIA_FILE_TYPE_NAMES, readReferenceIndex, type AccessContext, type MediaAccept, type MediaFileType } from "@micacms/core/internal";
 import { AGENT_SCOPES, ApiError, ConflictError, FilesError, publishChanges, storeUpload, VERSION, ValidationError, type RuntimeContext } from "@micacms/runtime";
 import { McpServer, type CallToolResult, type ScopeChallengeHandler } from "@modelcontextprotocol/server";
 import { z } from "zod";
@@ -221,6 +221,26 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
     run(async ({ collection, slug }: { collection: string; slug: string }) => ({
       references: await content().findReferences(collection, slug),
     })),
+  );
+
+  server.registerTool(
+    "find_reference_items",
+    {
+      title: "Find items of reference data",
+      description:
+        "The items of a reference set that `describe_model` names, by a part of the title or the id: at most 50. A relation to the set stores the item's `id`. Mica cannot change reference data.",
+      inputSchema: z.object({ name: z.string(), query: z.string().optional().describe("A part of the title or the id. Empty: the first items.") }),
+      ...read,
+    },
+    run(async ({ name, query }: { name: string; query?: string | undefined }) => {
+      const set = Object.hasOwn(ctx.site.model.references ?? {}, name) ? ctx.site.model.references![name] : undefined;
+      if (!set) throw new ApiError("not_found", `There is no reference set "${name}".`);
+      const items = await readReferenceIndex(ctx.site.contentRepository, name);
+      if (!items) throw new ApiError("not_found", `${set.label} has no index yet. The developer builds the website and commits .mica/references/${name}.json.`);
+      const needle = (query ?? "").trim().toLowerCase();
+      const found = items.filter((item) => !needle || item.title.toLowerCase().includes(needle) || item.id.toLowerCase().includes(needle));
+      return { items: found.slice(0, 50), total: found.length };
+    }),
   );
 
   server.registerTool(

@@ -19,6 +19,7 @@ content root holds:
 | Path | What it is |
 | --- | --- |
 | `.mica/schema.json` | The model, written by the Astro build (section 9). |
+| `.mica/references/<name>.json` | The index of a reference set, written by the Astro build (section 9.1). |
 | `<collection>/` | One folder for each collection. |
 | `<collection>/<slug>/` | One folder for each entry of a collection. |
 | `<collection>/_order.json` | The manual order of a collection (section 7). Optional. |
@@ -31,11 +32,12 @@ ignored by a reader.
 ### 1.1 Names
 
 - A collection, singleton or field name MUST match `^[a-z][a-zA-Z0-9]*$`.
-- Collection and singleton names share one namespace: a name MUST NOT be used
-  twice, and two names MUST NOT differ only in case, because they are one
+- Collection, singleton and reference set names share one namespace: a name
+  MUST NOT be used twice, and two names MUST NOT differ only in case, because they are one
   folder on macOS and Windows.
 - These names are reserved and MUST NOT name a collection or a singleton:
-  `collections`, `singletons`, `protocolVersion`, `generatedBy`, `media`.
+  `collections`, `singletons`, `protocolVersion`, `generatedBy`, `references`,
+  `media`.
 
 ### 1.2 Paths
 
@@ -370,6 +372,9 @@ JSON object with:
 - `protocolVersion`: `1`.
 - `generatedBy`: the package that wrote it, without a version.
 - `collections` and `singletons`: objects of the definitions, by name.
+- `references`: the reference sets, by name, only when the model has any. Each
+  has `label`, `file` (the website's file, from the Astro project root), and
+  optionally `id` and `title` (the keys of an item).
 
 A definition keeps every field option as the model gives it, also an option
 that changes only the editor, for example `"map": "liberty"` on a
@@ -380,6 +385,24 @@ above the one it knows. `protocolVersion` changes only when an older reader
 would misread a newer manifest. A field kind or a field option that a reader
 does not know MUST make its collection or singleton read-only for that reader:
 an option can change what is stored.
+
+### 9.1 The index of a reference set
+
+A reference set is data of the website that Mica never edits, such as place
+names. A `relation()` names it in `collection` as it names a collection, and
+stores the item's `id`. `.mica/references/<name>.json` is a JSON list of
+`{ "id": …, "title": … }`, both strings, one item on each line:
+
+```json
+[
+  {"id":"toedi","title":"Tödi"},
+  {"id":"piz-palue","title":"Piz Palü"}
+]
+```
+
+A reader checks a relation to a reference set against this index, never
+against the website's file. A missing index is an error of the content, not of
+each relation.
 
 ## 10. Versions of this format
 

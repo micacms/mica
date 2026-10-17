@@ -147,9 +147,16 @@ export interface SchemaSingleton {
   readOnly: string | null;
 }
 
+/** Data from a file of the website that relations point to; Mica never edits it. */
+export interface SchemaReferenceSet {
+  name: string;
+  label: string;
+}
+
 export interface Schema {
   collections: SchemaCollection[];
   singletons: SchemaSingleton[];
+  references: SchemaReferenceSet[];
   /** The model's revision; the pending changes name the one the server uses now. */
   revision: string | null;
 }
@@ -460,6 +467,8 @@ export const api = {
   schema: () => request<Schema>("/admin/schema"),
   overview: () => request<Overview>("/admin/overview"),
   system: () => request<SystemInfo>("/admin/system"),
+  /** The id and title of each item of a reference set. */
+  references: (name: string) => request<{ items: Array<{ id: string; title: string }> }>(`/admin/references/${encodeURIComponent(name)}`),
   /** The dev server that shows the drafts, or null: only the local editor, while `astro dev` runs. */
   preview: () => request<{ address: string | null }>("/admin/preview"),
 

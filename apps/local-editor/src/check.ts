@@ -24,6 +24,8 @@ import {
   needsRowKey,
   ORDER_FILE,
   readManifest,
+  readReferenceIndex,
+  referenceIndexPath,
   readsDocument,
   type PathSegment,
   readCollectionEntry,
@@ -83,6 +85,17 @@ export async function checkContent(root: string): Promise<CheckReport> {
   const slugs = new Map<string, Set<string>>();
   for (const name of Object.keys(site.collections)) {
     slugs.set(name, new Set(await entrySlugs(files, name, error, warning)));
+  }
+
+  // A reference set's ids come from its index; without one, its relations are not checked, and the index is named once.
+  for (const def of Object.values(site.references ?? {})) {
+    try {
+      const items = await readReferenceIndex(files, def.name);
+      if (items) slugs.set(def.name, new Set(items.map((item) => item.id)));
+      else error(referenceIndexPath(def.name), `${def.label} has no index. Build the website, and commit the file.`);
+    } catch (cause) {
+      error(referenceIndexPath(def.name), `Not a reference index: ${(cause as Error).message}`);
+    }
   }
 
   const context: EntryContext = { root, files, site, slugs, error, warning };
@@ -231,8 +244,9 @@ async function checkEntry(
       }
     }
     if (field.kind === "relation") {
+      const known = slugs.get(field.collection);
       for (const slug of list(value)) {
-        if (!slugs.get(field.collection)?.has(slug)) {
+        if (known && !known.has(slug)) {
           error(dataPath, `${key}: there is no "${slug}" in "${field.collection}".`);
         }
       }

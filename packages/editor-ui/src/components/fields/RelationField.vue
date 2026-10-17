@@ -14,13 +14,12 @@ import { computed, nextTick, onMounted, ref } from "vue";
 import type { RelationField } from "@micacms/core/internal";
 
 import FieldShell from "./FieldShell.vue";
-import type { EntrySummary } from "@/api";
 import ReorderArrows from "@/components/ReorderArrows.vue";
 import ReorderHandle from "@/components/ReorderHandle.vue";
 import { useField, type FieldProps } from "@/composables/useField";
 import { useReorder } from "@/composables/useReorder";
 import { announce } from "@/lib/announce";
-import { entryOptions } from "@/lib/entry-options";
+import { entryOptions, type RelationOption } from "@/lib/entry-options";
 import { matchEntries } from "@/lib/order";
 import { useSchema } from "@/stores/schema";
 
@@ -31,17 +30,19 @@ const field = computed(() => props.field as RelationField);
 const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
 const schema = useSchema();
 
-const options = ref<EntrySummary[]>([]);
+const options = ref<RelationOption[]>([]);
 const loading = ref(true);
 const failed = ref(false);
 
 const target = computed(() => schema.collection(field.value.collection));
-const targetLabel = computed(() => target.value?.label ?? field.value.collection);
-const singular = computed(() => (target.value?.labelSingular ?? "entry").toLowerCase());
+/** A reference set: data of the website that the editor only chooses from. */
+const reference = computed(() => schema.reference(field.value.collection));
+const targetLabel = computed(() => target.value?.label ?? reference.value?.label ?? field.value.collection);
+const singular = computed(() => (target.value?.labelSingular ?? (reference.value ? "item" : "entry")).toLowerCase());
 
 onMounted(async () => {
   try {
-    options.value = await entryOptions(field.value.collection);
+    options.value = await entryOptions(field.value.collection, reference.value !== undefined);
   } catch {
     failed.value = true;
   } finally {
@@ -104,7 +105,7 @@ function show(): void {
   active.value = -1;
 }
 
-function choose(entry: EntrySummary): void {
+function choose(entry: RelationOption): void {
   store(field.value.multiple ? [...selected.value, entry.slug] : [entry.slug]);
   query.value = "";
   open.value = false;

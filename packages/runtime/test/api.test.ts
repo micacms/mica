@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, coordinates, createManifest, defineSite, MANIFEST_PATH, number, object, repeater, slug, text, type FieldMap } from "@micacms/core/internal";
+import { collection, coordinates, createManifest, defineSite, MANIFEST_PATH, number, object, referenceIndexPath, referenceSet, repeater, serializeReferenceIndex, slug, text, type FieldMap } from "@micacms/core/internal";
 import { Hono } from "hono";
 
 import { clientIp, type Env } from "../src/http.js";
@@ -304,6 +304,27 @@ describe("content", () => {
     assert.equal(projects.titleField, "title");
     assert.equal(projects.slugField, "slug");
     assert.ok("gallery" in projects.fields);
+  });
+
+  it("names the reference sets, and gives the items of one from its index (#280)", async () => {
+    const site = defineSite({
+      collections: testSite.collections,
+      singletons: testSite.singletons,
+      references: { places: referenceSet({ label: "Places", file: "src/data/places.json" }) },
+    });
+    const other = await createHarness({}, { site });
+    try {
+      const schema = (await (await other.request("/api/admin/schema")).json()) as { references: unknown };
+      assert.deepEqual(schema.references, [{ name: "places", label: "Places" }]);
+      assert.equal((await other.request("/api/admin/references/places")).status, 404, "no index yet");
+
+      mkdirSync(join(other.contentRoot, ".mica/references"), { recursive: true });
+      writeFileSync(join(other.contentRoot, referenceIndexPath("places")), serializeReferenceIndex([{ id: "toedi", title: "Tödi" }]));
+      assert.deepEqual(await (await other.request("/api/admin/references/places")).json(), { items: [{ id: "toedi", title: "Tödi" }] });
+      assert.equal((await other.request("/api/admin/references/projects")).status, 404, "a collection is no reference set");
+    } finally {
+      other.close();
+    }
   });
 
   it("gives no preview without a dev server, as in the self-hosted Mica", async () => {

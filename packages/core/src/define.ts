@@ -12,6 +12,8 @@ import type {
   Collection,
   CollectionOptions,
   FieldMap,
+  ReferenceSet,
+  ReferenceSetOptions,
   Singleton,
   SingletonOptions,
   Site,
@@ -41,10 +43,15 @@ export function singleton<O extends SingletonOptions>(options: O): Singleton & O
   return { type: "singleton", name: "", ...options } as Singleton & O;
 }
 
+/** Data from a file of the website, that relations point to and Mica never edits. */
+export function referenceSet<O extends ReferenceSetOptions>(options: O): ReferenceSet & O {
+  return { type: "reference", name: "", ...options } as ReferenceSet & O;
+}
+
 export function defineSite<
   C extends Record<string, Collection>,
   S extends Record<string, Singleton>,
->(options: { root?: string; collections: C; singletons?: S }): Site<C, S> {
+>(options: { root?: string; collections: C; singletons?: S; references?: Record<string, ReferenceSet> }): Site<C, S> {
   const collections = {} as C;
   for (const [name, def] of Object.entries(options.collections)) {
     (collections as Record<string, Collection>)[name] = { ...def, name };
@@ -60,6 +67,9 @@ export function defineSite<
   const site: Site<C, S> = options.root === undefined
     ? { collections, singletons }
     : { root: options.root, collections, singletons };
+  if (options.references && Object.keys(options.references).length > 0) {
+    site.references = Object.fromEntries(Object.entries(options.references).map(([name, def]) => [name, { ...def, type: "reference", name }]));
+  }
 
   assertValidSite(site);
   return site;
@@ -82,11 +92,25 @@ const RESERVED_NAMES = new Set([
   "singletons",
   "protocolVersion",
   "generatedBy",
+  "references",
   MEDIA_DIR,
 ]);
 
 function assertValidSite(site: Site): void {
   const collectionNames = new Set(Object.keys(site.collections));
+  const references = site.references ?? {};
+  // A relation points to a collection or to a reference set.
+  const relationTargets = new Set([...collectionNames, ...Object.keys(references)]);
+
+  for (const [name, def] of Object.entries(references)) {
+    if (!NAME_PATTERN.test(name)) throw new ModelError(`Reference set name "${name}" must be lowerCamelCase and start with a letter.`);
+    if (RESERVED_NAMES.has(name)) throw new ModelError(`Reference set name "${name}" is reserved.`);
+    if (collectionNames.has(name) || Object.hasOwn(site.singletons, name)) {
+      throw new ModelError(`"${name}" is a reference set and a collection or singleton. Names must be unique across all three.`);
+    }
+    if (typeof def.label !== "string" || def.label === "") throw new ModelError(`Reference set "${name}" needs a label.`);
+    if (typeof def.file !== "string" || def.file === "") throw new ModelError(`Reference set "${name}" needs a file.`);
+  }
 
   // Each name is a folder: on macOS and Windows, two names that differ only in case are one folder.
   const byLowerCase = new Map<string, string>();
@@ -109,7 +133,7 @@ function assertValidSite(site: Site): void {
         `Collection name "${name}" is reserved. Reserved names: ${[...RESERVED_NAMES].join(", ")}.`,
       );
     }
-    checkFields(def.fields, `collections.${name}`, collectionNames);
+    checkFields(def.fields, `collections.${name}`, relationTargets);
 
     const slugKey = resolveSlugField(def);
     if (!slugKey) {
@@ -161,7 +185,7 @@ function assertValidSite(site: Site): void {
         `"${name}" is both a collection and a singleton. Names must be unique across both.`,
       );
     }
-    checkFields(def.fields, `singletons.${name}`, collectionNames);
+    checkFields(def.fields, `singletons.${name}`, relationTargets);
     const pageProblem = def.url === undefined ? null : pageUrlProblem(def.url, "singleton");
     if (pageProblem) throw new ModelError(`Singleton "${name}" has the url "${def.url}": ${pageProblem}.`);
   }
@@ -178,7 +202,7 @@ function checkFields(fields: FieldMap, path: string, collectionNames: Set<string
     if (field.kind === "relation" && !collectionNames.has(field.collection)) {
       throw new ModelError(
         `Relation "${here}" points at unknown collection "${field.collection}". ` +
-          `Known collections: ${[...collectionNames].join(", ") || "(none)"}.`,
+          `Known collections and reference sets: ${[...collectionNames].join(", ") || "(none)"}.`,
       );
     }
 
