@@ -3,11 +3,14 @@
  * changes, so that a sign-in redirect (or a reload) does not lose them. The
  * revision goes with them: restoring onto a version that somebody saved since
  * gives the save conflict, not a silent overwrite. Storage can be missing or
- * full; then nothing is kept, and the form works as before.
+ * full; then nothing is kept, and the form works as before. The write waits
+ * for a pause in the typing, and happens at once when the page goes away.
  */
 
-import { onUnmounted, ref, toRaw, watch, type ComputedRef, type Ref } from "vue";
+import { onMounted, onUnmounted, ref, toRaw, watch, type Ref } from "vue";
 
+import type { UnsavedChanges } from "@/composables/useUnsavedChanges";
+import { debounce } from "@/lib/debounce";
 import { useSession } from "@/stores/session";
 
 interface Kept {
@@ -40,28 +43,48 @@ export function useKeptChanges(
   key: () => string,
   values: Ref<Record<string, unknown>>,
   revision: Ref<string | null>,
-  dirty: ComputedRef<boolean>,
+  unsaved: Pick<UnsavedChanges, "dirty" | "flush">,
 ) {
+  const { dirty } = unsaved;
   /** Changes this tab kept from before, which differ from the form as loaded. */
   const offered = ref<Kept | null>(null);
   const session = useSession();
 
+  // Nothing is removed here: this can run after a load and before `check`.
+  function keepNow(): void {
+    if (dirty.value) write(key(), { values: values.value, revision: revision.value, at: new Date().toISOString() });
+  }
+  const keepSoon = debounce(keepNow, 500);
+
   watch(
     [values, dirty],
     () => {
-      // Nothing is removed here: the watcher can run after a load and before `check`.
-      // Editing on without restoring is the editor's answer to the offer.
       if (!dirty.value) return;
+      // Editing on without restoring is the editor's answer to the offer.
       offered.value = null;
-      write(key(), { values: values.value, revision: revision.value, at: new Date().toISOString() });
+      keepSoon();
     },
     { deep: true },
   );
 
+  // A sign-in redirect, a reload or a closed tab: keep the current text now.
+  function onPageHide(): void {
+    unsaved.flush();
+    keepSoon.cancel();
+    keepNow();
+  }
+  onMounted(() => window.addEventListener("pagehide", onPageHide));
+
   // Leaving the page in the app (after "Leave without saving", or a delete) gives the
   // changes up. A sign-in redirect or a closed tab does not unmount, so they stay.
   onUnmounted(() => {
-    if (!session.leaving.value) write(key(), null);
+    window.removeEventListener("pagehide", onPageHide);
+    if (session.leaving.value) {
+      keepSoon.flush();
+      return;
+    }
+    keepSoon.cancel();
+    write(key(), null);
   });
 
   return {
@@ -84,6 +107,7 @@ export function useKeptChanges(
     /** After a save or a discard, or when the editor declines: nothing to keep. */
     forget(): void {
       offered.value = null;
+      keepSoon.cancel();
       write(key(), null);
     },
   };

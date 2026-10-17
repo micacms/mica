@@ -2525,34 +2525,53 @@ happens when Tiptap refuses the content. The editor's schema always holds
 every node it can show; the `toolbar` option limits only the buttons, so a
 stored heading in a field without heading buttons still loads.
 
+The field decides this once, when it loads, and again only when the form
+replaces the value, for example after a save conflict. An edit never makes the
+field read-only. Instead, the editor refuses an edit that would give text that
+opens read-only — an image dropped or pasted into a list, or `{% … %}` in a
+code block — and says why in a short message. A `{%` typed in other text is
+written as `\{%`, so it stays text.
+
 **Why:** before 0.6, a tag lost its wrapper, an image disappeared, and a
 heading that the toolbar did not offer made Tiptap open the field empty; the
 next save wrote that loss to the file (#62). Read-only keeps every byte; a
-developer can still change the file.
+developer can still change the file. Before 0.11, the check ran again on each
+edit, so an image dragged into a list made the field read-only while the editor
+worked in it (#241).
 
 **Consequence:** an editor cannot change such a field in Mica until a developer
 removes what the editor cannot show, or until blocks (#63) make it editable.
+The editor's rule of what it refuses must agree with the check at load; a test
+holds the two together.
 
 **What would change it:** a Tiptap node per declared tag, generated from the
 model the way fields already are, and image and table blocks (#63).
 
-**Built in 0.6 (#62).**
+**Built in 0.6 (#62). Decided at load since 0.11 (#241).**
 
 **1.0 status:** done.
 
 ---
 
-### P3 — The form bundle is ~240 kB gzip
+### P3 — Rich text is ~190 kB gzip, and loads only with a rich-text field
 
-**Decided:** Tiptap 3/ProseMirror with tables and images, Markdoc's parser for
-the conversion, and Zod for the form checks, loaded in the chunk shared by the
-entry and settings editors.
+**Decided:** Tiptap 3/ProseMirror with tables and images, and Markdoc's parser
+for the conversion, are in their own chunk (~190 kB gzip), which only a form
+with a rich-text field loads (#241). The chunk shared by the entry and settings
+editors (~42 kB gzip) has the other fields and Zod for the form checks. As an
+editor types, the field converts to Markdoc when the typing pauses (300 ms),
+on blur, and before a save, a page change or a reload; the first change after
+a pause goes at once, so the form shows unsaved changes at once. The copy of
+unsaved changes in the tab waits for a pause too (500 ms), and is written at
+once when the page goes away.
 
 **Why:** editing must not require knowledge of a markup language. A hand-rolled
-`contenteditable` is a well-known trap.
+`contenteditable` is a well-known trap. A form without rich text should not pay
+for it, and a keystroke should not convert and serialize the whole form.
 
-**Consequence:** the editor route is the heaviest part of the admin. Sign-in and
-the dashboard do not load it.
+**Consequence:** a form with rich text is the heaviest part of the admin.
+Sign-in, the dashboard and forms without rich text do not load it. The field
+appears a moment after the rest of the form on the first visit.
 
 **What would change it:** nothing at this size. Revisit only if the admin has to
 work on a slow mobile connection.

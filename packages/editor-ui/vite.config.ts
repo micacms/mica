@@ -56,11 +56,9 @@ export default defineConfig({
     outDir: "dist",
     emptyOutDir: true,
     sourcemap: true,
-    // The admin is one deliberate bundle: fetched once, behind a sign-in, from
-    // the app that serves it — route-splitting would buy round trips, not a
-    // faster first paint. The limit sits where real growth would cross it,
-    // not where a dependency bump does; today's bundle is ~730 kB. MapLibre is
-    // the exception: ~1,040 kB in its own chunk, which only a form with a map loads.
+    // The limit sits where real growth would cross it, not where a dependency
+    // bump does. The largest chunks load only with the field that needs them:
+    // rich text (Tiptap and Markdoc, ~600 kB) and a map (MapLibre, ~1,040 kB).
     chunkSizeWarningLimit: 1100,
     rollupOptions: {
       onwarn(warning, warn) {

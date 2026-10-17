@@ -109,7 +109,7 @@ const unsaved = useUnsavedChanges(values);
 const dirty = unsaved.dirty;
 // Kept in this tab, so that signing in again after the session ended loses nothing.
 // ":new" is no valid URL, so it never names a saved entry.
-const kept = useKeptChanges(() => `${props.collection}/${props.slug ?? ":new"}`, values, revision, dirty);
+const kept = useKeptChanges(() => `${props.collection}/${props.slug ?? ":new"}`, values, revision, unsaved);
 
 const isNew = computed(() => !props.slug);
 
@@ -215,6 +215,7 @@ async function showIssues(): Promise<void> {
 async function save(options: { keepMine?: boolean } = {}): Promise<void> {
   // Enter in a read-only field still submits the form while a save runs.
   if (definition.value?.readOnly || saving.value) return;
+  unsaved.flush();
   if (!form.checkAll()) {
     toast.error("Some fields need attention before you can save.");
     await showIssues();

@@ -75,9 +75,10 @@ const location = ref("");
 const form = useFormIssues(() => definition.value?.fields, values);
 const issues = form.issues;
 
-const { dirty, markClean } = useUnsavedChanges(values);
+const unsaved = useUnsavedChanges(values);
+const { dirty, markClean } = unsaved;
 // Kept in this tab, so that signing in again after the session ended loses nothing.
-const kept = useKeptChanges(() => `singleton:${props.name}`, values, revision, dirty);
+const kept = useKeptChanges(() => `singleton:${props.name}`, values, revision, unsaved);
 
 /** These settings' saved changes that are not on the website yet. */
 const pending = computed(() => staging.edits.value.find((edit) => edit.key === `singleton:${props.name}`) ?? null);
@@ -143,6 +144,7 @@ async function showIssues(): Promise<void> {
 async function save(options: { keepMine?: boolean } = {}): Promise<void> {
   // Enter in a read-only field still submits the form while a save runs.
   if (definition.value?.readOnly || saving.value) return;
+  unsaved.flush();
   if (!form.checkAll()) {
     toast.error("Some fields need attention before you can save.");
     await showIssues();
