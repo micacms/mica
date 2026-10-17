@@ -80,6 +80,8 @@ export interface RuntimeContext {
    * unless `force`.
    */
   refreshModel(options?: { force?: boolean }): Promise<void>;
+  /** The address of the website's dev server that shows the drafts, or null. Only the local editor has one. */
+  preview(): Promise<string | null>;
   shutdown(): Promise<void>;
 }
 
@@ -102,6 +104,8 @@ export interface CreateRuntimeContextOptions {
   tree?: GitTree;
   /** Called after a new model is in use, for what the app keeps beside the runtime. */
   onModel?: (model: Site) => void;
+  /** See `RuntimeContext.preview`. Without it, there is no preview. */
+  preview?: () => Promise<string | null>;
   onShutdown?: () => void | Promise<void>;
 }
 
@@ -205,6 +209,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
       (() => ({ auth: "unspecified" })),
     health: options.health ?? {},
     refreshModel,
+    preview: options.preview ?? (async () => null),
 
     async shutdown() {
       limiters.api.stop();

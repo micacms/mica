@@ -25,6 +25,7 @@ import {
 import { mcpRoutes } from "@micacms/mcp";
 
 import { editorUiDist } from "./admin-dir.js";
+import { devServerPreview } from "./preview.js";
 import { portInUse, startupBanner, supportsColor } from "./banner.js";
 import { loadConfig } from "./config.js";
 import { hostGuard } from "./guards.js";
@@ -77,6 +78,7 @@ async function main(): Promise<void> {
     operational: () => ({
       auth: "none — the local editor has no accounts and no sign-in",
     }),
+    preview: devServerPreview(config.contentRoot),
   });
 
   const app = createApp(ctx, {

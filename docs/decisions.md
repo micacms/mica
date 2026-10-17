@@ -1856,7 +1856,19 @@ shows "Open on website" in the header of a saved entry that was published
 before, and the Publish panel links to each page that it published. It is only
 a link. A `url` that this version cannot read is left out with a warning, not
 refused. The docs page "Preview changes" describes the staging-branch setup and
-the deploy previews of the common hosts. A live draft preview comes after 1.0.
+the deploy previews of the common hosts. A live draft preview in the
+self-hosted Mica comes after 1.0.
+
+The local editor shows "Preview" while `astro dev` runs, because the dev server
+reads the saved drafts (since 0.11, #281). The Astro loader knows that it runs
+in dev, because Astro then passes a watcher. It writes the dev server's address
+(`server.port` and `base` of the Astro config) and its process id to a file in
+the system's temp folder, named by the content root, and deletes it when the
+process stops. The local editor shows "Preview" only while that process runs
+and its address answers. The file is never in the repository, so it needs no
+`.gitignore` and never shows as a change. If Astro takes another port because
+the configured one is busy, the check can find another server or none:
+`server.port` makes it exact.
 
 **Why:** drafts are uncommitted files in Mica's clone, not on any branch the
 host builds, so a host's deploy preview cannot see them, and Mica must not
@@ -1875,8 +1887,8 @@ cost of build minutes and a second branch that Mica writes. Since 0.5.0 Mica
 pushes with Git itself, so this is a commit on a second branch rather than a
 second API.
 
-**1.0 status:** the link and the docs are done in 0.11 (#103). The live
-preview is after 1.0.
+**1.0 status:** the link and the docs are done in 0.11 (#103), and the local
+preview (#281). The live preview of the self-hosted Mica is after 1.0.
 
 ---
 
