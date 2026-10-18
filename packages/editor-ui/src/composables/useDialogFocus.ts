@@ -1,11 +1,13 @@
 /**
  * Focus for a modal dialog: it moves in when the dialog opens, stays inside
  * while it is open, and goes back to where it was when the dialog closes.
+ * Every modal dialog of the editor uses it.
  */
 
 import { nextTick, watch, type Ref } from "vue";
 
-const FOCUSABLE = "button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href]";
+const FOCUSABLE =
+  'button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])';
 
 export function useDialogFocus(
   open: () => boolean,

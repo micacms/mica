@@ -38,7 +38,9 @@ of `rush`.
 | `rush test` | Runs the tests of every package, with real Git on temporary repositories. |
 | `rush build` | Builds every package, the example and the website. |
 
-The browser tests need Docker: see [tests/browser/README.md](tests/browser/README.md).
+The browser tests of the self-hosted editor need Docker. The browser test of
+the local editor needs only `rush build`. See
+[tests/browser/README.md](tests/browser/README.md).
 
 ## Make a change
 
