@@ -19,9 +19,10 @@ WORKDIR /app
 # Every project in rush.json must have one — Rush reads them all at startup,
 # even for a filtered install — which is why the two site manifests and the
 # browser test's are let through .dockerignore's exclusion of sites/, examples/
-# and tests/.
+# and tests/. Not common/changes: a new change file must not invalidate the install.
 COPY rush.json ./
-COPY common ./common
+COPY common/config ./common/config
+COPY common/scripts ./common/scripts
 COPY packages/core/package.json packages/core/
 COPY packages/astro/package.json packages/astro/
 COPY packages/runtime/package.json packages/runtime/

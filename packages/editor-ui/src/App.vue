@@ -18,6 +18,7 @@ const chrome = computed(() => session.isActive.value && !route.meta.public);
 
   <AppShell v-if="chrome">
     <RouterView v-slot="{ Component, route: current }">
+      <!-- A new address mounts the view again: a view loads in onMounted and watches no route prop. -->
       <component :is="Component" :key="current.fullPath" />
     </RouterView>
   </AppShell>

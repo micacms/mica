@@ -33,8 +33,8 @@ import {
 
 import { devServerMarkerPath } from "@micacms/core/node";
 
-import { devServerAddress } from "../dist/dev-server.js";
-import { micaCollections, type LoaderContext } from "../dist/index.js";
+import { devServerAddress } from "../src/dev-server.js";
+import { micaCollections, type LoaderContext } from "../src/index.js";
 
 // Outside CI, the loader writes the model; in CI, it only checks it. These tests write it, except where one says CI.
 delete process.env["CI"];

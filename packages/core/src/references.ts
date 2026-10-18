@@ -7,7 +7,7 @@
 
 import type { ContentSource } from "./source.js";
 
-export const REFERENCES_DIR = ".mica/references";
+const REFERENCES_DIR = ".mica/references";
 
 export const referenceIndexPath = (name: string): string => `${REFERENCES_DIR}/${name}.json`;
 

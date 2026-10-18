@@ -18,7 +18,7 @@ import {
   textarea,
   validateFields,
   type FieldMap,
-} from "../dist/index.js";
+} from "../src/index.js";
 
 function messages(fields: FieldMap, data: Record<string, unknown>): string[] {
   const result = validateFields(fields, data);

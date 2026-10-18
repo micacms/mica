@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { DEFAULT_ZOOM, mapView } from "../dist/index.js";
+import { DEFAULT_ZOOM, mapView } from "../src/index.js";
 
 describe("mapView", () => {
   it("takes the zoom that the editor stored, else the given one, else the default", () => {

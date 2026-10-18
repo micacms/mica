@@ -6,7 +6,7 @@
 
 import { posix } from "node:path";
 
-import { contentPath, type FieldMap } from "@micacms/core/internal";
+import { contentPath, type FieldMap, isRecord, mapFields } from "@micacms/core/internal";
 
 /**
  * Rewrites the paths of `media({ accept: "image" })` fields, which the reader
@@ -28,22 +28,10 @@ export function imagePathsFromEntry(
   const one = (value: unknown): unknown =>
     isRecord(value) ? { ...value, path: relative(value["path"]) } : relative(value);
 
-  const visit = (map: FieldMap, record: Record<string, unknown>): Record<string, unknown> => {
-    const result = { ...record };
-    for (const [key, field] of Object.entries(map)) {
-      const value = record[key];
-      if (field.kind === "media" && field.accept === "image") {
-        result[key] = Array.isArray(value) ? value.map(one) : one(value);
-      } else if (field.kind === "object" && isRecord(value)) {
-        result[key] = visit(field.fields, value);
-      } else if (field.kind === "repeater" && Array.isArray(value)) {
-        result[key] = value.map((row) => (isRecord(row) ? visit(field.fields, row) : row));
-      }
-    }
-    return result;
-  };
-
-  return visit(fields, data);
+  return mapFields(fields, data, (field, value) => {
+    if (field.kind !== "media" || field.accept !== "image") return value;
+    return Array.isArray(value) ? value.map(one) : one(value);
+  });
 }
 
 /**
@@ -62,8 +50,4 @@ export function richTextImageSources(
     sources.set(target, relative.startsWith(".") ? relative : `./${relative}`);
   }
   return [...sources].map(([path, src]) => ({ path, src }));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }

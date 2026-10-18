@@ -9,8 +9,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { createAdmissionPolicy } from "../dist/index.js";
-import type { SessionIdentity } from "../dist/index.js";
+import { createAdmissionPolicy } from "../src/index.js";
+import type { SessionIdentity } from "../src/index.js";
 
 const person = (overrides: Partial<SessionIdentity> = {}): SessionIdentity => ({
   issuer: "https://id.example.test",

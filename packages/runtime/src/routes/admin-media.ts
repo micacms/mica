@@ -5,14 +5,14 @@
  * something uses the file.
  */
 
-import { contentPath, ContentPathError, MEDIA_DIR } from "@micacms/core/internal";
+import { contentPath, ContentPathError } from "@micacms/core/internal";
 import { Hono } from "hono";
 import { z } from "zod";
 
-import { ApiError, badRequest, notFound } from "../lib/errors.js";
+import { badRequest, notFound } from "../lib/errors.js";
 import { acceptFromQuery, isImageType } from "../lib/file-type.js";
 import { editorOf, type Env } from "../http.js";
-import type { Referrer } from "../services/content-store.js";
+import { deleteMedia } from "../services/media-delete.js";
 import { storeUpload } from "../services/upload.js";
 
 const deleteSchema = z.object({ paths: z.array(z.string().min(1)).min(1).max(500) });
@@ -25,20 +25,6 @@ function cleanPaths(paths: string[]): string[] {
     if (error instanceof ContentPathError) throw badRequest(error.message);
     throw error;
   }
-}
-
-/** A file in a `media/` folder, as an upload writes it. Nothing else is deleted here. */
-function mediaFilesOnly(paths: string[]): string[] {
-  for (const path of paths) {
-    if (path.split("/").at(-2) !== MEDIA_DIR) throw badRequest(`"${path}" is not a media file.`);
-  }
-  return paths;
-}
-
-function describeUses(path: string, referrers: Referrer[]): string {
-  const names = referrers.map((item) => item.title);
-  const listed = names.slice(0, 3).join(", ") + (names.length > 3 ? ` and ${names.length - 3} more` : "");
-  return `"${path.split("/").at(-1)}" is still used by ${listed}. Remove it there first.`;
 }
 
 export function adminMediaRoutes(): Hono<Env> {
@@ -70,23 +56,8 @@ export function adminMediaRoutes(): Hono<Env> {
     const ctx = c.get("ctx");
     const parsed = deleteSchema.safeParse(await c.req.json().catch(() => null));
     if (!parsed.success) throw badRequest("Expected a list of file paths.");
-    const paths = mediaFilesOnly(cleanPaths(parsed.data.paths));
-
-    for (const path of paths) {
-      const owner = path.split("/")[0] ?? "";
-      const readOnly = ctx.site.readOnly.get(`collections.${owner}`) ?? ctx.site.readOnly.get(`singletons.${owner}`);
-      if (readOnly) throw new ApiError("conflict", readOnly);
-      if ((await ctx.services.media.read(path)) === null) throw notFound(`There is no file "${path}".`);
-    }
-
-    const { uses, unreadable } = await ctx.services.content.mediaUses(paths);
-    if (unreadable.length > 0) {
-      throw new ApiError("conflict", `Mica cannot read ${unreadable.join(", ")}, so it cannot tell whether these files are used.`);
-    }
-    const used = paths.filter((path) => (uses[path] ?? []).length > 0);
-    if (used.length > 0) throw new ApiError("conflict", used.map((path) => describeUses(path, uses[path]!)).join(" "));
-
-    await ctx.site.contentRepository.apply({ changes: paths.map((path) => ({ type: "delete" as const, path })) });
+    const paths = cleanPaths(parsed.data.paths);
+    await deleteMedia(ctx, paths);
     ctx.logger.info("Deleted media", { paths, editor: editorOf(c) });
     return c.json({ deleted: paths });
   });
@@ -104,13 +75,6 @@ export function adminMediaRoutes(): Hono<Env> {
     if (accept === null) throw badRequest("The upload names a file type that Mica does not know.");
     // An entry's own `media/` directory or the shared one; the media service refuses anything else.
     const directory = c.req.query("directory");
-    // A new entry uploads into the folder of the URL in its form; never into a saved entry's.
-    const folder = /^([^/]+)\/([^/]+)\/media$/.exec((directory ?? "").replace(/^\/+/, ""));
-    if (c.req.query("newEntry") === "true" && folder && ctx.site.model.collections[folder[1]!]) {
-      if ((await ctx.services.content.revisionOf(folder[1]!, folder[2]!)) !== null) {
-        throw new ApiError("conflict", `Another entry already has the URL “${folder[2]}”. Change the URL, then upload.`);
-      }
-    }
 
     const length = Number(c.req.header("content-length"));
     const file = await storeUpload(ctx, {
@@ -119,6 +83,7 @@ export function adminMediaRoutes(): Hono<Env> {
       ...(Number.isFinite(length) ? { size: length } : {}),
       ...(directory !== undefined ? { directory } : {}),
       accept,
+      newEntry: c.req.query("newEntry") === "true",
     });
 
     return c.json({ items: [file] }, 201);

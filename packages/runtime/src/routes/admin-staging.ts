@@ -9,9 +9,9 @@ import { Hono } from "hono";
 import { z } from "zod";
 
 import { actorOf, editorOf, type Env } from "../http.js";
-import { ApiError, badRequest } from "../lib/errors.js";
+import { badRequest } from "../lib/errors.js";
 import { publishChanges } from "../services/publish.js";
-import { ConflictError } from "../workspace/files.js";
+import type { ChangesResponse, ModelState } from "./responses.js";
 
 const publishSchema = z.object({
   message: z.string().max(500),
@@ -44,18 +44,8 @@ async function jsonBody(c: { req: { json(): Promise<unknown> } }): Promise<unkno
   });
 }
 
-/** A repository conflict is 409 and recoverable — refresh, review, retry. */
-async function handled<T>(run: () => Promise<T>): Promise<T> {
-  try {
-    return await run();
-  } catch (error) {
-    if (error instanceof ConflictError) throw new ApiError("conflict", error.message);
-    throw error;
-  }
-}
-
 /** Which model is in use, so that the editor can tell a stale form, and why a newer one is not. */
-function modelState(ctx: Env["Variables"]["ctx"]) {
+function modelState(ctx: Env["Variables"]["ctx"]): ModelState {
   return { revision: ctx.site.schemaRevision, warning: ctx.site.modelWarning?.message ?? null };
 }
 
@@ -64,7 +54,7 @@ export function adminStagingRoutes(): Hono<Env> {
 
   app.get("/changes", async (c) => {
     const ctx = c.get("ctx");
-    return c.json({ ...(await ctx.services.staging.status()), model: modelState(ctx) });
+    return c.json({ ...(await ctx.services.staging.status()), model: modelState(ctx) } satisfies ChangesResponse);
   });
 
   // Raw data before and after one pending change; the editor renders the comparison.
@@ -88,21 +78,19 @@ export function adminStagingRoutes(): Hono<Env> {
     if (!parsed.success) throw badRequest("The publish payload is malformed.");
 
     const actor = actorOf(c);
-    const result = await handled(() =>
-      publishChanges(c.get("ctx"), {
-        message: parsed.data.message,
-        paths: parsed.data.paths,
-        author: actor ? { name: actor.name || actor.email, email: actor.email } : undefined,
-        editor: editorOf(c),
-      }),
-    );
+    const result = await publishChanges(c.get("ctx"), {
+      message: parsed.data.message,
+      paths: parsed.data.paths,
+      author: actor ? { name: actor.name || actor.email, email: actor.email } : undefined,
+      editor: editorOf(c),
+    });
 
     return c.json(result);
   });
 
   app.post("/publish/push", async (c) => {
     const { staging } = c.get("ctx").services;
-    return c.json(await handled(() => staging.push()));
+    return c.json(await staging.push());
   });
 
   // "Try again" after a sync error.
@@ -117,7 +105,7 @@ export function adminStagingRoutes(): Hono<Env> {
     const parsed = resolveSchema.safeParse(await jsonBody(c));
     if (!parsed.success) throw badRequest("Expected a group and a choice: mine or website.");
 
-    await handled(() => staging.resolve(parsed.data.group, parsed.data.choice, editorOf(c)));
+    await staging.resolve(parsed.data.group, parsed.data.choice, editorOf(c));
     return c.json({ ...(await staging.status()), model: modelState(c.get("ctx")) });
   });
 
@@ -126,7 +114,7 @@ export function adminStagingRoutes(): Hono<Env> {
     const parsed = discardSchema.safeParse(await jsonBody(c));
     if (!parsed.success || Object.keys(parsed.data.paths).length === 0) throw badRequest("Expected the reviewed paths with their revisions.");
 
-    return c.json(await handled(() => staging.discard(parsed.data.paths, editorOf(c))));
+    return c.json(await staging.discard(parsed.data.paths, editorOf(c)));
   });
 
   return app;

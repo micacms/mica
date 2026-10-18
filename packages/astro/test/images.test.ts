@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 
 import { media, object, text } from "@micacms/core/internal";
 
-import { imagePathsFromEntry } from "../dist/images.js";
+import { imagePathsFromEntry } from "../src/images.js";
 
 const fields = {
   title: text(),

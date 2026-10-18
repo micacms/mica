@@ -10,8 +10,8 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 
-import { compareEntries, ContentPathError, entryFolder, entryTitle, MEDIA_FILE_TYPE_NAMES, readReferenceIndex, type AccessContext, type MediaAccept, type MediaFileType } from "@micacms/core/internal";
-import { AGENT_SCOPES, ApiError, ConflictError, FilesError, publishChanges, storeUpload, VERSION, ValidationError, type RuntimeContext } from "@micacms/runtime";
+import { compareEntries, entryFolder, entryTitle, MEDIA_FILE_TYPE_NAMES, readReferenceIndex, type AccessContext, type MediaAccept, type MediaFileType } from "@micacms/core/internal";
+import { AGENT_SCOPES, ApiError, apiErrorOf, ConflictError, publishChanges, refuseWhileModelUnreadable, storeUpload, VERSION, type RuntimeContext } from "@micacms/runtime";
 import { McpServer, type CallToolResult, type ScopeChallengeHandler } from "@modelcontextprotocol/server";
 import { z } from "zod";
 
@@ -57,16 +57,17 @@ const ok = (value: unknown): CallToolResult => ({ content: [{ type: "text", text
 
 const refused = (text: string): CallToolResult => ({ content: [{ type: "text", text }], isError: true });
 
-/** A failure the agent can act on is a tool result it reads, not a protocol error. Anything else is a bug and is logged. */
+/**
+ * A failure the agent can act on is a tool result it reads, not a protocol
+ * error, with the mapping of the admin API. Anything else is a bug and is logged.
+ */
 function failure(ctx: RuntimeContext, error: unknown): CallToolResult {
-  if (error instanceof ValidationError) {
-    return refused(`${error.message}\n${JSON.stringify({ issues: error.issues })}`);
-  }
-  if (error instanceof ApiError) {
-    return refused(error.issues ? `${error.message}\n${JSON.stringify({ issues: error.issues })}` : error.message);
-  }
   if (error instanceof ConflictError) return refused(`${error.message} Read it again, then retry with the new revision.`);
-  if (error instanceof FilesError || error instanceof ContentPathError) return refused(error.message);
+  const known = apiErrorOf(error);
+  if (known) {
+    const details = { ...(known.issues ? { issues: known.issues } : {}), ...(known.path !== undefined ? { path: known.path } : {}) };
+    return refused(Object.keys(details).length > 0 ? `${known.message}\n${JSON.stringify(details)}` : known.message);
+  }
   ctx.logger.error("An MCP tool failed", { error: error instanceof Error ? (error.stack ?? error.message) : String(error) });
   return refused("Something went wrong in Mica. The error is in Mica's log.");
 }
@@ -128,6 +129,13 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
         return failure(ctx, error);
       }
     };
+
+  /** Runs a tool that writes: refused while a newer content model cannot be read, as in the editor. */
+  const runWrite = <A>(tool: (args: A) => Promise<unknown>) =>
+    run(async (args: A) => {
+      refuseWhileModelUnreadable(ctx);
+      return tool(args);
+    });
 
   const read = { scopeChallenge: needs(SCOPES.read), annotations: { readOnlyHint: true } };
   const write = { scopeChallenge: needs(SCOPES.write) };
@@ -284,7 +292,7 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
       }),
       ...write,
     },
-    run(async (input: { collection: string; data: Record<string, unknown>; slug?: string | undefined; revision?: string | undefined; updateLinks?: boolean | undefined }) => {
+    runWrite(async (input: { collection: string; data: Record<string, unknown>; slug?: string | undefined; revision?: string | undefined; updateLinks?: boolean | undefined }) => {
       if (input.slug !== undefined && input.revision === undefined) {
         throw new ApiError("bad_request", "Send the revision from get_entry, so that the save cannot overwrite a newer one.");
       }
@@ -310,7 +318,7 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
       }),
       ...write,
     },
-    run(async ({ name, data, revision }: { name: string; data: Record<string, unknown>; revision: string | null }) =>
+    runWrite(async ({ name, data, revision }: { name: string; data: Record<string, unknown>; revision: string | null }) =>
       content().saveSingleton(name, data, { expectedRevision: revision }),
     ),
   );
@@ -324,7 +332,7 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
       ...write,
       annotations: { destructiveHint: true },
     },
-    run(async ({ collection, slug, revision }: { collection: string; slug: string; revision: string }) => {
+    runWrite(async ({ collection, slug, revision }: { collection: string; slug: string; revision: string }) => {
       await content().remove(collection, slug, { expectedRevision: revision });
       return { deleted: `${collection}/${slug}` };
     }),
@@ -342,7 +350,7 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
       }),
       ...write,
     },
-    run(async ({ collection, slugs, revision }: { collection: string; slugs: string[]; revision: string | null }) => ({
+    runWrite(async ({ collection, slugs, revision }: { collection: string; slugs: string[]; revision: string | null }) => ({
       orderRevision: await content().reorder(collection, slugs, revision),
     })),
   );
@@ -357,7 +365,7 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
       inputSchema: options.localFiles ? uploadInput : (uploadInput.omit({ file: true }) as unknown as typeof uploadInput),
       ...write,
     },
-    run(async (input: { name: string; directory?: string | undefined; content?: string | undefined; file?: string | undefined; accept?: MediaAccept | undefined }) => {
+    runWrite(async (input: { name: string; directory?: string | undefined; content?: string | undefined; file?: string | undefined; accept?: MediaAccept | undefined }) => {
       const { body, size, close } = await uploadBody(input, options);
       try {
         return await storeUpload(ctx, {
@@ -383,7 +391,7 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
       ...write,
       annotations: { destructiveHint: true },
     },
-    run(async ({ paths }: { paths: Record<string, string | null> }) => ctx.services.staging.discard(paths, editor(caller))),
+    runWrite(async ({ paths }: { paths: Record<string, string | null> }) => ctx.services.staging.discard(paths, editor(caller))),
   );
 
   if (options.publish) {
@@ -400,7 +408,7 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
         scopeChallenge: needs(SCOPES.publish),
         annotations: { destructiveHint: true, openWorldHint: true },
       },
-      run(async ({ message, paths }: { message: string; paths: Record<string, string | null> }) =>
+      runWrite(async ({ message, paths }: { message: string; paths: Record<string, string | null> }) =>
         publishChanges(ctx, { message, paths, author: author(caller), editor: editor(caller) }),
       ),
     );

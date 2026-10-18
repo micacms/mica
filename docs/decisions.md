@@ -324,7 +324,7 @@ beside it. See "Local Git is the local editor's, never the server's".
 and with an isolated environment instead of the developer's — see "Self-hosted
 Mica keeps its own Git clone". The runner is `workspace/git.ts`, the rules
 `services/staging.ts`, and the developer's half is the developer policy
-(`workspace/developer.ts`). The gate is no longer HEAD: Publish sends the
+(`apps/local-editor/src/developer.ts` since 0.11, #228). The gate is no longer HEAD: Publish sends the
 reviewed paths with their revisions.
 
 **1.0 status:** accepted for 1.0. The Windows CI job tests it.
@@ -620,7 +620,7 @@ repository without a folder.
 
 **Built in 0.11 (#276).** `detachedHead` in
 `packages/runtime/src/workspace/tree.ts`, the developer policy
-(`workspace/developer.ts`), `apps/local-editor/src/banner.ts`.
+(`apps/local-editor/src/developer.ts`), `apps/local-editor/src/banner.ts`.
 
 **1.0 status:** accepted for 1.0.
 
@@ -752,6 +752,19 @@ the hold, because a newer model is then the only way forward.
 **Changed in 0.11 (#275):** Mica supports Git LFS, so a `.gitattributes` change
 no longer holds a sync, and `lfs_refused` is gone. Only a model that the image
 cannot read holds it (`model_unreadable`).
+
+**Changed in 0.11 (#297):** while a newer model cannot be read, Mica refuses
+every write: a save, a delete, a new order, an upload, a discard, a choice at
+a sync conflict and Publish.
+A save with the model in use would leave out the fields that only the new
+model has, and it would still answer with success. The answer is a 409 with
+the code `model_unreadable` and the message "The content model changed, and
+this Mica cannot read it. Restart or upgrade Mica." Reads go on with the model
+in use. A sync and a retry of a push are not refused: they do not use the
+model, and a sync can bring the fix. The admin API refuses in one middleware,
+and the MCP tools in their wrapper for writes, with the same function
+(`refuseWhileModelUnreadable` in `packages/runtime/src/services/model-guard.ts`).
+The editor shows the reason beside Save and Publish.
 
 **1.0 status:** accepted for 1.0.
 
@@ -959,12 +972,14 @@ edit through MCP"). Since 0.9 (#225),
 `@micacms/editor-ui` and `@micacms/auth-oidc` are not published: the editor
 ships the UI's build in its `dist/admin`, and the image builds both from
 source. A change to the editor UI records its change file for
-`@micacms/editor`, and a change to the OIDC gate for `@micacms/runtime`.
+`@micacms/editor`, and a change to the OIDC gate or to the image
+(`apps/self-hosted`, the `Dockerfile`) for `@micacms/runtime`, which the image
+ships. A break of the image contract is `major` all the same.
 
 **Why:** all packages share one lockstep version, so a public `runtime` would
 turn every refactor of its helpers into a major for every package, `core`
 included. Adopters lose data when the format or the image contract breaks, not
-when `classifyPath` changes; a small surface puts the stability work there, and
+when `analyseChanges` changes; a small surface puts the stability work there, and
 it is what one maintainer can keep.
 
 **Consequence:** npm has no "internal" flag. An internal package at 1.4.0 looks
@@ -1132,6 +1147,23 @@ surface, not the admin API.
 **Fired in 0.10:** agents are the second client. They got the MCP tools, a
 separate surface on the same services, and the admin API stays internal. See
 the next entry.
+
+**Changed in 0.11 (#218, #228):** the editor imports the response types of
+the admin API from `@micacms/runtime`. The runtime is a development dependency
+of `@micacms/editor-ui`, with type imports only, so nothing of it goes into the
+bundle. The routes check their answers against the same types
+(`packages/runtime/src/routes/responses.ts`), so the editor and the server
+cannot disagree about a shape. The server names the group of each pending
+change (`groupOf`); the editor only shows it. One mapping gives the status of a
+content error, for the admin API and for the MCP tools (`apiErrorOf`): a
+conflict or a read-only part is 409, an invalid value 422, a file that Mica
+cannot read 422 with its path, an unknown collection or singleton 404, and
+another content error 400. Any other error is a bug and stays a 500. The
+editor reads JSON only from a JSON response, so a page from a proxy, such as a
+413, gives a clear message. The developer policy and `MICA_LOCAL_PUBLISH` are
+in the local editor (`apps/local-editor/src/developer.ts`); the runtime
+requires an owner policy from each app, and its operational information
+carries only facts that every app can give.
 
 **1.0 status:** accepted for 1.0; #54 lists it as internal.
 
@@ -1447,6 +1479,12 @@ on a Node PaaS; then add a `bin` and put it under semver.
 **Built in 0.6 (#129):** `apps/self-hosted` is `private` and has no version
 policy, so `rush publish` skips it; `scripts/version.mjs --sync` still sets its
 version. Deprecating the versions on npm needs an npm login.
+
+**In 0.11 (#242):** with no policy, `rush version --bump` no longer writes the
+package's changelog, so the generated one that stopped at 0.5.0 is deleted. An
+image change records its change file for `@micacms/runtime`, and the release
+notes take it from there. `rush change --verify` does not check it: see "The
+change-file gate sees only the published packages" in the known gaps.
 
 **1.0 status:** done, except the deprecation.
 
@@ -1800,6 +1838,16 @@ deletion is slow; then index the references.
 
 **Built in 0.6 (#69, #111).**
 
+**Changed in 0.11 (#224):** one rule finds the links of a document:
+`documentLinks` in core gives its relations, its media fields, and the images
+and links to content files in its rich text. The reference check, the media
+uses, the removal check, the Publish needs and `mica check` all use it. A link
+in rich text to a new file, such as a new PDF in the shared folder, is a need:
+Publish takes the file along. A deletion of a file that rich text links to is
+refused like one that a media field uses, and so is a deletion of an entry
+whose media another document uses. A link in rich text to a file that does not
+exist is not a problem: `/about` can be a page of the website.
+
 **Changed in 0.7.0 (#70):** when the URL in an entry's form differs from the
 saved one, the entry page names the entries and settings pages that link to it
 and offers "Update their links when I save" (on by default). The save then
@@ -1959,9 +2007,8 @@ its note.
 
 **Decided:** the Media view deletes a file, or a selection of files, when no
 entry and no settings page uses it: not in a media field, and not as an image
-or a link in rich text (`mediaUses` in the content store; a rich-text target
-starting with `/` is from the content root, others from the document's
-folder). A used file is refused, with the entries and pages that use it. The
+or a link in rich text (`documentLinks` in core; a rich-text target starting
+with `/` is from the content root, others from the document's folder). A used file is refused, with the entries and pages that use it. The
 delete is a pending change: Publish removes the file from the website, and
 Discard on the Publish page brings it back. The log names who deleted.
 
@@ -1972,11 +2019,10 @@ gone, so the editor first removes it there.
 **Consequence:** each check reads every entry and settings page once. That is
 fine at the stated scale, and the read budgets (#72) cover it. Only files in a
 `media/` folder can be deleted here. When a collection cannot be read, the
-delete is refused, because a use there cannot be ruled out. Two gaps stay: the
-check at Publish reads fields, not rich text, so a file that a save starts to
-use in rich text after the check can still be published as deleted; and rich
-text is scanned for links, images, references and tag attributes, not for a
-path written another way.
+delete is refused, because a use there cannot be ruled out. Since 0.11 (#224)
+the check at Publish reads rich text too. One gap stays: rich text is scanned
+for links, images, references and tag attributes, not for a path written
+another way.
 
 **What would change it:** a site large enough that the scan is slow; then an
 index of references, as for the check at Publish.
@@ -2043,7 +2089,9 @@ a counting Git runner):
   and the dimensions. The file route streams. A URL change copies the media on
   disk, and a save puts what it overwrites or deletes aside under a temporary
   name, not in memory, to undo a failure. A save returns the revision that it
-  reads under its own write lock.
+  reads under its own write lock. A temporary file is named
+  `*.mica-<pid>-<n>`; at start, the self-hosted Mica removes all of them, and
+  the local editor removes those of a process that no longer runs (#224).
 
 **Why:** 0.5 took the network out of reads, but opening one entry still read
 its whole collection, and the media list read every image. At a few hundred
@@ -2495,34 +2543,53 @@ happens when Tiptap refuses the content. The editor's schema always holds
 every node it can show; the `toolbar` option limits only the buttons, so a
 stored heading in a field without heading buttons still loads.
 
+The field decides this once, when it loads, and again only when the form
+replaces the value, for example after a save conflict. An edit never makes the
+field read-only. Instead, the editor refuses an edit that would give text that
+opens read-only — an image dropped or pasted into a list, or `{% … %}` in a
+code block — and says why in a short message. A `{%` typed in other text is
+written as `\{%`, so it stays text.
+
 **Why:** before 0.6, a tag lost its wrapper, an image disappeared, and a
 heading that the toolbar did not offer made Tiptap open the field empty; the
 next save wrote that loss to the file (#62). Read-only keeps every byte; a
-developer can still change the file.
+developer can still change the file. Before 0.11, the check ran again on each
+edit, so an image dragged into a list made the field read-only while the editor
+worked in it (#241).
 
 **Consequence:** an editor cannot change such a field in Mica until a developer
 removes what the editor cannot show, or until blocks (#63) make it editable.
+The editor's rule of what it refuses must agree with the check at load; a test
+holds the two together.
 
 **What would change it:** a Tiptap node per declared tag, generated from the
 model the way fields already are, and image and table blocks (#63).
 
-**Built in 0.6 (#62).**
+**Built in 0.6 (#62). Decided at load since 0.11 (#241).**
 
 **1.0 status:** done.
 
 ---
 
-### P3 — The form bundle is ~240 kB gzip
+### P3 — Rich text is ~190 kB gzip, and loads only with a rich-text field
 
-**Decided:** Tiptap 3/ProseMirror with tables and images, Markdoc's parser for
-the conversion, and Zod for the form checks, loaded in the chunk shared by the
-entry and settings editors.
+**Decided:** Tiptap 3/ProseMirror with tables and images, and Markdoc's parser
+for the conversion, are in their own chunk (~190 kB gzip), which only a form
+with a rich-text field loads (#241). The chunk shared by the entry and settings
+editors (~42 kB gzip) has the other fields and Zod for the form checks. As an
+editor types, the field converts to Markdoc when the typing pauses (300 ms),
+on blur, and before a save, a page change or a reload; the first change after
+a pause goes at once, so the form shows unsaved changes at once. The copy of
+unsaved changes in the tab waits for a pause too (500 ms), and is written at
+once when the page goes away.
 
 **Why:** editing must not require knowledge of a markup language. A hand-rolled
-`contenteditable` is a well-known trap.
+`contenteditable` is a well-known trap. A form without rich text should not pay
+for it, and a keystroke should not convert and serialize the whole form.
 
-**Consequence:** the editor route is the heaviest part of the admin. Sign-in and
-the dashboard do not load it.
+**Consequence:** a form with rich text is the heaviest part of the admin.
+Sign-in, the dashboard and forms without rich text do not load it. The field
+appears a moment after the rest of the form on the first visit.
 
 **What would change it:** nothing at this size. Revisit only if the admin has to
 work on a slow mobile connection.
@@ -2580,6 +2647,49 @@ its own guides in its own package.
 
 ---
 
+### P3 — Rush drives the monorepo
+
+**Decided:** Rush, pinned in `rush.json` with its own pinned pnpm, installs,
+builds, tests and releases the repository. One lockstep version policy,
+`mica`, holds the version of the published packages. A change file under
+`common/changes/` becomes a changelog entry, `rush change --verify` is the CI
+gate, `rush version-bump` consumes the change files, and `rush deploy` makes
+the image's pruned install. Rush replaced pnpm workspaces and Changesets
+for 0.2.0.
+
+**Why:** one tool gives the lockstep version, the change files and
+changelogs, the incremental build in dependency order and the pruned folder
+for the image. Rush fetches the pnpm that `rush.json` names, so a build does
+not depend on what a machine has installed.
+
+**Costs:**
+
+- Each project is listed in `rush.json`, with no globs. Rush reads every
+  listed manifest at startup, also for a filtered install, so the `Dockerfile`
+  copies the manifests of the sites and the browser test too.
+- A contributor needs a global `rush`, or `node
+  common/scripts/install-run-rush.js` in its place.
+- Dependabot cannot update the Rush lockfile. A monthly workflow runs
+  `rush update --full` (`dependencies.yml`).
+- The bulk commands `build`, `typecheck` and `test` do not depend on each
+  other. The typecheck and the tests read the other packages from their `dist`
+  folders, so `rush build` comes first, and a stale `dist` gives a stale result.
+  Since #242 the tests run on their own package's source and build nothing,
+  so CI compiles each package twice: the build and the typecheck.
+- `rush change --verify` sees only the projects in a version policy, and
+  `rush publish --include-all` publishes each of them. A private project
+  cannot join a policy only for the check.
+- Change files, version policies, `rush deploy` and the bootstrap script are
+  Rush concepts that a contributor who knows npm or pnpm must learn.
+
+**What would change it:** a pnpm workspace with a release tool that gives the
+lockstep version, the change gate and the pruned deploy with less
+configuration, or a Rush release that breaks this flow.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
 ## Deferred scope
 
 Explicitly not built. Everything in this section is after 1.0.
@@ -2623,6 +2733,27 @@ without a break.
 
 ## Known gaps to close
 
+- **P3** — The change-file gate sees only the published packages.
+  `rush change --verify` asks for a change file only for a project in a
+  version policy. A change to the editor UI, the OIDC gate or the image records
+  its change file for a published package (see "Semver covers the public
+  surface"), and only the review checks that. The fix: lockstep policies for
+  the private projects with `mainProject` set to `@micacms/editor` or
+  `@micacms/runtime`, so that the gate asks for the change file there. Then the
+  release workflow must publish only the `mica` policy (`rush publish
+  --version-policy mica`), because a project in a policy is published, and
+  `scripts/version.mjs` must set the version of each policy. A change to the
+  `Dockerfile` is outside every project and stays unchecked.
+  **1.0 status:** with the next change to the release workflow.
+
+- **P3** — `rush test` and `rush typecheck` do not build what they read. Rush
+  phased commands would fix this: a `_phase:test` and a `_phase:typecheck`
+  that depend on the `_phase:build` of the upstream projects. They need a
+  `_phase:build` script in every project, and a command runs each of its
+  phases for every selected project, so a phased `rush typecheck` would build
+  the websites too. CI would need to change with them.
+  **1.0 status:** on demand.
+
 - **P3** — `npx mica mcp` beside `npx mica start` is two processes on one
   working tree. The workspace locks are in each process, so they do not
   exclude each other. The revisions still refuse a save over a newer one, but
@@ -2631,11 +2762,14 @@ without a break.
   while the editor runs.
   **1.0 status:** accepted for 1.0.
 
-- **P3** — The browser test covers one path. CI drives Chromium through "sign
+- **P3** — The browser test covers few paths. CI drives Chromium through "sign
   in, edit, save, publish, sign out" on one singleton
-  ([`tests/browser/`](../tests/browser/README.md)). Collections, media,
-  discard, conflicts and the local editor are covered by the API tests and by
-  hand. Add a path when a regression reaches the UI unseen.
+  ([`tests/browser/`](../tests/browser/README.md)). A second configuration
+  types rich text in the local editor and compares the `.mdoc` file. It needs
+  no Docker, but CI does not run it yet. Collections, media, discard and
+  conflicts are covered by the API tests, by the editor's unit tests (such as
+  the save conflict, `useSaveConflict`) and by hand. Add a path when a
+  regression reaches the UI unseen.
   **1.0 status:** after 1.0. The accessibility check (#108) visits every
   view, but it edits nothing.
 

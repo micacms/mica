@@ -26,6 +26,7 @@ import { adminSpaRoutes, adminAssetsExist } from "./routes/admin-spa.js";
 import { adminStagingRoutes } from "./routes/admin-staging.js";
 import { adminSystemRoutes } from "./routes/admin-system.js";
 import { healthRoutes } from "./routes/health.js";
+import { refuseWhileModelUnreadable } from "./services/model-guard.js";
 
 /** What a composing app contributes around the auth-neutral runtime. */
 export interface AuthSurface {
@@ -51,6 +52,19 @@ function unauthenticatedSurface(): AuthSurface {
   const routes = new Hono<Env>();
   routes.get("/config", (c) => c.json({ authRequired: false, provider: null }));
   return { routes, gate: [allowAll()] };
+}
+
+/** Writes that do not use the model: a sync can bring the fix, and a retried push sends a commit that exists. */
+const WRITES_WITHOUT_MODEL = new Set(["/api/admin/sync", "/api/admin/publish/push"]);
+
+/** Refuses every other admin write while a newer content model cannot be read. Reads go on. */
+function refuseWritesWhileModelUnreadable(): MiddlewareHandler<Env> {
+  return async (c, next) => {
+    if (!["GET", "HEAD", "OPTIONS"].includes(c.req.method) && !WRITES_WITHOUT_MODEL.has(c.req.path)) {
+      refuseWhileModelUnreadable(c.get("ctx"));
+    }
+    await next();
+  };
 }
 
 export interface CreateAppOptions {
@@ -104,6 +118,7 @@ export function createApp(ctx: RuntimeContext, options: CreateAppOptions = {}): 
     await next();
   };
   app.use("/api/admin/*", refreshModel);
+  app.use("/api/admin/*", refuseWritesWhileModelUnreadable());
   // The page's Content-Security-Policy allows the hosts of the model's maps, so the page needs the model in use too.
   app.use("/admin/*", refreshModel);
 

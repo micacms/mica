@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/core",
+      "comment": "The links of a document (relations, media, and the images and links in rich text) are read by one rule, which Mica, the website build and mica check share.",
+      "type": "patch"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

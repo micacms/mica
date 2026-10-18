@@ -10,18 +10,20 @@
  * walk of the content tree — small, and already fetched whole — so a round trip
  * per keystroke would buy nothing.
  *
- * Focus is trapped while open and returned to the trigger on close, so the
- * dialog is usable from the keyboard alone.
+ * Focus is trapped while open and returned to the trigger on close
+ * (`useDialogFocus`), so the dialog is usable from the keyboard alone.
  */
 
-import { computed, nextTick, onBeforeUnmount, ref, watch } from "vue";
+import { computed, onBeforeUnmount, ref, useId, watch } from "vue";
 import { X } from "@lucide/vue";
 
 import { acceptedFileTypes, MEDIA_FILE_TYPES, mediaFileTypeOf, type MediaAccept } from "@micacms/core/internal";
 
-import { api, ApiError, type MediaItem } from "@/api";
+import { api, messageOf, type MediaItem } from "@/api";
 import { SHARED_MEDIA, type MediaFolder } from "@/lib/media-folder";
+import StatusNotice from "@/components/StatusNotice.vue";
 import UploadList from "@/components/UploadList.vue";
+import { useDialogFocus } from "@/composables/useDialogFocus";
 import { useUploads } from "@/composables/useUploads";
 import { useToast } from "@/stores/toast";
 
@@ -48,15 +50,18 @@ const toast = useToast();
 
 const all = ref<MediaItem[]>([]);
 const loading = ref(false);
+/** Why the files could not be loaded: the library is then not "empty". */
+const loadError = ref<string | null>(null);
 const uploads = useUploads();
 const uploading = uploads.busy;
 const search = ref("");
 const picked = ref<string[]>([]);
 const dialog = ref<HTMLElement | null>(null);
+const searchInput = ref<HTMLInputElement | null>(null);
 const fileInput = ref<HTMLInputElement | null>(null);
 const dragging = ref(false);
-
-let previouslyFocused: HTMLElement | null = null;
+const id = useId();
+const { trapTab } = useDialogFocus(() => props.open, dialog, searchInput);
 
 /** The types this field takes; null for `"any"`, which shows every file. */
 const acceptedTypes = computed(() => (props.accept === "any" ? null : acceptedFileTypes(props.accept)));
@@ -88,16 +93,19 @@ const items = computed(() => {
   });
 });
 
+const emptyTitle = computed(() => (search.value ? `Nothing matches "${search.value}".` : "No files yet."));
+
 const canConfirm = computed(() => picked.value.length > 0);
 
 const isImage = (item: MediaItem): boolean => item.mimeType.startsWith("image/");
 
 async function load(): Promise<void> {
   loading.value = true;
+  loadError.value = null;
   try {
     all.value = (await api.media.list()).items;
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not load the media library.");
+    loadError.value = messageOf(error, "Something went wrong.");
   } finally {
     loading.value = false;
   }
@@ -106,20 +114,11 @@ async function load(): Promise<void> {
 watch(
   () => props.open,
   async (open) => {
-    if (!open) {
-      document.body.style.overflow = "";
-      previouslyFocused?.focus();
-      return;
-    }
-
-    previouslyFocused = document.activeElement as HTMLElement | null;
-    document.body.style.overflow = "hidden";
+    document.body.style.overflow = open ? "hidden" : "";
+    if (!open) return;
     picked.value = [];
     search.value = "";
-
     await load();
-    await nextTick();
-    dialog.value?.querySelector<HTMLElement>("input, button")?.focus();
   },
 );
 
@@ -188,26 +187,8 @@ function onDrop(event: DragEvent): void {
 
 /** Keeps Tab inside the dialog, and closes on Escape. */
 function onKeydown(event: KeyboardEvent): void {
-  if (event.key === "Escape") {
-    emit("close");
-    return;
-  }
-  if (event.key !== "Tab" || !dialog.value) return;
-
-  const focusable = dialog.value.querySelectorAll<HTMLElement>(
-    'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
-  );
-  const first = focusable[0];
-  const last = focusable[focusable.length - 1];
-  if (!first || !last) return;
-
-  if (event.shiftKey && document.activeElement === first) {
-    event.preventDefault();
-    last.focus();
-  } else if (!event.shiftKey && document.activeElement === last) {
-    event.preventDefault();
-    first.focus();
-  }
+  if (event.key === "Escape") emit("close");
+  else trapTab(event);
 }
 
 const formatSize = (bytes: number): string =>
@@ -233,13 +214,14 @@ const folderOf = (path: string): string => {
         ref="dialog"
         role="dialog"
         aria-modal="true"
-        aria-labelledby="media-picker-title"
+        :aria-labelledby="`${id}-title`"
         class="flex max-h-[90vh] w-full max-w-4xl flex-col rounded-t-xl border border-line bg-raised shadow-2xl sm:rounded-xl"
       >
         <header class="flex items-center gap-3 border-b border-line px-5 py-3.5">
-          <h2 id="media-picker-title" class="text-base font-semibold">Media</h2>
+          <h2 :id="`${id}-title`" class="text-base font-semibold">Media</h2>
 
           <input
+            ref="searchInput"
             v-model="search"
             type="search"
             placeholder="Search files…"
@@ -286,11 +268,11 @@ const folderOf = (path: string): string => {
           </label>
           <UploadList :states="uploads.states.value" :busy="uploads.busy.value" class="-mt-2 mb-4" @retry="retry" @dismiss="uploads.clear()" />
 
-          <p v-if="loading" role="status" class="py-8 text-center text-sm text-muted">Loading…</p>
+          <StatusNotice v-if="loading" kind="loading" />
 
-          <p v-else-if="items.length === 0" class="py-8 text-center text-sm text-muted">
-            {{ search ? `Nothing matches "${search}".` : "No files yet." }}
-          </p>
+          <StatusNotice v-else-if="loadError" kind="error" title="The media library could not be loaded" :message="loadError" @retry="load" />
+
+          <StatusNotice v-else-if="items.length === 0" kind="empty" :title="emptyTitle" />
 
           <ul v-else class="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-5">
             <li v-for="item in items" :key="item.path">

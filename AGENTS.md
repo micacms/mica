@@ -49,6 +49,7 @@ Ask the user before you:
 - Add or update tests when behavior changes or a defect is fixed.
 - Run the tests that are closest to the changed code during development.
 - After a code change, run `rush typecheck` and `rush test` before completion.
+- The tests and the typecheck of a package read the packages that it uses from their `dist` folders. After a change to a package that other packages use, run `rush build` before `rush typecheck` and `rush test`.
 - Run `rush build` when a change can affect package output, the CMS bundle, an Astro site, packaging, or a release.
 - Do not claim that a check passed if you did not run it.
 - If a check cannot run, state the reason and the checks that remain.
@@ -68,7 +69,7 @@ Ask the user before you:
 - Update `docs/decisions.md` when the change adds or changes an architectural decision, trade-off, known gap, or deferred item.
 - Keep README files and examples consistent with the current behavior.
 - Update `CHANGELOG.md` when a new version is created. Do not add routine unreleased changes unless the user asks for them.
-- Record a change file with `rush change` when a change touches a published package; use the bump type `none` when the release notes should not mention it. `@micacms/editor-ui` is not published: `@micacms/editor` ships it, so record its changes for `@micacms/editor`.
+- Record a change file with `rush change` when a change touches a published package; use the bump type `none` when the release notes should not mention it. Record a change to a private project for the published package that ships with it: `@micacms/editor-ui` for `@micacms/editor`, and `@micacms/auth-oidc`, `apps/self-hosted` and the `Dockerfile` (the image) for `@micacms/runtime`. `rush change --verify` does not find a missing change file for a private project, so check it yourself.
 - Use `rush version-bump` to release the pending change files, or `rush release-version --version <version>` to set an explicit version. Do not edit package versions separately. The `/release` skill (`.claude/skills/release/`) walks the whole flow — bump choice, changelog section, verification.
 
 ## Subagents

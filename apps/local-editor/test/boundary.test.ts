@@ -13,6 +13,7 @@ import { collection, defineSite, slug, text } from "@micacms/core/internal";
 import { contentFiles, createApp, createLogger, createRuntimeContext } from "@micacms/runtime";
 
 import { loadConfig } from "../src/config.js";
+import { developerPolicy } from "../src/developer.js";
 import { hostGuard } from "../src/guards.js";
 
 const WORKSPACE_ROOT = path.resolve(import.meta.dirname, "../../..");
@@ -117,6 +118,7 @@ describe("the running composition", () => {
       files: contentFiles({ root: contentRoot }),
       logger: createLogger({ level: "silent", pretty: false }),
       operational: () => ({ auth: "none" }),
+      policy: developerPolicy({ publishEnabled: true, logger: createLogger({ level: "silent", pretty: false }) }),
     });
 
     app = createApp(ctx, { guards: [hostGuard()] });

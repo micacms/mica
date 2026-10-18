@@ -1,8 +1,10 @@
 import { defineConfig, devices } from "@playwright/test";
 
 // The stack comes from tests/oidc/compose.yml; this config starts nothing.
+// The local editor's specs have their own config: local-editor.config.ts.
 export default defineConfig({
   testDir: ".",
+  testIgnore: "local-editor/**",
   forbidOnly: !!process.env["CI"],
   retries: 0,
   workers: 1,

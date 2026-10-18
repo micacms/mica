@@ -8,8 +8,8 @@
 import assert from "node:assert/strict";
 import { afterEach, beforeEach, describe, it, mock } from "node:test";
 
-import { cookieNames, createSessionService } from "../dist/index.js";
-import type { AuthConfig, SessionIdentity } from "../dist/index.js";
+import { cookieNames, createSessionService } from "../src/index.js";
+import type { AuthConfig, SessionIdentity } from "../src/index.js";
 
 const HOUR = 3600_000;
 

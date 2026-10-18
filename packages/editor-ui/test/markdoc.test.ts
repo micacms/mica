@@ -2,7 +2,7 @@
  * The editor's Markdoc bridge.
  *
  * This conversion is the one place where an editor's words can quietly change
- * without anybody noticing: it runs on every keystroke and on every load, and a
+ * without anybody noticing: it runs whenever the typing pauses and on every load, and a
  * mistake here corrupts the file rather than failing. So the tests are mostly
  * round trips — type it, store it, open it again, and get the same thing back.
  */
@@ -75,6 +75,14 @@ describe("toMarkdoc", () => {
     assert.equal(value, "2 \\* 3 \\* 4 and \\_this\\_\n");
     // And it survives the trip back unchanged, which is the point of escaping.
     assert.equal(fromMarkdoc(value).content?.[0]?.content?.[0]?.text, "2 * 3 * 4 and _this_");
+  });
+
+  it("escapes a typed {% so that it stays text and the field stays editable", () => {
+    const value = toMarkdoc(doc({ type: "paragraph", content: [text("Write {% callout %} or {% $name %}")] }));
+
+    assert.equal(value, "Write \\{% callout %} or \\{% $name %}\n");
+    assert.deepEqual(unsupportedMarkdoc(value), []);
+    assert.equal(fromMarkdoc(value).content?.[0]?.content?.[0]?.text, "Write {% callout %} or {% $name %}");
   });
 
   it("indents a list continuation under the text, not the marker", () => {

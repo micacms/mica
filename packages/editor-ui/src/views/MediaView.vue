@@ -19,9 +19,10 @@
 
 import { computed, onMounted, ref, watch } from "vue";
 
-import { api, ApiError, type MediaItem, type Referrer } from "@/api";
+import { api, messageOf, type MediaItem, type Referrer } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import StatusNotice from "@/components/StatusNotice.vue";
 import UploadList from "@/components/UploadList.vue";
 import { useUploads } from "@/composables/useUploads";
 import { useSchema } from "@/stores/schema";
@@ -33,6 +34,8 @@ const toast = useToast();
 
 const items = ref<MediaItem[]>([]);
 const loading = ref(true);
+/** Why the files could not be loaded: the library is then not "empty". */
+const loadError = ref<string | null>(null);
 const uploads = useUploads();
 const uploading = uploads.busy;
 const search = ref("");
@@ -81,7 +84,7 @@ watch(selected, async (item) => {
     if (unreadable.length > 0) usageProblem.value = `Mica cannot read ${unreadable.join(", ")}.`;
     else usedBy.value = uses[item.path] ?? [];
   } catch (error) {
-    if (selected.value?.path === item.path) usageProblem.value = error instanceof ApiError ? error.message : "Could not check.";
+    if (selected.value?.path === item.path) usageProblem.value = messageOf(error, "Could not check.");
   }
 });
 
@@ -116,7 +119,7 @@ async function askDelete(paths: string[]): Promise<void> {
     }
     blocked.value = paths.flatMap((path) => ((uses[path] ?? []).length > 0 ? [{ path, users: uses[path]! }] : []));
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not check where the files are used.");
+    toast.error(messageOf(error, "Could not check where the files are used."));
     return;
   }
   if (blocked.value.length === 0) confirming.value = paths;
@@ -134,7 +137,7 @@ async function remove(): Promise<void> {
     void staging.refresh();
     await load();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not delete.");
+    toast.error(messageOf(error, "Could not delete."));
   } finally {
     deleting.value = false;
   }
@@ -170,17 +173,22 @@ const folders = computed(() => {
   return [...groups].sort(([a], [b]) => a.localeCompare(b));
 });
 
+const emptyTitle = computed(() =>
+  search.value ? `Nothing matches "${search.value}".` : show.value !== "all" && items.value.length > 0 ? "No files of this kind." : "No files yet.",
+);
+
 const totalBytes = computed(() => items.value.reduce((sum, item) => sum + item.size, 0));
 
 async function load(): Promise<void> {
   loading.value = true;
+  loadError.value = null;
   try {
     items.value = (await api.media.list()).items;
     // The chosen file may have gone from the repository between loads.
     const stillThere = items.value.find((item) => item.path === selected.value?.path);
     selected.value = stillThere ?? null;
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not load the media library.");
+    loadError.value = messageOf(error, "Something went wrong.");
   } finally {
     loading.value = false;
   }
@@ -286,15 +294,12 @@ async function copyPath(path: string): Promise<void> {
       <p class="mt-1.5 text-xs text-muted">Remove the file there first, then delete it here.</p>
     </div>
 
-    <p v-if="loading" role="status" class="py-12 text-center text-sm text-muted">Loading…</p>
+    <StatusNotice v-if="loading" kind="loading" />
 
-    <div v-else-if="matching.length === 0" class="card px-4 py-12 text-center">
-      <p class="text-sm font-medium">
-        {{ search ? `Nothing matches "${search}".` : show !== "all" && items.length > 0 ? "No files of this kind." : "No files yet." }}
-      </p>
-      <p class="mt-1 text-sm text-muted">
-        Drag files anywhere on this page to upload them.
-      </p>
+    <StatusNotice v-else-if="loadError" kind="error" title="The media library could not be loaded" :message="loadError" @retry="load" />
+
+    <div v-else-if="matching.length === 0" class="card">
+      <StatusNotice kind="empty" :title="emptyTitle" message="Drag files anywhere on this page to upload them." />
     </div>
 
     <div v-else class="grid gap-5 lg:grid-cols-[1fr_20rem]">

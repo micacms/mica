@@ -12,12 +12,11 @@
 
 import { stat } from "node:fs/promises";
 
-import { MANIFEST_PATH, memorySource, type ContentSource, type PublishResult, type Site } from "@micacms/core/internal";
+import { MANIFEST_PATH, memorySource, ownerOfPath, type ContentSource, type PublishResult, type Site } from "@micacms/core/internal";
 import { within } from "@micacms/core/node";
 
 import { ApiError, badRequest, notFound } from "../lib/errors.js";
 import type { Logger } from "../lib/logger.js";
-import { developerPolicy } from "../workspace/developer.js";
 import type { ContentFiles } from "../workspace/files.js";
 import { GitError } from "../workspace/git.js";
 import { createWorkspaceLocks, type WorkspaceLocks } from "../workspace/locks.js";
@@ -39,8 +38,6 @@ import {
 } from "../workspace/tree.js";
 import {
   analyseChanges,
-  classifyPath,
-  compareSources,
   describeProblems,
   flattenProblems,
   type AnnotatedChange,
@@ -53,6 +50,7 @@ import {
   type StagingStatus,
   type StagingValidation,
 } from "./changes.js";
+import { compareSources } from "./compare.js";
 
 export interface WorkingTreeStagingDeps {
   model: Site;
@@ -65,11 +63,9 @@ export interface WorkingTreeStagingDeps {
   schemaRevision: string | null;
   /** From `readOnlyParts`: a change to one of these is never published by this build. */
   readOnly?: ReadonlyMap<string, string>;
-  /** `MICA_LOCAL_PUBLISH`, for the default developer policy. */
-  publishEnabled: boolean;
   logger: Logger;
-  /** Defaults to the developer. */
-  policy?: OwnerPolicy;
+  /** Who owns the working tree: the app supplies it, such as the local editor's developer policy. */
+  policy: OwnerPolicy;
   /** Shared with the services that write content. */
   locks?: WorkspaceLocks;
   /**
@@ -79,40 +75,76 @@ export interface WorkingTreeStagingDeps {
   tree?: GitTree;
 }
 
+/** What `validateSelection` checks: a publication of `paths` from the working tree of `tree`. */
+export interface SelectionCheck {
+  model: Site;
+  /** The working tree's files. */
+  files: ContentFiles;
+  tree: GitTree;
+  /** Every pending change of the tree, from `listTreeChanges`. */
+  listed: TreeChange[];
+  /** The paths that the publication takes. */
+  paths: Iterable<string>;
+  /** From `readOnlyParts`: a change to one of these is never published by this build. */
+  readOnly?: ReadonlyMap<string, string> | undefined;
+}
+
+/**
+ * The problems that stop a publication of `paths`, checked against what the
+ * commit will hold: the working tree, with the other drafts as HEAD has them.
+ * Every other file is the same in both, and the working tree is fast to read.
+ */
+export async function validateSelection(check: SelectionCheck): Promise<StagingValidation> {
+  const wanted = new Set(check.paths);
+  const selected = check.listed.filter((change) => wanted.has(change.path));
+  const behind = check.listed.filter((change) => !wanted.has(change.path)).map((change) => change.path);
+  const result = overlaySource(check.files, headSource(check.tree), behind);
+  return (await analyseTree(check.model, check.readOnly, check.tree, selected, result)).validation;
+}
+
+/** `source` is what the result holds: the whole working tree, or a selection of it. */
+async function analyseTree(
+  model: Site,
+  readOnly: ReadonlyMap<string, string> | undefined,
+  tree: GitTree,
+  treeChanges: TreeChange[],
+  source: ContentSource,
+  validate = true,
+): Promise<{ changes: AnnotatedChange[]; validation: StagingValidation }> {
+  const { changes, validation } = await analyseChanges(model, source, treeChanges, headSource(tree), { validate });
+
+  // The field validator cannot see a merge conflict: the file holds Git's conflict format.
+  for (const change of treeChanges) {
+    if (!change.conflicted) continue;
+    validation.problems.push({
+      path: change.path,
+      label: change.path,
+      issues: [
+        { path: "", message: "This file has a Git merge conflict. Resolve it with your Git tools." },
+      ],
+    });
+  }
+  // By the first path segment, so that a stray file in a read-only collection is caught too.
+  for (const change of changes) {
+    const head = change.path.split("/")[0] ?? "";
+    const reason = readOnly?.get(`collections.${head}`) ?? readOnly?.get(`singletons.${head}`);
+    if (reason) {
+      validation.problems.push({ path: change.path, label: change.owner.label, issues: [{ path: "", message: reason }] });
+    }
+  }
+  validation.ok = validation.problems.length === 0;
+
+  return { changes, validation };
+}
+
 export function createWorkingTreeStagingService(
   deps: WorkingTreeStagingDeps,
 ): ContentStagingService {
-  const { model, files, contentRoot, logger } = deps;
-  const policy = deps.policy ?? developerPolicy({ publishEnabled: deps.publishEnabled, logger });
+  const { model, files, contentRoot, logger, policy } = deps;
   const locks = deps.locks ?? createWorkspaceLocks();
 
-  /** `source` is what the result holds: the whole working tree, or a selection of it. */
-  const analyse = async (tree: GitTree, treeChanges: TreeChange[], source: ContentSource = files, validate = true) => {
-    const { changes, validation } = await analyseChanges(model, source, treeChanges, headSource(tree), { validate });
-
-    // The field validator cannot see a merge conflict: the file holds Git's conflict format.
-    for (const change of treeChanges) {
-      if (!change.conflicted) continue;
-      validation.problems.push({
-        path: change.path,
-        label: change.path,
-        issues: [
-          { path: "", message: "This file has a Git merge conflict. Resolve it with your Git tools." },
-        ],
-      });
-    }
-    // By the first path segment, so that a stray file in a read-only collection is caught too.
-    for (const change of changes) {
-      const head = change.path.split("/")[0] ?? "";
-      const reason = deps.readOnly?.get(`collections.${head}`) ?? deps.readOnly?.get(`singletons.${head}`);
-      if (reason) {
-        validation.problems.push({ path: change.path, label: change.owner.label, issues: [{ path: "", message: reason }] });
-      }
-    }
-    validation.ok = validation.problems.length === 0;
-
-    return { changes, validation };
-  };
+  const analyse = (tree: GitTree, treeChanges: TreeChange[], source: ContentSource = files, validate = true) =>
+    analyseTree(model, deps.readOnly, tree, treeChanges, source, validate);
 
   const locate = async (): Promise<GitTree | { reason: string }> => deps.tree ?? locateTree(contentRoot);
 
@@ -126,15 +158,6 @@ export function createWorkingTreeStagingService(
     const availability = policy.publishAvailability();
     if (!availability.enabled) throw badRequest(availability.reason);
     return located();
-  };
-
-  /** The key that keeps an entry's files together: a publication never splits one. */
-  const groupOf = (change: AnnotatedChange): string => {
-    const owner = change.owner;
-    if (owner.kind === "entry") return `entry:${owner.collection}/${owner.slug}`;
-    if (owner.kind === "singleton") return `singleton:${owner.name}`;
-    if (owner.kind === "order") return `order:${owner.collection}`;
-    return `file:${change.path}`;
   };
 
   const withRevisions = async (changes: AnnotatedChange[]): Promise<AnnotatedChange[]> =>
@@ -155,12 +178,12 @@ export function createWorkingTreeStagingService(
     const groups = new Set(
       Object.keys(reviewed).flatMap((path) => {
         const change = byPath.get(path);
-        return change ? [groupOf(change)] : [];
+        return change ? [change.group] : [];
       }),
     );
     return [
       ...Object.keys(reviewed).filter((path) => !byPath.has(path) || byPath.get(path)!.revision !== reviewed[path]),
-      ...pending.filter((change) => groups.has(groupOf(change)) && !(change.path in reviewed)).map((change) => change.path),
+      ...pending.filter((change) => groups.has(change.group) && !(change.path in reviewed)).map((change) => change.path),
     ];
   };
 
@@ -258,12 +281,7 @@ export function createWorkingTreeStagingService(
             );
           }
 
-          const selected = listed.filter((change) => change.path in input.paths);
-          // Checked against what the commit will hold: the working tree, with the drafts left behind as
-          // HEAD has them. Every other file is the same in both, and the working tree is fast to read.
-          const behind = listed.filter((change) => !(change.path in input.paths)).map((change) => change.path);
-          const result = overlaySource(files, headSource(tree), behind);
-          const { validation } = await analyse(tree, selected, result);
+          const validation = await validateSelection({ model, files, tree, listed, paths: reviewed, readOnly: deps.readOnly });
           if (!validation.ok) {
             throw new ApiError("validation_failed", describeProblems(validation.problems), {
               issues: flattenProblems(validation.problems),
@@ -335,7 +353,7 @@ export function createWorkingTreeStagingService(
         const revisions: Record<string, string | null> = {};
         if (!("reason" in tree) && against === "head") {
           for (const change of await listTreeChanges(tree)) {
-            if (!ownedByTarget(classifyPath(model, change.path), target)) continue;
+            if (!ownedByTarget(ownerOfPath(model, change.path), target)) continue;
             revisions[change.path] = change.kind === "delete" ? null : await files.revision(change.path);
           }
         }

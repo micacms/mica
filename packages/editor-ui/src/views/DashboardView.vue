@@ -7,19 +7,19 @@
 
 import { computed, onMounted, ref } from "vue";
 
-import { api, ApiError, type Overview } from "@/api";
+import { api, messageOf, type Overview } from "@/api";
 import DeveloperDetails from "@/components/DeveloperDetails.vue";
 import PageHeader from "@/components/PageHeader.vue";
+import StatusNotice from "@/components/StatusNotice.vue";
 import { useSession } from "@/stores/session";
 import { useStaging } from "@/stores/staging";
-import { useToast } from "@/stores/toast";
 
 const session = useSession();
 const staging = useStaging();
-const toast = useToast();
 
 const overview = ref<Overview | null>(null);
 const loading = ref(true);
+const loadError = ref<string | null>(null);
 
 /** Greets by name only when the provider gave one; local mode has no user. */
 const greeting = computed(() => {
@@ -35,15 +35,19 @@ const entries = computed(() =>
   (overview.value?.collections ?? []).reduce((total, item) => total + item.total, 0),
 );
 
-onMounted(async () => {
+async function load(): Promise<void> {
+  loading.value = true;
+  loadError.value = null;
   try {
     overview.value = await api.overview();
   } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not load the overview.");
+    loadError.value = messageOf(error, "Something went wrong.");
   } finally {
     loading.value = false;
   }
-});
+}
+
+onMounted(load);
 </script>
 
 <template>
@@ -53,7 +57,9 @@ onMounted(async () => {
   />
 
   <div class="mx-auto max-w-5xl space-y-6 px-4 py-6 sm:px-6">
-    <p v-if="loading" role="status" class="text-sm text-muted">Loading…</p>
+    <StatusNotice v-if="loading" kind="loading" />
+
+    <StatusNotice v-else-if="loadError" kind="error" title="The overview could not be loaded" :message="loadError" @retry="load" />
 
     <template v-else-if="overview">
       <section aria-labelledby="content-heading">

@@ -4,15 +4,14 @@
  * is an entry that nobody wrote. The groups match the Publish page.
  */
 
-import type { Site } from "@micacms/core/internal";
+import { ownerOfPath, readOnlyParts, type Site } from "@micacms/core/internal";
 import {
-  analyseChanges,
   ApiError,
-  classifyPath,
   describeProblems,
   flattenProblems,
-  headSource,
+  groupOf,
   listTreeChanges,
+  validateSelection,
   type ContentFiles,
   type GitTree,
 } from "@micacms/runtime";
@@ -21,20 +20,17 @@ import type { ContentGroup } from "./managed.js";
 
 export function contentGroups(model: Site): (path: string) => ContentGroup {
   return (path) => {
-    const owner = classifyPath(model, path);
+    const owner = ownerOfPath(model, path);
+    const key = groupOf(owner, path);
     switch (owner.kind) {
       case "entry":
-        return {
-          key: `entry:${owner.collection}/${owner.slug}`,
-          label: owner.label,
-          target: { kind: "entry", collection: owner.collection, slug: owner.slug },
-        };
+        return { key, label: owner.label, target: { kind: "entry", collection: owner.collection, slug: owner.slug } };
       case "singleton":
-        return { key: `singleton:${owner.name}`, label: owner.label, target: { kind: "singleton", name: owner.name } };
+        return { key, label: owner.label, target: { kind: "singleton", name: owner.name } };
       case "order":
-        return { key: `order:${owner.collection}`, label: owner.label, target: { kind: "order", collection: owner.collection } };
+        return { key, label: owner.label, target: { kind: "order", collection: owner.collection } };
       default:
-        return { key: `file:${path}`, label: owner.label };
+        return { key, label: owner.label };
     }
   };
 }
@@ -48,16 +44,19 @@ export function coarseGroups(path: string): ContentGroup {
   return { key: `path:${key}`, label: key };
 }
 
-/** Validates the drafts at `paths` before a rejected publication is made again on a newer base. */
+/**
+ * Validates the drafts at `paths` before a rejected publication is made again
+ * on a newer base, with the checks of Publish: against what the commit will
+ * hold, with merge conflicts and the parts that this build cannot write.
+ */
 export function revalidator(
   model: Site,
   files: ContentFiles,
   tree: GitTree,
 ): (paths: string[]) => Promise<void> {
+  const readOnly = readOnlyParts(model);
   return async (paths) => {
-    const wanted = new Set(paths);
-    const changes = (await listTreeChanges(tree)).filter((change) => wanted.has(change.path));
-    const { validation } = await analyseChanges(model, files, changes, headSource(tree));
+    const validation = await validateSelection({ model, files, tree, listed: await listTreeChanges(tree), paths, readOnly });
     if (!validation.ok) {
       throw new ApiError("validation_failed", describeProblems(validation.problems), {
         issues: flattenProblems(validation.problems),

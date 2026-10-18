@@ -52,8 +52,8 @@ export interface ProseMirrorNode {
 function escapeText(text: string, inCell = false): string {
   // `<` is in the set because CommonMark passes raw HTML through. An editor
   // who types "<script>" means those characters, and writing them unescaped
-  // would put live markup in a file the build renders.
-  const inline = text.replace(/([\\`*_[\]<])/g, "\\$1");
+  // would put live markup in a file the build renders. `{%` would start a tag.
+  const inline = text.replace(/([\\`*_[\]<]|\{(?=%))/g, "\\$1");
   // A table cell is never the start of a line in the file.
   if (inCell) return inline;
   return inline
@@ -410,7 +410,10 @@ function widerRows(source: string, table: MarkdocNode): boolean {
  * `["an image", "a {% callout %} tag"]`. Empty when the editor can load it.
  */
 export function unsupportedMarkdoc(source: string | null | undefined): string[] {
-  if (!source?.trim()) return [];
+  return source?.trim() ? unsupportedIn(source, Markdoc.parse(source)) : [];
+}
+
+function unsupportedIn(source: string, ast: MarkdocNode): string[] {
   const found = new Set<string>();
 
   // `ancestors` is the path from the document down to the parent of `node`.
@@ -438,16 +441,24 @@ export function unsupportedMarkdoc(source: string | null | undefined): string[] 
     for (const child of node.children) visit(child, [...ancestors, node]);
   };
 
-  visit(Markdoc.parse(source), []);
+  visit(ast, []);
   return [...found];
 }
 
 /** A Markdoc document as ProseMirror JSON the editor can load. */
 export function fromMarkdoc(source: string | null | undefined): ProseMirrorNode {
-  if (!source?.trim()) return { type: "doc", content: [{ type: "paragraph" }] };
+  return source?.trim() ? docFrom(Markdoc.parse(source)) : docFrom(null);
+}
 
-  const content = fromBlocks(Markdoc.parse(source).children);
-
+function docFrom(ast: MarkdocNode | null): ProseMirrorNode {
+  const content = ast ? fromBlocks(ast.children) : [];
   // ProseMirror refuses an empty document; a paragraph is its idea of blank.
   return { type: "doc", content: content.length ? content : [{ type: "paragraph" }] };
+}
+
+/** `unsupportedMarkdoc` and `fromMarkdoc` with one parse, for the field as it loads. */
+export function readMarkdoc(source: string | null | undefined): { unsupported: string[]; doc: ProseMirrorNode } {
+  if (!source?.trim()) return { unsupported: [], doc: docFrom(null) };
+  const ast = Markdoc.parse(source);
+  return { unsupported: unsupportedIn(source, ast), doc: docFrom(ast) };
 }

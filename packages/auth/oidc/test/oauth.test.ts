@@ -13,12 +13,12 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
 import { collection, defineSite, slug, text } from "@micacms/core/internal";
-import { contentFiles, createApp, createLogger, createRuntimeContext, type Env } from "@micacms/runtime";
+import { contentFiles, createApp, createLogger, createRuntimeContext, type Env, type OwnerPolicy } from "@micacms/runtime";
 import { Hono } from "hono";
 
-import { createAgentAuthorization, createSessionService, type AdmissionPolicy, type AuthConfig, type SessionIdentity, type SessionService } from "../dist/index.js";
-import { checkRedirectUri, isPublicAddress } from "../dist/oauth/index.js";
-import { fetchJson } from "../dist/oauth/clients.js";
+import { createAgentAuthorization, createSessionService, type AdmissionPolicy, type AuthConfig, type SessionIdentity, type SessionService } from "../src/index.js";
+import { checkRedirectUri, isPublicAddress } from "../src/oauth/index.js";
+import { fetchJson } from "../src/oauth/clients.js";
 
 const ISSUER = "https://cms.example.com";
 const RESOURCE = new URL(`${ISSUER}/mcp`);
@@ -59,6 +59,17 @@ function pkce() {
   return { verifier, challenge: createHash("sha256").update(verifier).digest("base64url") };
 }
 
+/** These tests check the gate in front of `/mcp`, and never publish. */
+const noPublish: OwnerPolicy = {
+  owner: "managed",
+  publishAvailability: () => ({ enabled: false, reason: "These tests do not publish." }),
+  prepare: async () => {},
+  commitAuthor: (editor) => editor,
+  push: async () => {
+    throw new Error("These tests do not publish.");
+  },
+};
+
 interface Setup {
   request(path: string, init?: RequestInit & { session?: string }): Promise<Response>;
   sessions: SessionService;
@@ -75,7 +86,6 @@ function setup(options: { publish?: boolean; sessions?: SessionService; resource
       PORT: 6422,
       MICA_PUBLIC_URL: ISSUER,
       MICA_CONTENT_ROOT: root,
-      MICA_LOCAL_PUBLISH: false,
       MICA_MAX_UPLOAD_BYTES: 1024,
       MICA_TRUST_PROXY: false,
       MICA_MCP_PUBLISH: false,
@@ -86,6 +96,7 @@ function setup(options: { publish?: boolean; sessions?: SessionService; resource
     model: site,
     files: contentFiles({ root }),
     logger: createLogger({ level: "silent", pretty: false }),
+    policy: noPublish,
   });
   const sessions = options.sessions ?? createSessionService(config);
   const agents = createAgentAuthorization({

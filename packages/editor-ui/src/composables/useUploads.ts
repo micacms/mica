@@ -6,7 +6,7 @@
 
 import { computed, ref } from "vue";
 
-import { api, ApiError, type MediaItem } from "@/api";
+import { api, messageOf, type MediaItem } from "@/api";
 import { uploadEach, type UploadState } from "@/lib/uploads";
 import { useStaging } from "@/stores/staging";
 
@@ -33,7 +33,7 @@ export function useUploads() {
         files,
         (file) => api.media.uploadOne(file, target),
         (next) => (states.value = next),
-        (error) => (error instanceof ApiError ? error.message : "The upload failed."),
+        (error) => messageOf(error, "The upload failed."),
       );
       failed.value = result.failed;
       // An upload is a pending change of its own, even before the form is saved.

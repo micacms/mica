@@ -6,12 +6,15 @@
  * the field's toolbar limits only the buttons. Stored Markdoc with anything
  * else, or content that Tiptap refuses, is shown read-only with the reason:
  * the field never opens empty, and never writes back a copy with parts
- * missing. An editor never has to know a markup language.
+ * missing. That is decided as the field loads; an edit that would make the
+ * text unkeepable, such as an image dropped into a list, is refused instead.
+ * An editor never has to know a markup language.
  *
  * What leaves this component is **Markdoc**, not HTML. Tiptap's own `getHTML()`
  * is never called: the value is converted from ProseMirror JSON on the way out
  * and back on the way in, because the stored form is a `.mdoc` file that has to
- * be readable in a diff and safe to render into a static site.
+ * be readable in a diff and safe to render into a static site. The conversion
+ * runs when the typing pauses, on blur, and before the form saves or leaves.
  */
 
 import { computed, inject, onBeforeUnmount, ref, watch } from "vue";
@@ -25,16 +28,13 @@ import { api, type MediaItem } from "@/api";
 import InputDialog from "@/components/InputDialog.vue";
 import MediaPicker from "@/components/MediaPicker.vue";
 import { useField, type FieldProps } from "@/composables/useField";
+import { debounce } from "@/lib/debounce";
 import { linkProblem } from "@/lib/links";
+import { equivalentMarkdoc, toMarkdoc, type ProseMirrorNode } from "@/lib/markdoc";
 import { MEDIA_FOLDER } from "@/lib/media-folder";
-import {
-  equivalentMarkdoc,
-  fromMarkdoc,
-  toMarkdoc,
-  unsupportedMarkdoc,
-  type ProseMirrorNode,
-} from "@/lib/markdoc";
-import { createRichTextExtensions, inputRules, richTextSchema } from "@/lib/rich-text-extensions";
+import { PENDING_EDITS } from "@/lib/pending-edits";
+import { createRichTextExtensions, inputRules, loadRichText } from "@/lib/rich-text-extensions";
+import { useToast } from "@/stores/toast";
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
@@ -47,27 +47,13 @@ const enabled = (feature: RichTextFeature) => toolbar.value.includes(feature);
 
 const source = computed(() => (typeof props.modelValue === "string" ? props.modelValue : ""));
 
-const unsupported = computed(() => unsupportedMarkdoc(source.value));
+const loaded = loadRichText(source.value);
+/** Decided at load, and again only when the form replaces the value: never by an edit. */
+const readOnlyReason = ref(loaded.readOnly);
+/** The Markdoc that the editor shows: as loaded, or as last converted. */
+let shown = source.value;
 
-/** A document that the schema refuses would load as an empty field. */
-const loadFailure = computed(() => {
-  if (unsupported.value.length > 0) return null;
-  try {
-    richTextSchema.nodeFromJSON(fromMarkdoc(source.value));
-    return null;
-  } catch (cause) {
-    return `The editor could not load this text (${(cause as Error).message}).`;
-  }
-});
-const readOnlyReason = computed(() =>
-  unsupported.value.length > 0
-    ? `This text contains ${list(unsupported.value)}, which the editor cannot show.`
-    : loadFailure.value,
-);
-
-function list(items: string[]): string {
-  return items.length < 2 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items.at(-1)}`;
-}
+const toast = useToast();
 
 function textboxAttributes(): Record<string, string> {
   const attributes: Record<string, string> = {
@@ -108,12 +94,12 @@ const imageBlocked = computed(() => {
 });
 
 const editor = useEditor({
-  content: readOnlyReason.value ? "" : fromMarkdoc(source.value),
+  content: loaded.doc ?? "",
   editable: !(locked.value || readOnlyReason.value),
   // The base styles are in style.css; an injected <style> tag would break the CSP.
   injectCSS: false,
 
-  extensions: createRichTextExtensions(toolbar.value, { imageUrl }),
+  extensions: createRichTextExtensions(toolbar.value, { imageUrl, onRefuse: (reason) => toast.info(reason) }),
   enableInputRules: inputRules(toolbar.value),
   enablePasteRules: inputRules(toolbar.value),
 
@@ -125,47 +111,55 @@ const editor = useEditor({
     transformPastedHTML: (html) => html.replace(/<img\b(?![^>]*\bdata-mica-src=)[^>]*>/gi, ""),
   },
 
-  onUpdate({ editor: instance }) {
-    // Read-only: the stored text stays exactly as it is.
-    if (readOnlyReason.value) return;
-
-    // ProseMirror represents "empty" as one empty paragraph; the model wants
-    // null, so that an untouched field does not write a file.
-    const next = instance.isEmpty ? null : toMarkdoc(instance.getJSON() as ProseMirrorNode);
-
-    // Tiptap also fires transactions that change nothing stored — normalising
-    // the parsed document on mount, or re-parsing after a reload. Emitting
-    // those would replace the value with a differently-serialized twin and
-    // mark a freshly saved form dirty, so only a real change leaves here.
-    const current = typeof props.modelValue === "string" ? props.modelValue : null;
-    if (equivalentMarkdoc(next, current)) return;
-
-    emit("update:modelValue", next);
-  },
+  // A keystroke only asks for the conversion. The first one after a pause gets it at once, so the form is dirty at once.
+  onUpdate: () => convertSoon(),
+  onBlur: () => convertSoon.flush(),
 });
 
+/** Converts the document to Markdoc and gives it to the form. */
+function convert(): void {
+  const instance = editor.value;
+  // Read-only: the stored text stays exactly as it is.
+  if (!instance || readOnlyReason.value) return;
+
+  // ProseMirror represents "empty" as one empty paragraph; the model wants
+  // null, so that an untouched field does not write a file.
+  const next = instance.isEmpty ? null : toMarkdoc(instance.getJSON() as ProseMirrorNode);
+  shown = next ?? "";
+
+  // Tiptap also fires transactions that change nothing stored — normalising
+  // the parsed document on mount, or re-parsing after a reload. Emitting
+  // those would replace the value with a differently-serialized twin and
+  // mark a freshly saved form dirty, so only a real change leaves here.
+  const current = typeof props.modelValue === "string" ? props.modelValue : null;
+  if (equivalentMarkdoc(next, current)) return;
+
+  emit("update:modelValue", next);
+}
+
+const convertSoon = debounce(convert, 300, { leading: true });
+// The form flushes it before a save, before it leaves the page, and before it keeps the changes in this tab.
+const removeFlush = inject(PENDING_EDITS, undefined)?.add(convertSoon.flush);
+
 /**
- * Keep the editor in sync when the value is replaced wholesale — reloading
- * after a conflict, for instance. Guarded so it does not fight the typing.
- *
- * The comparison goes through `toMarkdoc` rather than comparing the incoming
- * string to itself: the editor normalises as it parses, so the value it would
- * emit is the only fair thing to compare against, and anything else makes this
- * fire on every keystroke.
+ * Keep the editor in sync when the form replaces the value — reloading after
+ * a conflict, or restoring kept changes. The field's own value comes back
+ * equal to `shown` and changes nothing. Guarded so it does not fight the typing.
  */
 watch(
   () => props.modelValue,
   (next) => {
-    const instance = editor.value;
-    if (!instance || instance.isFocused || readOnlyReason.value) return;
-
     const incoming = typeof next === "string" ? next : "";
-    const current = instance.isEmpty ? "" : toMarkdoc(instance.getJSON() as ProseMirrorNode);
+    const instance = editor.value;
+    if (equivalentMarkdoc(incoming, shown) || !instance || instance.isFocused) return;
 
-    if (!equivalentMarkdoc(incoming, current)) {
-      // No update event, so this does not loop back.
-      instance.commands.setContent(fromMarkdoc(incoming), { emitUpdate: false });
-    }
+    // The form's value wins over a conversion that waits.
+    convertSoon.cancel();
+    const load = loadRichText(incoming);
+    shown = incoming;
+    readOnlyReason.value = load.readOnly;
+    // No update event, so this does not loop back.
+    if (load.doc) instance.commands.setContent(load.doc, { emitUpdate: false });
   },
 );
 
@@ -179,7 +173,12 @@ watch([describedBy, error, locked], () => {
   for (const [name, value] of Object.entries(textboxAttributes())) dom.setAttribute(name, value);
 });
 
-onBeforeUnmount(() => editor.value?.destroy());
+// A removed row takes its waiting edit along. Before any other unmount, a blur or the form has flushed it.
+onBeforeUnmount(() => {
+  removeFlush?.();
+  convertSoon.cancel();
+  editor.value?.destroy();
+});
 
 const linkDialog = ref({ open: false, href: "", error: null as string | null, existing: false });
 

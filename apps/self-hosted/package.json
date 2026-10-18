@@ -28,7 +28,7 @@
     "dev": "tsx watch src/index.ts",
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.test.json",
-    "test": "tsc -p tsconfig.test.json && node --test --import tsx test/*.test.ts"
+    "test": "node --test --import tsx test/*.test.ts"
   },
   "dependencies": {
     "@micacms/auth-oidc": "workspace:*",

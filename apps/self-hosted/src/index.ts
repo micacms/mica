@@ -34,6 +34,7 @@ import { editorUiDist } from "./admin-dir.js";
 import { agentRoutes } from "./agents.js";
 import { runCheck } from "./check.js";
 import { runCompact } from "./compact.js";
+import { operationalInfo } from "./operational.js";
 import { readiness } from "./readiness.js";
 import { currentToken, loadConfig, type SelfHostedConfig } from "./config.js";
 import { cloneLayout, CloneRefusal, openClone } from "./workspace/clone.js";
@@ -256,13 +257,7 @@ async function serve(): Promise<void> {
       revalidate.run = revalidator(next, files, tree);
     },
 
-    operational: () => ({
-      auth: authLabel,
-      admission: auth.admission.summary,
-      dataDir: config.dataDir,
-      sessionTtlHours: config.MICA_SESSION_TTL_HOURS,
-      sessionIdleHours: config.MICA_SESSION_IDLE_HOURS,
-    }),
+    operational: () => operationalInfo(config, { label: authLabel, admission: auth.admission.summary }),
 
     health: { ready: () => readiness(workspace.state()) },
 

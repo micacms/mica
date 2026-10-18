@@ -20,8 +20,8 @@ import {
   relativizeMedia,
   serializeEntry,
   type FieldMap,
-} from "../dist/internal.js";
-import { fileSystemSource } from "../dist/node.js";
+} from "../src/internal.js";
+import { fileSystemSource } from "../src/node.js";
 
 const FIXTURES = join(import.meta.dirname, "fixtures/format");
 const SPEC = join(import.meta.dirname, "../../../docs/content-format.md");

@@ -38,17 +38,26 @@ of `rush`.
 | `rush test` | Runs the tests of every package, with real Git on temporary repositories. |
 | `rush build` | Builds every package, the example and the website. |
 
-The browser tests need Docker: see [tests/browser/README.md](tests/browser/README.md).
+The tests run on the source of their package, so a test run builds nothing.
+The tests and the typecheck read the other packages from their build output:
+after a change to a package that others use, run `rush build` first.
+
+The browser tests of the self-hosted editor need Docker. The browser test of
+the local editor needs only `rush build`. See
+[tests/browser/README.md](tests/browser/README.md).
 
 ## Make a change
 
 1. Make a branch from an up-to-date `main`. Use one of these prefixes:
    `feature/`, `bugfix/`, `docs/`, `chore/`, `refactor/` or `content/`.
 2. Keep the change focused. Add or change tests when behaviour changes.
-3. Run `rush typecheck`, `rush test` and `rush build`. All must pass.
+3. Run `rush build`, `rush typecheck` and `rush test`. All must pass.
 4. If you changed a published package (`packages/*`, `apps/local-editor`),
    run `rush change` and describe the change for the release notes. Use the
-   bump type `none` when the release notes should not mention it.
+   bump type `none` when the release notes should not mention it. A change to
+   the editor UI goes on `@micacms/editor`. A change to the OIDC gate or to the
+   image (`apps/self-hosted`, `Dockerfile`) goes on `@micacms/runtime`. CI does
+   not find a missing change file for these.
 5. Update the documentation that your change makes wrong. The user guides are
    on the website, in `sites/micacms/content/docs`. The contributor docs are in
    `docs/`.

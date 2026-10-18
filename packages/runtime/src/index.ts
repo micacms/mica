@@ -6,8 +6,8 @@
 export { createApp, allowAll, type AuthSurface, type CreateAppOptions } from "./app.js";
 export {
   createRuntimeContext,
-  DEFAULT_SITE_ID,
   type CreateRuntimeContextOptions,
+  type OperationalFact,
   type OperationalInfo,
   type RuntimeContext,
   type RuntimeHealth,
@@ -28,7 +28,7 @@ export {
   type RuntimeEnv,
 } from "./config.js";
 export { startServer, type StartServerOptions } from "./server.js";
-export { actorOf, AGENT_SCOPES, clientIp, editorOf, type AgentGrant, type Env } from "./http.js";
+export { AGENT_SCOPES, clientIp, type AgentGrant, type Env } from "./http.js";
 export {
   loadSchema,
   SchemaError,
@@ -37,19 +37,16 @@ export {
 } from "./schema.js";
 export {
   allowedOrigins,
+  apiErrorOf,
   errorHandler,
   originGuard,
   rateLimit,
-  requestContext,
   securityHeaders,
 } from "./middleware/index.js";
-export { adminAssetsExist } from "./routes/admin-spa.js";
 export {
   ApiError,
-  badRequest,
   conflict,
   forbidden,
-  notFound,
   unauthenticated,
   type ApiErrorBody,
   type ErrorCode,
@@ -57,15 +54,17 @@ export {
 export { createLogger, type Logger } from "./lib/logger.js";
 export { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
 export { randomToken } from "./lib/id.js";
-export { DEFAULT_BASE_URL, DEFAULT_PORT } from "./lib/ports.js";
+export { DEFAULT_PORT } from "./lib/ports.js";
 export { VERSION } from "./lib/version.js";
 export {
   analyseChanges,
-  classifyPath,
   describeProblems,
   flattenProblems,
+  groupOf,
   type AnnotatedChange,
   type ChangeOwner,
+  type CompareTarget,
+  type Comparison,
   type ContentStagingService,
   type RepositoryInfo,
   type PublishInput,
@@ -75,24 +74,25 @@ export {
 } from "./services/changes.js";
 export {
   createWorkingTreeStagingService,
+  validateSelection,
+  type SelectionCheck,
   type WorkingTreeStagingDeps,
 } from "./services/staging.js";
-export { createMediaService, formatBytes, type MediaFile, type MediaService } from "./services/media.js";
+export { formatBytes, type MediaFile, type MediaService } from "./services/media.js";
 export { publishChanges } from "./services/publish.js";
+export { MODEL_UNREADABLE, refuseWhileModelUnreadable } from "./services/model-guard.js";
 export { storeUpload, type UploadInput } from "./services/upload.js";
+export type { Referrer } from "./services/links.js";
 export {
   createContentStore,
-  ContentError,
   ValidationError,
   type ContentStore,
   type SavedEntry,
   type SaveEntryInput,
 } from "./services/content-store.js";
 export {
-  checkChangePaths,
   ConflictError,
   contentFiles,
-  FilesError,
   type Author,
   type ContentFiles,
   type ContentFilesOptions,
@@ -101,7 +101,6 @@ export {
   type FileStat,
 } from "./workspace/files.js";
 export {
-  developerEnvironment,
   firstLine,
   GitError,
   gitRunner,
@@ -132,20 +131,34 @@ export type {
   SyncConflict,
   SyncStatus,
 } from "./workspace/policy.js";
-export { developerPolicy, type DeveloperPolicyOptions } from "./workspace/developer.js";
 export {
   commitPaths,
+  currentBranch,
   detachedHead,
-  headRevision,
-  headSource,
-  inRepo,
+  listTemporaries,
   listTreeChanges,
-  LITERAL,
   locateTree,
   parseStatus,
+  parseStatusEntries,
   recommitPaths,
+  temporaryOf,
+  unpushedCommits,
   type DetachedHead,
   type GitTree,
   type TreeChange,
+  type UnpushedCommits,
 } from "./workspace/tree.js";
-export { schemaStats } from "./lib/schema-stats.js";
+export type {
+  ChangesResponse,
+  EntryDetail,
+  EntrySummary,
+  MediaUsage,
+  ModelState,
+  Overview,
+  Schema,
+  SchemaCollection,
+  SchemaReferenceSet,
+  SchemaSingleton,
+  SingletonDetail,
+  SystemInfo,
+} from "./routes/responses.js";

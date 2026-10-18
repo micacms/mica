@@ -65,9 +65,6 @@ export const runtimeEnv = {
   /** The content root this Mica serves: a directory in a Git working tree. Each app sets it. */
   MICA_CONTENT_ROOT: z.string(),
 
-  /** `false` disables commit and push: Publish shows the pending changes read-only. */
-  MICA_LOCAL_PUBLISH: bool(true),
-
   MICA_MAX_UPLOAD_BYTES: z.coerce
     .number()
     .int()

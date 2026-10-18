@@ -1,55 +1,43 @@
-/** The staging API types, the before/after comparison and the analysis of a pending change set. */
+/** The staging API types, and the analysis of a pending change set: owners, groups, needs and problems. */
 
 import type { Author } from "../workspace/files.js";
 import {
   type Collection,
-  collectReferences,
   type ContentChange,
   type ContentSource,
   createReferenceCheck,
   entryDataPath,
-  entryFolder,
   entryTitle,
   type FieldIssue,
-  type FieldMap,
-  isValidSlug,
-  markdocImages,
-  MEDIA_DIR,
   ORDER_FILE,
+  ownerOfPath,
+  type PathOwner,
   type PublishResult,
-  readCollection,
   readCollectionEntry,
   readOrder,
   readSingleton,
-  relativizeMedia,
-  resolveMarkdocTarget,
-  resolveSlugField,
-  richTextValues,
   type Site,
   validateFields,
 } from "@micacms/core/internal";
 
-import { badRequest } from "../lib/errors.js";
 import type { SyncStatus } from "../workspace/policy.js";
 import type { DetachedHead, UnpushedCommits } from "../workspace/tree.js";
+import { brokenByRemoval, folderOf, labelEntry, linkNeeds } from "./links.js";
+import { detectRenames, followRenamedLinks } from "./renames.js";
 
-/** Where the change happened, in words an editor recognises. */
+/**
+ * Where the change happened, in words an editor recognises: core's
+ * `ownerOfPath`, and on an entry the slug before a pending rename, set on the
+ * files of both slugs.
+ */
 export type ChangeOwner =
-  | {
-      kind: "entry";
-      collection: string;
-      slug: string;
-      label: string;
-      /** The slug before a pending rename. Set on the files of both slugs. */
-      renamedFrom?: string;
-    }
-  | { kind: "singleton"; name: string; label: string }
-  | { kind: "order"; collection: string; label: string }
-  | { kind: "media"; label: string }
-  | { kind: "other"; label: string };
+  | (Extract<PathOwner, { kind: "entry" }> & { renamedFrom?: string })
+  | Exclude<PathOwner, { kind: "entry" }>;
 
 export interface AnnotatedChange extends ContentChange {
   owner: ChangeOwner;
+  /** The edit that the file belongs to, from `groupOf`: Publish and Discard never split one. */
+  group: string;
   /**
    * The file's revision, null for a deletion. Publish sends it back, so a file
    * saved after the review is not published unseen.
@@ -172,56 +160,6 @@ export interface Comparison {
 }
 
 /**
- * Reads one document from `published` and from `staged`. An order target
- * becomes `{ order: [{ slug, title }] }` on each side, in position order.
- */
-export async function compareSources(
-  model: Site,
-  published: ContentSource,
-  staged: ContentSource,
-  target: CompareTarget,
-): Promise<Omit<Comparison, "revisions">> {
-  if (target.kind === "singleton") {
-    const def = Object.hasOwn(model.singletons, target.name) ? model.singletons[target.name] : undefined;
-    if (!def) throw badRequest(`There is no singleton called "${target.name}".`);
-    return {
-      before: await readSingleton(published, def, target.name),
-      after: await readSingleton(staged, def, target.name),
-    };
-  }
-
-  const def = Object.hasOwn(model.collections, target.collection) ? model.collections[target.collection] : undefined;
-  if (!def) throw badRequest(`There is no collection called "${target.collection}".`);
-
-  if (target.kind === "entry") {
-    const from = target.from ?? target.slug;
-    for (const slug of [target.slug, from]) {
-      if (!isValidSlug(slug)) throw badRequest(`"${slug}" is not a slug.`);
-    }
-    const old = await readCollectionEntry(published, def, target.collection, from);
-    const after = await readCollectionEntry(staged, def, target.collection, target.slug);
-    if (from === target.slug) return { before: old, after };
-
-    // A rename: compare the on-disk form, where colocated media paths do not
-    // name the entry's folder.
-    return {
-      before: old && onDisk(def, target.collection, from, old),
-      after: after && onDisk(def, target.collection, target.slug, after),
-    };
-  }
-
-  const ordering = async (source: ContentSource) => {
-    const entries = await readCollection(source, def, target.collection);
-    if (entries.length === 0) return null;
-    return {
-      order: entries.map((entry) => ({ slug: entry.slug, title: entryTitle(def, entry.data) })),
-    };
-  };
-
-  return { before: await ordering(published), after: await ordering(staged) };
-}
-
-/**
  * Annotates a change set with owners and validates the entries it touches, in
  * one read of the affected collections. Only changed documents are validated: a
  * broken entry committed earlier must not block an unrelated publication.
@@ -235,7 +173,7 @@ export async function analyseChanges(
   /** `validate: false` only groups the changes, for the review check of Publish and Discard. */
   options: { validate?: boolean } = {},
 ): Promise<{ changes: AnnotatedChange[]; validation: StagingValidation }> {
-  const owners = changes.map((change) => classifyPath(model, change.path));
+  const owners: ChangeOwner[] = changes.map((change) => ownerOfPath(model, change.path));
 
   const problems: StagingProblem[] = [];
   const titles = new Map<string, string>();
@@ -303,37 +241,26 @@ export async function analyseChanges(
       const owner = owners[index]!;
       const needs = needsByPath.get(change.path);
       const extra = needs ? { needs } : {};
+      const group = groupOf(owner, change.path);
       if (owner.kind === "entry") {
         const def = model.collections[owner.collection]!;
         return {
           ...change,
           ...extra,
           owner: { ...owner, label: labelEntry(def, owner.slug, titles.get(`${owner.collection}/${owner.slug}`)) },
+          group,
         };
       }
-      return { ...change, ...extra, owner };
+      return { ...change, ...extra, owner, group };
     });
   if (options.validate === false) return { changes: annotate(), validation: { ok: true, problems: [] } };
 
   /** How to read each changed document as the website has it, by its data file. */
   const publishedOf = new Map<string, () => Promise<Record<string, unknown> | null>>();
   const addNeeds = (dataPath: string, fields: Collection["fields"], data: Record<string, unknown>): void => {
-    const needed = new Set<string>();
-    for (const reference of collectReferences(fields, data)) {
-      const path = reference.kind === "media" ? reference.path : entryDataPath(reference.collection, reference.slug);
-      if (path !== dataPath && created.has(path)) needed.add(path);
-    }
-    // An image in rich text needs its new file too, for example an upload to the shared folder.
-    for (const text of richTextValues(fields, data)) {
-      for (const target of markdocImages(text)) {
-        const path = resolveMarkdocTarget(target, folderOf(dataPath));
-        if (path && created.has(path)) needed.add(path);
-      }
-    }
-    if (needed.size > 0) needsByPath.set(dataPath, [...needed]);
+    const needed = linkNeeds(dataPath, fields, data, created);
+    if (needed.length > 0) needsByPath.set(dataPath, needed);
   };
-  /** The folder of a data file, from which its rich text reads a relative path. */
-  const folderOf = (dataPath: string): string => dataPath.slice(0, dataPath.lastIndexOf("/"));
 
   const validated = new Set<string>();
   // Each linked entry is looked up by its data file: only the targets that a changed document names.
@@ -394,31 +321,7 @@ export async function analyseChanges(
     }
   }
 
-  // A URL change and the links that follow it are published together, both ways. A
-  // document follows when the website's version of it links to the old URL; a new
-  // draft that links to the new URL only needs the change, and does not hold it back.
-  const renamed = new Map(
-    owners.flatMap((owner) =>
-      owner.kind === "entry" && owner.renamedFrom
-        ? [[entryDataPath(owner.collection, owner.slug), owner] as const]
-        : [],
-    ),
-  );
-  for (const [document, needed] of [...needsByPath]) {
-    for (const path of needed) {
-      const target = renamed.get(path);
-      if (!target || target.kind !== "entry") continue;
-      const before = await publishedOf.get(document)?.();
-      const fields = before && fieldsOfDocument(model, document);
-      const linkedBefore =
-        before &&
-        fields &&
-        collectReferences(fields, before).some(
-          (reference) => reference.kind === "relation" && reference.collection === target.collection && reference.slug === target.renamedFrom,
-        );
-      if (linkedBefore) needsByPath.set(path, [...new Set([...(needsByPath.get(path) ?? []), document])]);
-    }
-  }
+  await followRenamedLinks(model, owners, needsByPath, publishedOf);
 
   problems.push(...(await brokenByRemoval(model, source, changes, owners, entriesByCollection, titles)));
 
@@ -426,14 +329,6 @@ export async function analyseChanges(
     changes: annotate(),
     validation: { ok: problems.length === 0, problems },
   };
-}
-
-/** The fields of the entry or singleton whose data file is `path`. */
-function fieldsOfDocument(model: Site, path: string): Collection["fields"] | null {
-  const owner = classifyPath(model, path);
-  if (owner.kind === "entry") return model.collections[owner.collection]?.fields ?? null;
-  if (owner.kind === "singleton") return model.singletons[owner.name]?.fields ?? null;
-  return null;
 }
 
 /**
@@ -449,254 +344,16 @@ export function ownedByTarget(owner: ChangeOwner, target: CompareTarget): boolea
   return owner.kind === "order" && owner.collection === target.collection;
 }
 
-/** Which piece of content a file belongs to, read from the model's path layout. */
-export function classifyPath(model: Site, path: string): ChangeOwner {
-  const segments = path.split("/");
-  const head = segments[0] ?? "";
-
-  const collection = model.collections[head];
-  if (collection && segments.length > 1) {
-    if (segments.length === 2 && segments[1] === ORDER_FILE) {
-      return { kind: "order", collection: head, label: `${collection.label}: order` };
-    }
-
-    const slug = segments[1]!;
-    if (segments.length >= 3 && isValidSlug(slug)) return { kind: "entry", collection: head, slug, label: slug };
-  }
-
-  const singleton = model.singletons[head];
-  if (singleton && segments.length > 1) return { kind: "singleton", name: head, label: singleton.label };
-
-  if (head === MEDIA_DIR) return { kind: "media", label: "Shared media" };
-
-  return { kind: "other", label: path };
-}
-
-/** Content share that two versions of an entry need to count as one moved entry, as in Git. */
-const RENAME_SIMILARITY = 0.5;
-
 /**
- * Marks renamed entries in place in `owners`. An entry has no identity but its
- * slug, so deleted and created entries are paired by content, like Git's rename
- * detection. An order file whose only change is the renamed slug joins the
- * entry, so a discard cannot leave the order naming a slug that does not exist.
+ * The key that keeps the files of one piece of content together: an entry, a
+ * singleton, an order, or one file. Publish, Discard, the Publish page and a
+ * sync conflict use the same keys.
  */
-async function detectRenames(
-  model: Site,
-  published: ContentSource,
-  source: ContentSource,
-  changes: ContentChange[],
-  owners: ChangeOwner[],
-  /** The changed entries as staged; null for a removed one. */
-  staged: Map<string, Map<string, Record<string, unknown> | null>>,
-): Promise<void> {
-  const kinds = new Map<string, Map<string, Set<ContentChange["kind"]>>>();
-  owners.forEach((owner, index) => {
-    if (owner.kind !== "entry") return;
-    const bySlug = kinds.get(owner.collection) ?? new Map<string, Set<ContentChange["kind"]>>();
-    kinds.set(owner.collection, bySlug);
-    const set = bySlug.get(owner.slug) ?? new Set<ContentChange["kind"]>();
-    bySlug.set(owner.slug, set);
-    set.add(changes[index]!.kind);
-  });
-
-  for (const [name, bySlug] of kinds) {
-    const after = staged.get(name);
-    if (!after) continue;
-
-    const only = (kind: ContentChange["kind"]) =>
-      [...bySlug].filter(([, set]) => set.size === 1 && set.has(kind)).map(([slug]) => slug);
-    const deleted = only("delete").filter((slug) => !after.get(slug));
-    const created = only("create").filter((slug) => after.get(slug));
-    if (deleted.length === 0 || created.length === 0) continue;
-
-    // Only the candidates are read on the published side, not the collection.
-    const def = model.collections[name]!;
-    const publishedEntry = (slug: string) => readCollectionEntry(published, def, name, slug).catch(() => null);
-    const before = new Map<string, Record<string, unknown> | null>();
-    await Promise.all([...deleted, ...created].map(async (slug) => before.set(slug, await publishedEntry(slug))));
-
-    const candidates: Array<{ from: string; to: string; score: number }> = [];
-    for (const from of deleted) {
-      const old = before.get(from);
-      if (!old) continue;
-      for (const to of created) {
-        if (before.get(to)) continue;
-        const score = similarity(def, onDisk(def, name, from, old), onDisk(def, name, to, after.get(to)!));
-        if (score >= RENAME_SIMILARITY) candidates.push({ from, to, score });
-      }
-    }
-
-    const renamedTo = new Map<string, string>();
-    const paired = new Set<string>();
-    for (const { from, to } of candidates.sort((a, b) => b.score - a.score)) {
-      if (renamedTo.has(from) || paired.has(to)) continue;
-      renamedTo.set(from, to);
-      paired.add(to);
-    }
-
-    if (renamedTo.size === 0) continue;
-
-    const renamedFrom = new Map([...renamedTo].map(([from, to]) => [to, from]));
-    const orderMovesOnlySlugs = await onlyRenamedInOrder(published, source, name, renamedTo);
-    const [firstFrom, firstTo] = [...renamedTo][0]!;
-
-    owners.forEach((owner, index) => {
-      if (owner.kind === "order" && owner.collection === name && orderMovesOnlySlugs) {
-        owners[index] = {
-          kind: "entry",
-          collection: name,
-          slug: firstTo,
-          label: firstTo,
-          renamedFrom: firstFrom,
-        };
-      }
-      if (owner.kind !== "entry" || owner.collection !== name) return;
-      const to = renamedTo.get(owner.slug);
-      if (to) owners[index] = { ...owner, slug: to, label: to, renamedFrom: owner.slug };
-      const from = renamedFrom.get(owner.slug);
-      if (from) owners[index] = { ...owner, renamedFrom: from };
-    });
-  }
-}
-
-/** True when a collection's staged order is the published one with the renamed slugs replaced. */
-async function onlyRenamedInOrder(
-  published: ContentSource,
-  staged: ContentSource,
-  name: string,
-  renamedTo: Map<string, string>,
-): Promise<boolean> {
-  const path = `${name}/${ORDER_FILE}`;
-  const parse = (raw: string | null): unknown => {
-    try {
-      return raw === null ? null : JSON.parse(raw);
-    } catch {
-      return null;
-    }
-  };
-
-  const before = parse(await published.read(path));
-  const after = parse(await staged.read(path));
-  if (!Array.isArray(before) || !Array.isArray(after)) return false;
-
-  const expected = before.map((slug: unknown) =>
-    typeof slug === "string" ? (renamedTo.get(slug) ?? slug) : slug,
-  );
-  return canonical(expected) === canonical(after);
-}
-
-/** The share of non-empty fields, the slug aside, that two versions of an entry agree on. */
-function similarity(def: Collection, a: Record<string, unknown>, b: Record<string, unknown>): number {
-  const slugKey = resolveSlugField(def);
-  let compared = 0;
-  let equal = 0;
-  for (const key of Object.keys(def.fields)) {
-    if (key === slugKey || (isEmpty(a[key]) && isEmpty(b[key]))) continue;
-    compared += 1;
-    if (canonical(a[key]) === canonical(b[key])) equal += 1;
-  }
-  return compared === 0 ? 0 : equal / compared;
-}
-
-/** Entry data with media paths as the files store them: relative to the entry's folder. */
-function onDisk(
-  def: Collection,
-  collection: string,
-  slug: string,
-  data: Record<string, unknown>,
-): Record<string, unknown> {
-  return relativizeMedia(def.fields, data, entryFolder(collection, slug));
-}
-
-function isEmpty(value: unknown): boolean {
-  return value === undefined || value === null || value === "" || (Array.isArray(value) && value.length === 0);
-}
-
-/** JSON with sorted keys, so two equal objects compare equal. */
-function canonical(value: unknown): string {
-  return JSON.stringify(value ?? null, (_key, entry: unknown) => {
-    if (entry === null || typeof entry !== "object" || Array.isArray(entry)) return entry;
-    const record = entry as Record<string, unknown>;
-    return Object.fromEntries(Object.keys(record).sort().map((key) => [key, record[key]]));
-  });
-}
-
-/**
- * Entries and files that the change set removes while another entry still
- * points at them. Publishing them would break a link or an image on the site.
- */
-async function brokenByRemoval(
-  model: Site,
-  source: ContentSource,
-  changes: ContentChange[],
-  owners: ChangeOwner[],
-  /** The changed entries as staged; null for a removed one. */
-  entriesByCollection: Map<string, Map<string, Record<string, unknown> | null>>,
-  titles: Map<string, string>,
-): Promise<StagingProblem[]> {
-  const removedEntries = new Map<string, { collection: string; slug: string; renamedTo?: string }>();
-  const removedFiles = new Set<string>();
-  changes.forEach((change, index) => {
-    const owner = owners[index]!;
-    if (change.kind !== "delete") return;
-    if (owner.kind === "entry") {
-      // A URL change removes the old slug: links to it break as with a delete.
-      const gone = owner.renamedFrom ?? owner.slug;
-      if (!entriesByCollection.get(owner.collection)?.get(gone)) {
-        const renamedTo = owner.renamedFrom ? owner.slug : undefined;
-        removedEntries.set(`${owner.collection}/${gone}`, { collection: owner.collection, slug: gone, ...(renamedTo ? { renamedTo } : {}) });
-        return;
-      }
-    }
-    // Only a media file can be a target; a cleared rich-text file or an order file cannot.
-    if (!change.path.endsWith(".json") && !change.path.endsWith(".mdoc")) removedFiles.add(change.path);
-  });
-  if (removedEntries.size === 0 && removedFiles.size === 0) return [];
-
-  const linkedFrom = new Map<string, string[]>();
-  const note = (target: string, from: string) => linkedFrom.set(target, [...(linkedFrom.get(target) ?? []), from]);
-
-  const scan = (label: string, fields: FieldMap, data: Record<string, unknown>) => {
-    for (const reference of collectReferences(fields, data)) {
-      const target = reference.kind === "relation" ? `${reference.collection}/${reference.slug}` : reference.path;
-      if (removedEntries.has(target) || removedFiles.has(target)) note(target, label);
-    }
-  };
-
-  // Only a removal reads the whole site: what links to the removed entry or file can be anywhere.
-  for (const [name, def] of Object.entries(model.collections)) {
-    let entries: Awaited<ReturnType<typeof readCollection>>;
-    try {
-      entries = await readCollection(source, def, name);
-    } catch {
-      continue; // An unreadable collection is reported where it is changed.
-    }
-    for (const { slug, data } of entries) scan(labelEntry(def, slug, entryTitle(def, data)), def.fields, data);
-  }
-  for (const [name, def] of Object.entries(model.singletons)) {
-    const data = await readSingleton(source, def, name).catch(() => null);
-    if (data) scan(def.label, def.fields, data);
-  }
-
-  const problems: StagingProblem[] = [];
-  for (const [target, from] of linkedFrom) {
-    const entry = removedEntries.get(target);
-    const def = entry ? model.collections[entry.collection]! : null;
-    const message = entry?.renamedTo
-      ? `The URL changes from "${entry.slug}" to "${entry.renamedTo}", and ${from.join(", ")} still link to "${entry.slug}". Change those links first, or publish them together.`
-      : `Still linked from ${from.join(", ")}. Remove those links first, or publish them together.`;
-    problems.push({
-      path: entry ? entryDataPath(entry.collection, entry.slug) : target,
-      label: entry && def ? labelEntry(def, entry.slug, titles.get(target)) : target,
-      issues: [{ path: "", message }],
-    });
-  }
-  return problems;
-}
-
-function labelEntry(def: Collection, slug: string, title: string | undefined): string {
-  return `${def.labelSingular ?? def.label}: ${title ?? slug}`;
+export function groupOf(owner: ChangeOwner, path: string): string {
+  if (owner.kind === "entry") return `entry:${owner.collection}/${owner.slug}`;
+  if (owner.kind === "singleton") return `singleton:${owner.name}`;
+  if (owner.kind === "order") return `order:${owner.collection}`;
+  return `file:${path}`;
 }
 
 export function describeProblems(problems: StagingProblem[]): string {

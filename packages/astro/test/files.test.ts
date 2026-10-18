@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { join, resolve } from "node:path";
 import { describe, it } from "node:test";
 
-import { mediaFile } from "../dist/index.js";
+import { mediaFile } from "../src/index.js";
 
 describe("mediaFile", () => {
   it("resolves a media path in the content root", () => {

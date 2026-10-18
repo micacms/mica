@@ -4,14 +4,13 @@
  * Git is the history, and `revision` makes concurrent edits safe.
  */
 
-import { ReadOnlyError, ValidationError } from "../services/content-store.js";
-import { ConflictError } from "../workspace/files.js";
 import { compareEntries, entryFolder, entryTitle } from "@micacms/core/internal";
 import { Hono } from "hono";
 import { z } from "zod";
 
-import { ApiError, badRequest, notFound } from "../lib/errors.js";
+import { badRequest, notFound } from "../lib/errors.js";
 import { editorOf, type Env } from "../http.js";
+import type { EntryDetail, EntrySummary, SingletonDetail } from "./responses.js";
 
 const saveSchema = z.object({
   data: z.record(z.string(), z.unknown()),
@@ -27,6 +26,14 @@ const saveSchema = z.object({
   updateLinks: z.boolean().optional(),
 });
 
+const singletonSchema = z.object({
+  data: z.record(z.string(), z.unknown()),
+  /** The revision the editor opened; absent writes unconditionally. */
+  revision: z.string().nullable().optional(),
+  /** The editor saw that a colleague saved since, and chose to save over it. Logged. */
+  keepMine: z.boolean().optional(),
+});
+
 const reorderSchema = z.object({
   slugs: z.array(z.string().min(1)).max(2000),
   /** The revision of the order the editor saw; `null`: the collection had no order file. */
@@ -39,21 +46,6 @@ async function jsonBody(c: { req: { json(): Promise<unknown> } }): Promise<unkno
   });
 }
 
-/** Maps a conflict to 409 and a validation failure to 422; other errors go to the error handler. */
-async function handled<T>(run: () => Promise<T>): Promise<T> {
-  try {
-    return await run();
-  } catch (error) {
-    if (error instanceof ConflictError || error instanceof ReadOnlyError) {
-      throw new ApiError("conflict", error.message);
-    }
-    if (error instanceof ValidationError) {
-      throw new ApiError("validation_failed", error.message, { issues: error.issues });
-    }
-    throw error;
-  }
-}
-
 export function adminContentRoutes(): Hono<Env> {
   const app = new Hono<Env>();
 
@@ -64,18 +56,13 @@ export function adminContentRoutes(): Hono<Env> {
 
     // Before the list: the revision is never newer than the order the editor sees.
     const orderRevision = await content.orderRevision(collection);
-    const entries = await handled(() => content.list(collection));
-    const search = c.req.query("search")?.trim().toLowerCase();
-
-    const items = entries
-      .map((entry) => ({
+    const items = (await content.list(collection))
+      .map((entry): EntrySummary => ({
         slug: entry.slug,
         position: entry.position,
         title: entryTitle(def, entry.data),
         data: entry.data,
       }))
-      // Content trees are small, so an in-memory substring match is sufficient.
-      .filter((item) => !search || JSON.stringify(item.data).toLowerCase().includes(search))
       .sort(compareEntries(def));
 
     return c.json({ items, total: items.length, orderRevision });
@@ -86,12 +73,10 @@ export function adminContentRoutes(): Hono<Env> {
     const parsed = saveSchema.safeParse(await jsonBody(c));
     if (!parsed.success) throw badRequest("The entry payload is malformed.");
 
-    const saved = await handled(() =>
-      content.save(c.req.param("collection"), {
-        data: parsed.data.data,
-        expectedRevision: parsed.data.revision ?? null,
-      }),
-    );
+    const saved = await content.save(c.req.param("collection"), {
+      data: parsed.data.data,
+      expectedRevision: parsed.data.revision ?? null,
+    });
 
     return c.json(saved, 201);
   });
@@ -101,7 +86,7 @@ export function adminContentRoutes(): Hono<Env> {
     const parsed = reorderSchema.safeParse(await jsonBody(c));
     if (!parsed.success) throw badRequest("Expected a list of entry slugs and the revision of the order.");
 
-    const revision = await handled(() => content.reorder(c.req.param("collection"), parsed.data.slugs, parsed.data.revision));
+    const revision = await content.reorder(c.req.param("collection"), parsed.data.slugs, parsed.data.revision);
     return c.json({ ok: true, revision });
   });
 
@@ -112,9 +97,7 @@ export function adminContentRoutes(): Hono<Env> {
     if (!source.trim()) return c.json({ slug: "" });
 
     return c.json({
-      slug: await handled(() =>
-        content.suggestSlug(c.req.param("collection"), source, c.req.query("except")),
-      ),
+      slug: await content.suggestSlug(c.req.param("collection"), source, c.req.query("except")),
     });
   });
 
@@ -123,7 +106,7 @@ export function adminContentRoutes(): Hono<Env> {
     const collection = c.req.param("collection");
     const slug = c.req.param("slug");
 
-    const entry = await handled(() => content.get(collection, slug));
+    const entry = await content.get(collection, slug);
     if (!entry) throw notFound("This entry no longer exists.");
 
     const def = content.requireCollection(collection);
@@ -135,7 +118,7 @@ export function adminContentRoutes(): Hono<Env> {
       data: entry.data,
       path: entryFolder(collection, entry.slug),
       revision: await content.revisionOf(collection, slug),
-    });
+    } satisfies EntryDetail);
   });
 
   app.put("/collections/:collection/entries/:slug", async (c) => {
@@ -143,14 +126,12 @@ export function adminContentRoutes(): Hono<Env> {
     const parsed = saveSchema.safeParse(await jsonBody(c));
     if (!parsed.success) throw badRequest("The entry payload is malformed.");
 
-    const saved = await handled(() =>
-      content.save(c.req.param("collection"), {
-        data: parsed.data.data,
-        slug: c.req.param("slug"),
-        expectedRevision: parsed.data.revision,
-        ...(parsed.data.updateLinks ? { updateLinks: true } : {}),
-      }),
-    );
+    const saved = await content.save(c.req.param("collection"), {
+      data: parsed.data.data,
+      slug: c.req.param("slug"),
+      expectedRevision: parsed.data.revision,
+      ...(parsed.data.updateLinks ? { updateLinks: true } : {}),
+    });
     if (parsed.data.keepMine) {
       c.get("ctx").logger.info("Kept own version over a newer save", {
         entry: `${c.req.param("collection")}/${c.req.param("slug")}`,
@@ -167,9 +148,7 @@ export function adminContentRoutes(): Hono<Env> {
     // The revision the editor saw: a colleague's later save is not deleted unseen.
     const revision = c.req.query("revision");
     if (!revision) throw badRequest("Send the revision of the entry that you delete.");
-    await handled(() =>
-      content.remove(c.req.param("collection"), c.req.param("slug"), { expectedRevision: revision }),
-    );
+    await content.remove(c.req.param("collection"), c.req.param("slug"), { expectedRevision: revision });
 
     return c.json({ ok: true });
   });
@@ -177,9 +156,7 @@ export function adminContentRoutes(): Hono<Env> {
   /** Entries elsewhere that point at this one — shown before a delete. */
   app.get("/collections/:collection/entries/:slug/references", async (c) => {
     const { content } = c.get("ctx").services;
-    const references = await handled(() =>
-      content.findReferences(c.req.param("collection"), c.req.param("slug")),
-    );
+    const references = await content.findReferences(c.req.param("collection"), c.req.param("slug"));
 
     return c.json({ references });
   });
@@ -193,21 +170,20 @@ export function adminContentRoutes(): Hono<Env> {
       name,
       label: def.label,
       path: entryFolder(name),
-      data: await handled(() => content.getSingleton(name)),
+      data: await content.getSingleton(name),
       revision: await content.revisionOfSingleton(name),
-    });
+    } satisfies SingletonDetail);
   });
 
   app.put("/singletons/:name", async (c) => {
     const { content } = c.get("ctx").services;
-    const body = (await jsonBody(c)) as { data?: unknown; revision?: string | null; keepMine?: boolean };
+    const parsed = singletonSchema.safeParse(await jsonBody(c));
+    if (!parsed.success) throw badRequest("The settings payload is malformed.");
 
-    const saved = await handled(() =>
-      content.saveSingleton(c.req.param("name"), body?.data ?? {}, {
-        expectedRevision: body?.revision,
-      }),
-    );
-    if (body?.keepMine === true) {
+    const saved = await content.saveSingleton(c.req.param("name"), parsed.data.data, {
+      expectedRevision: parsed.data.revision,
+    });
+    if (parsed.data.keepMine === true) {
       c.get("ctx").logger.info("Kept own version over a newer save", { singleton: c.req.param("name"), editor: editorOf(c) });
     }
 

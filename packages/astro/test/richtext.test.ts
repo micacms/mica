@@ -11,7 +11,7 @@ import { describe, it } from "node:test";
 
 import Markdoc from "@markdoc/markdoc";
 
-import { renderRichText, validateRichText, type GetImage } from "../dist/index.js";
+import { renderRichText, validateRichText, type GetImage } from "../src/index.js";
 
 describe("renderRichText", () => {
   it("renders the constructs the field DSL offers", async () => {

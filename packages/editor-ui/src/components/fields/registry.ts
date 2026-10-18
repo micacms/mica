@@ -6,7 +6,9 @@
  * architecture, which V1 explicitly does not want.
  *
  * `object` and `repeater` are async because they render `FieldRenderer`, which
- * renders them: a static import would be a module cycle.
+ * renders them: a static import would be a module cycle. `richText` is async
+ * because Tiptap and Markdoc are the largest part of the form: only a form
+ * with rich text loads them.
  */
 
 import { defineAsyncComponent, type Component } from "vue";
@@ -21,7 +23,6 @@ import DateField from "./DateField.vue";
 import MediaField from "./MediaField.vue";
 import NumberField from "./NumberField.vue";
 import RelationField from "./RelationField.vue";
-import RichTextField from "./RichTextField.vue";
 import SelectField from "./SelectField.vue";
 import SlugField from "./SlugField.vue";
 import TextField from "./TextField.vue";
@@ -30,7 +31,7 @@ import TextareaField from "./TextareaField.vue";
 export const fieldComponents: Record<FieldKind, Component> = {
   text: TextField,
   textarea: TextareaField,
-  richText: RichTextField,
+  richText: defineAsyncComponent(() => import("./RichTextField.vue")),
   number: NumberField,
   boolean: BooleanField,
   date: DateField,

@@ -1,9 +1,64 @@
 /**
  * Admin API client: one `request` function that attaches the CSRF header and
- * surfaces field-level issues for forms.
+ * surfaces field-level issues for forms. The response shapes are the
+ * runtime's own types, imported as types only: nothing of the server is in
+ * the bundle.
  */
 
-import type { AnyField, FieldIssue } from "@micacms/core/internal";
+import type { FieldIssue, PublishResult } from "@micacms/core/internal";
+import type {
+  AnnotatedChange,
+  ChangeOwner,
+  ChangesResponse,
+  CompareTarget,
+  Comparison,
+  EntryDetail,
+  EntrySummary,
+  MediaFile,
+  Overview,
+  Referrer,
+  SavedEntry,
+  Schema,
+  SchemaCollection,
+  SchemaReferenceSet,
+  SchemaSingleton,
+  SingletonDetail,
+  StagingProblem,
+  SyncConflict,
+  SyncStatus,
+  SystemInfo,
+} from "@micacms/runtime";
+
+export type {
+  ChangeOwner,
+  CompareTarget,
+  Comparison,
+  EntryDetail,
+  EntrySummary,
+  Overview,
+  Referrer,
+  SavedEntry,
+  Schema,
+  SchemaCollection,
+  SchemaReferenceSet,
+  SchemaSingleton,
+  SingletonDetail,
+  StagingProblem,
+  SyncConflict,
+  SyncStatus,
+  SystemInfo,
+};
+
+/** One path the publication writes or deletes, with the edit it belongs to. See `lib/edits.ts` for the unit an editor sees. */
+export type FileChange = AnnotatedChange;
+
+/** The pending change set — what is Saved and not yet Published — and the model the server checks it with. */
+export type StagingStatus = ChangesResponse;
+
+export type PublishOutcome = PublishResult;
+
+/** A file in the content repository. */
+export type MediaItem = MediaFile;
 
 const BASE = "/api";
 
@@ -26,6 +81,10 @@ export class ApiError extends Error {
   }
 }
 
+/** What to tell the editor about a failure: the server's words, or `fallback` for anything else. */
+export function messageOf(error: unknown, fallback: string): string {
+  return error instanceof ApiError ? error.message : fallback;
+}
 
 /** The CSRF cookie is readable by design — it is echoed back as a header. `__Host-` over https. */
 function csrfToken(): string {
@@ -43,6 +102,7 @@ export interface RequestOptions {
 
 let onUnauthenticated: (() => void) | null = null;
 let onSessionExpiry: ((at: string) => void) | null = null;
+let onModelUnreadable: (() => void) | null = null;
 
 /** Called on every 401, so that the shell can say that the session ended. */
 export function whenUnauthenticated(handler: () => void): void {
@@ -52,6 +112,11 @@ export function whenUnauthenticated(handler: () => void): void {
 /** Called with the session's end from each response that names it. */
 export function whenSessionExpiry(handler: (at: string) => void): void {
   onSessionExpiry = handler;
+}
+
+/** Called when the server refuses a write because it cannot read a newer content model, so that Save and Publish can say why. */
+export function whenModelUnreadable(handler: () => void): void {
+  onModelUnreadable = handler;
 }
 
 export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -91,75 +156,55 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
 
   const expires = response.headers.get("x-mica-session-expires");
   if (expires) onSessionExpiry?.(expires);
+  if (response.status === 401) onUnauthenticated?.();
 
-  if (response.status === 204) return undefined as T;
-
-  const text = await response.text();
-  const payload = text ? (JSON.parse(text) as unknown) : null;
-
-  if (!response.ok) {
-    if (response.status === 401) onUnauthenticated?.();
-    const envelope = payload as { error?: { code?: string; message?: string; issues?: FieldIssue[] } };
-    throw new ApiError(
-      response.status,
-      envelope?.error?.code ?? "error",
-      envelope?.error?.message ?? `Request failed (${response.status}).`,
-      envelope?.error?.issues ?? [],
-    );
+  try {
+    return await readResponse<T>(response);
+  } catch (error) {
+    if (error instanceof ApiError && error.code === "model_unreadable") onModelUnreadable?.();
+    throw error;
   }
+}
 
-  return payload as T;
+/**
+ * The body of a response, or the `ApiError` of a refusal. The status comes
+ * first, and only a JSON response is read as JSON: a proxy in front of Mica
+ * can answer with an HTML page, such as a 413 for a large upload.
+ */
+export async function readResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    const envelope = isJson(response) ? ((await response.json().catch(() => null)) as ErrorEnvelope | null) : null;
+    const error = envelope?.error;
+    throw new ApiError(response.status, error?.code ?? "error", error?.message ?? statusMessage(response.status), error?.issues ?? []);
+  }
+  if (response.status === 204) return undefined as T;
+  if (!isJson(response)) throw unreadable(response.status);
+  try {
+    return (await response.json()) as T;
+  } catch {
+    throw unreadable(response.status);
+  }
+}
+
+interface ErrorEnvelope {
+  error?: { code?: string; message?: string; issues?: FieldIssue[] };
+}
+
+const isJson = (response: Response): boolean => /[/+]json\b/.test(response.headers.get("content-type") ?? "");
+
+const unreadable = (status: number) => new ApiError(status, "unreadable_response", "The server sent an answer that the editor cannot read. Try again.");
+
+/** Words for a refusal without Mica's own message, such as one from a proxy. */
+function statusMessage(status: number): string {
+  if (status === 401) return "Your session has ended. Sign in again.";
+  if (status === 413) return "This is too large for the server. Try a smaller file.";
+  if (status === 502 || status === 503 || status === 504) return "The server cannot be reached just now. Try again in a moment.";
+  return `The request failed (${status}). Try again.`;
 }
 
 /* ------------------------------------------------------------------ *
- * Response shapes
+ * Editor-only shapes: the auth surface answers these, not the runtime
  * ------------------------------------------------------------------ */
-
-export interface SchemaCollection {
-  name: string;
-  label: string;
-  labelSingular: string;
-  description: string | null;
-  sortable: boolean;
-  defaultSort: { field: string; direction: "asc" | "desc" } | null;
-  titleField: string;
-  slugField: string;
-  listedFields: string[];
-  fields: Record<string, AnyField>;
-  /** The model's `url`, such as `/news/{slug}`, or null. */
-  url: string | null;
-  /** The page of an entry on the website, with `{slug}`; null without `url` in the model or `MICA_SITE_URL`. */
-  page: string | null;
-  /** Why this build of Mica cannot edit it, or null. Set when the model uses a newer field kind. */
-  readOnly: string | null;
-}
-
-export interface SchemaSingleton {
-  name: string;
-  label: string;
-  description: string | null;
-  fields: Record<string, AnyField>;
-  /** The model's `url`, such as `/about`, or null. */
-  url: string | null;
-  /** Its page on the website; null without `url` in the model or `MICA_SITE_URL`. */
-  page: string | null;
-  /** Why this build of Mica cannot edit it, or null. Set when the model uses a newer field kind. */
-  readOnly: string | null;
-}
-
-/** Data from a file of the website that relations point to; Mica never edits it. */
-export interface SchemaReferenceSet {
-  name: string;
-  label: string;
-}
-
-export interface Schema {
-  collections: SchemaCollection[];
-  singletons: SchemaSingleton[];
-  references: SchemaReferenceSet[];
-  /** The model's revision; the pending changes name the one the server uses now. */
-  revision: string | null;
-}
 
 /**
  * Who the identity provider said this is, kept only for the session. Null where
@@ -178,269 +223,6 @@ export interface AuthConfig {
   authRequired: boolean;
   /** Hostname of the identity provider, for the button label. */
   provider: string | null;
-}
-
-export interface EntrySummary {
-  collection: string;
-  /** The entry's identity. There is no id: the slug is the path. */
-  slug: string;
-  title: string;
-  position: number;
-  data: Record<string, unknown>;
-}
-
-export interface EntryDetail extends Omit<EntrySummary, "position"> {
-  /** The entry's folder, relative to the content root. */
-  path: string;
-  /**
-   * The version the form was opened against, sent back with the save. `null` means a new entry,
-   * so two people who create the same slug get a conflict, not a silent loss.
-   */
-  revision: string | null;
-}
-
-export interface SavedEntry {
-  slug: string;
-  title: string;
-  revision: string;
-  /** True when the save moved the entry to a new slug. */
-  renamed: boolean;
-  /** How many other entries and settings pages now link to the new URL. */
-  relinked: number;
-}
-
-/** An entry or settings page that links to an entry. */
-export type Referrer =
-  | { kind: "entry"; collection: string; slug: string; title: string; readOnly?: true }
-  | { kind: "singleton"; name: string; title: string; readOnly?: true };
-
-export interface SingletonDetail {
-  name: string;
-  label: string;
-  /** Path in the repository, relative to the content root. */
-  path: string;
-  data: Record<string, unknown>;
-  revision: string | null;
-}
-
-/** Where a pending change happened, in words an editor recognises. */
-export type ChangeOwner =
-  | {
-      kind: "entry";
-      collection: string;
-      slug: string;
-      label: string;
-      /** The slug before a pending rename. Set on the files of both slugs. */
-      renamedFrom?: string;
-    }
-  | { kind: "singleton"; name: string; label: string }
-  | { kind: "order"; collection: string; label: string }
-  | { kind: "media"; label: string }
-  | { kind: "other"; label: string };
-
-/** One path the publication writes or deletes. See `lib/edits.ts` for the unit an editor sees. */
-export interface FileChange {
-  path: string;
-  kind: "create" | "update" | "delete";
-  owner: ChangeOwner;
-  /** The file's revision when listed, null for a deletion. Sent back with Publish. */
-  revision?: string | null;
-  /** When the file was last saved. Null for a deletion. */
-  savedAt?: string | null;
-  /** New pending files that this document uses; it is published with them. */
-  needs?: string[];
-}
-
-/** One thing that would make the pending set unpublishable. */
-export interface StagingProblem {
-  path: string;
-  label: string;
-  issues: FieldIssue[];
-}
-
-/** Something an editor changed that the website changed too. */
-export interface SyncConflict {
-  /** What `resolve` takes. */
-  group: string;
-  label: string;
-  paths: string[];
-  upstream: "changed" | "deleted" | "added";
-  /** What the comparison with the website's version shows. */
-  target?: CompareTarget;
-}
-
-/** Where Mica's own clone stands against the repository. Null for the developer's checkout. */
-export interface SyncStatus {
-  lastSyncAt: string | null;
-  behind: number;
-  error: { code: string; message: string; since: string } | null;
-  /** A `.gitattributes` changed on the website; a restart applies it. A new content model needs none. */
-  /** Published in Mica, not yet in the repository. Mica retries it. */
-  pendingPush: { revision: string; reason: string } | null;
-  /** The last publication the repository refused. It is a draft again. */
-  refused: { reason: string; at: string } | null;
-  conflicts: SyncConflict[];
-}
-
-/**
- * The pending change set — what is Saved and not yet Published.
- *
- * `owner` decides the words: the developer's checkout is a working tree and
- * publishing runs their own Git; the clone that a self-hosted Mica keeps is
- * worded for editors, who save and publish.
- */
-export interface StagingStatus {
-  owner: "developer" | "managed";
-  publish: { enabled: boolean; reason?: string };
-  /** The commit the pending changes sit on. For display. */
-  head: string | null;
-  branch: string | null;
-  /**
-   * The developer's checkout only: publications not yet sent to the website
-   * (`mica`), and other work there that blocks Publish until it is sent (`other`).
-   */
-  unpushed: { mica: number; other: number } | null;
-  /**
-   * The developer's checkout only: it is on no branch, as a submodule usually
-   * is, and Publish waits until the developer runs `command`.
-   */
-  detached: { repository: string; superproject: string | null; command: string } | null;
-  /** File changes, not edits: count with `toEdits`, never with `.length`. */
-  changes: FileChange[];
-  validation: { ok: boolean; problems: StagingProblem[] };
-  sync: SyncStatus | null;
-  /** The model the server uses now, and why a newer one is not in use. */
-  model?: { revision: string | null; warning: string | null };
-}
-
-export interface PublishOutcome {
-  /** `committed-pending-push`: the commit exists, only the push failed. */
-  state: "published" | "committed-pending-push";
-  revision: string | null;
-  pushError?: string;
-}
-
-/** One thing on the Publish page, named for a before/after comparison. */
-export type CompareTarget =
-  /** `from` names the published slug of a renamed entry. */
-  | { kind: "entry"; collection: string; slug: string; from?: string }
-  | { kind: "singleton"; name: string }
-  | { kind: "order"; collection: string };
-
-/**
- * A document on both sides of the pending change set: `before` as the
- * repository has it, `after` as staged. Null marks the side that does not
- * exist — a creation has no before, a deletion no after.
- */
-export interface Comparison {
-  before: Record<string, unknown> | null;
-  after: Record<string, unknown> | null;
-  /** The compared document's pending files at the revision shown: what Publish and Discard send back. */
-  revisions: Record<string, string | null>;
-}
-
-/** A file in the content repository. */
-export interface MediaItem {
-  /** Path relative to the content root — the value a media field holds. */
-  path: string;
-  filename: string;
-  mimeType: string;
-  size: number;
-  width: number | null;
-  height: number | null;
-}
-
-export interface Overview {
-  collections: Array<{ name: string; label: string; total: number }>;
-  media: { files: number; bytes: number; readable: string };
-  repository: string;
-}
-
-export interface FieldCounts {
-  /** Fields declared directly on the collection or singleton. */
-  top: number;
-  /** Every field, including those nested in objects and repeaters. */
-  total: number;
-  required: number;
-}
-
-export interface MediaUsage {
-  files: number;
-  bytes: number;
-  readable: string;
-}
-
-/** Everything the System view shows. */
-export interface SystemInfo {
-  cms: {
-    version: string;
-    /** "self-hosted" or "local editor". */
-    mode: string;
-    node: string;
-    platform: string;
-    startedAt: string;
-    uptimeSeconds: number;
-  };
-  schema: {
-    /** Why a newer model is not in use: the developer's change cannot be read. */
-    warning: string | null;
-    totals: FieldCounts & { collections: number; singletons: number };
-    kinds: Array<{ kind: string; count: number }>;
-    relations: Array<{
-      from: string;
-      fromType: "collection" | "singleton";
-      path: string;
-      to: string;
-      multiple: boolean;
-    }>;
-    collections: Array<{
-      name: string;
-      label: string;
-      fields: FieldCounts;
-      titleField: string | null;
-      slugField: string | null;
-      listed: number;
-      sortable: boolean;
-      depth: number;
-      entries: number;
-    }>;
-    singletons: Array<{ name: string; label: string; fields: FieldCounts; depth: number }>;
-  };
-  /** The website's content. Git is its backup. */
-  repository: {
-    origin: string;
-    entries: number;
-    media: MediaUsage;
-    owner: "developer" | "managed";
-    branch: string | null;
-    head: string | null;
-    /** The remote of Mica's own clone, without credentials. */
-    url: string | null;
-    /** What the clone takes on the data volume. */
-    cloneBytes: number | null;
-    sync: SyncStatus | null;
-  };
-  deployment: {
-    site: string;
-    baseUrl: string;
-    /** Where the content model was read from, e.g. `<repo>/.mica/schema.json`. */
-    schemaOrigin: string;
-    /** Null unless the repository is a working tree on this machine. */
-    contentRoot: string | null;
-    dataDir: string | null;
-    logLevel: string;
-    maxUploadBytes: number;
-    maxUploadReadable: string;
-    sessionTtlHours: number | null;
-    sessionIdleHours: number | null;
-    /** How this deployment authenticates, in words. */
-    auth: string;
-    /** What decides who may edit here. Null where nothing does the deciding. */
-    admission: string | null;
-    trustProxy: boolean;
-    adminOrigins: string[];
-    memoryBytes: number;
-  };
 }
 
 /* ------------------------------------------------------------------ *
@@ -473,11 +255,8 @@ export const api = {
   preview: () => request<{ address: string | null }>("/admin/preview"),
 
   entries: {
-    list: (collection: string, query: RequestOptions["query"] = {}) =>
-      request<{ items: EntrySummary[]; total: number; orderRevision: string | null }>(
-        `/admin/collections/${collection}/entries`,
-        { query },
-      ),
+    list: (collection: string) =>
+      request<{ items: EntrySummary[]; total: number; orderRevision: string | null }>(`/admin/collections/${collection}/entries`),
     get: (collection: string, slug: string) =>
       request<EntryDetail>(`/admin/collections/${collection}/entries/${slug}`),
     create: (collection: string, body: { data: unknown; revision?: string | null }) =>

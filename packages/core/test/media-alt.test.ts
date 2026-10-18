@@ -18,7 +18,7 @@ import {
   validateFields,
   type InferFields,
   type MediaWithAlt,
-} from "../dist/internal.js";
+} from "../src/internal.js";
 
 const fields = {
   title: text(),

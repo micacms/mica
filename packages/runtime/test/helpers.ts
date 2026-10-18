@@ -8,7 +8,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { deflateSync } from "node:zlib";
 
-import { contentFiles } from "../src/index.js";
+import { contentFiles, type OwnerPolicy } from "../src/index.js";
 import {
   collection,
   defineSite,
@@ -81,7 +81,6 @@ export function testConfig(
     PORT: 6422,
     MICA_PUBLIC_URL: TEST_ORIGIN,
     MICA_CONTENT_ROOT: contentRoot,
-    MICA_LOCAL_PUBLISH: true,
     MICA_MAX_UPLOAD_BYTES: 25 * 1024 * 1024,
     MICA_TRUST_PROXY: false,
     MICA_MCP_PUBLISH: false,
@@ -89,6 +88,20 @@ export function testConfig(
     contentRoot,
     adminOrigins: [],
     ...overrides,
+  };
+}
+
+/**
+ * An owner that commits and sends nothing anywhere. The developer's own policy
+ * belongs to the local editor, and its tests are there.
+ */
+export function commitOnlyPolicy(): OwnerPolicy {
+  return {
+    owner: "developer",
+    publishAvailability: () => ({ enabled: true }),
+    prepare: async () => {},
+    commitAuthor: () => undefined,
+    push: async (_tree, revision) => ({ state: "published", revision }),
   };
 }
 
@@ -112,6 +125,7 @@ export async function createHarness(
     files: contentFiles({ root: contentRoot }),
     logger: options.logger ?? createLogger({ level: "silent", pretty: false }),
     operational: () => ({ auth: "none — test harness" }),
+    policy: commitOnlyPolicy(),
   });
 
   const app = createApp(ctx);

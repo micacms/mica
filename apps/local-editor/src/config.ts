@@ -25,7 +25,6 @@ const {
   PORT,
   MICA_PUBLIC_URL,
   MICA_CONTENT_ROOT,
-  MICA_LOCAL_PUBLISH,
   MICA_MAX_UPLOAD_BYTES,
   MICA_MCP_PUBLISH,
 } = runtimeEnv;
@@ -37,7 +36,8 @@ const schema = z
     PORT,
     MICA_PUBLIC_URL,
     MICA_CONTENT_ROOT,
-    MICA_LOCAL_PUBLISH,
+    /** `false` disables commit and push: Publish shows the pending changes read-only. */
+    MICA_LOCAL_PUBLISH: bool(true),
     MICA_MAX_UPLOAD_BYTES,
     MICA_MCP_PUBLISH,
     /** Development of the editor itself: the Vite server's origin, allowed to call the API. */
@@ -63,7 +63,12 @@ const schema = z
     HOST: env.HOST ?? "127.0.0.1",
   }));
 
-export type LocalConfig = RuntimeConfig & { MICA_CLI: boolean; MICA_OPEN: boolean; MICA_ADMIN_DIR?: string | undefined };
+export type LocalConfig = RuntimeConfig & {
+  MICA_LOCAL_PUBLISH: boolean;
+  MICA_CLI: boolean;
+  MICA_OPEN: boolean;
+  MICA_ADMIN_DIR?: string | undefined;
+};
 
 /** Reads the process environment only: a site's `.env` holds the site's settings, not the editor's. */
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): LocalConfig {

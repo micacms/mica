@@ -16,7 +16,7 @@ import { describe, it } from "node:test";
 
 import { collection, createManifest, defineSite, slug, text } from "@micacms/core/internal";
 
-import { DEFAULT_CONTENT_ROOT, micaCollections, resolveContentRoot } from "../dist/index.js";
+import { DEFAULT_CONTENT_ROOT, micaCollections, resolveContentRoot } from "../src/index.js";
 
 const projectRoot = pathToFileURL(join(tmpdir(), "a-project") + sep);
 

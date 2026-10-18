@@ -10,15 +10,16 @@
  * keeps this package authentication-neutral.
  */
 
-import { ContentPathError, mapHosts, type Site } from "@micacms/core/internal";
+import { ContentReadError, ContentSourceError, FormatError, mapHosts, type Site } from "@micacms/core/internal";
 import type { ErrorHandler, MiddlewareHandler } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import type { ContentfulStatusCode } from "hono/utils/http-status";
 
-import { ApiError, badRequest } from "../lib/errors.js";
+import { ApiError } from "../lib/errors.js";
 import { clientIp, type Env } from "../http.js";
 import { randomToken } from "../lib/id.js";
-import { ContentError } from "../services/content-store.js";
+import { ReadOnlyError, UnknownContentError, ValidationError } from "../services/content-store.js";
+import { ConflictError, FilesError } from "../workspace/files.js";
 
 /** Attaches the container, a request id and a scoped logger; logs the result. */
 export function requestContext(ctx: Env["Variables"]["ctx"]): MiddlewareHandler<Env> {
@@ -131,9 +132,27 @@ export function requestSizeLimit(): MiddlewareHandler<Env> {
 }
 
 /**
- * Converts thrown errors into the API error envelope. Deliberate failures
- * (`ApiError`) are reported as-is; anything else is a bug and becomes a bare
- * 500, with the stack kept in the log rather than sent to the client.
+ * The API error for a failure of the content or its files, the same for every
+ * interface: a conflict or a read-only part is 409, a validation 422, a file
+ * that cannot be read 422 with its path, an unknown collection or singleton
+ * 404, and any other content error 400. Null for anything else: a bug.
+ */
+export function apiErrorOf(error: unknown): ApiError | null {
+  if (error instanceof ApiError) return error;
+  if (error instanceof ConflictError || error instanceof ReadOnlyError) return new ApiError("conflict", error.message, { cause: error });
+  if (error instanceof ValidationError) return new ApiError("validation_failed", error.message, { issues: error.issues, cause: error });
+  if (error instanceof ContentReadError) return new ApiError("unreadable_content", error.message, { path: error.path, cause: error });
+  if (error instanceof UnknownContentError) return new ApiError("not_found", error.message, { cause: error });
+  if (error instanceof FilesError || error instanceof ContentSourceError || error instanceof FormatError) {
+    return new ApiError("bad_request", error.message, { cause: error });
+  }
+  return null;
+}
+
+/**
+ * Converts thrown errors into the API error envelope with `apiErrorOf`;
+ * anything else is a bug and becomes a bare 500, with the stack kept in the
+ * log rather than sent to the client.
  *
  * Registered with `app.onError`, not as middleware: Hono's `compose` wraps each
  * handler individually and routes a throw to `onError` at that level, so a
@@ -143,16 +162,10 @@ export function errorHandler(): ErrorHandler<Env> {
   return (error, c) => {
     const logger = c.get("logger") ?? c.get("ctx").logger;
 
-    if (error instanceof ApiError) {
-      logger.debug("Handled error", { code: error.code, message: error.message });
-      return c.json(error.toBody(), error.status as ContentfulStatusCode, error.headers);
-    }
-
-    // A path that could leave the content root, or a name that the model does not have, is the client's mistake, not a bug.
-    if (error instanceof ContentPathError || error instanceof ContentError) {
-      logger.warn("Refused content path", { message: error.message });
-      const refused = badRequest(error.message);
-      return c.json(refused.toBody(), refused.status as ContentfulStatusCode);
+    const refused = apiErrorOf(error);
+    if (refused) {
+      logger.debug("Handled error", { code: refused.code, message: refused.message });
+      return c.json(refused.toBody(), refused.status as ContentfulStatusCode, refused.headers);
     }
 
     logger.error("Unhandled error", {

@@ -26,12 +26,8 @@ import {
 
 import { defaultUsername, parseRemote, type Remote } from "./workspace/credentials.js";
 
-/** What the runtime reads, minus what only the local editor's checkout needs. */
-const {
-  MICA_CONTENT_ROOT: _contentRoot,
-  MICA_LOCAL_PUBLISH: _localPublish,
-  ...runtimeFields
-} = runtimeEnv;
+/** What the runtime reads, minus the content root: the start finds it in the clone. */
+const { MICA_CONTENT_ROOT: _contentRoot, ...runtimeFields } = runtimeEnv;
 
 /** Secrets that can come from a file, such as a Docker or Kubernetes secret: `<NAME>_FILE`. */
 const FILE_SECRETS = ["MICA_SESSION_SECRET", "MICA_OIDC_CLIENT_SECRET"] as const;
@@ -220,7 +216,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
     ...parsed.data,
     // Without MICA_CONTENT_PATH, the start finds the root in the clone and sets `contentRoot` again.
     MICA_CONTENT_ROOT: path.join(dataDir, "repository", repository.root ?? ""),
-    MICA_LOCAL_PUBLISH: true,
   });
   const config = {
     ...deriveAuth(runtime),

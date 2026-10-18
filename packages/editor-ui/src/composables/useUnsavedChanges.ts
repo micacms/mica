@@ -7,11 +7,15 @@
  * already cleared the flag (a freshly opened entry looked edited), and it fires
  * for writes that change nothing, since every keystroke path rebuilds the
  * object it passes up.
+ *
+ * A field can hold an edit back for a moment (`PENDING_EDITS`, provided here
+ * for the form's fields). The checks flush it first, so they see the current text.
  */
 
-import { computed, onMounted, onUnmounted, ref, type ComputedRef, type Ref } from "vue";
+import { computed, onMounted, onUnmounted, provide, ref, type ComputedRef, type Ref } from "vue";
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router";
 
+import { createPendingEdits, PENDING_EDITS } from "@/lib/pending-edits";
 import { useSession } from "@/stores/session";
 
 const PROMPT = "You have unsaved changes. Leave without saving?";
@@ -22,11 +26,15 @@ export interface UnsavedChanges {
   markClean: () => void;
   /** Stop guarding for good, e.g. once the record has been deleted. */
   release: () => void;
+  /** Gives the form the edits that its fields hold back. Call it before a save reads the values. */
+  flush: () => void;
 }
 
 export function useUnsavedChanges(values: Ref<Record<string, unknown>>): UnsavedChanges {
   const baseline = ref(snapshot(values.value));
   const guarded = ref(true);
+  const pending = createPendingEdits();
+  provide(PENDING_EDITS, pending);
 
   const dirty = computed(() => guarded.value && snapshot(values.value) !== baseline.value);
 
@@ -42,6 +50,7 @@ export function useUnsavedChanges(values: Ref<Record<string, unknown>>): Unsaved
   // redirect needs none: the form kept its changes in this tab (`useKeptChanges`).
   const session = useSession();
   function beforeUnload(event: BeforeUnloadEvent): void {
+    pending.flush();
     if (dirty.value && !session.leaving.value) event.preventDefault();
   }
 
@@ -50,11 +59,14 @@ export function useUnsavedChanges(values: Ref<Record<string, unknown>>): Unsaved
 
   // Leaving covers a different route; updating covers another record on this
   // same route, which reuses the component and so never counts as leaving.
-  const confirmLeave = (): boolean => !dirty.value || window.confirm(PROMPT);
+  const confirmLeave = (): boolean => {
+    pending.flush();
+    return !dirty.value || window.confirm(PROMPT);
+  };
   onBeforeRouteLeave(confirmLeave);
   onBeforeRouteUpdate(confirmLeave);
 
-  return { dirty, markClean, release };
+  return { dirty, markClean, release, flush: pending.flush };
 }
 
 /**

@@ -5,14 +5,16 @@
 
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, describe, it } from "node:test";
 
-import { collection, createManifest, defineSite, MANIFEST_PATH, object, richText, serializeEntry, slug, text } from "../dist/index.js";
+import { collection, createManifest, defineSite, MANIFEST_PATH, object, richText, serializeEntry, slug, text } from "../src/index.js";
 
 const RECIPES = join(import.meta.dirname, "../recipes");
+// A recipe imports the published package, so it runs on the build output; CI builds before it tests.
+const UNBUILT = !existsSync(join(import.meta.dirname, "../dist/index.js")) && "@micacms/core is not built";
 const PAGE = join(import.meta.dirname, "../../../sites/micacms/content/docs/model-changes/body.mdoc");
 
 const roots: string[] = [];
@@ -44,14 +46,14 @@ function run(recipe: string, ...args: string[]): void {
 const json = (root: string, path: string) => JSON.parse(readFileSync(join(root, path), "utf8"));
 
 describe("the migration recipes", () => {
-  it("rename a field and keep its place in the file", () => {
+  it("rename a field and keep its place in the file", { skip: UNBUILT }, () => {
     const root = content({ "people/ana/index.json": { name: "Ana", title: "Lead", slug: "ana" }, "people/ben/index.json": { name: "Ben" } });
     run("rename-field.mjs", root, "people", "title", "role");
     assert.deepEqual(Object.entries(json(root, "people/ana/index.json")), [["name", "Ana"], ["role", "Lead"], ["slug", "ana"]]);
     assert.deepEqual(json(root, "people/ben/index.json"), { name: "Ben" });
   });
 
-  it("move text into a Markdoc file, one paragraph per line, with markup kept as text", () => {
+  it("move text into a Markdoc file, one paragraph per line, with markup kept as text", { skip: UNBUILT }, () => {
     const root = content({ "notes/one/index.json": { title: "One", body: "Price: *not* final\n\n#1 on the list\n1. Preis\n- dash\n---" } });
     run("text-to-rich-text.mjs", root, "notes", "body");
     assert.deepEqual(json(root, "notes/one/index.json"), { title: "One" });
@@ -61,7 +63,7 @@ describe("the migration recipes", () => {
     );
   });
 
-  it("rename a rich-text field by renaming its file, and refuse to overwrite", () => {
+  it("rename a rich-text field by renaming its file, and refuse to overwrite", { skip: UNBUILT }, () => {
     const root = content({ "notes/one/index.json": { title: "One" }, "notes/one/text.mdoc": "Hello.\n" });
     run("rename-field.mjs", root, "notes", "text", "body");
     assert.equal(readFileSync(join(root, "notes/one/body.mdoc"), "utf8"), "Hello.\n");
@@ -72,7 +74,7 @@ describe("the migration recipes", () => {
     assert.match(result.stderr, /has "role" already/);
   });
 
-  it("refuse to fill rich text, and name an unknown collection", () => {
+  it("refuse to fill rich text, and name an unknown collection", { skip: UNBUILT }, () => {
     const root = content({});
     for (const args of [["notes", "body", '"x"'], ["nothing", "role", '"x"']]) {
       const result = spawnSync(process.execPath, [join(RECIPES, "fill-field.mjs"), root, ...args], { encoding: "utf8" });
@@ -81,14 +83,14 @@ describe("the migration recipes", () => {
     }
   });
 
-  it("fill a field only where it is empty", () => {
+  it("fill a field only where it is empty", { skip: UNBUILT }, () => {
     const root = content({ "people/ana/index.json": { name: "Ana", role: "Lead" }, "people/ben/index.json": { name: "Ben", role: null } });
     run("fill-field.mjs", root, "people", "role", '"Consultant"');
     assert.equal(json(root, "people/ana/index.json").role, "Lead");
     assert.equal(json(root, "people/ben/index.json").role, "Consultant");
   });
 
-  it("remove a field and its file, and refuse one that is still in the model", () => {
+  it("remove a field and its file, and refuse one that is still in the model", { skip: UNBUILT }, () => {
     const root = content({
       "people/ana/index.json": { name: "Ana", phone: "+41 00", role: "Lead" },
       "people/ana/phone.mdoc": "Old text.\n",

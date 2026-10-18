@@ -28,11 +28,24 @@ import {
   createApp,
   createLogger,
   createRuntimeContext,
+  type OwnerPolicy,
   type RuntimeContext,
 } from "@micacms/runtime";
 
 import { agentRoutes } from "../src/agents.js";
 import { loadConfig, type SelfHostedConfig } from "../src/config.js";
+import { operationalInfo } from "../src/operational.js";
+
+/** The harness has no clone that Mica keeps, and so it does not publish. `managed.test.ts` covers Publish. */
+const noPublish: OwnerPolicy = {
+  owner: "managed",
+  publishAvailability: () => ({ enabled: false, reason: "The test harness does not publish." }),
+  prepare: async () => {},
+  commitAuthor: (editor) => editor,
+  push: async () => {
+    throw new Error("The test harness does not publish.");
+  },
+};
 
 export const TEST_ORIGIN = "http://localhost:6422";
 export const ISSUER = "https://id.example.test";
@@ -154,13 +167,8 @@ export async function createHarness(
     model: options.site ?? testSite,
     files,
     logger,
-    operational: () => ({
-      auth: `oidc:${new URL(ISSUER).hostname}`,
-      admission: auth.admission.summary,
-      dataDir: config.dataDir,
-      sessionTtlHours: config.MICA_SESSION_TTL_HOURS,
-      sessionIdleHours: config.MICA_SESSION_IDLE_HOURS,
-    }),
+    operational: () => operationalInfo(config, { label: `oidc:${new URL(ISSUER).hostname}`, admission: auth.admission.summary }),
+    policy: noPublish,
     health: { ready: () => ({ degraded: false, reasons: [], lastSyncAt: null }) },
     onShutdown: () => {
       auth.loginLimiter.stop();

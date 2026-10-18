@@ -1,57 +1,80 @@
 <script setup lang="ts">
 /**
- * Entry editor. Saved is not Published: a save joins the pending changes, and
- * unsaved work stays in the form. `revision` goes back with the save, so a
- * concurrent save gets a 409 instead of an overwrite. The slug is the address:
- * changing it moves the entry, and the route follows.
+ * Entry editor: the shared form (`useDocumentEditor`) and what an entry has
+ * that settings do not. The slug is the address: changing it moves the entry,
+ * the route follows, and the links to it can follow too. A new entry has no
+ * slug yet, and an entry can be deleted.
  */
 
-import { computed, nextTick, onMounted, provide, ref, watch } from "vue";
-import { useRoute, useRouter } from "vue-router";
+import { computed, onMounted, provide, ref, watch } from "vue";
+import { useRouter } from "vue-router";
 
 import { defaultValues, isValidSlug } from "@micacms/core/internal";
 
-import { api, ApiError, type EntryDetail, type Referrer } from "@/api";
+import { api, messageOf, type EntryDetail, type Referrer, type SavedEntry } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
 import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
+import ModelNotice from "@/components/ModelNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PageLink from "@/components/PageLink.vue";
-import PreviewLink from "@/components/PreviewLink.vue";
-import { usePreview } from "@/composables/usePreview";
-import { pageHref } from "@/lib/pages";
 import PendingNotice from "@/components/PendingNotice.vue";
-import type { Edit } from "@/lib/edits";
+import PreviewLink from "@/components/PreviewLink.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
-import { fieldPathOf, useFormIssues } from "@/composables/useFormIssues";
-import { useKeptChanges } from "@/composables/useKeptChanges";
-import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
-import { focusField } from "@/lib/focus";
+import { useDocumentEditor } from "@/composables/useDocumentEditor";
+import { usePreview } from "@/composables/usePreview";
+import type { Edit } from "@/lib/edits";
 import { MEDIA_FOLDER } from "@/lib/media-folder";
+import { pageHref } from "@/lib/pages";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
 const props = defineProps<{ collection: string; slug?: string }>();
 
-const route = useRoute();
 const router = useRouter();
 const schema = useSchema();
 const staging = useStaging();
 const toast = useToast();
 
 const definition = computed(() => schema.collection(props.collection));
+const updateLinks = ref(true);
 
-const entry = ref<EntryDetail | null>(null);
-const values = ref<Record<string, unknown>>({});
-const loading = ref(true);
-const saving = ref(false);
-/** A colleague saved since this form opened: their version, for the comparison. */
-const conflict = ref<"none" | "loading" | "loaded" | "missing">("none");
-const theirs = ref<EntryDetail | null>(null);
-const confirmDelete = ref(false);
+const doc = useDocumentEditor<EntryDetail, SavedEntry>({
+  noun: "this entry",
+  // ":new" is no valid URL, so it never names a saved entry.
+  key: () => `${props.collection}/${props.slug ?? ":new"}`,
+  editKey: () => (props.slug ? `entry:${props.collection}/${props.slug}` : null),
+  fields: () => definition.value?.fields,
+  readOnly: () => !!definition.value?.readOnly,
+  read: props.slug ? () => api.entries.get(props.collection, props.slug!) : null,
+  values: (data) => data ?? defaultValues(definition.value?.fields ?? {}),
+  write: (data, basis): Promise<SavedEntry> => {
+    const payload = {
+      data,
+      revision: basis.revision,
+      ...(basis.keepMine ? { keepMine: true } : {}),
+      // Also before the list has loaded, or when it failed: the server finds the links itself.
+      ...(urlChanging.value && updateLinks.value ? { updateLinks: true } : {}),
+    };
+    return props.slug ? api.entries.update(props.collection, props.slug, payload) : api.entries.create(props.collection, payload);
+  },
+  saved: async (saved) => {
+    toast.success(
+      saved.renamed ? `Saved as “${saved.slug}”.` : "Saved.",
+      saved.relinked > 0 ? `Updated the links in ${saved.relinked} other entr${saved.relinked === 1 ? "y or page" : "ies or pages"}.` : undefined,
+    );
+    // The server derives and de-duplicates the slug and can move the entry: open it at what it decided.
+    if (saved.slug === props.slug) return true;
+    await router.replace({ name: "entry", params: { collection: props.collection, slug: saved.slug } });
+    return false;
+  },
+  duplicate: "An entry with this URL exists already. Change the URL, then save.",
+});
+const { values, revision, loading, saving, isNew, issues, dirty, kept, pending, state } = doc;
+const { state: conflict, theirs } = doc.conflict;
 
 /** This entry was changed on the website while it has a draft here: Mica's own clone only. */
 const websiteConflict = computed(() =>
@@ -60,7 +83,6 @@ const websiteConflict = computed(() =>
       item.target?.kind === "entry" && item.target.collection === props.collection && item.target.slug === props.slug,
   ),
 );
-const references = ref<string[]>([]);
 
 /** An entry or settings page that links here, as the editor knows it: "Haus A (Projects)". */
 function describeReferrer(item: Referrer): string {
@@ -68,11 +90,11 @@ function describeReferrer(item: Referrer): string {
 }
 
 /** The URL in the form, when it differs from the saved one: the links to this entry must follow. */
-const newSlug = computed(() => {
+const newSlug = computed<string>(() => {
   const value = values.value[definition.value?.slugField ?? ""];
   return typeof value === "string" ? value.trim() : "";
 });
-const urlChanging = computed(() => !!props.slug && newSlug.value !== "" && newSlug.value !== props.slug);
+const urlChanging = computed<boolean>(() => !!props.slug && newSlug.value !== "" && newSlug.value !== props.slug);
 const linkers = ref<Referrer[] | null>(null);
 
 // Uploads go into the entry's folder: the saved URL's, or for a new entry a valid URL in the form.
@@ -83,7 +105,12 @@ provide(
     return isValidSlug(newSlug.value) ? { path: `${props.collection}/${newSlug.value}/media`, isNew: true } : null;
   }),
 );
-const updateLinks = ref(true);
+
+// The saved version opened again: the links start over.
+watch(doc.version, () => {
+  linkers.value = null;
+  updateLinks.value = true;
+});
 
 watch(urlChanging, async (changing) => {
   if (!changing || linkers.value !== null || !props.slug) return;
@@ -95,28 +122,6 @@ watch(urlChanging, async (changing) => {
   }
 });
 
-/**
- * The version this form was opened against; `null` on a new entry, so a
- * duplicate slug is a conflict.
- */
-const revision = ref<string | null>(null);
-
-const form = useFormIssues(() => definition.value?.fields, values);
-const issues = form.issues;
-
-const unsaved = useUnsavedChanges(values);
-const dirty = unsaved.dirty;
-// Kept in this tab, so that signing in again after the session ended loses nothing.
-// ":new" is no valid URL, so it never names a saved entry.
-const kept = useKeptChanges(() => `${props.collection}/${props.slug ?? ":new"}`, values, revision, dirty);
-
-const isNew = computed(() => !props.slug);
-
-/** This entry's saved changes that are not on the website yet. */
-const pending = computed(
-  () => (props.slug && staging.edits.value.find((edit) => edit.key === `entry:${props.collection}/${props.slug}`)) || null,
-);
-
 const devServer = usePreview();
 /** Its page in the dev server, which reads the saved drafts: also for one that was never published. */
 const preview = computed(() =>
@@ -126,192 +131,42 @@ const preview = computed(() =>
 /** Its page on the website: not for an entry that was never published, because that page does not exist yet. */
 const page = computed(() => (props.slug && pending.value?.state !== "new" ? pageHref(definition.value?.page, props.slug) : null));
 
-const state = computed(() =>
-  isNew.value
-    ? { label: "Not saved yet", tone: "status-unsaved" }
-    : dirty.value
-      ? { label: "Unsaved changes", tone: "status-unsaved" }
-      : pending.value
-        ? { label: "Saved · not published", tone: "status-draft" }
-        : staging.knowsPublished.value
-          ? { label: "Published", tone: "status-published" }
-          : { label: "Saved", tone: "" },
-);
-
 const title = computed(() => {
   const def = definition.value;
   if (!def) return "Entry";
-  const value = values.value[def.titleField];
+  const value = def.titleField ? values.value[def.titleField] : undefined;
   if (typeof value === "string" && value.trim()) return value.trim();
-  return isNew.value ? `New ${def.labelSingular.toLowerCase()}` : "Untitled";
+  return isNew ? `New ${def.labelSingular.toLowerCase()}` : "Untitled";
 });
 
 /** The entry's folder, from the server. */
-const location = computed(() => entry.value?.path ?? "Not saved yet");
-
-function setBaseline(detail: EntryDetail): void {
-  entry.value = detail;
-  values.value = structuredClone(detail.data);
-  revision.value = detail.revision;
-  form.reset();
-  conflict.value = "none";
-  theirs.value = null;
-  linkers.value = null;
-  updateLinks.value = true;
-  unsaved.markClean();
-}
-
-async function open(slug: string): Promise<void> {
-  setBaseline(await api.entries.get(props.collection, slug));
-}
+const location = computed(() => doc.version.value?.path ?? "Not saved yet");
 
 onMounted(async () => {
-  const def = definition.value;
-  if (!def) {
+  if (!definition.value) {
     loading.value = false;
     return;
   }
-
-  try {
-    if (props.slug) {
-      await open(props.slug);
-    } else {
-      // A fresh entry starts as a full skeleton so every input is bound. The
-      // skeleton itself is not an edit, so it becomes the baseline.
-      values.value = defaultValues(def.fields);
-      revision.value = null;
-      unsaved.markClean();
-    }
-  } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not open this entry.");
-    await router.replace({ name: "collection", params: { collection: props.collection } });
-  } finally {
-    loading.value = false;
-  }
-  kept.check();
-
-  // From a problem on the Publish page: go to its field.
-  if (typeof route.query.field === "string") {
-    const field = route.query.field;
-    await nextTick();
-    focusField(field);
-  }
+  if (await doc.open()) return;
+  toast.error(doc.loadError.value ?? "Could not open this entry.");
+  await router.replace({ name: "collection", params: { collection: props.collection } });
 });
-
-/** Checks a field when the editor leaves it. */
-function onLeave(event: FocusEvent): void {
-  const path = fieldPathOf(event.target);
-  if (path) form.leave(path);
-}
-
-/** Shows the problems and moves to the first one. */
-async function showIssues(): Promise<void> {
-  await nextTick();
-  if (issues.value[0]) focusField(issues.value[0].path);
-}
-
-/** `keepMine`: save over the colleague's version that the conflict showed. */
-async function save(options: { keepMine?: boolean } = {}): Promise<void> {
-  // Enter in a read-only field still submits the form while a save runs.
-  if (definition.value?.readOnly || saving.value) return;
-  if (!form.checkAll()) {
-    toast.error("Some fields need attention before you can save.");
-    await showIssues();
-    return;
-  }
-  saving.value = true;
-
-  const keepMine = options.keepMine === true && theirs.value !== null;
-  const payload = {
-    data: values.value,
-    revision: keepMine ? theirs.value!.revision : revision.value,
-    ...(keepMine ? { keepMine } : {}),
-    // Also before the list has loaded, or when it failed: the server finds the links itself.
-    ...(urlChanging.value && updateLinks.value ? { updateLinks: true } : {}),
-  };
-
-  try {
-    const saved = props.slug
-      ? await api.entries.update(props.collection, props.slug, payload)
-      : await api.entries.create(props.collection, payload);
-
-    // The server derives and de-duplicates the slug and can move the entry:
-    // re-open at what it decided.
-    unsaved.markClean();
-    kept.forget();
-    toast.success(
-      saved.renamed ? `Saved as “${saved.slug}”.` : "Saved.",
-      saved.relinked > 0 ? `Updated the links in ${saved.relinked} other entr${saved.relinked === 1 ? "y or page" : "ies or pages"}.` : undefined,
-    );
-    void staging.refresh();
-
-    if (saved.slug !== props.slug) {
-      await router.replace({
-        name: "entry",
-        params: { collection: props.collection, slug: saved.slug },
-      });
-      return;
-    }
-
-    await open(saved.slug);
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 409 && !props.slug) {
-      toast.error("An entry with this URL exists already. Change the URL, then save.");
-    } else if (error instanceof ApiError && error.status === 409) {
-      // The form keeps the editor's work; which version stays is their decision.
-      await showConflict(props.slug!, error.message);
-    } else if (error instanceof ApiError && error.issues.length > 0) {
-      form.set(error.issues);
-      toast.error(error.message, `${error.issues.length} field(s) need attention.`);
-      await showIssues();
-    } else {
-      toast.error(error instanceof ApiError ? error.message : "Could not save this entry.");
-    }
-  } finally {
-    saving.value = false;
-  }
-}
-
-async function showConflict(slug: string, message: string): Promise<void> {
-  conflict.value = "loading";
-  try {
-    theirs.value = await api.entries.get(props.collection, slug);
-    conflict.value = "loaded";
-    // This entry is as it was: what changed is an entry or page whose links were to follow.
-    if (theirs.value.revision === revision.value) {
-      conflict.value = "none";
-      theirs.value = null;
-      toast.error(message);
-    }
-  } catch {
-    theirs.value = null;
-    conflict.value = "missing";
-  }
-}
-
-/** Takes the colleague's saved version, discarding this form's edits. */
-async function useTheirs(): Promise<void> {
-  if (!props.slug) return;
-  try {
-    await open(props.slug);
-    kept.forget();
-    toast.success("Loaded their version.");
-  } catch (error) {
-    toast.error(error instanceof ApiError ? error.message : "Could not load this entry.");
-  }
-}
 
 /** After a discard, a new entry is gone, and a URL change goes back to the old URL. */
 async function discarded(edit: Edit): Promise<void> {
-  kept.forget();
   if (edit.state === "new") {
+    kept.forget();
     await router.replace({ name: "collection", params: { collection: props.collection } });
   } else if (edit.target?.kind === "entry" && edit.target.from) {
+    kept.forget();
     await router.replace({ name: "entry", params: { collection: props.collection, slug: edit.target.from } });
-  } else if (props.slug) {
-    await open(props.slug);
+  } else {
+    await doc.reopen();
   }
 }
+
+const confirmDelete = ref(false);
+const references = ref<string[]>([]);
 
 async function askDelete(): Promise<void> {
   references.value = [];
@@ -327,17 +182,20 @@ async function askDelete(): Promise<void> {
 }
 
 async function remove(): Promise<void> {
-  if (!props.slug || !revision.value) return;
+  const slug = props.slug;
+  const opened = revision.value;
+  if (!slug || !opened) return;
   try {
-    await api.entries.remove(props.collection, props.slug, revision.value);
-    unsaved.release();
+    // A colleague saved since: show their version, as for a save.
+    const outcome = await doc.conflict.run(opened, () => api.entries.remove(props.collection, slug, opened));
+    if (outcome.kind === "refused") toast.error(outcome.message);
+    if (outcome.kind !== "done") return;
+    doc.unsaved.release();
     toast.success("Deleted.");
     void staging.refresh();
     await router.replace({ name: "collection", params: { collection: props.collection } });
   } catch (error) {
-    // A colleague saved since: show their version, as for a save.
-    if (error instanceof ApiError && error.status === 409) await showConflict(props.slug, error.message);
-    else toast.error(error instanceof ApiError ? error.message : "Could not delete this entry.");
+    toast.error(messageOf(error, "Could not delete this entry."));
   } finally {
     confirmDelete.value = false;
   }
@@ -359,7 +217,7 @@ async function remove(): Promise<void> {
         <span :class="['status', state.tone]">
           {{ state.label }}
         </span>
-        <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="save()">
+        <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="doc.save()">
           {{ saving ? "Saving…" : "Save changes" }}
         </button>
       </template>
@@ -369,6 +227,7 @@ async function remove(): Promise<void> {
       <p v-if="loading" role="status" class="text-sm text-muted">Loading…</p>
 
       <template v-else>
+        <ModelNotice v-if="!definition.readOnly" class="mb-5" />
         <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
         <PendingNotice v-else-if="pending && !dirty" :edit="pending" @discarded="discarded" />
 
@@ -391,8 +250,8 @@ async function remove(): Promise<void> {
           :mine="values"
           :fields="definition.fields"
           :busy="saving"
-          @keep="save({ keepMine: true })"
-          @take="useTheirs"
+          @keep="doc.save({ keepMine: true })"
+          @take="doc.reopen('Loaded their version.')"
         />
 
         <KeptChangesNotice v-if="kept.offered.value" :at="kept.offered.value.at" @restore="kept.restore()" @forget="kept.forget()" />
@@ -424,7 +283,7 @@ async function remove(): Promise<void> {
           </p>
         </div>
 
-        <form novalidate @submit.prevent="save()" @focusout="onLeave">
+        <form novalidate @submit.prevent="doc.save()" @focusout="doc.onLeave">
           <FieldList
             v-model="values"
             :fields="definition.fields"

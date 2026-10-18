@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/editor",
+      "comment": "At start, the local editor removes the temporary files that an earlier Mica left behind, for example after a crash. mica check names the item of a list field whose file or entry is missing.",
+      "type": "minor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}
