@@ -17,4 +17,4 @@ Mica is for brochure and agency sites with a blog or a news archive. A view that
 
 - Above the target, Mica can work, but it makes no promise. A site with a larger archive splits it into more collections.
 - A deletion still reads every collection ([19](0019-links-and-reference-data.md)).
-- Revisit when: an adopter is above the target. Measure their shape first, then add an index of titles and links, and search and paging on the server.
+- Change this decision when: an adopter is above the target. Measure their shape first, then add an index of titles and links, and search and paging on the server.

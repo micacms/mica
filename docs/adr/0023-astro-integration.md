@@ -20,4 +20,4 @@ Each website wrote the same helpers: a singleton getter with a cast, a sort by t
 - A site that moves from Astro collections keeps its image code.
 - `renderRichText` needs Astro's image service (`sharp`).
 - A page with a map loads tiles from the tile host. The site's privacy notice names it.
-- Revisit when: Mica supports a second framework. It needs its own helpers.
+- Change this decision when: Mica supports a second framework. It needs its own helpers.

@@ -1,8 +1,7 @@
 # @micacms/editor-ui
 
 > **Internal, not published.** `@micacms/editor` ships this build in its
-> `dist/admin`, and the self-hosted image builds it from source. Versions up to
-> 0.8 are on npm, deprecated.
+> `dist/admin`, and the self-hosted image builds it from source.
 
 The Mica editor SPA — the Vue administration UI, shipped as **built assets**
 in `dist/` and served by a composing app (`@micacms/editor` locally,

@@ -1,4 +1,4 @@
-# 17. A model that Mica cannot fully read makes it read-only, not stopped
+# 17. A model part that Mica cannot read is read-only, and Mica still starts
 
 **Status:** Accepted
 
@@ -17,4 +17,4 @@ A developer updates `@micacms/astro` with the site, and an operator updates the 
 ## Consequences
 
 - An editor cannot change that collection until the image is upgraded. The versioning policy says: upgrade the image first, or at the same time.
-- Revisit when: editors are often blocked by this. Then lock only the field, with a tested round trip of unknown values.
+- Change this decision when: editors are often blocked by this. Then lock only the field, with a tested round trip of unknown values.

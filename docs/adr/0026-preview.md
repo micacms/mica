@@ -16,4 +16,4 @@ The drafts of a self-hosted Mica are uncommitted files in its clone, so a host's
 
 - A self-hosted editor sees a change on the website only after Publish, or on a staging site.
 - If Astro takes another port, set `server.port` to make the preview exact.
-- Revisit when: editors publish to check their work. The next step is a push of the drafts to a branch such as `mica/preview`, for the host to build.
+- Change this decision when: editors publish to check their work. The next step is a push of the drafts to a branch such as `mica/preview`, for the host to build.

@@ -68,7 +68,7 @@ The first time, your browser opens:
 2. Mica shows which app asks for access, what it can do, and when the access ends.
 3. Select **Allow**. The browser goes back to the app, and the agent can work.
 
-The agent acts as you: Mica uses your name for the changes that it publishes. The access ends after `MICA_SESSION_TTL_HOURS` (8 hours by default). Then the browser opens again. When the operator changes the rules so that they no longer admit you, the agent stops at once. A change of your groups at the identity provider counts when the access ends.
+The agent acts as you: Mica uses your name for the changes that it publishes. The access ends after `MICA_SESSION_TTL_HOURS` (8 hours by default). Then the browser opens again. When the operator changes the rules so that they do not admit you, and restarts Mica, the agent stops at its next request. A change of your groups at the identity provider counts when the access ends.
 
 An app that registered itself, and has no address of its own, shows "Mica cannot confirm its name". Allow only an app that you started yourself.
 

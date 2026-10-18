@@ -122,7 +122,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     data: unknown,
     what: string,
   ): Record<string, unknown> => {
-    // Save keeps a half-finished entry; Publish checks `required` (decision "Publish a selection").
+    // Save keeps a half-finished entry; Publish checks `required` (docs/adr/0006-one-shared-change-set-and-publish-a-selection.md).
     const result = validateFields(def.fields, data, { enforceRequired: false });
     if (!result.ok) {
       throw new ValidationError(

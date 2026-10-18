@@ -21,4 +21,4 @@ The self-hosted Mica uses no provider API, so each Git host over HTTPS can work.
 - A defect on a host that is not tested is fixed when somebody reports it.
 - github.com and gitlab.com are supported only while the live runs pass without a skip.
 - Only HTTPS remotes work. SSH deploy keys and a private CA are not supported.
-- Revisit when: an adopter on a self-managed host gives the live suite a scratch project there.
+- Change this decision when: an adopter on a self-managed host gives the live suite a scratch project there.

@@ -155,7 +155,7 @@ tile host limits to the address of the editor.
 | 7.2.3 | Reference token entropy ≥ 128 bits | N/A | `packages/auth/oidc/src/session.ts` | The session is self-contained (V9). The CSRF token has 256 bits. |
 | 7.2.4 | New token at authentication | Pass | `packages/auth/oidc/src/routes.ts`; `packages/auth/oidc/src/session.ts` | |
 | 7.4.1 | Session unusable after logout | Accepted | `packages/auth/oidc/src/session.ts`; `docs/adr/0004-sealed-sessions-and-no-state-about-people.md` | A copied cookie stays valid until it expires. |
-| 7.4.2 | Sessions end when access is removed | Partial | `packages/auth/oidc/src/gate.ts`; `packages/auth/oidc/src/config.ts` | A rule change is immediate; a change at the provider waits for the next sign-in, at most 8 hours by default. |
+| 7.4.2 | Sessions end when access is removed | Partial | `packages/auth/oidc/src/gate.ts`; `packages/auth/oidc/src/config.ts` | A rule change takes effect after a restart; a change at the provider waits for the next sign-in, at most 8 hours by default. |
 
 The idle and absolute timeouts are implemented
 (`packages/auth/oidc/src/session.ts`). They are level 2.

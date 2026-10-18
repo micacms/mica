@@ -12,7 +12,7 @@ Each rule below changes what is stored or what is valid. After 1.0, a change of 
 - `media({ alt })` is an opt-in. With `alt`, the value is `{ path, alt }` and the editor asks for alt text beside the preview. Without it, the value is a path.
 - `tags()` is a free list of short words, never `null`. A tag given twice, in any case, is refused. A fixed list is `select({ multiple })`, a list of entries is a relation.
 - `coordinates({ map })` shows a map, with MapLibre. The presets `"liberty"`, `"bright"` and `"positron"` are OpenFreeMap styles; `{ style, hosts }` names another style. Each address must use `https`. With a map, the value is `{ lat, lng, zoom }`; without it, `{ lat, lng }`.
-- The editor's Content-Security-Policy adds the hosts of a map only when the model has one. Mica does not fetch a style to find its hosts.
+- The editor's Content-Security-Policy adds the hosts of a map only when the model has one. Mica does not fetch a style to find its hosts, because then the owner of a style could widen the policy of the editor. MapLibre's worker starts from a `blob:` address, so it keeps the policy of the page.
 
 ## Consequences
 

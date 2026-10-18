@@ -18,4 +18,4 @@ Editors must not need a markup language. The stored file must stay readable in a
 
 - A developer must change a field that is read-only for the editor.
 - A table cell holds one line of text. Pasted HTML images are removed: an image must be a media file.
-- Revisit when: a site needs rich cells or its own tags. Then generate editor nodes from the model.
+- Change this decision when: a site needs rich cells or its own tags. Then generate editor nodes from the model.

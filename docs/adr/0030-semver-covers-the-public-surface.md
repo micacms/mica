@@ -13,10 +13,11 @@ All packages share one lockstep version. If each package were public, each refac
 - `@micacms/editor-ui` and `@micacms/auth-oidc` are not published. A change to the editor UI records its change file for `@micacms/editor`; a change to the OIDC gate or the image records it for `@micacms/runtime`.
 - In `rush change`, a break of an internal package is `minor`. `major` is only for a break of the public surface.
 - zod 4 is a peer dependency of `@micacms/core` and `@micacms/astro`, because zod is in their public types and Astro needs the same copy.
-- The admin HTTP API (`/api/admin/*`, `/api/auth/*`) is internal and has no version. The editor UI and the runtime ship together. The routes check their answers against the types that the editor imports.
+- The admin HTTP API (`/api/admin/*`, `/api/auth/*`) is internal and has no version. The editor UI and the runtime ship together. The routes check their answers against the types that the editor imports. One mapping (`apiErrorOf`) gives the status of a content error for the admin API and the MCP tools: 409 for a conflict or a read-only part, 422 for an invalid value or a file that Mica cannot read, 404 for an unknown part, 400 for other content errors, and 500 for a bug.
 
 ## Consequences
 
-- npm has no "internal" flag. A project that depends on an internal package can break in a minor.
+- npm has no "internal" flag. A project that depends on an internal package can break in a minor. The line holds only while the public packages do not export internal symbols again.
+- An editor tab that stays open during an upgrade runs the old editor against the new API until it reloads.
 - A move to zod 5 is a Mica major.
 - A script against the admin API can break in any release. Automation uses the MCP tools.

@@ -19,4 +19,4 @@ The project needs one lockstep version, change files and changelogs, a build in 
 - Dependabot cannot update the Rush lockfile. A monthly workflow runs `rush update --full`.
 - `rush typecheck` and `rush test` read other packages from their `dist` folders, so `rush build` comes first.
 - `rush change --verify` sees only the projects in a version policy, so a missing change file of a private project is found only in review.
-- Revisit when: a pnpm workspace with a release tool gives the same with less configuration.
+- Change this decision when: a pnpm workspace with a release tool gives the same with less configuration.

@@ -17,4 +17,4 @@ Mica has one maintainer. A promise that one person cannot keep is worse than non
 
 - An agency that needs a response time, an audit or continuity must plan for it, for example with the ability to fork.
 - One account owns the organization, the npm scope, the domain and the release secrets.
-- Revisit when: a second person wants to maintain Mica, or somebody offers or funds an audit.
+- Change this decision when: a second person wants to maintain Mica, or somebody offers or funds an audit.

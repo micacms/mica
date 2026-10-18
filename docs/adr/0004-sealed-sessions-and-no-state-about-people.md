@@ -16,4 +16,4 @@ Mica keeps no database ([1](0001-git-is-the-source-of-truth.md)). A session tabl
 
 - The server cannot end one session. Sign-out clears the cookie, but a copy stays valid until it expires. A new `MICA_SESSION_SECRET` ends all sessions.
 - The counters start again at each restart, and count for one process only. The design has one process for each site ([7](0007-self-hosted-mica-keeps-its-own-clone.md)).
-- Revisit when: one session must end within seconds while the others continue (a deny list is server state again), or a site needs more than one process.
+- Change this decision when: one session must end within seconds while the others continue (a deny list is server state again), or a site needs more than one process.

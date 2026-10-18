@@ -282,8 +282,9 @@ Four details that matter:
 - The email and domain rules require the provider's `email_verified`. Without
   it, an open self-registration would let anybody claim an admitted address. A
   domain rule for a public provider such as `gmail.com` is refused at startup.
-- The rules are re-read on every request, never decided at sign-in and kept. A
-  configuration change takes effect now.
+- The rules are checked on every request, never decided at sign-in and kept.
+  Mica reads them at start, so a configuration change takes effect after a
+  restart.
 - A **group** change at the provider does not. Mica sees the claims it was
   given at sign-in, and learns better at the next one, so the session lifetime
   is the upper bound. The cookie keeps only the groups that `MICA_ADMIT_GROUPS`

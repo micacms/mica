@@ -32,7 +32,7 @@ export const MANIFEST_PATH = ".mica/schema.json";
 
 /**
  * Holds nothing that changes without a model change, such as a package version
- * or a timestamp: a self-hosted Mica must restart for every change to this file.
+ * or a timestamp: a self-hosted Mica reloads the model at each change to this file.
  */
 export interface ProtocolManifest {
   protocolVersion: number;

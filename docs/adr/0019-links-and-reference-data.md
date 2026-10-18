@@ -18,4 +18,4 @@ A broken link or a missing image on the website is silent loss, and Publish is t
 - A deletion reads every collection, because a link can be anywhere.
 - The URL of a deleted or moved page still needs a redirect, which is the developer's work.
 - The reference index is committed and grows by about 40 bytes for each item. A remote source cannot be a reference set.
-- Revisit when: the scan at a deletion becomes slow (then index the links), or reference data comes from an API.
+- Change this decision when: the scan at a deletion becomes slow (then index the links), or reference data comes from an API.

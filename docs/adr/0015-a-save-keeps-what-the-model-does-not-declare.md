@@ -18,4 +18,4 @@ The model and the content can come in different commits. A save with an older mo
 - A field that leaves the model leaves its values in the files until the recipe removes them.
 - A key in a list row without `_key` is not kept, because such a row has no identity across a new order.
 - Templates must handle a missing optional value.
-- Revisit when: never in 1.x. The rules are part of the content format.
+- These rules are part of the content format and do not change in 1.x.

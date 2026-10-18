@@ -282,8 +282,8 @@ variable is needed.
 
 The design decisions are in [docs/adr/](./docs/adr/README.md), each with its
 context, the decision and its consequences. Known gaps are GitHub issues with
-the label `known-gap`. What each release
-contains is in [CHANGELOG.md](./CHANGELOG.md); everything here is released
+the label `known-gap`. [CHANGELOG.md](./CHANGELOG.md) summarizes the releases,
+and the notes of each release are in the GitHub releases. Everything here is released
 together under one version, and while that version starts with `0`, a minor
 bump may break something.
 
