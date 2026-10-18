@@ -5,5 +5,5 @@
     "types": ["node"],
     "lib": ["ES2023", "DOM"]
   },
-  "include": ["*.ts"]
+  "include": ["*.ts", "local-editor/*.ts"]
 }

@@ -1,209 +1,66 @@
 <script setup lang="ts">
 /**
- * The saved changes that are not on the website yet, and Publish. The whole
- * site shares them; the editor chooses which of them to publish now, and the
- * rest stays saved. `owner` changes only the developer details, not the words.
+ * The saved changes that are not on the website yet, and Publish. The review
+ * itself is `usePublishReview`; the conflicts of Mica's own clone are
+ * `SyncConflicts`. `owner` changes only the developer details, not the words.
  */
 
-import { computed, onMounted, ref, watch } from "vue";
+import { computed, onMounted } from "vue";
 import { RefreshCw } from "@lucide/vue";
 
-import type { FieldMap } from "@micacms/core/internal";
-
-import {
-  api,
-  ApiError,
-  messageOf,
-  type CompareTarget,
-  type Comparison,
-  type FileChange,
-  type PublishOutcome,
-  type SyncConflict,
-} from "@/api";
+import type { FileChange } from "@/api";
 import ChangeComparison from "@/components/ChangeComparison.vue";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import DeveloperDetails from "@/components/DeveloperDetails.vue";
 import ModelNotice from "@/components/ModelNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import StatusNotice from "@/components/StatusNotice.vue";
-import {
-  blockedEdits,
-  problemsByEdit,
-  publishSummary,
-  reviewedPaths,
-  withNeeds,
-  withoutDependents,
-  type Edit,
-} from "@/lib/edits";
+import SyncConflicts from "@/components/SyncConflicts.vue";
+import { usePublishReview } from "@/composables/usePublishReview";
+import type { Edit } from "@/lib/edits";
 import { relativeTime } from "@/lib/format";
-import { pageOfOwner } from "@/lib/pages";
-import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
-import { useToast } from "@/stores/toast";
 
-const schema = useSchema();
 const staging = useStaging();
-const toast = useToast();
-
-const loading = ref(true);
-const publishing = ref(false);
-const pushing = ref(false);
-const discardTarget = ref<Edit | null>(null);
-const discarding = ref(false);
-
-/** The last publication on this page, for the success panel. */
-const published = ref<{ revision: string | null; pages: Array<{ label: string; href: string }> } | null>(null);
-
-/** The pages that the chosen changes show on, before Publish takes them off the list. */
-function pagesOf(chosenEdits: Edit[]): Array<{ label: string; href: string }> {
-  const pages = new Map<string, string>();
-  for (const edit of chosenEdits) {
-    if (edit.state === "removed") continue;
-    const owner = edit.fileChanges[0]?.owner;
-    const href = owner ? pageOfOwner(owner, schema.schema.value) : null;
-    if (href) pages.set(href, edit.label);
-  }
-  return [...pages].map(([href, label]) => ({ label, href }));
-}
-
-/** A publication in the developer's checkout that did not reach the website. */
-const pendingPush = ref<PublishOutcome | null>(null);
-
-const status = staging.status;
-
-/** One row per edit, never per file — see `lib/edits.ts`. */
-const edits = staging.edits;
-
-const problems = computed(() => problemsByEdit(edits.value, status.value?.validation.problems ?? []));
-/** Edits that cannot be published now: a problem in them, or in what they need. */
-const blocked = computed(() => blockedEdits(edits.value, problems.value));
-const labelOf = computed(() => new Map(edits.value.map((edit) => [edit.key, edit.label])));
-/** Edits that another pending edit uses: a new shared upload outside this set is not in any field yet. */
-const neededKeys = computed(() => new Set(edits.value.flatMap((edit) => edit.needs)));
-
-/** Where a problem can be fixed: its entry or settings page, at the field. */
-function fixLink(problemPath: string, field: string) {
-  const edit = edits.value.find((candidate) =>
-    (problems.value.get(candidate.key) ?? []).some((problem) => problem.path === problemPath),
-  );
-  return edit?.link ? { ...edit.link, ...(field ? { query: { field } } : {}) } : null;
-}
-
-/* ------------------------------------------------- the selection */
-
-/**
- * The edits to publish now. A new edit starts selected unless it is blocked;
- * the editor's own choices stay when the list refreshes. An edit always comes
- * with the new edits it needs, and goes with the edits that need it.
- */
-const selected = ref(new Set<string>());
-const offered = new Set<string>();
-
-function updateSelection(next: Edit[]): void {
-  const keys = new Set(next.map((edit) => edit.key));
-  const kept = new Set([...selected.value].filter((key) => keys.has(key) && !blocked.value.has(key)));
-  for (const edit of next) {
-    // An edit that is blocked when it first appears is offered once it is fixed.
-    if (offered.has(edit.key) || blocked.value.has(edit.key)) continue;
-    offered.add(edit.key);
-    kept.add(edit.key);
-  }
-  selected.value = withNeeds(kept, next);
-}
-
-function toggle(key: string): void {
-  selected.value = selected.value.has(key)
-    ? withoutDependents(selected.value, key, edits.value)
-    : withNeeds([...selected.value, key], edits.value);
-}
-
-function selectAll(on: boolean): void {
-  selected.value = new Set(on ? selectable.value.map((edit) => edit.key) : []);
-}
-
-const chosen = computed(() => edits.value.filter((edit) => selected.value.has(edit.key)));
-const selectable = computed(() => edits.value.filter((edit) => !blocked.value.has(edit.key)));
-
-/** The summary: Mica's suggestion until the editor types their own. */
-const typed = ref<string | null>(null);
-const summary = computed({
-  get: () => typed.value ?? publishSummary(chosen.value),
-  set: (value: string) => {
-    typed.value = value;
-  },
-});
-
-/* ------------------------------------------------- before/after */
-
-interface LoadedComparison {
-  loading: boolean;
-  error: string | null;
-  comparison: Comparison | null;
-}
-
-const comparisons = ref<Record<string, LoadedComparison>>({});
-
-/** The revisions of the comparison on the page: Publish and Discard send these, not a newer list's. */
-const shownRevisions = (edit: Edit) => comparisons.value[edit.key]?.comparison?.revisions ?? {};
-
-/** The compared document's fields — null for an order comparison. */
-function fieldsFor(target: CompareTarget): FieldMap | null {
-  if (target.kind === "entry") return schema.collection(target.collection)?.fields ?? null;
-  if (target.kind === "singleton") return schema.singleton(target.name)?.fields ?? null;
-  return null;
-}
-
-async function loadComparison(edit: Edit): Promise<void> {
-  if (!edit.target) return;
-  comparisons.value[edit.key] = { loading: true, error: null, comparison: null };
-  try {
-    const comparison = await api.staging.compare(edit.target);
-    comparisons.value[edit.key] = { loading: false, error: null, comparison };
-  } catch (error) {
-    comparisons.value[edit.key] = {
-      loading: false,
-      error: messageOf(error, "Could not load the comparison."),
-      comparison: null,
-    };
-  }
-}
-
-// Comparisons load with the change list, with nothing to click.
-watch(
+const {
+  status,
   edits,
-  (next) => {
-    updateSelection(next);
-    for (const edit of next) {
-      if (edit.target && !comparisons.value[edit.key]) void loadComparison(edit);
-    }
-  },
-  { immediate: true },
-);
+  loading,
+  publishing,
+  pushing,
+  syncing,
+  discarding,
+  discardTarget,
+  published,
+  pendingPush,
+  problems,
+  blocked,
+  labelOf,
+  neededKeys,
+  fixLink,
+  selected,
+  chosen,
+  selectable,
+  toggle,
+  selectAll,
+  summary,
+  comparisons,
+  fieldsFor,
+  isTree,
+  waitingToSend,
+  otherWork,
+  detached,
+  canPublish,
+  refresh,
+  publish,
+  retryPush,
+  discard,
+  syncNow,
+} = usePublishReview();
 
-/* ------------------------------------------------- state */
-
-/** The developer's checkout: the details for developers name Git. */
-const isTree = computed(() => status.value?.owner === "developer");
 const sync = computed(() => status.value?.sync ?? null);
 
-/** Publications made here that did not reach the website — also after a restart. */
-const waitingToSend = computed(
-  () => isTree.value && (pendingPush.value !== null || (status.value?.unpushed?.mica ?? 0) > 0),
-);
-/** Work in the developer's checkout that Publish would send too, so it waits. */
-const otherWork = computed(() => (isTree.value ? (status.value?.unpushed?.other ?? 0) : 0));
-/** The developer's checkout on no branch, as a content submodule usually is: Publish waits for the developer. */
-const detached = computed(() => (isTree.value ? (status.value?.detached ?? null) : null));
-
-const canPublish = computed(
-  () =>
-    (status.value?.publish.enabled ?? false) &&
-    chosen.value.length > 0 &&
-    summary.value.trim() !== "" &&
-    otherWork.value === 0 &&
-    detached.value === null &&
-    !publishing.value,
-);
+onMounted(refresh);
 
 const stateWord: Record<Edit["state"], string> = {
   new: "New",
@@ -216,173 +73,6 @@ const kindWord: Record<FileChange["kind"], string> = {
   update: "Changed",
   delete: "Removed",
 };
-
-async function refresh(): Promise<void> {
-  // Forget the comparisons first, so the edits watcher reloads every one of
-  // them against the refreshed change set instead of showing a stale panel.
-  comparisons.value = {};
-  await staging.refresh();
-  for (const edit of edits.value) {
-    if (edit.target && !comparisons.value[edit.key]) void loadComparison(edit);
-  }
-  loading.value = false;
-}
-
-onMounted(refresh);
-
-async function publish(): Promise<void> {
-  publishing.value = true;
-  published.value = null;
-  try {
-    // Exactly what the editor sees here, at the revision they see it: a file
-    // saved again since makes the server refuse rather than publish it unseen.
-    const pages = pagesOf(chosen.value);
-    const outcome = await api.staging.publish(summary.value.trim(), reviewedPaths(chosen.value, shownRevisions));
-    typed.value = null;
-
-    if (outcome.state === "published") {
-      pendingPush.value = null;
-      published.value = { revision: outcome.revision, pages };
-    } else if (isTree.value) {
-      // Only the sending failed. Keep "Try again" visible: Publish again would
-      // publish nothing new.
-      pendingPush.value = outcome;
-      toast.error("Published here, but not sent to the website.", outcome.pushError);
-    } else {
-      toast.error("Published in Mica, not on the website yet.", "Mica tries again every minute.");
-    }
-
-    await staging.refresh();
-  } catch (error) {
-    if (error instanceof ApiError) {
-      toast.error(error.message, error.issues[0]?.message);
-      // A conflict or a validation refusal means the list moved: show the truth, comparisons included.
-      await refresh();
-    } else {
-      toast.error("Could not publish.");
-    }
-  } finally {
-    publishing.value = false;
-  }
-}
-
-async function retryPush(): Promise<void> {
-  pushing.value = true;
-  try {
-    const outcome = await api.staging.push();
-    if (outcome.state === "published") {
-      pendingPush.value = null;
-      published.value = { revision: outcome.revision, pages: [] };
-    } else {
-      pendingPush.value = outcome;
-      toast.error("It could not be sent again.", outcome.pushError);
-    }
-    await staging.refresh();
-  } catch (error) {
-    toast.error(messageOf(error, "Could not send it to the website."));
-  } finally {
-    pushing.value = false;
-  }
-}
-
-async function discard(): Promise<void> {
-  const edit = discardTarget.value;
-  if (!edit) return;
-
-  discarding.value = true;
-  try {
-    await api.staging.discard(reviewedPaths([edit], shownRevisions));
-    toast.success(`Discarded the changes to ${edit.label}.`);
-    discardTarget.value = null;
-    await staging.refresh();
-  } catch (error) {
-    toast.error(messageOf(error, "Could not discard."));
-    // Someone saved again: show their version before anything is discarded.
-    if (error instanceof ApiError && error.status === 409) {
-      discardTarget.value = null;
-      await refresh();
-    }
-  } finally {
-    discarding.value = false;
-  }
-}
-
-/* --------------------------------------------- Mica's own clone */
-
-const syncing = ref(false);
-const resolving = ref<string | null>(null);
-/** "Use the website's version" on a new entry deletes it, so it asks first. */
-const confirmWebsite = ref<SyncConflict | null>(null);
-
-async function syncNow(): Promise<void> {
-  syncing.value = true;
-  try {
-    await api.staging.sync();
-    await refresh();
-  } catch (error) {
-    toast.error(messageOf(error, "Could not reach the website's files."));
-  } finally {
-    syncing.value = false;
-  }
-}
-
-/** Whether taking the website's version would delete an entry the editor created. */
-function discardsNewWork(conflict: SyncConflict): boolean {
-  const created = new Set(
-    (status.value?.changes ?? []).filter((change) => change.kind === "create").map((change) => change.path),
-  );
-  return conflict.paths.some((path) => created.has(path));
-}
-
-async function resolve(conflict: SyncConflict, choice: "mine" | "website"): Promise<void> {
-  if (choice === "website" && discardsNewWork(conflict) && confirmWebsite.value !== conflict) {
-    confirmWebsite.value = conflict;
-    return;
-  }
-  confirmWebsite.value = null;
-  resolving.value = conflict.group;
-  try {
-    await api.staging.resolve(conflict.group, choice);
-    toast.success(choice === "mine" ? `Kept your version of ${conflict.label}.` : `Took the website's version of ${conflict.label}.`);
-    await refresh();
-  } catch (error) {
-    toast.error(messageOf(error, "Could not resolve the conflict."));
-  } finally {
-    resolving.value = null;
-  }
-}
-
-const upstreamWords: Record<SyncConflict["upstream"], string> = {
-  changed: "was changed on the website while you edited it",
-  deleted: "was deleted on the website while you edited it",
-  added: "was also created on the website",
-};
-
-const conflictComparisons = ref<Record<string, LoadedComparison>>({});
-
-async function loadConflictComparison(conflict: SyncConflict): Promise<void> {
-  if (!conflict.target) return;
-  conflictComparisons.value[conflict.group] = { loading: true, error: null, comparison: null };
-  try {
-    const comparison = await api.staging.compare(conflict.target, "origin");
-    conflictComparisons.value[conflict.group] = { loading: false, error: null, comparison };
-  } catch (error) {
-    conflictComparisons.value[conflict.group] = {
-      loading: false,
-      error: messageOf(error, "Could not load the comparison."),
-      comparison: null,
-    };
-  }
-}
-
-watch(
-  () => sync.value?.conflicts ?? [],
-  (conflicts) => {
-    for (const conflict of conflicts) {
-      if (!conflictComparisons.value[conflict.group]) void loadConflictComparison(conflict);
-    }
-  },
-);
 
 function since(iso: string): string {
   return new Date(iso).toLocaleString();
@@ -468,57 +158,7 @@ function plural(count: number, one: string, many: string): string {
           </p>
         </div>
 
-        <section v-if="sync.conflicts.length > 0" aria-labelledby="conflicts-heading" class="space-y-3">
-          <h2 id="conflicts-heading" class="text-sm font-semibold">
-            Changed on the website while you edited
-          </h2>
-          <p class="text-xs text-muted">
-            Choose a version for each. Until you do, nothing can be published and the website's newer
-            changes stay out of Mica.
-          </p>
-          <ul class="card divide-y divide-line">
-            <li v-for="conflict in sync.conflicts" :key="conflict.group" class="p-4">
-              <p class="text-sm font-medium">{{ conflict.label }}</p>
-              <p class="mt-0.5 text-xs text-muted">It {{ upstreamWords[conflict.upstream] }}.</p>
-
-              <template v-if="conflict.target">
-                <p v-if="conflictComparisons[conflict.group]?.loading" class="mt-2 text-xs text-muted">Comparing…</p>
-                <p v-else-if="conflictComparisons[conflict.group]?.error" class="mt-2 text-xs text-danger">
-                  {{ conflictComparisons[conflict.group]?.error }}
-                </p>
-                <template v-else-if="conflictComparisons[conflict.group]?.comparison">
-                  <p class="mt-2 text-xs text-muted">The website's version, then yours:</p>
-                  <ChangeComparison
-                    :comparison="conflictComparisons[conflict.group]!.comparison!"
-                    :fields="fieldsFor(conflict.target)"
-                  />
-                </template>
-              </template>
-
-              <p v-if="confirmWebsite === conflict" role="alert" class="mt-2 text-xs text-danger">
-                This deletes the entry you created. Press the button again to confirm.
-              </p>
-              <div class="mt-2.5 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  class="btn-secondary"
-                  :disabled="resolving !== null"
-                  @click="resolve(conflict, 'mine')"
-                >
-                  {{ conflict.upstream === "deleted" ? "Restore it" : "Keep my version" }}
-                </button>
-                <button
-                  type="button"
-                  class="btn-ghost"
-                  :disabled="resolving !== null"
-                  @click="resolve(conflict, 'website')"
-                >
-                  {{ conflict.upstream === "deleted" ? "Accept the deletion" : "Use the website's version" }}
-                </button>
-              </div>
-            </li>
-          </ul>
-        </section>
+        <SyncConflicts :conflicts="sync.conflicts" :refresh="refresh" />
       </template>
 
       <!-- The developer's checkout: a publication that did not reach the website. -->

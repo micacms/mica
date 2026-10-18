@@ -1,15 +1,20 @@
 # Automated browser test
 
-[Playwright](https://playwright.dev) drives the editor UI in Chromium against
-the [OIDC test stack](../oidc/README.md): the real Mica image behind Dex,
-publishing to a Forgejo Git host. CI runs it on
-every pull request that can change the image, in
-[`image.yml`](../../.github/workflows/image.yml), after the OIDC test.
+[Playwright](https://playwright.dev) drives the editor UI in Chromium. There
+are two configurations:
 
-The OIDC test proves the protocol with `fetch`. This test proves that an editor
-can do the same by clicking.
+- `playwright.config.ts`: the self-hosted editor, against the
+  [OIDC test stack](../oidc/README.md): the real Mica image behind Dex,
+  publishing to a Forgejo Git host. It needs Docker. CI runs it on every pull
+  request that can change the image, in
+  [`image.yml`](../../.github/workflows/image.yml), after the OIDC test.
+- `local-editor.config.ts`: the local editor, `mica start`, from the local
+  build. It needs no Docker. CI does not run it yet.
 
-## What it checks
+The OIDC test proves the protocol with `fetch`. These tests prove that an
+editor can do the same by clicking.
+
+## What the self-hosted test checks
 
 `alice@gmail.com`, in one browser:
 
@@ -28,29 +33,54 @@ the same controls, and puts both orders back. A fifth test chooses the dark
 appearance and checks that the browser keeps it. A sixth test ends a session
 while a form has changes, and checks that the changes come back after the next sign-in.
 
+## What the local editor test checks
+
+[`local-editor/rich-text.spec.ts`](local-editor/rich-text.spec.ts):
+
+- copies the starter's content (`examples/starter/content`) into a temporary
+  Git repository;
+- starts `apps/local-editor/dist/cli.js start` on it, on a free port;
+- opens the post, and types a heading, a paragraph with bold text and a list
+  into its rich text field, with the Markdown shortcuts;
+- saves at once, without a pause, so the save must take the text that the
+  field still holds back;
+- compares the written `body.mdoc` with the expected Markdoc, and checks that
+  the repository did not move.
+
 ## Run it
 
+Once, after `rush install`:
+
 ```bash
-rush install
 cd tests/browser
 ./node_modules/.bin/playwright install chromium
+```
 
+The self-hosted test:
+
+```bash
 docker compose -f ../oidc/compose.yml up -d --build --wait
 ./node_modules/.bin/playwright test
 docker compose -f ../oidc/compose.yml down
 ```
 
-It has no `test` script, so `rush test` does not run it: it needs the stack.
+The local editor test. Run `rush build` first: the test starts the built CLI.
+
+```bash
+npm run test:local
+```
+
+The package has no `test` script, so `rush test` runs neither test.
 A failed run keeps a screenshot and a trace in `test-results/`; open the trace
 with `./node_modules/.bin/playwright show-trace`.
 
-Each run uses seven of the 50 sign-in attempts per 15 minutes. The
-[OIDC test](../oidc/README.md#run-it) says when to restart the `mica` service.
+Each run of the self-hosted test uses seven of the 50 sign-in attempts per 15
+minutes. The [OIDC test](../oidc/README.md#run-it) says when to restart the
+`mica` service.
 
 ## What it does not check
 
 - **Other paths.** Collections, media, discard and conflicts are covered by the
-  API tests. `docs/decisions.md` records this gap.
-- **The local editor.** It has no sign-in; this test runs the self-hosted
-  image.
+  API tests and by the editor's unit tests. `docs/decisions.md` records this gap.
+- **Sign-in in the local editor.** It has no sign-in.
 - **Other browsers.** Chromium only.

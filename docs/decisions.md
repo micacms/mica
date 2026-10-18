@@ -2690,11 +2690,14 @@ without a break.
   while the editor runs.
   **1.0 status:** accepted for 1.0.
 
-- **P3** — The browser test covers one path. CI drives Chromium through "sign
+- **P3** — The browser test covers few paths. CI drives Chromium through "sign
   in, edit, save, publish, sign out" on one singleton
-  ([`tests/browser/`](../tests/browser/README.md)). Collections, media,
-  discard, conflicts and the local editor are covered by the API tests and by
-  hand. Add a path when a regression reaches the UI unseen.
+  ([`tests/browser/`](../tests/browser/README.md)). A second configuration
+  types rich text in the local editor and compares the `.mdoc` file. It needs
+  no Docker, but CI does not run it yet. Collections, media, discard and
+  conflicts are covered by the API tests, by the editor's unit tests (such as
+  the save conflict, `useSaveConflict`) and by hand. Add a path when a
+  regression reaches the UI unseen.
   **1.0 status:** after 1.0. The accessibility check (#108) visits every
   view, but it edits nothing.
 

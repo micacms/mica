@@ -2,12 +2,13 @@
   "name": "@micacms/browser-test",
   "version": "0.0.0",
   "private": true,
-  "description": "Drives the editor in a real browser against the OIDC test stack.",
+  "description": "Drives the editor in a real browser: against the OIDC test stack, and against the local editor.",
   "type": "module",
   "scripts": {
     "build": "",
     "typecheck": "tsc -p tsconfig.json",
-    "test:browser": "playwright test"
+    "test:browser": "playwright test",
+    "test:local": "playwright test -c local-editor.config.ts"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.13.0",

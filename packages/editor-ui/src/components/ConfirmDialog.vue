@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /** Confirmation dialog with focus handling and Escape-to-cancel. */
 
-import { ref } from "vue";
+import { ref, useId } from "vue";
 
 import { useDialogFocus } from "@/composables/useDialogFocus";
 
@@ -18,6 +18,9 @@ const props = withDefaults(
 );
 
 const emit = defineEmits<{ confirm: []; cancel: [] }>();
+
+// Two dialogs on one page must not share their IDs.
+const id = useId();
 
 const panel = ref<HTMLElement | null>(null);
 // Focus the safe option, not the destructive one.
@@ -42,13 +45,13 @@ function onKeydown(event: KeyboardEvent): void {
         ref="panel"
         role="alertdialog"
         aria-modal="true"
-        aria-labelledby="confirm-title"
-        aria-describedby="confirm-body"
+        :aria-labelledby="`${id}-title`"
+        :aria-describedby="`${id}-body`"
         class="w-full max-w-md rounded-xl border border-line bg-raised p-5 shadow-2xl"
       >
-        <h2 id="confirm-title" class="text-base font-semibold">{{ title }}</h2>
+        <h2 :id="`${id}-title`" class="text-base font-semibold">{{ title }}</h2>
 
-        <div id="confirm-body" class="mt-2 text-sm text-muted">
+        <div :id="`${id}-body`" class="mt-2 text-sm text-muted">
           <slot />
         </div>
 

@@ -98,7 +98,6 @@ async function load(): Promise<void> {
 }
 
 onMounted(load);
-watch(() => props.collection, load);
 
 /**
  * Manual ordering.
