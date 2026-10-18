@@ -9,7 +9,7 @@ A site with thousands of photos makes a plain Git repository too large: each clo
 ## Decision
 
 - Mica supports Git LFS for files under the content root. The site owner sets the LFS paths in `.gitattributes`. Mica never writes that file.
-- On the server, Git LFS is the only filter driver, with `required`. `lfs.url` and `lfs.pushurl` are `<clone URL>/info/lfs`, or `MICA_REPOSITORY_LFS_URL`, and they override `.lfsconfig`, because `.lfsconfig` is repository content. The same credential helper answers Git LFS.
+- On the server, Git LFS is the only filter driver, with `required`. `lfs.url` and `lfs.pushurl` are `<clone URL>.git/info/lfs` (with one `.git`), or `MICA_REPOSITORY_LFS_URL`, and they override `.lfsconfig`, because `.lfsconfig` is repository content. The same credential helper answers Git LFS.
 - The clone downloads only the LFS files under the content root. A sync downloads them before the fast-forward; a failed download stops the sync.
 - Hooks are off, so Mica runs `git lfs push` before each `git push`, in both apps. A refused LFS push turns the publication back into drafts.
 - The local editor and `mica mcp` stop at start when `.gitattributes` gives content files to LFS and Git LFS is not set up.

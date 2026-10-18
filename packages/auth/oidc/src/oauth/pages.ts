@@ -34,6 +34,9 @@ function page(title: string, body: string): { html: string; csp: string } {
   .actions { display: flex; gap: 12px; justify-content: flex-end; margin-top: 1.5rem; }
   button { font: inherit; padding: 8px 18px; border-radius: 8px; border: 1px solid var(--line); background: transparent; color: var(--fg); cursor: pointer; }
   button[value="allow"] { background: var(--accent); border-color: var(--accent); color: var(--card); }
+  /* Allow works only after a second, so that a click meant for another window cannot land on it (double-clickjacking). */
+  button[value="allow"] { animation: mica-arm 0s 1s both; }
+  @keyframes mica-arm { from { pointer-events: none; opacity: .5; } to { pointer-events: auto; opacity: 1; } }
 </style>
 </head>
 <body><main><div class="card">${body}</div></main></body>

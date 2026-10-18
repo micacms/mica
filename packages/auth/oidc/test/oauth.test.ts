@@ -18,7 +18,8 @@ import { Hono } from "hono";
 
 import { createAgentAuthorization, createSessionService, type AdmissionPolicy, type AuthConfig, type SessionIdentity, type SessionService } from "../src/index.js";
 import { checkRedirectUri, isPublicAddress } from "../src/oauth/index.js";
-import { fetchJson } from "../src/oauth/clients.js";
+import { fetchJson, matchRedirectUri } from "../src/oauth/clients.js";
+import { CONSENT_DELAY_MS } from "../src/oauth/routes.js";
 
 const ISSUER = "https://cms.example.com";
 const RESOURCE = new URL(`${ISSUER}/mcp`);
@@ -146,17 +147,30 @@ function formOf(html: string): { request: string; csrf: string } {
   return { request: field("request"), csrf: field("csrf") };
 }
 
+/** A person reads the consent page before Allow: the clock moves on by `CONSENT_DELAY_MS`, and the test does not wait. */
+async function later<T>(run: () => Promise<T>): Promise<T> {
+  const now = Date.now;
+  Date.now = () => now() + CONSENT_DELAY_MS;
+  try {
+    return await run();
+  } finally {
+    Date.now = now;
+  }
+}
+
 /** Consent, allow, and the code at the redirect. */
 async function allow(s: Setup, session: string, challenge: string, extra: Record<string, string> = {}): Promise<URL> {
   const page = await s.request(authorizeQuery({ code_challenge: challenge, ...extra }), { session });
   assert.equal(page.status, 200);
   const { request, csrf } = formOf(await page.text());
-  const answer = await s.request("/oauth/authorize", {
-    method: "POST",
-    session,
-    headers: { origin: ISSUER, "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ request, csrf, decision: "allow" }),
-  });
+  const answer = await later(() =>
+    s.request("/oauth/authorize", {
+      method: "POST",
+      session,
+      headers: { origin: ISSUER, "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ request, csrf, decision: "allow" }),
+    }),
+  );
   assert.equal(answer.status, 303);
   return new URL(answer.headers.get("location")!);
 }
@@ -287,6 +301,23 @@ describe("the authorization code flow", () => {
     } finally {
       rules.open = true;
     }
+  });
+
+  it("refuses an Allow that comes less than a second after the page opened (double-clickjacking)", async () => {
+    const page = await s.request(authorizeQuery({ code_challenge: pkce().challenge }), { session });
+    const html = await page.text();
+    // The page also keeps the button inactive for that second, without script.
+    assert.match(html, /animation: mica-arm 0s 1s both/);
+    const { request, csrf } = formOf(html);
+    const answer = await s.request("/oauth/authorize", {
+      method: "POST",
+      session,
+      headers: { origin: ISSUER, "content-type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({ request, csrf, decision: "allow" }),
+    });
+    assert.equal(answer.status, 400);
+    assert.equal(answer.headers.get("location"), null);
+    assert.match(await answer.text(), /hidden click/);
   });
 
   it("sends a refusal back to the client", async () => {
@@ -450,8 +481,17 @@ describe("addresses", () => {
     }
   });
 
+  it("matches a loopback address on any port, and on nothing else", () => {
+    const client = { id: "c", name: "Agent", verified: false, redirectUris: ["http://127.0.0.1/cb"] };
+    assert.equal(matchRedirectUri(client, "http://127.0.0.1:53111/cb"), "http://127.0.0.1:53111/cb");
+    assert.equal(matchRedirectUri(client, "http://127.0.0.1:53111/cb#x"), null);
+    assert.equal(matchRedirectUri(client, "http://user@127.0.0.1:53111/cb"), null);
+    assert.equal(matchRedirectUri(client, "http://127.0.0.1:53111/other"), null);
+  });
+
   it("does not fetch a client document from a private network", () => {
-    for (const address of ["10.0.0.1", "127.0.0.1", "169.254.169.254", "192.168.1.1", "::1", "fe80::1", "fd00::1", "::ffff:10.0.0.1"]) {
+    const private6 = ["64:ff9b:1::a00:1", "::a00:1", "fec0::1", "100::1", "2001:db8::1"];
+    for (const address of ["10.0.0.1", "127.0.0.1", "169.254.169.254", "192.168.1.1", "::1", "fe80::1", "fd00::1", "::ffff:10.0.0.1", ...private6]) {
       assert.equal(isPublicAddress(address), false, address);
     }
     for (const address of ["8.8.8.8", "2001:4860:4860::8888"]) assert.equal(isPublicAddress(address), true, address);

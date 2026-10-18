@@ -16,7 +16,8 @@ times. A valid report is fixed in the next release, as soon as the maintainer
 can.
 
 Mica is **not independently audited**. Its authentication, session, CSRF and
-admission code is reviewed by the maintainer against the OWASP ASVS level 1
+admission code, the authorization server for agents, the MCP tools and the Git
+path of the self-hosted image are reviewed by the maintainer against the OWASP ASVS level 1
 checklist ([docs/security-review.md](docs/security-review.md)), and CI runs a
 dependency audit.
 

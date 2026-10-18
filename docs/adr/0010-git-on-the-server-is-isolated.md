@@ -9,7 +9,7 @@ Another person controls the repository. Git has many ways to run code from repos
 ## Decision
 
 - The clone's `git` runs with an allowlisted environment, never `process.env`, which holds the session and OIDC secrets.
-- Every setting comes from `GIT_CONFIG_*`:
+- Every setting comes from `GIT_CONFIG_*`, except `lfs.fetchinclude`, which Mica writes into the clone's `.git/config` to limit downloads to the content root:
   - no system or global configuration, and hooks off;
   - symlinks as plain files, `autocrlf` off, and attributes that turn off conversion, `ident` and encoding;
   - no filter driver except Git LFS ([11](0011-git-lfs-for-media.md));

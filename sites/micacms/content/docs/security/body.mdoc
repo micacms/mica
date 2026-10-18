@@ -26,7 +26,7 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 - **Removal at the provider applies at the next sign-in.** Mica checks the provider's claims when a person signs in. A person you remove from a group at the provider keeps working until the session ends: at most 8 hours, or 4 hours without activity, by default. To stop a person sooner, change `MICA_ADMIT_SUBJECTS` or the other rules, and restart Mica: it checks the rules on every request.
 - **No server-side session revocation.** Sessions are encrypted cookies. Mica has no database. To end every session at once, change `MICA_SESSION_SECRET` and restart. Every editor must then sign in again.
 - **The local editor is open to local processes.** Any process on the developer's machine can call the local API. Such a process can already change the files in the working tree.
-- **An agent's access cannot be ended one by one.** On a self-hosted Mica with `MICA_MCP=true`, an agent's token is sealed like a session, and Mica stores no list of them. It ends after `MICA_SESSION_TTL_HOURS`, or at the next request after the rules change and Mica restarts. To end all of them, change `MICA_SESSION_SECRET`.
+- **An agent's access cannot be ended one by one.** On a self-hosted Mica with `MICA_MCP=true`, an agent's token is sealed like a session, and Mica stores no list of them. It ends after `MICA_SESSION_TTL_HOURS`, or at the next request after the rules change and Mica restarts. A copied refresh token works until then too. To end all of them, change `MICA_SESSION_SECRET`.
 - **Content can give instructions to an agent.** A text in the content can try to direct an agent that reads it. By default, an agent only saves drafts; `MICA_MCP_PUBLISH` lets it publish.
 - **A publish is immediate.** There is no review step. If you need one, point Mica at a staging branch and merge on your own schedule.
 - **No roles.** Every admitted editor can save, publish, discard and delete.
@@ -49,7 +49,7 @@ Mica is not on a visitor's path: your website is the output of your build. Edito
 
 ## Availability
 
-When Mica is down, your website stays up: the website does not call Mica. Mica limits sign-in attempts and the size of uploads. The content model comes from the repository, so only a person who can push to it can change the model, for example a slow regular expression in `text({ pattern })`.
+When Mica is down, your website stays up: the website does not call Mica. Mica limits sign-in attempts and the size of requests: an upload to `MICA_MAX_UPLOAD_BYTES`, a JSON request to 2 MB, a request to `/oauth/*` to 64 kB, and a request to `/mcp` to the upload limit with its base64 encoding. The content model comes from the repository, so only a person who can push to it can change the model, for example a slow regular expression in `text({ pattern })`.
 
 ## The supply chain
 
@@ -61,18 +61,19 @@ When Mica is down, your website stays up: the website does not call Mica. Mica l
 
 - **Subject:** the `sub` claim with the issuer. It never changes for a person. The subject rule is the strictest.
 - **Groups:** the claim in `MICA_OIDC_GROUPS_CLAIM`, as the provider sends it. Whoever can change a group at the provider can admit a person. Make sure that only your administrators can create a group with an admitted name. For example, the GitHub connector of Dex puts GitHub organisation names into the groups claim, and each GitHub user can create an organisation: see [Other sign-in providers](/docs/other-providers/).
-- **Email and domain:** only with `email_verified`. The provider vouches for the address, not for the person who owns the domain. Google reports a personal Google account with an address at your domain as verified. So with Google, a domain rule also needs the Workspace domain of the account (the `hd` claim) in `MICA_ADMIT_DOMAINS`. With another public provider, use a group or subjects.
+- **Email and domain:** only with `email_verified`. The provider vouches for the address, not for the person who owns the domain. Google reports a personal Google account with an address at your domain as verified. So with Google, a domain rule also needs the Workspace domain of the account (the `hd` claim) in `MICA_ADMIT_DOMAINS`. When Google is behind a broker, such as Dex or Keycloak, the broker is the issuer, and Mica cannot check `hd`: limit the broker to your Workspace domain (in Dex, `hostedDomains`), or use a group or subjects. With another public provider, use a group or subjects.
 
 ## What Mica does for you
 
 - It signs in with the OIDC authorization code flow, with PKCE, `state` and `nonce`.
 - Session cookies are `HttpOnly` and `SameSite=Lax`. Over https they are also `Secure`, with a `__Host-` name, so that another subdomain cannot set or replace them.
 - Over https, every response carries `Strict-Transport-Security`. The self-hosted Mica refuses to start with an `http://` public address, except on this machine.
-- Mica refuses every write from another origin, and every write but the sign-out needs a matching CSRF token. The sign-out needs none, so that it works also with an expired session.
+- The editor's API and the consent page for agents refuse a write from another origin. Each write of the editor but the sign-out needs a matching CSRF token. The sign-out needs none, so that it works also with an expired session. The agent endpoints `/mcp`, `/oauth/token` and `/oauth/register` take a bearer token or the OAuth flow instead, as OAuth requires.
+- On the consent page for an agent, **Allow** works only one second after the page opens, and Mica refuses a sooner one. A click that a page on another site hides behind a pop-up window cannot allow an agent.
 - Sign-in attempts are rate limited.
 - Responses carry a `Content-Security-Policy` that allows the same origin only, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: same-origin`. Only when the model has a coordinates field with a map does the policy also allow the hosts of that map for images and connections, and `blob:` workers for MapLibre.
 - The editor loads nothing from another origin. Its fonts are served by Mica itself. The one exception is a map, as above.
-- Mica refuses SVG files, because they can contain scripts: it does not accept them as uploads and does not show them in the editor. Mica checks the type of each upload from its bytes, and accepts only the types of the field. Media files are served in a sandbox, and files that are not images are sent as downloads.
+- Mica refuses SVG files, because they can contain scripts: it does not accept them as uploads and does not show them in the editor. Mica checks the type of each upload from its bytes, and stores only the types of its table: images, PDF, GPX, KML, GeoJSON, ZIP and CSV. Media files are served in a sandbox, and files that are not images are sent as downloads.
 - The self-hosted Mica refuses to start when no admission rule is set.
 - Git runs with its hooks off, and with Git LFS as the only filter. A `.lfsconfig` in the repository cannot send the files to another server. The self-hosted Mica never fetches submodules.
 

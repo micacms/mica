@@ -63,6 +63,8 @@ export function matchRedirectUri(client: Client, requested: string): string | nu
   if (!URL.canParse(requested)) return null;
   const asked = new URL(requested);
   if (asked.protocol !== "http:" || !LOOPBACK_HOSTS.has(asked.hostname)) return null;
+  // Only the port may differ: a fragment or a user name is not part of a registered address.
+  if (asked.hash || asked.username || asked.password) return null;
   const match = client.redirectUris.some((registered) => {
     if (!URL.canParse(registered)) return false;
     const url = new URL(registered);
@@ -94,9 +96,15 @@ for (const [network, prefix] of [
 for (const [network, prefix] of [
   ["::", 128],
   ["::1", 128],
-  // NAT64 and 6to4 carry an IPv4 address, which may be a private one.
+  // NAT64, local NAT64, IPv4-compatible and 6to4 addresses carry an IPv4 address, which may be a private one.
   ["64:ff9b::", 96],
+  ["64:ff9b:1::", 48],
+  ["::", 96],
   ["2002::", 16],
+  // Discard-only, documentation and the old site-local range: never a client's server.
+  ["100::", 64],
+  ["2001:db8::", 32],
+  ["fec0::", 10],
   ["fc00::", 7],
   ["fe80::", 10],
   ["ff00::", 8],
