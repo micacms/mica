@@ -23,7 +23,7 @@ import {
   text,
 } from "@micacms/core/internal";
 
-import { micaCollections, type LoaderContext } from "../dist/index.js";
+import { micaCollections, type LoaderContext } from "../src/index.js";
 
 const site = defineSite({
   collections: {

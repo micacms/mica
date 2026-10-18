@@ -25,6 +25,8 @@ publishes, so nothing here pushes without the user saying so.
 
 Read every `common/changes/**/*.json` **now** — the bump consumes them, so
 this is the only moment to read them. Note each entry's `type` and `comment`.
+A change to the image is on `@micacms/runtime`, and a change to the editor UI
+on `@micacms/editor`: the private projects have no change files of their own.
 
 - Suggested bump: the largest type present (`major` > `minor` > `patch`);
   `none` entries never bump anything. While the major version is 0, that

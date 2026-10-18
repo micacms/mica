@@ -255,7 +255,8 @@ A new major version is a change to the range in `package.json`, then
 Everything here ships together under one version. A pull request that changes
 a published package carries a change file — `rush change` records one, CI
 verifies it, and its comment becomes the package's changelog entry (bump type
-`none` for changes the release notes should not mention).
+`none` for changes the release notes should not mention). A change to the
+image records its change file for `@micacms/runtime`, which the image ships.
 
 ```bash
 rush version-bump                 # consume the change files: bump every

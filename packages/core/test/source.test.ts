@@ -12,8 +12,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { contentPath, ContentPathError, ContentSourceError, memorySource, type ContentSource } from "../dist/index.js";
-import { fileSystemSource, within } from "../dist/node.js";
+import { contentPath, ContentPathError, ContentSourceError, memorySource, type ContentSource } from "../src/index.js";
+import { fileSystemSource, within } from "../src/node.js";
 
 const fixture: Record<string, string> = {
   "projects/haus-a/index.json": '{ "title": "Haus A" }',

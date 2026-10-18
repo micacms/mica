@@ -12,7 +12,7 @@ import { after, before, describe, it } from "node:test";
 
 import { collection, defineSite, richText, slug, text } from "@micacms/core/internal";
 
-import { micaCollections } from "../dist/index.js";
+import { micaCollections } from "../src/index.js";
 
 const ENTRIES = 1_000;
 

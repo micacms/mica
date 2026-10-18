@@ -38,7 +38,7 @@ import {
   url,
   validateFields,
   withEmptyValues,
-} from "../dist/internal.js";
+} from "../src/internal.js";
 
 /* Type-level assertions — these fail at `rush typecheck`, not at runtime. */
 type Equal<A, B> =

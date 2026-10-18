@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { describe, it } from "node:test";
 
-import { emailFrom, openTransaction, sealTransaction, type OidcTransaction } from "../dist/oidc.js";
+import { emailFrom, openTransaction, sealTransaction, type OidcTransaction } from "../src/oidc.js";
 
 const SECRET = "0".repeat(32);
 const transaction: OidcTransaction = {

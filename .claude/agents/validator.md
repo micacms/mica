@@ -23,15 +23,15 @@ If `node_modules` is missing, run `install` first. It installs from the lockfile
 
 Run the gates the task asks for. With no instruction, run all of them, in this order:
 
-1. `typecheck`
-2. `test`
-3. `build`
+1. `build`
+2. `typecheck`
+3. `test`
 4. `change --verify` — it only sees committed changes. On uncommitted work, list the files in `common/changes/` instead and say so.
 5. `node scripts/version.mjs` — every version-bearing file must show the same version.
 
 Write each output to a log file in `$TMPDIR`, and read the exit code. Do not trust a filtered `grep` alone: a filter that matches nothing hides a failure.
 
-A failed first `typecheck` directly after an install can come from packages that are not built yet. Run `build`, then `typecheck` again, and report both results.
+The typecheck and the tests read the other packages from their build output, so `build` comes first. Without it, they check against old or missing `dist` folders.
 
 ## Report
 

@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/mcp",
+      "comment": "Run the tests without a build first.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@micacms/mcp",
+  "email": "alexander@muedespacher.ch"
+}

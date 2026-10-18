@@ -31,7 +31,7 @@ import {
   richText,
   slug,
   text,
-} from "../dist/internal.js";
+} from "../src/internal.js";
 
 const fields = {
   title: text(),

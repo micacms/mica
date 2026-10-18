@@ -9,7 +9,7 @@ import { describe, it } from "node:test";
 import { referenceSet } from "@micacms/core";
 import { parseReferenceIndex, referenceIndexPath } from "@micacms/core/internal";
 
-import { parseCsv, publishReferences, readReferenceItems } from "../dist/references.js";
+import { parseCsv, publishReferences, readReferenceItems } from "../src/references.js";
 
 const set = (file: string, keys: { id?: string; title?: string } = {}) => ({ ...referenceSet({ label: "Places", file, ...keys }), name: "places" });
 

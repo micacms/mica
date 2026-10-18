@@ -16,9 +16,9 @@ import { collection, defineSite, slug, text } from "@micacms/core/internal";
 import { contentFiles, createApp, createLogger, createRuntimeContext, type Env, type OwnerPolicy } from "@micacms/runtime";
 import { Hono } from "hono";
 
-import { createAgentAuthorization, createSessionService, type AdmissionPolicy, type AuthConfig, type SessionIdentity, type SessionService } from "../dist/index.js";
-import { checkRedirectUri, isPublicAddress } from "../dist/oauth/index.js";
-import { fetchJson } from "../dist/oauth/clients.js";
+import { createAgentAuthorization, createSessionService, type AdmissionPolicy, type AuthConfig, type SessionIdentity, type SessionService } from "../src/index.js";
+import { checkRedirectUri, isPublicAddress } from "../src/oauth/index.js";
+import { fetchJson } from "../src/oauth/clients.js";
 
 const ISSUER = "https://cms.example.com";
 const RESOURCE = new URL(`${ISSUER}/mcp`);

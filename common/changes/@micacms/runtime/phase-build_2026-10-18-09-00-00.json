@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "packageName": "@micacms/runtime",
+      "comment": "Run the tests without a build first. The OIDC gate and the self-hosted app run their tests the same way, and the image build keeps its dependency install when only a change file is new.",
+      "type": "none"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

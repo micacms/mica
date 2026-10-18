@@ -43,7 +43,7 @@
       "commandKind": "bulk",
       "name": "test",
       "summary": "Run every project's tests",
-      "description": "Runs the `test` script of every project that has one, in dependency order.",
+      "description": "Runs the `test` script of every project that has one, in dependency order. A test reads the other packages from their build output, so run `rush build` first.",
       "enableParallelism": true,
       // The sites have no test script; that is fine rather than an error.
       "ignoreMissingScript": true,

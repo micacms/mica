@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { safeReturnTo } from "../dist/return-to.js";
+import { safeReturnTo } from "../src/return-to.js";
 
 const PUBLIC_URL = "https://cms.example.com";
 

@@ -972,7 +972,9 @@ edit through MCP"). Since 0.9 (#225),
 `@micacms/editor-ui` and `@micacms/auth-oidc` are not published: the editor
 ships the UI's build in its `dist/admin`, and the image builds both from
 source. A change to the editor UI records its change file for
-`@micacms/editor`, and a change to the OIDC gate for `@micacms/runtime`.
+`@micacms/editor`, and a change to the OIDC gate or to the image
+(`apps/self-hosted`, the `Dockerfile`) for `@micacms/runtime`, which the image
+ships. A break of the image contract is `major` all the same.
 
 **Why:** all packages share one lockstep version, so a public `runtime` would
 turn every refactor of its helpers into a major for every package, `core`
@@ -1477,6 +1479,12 @@ on a Node PaaS; then add a `bin` and put it under semver.
 **Built in 0.6 (#129):** `apps/self-hosted` is `private` and has no version
 policy, so `rush publish` skips it; `scripts/version.mjs --sync` still sets its
 version. Deprecating the versions on npm needs an npm login.
+
+**In 0.11 (#242):** with no policy, `rush version --bump` no longer writes the
+package's changelog, so the generated one that stopped at 0.5.0 is deleted. An
+image change records its change file for `@micacms/runtime`, and the release
+notes take it from there. `rush change --verify` does not check it: see "The
+change-file gate sees only the published packages" in the known gaps.
 
 **1.0 status:** done, except the deprecation.
 
@@ -2639,6 +2647,49 @@ its own guides in its own package.
 
 ---
 
+### P3 — Rush drives the monorepo
+
+**Decided:** Rush, pinned in `rush.json` with its own pinned pnpm, installs,
+builds, tests and releases the repository. One lockstep version policy,
+`mica`, holds the version of the published packages. A change file under
+`common/changes/` becomes a changelog entry, `rush change --verify` is the CI
+gate, `rush version-bump` consumes the change files, and `rush deploy` makes
+the image's pruned install. Rush replaced pnpm workspaces and Changesets
+for 0.2.0.
+
+**Why:** one tool gives the lockstep version, the change files and
+changelogs, the incremental build in dependency order and the pruned folder
+for the image. Rush fetches the pnpm that `rush.json` names, so a build does
+not depend on what a machine has installed.
+
+**Costs:**
+
+- Each project is listed in `rush.json`, with no globs. Rush reads every
+  listed manifest at startup, also for a filtered install, so the `Dockerfile`
+  copies the manifests of the sites and the browser test too.
+- A contributor needs a global `rush`, or `node
+  common/scripts/install-run-rush.js` in its place.
+- Dependabot cannot update the Rush lockfile. A monthly workflow runs
+  `rush update --full` (`dependencies.yml`).
+- The bulk commands `build`, `typecheck` and `test` do not depend on each
+  other. The typecheck and the tests read the other packages from their `dist`
+  folders, so `rush build` comes first, and a stale `dist` gives a stale result.
+  Since #242 the tests run on their own package's source and build nothing,
+  so CI compiles each package twice: the build and the typecheck.
+- `rush change --verify` sees only the projects in a version policy, and
+  `rush publish --include-all` publishes each of them. A private project
+  cannot join a policy only for the check.
+- Change files, version policies, `rush deploy` and the bootstrap script are
+  Rush concepts that a contributor who knows npm or pnpm must learn.
+
+**What would change it:** a pnpm workspace with a release tool that gives the
+lockstep version, the change gate and the pruned deploy with less
+configuration, or a Rush release that breaks this flow.
+
+**1.0 status:** accepted for 1.0.
+
+---
+
 ## Deferred scope
 
 Explicitly not built. Everything in this section is after 1.0.
@@ -2681,6 +2732,27 @@ without a break.
   preview.
 
 ## Known gaps to close
+
+- **P3** — The change-file gate sees only the published packages.
+  `rush change --verify` asks for a change file only for a project in a
+  version policy. A change to the editor UI, the OIDC gate or the image records
+  its change file for a published package (see "Semver covers the public
+  surface"), and only the review checks that. The fix: lockstep policies for
+  the private projects with `mainProject` set to `@micacms/editor` or
+  `@micacms/runtime`, so that the gate asks for the change file there. Then the
+  release workflow must publish only the `mica` policy (`rush publish
+  --version-policy mica`), because a project in a policy is published, and
+  `scripts/version.mjs` must set the version of each policy. A change to the
+  `Dockerfile` is outside every project and stays unchecked.
+  **1.0 status:** with the next change to the release workflow.
+
+- **P3** — `rush test` and `rush typecheck` do not build what they read. Rush
+  phased commands would fix this: a `_phase:test` and a `_phase:typecheck`
+  that depend on the `_phase:build` of the upstream projects. They need a
+  `_phase:build` script in every project, and a command runs each of its
+  phases for every selected project, so a phased `rush typecheck` would build
+  the websites too. CI would need to change with them.
+  **1.0 status:** on demand.
 
 - **P3** — `npx mica mcp` beside `npx mica start` is two processes on one
   working tree. The workspace locks are in each process, so they do not

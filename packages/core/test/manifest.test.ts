@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { collection, coordinates, createManifest, defineSite, ManifestError, readManifest, slug, text } from "../dist/index.js";
+import { collection, coordinates, createManifest, defineSite, ManifestError, readManifest, slug, text } from "../src/index.js";
 
 /** The smallest manifest that satisfies `defineSite`: every collection needs a slug. */
 const validSite = () => ({
