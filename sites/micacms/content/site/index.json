@@ -10,9 +10,9 @@
     "href": "/changelog/"
   },
   "status": {
-    "label": "pre-1.0",
-    "bannerTitle": "Before 1.0",
-    "bannerText": "Mica is close to production use, and it is not there yet. The API and the content format can still change, so read the release notes before you upgrade.",
-    "bannerLink": "Read the changelog"
+    "label": "experimental",
+    "bannerTitle": "Under development",
+    "bannerText": "Mica is experimental and not ready for production. The API and the content format can still change, so read the release notes before you upgrade.",
+    "bannerLink": "Follow the releases"
   }
 }

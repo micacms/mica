@@ -265,7 +265,7 @@
   "fit": {
     "eyebrow": "Is Mica for you?",
     "title": "Small on purpose.",
-    "lead": "Mica is pre-1.0 and does a few things well. Here is what it does not do yet, so that you can choose well.",
+    "lead": "Mica is experimental, not ready for production, and does a few things well. Here is what it does not do yet, so that you can choose well.",
     "goodTitle": "A good fit",
     "notTitle": "Not a good fit today",
     "good": [
