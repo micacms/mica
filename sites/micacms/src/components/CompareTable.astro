@@ -1,0 +1,31 @@
+---
+// One table for the overview (Mica and every product) and for a comparison page (Mica and one product).
+interface Column { name: string; href?: string; values: string[]; mica?: boolean; }
+interface Props { featureLabel: string; rows: string[]; columns: Column[]; }
+const { featureLabel, rows, columns } = Astro.props;
+---
+
+<div class="overflow-x-auto rounded-lg border border-line bg-surface" tabindex="0" role="region" aria-label={featureLabel}>
+  <table class="w-full border-separate border-spacing-0 text-left text-[15px] leading-normal">
+    <thead>
+      <tr>
+        <th scope="col" class="sticky left-0 z-10 min-w-36 border-b border-line-strong bg-sandstone px-3 py-3 align-bottom font-semibold text-ink">{featureLabel}</th>
+        {columns.map((column) => (
+          <th scope="col" class:list={["min-w-56 border-b border-line-strong px-3 py-3 align-bottom font-semibold text-ink", column.mica ? "bg-primary-soft" : "bg-sandstone"]}>
+            {column.href ? <a class="link" href={column.href}>{column.name}</a> : column.name}
+          </th>
+        ))}
+      </tr>
+    </thead>
+    <tbody>
+      {rows.map((label, index) => (
+        <tr>
+          <th scope="row" class="sticky left-0 z-10 min-w-36 border-b border-line bg-surface px-3 py-3 align-top font-semibold text-ink">{label}</th>
+          {columns.map((column) => (
+            <td class:list={["border-b border-line px-3 py-3 align-top text-ink", column.mica && "bg-primary-soft"]}>{column.values[index]}</td>
+          ))}
+        </tr>
+      ))}
+    </tbody>
+  </table>
+</div>

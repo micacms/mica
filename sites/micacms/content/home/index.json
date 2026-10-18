@@ -305,6 +305,10 @@
     "link": {
       "label": "Read the scope and non-goals",
       "href": "/docs/scope/"
+    },
+    "compareLink": {
+      "label": "Compare Mica with other editors",
+      "href": "/compare/"
     }
   },
   "start": {

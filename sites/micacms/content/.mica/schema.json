@@ -76,6 +76,126 @@
         }
       }
     },
+    "comparisons": {
+      "type": "collection",
+      "name": "comparisons",
+      "label": "Comparisons",
+      "labelSingular": "Comparison",
+      "url": "/compare/{slug}/",
+      "description": "Mica next to one other Git-based editor. One page for each product, and one column in the overview table.",
+      "sortable": true,
+      "fields": {
+        "name": {
+          "kind": "text",
+          "label": "Product",
+          "required": true,
+          "listed": true,
+          "width": "half"
+        },
+        "slug": {
+          "kind": "slug",
+          "label": "URL",
+          "from": "name"
+        },
+        "title": {
+          "kind": "text",
+          "label": "Page title",
+          "required": true,
+          "description": "Such as Mica vs. Keystatic.",
+          "width": "half"
+        },
+        "website": {
+          "kind": "url",
+          "label": "Website",
+          "required": true,
+          "width": "half"
+        },
+        "checkedOn": {
+          "kind": "date",
+          "label": "Checked on",
+          "required": true,
+          "listed": true,
+          "width": "half"
+        },
+        "summary": {
+          "kind": "textarea",
+          "label": "Summary",
+          "required": true,
+          "rows": 3,
+          "maxLength": 320
+        },
+        "chooseMica": {
+          "kind": "repeater",
+          "label": "Choose Mica when",
+          "itemLabel": "text",
+          "max": 10,
+          "fields": {
+            "text": {
+              "kind": "text",
+              "label": "Point",
+              "required": true
+            }
+          }
+        },
+        "chooseOther": {
+          "kind": "repeater",
+          "label": "Choose the other product when",
+          "itemLabel": "text",
+          "max": 10,
+          "fields": {
+            "text": {
+              "kind": "text",
+              "label": "Point",
+              "required": true
+            }
+          }
+        },
+        "facts": {
+          "kind": "repeater",
+          "label": "Facts",
+          "description": "One value for each row key of the overview table. The label and the value of Mica come from the table.",
+          "itemLabel": "key",
+          "fields": {
+            "key": {
+              "kind": "text",
+              "label": "Row key",
+              "required": true,
+              "width": "third"
+            },
+            "value": {
+              "kind": "textarea",
+              "label": "Value for this product",
+              "required": true,
+              "rows": 2
+            }
+          }
+        },
+        "body": {
+          "kind": "richText",
+          "label": "Details",
+          "toolbar": "full"
+        },
+        "sources": {
+          "kind": "repeater",
+          "label": "Sources",
+          "itemLabel": "label",
+          "fields": {
+            "label": {
+              "kind": "text",
+              "label": "Label",
+              "required": true,
+              "width": "half"
+            },
+            "href": {
+              "kind": "url",
+              "label": "Link",
+              "required": true,
+              "width": "half"
+            }
+          }
+        }
+      }
+    },
     "releases": {
       "type": "collection",
       "name": "releases",
@@ -327,6 +447,129 @@
         }
       }
     },
+    "compare": {
+      "type": "singleton",
+      "name": "compare",
+      "label": "Comparison overview",
+      "url": "/compare/",
+      "description": "The overview page, its table rows, and the words that every comparison page shares.",
+      "fields": {
+        "eyebrow": {
+          "kind": "text",
+          "label": "Eyebrow",
+          "required": true
+        },
+        "title": {
+          "kind": "text",
+          "label": "Title",
+          "required": true
+        },
+        "lead": {
+          "kind": "textarea",
+          "label": "Lead",
+          "required": true,
+          "rows": 3
+        },
+        "statusNote": {
+          "kind": "textarea",
+          "label": "Status note",
+          "rows": 2
+        },
+        "checkedLabel": {
+          "kind": "text",
+          "label": "Label before the date",
+          "required": true,
+          "width": "half"
+        },
+        "changeNote": {
+          "kind": "text",
+          "label": "Note that products change",
+          "required": true,
+          "width": "half"
+        },
+        "featureLabel": {
+          "kind": "text",
+          "label": "Header of the first column",
+          "required": true,
+          "width": "half"
+        },
+        "linkText": {
+          "kind": "text",
+          "label": "Link text to a comparison page",
+          "required": true,
+          "width": "half",
+          "description": "Use {name} for the product."
+        },
+        "backLabel": {
+          "kind": "text",
+          "label": "Link back to the overview",
+          "required": true,
+          "width": "half"
+        },
+        "chooseMicaTitle": {
+          "kind": "text",
+          "label": "Title: choose Mica",
+          "required": true,
+          "width": "half"
+        },
+        "chooseOtherTitle": {
+          "kind": "text",
+          "label": "Title: choose the other product",
+          "required": true,
+          "width": "half",
+          "description": "Use {name} for the product."
+        },
+        "detailsTitle": {
+          "kind": "text",
+          "label": "Title of the details",
+          "required": true,
+          "width": "half"
+        },
+        "tableTitle": {
+          "kind": "text",
+          "label": "Title of the table on a comparison page",
+          "required": true,
+          "width": "half"
+        },
+        "sourcesTitle": {
+          "kind": "text",
+          "label": "Title of the sources",
+          "required": true,
+          "width": "half"
+        },
+        "websiteLabel": {
+          "kind": "text",
+          "label": "Link text to the product website",
+          "required": true,
+          "width": "half",
+          "description": "Use {name} for the product."
+        },
+        "rows": {
+          "kind": "repeater",
+          "label": "Table rows",
+          "itemLabel": "label",
+          "fields": {
+            "key": {
+              "kind": "text",
+              "label": "Row key",
+              "required": true,
+              "width": "third"
+            },
+            "label": {
+              "kind": "text",
+              "label": "Feature",
+              "required": true
+            },
+            "mica": {
+              "kind": "textarea",
+              "label": "Mica",
+              "required": true,
+              "rows": 2
+            }
+          }
+        }
+      }
+    },
     "navigation": {
       "type": "singleton",
       "name": "navigation",
@@ -361,6 +604,13 @@
               "kind": "text",
               "label": "Title",
               "required": true
+            },
+            "comparisons": {
+              "kind": "relation",
+              "label": "Comparison pages",
+              "collection": "comparisons",
+              "multiple": true,
+              "description": "Shown before the links, with the title of each page."
             },
             "links": {
               "kind": "repeater",
@@ -973,6 +1223,25 @@
             "link": {
               "kind": "object",
               "label": "Link",
+              "required": true,
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Label",
+                  "required": true,
+                  "width": "half"
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "width": "half"
+                }
+              }
+            },
+            "compareLink": {
+              "kind": "object",
+              "label": "Link to the comparison",
               "required": true,
               "fields": {
                 "label": {

@@ -1,0 +1,150 @@
+{
+  "name": "TinaCMS",
+  "slug": "tinacms",
+  "title": "Mica vs. TinaCMS",
+  "website": "https://tina.io/",
+  "checkedOn": "2026-10-18",
+  "summary": "TinaCMS offers visual click-to-edit, a hosted service and an editorial workflow with pull requests. It keeps an index of your content in a database. Mica has none, and it has an MCP server for AI agents.",
+  "chooseMica": [
+    {
+      "text": "You want AI agents to edit your content: Mica has an MCP server built in. TinaCMS lists one as Coming Soon."
+    },
+    {
+      "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
+    },
+    {
+      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
+    },
+    {
+      "text": "You do not want a database or an index for your content."
+    },
+    {
+      "text": "You want to run the editor yourself in one container, behind any OpenID Connect provider."
+    },
+    {
+      "text": "Your content is on a Git host other than GitHub."
+    },
+    {
+      "text": "You want Astro to read your content through Content Collections, with types."
+    },
+    {
+      "text": "An editor should publish several changes as one commit, with a summary."
+    },
+    {
+      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
+    }
+  ],
+  "chooseOther": [
+    {
+      "text": "Editors should click on the page and edit it there. TinaCMS does this, also in Astro."
+    },
+    {
+      "text": "You want a hosted service (TinaCloud) with plans and support."
+    },
+    {
+      "text": "You want search over your content, through TinaCloud."
+    },
+    {
+      "text": "You want MDX components in your content."
+    },
+    {
+      "text": "You want an editorial workflow with draft pull requests (Business plan and up)."
+    }
+  ],
+  "facts": [
+    {
+      "key": "git",
+      "value": "Yes. GitHub only, with TinaCloud and with the self-hosted provider. Custom providers are possible."
+    },
+    {
+      "key": "service",
+      "value": "The local dev server works without the cloud. Editing in production needs TinaCloud, or a self-hosted backend: a backend function, a database adapter, a Git provider and an auth provider."
+    },
+    {
+      "key": "database",
+      "value": "Yes. The Data Layer indexes your content. TinaCloud hosts it. Self-hosted needs MongoDB or Redis/Vercel KV."
+    },
+    {
+      "key": "licence",
+      "value": "Apache-2.0. The Data Layer packages have a separate licence. Free for 2 users. Team $24 a month for each project. Team Plus $41. Business $249. Enterprise on request."
+    },
+    {
+      "key": "model",
+      "value": "TypeScript"
+    },
+    {
+      "key": "astro",
+      "value": "Official @tinacms/astro. Astro is the default starter. Content comes through a generated GraphQL client, not Content Collections. It needs an SSR adapter."
+    },
+    {
+      "key": "signin",
+      "value": "TinaCloud: GitHub or email. SSO on Enterprise. Self-hosted: Auth.js, Clerk, TinaCloud or custom. OIDC is not documented."
+    },
+    {
+      "key": "publish",
+      "value": "Each save is a commit. The Editorial Workflow (Business and up) uses a branch and a draft pull request. No batch publish."
+    },
+    {
+      "key": "preview",
+      "value": "Yes. Visual click-to-edit, also in Astro."
+    },
+    {
+      "key": "lfs",
+      "value": "Not supported (Git LFS keeps large files out of the normal history). The documentation names limits of the GitHub API."
+    },
+    {
+      "key": "submodule",
+      "value": "Not documented. localContentPath points local development to a separate content repository."
+    },
+    {
+      "key": "map",
+      "value": "No map field."
+    },
+    {
+      "key": "refdata",
+      "value": "Not documented. The reference field links to collections. Large collections can time out."
+    },
+    {
+      "key": "i18n",
+      "value": "Documented patterns, by directory or by field. No locale switcher."
+    },
+    {
+      "key": "roles",
+      "value": "TinaCloud has Admin and Editor. More roles on paid plans. Review is the Editorial Workflow with pull requests (Business)."
+    },
+    {
+      "key": "agents",
+      "value": "An MCP server and AI features are listed as Coming Soon."
+    }
+  ],
+  "sources": [
+    {
+      "label": "TinaCMS documentation",
+      "href": "https://tina.io/docs/"
+    },
+    {
+      "label": "tina.io: Data Layer",
+      "href": "https://tina.io/docs/reference/content-api/data-layer"
+    },
+    {
+      "label": "tina.io: pricing",
+      "href": "https://tina.io/pricing"
+    },
+    {
+      "label": "tina.io: Astro",
+      "href": "https://tina.io/docs/frameworks/astro"
+    },
+    {
+      "label": "tina.io: FAQ",
+      "href": "https://tina.io/docs/introduction/faq"
+    },
+    {
+      "label": "tina.io: Editorial Workflow",
+      "href": "https://tina.io/docs/tinacloud/editorial-workflow"
+    },
+    {
+      "label": "tina.io: roadmap",
+      "href": "https://tina.io/roadmap"
+    }
+  ]
+}

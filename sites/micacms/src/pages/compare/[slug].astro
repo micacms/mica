@@ -1,0 +1,69 @@
+---
+import { getCollection } from "astro:content";
+import { Check, Minus } from "@lucide/astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import CompareTable from "@/components/CompareTable.astro";
+import RichText from "@/components/RichText.astro";
+import { factValue, formatDate, getCompare } from "@/lib/content";
+export async function getStaticPaths() { return (await getCollection("comparisons")).map((entry) => ({ params: { slug: entry.id }, props: { entry } })); }
+const { entry } = Astro.props;
+const compare = await getCompare();
+const { data } = entry;
+const fill = (text: string) => text.replaceAll("{name}", data.name);
+const columns = [
+  { name: "Mica", mica: true, values: compare.rows.map((row) => row.mica) },
+  { name: data.name, href: data.website, values: compare.rows.map((row) => factValue(entry, row.key)) },
+];
+---
+
+<BaseLayout title={data.title} description={data.summary}>
+  <PageHeader eyebrow={compare.eyebrow} title={data.title} lead={data.summary} back={{ label: compare.backLabel, href: "/compare/" }}>
+    {compare.statusNote && <p class="mt-6 max-w-2xl rounded-md bg-strata-soft p-5 text-[15px] text-ink">{compare.statusNote}</p>}
+    <p class="mt-5 text-[14px] text-ink-muted">
+      {compare.checkedLabel} <time datetime={data.checkedOn}>{formatDate(data.checkedOn)}</time>. {compare.changeNote}
+      <a class="link ml-1" href={data.website}>{fill(compare.websiteLabel)}</a>
+    </p>
+  </PageHeader>
+  <section class="section">
+    <div class="wrap">
+      <div class="grid gap-10 md:grid-cols-2 md:gap-14">
+        <div class="min-w-0">
+          <h2 class="title-3 m-0">{compare.chooseMicaTitle}</h2>
+          <ul class="m-0 mt-5 flex list-none flex-col gap-3 p-0">
+            {data.chooseMica.map((item) => (
+              <li class="flex gap-2.5"><Check size={20} class="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{item.text}</li>
+            ))}
+          </ul>
+        </div>
+        <div class="min-w-0">
+          <h2 class="title-3 m-0">{fill(compare.chooseOtherTitle)}</h2>
+          <ul class="m-0 mt-5 flex list-none flex-col gap-3 p-0">
+            {data.chooseOther.map((item) => (
+              <li class="flex gap-2.5"><Minus size={20} class="mt-0.5 shrink-0 text-ink-subtle" aria-hidden="true" />{item.text}</li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <h2 class="title-2 mt-16 mb-6">{compare.tableTitle}</h2>
+      <div class="min-w-0">
+        <CompareTable featureLabel={compare.featureLabel} rows={compare.rows.map((row) => row.label)} columns={columns} />
+      </div>
+    </div>
+  </section>
+  <section class="section border-t border-line bg-surface">
+    <div class="wrap">
+      <div class="min-w-0">
+        <h2 class="title-2 m-0 mb-6">{compare.detailsTitle}</h2>
+        <RichText text={data.body} from={data} />
+        <h2 class="title-3 mt-14 mb-4">{compare.sourcesTitle}</h2>
+        <ul class="m-0 flex list-none flex-col gap-2 p-0 text-[15px]">
+          {data.sources.map((source) => (
+            <li class="min-w-0 break-words"><a class="link" href={source.href}>{source.label}</a></li>
+          ))}
+        </ul>
+        <p class="mt-6 text-[14px] text-ink-muted">{compare.checkedLabel} {formatDate(data.checkedOn)}. {compare.changeNote}</p>
+      </div>
+    </div>
+  </section>
+</BaseLayout>

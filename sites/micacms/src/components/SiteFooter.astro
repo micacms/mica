@@ -2,9 +2,17 @@
 import { ExternalLink } from "@lucide/astro";
 import Logo from "./Logo.astro";
 import Strata from "./Strata.astro";
+import { relatedAll } from "@micacms/astro/relations";
 import { getNavigation, getSite } from "@/lib/content";
 
 const [navigation, site] = await Promise.all([getNavigation(), getSite()]);
+const groups = await Promise.all(navigation.footerGroups.map(async (group) => ({
+  title: group.title,
+  links: [
+    ...(await relatedAll("comparisons", group.comparisons)).map((entry) => ({ label: entry.data.title, href: `/compare/${entry.id}/` })),
+    ...group.links,
+  ],
+})));
 ---
 
 <footer class="border-t border-line bg-ground">
@@ -18,7 +26,7 @@ const [navigation, site] = await Promise.all([getNavigation(), getSite()]);
         </a>
       </div>
       <div class="grid grid-cols-2 gap-8 sm:grid-cols-4">
-        {navigation.footerGroups.map((group) => (
+        {groups.map((group) => (
           <div>
             <h2 class="mt-0 mb-3 font-sans text-[13px] font-semibold tracking-[.08em] text-ink-muted uppercase">{group.title}</h2>
             {group.links.map((link) => (

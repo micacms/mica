@@ -1,0 +1,159 @@
+{
+  "name": "Decap CMS",
+  "slug": "decap-cms",
+  "title": "Mica vs. Decap CMS",
+  "website": "https://decapcms.org/",
+  "checkedOn": "2026-10-18",
+  "summary": "Decap CMS is a long-running editor with the widest choice of Git hosts, languages and a preview pane for every editor. Mica keeps large files out of the Git history, supports submodules, makes no API request for each file, and has an MCP server for AI agents.",
+  "chooseMica": [
+    {
+      "text": "You want AI agents to edit your content: Mica has an MCP server built in, in the free editor. The MCP server of Decap CMS is experimental and works with the paid Decap Turbo only."
+    },
+    {
+      "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS, also on GitHub and Gitea."
+    },
+    {
+      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
+    },
+    {
+      "text": "You keep your content in a Git submodule, apart from the code of your website."
+    },
+    {
+      "text": "You have many entries. Without Decap Turbo, Decap makes one host API request for each file."
+    },
+    {
+      "text": "You want sign-in through your OpenID Connect provider."
+    },
+    {
+      "text": "An editor should publish several changes as one commit, with a summary."
+    },
+    {
+      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
+    }
+  ],
+  "chooseOther": [
+    {
+      "text": "Your content has several languages as a setting."
+    },
+    {
+      "text": "Your Git host is Bitbucket or Azure DevOps."
+    },
+    {
+      "text": "Every editor should see a preview pane while they write."
+    },
+    {
+      "text": "You want an editorial workflow with a pull request for each entry."
+    },
+    {
+      "text": "You want a large community and many years of use in production."
+    }
+  ],
+  "facts": [
+    {
+      "key": "git",
+      "value": "Yes. GitHub, GitLab, Bitbucket, Gitea, Forgejo, Azure and Git Gateway. A local proxy edits local files."
+    },
+    {
+      "key": "service",
+      "value": "Yes. It is a static app under /admin. GitHub needs an OAuth server: Netlify, your own proxy, or Decap Turbo. GitLab and Gitea can use PKCE without a server."
+    },
+    {
+      "key": "database",
+      "value": "None in the core. Decap Turbo, the hosted service, mirrors the repository into its own database."
+    },
+    {
+      "key": "licence",
+      "value": "MIT. Turbo: Free €0 (1 site, 1 seat), Pro €19 a month (1 site, 5 seats), Enterprise."
+    },
+    {
+      "key": "model",
+      "value": "YAML (config.yml) or JavaScript"
+    },
+    {
+      "key": "astro",
+      "value": "No official integration. The Astro documentation has a Decap guide. Content Collections read the files."
+    },
+    {
+      "key": "signin",
+      "value": "GitHub OAuth through a proxy, GitLab and Gitea PKCE, Bitbucket, Netlify Identity, Turbo accounts. No direct OIDC."
+    },
+    {
+      "key": "publish",
+      "value": "simple: each save commits. editorial_workflow: one branch and one pull request for each entry. It does not work with the local proxy. No batch publish documented."
+    },
+    {
+      "key": "preview",
+      "value": "A preview pane with React templates for every editor. Opt-in click-to-edit in the preview."
+    },
+    {
+      "key": "lfs",
+      "value": "Not on GitHub (issue #1206 is open) and not on Gitea. GitLab reads LFS media (large files outside the normal history) since version 3.14.0."
+    },
+    {
+      "key": "submodule",
+      "value": "Not supported. Issue #4056 has been open since 2020."
+    },
+    {
+      "key": "map",
+      "value": "The map widget stores a GeoJSON string. No zoom is stored."
+    },
+    {
+      "key": "refdata",
+      "value": "Not documented. Relations point to collections or to a file."
+    },
+    {
+      "key": "i18n",
+      "value": "Yes, with three structures."
+    },
+    {
+      "key": "roles",
+      "value": "None in the core (issue #2 is open). Turbo has roles as a paid add-on. Review goes through the editorial workflow."
+    },
+    {
+      "key": "agents",
+      "value": "An experimental MCP server and editor bridge in @decap/cli. They work with the paid Decap Turbo only."
+    }
+  ],
+  "sources": [
+    {
+      "label": "Decap CMS documentation",
+      "href": "https://decapcms.org/docs/"
+    },
+    {
+      "label": "decapcms.org: backends",
+      "href": "https://decapcms.org/docs/backends-overview/"
+    },
+    {
+      "label": "decapcms.org: authentication",
+      "href": "https://decapcms.org/docs/authentication-backends/"
+    },
+    {
+      "label": "decapcms.org: Decap Turbo",
+      "href": "https://decapcms.org/turbo/"
+    },
+    {
+      "label": "decapcms.org: editorial workflow",
+      "href": "https://decapcms.org/docs/editorial-workflows/"
+    },
+    {
+      "label": "decapcms.org: map widget",
+      "href": "https://decapcms.org/docs/widgets/map/"
+    },
+    {
+      "label": "decapcms.org: i18n",
+      "href": "https://decapcms.org/docs/i18n/"
+    },
+    {
+      "label": "Decap CMS issue 1206: Git LFS",
+      "href": "https://github.com/decaporg/decap-cms/issues/1206"
+    },
+    {
+      "label": "Decap CMS issue 4056: submodules",
+      "href": "https://github.com/decaporg/decap-cms/issues/4056"
+    },
+    {
+      "label": "Astro documentation: Decap CMS",
+      "href": "https://docs.astro.build/en/guides/cms/decap-cms/"
+    }
+  ]
+}

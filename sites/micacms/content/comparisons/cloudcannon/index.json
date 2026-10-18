@@ -1,0 +1,144 @@
+{
+  "name": "CloudCannon",
+  "slug": "cloudcannon",
+  "title": "Mica vs. CloudCannon",
+  "website": "https://cloudcannon.com/",
+  "checkedOn": "2026-10-18",
+  "summary": "CloudCannon is a hosted service with visual on-page editing, roles, deploy previews and support. Mica is free, runs on your own machine or server, and has an MCP server for AI agents.",
+  "chooseMica": [
+    {
+      "text": "You want AI agents to edit your content: Mica has an MCP server built in. CloudCannon has agent skills, a CLI and an API, but no MCP server."
+    },
+    {
+      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica has typed relations to thousands of items from a JSON or CSV file of your website, and never edits them. CloudCannon feeds select inputs from data files, but has no typed relation field."
+    },
+    {
+      "text": "You want open source under the MIT licence, with no vendor service and no per-user price."
+    },
+    {
+      "text": "You want to run the editor yourself, behind any OpenID Connect provider."
+    },
+    {
+      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
+    }
+  ],
+  "chooseOther": [
+    {
+      "text": "Editors should edit on the page itself, with visual editing."
+    },
+    {
+      "text": "You want a hosted service with support."
+    },
+    {
+      "text": "Your editors need roles, with permission groups."
+    },
+    {
+      "text": "You need SAML sign-in (Enterprise plan)."
+    },
+    {
+      "text": "You want deploy previews of pull requests (Team plan and up)."
+    },
+    {
+      "text": "Editors should publish a branch with a pull request for approval."
+    },
+    {
+      "text": "You want to keep media in a DAM, such as S3, Cloudinary or Bynder."
+    }
+  ],
+  "facts": [
+    {
+      "key": "git",
+      "value": "Yes. GitHub, GitLab, Bitbucket, GitHub Enterprise Server, and self-hosted GitLab (Enterprise). Direct upload also works."
+    },
+    {
+      "key": "service",
+      "value": "No. It is a SaaS product. Self-hosting is not documented."
+    },
+    {
+      "key": "database",
+      "value": "None for the customer."
+    },
+    {
+      "key": "licence",
+      "value": "Proprietary. No free tier, but a 21-day trial. Standard $55 a month (3 users). Team $350 a month (15 users). Enterprise on request. Extra users $10."
+    },
+    {
+      "key": "model",
+      "value": "cloudcannon.config.yml or JSON, or a configuration UI"
+    },
+    {
+      "key": "astro",
+      "value": "A featured partner in the Astro documentation. @cloudcannon/editable-regions gives visual editing. .astro schemas."
+    },
+    {
+      "key": "signin",
+      "value": "Email and password, or GitHub, GitLab or Bitbucket. MFA on Team. SAML SSO on Enterprise only."
+    },
+    {
+      "key": "publish",
+      "value": "Edits build up in an editing session. One Save commits the chosen files. Publishing a branch merges it at once or opens a pull request."
+    },
+    {
+      "key": "preview",
+      "value": "Yes. Visual on-page editing. It needs a build on CloudCannon. Pull request deploy previews on Team and up."
+    },
+    {
+      "key": "lfs",
+      "value": "Yes, on Standard and up (Git LFS keeps large files out of the normal history)."
+    },
+    {
+      "key": "submodule",
+      "value": "Not documented. Site Mounting is an alternative."
+    },
+    {
+      "key": "map",
+      "value": "No map field."
+    },
+    {
+      "key": "refdata",
+      "value": "Select inputs can use collections or data files. There is no typed relation field."
+    },
+    {
+      "key": "i18n",
+      "value": "Through Rosey, a separate tool. The built-in i18n is deprecated."
+    },
+    {
+      "key": "roles",
+      "value": "Permission groups. Custom groups on Team (10) and Enterprise. Approval through pull request publishing."
+    },
+    {
+      "key": "agents",
+      "value": "Agent skills for coding agents, a CLI and an API. No MCP server."
+    }
+  ],
+  "sources": [
+    {
+      "label": "CloudCannon documentation",
+      "href": "https://cloudcannon.com/documentation/"
+    },
+    {
+      "label": "cloudcannon.com: pricing",
+      "href": "https://cloudcannon.com/pricing/"
+    },
+    {
+      "label": "cloudcannon.com: Git LFS",
+      "href": "https://cloudcannon.com/documentation/articles/using-git-lfs/"
+    },
+    {
+      "label": "cloudcannon.com: visual editing",
+      "href": "https://cloudcannon.com/documentation/articles/what-is-visual-editing/"
+    },
+    {
+      "label": "cloudcannon.com: permission groups",
+      "href": "https://cloudcannon.com/documentation/articles/what-are-permission-groups"
+    },
+    {
+      "label": "cloudcannon.com: internationalization with Rosey",
+      "href": "https://cloudcannon.com/documentation/developer-guides/add-internationalization-with-rosey/"
+    },
+    {
+      "label": "Astro documentation: CloudCannon",
+      "href": "https://docs.astro.build/en/guides/cms/cloudcannon/"
+    }
+  ]
+}
