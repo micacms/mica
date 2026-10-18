@@ -60,7 +60,7 @@ Each record states a decision that is still true: its context, the decision and 
 
 - [30. Semver covers the public surface, not each published package](0030-semver-covers-the-public-surface.md)
 - [31. Support: current platforms, and fixes for the latest minor only](0031-support-policy.md)
-- [32. 1.0 ships after four weeks of release candidates on real websites](0032-release-candidates.md)
+- [32. 1.0 ships after four weeks of a release candidate on a production website](0032-release-candidates.md)
 - [33. Rush drives the monorepo](0033-rush-drives-the-monorepo.md)
 - [34. A hobby project: best effort, no outside audits before 1.0, docs on the website](0034-a-hobby-project-without-audits.md)
 - [35. What 1.0 does not do](0035-scope-of-1-0.md)

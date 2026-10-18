@@ -106,7 +106,7 @@ release as a pre-release.
   gets its own `## [X.Y.Z]` section with the full notes.
 - `deploy/self-hosted/compose.yml` then pins the candidate until the final
   release. Say so to the user.
-- After the candidate: run it on real websites for four weeks (see
+- After the candidate: run it on a website in production for four weeks (see
   `docs/adr/0032-release-candidates.md`). A fix gives `rc.N+1`.
 - The final release is a normal release: `rush version-bump` bumps
   `X.Y.Z-rc.N` to `X.Y.Z` and consumes the change files.
