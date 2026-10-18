@@ -5,16 +5,16 @@ const site = await getSite();
 
 {/*
   Scrolls away with the page rather than sitting inside the sticky header: the
-  warning has to be seen, but it should not eat viewport height on every screen.
+  status has to be seen, but it should not eat viewport height on every screen.
   Not dismissible — a disclaimer you can click away stops being a disclaimer.
 */}
 <div class="border-b border-line bg-glint-soft">
   <p class="wrap m-0 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 py-2 text-center text-[14px] text-ink">
     <span class="h-2 w-2 shrink-0 rounded-full bg-glint ring-1 ring-on-glint ring-inset" aria-hidden="true"></span>
-    <strong class="font-semibold">Under development</strong>
+    <strong class="font-semibold">{site.status.bannerTitle}</strong>
     <span>
-      Mica is experimental at v{site.currentVersion} and not ready for production.
-      <a class="font-medium underline underline-offset-2" href="/changelog/">Follow the releases</a>.
+      {site.status.bannerText}
+      <a class="font-medium underline underline-offset-2" href="/changelog/">{site.status.bannerLink}</a>.
     </span>
   </p>
 </div>

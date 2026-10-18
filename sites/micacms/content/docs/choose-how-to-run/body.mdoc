@@ -1,6 +1,6 @@
 Mica has two ways to run. They edit the same files in the same Git repository. Pick the one that fits you. You can use both.
 
-> Mica is experimental and pre-1.0. Its API and content format can change.
+> Mica is pre-1.0. The API and the content format can still change before 1.0. Read the [changelog](/changelog/) before you upgrade.
 
 ## Which one do you need?
 
@@ -16,9 +16,11 @@ Run `npx @micacms/editor start` in your Astro project.
 
 - It is for the developer.
 - It edits the files in your checkout. **Save** writes the files, and the Astro dev server reloads them.
+- With `astro dev` running, an entry shows **Preview**: the page with the saved changes, before Publish.
 - **Publish** makes a Git commit and pushes it with your own Git credentials.
 - There is no sign-in, no user, and no database.
 - It listens on your machine only, and it refuses an address on another machine.
+- It uses the Git, and the Git LFS, of your machine.
 
 ## The self-hosted editor
 
@@ -30,6 +32,7 @@ Run the Docker image `ghcr.io/micacms/mica` on a server. It runs on amd64 and ar
 - **Publish** commits the drafts that the editor chooses as one commit and pushes it over HTTPS. The editor is the author, and Mica is the committer.
 - Mica fetches the branch on its own and never merges. If the website changes an entry that has a draft, the editor keeps their version or uses the website's version.
 - Whoever your rules admit is an editor. There are no roles.
+- It has no preview of drafts. Each entry can link to its page on the website.
 
 ## Side by side
 
@@ -38,6 +41,7 @@ Run the Docker image `ghcr.io/micacms/mica` on a server. It runs on amd64 and ar
 - **Sign-in:** local, none. Self-hosted, OpenID Connect.
 - **Saves go to:** local, files in your checkout. Self-hosted, draft files in a Git clone on the server.
 - **Publish does:** local, `git` commit and push. Self-hosted, one commit and a push over HTTPS.
+- **Preview:** local, yes, while `astro dev` runs. Self-hosted, no.
 - **Needs a token:** local, no. Self-hosted, yes: a token for your Git host.
 
 ## How they work together
@@ -49,6 +53,8 @@ Run the Docker image `ghcr.io/micacms/mica` on a server. It runs on amd64 and ar
 5. A push starts your normal site build.
 
 The developer pulls the new commits and continues. The website never calls Mica, and Mica does not know where the website is hosted. They meet in the repository.
+
+The content can be in the website repository, or in a repository of its own: see [Content in its own repository](/docs/content-in-its-own-repository/). Large media can be in Git LFS: see [Large files with Git LFS](/docs/git-lfs/).
 
 ## Next
 

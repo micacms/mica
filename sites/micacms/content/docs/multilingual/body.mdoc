@@ -69,9 +69,10 @@ export async function getStaticPaths() {
 }
 
 const { page, lang } = Astro.props;
+const body = await renderRichText(page.data.body?.[lang], page.data);
 ---
 <h1>{page.data.title[lang] ?? page.data.title.de}</h1>
-<Fragment set:html={renderRichText(page.data.body?.[lang])} />
+<Fragment set:html={body} />
 ```
 
 A missing translation shows the default language here. Choose what your site does: show the default language, or make no page.

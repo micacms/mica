@@ -7,11 +7,13 @@ export type SiteSettings = SingletonDocument<Model, "site">;
 export type Navigation = SingletonDocument<Model, "navigation">;
 export type Home = SingletonDocument<Model, "home">;
 export type Imprint = SingletonDocument<Model, "imprint">;
+export type Pages = SingletonDocument<Model, "pages">;
 
 export const getSite = () => getSingleton(site, "site");
 export const getNavigation = () => getSingleton(site, "navigation");
 export const getHome = () => getSingleton(site, "home");
 export const getImprint = () => getSingleton(site, "imprint");
+export const getPages = () => getSingleton(site, "pages");
 
 /** The sections of the documentation, in the order the index and the sidebar show them. */
 export const DOC_SECTIONS = [

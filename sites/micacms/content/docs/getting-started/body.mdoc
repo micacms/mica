@@ -1,6 +1,6 @@
 Mica adds an editing interface to an Astro project. The website keeps reading local files and builds to static output. This page uses the local editor, the way for a developer. Editors who are not developers need the [self-hosted editor](/docs/self-hosting/). See [Choose how to run Mica](/docs/choose-how-to-run/) if you are not sure.
 
-> Mica is experimental and pre-1.0. Its API and content format can change. Use it for work that you can update as the project changes.
+> Mica is pre-1.0. The API and the content format can still change before 1.0. Pin the versions of the packages, and read the [changelog](/changelog/) before you upgrade.
 
 ## Start from the starter
 
@@ -37,6 +37,7 @@ The agent finds out whether the project is new, an empty Astro project, or an As
 - Node 24 or newer
 - An Astro 7 project
 - A Git repository for the project
+- Git LFS, only when your content stores files with it. See [Large files with Git LFS](/docs/git-lfs/).
 
 ## 1. Install the packages
 
@@ -100,7 +101,7 @@ import { site } from "./mica";
 export const collections = micaCollections(site);
 ```
 
-`astro.config` stays as it is. Run `npx astro sync`, or start the Astro dev server once. The loader writes `content/.mica/schema.json`. Commit that file: it tells Mica what your project can edit. Each build writes it again, so commit it after each model change.
+`astro.config` stays as it is. Run `npx astro sync`, or start the Astro dev server once. The loader writes `content/.mica/schema.json`. Commit that file: it tells Mica what your project can edit. Each build writes it again, so commit it after each model change. In CI, the build does not write the file. It fails when the committed file is not the current model.
 
 To keep your own Astro collections beside the Mica collections, see [Content model](/docs/content-model/).
 
@@ -131,7 +132,9 @@ npm install --save-dev @micacms/editor
 
 `npm run mica` then starts the same editor, at the version your lockfile holds, for everyone who works on the project. `npm run check` checks the content and the types. Without `@astrojs/check` in the project, use `"check": "mica check"`.
 
-With the editor installed, `npx mica init` writes a starter `src/mica.ts` and `src/content.config.ts` and never overwrites a file. `npx mica check` checks every entry against the model and exits with an error code when it finds a problem. Run it in CI, or after a change to the content files. In CI, also check that the committed `schema.json` is the current model: the steps are in [Recipes](/docs/recipes/).
+With the editor installed, `npx mica init` writes a starter `src/mica.ts` and `src/content.config.ts` and never overwrites a file. `npx mica check` checks every entry against the model and exits with an error code when it finds a problem. Run it in CI, or after a change to the content files. [Recipes](/docs/recipes/) has the CI steps.
+
+While `astro dev` runs, an entry also shows **Preview** beside Save: the page with the saved changes, before Publish. See [Preview changes](/docs/previews/).
 
 ## 5. Render the content
 
@@ -140,23 +143,35 @@ Use normal Astro Content Layer calls.
 ```astro
 ---
 import { getCollection } from "astro:content";
-const posts = await getCollection("posts");
+import { inEditorOrder } from "@micacms/astro";
+const posts = (await getCollection("posts")).sort(inEditorOrder);
 ---
 
 {posts.map((post) => <h2>{post.data.title}</h2>)}
 ```
 
+`inEditorOrder` sorts the entries in the order that the editor shows: the `defaultSort` of the collection, else the order that editors set by hand.
+
 The model sets the type of `post.data`. If you rename a field, `npm run check` (`astro check`) fails at each template that uses the old name. `astro build` does not check types: it renders the old name as empty.
 
-A rich-text field holds Markdoc text. `renderRichText` turns it into HTML:
+A rich-text field holds Markdoc text. `renderRichText` turns it into HTML. It is async. Give it the entry's data as the second argument: the images in the text then get the files of the entry, and Astro makes them smaller.
 
 ```astro
 ---
 import { renderRichText } from "@micacms/astro";
-const html = renderRichText(post.data.body);
+const html = await renderRichText(post.data.body, post.data);
 ---
 
 <div set:html={html} />
+```
+
+A singleton is a collection with one entry. `getSingleton` gives its data with the type of the model. It stops the build with a clear message when nobody saved the singleton yet:
+
+```ts
+import { getSingleton } from "@micacms/astro";
+import { site } from "../mica";
+
+const settings = await getSingleton(site, "site");
 ```
 
 A relation field holds the target's slug. `related` and `relatedAll` from `@micacms/astro/relations` return the entries, typed, and leave out a missing one with a warning in `astro dev`:
@@ -190,6 +205,10 @@ Publish sends only Mica's own commits. If your branch has other commits that the
 
 **"Port 6422 is already in use".** Another Mica is usually the cause. Stop it, or start this one on a different port: `npx @micacms/editor start --port 6423`.
 
+**The editor stops and names Git LFS.** The content stores files with Git LFS, and Git LFS is not installed or not set up on this computer. Install it from [git-lfs.com](https://git-lfs.com), run `git lfs install` once, and start Mica again.
+
+**Publish waits and names a command with `git -C … switch`.** The content is in a Git submodule that is on a detached HEAD. Run the command, and Publish works. See [Content in its own repository](/docs/content-in-its-own-repository/).
+
 **The editor shows collections that you removed, or does not show a new one.** The model in `content/.mica/schema.json` is old. Run `npx astro sync` again. Mica reads the new model without a restart, and the editor tells you to load the page again.
 
 **"Somebody else saved this while you were editing".** The entry changed after you opened it, for example in another browser tab. Your changes stay in the form. The editor shows both versions, and you choose **Keep mine** or **Use theirs**.
@@ -198,7 +217,7 @@ Publish sends only Mica's own commits. If your branch has other commits that the
 
 **A new required field makes old entries invalid.** `astro dev` leaves those entries out and logs a warning. `astro build` and `npx mica check` fail and name them. Edit the entries, or make the field optional.
 
-`examples/company-site` in the [Mica repository](https://github.com/micacms/mica/tree/main/examples/company-site) is a complete website with a model, content, and templates.
+`examples/company-site` in the [Mica repository](https://github.com/micacms/mica/tree/main/examples/company-site) is a complete website with a model, content, and templates. It uses large media, a map, reference data and a preview.
 
 ## Next
 

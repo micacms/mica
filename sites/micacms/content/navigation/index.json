@@ -24,19 +24,44 @@
         {
           "label": "Scope and non-goals",
           "href": "/docs/scope/"
+        },
+        {
+          "label": "All guides",
+          "href": "/docs/"
         }
       ]
     },
     {
-      "title": "Documentation",
+      "title": "Build",
       "links": [
         {
-          "label": "All guides",
-          "href": "/docs/"
+          "label": "Content model",
+          "href": "/docs/content-model/"
         },
+        {
+          "label": "Reference data",
+          "href": "/docs/reference-data/"
+        },
+        {
+          "label": "Content in its own repository",
+          "href": "/docs/content-in-its-own-repository/"
+        },
+        {
+          "label": "Recipes",
+          "href": "/docs/recipes/"
+        }
+      ]
+    },
+    {
+      "title": "Operate",
+      "links": [
         {
           "label": "Self-hosting",
           "href": "/docs/self-hosting/"
+        },
+        {
+          "label": "Large files with Git LFS",
+          "href": "/docs/git-lfs/"
         },
         {
           "label": "Edit with an agent",
@@ -51,6 +76,10 @@
     {
       "title": "Open source",
       "links": [
+        {
+          "label": "Changelog",
+          "href": "/changelog/"
+        },
         {
           "label": "GitHub",
           "href": "https://github.com/micacms/mica"

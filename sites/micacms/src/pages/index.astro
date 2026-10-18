@@ -1,5 +1,5 @@
 ---
-import { ArrowRight, Check, Minus } from "@lucide/astro";
+import { ArrowRight, Check, Database, Eye, Files, GitBranch, Images, Map, Minus } from "@lucide/astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import CodeBlock from "@/components/CodeBlock.astro";
 import EditorMock from "@/components/EditorMock.astro";
@@ -9,7 +9,8 @@ import Strata from "@/components/Strata.astro";
 import { renderRichText } from "@micacms/astro";
 import { getHome, getSite } from "@/lib/content";
 const [home, site] = await Promise.all([getHome(), getSite()]);
-const { hero, how, audiences, agents, run, fit, start } = home;
+const { hero, how, capabilities, audiences, agents, scale, run, fit, start } = home;
+const icons = { images: Images, map: Map, files: Files, database: Database, eye: Eye, git: GitBranch };
 const lead = await renderRichText(hero.lead, home);
 ---
 
@@ -84,6 +85,37 @@ const lead = await renderRichText(hero.lead, home);
   </section>
 
   <section class="section border-t border-line bg-surface">
+    <div class="wrap">
+      <div class="max-w-2xl">
+        <p class="eyebrow">{capabilities.eyebrow}</p>
+        <h2 class="title-1 m-0">{capabilities.title}</h2>
+        <p class="lead mt-5">{capabilities.lead}</p>
+      </div>
+      <div class="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {capabilities.items.map((item) => {
+          const Icon = icons[item.icon as keyof typeof icons];
+          return (
+            <article class="card flex flex-col gap-4 bg-ground! p-6">
+              <span class="grid h-10 w-10 place-items-center rounded-md bg-primary-soft text-primary" aria-hidden="true">
+                {Icon && <Icon size={20} stroke-width={1.75} />}
+              </span>
+              <h3 class="title-3 m-0">{item.title}</h3>
+              <p class="m-0 text-ink-muted">{item.text}</p>
+              {item.code && (
+                <div class="min-w-0">
+                  {item.file && <span class="mb-1.5 block font-mono text-[13px] text-ink-subtle">{item.file}</span>}
+                  <code class="block overflow-x-auto rounded-sm bg-strata-soft px-3 py-2 font-mono text-[14px] whitespace-nowrap text-ink" tabindex="0">{item.code}</code>
+                </div>
+              )}
+              <a class="link mt-auto inline-flex w-fit items-center gap-1.5 pt-2" href={item.link.href}>{item.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
+            </article>
+          );
+        })}
+      </div>
+    </div>
+  </section>
+
+  <section class="section border-t border-line">
     <div class="wrap grid items-center gap-10 md:grid-cols-[7fr_5fr] md:gap-14">
       <div class="max-w-xl">
         <p class="eyebrow">{agents.eyebrow}</p>
@@ -97,6 +129,25 @@ const lead = await renderRichText(hero.lead, home);
         <a class="link mt-8 inline-flex items-center gap-1.5" href={agents.link.href}>{agents.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
       </div>
       <CodeBlock class="min-w-0" file={agents.file} code={agents.code ?? ""} />
+    </div>
+  </section>
+
+  <section class="section border-t border-line bg-surface">
+    <div class="wrap">
+      <div class="max-w-2xl">
+        <p class="eyebrow">{scale.eyebrow}</p>
+        <h2 class="title-1 m-0">{scale.title}</h2>
+        <p class="lead mt-5">{scale.lead}</p>
+      </div>
+      <dl class="m-0 mt-12 grid grid-cols-2 gap-6 lg:grid-cols-4">
+        {scale.facts.map((fact) => (
+          <div class="card bg-ground! p-6">
+            <dt class="font-display text-[44px] leading-none font-extrabold text-primary">{fact.value}</dt>
+            <dd class="m-0 mt-3 text-ink-muted">{fact.label}</dd>
+          </div>
+        ))}
+      </dl>
+      <a class="link mt-10 inline-flex items-center gap-1.5" href={scale.link.href}>{scale.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
     </div>
   </section>
 

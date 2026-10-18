@@ -6,16 +6,19 @@ A coding agent, such as Claude Code, Cursor or VS Code, can read and change the 
 
 | Tool | What it does |
 | --- | --- |
-| `describe_model` | Reads the collections, the settings, their fields and the format of each value. |
+| `describe_model` | Reads the collections, the settings, their fields and the format of each value. It names the [reference sets](/docs/reference-data/) too. |
 | `list_entries`, `get_entry`, `get_singleton` | Reads the content. |
 | `find_references`, `list_media` | Finds the links to an entry, and lists the media files. |
+| `find_reference_items` | Searches the items of a reference set, to find the id that a relation stores (0.11.0). |
 | `save_entry`, `save_singleton` | Creates or changes an entry or the settings, as a draft. |
 | `delete_entry`, `reorder_entries` | Deletes an entry or changes the order, as a draft. |
-| `upload_media` | Adds an image or a PDF. |
+| `upload_media` | Adds an image, a PDF, or another file that the field accepts: GPX, KML, GeoJSON, ZIP or CSV (0.11.0). |
 | `get_changes`, `discard_changes` | Shows the drafts, or throws them away. |
 | `publish` | Publishes drafts. Only when you allow it: see below. |
 
 Every read gives a revision, and every save sends it back. If you saved the same entry in the editor in the meantime, Mica refuses the agent's save, and the agent reads your version first. An agent never overwrites your work.
+
+Since 0.11.0, Mica also refuses every write while a newer content model cannot be read. The answer says why. Before, such a save could leave out the fields of the newer model and still report success. The agent must stop, and you upgrade Mica or correct the model.
 
 ## On your own machine
 
@@ -46,6 +49,8 @@ For Claude Code, put this in `.mcp.json` in the project, or run `claude mcp add 
 `npx mica mcp ./path/to/content` names the content directory when Mica cannot find it. Do not run `npx mica mcp` and `npx mica start` on one project at the same time: two processes on one directory can miss a save that happens at the same moment.
 
 **Publish.** By default, the agent saves drafts, and you publish them in the editor or commit them with Git. To let the agent publish too, use `npx mica mcp --allow-publish`, or start the editor with `MICA_MCP_PUBLISH=true`.
+
+If the content stores files with Git LFS, `npx mica mcp` stops until Git LFS is set up. See [Large files with Git LFS](/docs/git-lfs/).
 
 ## On a self-hosted Mica
 

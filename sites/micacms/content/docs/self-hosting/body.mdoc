@@ -9,7 +9,7 @@ To see it run first, [`deploy/demo-identity`](https://github.com/micacms/mica/tr
 ## What you need
 
 - A server with Docker and Docker Compose, and a reverse proxy that gives you HTTPS. Example: `https://cms.example.com`.
-- A content repository on a Git host that you reach over HTTPS. It must contain the content model at `content/.mica/schema.json`. Your Astro build writes that file, and you commit it.
+- A content repository on a Git host that you reach over HTTPS. It must contain the content model at `content/.mica/schema.json`. Your Astro build writes that file, and you commit it. The content can be in the website repository, or in a repository of its own: see [Content in its own repository](/docs/content-in-its-own-repository/).
 - An OpenID Connect provider. Mica keeps no passwords. If you have none, use Google: [Sign in with Google](/docs/sign-in-with-google/).
 
 The Git hosts:
@@ -28,7 +28,7 @@ Before the first start, do these steps in this order. The self-hosted editor clo
 4. Run the check: `docker compose run --rm mica check`. It is described in "The check command" below. Fix each error that it reports.
 5. Start Mica (step 6 below), sign in, and open each collection once.
 
-SSH remotes are not supported yet. Git LFS under the content root is refused for now. To edit a checkout on your machine, use the local editor.
+SSH remotes are not supported yet. If your content stores large files with Git LFS, read [Large files with Git LFS](/docs/git-lfs/) too. To edit a checkout on your machine, use the local editor.
 
 ## 1. Get the two files
 
@@ -60,13 +60,15 @@ MICA_REPOSITORY_TOKEN=github_pat_...
 MICA_REPOSITORY_BRANCH=main
 ```
 
-- `MICA_REPOSITORY_URL` is the HTTPS clone URL. Do not put credentials in it: Mica refuses `https://user:token@host/…`. Plain `http://` works only with a loopback host, for tests.
+- `MICA_REPOSITORY_URL` is the HTTPS clone URL. Do not put credentials in it: Mica refuses `https://user:token@host/…`. Plain `http://` works only with a loopback host, for tests. When the content is in its own repository, this is the URL of the content repository.
 - `MICA_REPOSITORY_TOKEN` is the password for Git over HTTPS. Mica gives it only to this host and never writes it into the clone or a log. Mica reads it at the start, so a new token needs a restart. With `MICA_REPOSITORY_TOKEN_FILE` instead, Mica reads the file for each Git call, and a new token needs no restart.
 - `MICA_REPOSITORY_BRANCH` defaults to `main`.
 - The content root is the directory in the repository with the `.mica/schema.json`, such as `content`. When the repository has more than one, set `MICA_CONTENT_PATH` to the one that Mica edits. Mica reads and writes only below the root, even if the token can write more. Thus nobody can use the token through Mica to change the website's source, its CI configuration, or its dependencies. The token itself can: see "What the repository token can reach" in [Security](/docs/security/).
 - `MICA_REPOSITORY_USERNAME` is optional. The default depends on the host: `x-access-token` for GitHub, `oauth2` for GitLab, and `mica` for other hosts.
+- `MICA_REPOSITORY_LFS_URL` is optional. Set it only when your host does not serve Git LFS at the clone URL with `/info/lfs`. See [Large files with Git LFS](/docs/git-lfs/).
 - `MICA_REPOSITORY_SYNC_SECONDS` is optional. It sets how often Mica fetches the branch. The default is 60.
 - `MICA_DATA_DIR` is optional. It sets where Mica keeps its clone: in `MICA_DATA_DIR/repository`. The image uses the `/data` volume.
+- `MICA_SITE_URL` is optional. It is the address of the website, such as `https://example.com`. With a `url` in the model, an entry then shows "Open on website". See [Preview changes](/docs/previews/).
 
 ## 3. Connect the sign-in
 
@@ -155,8 +157,7 @@ Mica stops at start-up, and lists every problem in one message, when:
 
 - the repository URL or the token is missing, or the URL has credentials or is not HTTPS;
 - it cannot make its first clone;
-- the repository has no content model at `.mica/schema.json`;
-- the content root uses Git LFS;
+- the repository has no content model at `.mica/schema.json`, or its content root is the top of the repository;
 - the clone on the volume is for another URL or branch and holds drafts (the message names the files);
 - no admission rule is set, or an old setting is in use.
 
@@ -175,7 +176,7 @@ It tests the configuration, read access, push rights with a dry run, the content
 
 ## Drafts, sync, and publish
 
-A save is a draft. Drafts are files in the Git clone on the `/data` volume. All editors see them. On the Publish page, an editor chooses which saved changes to publish now, and the others stay saved. **Publish** commits the chosen changes as one commit: an `index.json`, its rich-text files, and its images together, so the repository never holds half an entry. The editor's summary ("Say what changed") is the commit message. The editor is the author of the commit. Mica (`Mica CMS <mica@localhost>`) is the committer, and the message ends with the trailer `Published-with: Mica`. Mica never forces a push.
+A save is a draft. Drafts are files in the Git clone on the `/data` volume. All editors see them. On the Publish page, an editor chooses which saved changes to publish now, and the others stay saved. **Publish** commits the chosen changes as one commit: an `index.json`, its rich-text files, and its images together, so the repository never holds half an entry. A file that rich text links to goes with the commit, and Publish refuses to delete a file that rich text still links to. The editor's summary ("Say what changed") is the commit message. The editor is the author of the commit. Mica (`Mica CMS <mica@localhost>`) is the committer, and the message ends with the trailer `Published-with: Mica`. Mica never forces a push.
 
 Mica logs `Published` (with the commit and the number of files), `Discarded` (with the paths) and `Conflict resolved` (with the entry and the choice). Each line names the editor's email address. The content is never logged.
 
@@ -184,7 +185,7 @@ What Mica does with the repository:
 - **It clones** the branch into `MICA_DATA_DIR/repository` at the first start. The clone has one branch, and Git downloads only the files of the current tree.
 - **It starts** with the model in its clone, and syncs in the background. Only when the clone has no model that this version can read does the start wait for a sync.
 - **It syncs** at once and then at each interval: it fetches the branch and fast-forwards. It never merges, rebases, or stashes. Developers can push to the branch as before. If a sync is still running at the next interval, Mica skips that interval.
-- **It holds a version that it cannot use.** If the new version of the branch has a content model that this Mica cannot read (`model_unreadable`), or assigns Git LFS to files under the content root (`lfs_refused`), Mica keeps the old version. Editors can save, and Publish waits. Push a fix, or upgrade Mica.
+- **It holds a version that it cannot use.** If the new version of the branch has a content model that this Mica cannot read (`model_unreadable`), or if the download of its Git LFS files fails (`prefetch_incomplete`), Mica keeps the old version. Editors can save, and Publish waits. While a newer model cannot be read, Mica refuses every save and says why, so that a save never leaves out the new fields. Push a fix, or upgrade Mica.
 - **It finds conflicts.** If somebody changes an entry on the website while an editor has a draft of that entry, this is a conflict. The editor sees it on the Overview, on the Publish page, and on the entry, and chooses **Keep my version** or **Use the website's version**. While a conflict exists, Mica does not fast-forward and Publish waits.
 - **It tries again.** If the branch moved during a publication, Mica removes its commit, catches up, makes the commit again with the same author and message, and pushes. It tries three times. If the host cannot be reached, the publication stays committed in Mica, and the Publish page shows "Published in Mica, not on the website yet". Mica sends it later.
 - **A refused push turns the publication back into drafts.** If the host refuses the push, for example because of a protected branch, a server hook, or a token that cannot write, the changes are saved drafts again. The Publish page and the System page show the reason of the host. Nothing is lost.
@@ -194,7 +195,7 @@ The volume:
 
 - Mount the volume at `MICA_DATA_DIR` (`/data` in the image), never at its `repository` folder. Mica makes a new clone next to the old one and renames it, and a mount point cannot be renamed.
 - Run one Mica for each volume. A second Mica on the same volume waits up to 45 seconds for the first one to stop, then refuses to start. Deploy with the strategy "recreate", which stops the old container before it starts the new one, not with a rolling update. `docker compose up -d` does that.
-- Make the volume about twice the size of the content: the objects in `.git` and the files. `.git` grows with each media change from the website. To make it smaller, publish or discard all drafts, stop Mica, and run `docker compose run --rm mica compact`. It makes a new clone with only the current files. It refuses a clone with drafts or with a publication that is not pushed yet.
+- Make the volume about twice the size of the content: the objects in `.git` and the files. With Git LFS, each large file is on the volume twice: in the LFS store and in the working tree. Old versions stay in the store. `.git` grows with each media change from the website. To make it smaller, publish or discard all drafts, stop Mica, and run `docker compose run --rm mica compact`. It makes a new clone with only the current files. It refuses a clone with drafts or with a publication that is not pushed yet.
 
 The volume holds the clone and the unpublished drafts. If you lose it, unpublished work is gone. Nobody is signed out, and everything published is in the repository. Tell editors to publish often: the drafts are not an archive.
 
@@ -214,16 +215,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true          # only when the content uses Git LFS
+          submodules: true   # only when the content is in a submodule
       - uses: actions/setup-node@v4
         with: { node-version: 24 }
       - run: npm ci
+      # In CI, the build fails when the committed model is not the one in the code.
       - run: npx astro build
-      # The model in the commit must be the one that the build wrote.
-      - run: git diff --exit-code content/.mica/schema.json
       # Every entry must agree with the model (needs @micacms/editor as a dev dependency).
       - run: npx mica check
       # Then upload dist/ to your host.
 ```
+
+Without `lfs: true`, the build sees pointers where the media files are. If the content is in its own repository, the build must also bring the newest content: see [Content in its own repository](/docs/content-in-its-own-repository/).
 
 If your host builds from the repository, for example Vercel, Netlify, or Cloudflare Pages, you do not need this workflow.
 
@@ -260,7 +265,7 @@ git clone --mirror https://github.com/acme/website.git
 git --git-dir=website.git remote update --prune
 ```
 
-To restore, clone. There is nothing to import, and you do not need Mica to read the files.
+To restore, clone. There is nothing to import, and you do not need Mica to read the files. With Git LFS, a mirror holds the pointers only. Also run `git lfs fetch --all` in the mirror, or use the backup of your Git host.
 
 For unpublished work, back up the `/data` volume. First publish all drafts, or stop the container. Then copy the volume. A copy made during a Git write can be inconsistent. For the drafts only, copy the content root of the clone: `MICA_DATA_DIR/repository/<content root>`.
 
@@ -268,13 +273,15 @@ Do not run `git fetch` or `git push` through `docker compose exec`: that shell h
 
 ## Upgrades and model changes
 
-The image tag in `compose.yml` is the version. Read the [changelog](https://github.com/micacms/mica/blob/main/CHANGELOG.md) first. Pin a version, not `latest`, so that an upgrade is a decision. Change the tag, then run:
+The image tag in `compose.yml` is the version. Read the [changelog](/changelog/) first. Pin a version, not `latest`, so that an upgrade is a decision. Change the tag, then run:
 
 ```bash
 docker compose pull && docker compose up -d
 ```
 
 When you change the content model, run the Astro build, commit `.mica/schema.json`, and push. Mica brings the change in with its next sync and uses the new model at once; editors see a notice to load the page again. The image holds no model, so a model change never needs a new image. If this Mica cannot read the new model, it keeps the old version of the branch, and `/ready` has `model_unreadable`. Upgrade Mica, or push a model that it can read. A change to a `.gitattributes` file needs no restart.
+
+An older Mica cannot read a model with reference sets. Upgrade the image to 0.11.0 or newer before you push such a model.
 
 ## Verify the image
 
@@ -306,7 +313,7 @@ The System page and the log show the message of the Git host, without the token.
 
 - "`MICA_REPOSITORY_URL` contains credentials": remove them, and set `MICA_REPOSITORY_TOKEN`.
 - "must be an https:// URL": use the HTTPS URL. SSH is not supported yet.
-- "assigns Git LFS to files under the content root": keep LFS out of the content root.
+- The content root is the top of the repository: put the content in a folder, such as `content/`.
 - "The clone on the data volume is for …": the branch changed, and the clone holds drafts. Start with the old branch and publish, or copy the drafts out and delete the volume. A new URL for the same repository needs nothing: Mica keeps the clone and fetches from the new URL.
 - No content model: build the Astro project, commit `.mica/schema.json`, and push it to `MICA_REPOSITORY_BRANCH`.
 - "MICA_SESSION_SECRET: is required" or "Nothing says who may edit this site": set `MICA_SESSION_SECRET` or an admission rule.
@@ -315,7 +322,7 @@ The System page and the log show the message of the Git host, without the token.
 
 **The token can read but not write** (`/ready` has `write_forbidden`). On GitLab, add `write_repository`. On GitHub, give Contents: read and write.
 
-**`check` passes, but a publication is refused.** A protected branch, a server hook, or required signed commits can cause this. The System page shows the reason of the host. On GitLab, use the Maintainer role, or let Developers push. The changes are drafts again: publish again after the fix.
+**`check` passes, but a publication is refused.** A protected branch, a server hook, or required signed commits can cause this. With Git LFS, the host can also refuse the large files ("Authorization error"). The System page shows the reason of the host. On GitLab, use the Maintainer role, or let Developers push. The changes are drafts again: publish again after the fix.
 
 **The repository does not exist, or the token cannot see it.** The URL is wrong, or the token is for a different repository. The host gives the same answer for both.
 
@@ -325,7 +332,9 @@ The System page and the log show the message of the Git host, without the token.
 
 **`/ready` stays at `cloning`.** The first clone cannot finish, because of the network or a very large repository. Read the log. A large clone can take minutes.
 
-**"A newer content model cannot be read"** on the System page. The pushed `.mica/schema.json` is not valid, or it comes from a newer `@micacms/astro` than the image. Correct the model and push again, or upgrade the image.
+**`/ready` has `prefetch_incomplete`.** A sync could not download the Git LFS files of the new version. Mica keeps the old version and tries again at each sync. Check the LFS quota of your host and `MICA_REPOSITORY_LFS_URL`.
+
+**"A newer content model cannot be read"** on the System page. The pushed `.mica/schema.json` is not valid, or it comes from a newer `@micacms/astro` than the image. Mica refuses every save until it can read the model. Correct the model and push again, or upgrade the image.
 
 **"Read-only in this version of Mica"** on a collection. The site uses a field type from a newer `@micacms/astro` than the image. Upgrade the image to that version or newer.
 
@@ -339,7 +348,7 @@ The System page and the log show the message of the Git host, without the token.
 
 **"The identity provider could not be reached".** `MICA_OIDC_ISSUER` is wrong, or the container cannot reach the provider. Open `<issuer>/.well-known/openid-configuration` from the container.
 
-**The website shows old content.** The host built an older commit. Make sure that CI ran on the commit of the publication.
+**The website shows old content.** The host built an older commit. Make sure that CI ran on the commit of the publication. If the content is in a submodule, make sure that the build updates it.
 
 ## Next
 

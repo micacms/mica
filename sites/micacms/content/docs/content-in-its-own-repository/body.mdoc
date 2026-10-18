@@ -1,0 +1,76 @@
+Some websites keep the content in a repository of its own. The history, the size and the access rights of the content are then separate from the code. You mount the content repository in the website as a Git submodule. Mica supports this since 0.11.0.
+
+Mica works in the repository that holds the content root. It never commits in the website repository.
+
+## Set it up
+
+Add the content repository as a submodule. The submodule folder is the content root:
+
+```bash
+git submodule add https://github.com/acme/website-content.git content
+git commit -m "Add the content as a submodule"
+```
+
+The model says where the content is, as before:
+
+```ts
+export const site = defineSite({ root: "./content", collections: { /* … */ } });
+```
+
+The Astro build writes `.mica/schema.json` into the content root, so into the submodule. Commit and push it in the submodule. Then commit the new submodule pointer in the website repository:
+
+```bash
+git -C content add .mica/schema.json
+git -C content commit -m "Update the model"
+git -C content push
+git add content && git commit -m "Use the new model"
+```
+
+For the self-hosted editor, the content must be in a folder of the content repository, such as `content/` inside it. Mica refuses a content repository whose top is the content root. Then the submodule is at `site-content`, and the model has `root: "./site-content/content"`.
+
+## The local editor
+
+Run `npx @micacms/editor start` as usual. Save, Publish and the push go to the content repository, because Mica finds the repository with `git rev-parse --show-toplevel` in the content root.
+
+A submodule is usually on a detached HEAD after `git submodule update`. A commit on a detached HEAD is on no branch, so no push can send it, and the next `git submodule update` hides it. So Mica does not publish then. The start banner and the Publish page give the command that fixes it:
+
+```bash
+git -C content switch main
+```
+
+After that, Publish works. Your drafts stay drafts until then.
+
+## The website build
+
+Mica never changes the submodule pointer in the website repository. The build gets the newest content itself:
+
+```bash
+git submodule update --init --remote content
+```
+
+In GitHub Actions, `actions/checkout` with `submodules: true` checks out the pointer of the website commit. Add the `--remote` update for the newest content:
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    submodules: true
+    lfs: true   # only when the content uses Git LFS
+- run: git submodule update --init --remote content
+```
+
+A publish pushes to the content repository, so the website does not build by itself. Mica adds no build webhook. Let a workflow in the content repository start the website build, or build the website on a schedule.
+
+## The self-hosted editor
+
+- `MICA_REPOSITORY_URL` is the URL of the content repository, not of the website.
+- The content must be in a folder of that repository. Set `MICA_CONTENT_PATH` if there is more than one content root.
+- Mica clones the content repository only. It never fetches submodules.
+- A model change needs two commits: the `.mica/schema.json` in the content repository, and the new pointer in the website. The editor shows the old model until the schema is in the content repository.
+
+## Git LFS
+
+Git LFS works in the content repository. See [Large files with Git LFS](/docs/git-lfs/).
+
+## Next
+
+Set up the self-hosted editor: [Self-hosting](/docs/self-hosting/). Move the content of an existing site: [Add Mica to an existing site](/docs/existing-site/).

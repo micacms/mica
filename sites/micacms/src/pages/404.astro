@@ -1,13 +1,15 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getPages } from "@/lib/content";
+const { notFound } = await getPages();
 ---
 <BaseLayout title="Page not found" noindex>
   <section class="grid min-h-[60vh] place-items-center px-4 text-center">
     <div>
       <p class="font-mono text-[14px] text-ink-subtle">404</p>
-      <h1 class="title-1 mx-auto mt-3 mb-0 max-w-xl">This file is not in the repository.</h1>
-      <p class="lead mt-4 mb-8">The address does not match a page on micacms.com.</p>
-      <a class="btn-primary" href="/">Go to the home page</a>
+      <h1 class="title-1 mx-auto mt-3 mb-0 max-w-xl">{notFound.title}</h1>
+      <p class="lead mt-4 mb-8">{notFound.text}</p>
+      <a class="btn-primary" href="/">{notFound.action}</a>
     </div>
   </section>
 </BaseLayout>

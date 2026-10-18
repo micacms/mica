@@ -10,7 +10,7 @@ import { site } from "./mica";
 export const collections = micaCollections(site);
 ```
 
-It gives one Astro collection for each collection and for each singleton of the model. A singleton is a collection with one entry, whose id is the singleton's name. The build also writes the model to `<content root>/.mica/schema.json`. Commit that file: the editor reads the model from it.
+It gives one Astro collection for each collection and for each singleton of the model. A singleton is a collection with one entry, whose id is the singleton's name. The build also writes the model to `<content root>/.mica/schema.json`. Commit that file: the editor reads the model from it. In CI (when the environment variable `CI` is set), the build does not write the file. It fails when the committed file is not the current model. Since 0.11.0.
 
 | Option | Type | Default | Effect |
 | --- | --- | --- | --- |
@@ -25,20 +25,30 @@ You can put ordinary Astro collections next to the Mica collections:
 export const collections = { ...micaCollections(site), glossary };
 ```
 
+For a reference set of the model, the loader also writes its index to `<content root>/.mica/references/<name>.json`. It writes it again in `astro dev` when the file changes. In CI, the build fails when the committed index is not the one of the file. See [Reference data](/docs/reference-data/).
+
 ## The data of an entry
 
-`entry.id` is the slug, which is also the folder or file name in the repository. Each entry of a collection has `data._mica`:
+`entry.id` is the slug, which is also the folder or file name in the repository. Each entry of a collection has `data._mica`. Since 0.11.0 it holds two keys:
 
 | Key | Meaning |
 | --- | --- |
-| `id`, `slug` | The slug. |
-| `collection` | The name of the collection. |
-| `position` | The place in the collection's order: the order in `_order.json` when there is one, then the other slugs in the order of their characters (UTF-16 code units), the same on every computer. |
-| `images` | Added in 0.8.0. The images of the entry's rich text whose files are in the content, as `{ path, src }`: the path as the text writes it, and the image that Astro made. A singleton has `data._mica.images` too. |
+| `position` | The place in the collection's order, the order that the editor shows: the `defaultSort` of the collection, else the order in `_order.json` when there is one, then the other slugs in the order of their characters (UTF-16 code units), the same on every computer. |
+| `images` | Added in 0.8.0. The images of the entry's rich text whose files are in the content, as `{ path, src }`: the path as the text writes it, and the image that Astro made. A singleton has `data._mica.images` too. `renderRichText` reads them, so you rarely use them yourself. |
 
-There are no dates in `_mica`, because in Git a date is commit data. Add a `date()` field when editors must see or set a date.
+`id`, `slug` and `collection` are not in `_mica` any more. Use `entry.id` and the name of the collection. There are no dates in `_mica`, because in Git a date is commit data. Add a `date()` field when editors must see or set a date.
 
-`defaultSort` changes only the list in the editor. Sort the entries on your page yourself, for example by `data._mica.position`. See [Recipes](/docs/recipes/).
+## Helpers for pages
+
+Since 0.11.0.
+
+| Helper | Gives |
+| --- | --- |
+| `inEditorOrder` | A function for `sort`: it puts the entries in the order that the editor shows. `(await getCollection("team")).sort(inEditorOrder)` |
+| `getSingleton(site, name)` | The data of a singleton, typed by the model. It stops the build with a clear message when nobody saved the singleton yet. |
+| `mediaFile(site, path)` | The file on disk for a media path, to read a GPX track or another file at build time. A `..` in the path is refused. |
+
+See [Recipes](/docs/recipes/) for each one in use.
 
 ## Media
 
@@ -46,7 +56,7 @@ There are no dates in `_mica`, because in Git a date is commit data. Add a `date
 | --- | --- |
 | `media({ accept: "image" })` | Since 0.6.0, an image (`ImageMetadata`), ready for `<Image src={...} />`. |
 | `media({ accept: "image", alt: "required" })` or `"optional"` | Added in 0.6.0. `{ src, alt }`, so `<Image {...entry.data.cover} />` is enough. A missing optional alt text is `""`. |
-| `media()` with another `accept` | The path of the file, as a string, or `{ path, alt }` with `alt`. |
+| `media()` with another `accept` | The path of the file from the content root, as a string, or `{ path, alt }` with `alt`. Astro does not copy such a file. Read it with `mediaFile`, or copy it in an endpoint. |
 | `multiple: true` | A list of the values above. |
 
 ## Relations
@@ -63,7 +73,7 @@ const people = await relatedAll("team", project.data.team);
 - `related(collection, slug)` gives the entry, or `undefined` when the field is empty or the entry does not exist.
 - `relatedAll(collection, slugs)` gives the entries in the order that the editor chose, and leaves out the entries that do not exist.
 
-In `astro dev`, a missing entry shows a warning. Use them only in pages and components: they import `astro:content`.
+In `astro dev`, a missing entry shows a warning. Use them only in pages and components: they import `astro:content`. They also read the items of a reference set, because it is an Astro collection.
 
 ## Rich text
 
@@ -71,11 +81,39 @@ A `richText()` field is Markdoc, in a `.mdoc` file beside the entry. The functio
 
 | Function | Gives |
 | --- | --- |
-| `renderRichText(source, options?)` | An HTML string. An empty source gives `""`. |
-| `transformRichText(source, options?)` | Markdoc's render tree, to render with your own components. |
+| `await renderRichText(source, entry.data, options?)` | An HTML string. An empty source gives `""`. It is async since 0.11.0. |
+| `await transformRichText(source, entry.data, options?)` | Markdoc's render tree, to render with your own components. |
 | `validateRichText(source, options?)` | Markdoc's list of problems, for a strict build. `renderRichText` does not stop at a problem. |
 
-`options.images` is `entry.data._mica.images` (0.8.0): an image in the text then gets the address, width and height that Astro made. An image with a `/path` that is not in the content, for example one in `public/`, keeps its path. `options.config` is a Markdoc configuration. Add your own tags there; a tag that the configuration does not declare gives no output. Markdoc refuses `javascript:` and `data:` links in its own nodes, but not in a tag or node that you add: check every URL attribute of your own tags, so that an editor cannot add a script link. Raw HTML in the source is not rendered. See [Recipes](/docs/recipes/) for a custom tag.
+The second argument is the data of the entry or the singleton. `renderRichText` finds its images in `_mica.images`, and Astro's image service makes them smaller: a `srcset` and `sizes` in 480, 800, 1200 and 1600 px as WebP, up to the width of the original. The site needs `sharp`, as for `<Image>`. An image with a `/path` that is not in the content, for example one in `public/`, keeps its path.
+
+| Option | Effect |
+| --- | --- |
+| `config` | A Markdoc configuration. Add your own tags there; a tag that the configuration does not declare gives no output. |
+| `optimize` | `false` writes the original files with their width and height. An object sets `widths`, `sizes` and `format` (`"webp"`, `"avif"`, `"png"` or `"jpeg"`). |
+
+Markdoc refuses `javascript:` and `data:` links in its own nodes, but not in a tag or node that you add: check every URL attribute of your own tags, so that an editor cannot add a script link. Raw HTML in the source is not rendered. See [Recipes](/docs/recipes/) for a custom tag.
+
+## Maps: @micacms/astro/components
+
+Since 0.11.0. `LocationMap` draws the value of a `coordinates()` field with MapLibre. It has no styles of its own: give it a size with `class` or `style`.
+
+```astro
+---
+import { LocationMap } from "@micacms/astro/components";
+---
+<LocationMap place={venue.place} map="positron" label="Map: Town hall" class="block h-56 w-full" />
+```
+
+| Prop | Effect |
+| --- | --- |
+| `place` | The value of the field: `{ lat, lng }`, with `zoom` when the editor saved one. |
+| `map` | The field's `map` option, or another style. Default: `"liberty"`. |
+| `zoom` | The zoom when the value stores none. Default: 14. |
+| `label` | The name of the map for a screen reader. |
+| `linkText` | The text of the link that stands in for the map. |
+
+The website needs `maplibre-gl` in its dependencies. The map loads when it comes near the screen. Until then, and without JavaScript, the element holds a link to the place on OpenStreetMap. `mapView(place, { map, zoom })` from `@micacms/astro` gives the same view as data, for a map that you draw yourself.
 
 ## Types
 

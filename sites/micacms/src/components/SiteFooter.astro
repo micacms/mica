@@ -9,15 +9,15 @@ const [navigation, site] = await Promise.all([getNavigation(), getSite()]);
 
 <footer class="border-t border-line bg-ground">
   <div class="wrap py-14">
-    <div class="grid gap-12 md:grid-cols-[1fr_1.5fr]">
+    <div class="grid gap-12 lg:grid-cols-[1fr_2fr]">
       <div>
         <Logo />
         <p class="mt-4 max-w-xs text-[15px] leading-relaxed text-ink-muted">{site.tagline}.</p>
         <a class="mt-5 inline-flex items-center gap-2 rounded-full bg-strata-soft px-3 py-1 font-mono text-[13px] text-ink transition hover:bg-line" href="/changelog/">
-          <span class="h-2 w-2 rounded-full bg-glint ring-1 ring-on-glint ring-inset" aria-hidden="true"></span>v{site.currentVersion} · experimental
+          <span class="h-2 w-2 rounded-full bg-glint ring-1 ring-on-glint ring-inset" aria-hidden="true"></span>v{site.currentVersion} · {site.status.label}
         </a>
       </div>
-      <div class="grid grid-cols-2 gap-8 sm:grid-cols-3">
+      <div class="grid grid-cols-2 gap-8 sm:grid-cols-4">
         {navigation.footerGroups.map((group) => (
           <div>
             <h2 class="mt-0 mb-3 font-sans text-[13px] font-semibold tracking-[.08em] text-ink-muted uppercase">{group.title}</h2>

@@ -34,7 +34,7 @@ Install the packages and run `npx mica init`, as in [Getting started](/docs/gett
 | the Markdown body | `richText()`, usually named `body` |
 | the entry id | a `slug()` field |
 
-All options are on [Fields](/docs/reference-fields/).
+All options are on [Fields](/docs/reference-fields/). Data that Mica must not edit, such as a long list of places, can stay an Astro collection that a relation points to: see [Reference data](/docs/reference-data/).
 
 ## 3. Mica collections next to Astro collections
 
@@ -62,7 +62,7 @@ npx mica import --from ../data-store-before.json --map blog.cover.alt=coverAlt -
 Each field of the model takes the value with the same name. The command converts the value: a date to `"2026-01-15"`, a reference to a slug, an image to a copy in the entry's `media/` folder, and the Markdown body to the rich-text field `body`. It makes each slug from the entry id.
 
 - `--map <collection>.<field>=<key>` takes a field from another key: a renamed field, the alt text of an image (`blog.cover.alt=coverAlt`), or the body for a rich-text field with another name (`blog.content=@body`). It does not reach into the rows of a repeater.
-- `--order <collection>=<field>` makes the order of a `sortable` collection from a number field. Then the pages sort by `data._mica.position`, and the number field can go.
+- `--order <collection>=<field>` makes the order of a `sortable` collection from a number field. Then the pages sort with `inEditorOrder`, and the number field can go.
 - Names after the options import only those collections.
 
 The command lists each key that it did not import, each id that gives the same slug as another, and each image that it did not find. Fix the model or add a `--map`, delete the collection's folder in `content/`, and run it again.
@@ -77,33 +77,15 @@ The command lists each key that it did not import, each id that gives the same s
 
 ## 6. Change the pages, then compare
 
-- Replace `<Content />` from `render(entry)` with the HTML of `renderRichText(entry.data.body, { images: entry.data._mica.images })`.
+- Replace `<Content />` from `render(entry)` with the HTML of `await renderRichText(entry.data.body, entry.data)`. The second argument gives the images of the entry, and Astro makes them smaller.
 - Format and sort dates from the text `"2026-01-15"`.
 - Read an image with alt text as `{ src, alt }`: `<Image {...entry.data.cover} />`.
-- Sort a sortable collection by `data._mica.position`.
+- Sort a sortable collection with `.sort(inEditorOrder)` from `@micacms/astro`.
 
 Run `npx mica check` and `npx astro build`, and compare `dist` with `../dist-before`. Visitors should see no difference, except what you decided to change.
 
 ## Content in a separate repository
 
-The website can read its content from a second repository. Then editors and their commits stay out of the code repository. This setup is not part of Mica's tests.
+The website can read its content from a second repository. Then editors and their commits stay out of the code repository. The best way is a Git submodule: Mica works in the content repository and never commits in the website repository. See [Content in its own repository](/docs/content-in-its-own-repository/).
 
-- **Content repository.** It has the `content/` folder, with `content/.mica/schema.json`. Point the self-hosted Mica at it. Mica finds the content root by its `.mica/schema.json`.
-- **Website repository.** It has the model and the pages. Its CI checks out the content repository inside the project, and the model uses that path:
-
-```yaml
-- uses: actions/checkout@v4
-- uses: actions/checkout@v4
-  with:
-    repository: your-org/site-content
-    path: site-content
-    token: ${{ secrets.CONTENT_TOKEN }}
-```
-
-```ts
-export const site = defineSite({ root: "./site-content/content", collections: { /* … */ } });
-```
-
-- **Model changes.** The build writes `.mica/schema.json` into the content checkout. After a model change, run `npx astro sync` with the content repository checked out at `./site-content`, and commit `schema.json` in the content repository. Until then, the editor shows the old model.
-- **The build.** A publish pushes to the content repository, so the website does not build by itself. Let the content repository's CI start the website's workflow, for example with `gh workflow run`, or build the website on a schedule.
-- **The local editor.** Run `npx mica start ./site-content/content`.
+A second checkout in CI works too, but it is not part of Mica's tests, and the local editor does not know the website repository then. The model uses the path of the checkout, for example `defineSite({ root: "./site-content/content" })`. After a model change, run `npx astro sync` with the content repository checked out there, and commit `schema.json` in the content repository.

@@ -90,6 +90,55 @@ export const site = defineSite({
             href: text({ label: "Link", required: true, width: "half" }),
           },
         }),
+        status: object({
+          label: "Project status",
+          description: "Shown in the banner above every page and next to the version in the footer.",
+          required: true,
+          fields: {
+            label: text({ label: "Footer label", required: true, width: "half", description: "After the version, such as pre-1.0." }),
+            bannerTitle: text({ label: "Banner title", required: true, width: "half" }),
+            bannerText: text({ label: "Banner text", required: true }),
+            bannerLink: text({ label: "Banner link text", required: true }),
+          },
+        }),
+      },
+    }),
+    pages: singleton({
+      label: "Page headers",
+      description: "The headings and the lead texts of the docs index, the changelog and the 404 page.",
+      fields: {
+        docs: object({
+          label: "Documentation index",
+          required: true,
+          fields: {
+            eyebrow: text({ label: "Eyebrow", required: true }),
+            title: text({ label: "Title", required: true }),
+            lead: textarea({ label: "Lead", required: true, rows: 2 }),
+            filterLabel: text({ label: "Filter field label", required: true }),
+            noResults: text({ label: "No result text", required: true }),
+          },
+        }),
+        changelog: object({
+          label: "Changelog",
+          required: true,
+          fields: {
+            eyebrow: text({ label: "Eyebrow", required: true }),
+            title: text({ label: "Title", required: true }),
+            lead: textarea({ label: "Lead", required: true, rows: 2 }),
+            currentLabel: text({ label: "Label of the current release", required: true }),
+            sourceNote: text({ label: "Note about the source changelog", required: true }),
+            sourceLink: text({ label: "Link text to the source changelog", required: true }),
+          },
+        }),
+        notFound: object({
+          label: "Page not found",
+          required: true,
+          fields: {
+            title: text({ label: "Title", required: true }),
+            text: text({ label: "Text", required: true }),
+            action: text({ label: "Button", required: true }),
+          },
+        }),
       },
     }),
     navigation: singleton({
@@ -154,6 +203,40 @@ export const site = defineSite({
             }),
           },
         }),
+        capabilities: object({
+          label: "What it handles",
+          required: true,
+          fields: {
+            eyebrow: text({ label: "Eyebrow", required: true }),
+            title: text({ label: "Title", required: true }),
+            lead: textarea({ label: "Lead", required: true, rows: 2 }),
+            items: repeater({
+              label: "Capabilities",
+              itemLabel: "title",
+              min: 3,
+              max: 6,
+              fields: {
+                title: text({ label: "Title", required: true }),
+                icon: select({
+                  label: "Icon",
+                  required: true,
+                  options: [
+                    { label: "Images", value: "images" },
+                    { label: "Map", value: "map" },
+                    { label: "Files", value: "files" },
+                    { label: "Reference data", value: "database" },
+                    { label: "Preview", value: "eye" },
+                    { label: "Git branch", value: "git" },
+                  ],
+                }),
+                text: textarea({ label: "Text", required: true, rows: 3 }),
+                file: text({ label: "File path", description: "Shown above the code." }),
+                code: textarea({ label: "Code", rows: 3 }),
+                link: object({ label: "Link", required: true, fields: linkFields }),
+              },
+            }),
+          },
+        }),
         audiences: object({
           label: "Editors and developers",
           required: true,
@@ -193,6 +276,26 @@ export const site = defineSite({
             }),
             file: text({ label: "File path", description: "Shown above the code." }),
             code: textarea({ label: "Code", rows: 6 }),
+            link: object({ label: "Link", required: true, fields: linkFields }),
+          },
+        }),
+        scale: object({
+          label: "Scale and tests",
+          required: true,
+          fields: {
+            eyebrow: text({ label: "Eyebrow", required: true }),
+            title: text({ label: "Title", required: true }),
+            lead: textarea({ label: "Lead", required: true, rows: 2 }),
+            facts: repeater({
+              label: "Facts",
+              itemLabel: "label",
+              min: 2,
+              max: 4,
+              fields: {
+                value: text({ label: "Value", required: true, width: "half" }),
+                label: text({ label: "What it counts", required: true, width: "half" }),
+              },
+            }),
             link: object({ label: "Link", required: true, fields: linkFields }),
           },
         }),

@@ -1,0 +1,74 @@
+Mica copes with bigger sites. Photos can live in Git LFS, and the content can live in a repository of its own. A form can hold a place on a map, a GPX track, or a link to one of thousands of items that nobody edits in Mica. The local editor shows a preview while `astro dev` runs. The code under it got a thorough clean-up too.
+
+## Breaking
+
+This release has no migration. Four changes need a step from you.
+
+**`renderRichText` is async and takes the entry's data.** Write `await renderRichText(text, entry.data)`. The option `{ images }` is gone: the function finds the images of the entry itself, and Astro's image service makes them smaller (a `srcset` in 480, 800, 1200 and 1600 px as WebP). Your website needs `sharp`, as for `<Image>`. `{ optimize: false }` writes the original file. A custom tag goes in the third argument: `{ config }`.
+
+**`_mica` holds only `position` and `images`.** `id`, `slug` and `collection` are gone from it: use `entry.id` and the name of the collection. `position` now follows the order of the editor, `defaultSort` included. Sort with `.sort(inEditorOrder)` from `@micacms/astro`, not by hand.
+
+**A build in CI fails when `.mica/schema.json` is not committed.** In CI (when the variable `CI` is set), the build does not write the model. It stops when the committed file is not the model in your code. The same is true for the index of a reference set. Build once on your machine and commit the files. You can remove the `git diff --exit-code` step from your workflow.
+
+**An older Mica refuses a model with reference sets.** A self-hosted image before 0.11.0 reports `model_unreadable` and keeps the old version of the branch. Upgrade the image first, then push the model.
+
+Two more changes affect few sites:
+
+- `@micacms/runtime` no longer exports 21 names that nothing used. The package is internal. Only code that imports from it directly is affected.
+- `/ready` has no `lfs_refused` reason. A self-hosted Mica now works with Git LFS. `prefetch_incomplete` covers a failed download of its files.
+
+## For site owners
+
+**Git LFS for media.** A site with thousands of photos keeps them out of the normal history. You choose the files in `.gitattributes`; Mica follows. The local editor needs Git LFS on your machine and says so at the start. The self-hosted image has it built in, uses the repository token, and sends the files before each push. The website build needs `lfs: true` in `actions/checkout`. `MICA_REPOSITORY_LFS_URL` names the LFS address when your host does not serve it at the clone URL. Read [Large files with Git LFS](/docs/git-lfs/) for the quotas and the volume size.
+
+**Content in its own repository.** Mount the content repository as a Git submodule. Mica works in that repository and never commits in the website repository. A submodule is usually on a detached HEAD, and Mica then gives you the command to fix it. See [Content in its own repository](/docs/content-in-its-own-repository/).
+
+**A link from each entry to its page.** Give a collection or a singleton a `url` in the model, and set `MICA_SITE_URL`. The editor then shows "Open on website", and the Publish page links to the pages that it published. See [Preview changes](/docs/previews/).
+
+**Agents.** `describe_model` names the reference sets, `find_reference_items` searches them, and `upload_media` takes the new file types. While a newer model cannot be read, every write is refused (see Fixed).
+
+## For editors
+
+**A map for places.** A coordinates field can show a map. Select a place or drag the pin. The zoom is saved with the place, so the website shows the same view.
+
+**Many photos at once.** Drop a whole set of files on a media field. Mica shows the progress, goes on when one file fails, and lets you try the failed files again.
+
+**More than images.** A field can take GPX, KML, GeoJSON, ZIP and CSV files. The Media view shows all files, images, or other files.
+
+**Long lists of choices.** A field that points to reference data finds an item as you type.
+
+**Preview.** With the local editor and `astro dev`, an entry shows **Preview**: the page with your saved changes, before Publish. The self-hosted editor has no preview yet.
+
+## For developers
+
+**Maps.** `coordinates({ map: "liberty" })` uses an OpenFreeMap style (`"liberty"`, `"bright"` or `"positron"`). `{ style, hosts }` uses a style of your own, with `https` only. On the website, `<LocationMap>` from the new `@micacms/astro/components` draws the place with MapLibre. `mapView()` gives the same view as data.
+
+**Accepted file types.** `media({ accept: ["gpx", "kml"] })` takes a list. Mica checks the type of each upload from its bytes. `mediaFile(site, path)` gives the file on disk, to read a track at build time.
+
+**Reference sets.** `defineSite({ references })` with `referenceSet()` declares data of the website that Mica never edits, from a JSON or CSV file. A `relation()` points to an item, and `related()` reads it. The build writes an index to `.mica/references/`; commit it. `mica check` checks the ids. See [Reference data](/docs/reference-data/).
+
+**Helpers for pages.** `getSingleton(site, name)` reads a singleton with its type and a clear error. `inEditorOrder` sorts in the order of the editor.
+
+**A check of the model in CI.** See Breaking.
+
+**The example site.** `examples/company-site` shows large media, a map, reference data, a preview and the new helpers.
+
+## Changed
+
+**One error mapping.** The API answers 404, 409, 422 or 400 where it answered 500 for an error of the content. The editor reads the status before the body, tries again to load the model after a failure, and never shows an empty state for a failed load.
+
+**A lighter editor.** The rich-text editor loads only for a form that has a rich-text field: the chunk of every other form goes from 232 kB to 42 kB (gzip). The editor decides at load if a text is read-only, refuses an edit that it cannot keep, and waits a moment between keystrokes.
+
+**Shared code.** The editor takes its API types from `@micacms/runtime`. The Publish page is half as long, and tests run against the source.
+
+## Fixed
+
+**A save never loses fields of a newer model.** While a newer content model cannot be read, every write is refused with a message that says why, over HTTP and over MCP. Before, a save left out the new fields and reported success.
+
+**Publish takes linked files along.** A new file that rich text links to goes into the commit. Publish refuses to delete a file that rich text still links to, and an entry whose media another entry uses.
+
+**`{%` in rich text.** Mica writes it as `\{%`. It became a tag on the website before and made the field read-only.
+
+**"Could not save" after a save that worked** no longer shows when the read-back fails, and a late conflict answer no longer opens the panel again. Old temporary upload files are removed at the start.
+
+Read the new pages [Large files with Git LFS](/docs/git-lfs/), [Content in its own repository](/docs/content-in-its-own-repository/), [Preview changes](/docs/previews/) and [Reference data](/docs/reference-data/).

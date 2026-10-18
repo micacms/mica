@@ -3,5 +3,5 @@
   "slug": "existing-site",
   "section": "build",
   "summary": "Move Astro content collections into Mica with mica import, keep other collections as they are, and keep the content in a separate repository.",
-  "readTime": 7
+  "readTime": 6
 }

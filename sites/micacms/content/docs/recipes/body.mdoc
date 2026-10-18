@@ -37,47 +37,87 @@ From `src/pages/news/[slug].astro` and `src/pages/projects/[slug].astro` of the 
 const projects = (await getCollection("projects")).filter((project) => project.data.team.includes(member.id));
 ```
 
+For a relation to data that Mica does not edit, see [Reference data](/docs/reference-data/).
+
 ## Show images and tables in rich text
 
-With `toolbar: "full"`, or `"table"` and `"image"` in a list, editors add tables and images to the text. A table needs no code. An image needs the entry's images, so that it gets its address on the website:
+With `toolbar: "full"`, or `"table"` and `"image"` in a list, editors add tables and images to the text. A table needs no code. An image needs the data of the entry, so that it gets its file and its address on the website. Give `renderRichText` the entry's data as the second argument. It is async:
 
 ```astro
-<RichText text={body} images={page.data._mica.images} />
+<RichText text={body} from={page.data} />
 ```
 
 ```astro
 ---
-import { renderRichText, type RichTextImage } from "@micacms/astro";
-interface Props { text: string | null; images?: RichTextImage[] }
-const { text, images } = Astro.props;
+import { renderRichText, type RichTextSource } from "@micacms/astro";
+interface Props { text: string | null; from?: RichTextSource | null }
+const { text, from } = Astro.props;
+const html = await renderRichText(text, from);
 ---
-<div set:html={renderRichText(text, { images })} />
+<div set:html={html} />
 ```
 
-Shortened from `src/pages/[...slug].astro` and `src/components/RichText.astro` of the example. Style `table` and `img` in your rich-text styles.
+Shortened from `src/pages/[...slug].astro` and `src/components/RichText.astro` of the example. Astro's image service makes each image smaller: a `srcset` in 480, 800, 1200 and 1600 px as WebP, up to the width of the original. The site needs `sharp`, as for `<Image>`. `{ optimize: false }` as the third argument writes the original. Style `table` and `img` in your rich-text styles.
 
 ## Use the order of the editor
 
-When a collection is `sortable`, editors put its entries in an order. Each entry has its place in `data._mica.position`. Astro does not sort by it, so sort on your page:
+When a collection is `sortable`, editors put its entries in an order. `defaultSort` sets the order too. Astro does not sort by it, so sort on your page with `inEditorOrder`:
 
 ```ts
+import { inEditorOrder } from "@micacms/astro";
+
 export async function getTeam() {
   const items = await getCollection("team");
-  return [...items].sort((a, b) => a.data._mica.position - b.data._mica.position);
+  return [...items].sort(inEditorOrder);
 }
 ```
 
-From `src/lib/content.ts` of the example. `defaultSort` changes only the list in the editor, not your pages.
+From `src/lib/content.ts` of the example.
 
 ## Read the settings
 
-A singleton is an Astro collection with one entry. The collection and the entry have the name of the singleton.
+A singleton is an Astro collection with one entry. `getSingleton` reads it with the type of the model:
 
 ```ts
-const settings = (await getEntry("site", "site"))?.data;
+import { getSingleton } from "@micacms/astro";
+import { site } from "./mica";
+
+const settings = await getSingleton(site, "site");
 ```
 
-The example reads each singleton once for each build, in `src/lib/content.ts`, and stops the build with a clear message when the settings are not saved yet.
+It stops the build with a clear message when the settings are not saved yet. The example reads each singleton in `src/lib/content.ts`.
+
+## Show a place on a map
+
+A `coordinates({ map: "liberty" })` field gives editors a map to click on. On the website, `LocationMap` draws the same place. It has no styles of its own: give it a size.
+
+```astro
+---
+import { LocationMap } from "@micacms/astro/components";
+---
+<LocationMap
+  place={venue.place}
+  map="positron"
+  label={`Map: ${venue.name}`}
+  class="block h-56 w-full overflow-hidden"
+/>
+```
+
+From `src/pages/events/[slug].astro` of the example. Add `maplibre-gl` to the dependencies of the website. The map loads when it comes near the screen. Until then, and without JavaScript, the element holds a link to the place on OpenStreetMap. The zoom is the one that the editor saved. `mapView()` from `@micacms/astro` gives the same view for a map that you draw yourself.
+
+## Read a file at build time
+
+An image reaches Astro as an image. Another file, such as a GPX track, reaches Astro as a path from the content root. `mediaFile` gives the file on disk:
+
+```ts
+import { readFile } from "node:fs/promises";
+import { mediaFile } from "@micacms/astro";
+import { site } from "./mica";
+
+const track = await readFile(mediaFile(site, entry.data.track), "utf8");
+```
+
+The example copies the downloads of its projects into the built site in `src/pages/files/[...path].ts`.
 
 ## Add your own rich-text tag
 
@@ -100,7 +140,7 @@ const config = {
   },
 };
 
-const html = renderRichText(entry.data.body, { config });
+const html = await renderRichText(entry.data.body, entry.data, { config });
 ```
 
 ```markdoc {% process=false %}
@@ -117,12 +157,11 @@ The test `packages/astro/test/richtext.test.ts` renders this configuration. The 
 - run: npm ci
 # Every entry as Mica and the website read it: fields, media, links and layout.
 - run: npx --no mica check
+# In CI, the build fails when content/.mica/schema.json is not the model in the code.
 - run: npm run build
-# The build writes the model. A difference means that src/mica.ts changed and content/.mica/schema.json was not committed.
-- run: git diff --exit-code content/.mica/schema.json
 ```
 
-From `.github/workflows/check.yml` of the starter, which runs in each new site. `mica check` stops the job at an error. The last step finds a model change without its `schema.json`: the editor would show the old model.
+From `.github/workflows/check.yml` of the starter, which runs in each new site. `mica check` stops the job at an error. The build stops at a model change without its `schema.json`: the editor would show the old model. The build does the same for the index of a [reference set](/docs/reference-data/). A step with `git diff --exit-code content/.mica/schema.json` after the build is not needed any more.
 
 ## Change the URL of an entry
 
@@ -152,6 +191,8 @@ export default defineConfig({
 
 **Why can I not rename a media file?** An entry finds a file by its path, so a rename changes each entry that uses it. Upload the file again and change the entries. You can delete a file when no entry uses it.
 
-**Can I see a page before I publish it?** Not in Mica. See [Scope](/docs/scope/).
+**Can I see a page before I publish it?** With the local editor, yes: run `astro dev` beside it. A self-hosted Mica has no preview. See [Preview changes](/docs/previews/).
+
+**Can the site hold thousands of photos?** Yes. Keep them in Git LFS. See [Large files with Git LFS](/docs/git-lfs/).
 
 **Is there more than one language?** See [Several languages](/docs/multilingual/).
