@@ -11,7 +11,7 @@ name: mica-oidc-test
 
 services:
   dex:
-    image: ghcr.io/dexidp/dex:v2.41.1
+    image: ghcr.io/dexidp/dex:v2.46.0
     command: ["dex", "serve", "/etc/dex/config.yaml"]
     volumes:
       - ./dex.yaml:/etc/dex/config.yaml:ro
@@ -111,6 +111,9 @@ services:
 
       MICA_ADMIT_EMAILS: alice@gmail.com
       MICA_ADMIT_DOMAINS: harborlane.example
+      # Dex sends the groups claim only for the `groups` scope (#140).
+      MICA_ADMIT_GROUPS: mica-editors
+      MICA_OIDC_SCOPE: openid profile email groups
       # The flow test and the browser tests sign in about ten times from one address.
       MICA_SIGNIN_MAX_ATTEMPTS: "50"
 
