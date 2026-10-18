@@ -1,4 +1,4 @@
-`@micacms/astro` connects the model to Astro's content layer. It reads the files during the build and needs no server, no token and no network. An item without a version exists since 0.2.0.
+`@micacms/astro` connects the model to Astro's content layer. It reads the files during the build and needs no server, no token and no network.
 
 ## micaCollections(site, options)
 
@@ -10,14 +10,14 @@ import { site } from "./mica";
 export const collections = micaCollections(site);
 ```
 
-It gives one Astro collection for each collection and for each singleton of the model. A singleton is a collection with one entry, whose id is the singleton's name. The build also writes the model to `<content root>/.mica/schema.json`. Commit that file: the editor reads the model from it. In CI (when the environment variable `CI` is set), the build does not write the file. It fails when the committed file is not the current model. Since 0.11.0.
+It gives one Astro collection for each collection and for each singleton of the model. A singleton is a collection with one entry, whose id is the singleton's name. The build also writes the model to `<content root>/.mica/schema.json`. Commit that file: the editor reads the model from it. In CI (when the environment variable `CI` is set), the build does not write the file. It fails when the committed file is not the current model.
 
 | Option | Type | Default | Effect |
 | --- | --- | --- | --- |
 | `root` | `string` | `defineSite({ root })`, else `./content` | The content root. A relative path starts at the Astro project. Use an absolute path for content in a different checkout. |
 | `publishModel` | `false` | on | `false` does not write `.mica/schema.json`. Use it only for a project that nobody edits with Mica. |
 | `debounceMs` | `number` | `100` | In `astro dev`, the wait after a file change before Mica reloads. One save changes several files. |
-| `strict` | `boolean` | `false` | Added in 0.6.0. Stops the build at a relation to a missing entry or at a missing media file. Without it, the build shows a warning. A missing image stops the build in all cases. |
+| `strict` | `boolean` | `false` | Stops the build at a relation to a missing entry or at a missing media file. Without it, the build shows a warning. A missing image stops the build in all cases. |
 
 You can put ordinary Astro collections next to the Mica collections:
 
@@ -29,18 +29,16 @@ For a reference set of the model, the loader also writes its index to `<content 
 
 ## The data of an entry
 
-`entry.id` is the slug, which is also the folder or file name in the repository. Each entry of a collection has `data._mica`. Since 0.11.0 it holds two keys:
+`entry.id` is the slug, which is also the folder or file name in the repository. Each entry of a collection has `data._mica`. It holds two keys:
 
 | Key | Meaning |
 | --- | --- |
 | `position` | The place in the collection's order, the order that the editor shows: the `defaultSort` of the collection, else the order in `_order.json` when there is one, then the other slugs in the order of their characters (UTF-16 code units), the same on every computer. |
-| `images` | Added in 0.8.0. The images of the entry's rich text whose files are in the content, as `{ path, src }`: the path as the text writes it, and the image that Astro made. A singleton has `data._mica.images` too. `renderRichText` reads them, so you rarely use them yourself. |
+| `images` | The images of the entry's rich text whose files are in the content, as `{ path, src }`: the path as the text writes it, and the image that Astro made. A singleton has `data._mica.images` too. `renderRichText` reads them, so you rarely use them yourself. |
 
-`id`, `slug` and `collection` are not in `_mica` any more. Use `entry.id` and the name of the collection. There are no dates in `_mica`, because in Git a date is commit data. Add a `date()` field when editors must see or set a date.
+`_mica` has no `id`, `slug` or `collection`. Use `entry.id` and the name of the collection. There are no dates in `_mica`, because in Git a date is commit data. Add a `date()` field when editors must see or set a date.
 
 ## Helpers for pages
-
-Since 0.11.0.
 
 | Helper | Gives |
 | --- | --- |
@@ -54,14 +52,14 @@ See [Recipes](/docs/recipes/) for each one in use.
 
 | Field | Value in Astro |
 | --- | --- |
-| `media({ accept: "image" })` | Since 0.6.0, an image (`ImageMetadata`), ready for `<Image src={...} />`. |
-| `media({ accept: "image", alt: "required" })` or `"optional"` | Added in 0.6.0. `{ src, alt }`, so `<Image {...entry.data.cover} />` is enough. A missing optional alt text is `""`. |
+| `media({ accept: "image" })` | An image (`ImageMetadata`), ready for `<Image src={...} />`. |
+| `media({ accept: "image", alt: "required" })` or `"optional"` | `{ src, alt }`, so `<Image {...entry.data.cover} />` is enough. A missing optional alt text is `""`. |
 | `media()` with another `accept` | The path of the file from the content root, as a string, or `{ path, alt }` with `alt`. Astro does not copy such a file. Read it with `mediaFile`, or copy it in an endpoint. |
 | `multiple: true` | A list of the values above. |
 
 ## Relations
 
-A relation stores the slug of the target entry, which is also its id in Astro. Added in 0.8.0: `@micacms/astro/relations` gives two functions for your pages.
+A relation stores the slug of the target entry, which is also its id in Astro. `@micacms/astro/relations` gives two functions for your pages.
 
 ```ts
 import { related, relatedAll } from "@micacms/astro/relations";
@@ -81,7 +79,7 @@ A `richText()` field is Markdoc, in a `.mdoc` file beside the entry. The functio
 
 | Function | Gives |
 | --- | --- |
-| `await renderRichText(source, entry.data, options?)` | An HTML string. An empty source gives `""`. It is async since 0.11.0. |
+| `await renderRichText(source, entry.data, options?)` | An HTML string. An empty source gives `""`. It is async. |
 | `await transformRichText(source, entry.data, options?)` | Markdoc's render tree, to render with your own components. |
 | `validateRichText(source, options?)` | Markdoc's list of problems, for a strict build. `renderRichText` does not stop at a problem. |
 
@@ -96,7 +94,7 @@ Markdoc refuses `javascript:` and `data:` links in its own nodes, but not in a t
 
 ## Maps: @micacms/astro/components
 
-Since 0.11.0. `LocationMap` draws the value of a `coordinates()` field with MapLibre. It has no styles of its own: give it a size with `class` or `style`.
+`LocationMap` draws the value of a `coordinates()` field with MapLibre. It has no styles of its own: give it a size with `class` or `style`.
 
 ```astro
 ---

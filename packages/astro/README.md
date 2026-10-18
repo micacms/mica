@@ -60,8 +60,8 @@ collection; `getSingleton(site, "settings")` reads it with its type, and fails
 the build while it has no content. `getCollection("team").sort(inEditorOrder)`
 gives a collection in the order that the editor shows, `defaultSort` included.
 
-The loaders also do the two things that used to need an integration, because
-Astro hands a loader exactly what they require:
+The loaders also do two things without an Astro integration, because Astro
+hands a loader exactly what they require:
 
 - **Publish the model** to `<root>/.mica/schema.json`, once per build or
   dev-server start. Commit that file: it is how a Mica deployment learns what

@@ -34,7 +34,7 @@ on `@micacms/editor`: the private projects have no change files of their own.
 - From 1.0, a `major` entry on an internal package (`runtime`, `auth-oidc`,
   `editor-ui`) is a mistake: internal breaks are `minor`. Point
   it out and suggest `minor`, unless the comment also breaks the public
-  surface — see "Semver covers the public surface" in `docs/decisions.md`.
+  surface — see `docs/adr/0030-semver-covers-the-public-surface.md`.
 - Current version: `version` in `common/config/rush/version-policies.json`.
   Compute the target version from it and the bump.
 - Ask the user with AskUserQuestion, suggested bump first, showing the
@@ -55,6 +55,9 @@ Keep-a-Changelog style, and the source of the GitHub release notes —
   one comment across many packages, it is one entry here.
 - If there was no `[Unreleased]` section, draft the whole section from the
   change-file comments and show the user before moving on.
+- Before 1.0, keep the section short: what changed for a user, and what
+  breaks. The website has no release entry before 1.0; the site-keeper
+  updates the one `before-1-0` entry to the new state.
 
 ## 3. Bump
 
@@ -103,10 +106,14 @@ release as a pre-release.
   gets its own `## [X.Y.Z]` section with the full notes.
 - `deploy/self-hosted/compose.yml` then pins the candidate until the final
   release. Say so to the user.
-- After the candidate: run it on a real website (see "1.0 ships after two
-  weeks of release candidates" in `docs/decisions.md`). A fix gives `rc.N+1`.
+- After the candidate: run it on a website in production for four weeks (see
+  `docs/adr/0032-release-candidates.md`). A fix gives `rc.N+1`.
 - The final release is a normal release: `rush version-bump` bumps
   `X.Y.Z-rc.N` to `X.Y.Z` and consumes the change files.
+- For `1.0.0` only: before the bump, delete the `CHANGELOG.md` and
+  `CHANGELOG.json` of each package, so that the package changelogs start at
+  1.0.0, and fold the remaining 0.x sections of the root `CHANGELOG.md` into
+  its one `0.x` section.
 
 ## A release that failed part of the way
 

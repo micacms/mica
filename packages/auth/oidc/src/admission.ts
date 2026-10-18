@@ -21,9 +21,9 @@
  *
  * What this costs, and it is a real cost: removing somebody from a group at
  * the provider does not take effect until their next sign-in, because the
- * claims Mica checks are the ones it was given. Configuration changes *are*
- * immediate — this policy is re-read on every request — and the session
- * lifetime is the upper bound on the rest. docs/decisions.md records the trade.
+ * claims Mica checks are the ones it was given. A configuration change acts
+ * after a restart, because this policy is checked on every request, and the
+ * session lifetime is the upper bound on the rest. See docs/adr/0003-admission-by-provider-claims.md.
  */
 
 import type { AuthConfig } from "./config.js";
@@ -110,8 +110,8 @@ export function createAdmissionPolicy(
          *
          * What remains is reassignment: an organisation that gives a former
          * editor's address to somebody new gives them this site too. Public
-         * providers such as Gmail never reuse an address; the trade is
-         * recorded in docs/decisions.md.
+         * providers such as Gmail never reuse an address. See
+         * docs/adr/0003-admission-by-provider-claims.md.
          */
         if (identity.emailVerified) return { admitted: true };
 

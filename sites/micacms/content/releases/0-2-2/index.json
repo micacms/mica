@@ -1,8 +1,0 @@
-{
-  "title": "Correct counts of pending edits",
-  "slug": "0-2-2",
-  "version": "0.2.2",
-  "publishDate": "2026-10-10",
-  "summary": "The Publish badge and the dashboard count edits, not files. A URL change counts as one edit, as on the Publish page.",
-  "latest": false
-}

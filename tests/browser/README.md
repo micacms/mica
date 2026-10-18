@@ -81,6 +81,6 @@ minutes. The [OIDC test](../oidc/README.md#run-it) says when to restart the
 ## What it does not check
 
 - **Other paths.** Collections, media, discard and conflicts are covered by the
-  API tests and by the editor's unit tests. `docs/decisions.md` records this gap.
+  API tests and by the editor's unit tests.
 - **Sign-in in the local editor.** It has no sign-in.
 - **Other browsers.** Chromium only.

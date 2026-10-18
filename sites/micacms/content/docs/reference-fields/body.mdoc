@@ -1,4 +1,4 @@
-Import the builders from `@micacms/core`. Each builder gives plain data, so the editor can read the model from `.mica/schema.json`. An item without a version exists since 0.2.0.
+Import the builders from `@micacms/core`. Each builder gives plain data, so the editor can read the model from `.mica/schema.json`.
 
 ## Options of every field
 
@@ -19,9 +19,9 @@ The build stops on an option that is not in these tables, for example a typo. A 
 
 | Builder | Stores | Options |
 | --- | --- | --- |
-| `text()` | A string. | `minLength`, `maxLength`, `placeholder`, `default`, `pattern` (a regular expression; since 0.6.0 it must match the whole value, with the `u` flag; a group that repeats cannot contain a repeat, so `(a+)+` is refused, but `(-[0-9]+)?` is allowed), `patternMessage` (0.7.0). |
+| `text()` | A string. | `minLength`, `maxLength`, `placeholder`, `default`, `pattern` (a regular expression; it must match the whole value, with the `u` flag; a group that repeats cannot contain a repeat, so `(a+)+` is refused, but `(-[0-9]+)?` is allowed), `patternMessage`. |
 | `textarea()` | A string with line breaks. | `minLength`, `maxLength`, `rows`, `placeholder`, `default`. |
-| `richText()` | Markdoc, in a `<key>.mdoc` file beside the entry. | `toolbar`: `"minimal"` (bold, italic, link), `"default"` (also headings and lists), `"full"` (also `strike`, `blockquote`, `horizontalRule`, `table`, `image`), or a list of these features (presets, `table` and `image`: 0.8.0). Also `maxLength`, `default`. |
+| `richText()` | Markdoc, in a `<key>.mdoc` file beside the entry. | `toolbar`: `"minimal"` (bold, italic, link), `"default"` (also headings and lists), `"full"` (also `strike`, `blockquote`, `horizontalRule`, `table`, `image`), or a list of these features. Also `maxLength`, `default`. |
 | `number()` | A number. | `min`, `max`, `step`, `integer`, `unit` (shown in the field, for example `"m²"`), `default`. |
 | `boolean()` | `true` or `false`, never empty. | `default`. |
 | `date()` | `"2026-10-13"`, or with `includeTime` a date and time with its offset. | `includeTime`, `min`, `max`, `default`. |
@@ -31,11 +31,11 @@ The build stops on an option that is not in these tables, for example a typo. A 
 | `select({ options })` | The `value` of the choice, or a list with `multiple`. | `options`: a list of `{ label, value }`. `multiple`, `default`. |
 | `object({ fields })` | An object with the given fields. | `fields`, `collapsible`, `collapsed`. |
 | `repeater({ fields })` | A list of objects. | `fields`, `min`, `max`, `itemLabel` (the key that names a row), `addLabel`. |
-| `relation({ collection })` | The slug of an entry, or a list with `multiple`. For a reference set, the id of an item (0.11.0). | `collection`: a collection of the model, or a reference set. `multiple`. |
-| `media()` | The path of a file, or `{ path, alt }` with `alt`. A list with `multiple`. | `accept`: `"image"` (JPEG, PNG, GIF, WebP, AVIF), `"document"` (PDF), `"any"` (every type that Mica knows), or a list of `image`, `pdf`, `gpx`, `kml`, `geojson`, `zip` and `csv` (the list: 0.11.0). `multiple`, `max`, `alt`: `"required"` or `"optional"` (0.6.0). |
+| `relation({ collection })` | The slug of an entry, or a list with `multiple`. For a reference set, the id of an item. | `collection`: a collection of the model, or a reference set. `multiple`. |
+| `media()` | The path of a file, or `{ path, alt }` with `alt`. A list with `multiple`. | `accept`: `"image"` (JPEG, PNG, GIF, WebP, AVIF), `"document"` (PDF), `"any"` (every type that Mica knows), or a list of `image`, `pdf`, `gpx`, `kml`, `geojson`, `zip` and `csv`. `multiple`, `max`, `alt`: `"required"` or `"optional"`. |
 | `color()` | A hex colour, for example `"#0f766e"`. | `presets`: colours to choose from. `default`. |
-| `coordinates()` | `{ lat, lng }`. With a map also `zoom`, from 0 to 22 (0.11.0). | `map`: `"liberty"`, `"bright"` or `"positron"` (OpenFreeMap), or `{ style, hosts }` for a style of your own, with `https` only. The editor's browser loads the tiles from that host. Added in 0.11.0. |
-| `tags()` | A list of short words, never null: no tags is `[]`. | `max`, `maxLength`, `suggestions`, `default`. Added in 0.8.0. |
+| `coordinates()` | `{ lat, lng }`. With a map also `zoom`, from 0 to 22. | `map`: `"liberty"`, `"bright"` or `"positron"` (OpenFreeMap), or `{ style, hosts }` for a style of your own, with `https` only. The editor's browser loads the tiles from that host. |
+| `tags()` | A list of short words, never null: no tags is `[]`. | `max`, `maxLength`, `suggestions`, `default`. |
 
 ## Defaults and empty values
 
@@ -78,12 +78,12 @@ export const site = defineSite({
 | `fields` | The fields. |
 | `titleField` | The key that names an entry in lists. Default: `title`, else the first `text()`, else the slug. |
 | `slugField` | The key of the slug. Default: the first `slug()`. |
-| `defaultSort` | `{ field, direction }` for the list in the editor. `field` is a field of the collection or `"position"`. Text sorts alphabetically in English, and a date with a time by its instant. Since 0.11.0, `_mica.position` on the website follows it too: sort your pages with `inEditorOrder` from `@micacms/astro`. |
+| `defaultSort` | `{ field, direction }` for the list in the editor. `field` is a field of the collection or `"position"`. Text sorts alphabetically in English, and a date with a time by its instant. `_mica.position` on the website follows it too: sort your pages with `inEditorOrder` from `@micacms/astro`. |
 | `sortable` | Editors can put the entries in an order. Mica keeps it in `_order.json`. |
-| `url` | The page of an entry on the website, with `{slug}` once, such as `/news/{slug}`. With `MICA_SITE_URL`, an entry shows "Open on website". See [Preview changes](/docs/previews/). Added in 0.11.0. |
+| `url` | The page of an entry on the website, with `{slug}` once, such as `/news/{slug}`. With `MICA_SITE_URL`, an entry shows "Open on website". See [Preview changes](/docs/previews/). |
 
-`singleton()` takes `label`, `description`, `fields` and `url` (its page, such as `/about`, without `{slug}`; 0.11.0). `defineSite()` takes `root`, `collections`, `singletons` and `references`.
+`singleton()` takes `label`, `description`, `fields` and `url` (its page, such as `/about`, without `{slug}`). `defineSite()` takes `root`, `collections`, `singletons` and `references`.
 
 ## Reference sets
 
-`referenceSet({ label, file, id, title })` declares data of the website that Mica never edits, and that a `relation()` can point to. It goes in `references` of `defineSite()`, under the name of the website's own Astro collection for that file. `file` is the file from the project root, `id` the key of an item's id (default `id`), and `title` the key that the editor shows. See [Reference data](/docs/reference-data/). Added in 0.11.0.
+`referenceSet({ label, file, id, title })` declares data of the website that Mica never edits, and that a `relation()` can point to. It goes in `references` of `defineSite()`, under the name of the website's own Astro collection for that file. `file` is the file from the project root, `id` the key of an item's id (default `id`), and `title` the key that the editor shows. See [Reference data](/docs/reference-data/).

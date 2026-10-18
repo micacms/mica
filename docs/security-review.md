@@ -1,7 +1,7 @@
 # Security self-review: OWASP ASVS 5.0.0, level 1
 
-This is the self-review that the decision "No independent security review
-before 1.0" asks for ([`decisions.md`](decisions.md)). It is not an
+This is the self-review that
+[decision record 34](adr/0034-a-hobby-project-without-audits.md) asks for. It is not an
 independent audit. Anybody can check it: every result names the code that it
 is based on, by file and, where it helps, by function. Line numbers are left
 out, because they go out of date with each change.
@@ -54,7 +54,7 @@ ones, all low or lower. #213 tracks them.
 | N9 | The OIDC callback was not rate limited. | #159 |
 | N10 | Text media were sent without a `charset`. | #160 |
 | #79 | `/health` called the provider on each request. | #156 |
-| #85 | A `../` segment could leave the content root in the provider connectors. | #153 (the connectors are gone since 0.5) |
+| #85 | A `../` segment could leave the content root in the provider connectors. | #153 |
 | #86 | Media were served same-origin with no sandbox, and SVG was accepted. | #154 |
 | #87 | `safeReturnTo` accepted `/\evil.example`. | #155 |
 | #88 | No Content-Security-Policy, and the editor loaded Google Fonts. | #146 |
@@ -89,7 +89,7 @@ ones, all low or lower. #213 tracks them.
 
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
-| 2.1.1 | Validation rules documented | Partial | `sites/micacms/content/docs/reference-fields/body.mdoc`; `packages/runtime/src/routes/admin-content.ts` | The field rules are documented. The accepted upload types are in `docs/decisions.md` ("A media field takes the file types of one table"). Not yet: the 2 MB limit for JSON. |
+| 2.1.1 | Validation rules documented | Partial | `sites/micacms/content/docs/reference-fields/body.mdoc`; `packages/runtime/src/routes/admin-content.ts` | The field rules are documented. The accepted upload types are in `docs/adr/0018-media-files.md`. Not yet: the 2 MB limit for JSON. |
 | 2.2.1 | Positive input validation | Pass | `packages/runtime/src/routes/admin-content.ts`; `packages/runtime/src/services/content-store.ts` | The delete slug is checked; the save slug is not (N12). |
 | 2.2.2 | Validation on the server | Pass | `packages/runtime/src/services/content-store.ts` (`validate`); `packages/auth/oidc/src/config.ts` | |
 | 2.3.1 | Business flow in the expected order | Pass | `packages/runtime/src/routes/admin-content.ts`; `packages/runtime/src/services/staging.ts` (`unreviewed`) | Save, delete, reorder, discard and publish carry the revision that the editor saw (#216). |
@@ -141,7 +141,7 @@ tile host limits to the address of the editor.
 
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
-| 6.1.1 | Rate limiting documented | Pass | `docs/decisions.md`; `packages/auth/oidc/src/config.ts` | |
+| 6.1.1 | Rate limiting documented | Pass | `docs/adr/0004-sealed-sessions-and-no-state-about-people.md`; `packages/auth/oidc/src/config.ts` | |
 | 6.3.1 | Brute-force controls | Pass | `packages/auth/oidc/src/routes.ts` | The provider checks credentials; Mica limits sign-in starts and callbacks for each address (#159). |
 | 6.3.2 | No default accounts | Pass | `packages/auth/oidc/src/config.ts` (`requireAuthConfig`) | No accounts; refuses to start without an admission rule. |
 | 6.2.x, 6.4.x–6.7.x | Passwords, recovery, MFA, out-of-band, authenticators | N/A | `packages/auth/oidc/src/oidc.ts` | The identity provider does these. |
@@ -154,8 +154,8 @@ tile host limits to the address of the editor.
 | 7.2.2 | Dynamic tokens, not static keys | Pass | `packages/auth/oidc/src/session.ts` | |
 | 7.2.3 | Reference token entropy ≥ 128 bits | N/A | `packages/auth/oidc/src/session.ts` | The session is self-contained (V9). The CSRF token has 256 bits. |
 | 7.2.4 | New token at authentication | Pass | `packages/auth/oidc/src/routes.ts`; `packages/auth/oidc/src/session.ts` | |
-| 7.4.1 | Session unusable after logout | Accepted | `packages/auth/oidc/src/session.ts`; `docs/decisions.md` ("Sessions are encrypted cookies, not rows") | A copied cookie stays valid until it expires. |
-| 7.4.2 | Sessions end when access is removed | Partial | `packages/auth/oidc/src/gate.ts`; `packages/auth/oidc/src/config.ts` | A rule change is immediate; a change at the provider waits for the next sign-in, at most 8 hours by default. |
+| 7.4.1 | Session unusable after logout | Accepted | `packages/auth/oidc/src/session.ts`; `docs/adr/0004-sealed-sessions-and-no-state-about-people.md` | A copied cookie stays valid until it expires. |
+| 7.4.2 | Sessions end when access is removed | Partial | `packages/auth/oidc/src/gate.ts`; `packages/auth/oidc/src/config.ts` | A rule change takes effect after a restart; a change at the provider waits for the next sign-in, at most 8 hours by default. |
 
 The idle and absolute timeouts are implemented
 (`packages/auth/oidc/src/session.ts`). They are level 2.

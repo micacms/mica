@@ -15,7 +15,7 @@
  * What this gives up is server-side revocation of one cookie. Sign-out clears
  * it in the browser; a copy taken before then stays valid until it expires.
  * Rotating MICA_SESSION_SECRET ends every session at once. The admission rules are
- * still re-read on every request — see gate.ts and docs/decisions.md.
+ * still re-read on every request — see gate.ts and docs/adr/0004-sealed-sessions-and-no-state-about-people.md.
  */
 
 import { timingSafeEqual } from "node:crypto";

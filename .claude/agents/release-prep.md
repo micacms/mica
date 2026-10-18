@@ -15,7 +15,7 @@ Run Rush through `node common/scripts/install-run-rush.js`, one command per Bash
 
 ## CHANGELOG
 
-Write the root `CHANGELOG.md` section in the voice of the existing sections: a one-line summary, then `### Changed`, `### Breaking` and `### Fixed` as needed. Each entry has a bold first sentence and names the affected packages. Leave out change files of type `none`. Merge entries that lockstep repeats across packages.
+Write the root `CHANGELOG.md` section in the Keep a Changelog form: a one-line summary, then `### Changed`, `### Breaking` and `### Fixed` as needed. Before 1.0, keep it short: what changed for a user, and what breaks. Each entry has a bold first sentence and names the affected packages. Leave out change files of type `none`. Merge entries that lockstep repeats across packages.
 
 ## Report
 

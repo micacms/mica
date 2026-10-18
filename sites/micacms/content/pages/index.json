@@ -8,11 +8,11 @@
   },
   "changelog": {
     "eyebrow": "Changelog",
-    "title": "What changed, and why.",
-    "lead": "Mica releases all packages and the CMS together. The project is pre-1.0, so read the note before each upgrade. The Breaking part comes first.",
+    "title": "What Mica does today.",
+    "lead": "Mica is pre-1.0 and experimental. Read the release notes on GitHub before you upgrade.",
     "currentLabel": "Current",
-    "sourceNote": "The complete source changelog is in the repository.",
-    "sourceLink": "Read CHANGELOG.md"
+    "sourceNote": "The notes of each release are on GitHub.",
+    "sourceLink": "Read the GitHub releases"
   },
   "notFound": {
     "title": "This file is not in the repository.",

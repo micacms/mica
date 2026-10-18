@@ -1,4 +1,4 @@
-Git LFS (Large File Storage) keeps large files out of the normal Git history. Git holds a small pointer in place of each file, and the Git host holds the file. A site with thousands of photos needs it: without it, each clone and each data volume holds every version of every photo. Mica works with Git LFS since 0.11.0.
+Git LFS (Large File Storage) keeps large files out of the normal Git history. Git holds a small pointer in place of each file, and the Git host holds the file. A site with thousands of photos needs it: without it, each clone and each data volume holds every version of every photo.
 
 Mica never writes Git LFS settings for you. You choose the files, and Mica follows your choice.
 
@@ -58,7 +58,7 @@ A host that builds from the repository, such as Netlify or Cloudflare Pages, nee
 
 ## The size of an upload
 
-`MICA_MAX_UPLOAD_BYTES` still limits one upload. The default is 25 MB. Raise it when your files are larger. See [Configuration](/docs/configuration/).
+`MICA_MAX_UPLOAD_BYTES` limits one upload. The default is 25 MB. Raise it when your files are larger. See [Configuration](/docs/configuration/).
 
 ## Next
 

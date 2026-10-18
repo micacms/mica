@@ -73,7 +73,7 @@ on.
    until her session ends, because Mica checks the claims her provider sent at
    sign-in and cannot know they have changed. That is the accepted cost of
    having no user table, and it is why sessions last hours rather than weeks —
-   see the P1 entry in [`decisions.md`](../../docs/decisions.md).
+   see [decision record 3](../../docs/adr/0003-admission-by-provider-claims.md).
 
 7. **Take her out of `MICA_ADMIT_GROUPS` instead** and restart the container.
    Her next request is refused at once: the rules are re-read on every request,

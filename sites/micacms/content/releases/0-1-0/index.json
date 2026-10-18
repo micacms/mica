@@ -1,8 +1,0 @@
-{
-  "title": "One command, and the editor opens",
-  "slug": "0-1-0",
-  "version": "0.1.0",
-  "publishDate": "2026-08-16",
-  "summary": "The local command prints one address and opens the editor. There is no sign-in screen on your own machine. Astro 6 or 7 is now required.",
-  "latest": false
-}

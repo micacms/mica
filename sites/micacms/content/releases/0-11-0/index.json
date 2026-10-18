@@ -1,8 +1,0 @@
-{
-  "title": "Large media, maps and reference data",
-  "slug": "0-11-0",
-  "version": "0.11.0",
-  "publishDate": "2026-10-18",
-  "summary": "Photos in Git LFS, content in a repository of its own, maps, more file types, reference data, and a preview in the local editor. Read Breaking before you upgrade from 0.10: renderRichText is async.",
-  "latest": true
-}

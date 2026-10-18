@@ -161,7 +161,7 @@ The test `packages/astro/test/richtext.test.ts` renders this configuration. The 
 - run: npm run build
 ```
 
-From `.github/workflows/check.yml` of the starter, which runs in each new site. `mica check` stops the job at an error. The build stops at a model change without its `schema.json`: the editor would show the old model. The build does the same for the index of a [reference set](/docs/reference-data/). A step with `git diff --exit-code content/.mica/schema.json` after the build is not needed any more.
+From `.github/workflows/check.yml` of the starter, which runs in each new site. `mica check` stops the job at an error. The build stops at a model change without its `schema.json`: the editor would show the old model. The build does the same for the index of a [reference set](/docs/reference-data/).
 
 ## Change the URL of an entry
 

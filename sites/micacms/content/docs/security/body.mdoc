@@ -23,16 +23,16 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 
 ## Risks Mica accepts
 
-- **Removal at the provider applies at the next sign-in.** Mica checks the provider's claims when a person signs in. A person you remove from a group at the provider keeps working until the session ends: at most 8 hours, or 4 hours without activity, by default. To stop a person at once, use `MICA_ADMIT_SUBJECTS` or change the rules: Mica checks the rules on every request.
+- **Removal at the provider applies at the next sign-in.** Mica checks the provider's claims when a person signs in. A person you remove from a group at the provider keeps working until the session ends: at most 8 hours, or 4 hours without activity, by default. To stop a person sooner, change `MICA_ADMIT_SUBJECTS` or the other rules, and restart Mica: it checks the rules on every request.
 - **No server-side session revocation.** Sessions are encrypted cookies. Mica has no database. To end every session at once, change `MICA_SESSION_SECRET` and restart. Every editor must then sign in again.
 - **The local editor is open to local processes.** Any process on the developer's machine can call the local API. Such a process can already change the files in the working tree.
-- **An agent's access cannot be ended one by one.** On a self-hosted Mica with `MICA_MCP=true`, an agent's token is sealed like a session, and Mica stores no list of them. It ends after `MICA_SESSION_TTL_HOURS`, or at once when the rules no longer admit the person. To end all of them, change `MICA_SESSION_SECRET`.
+- **An agent's access cannot be ended one by one.** On a self-hosted Mica with `MICA_MCP=true`, an agent's token is sealed like a session, and Mica stores no list of them. It ends after `MICA_SESSION_TTL_HOURS`, or at the next request after the rules change and Mica restarts. To end all of them, change `MICA_SESSION_SECRET`.
 - **Content can give instructions to an agent.** A text in the content can try to direct an agent that reads it. By default, an agent only saves drafts; `MICA_MCP_PUBLISH` lets it publish.
 - **A publish is immediate.** There is no review step. If you need one, point Mica at a staging branch and merge on your own schedule.
 - **No roles.** Every admitted editor can save, publish, discard and delete.
 - **Rate limits are in the process.** Each Mica counts on its own, and a restart resets the counts.
 - **A contributor can already run code.** A person who can change the website's `package.json` runs code in its build and on developers' computers. Mica adds no new way to do that.
-- **The website's templates decide whether an editor can run script.** Rich text cannot add script: Markdoc escapes HTML. A template can still do it. Do not put a script address in a field, for example for analytics: every editor could then load their own script on every page. Keep such addresses in code. When a template writes content into a `<script>` element, for example JSON-LD, escape `<` as `<`, so that a text cannot end the element.
+- **The website's templates decide whether an editor can run script.** Rich text cannot add script: Markdoc escapes HTML. A template can still do it. Do not put a script address in a field, for example for analytics: every editor could then load their own script on every page. Keep such addresses in code. When a template writes content into a `<script>` element, for example JSON-LD, replace each `<` with its JSON Unicode escape, so that a text cannot end the element.
 - **A map loads tiles from another host.** A coordinates field with a map makes the editor's browser load tiles from OpenFreeMap, or from the hosts of a style that the model names. The model comes from the repository, so only a contributor can change those hosts.
 
 ## What the repository token can reach

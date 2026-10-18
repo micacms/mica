@@ -16,15 +16,15 @@ runs the tests, the type checks and the browser tests on each pull request.
   `@micacms/core`, `@micacms/astro`, the `@micacms/editor` command line, the
   contract of the self-hosted image, the content format and the manifest. The
   other packages are internal. Before 1.0, a minor version can break the
-  public surface; the changelog says how. The decision "Semver covers the
-  public surface" in [docs/decisions.md](docs/decisions.md) has the details.
+  public surface; the changelog says how. The decision record
+  [30](docs/adr/0030-semver-covers-the-public-surface.md) has the details.
 
 ## How decisions are made
 
 The maintainer decides. The design rules and the reasons for them are in
-[docs/architecture.md](docs/architecture.md) and
-[docs/decisions.md](docs/decisions.md). A change that goes against a decision
-starts with an issue that proposes to change the decision. For a large change,
+[docs/architecture.md](docs/architecture.md) and the decision records in
+[docs/adr/](docs/adr/README.md). A change that goes against a decision
+starts with an issue that proposes a new record to replace it. For a large change,
 open an issue before you write code. See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## If the maintainer stops

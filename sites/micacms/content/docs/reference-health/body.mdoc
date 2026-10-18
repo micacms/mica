@@ -46,7 +46,7 @@ The reason codes. Each code makes the status `degraded`, except `cloning` (`erro
 | `fast_forward_failed` | A sync could not bring the clone to the new version. | Read the log. |
 | `sync_failing` | Another sync problem. | Read the log, and run `docker compose run --rm mica check`. |
 | `pending_push` | A publication is committed in the clone, but the Git host did not take it yet. | Mica tries again at each sync. Look at the other codes for the cause. |
-| `model_unreadable` | This Mica cannot read the content model of the new version, for example a model with reference sets in an older Mica. Mica keeps the old version, refuses every save with a message that says why, and Publish waits. | Upgrade Mica, or push a model that it can read. |
+| `model_unreadable` | This Mica cannot read the content model of the new version, for example a model with a field kind from a newer `@micacms/astro`. Mica keeps the old version, refuses every save with a message that says why, and Publish waits. | Upgrade Mica, or push a model that it can read. |
 | `read_only` | A sync failed while it changed the files, and Mica could not undo it. Editors cannot save or publish. | Read the log, then restart the container: the start finishes the sync. |
 | `conflict` | An editor's draft and a change at the Git host touch the same entry. | Nothing: the editor chooses a version in the editor. |
 

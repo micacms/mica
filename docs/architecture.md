@@ -282,14 +282,15 @@ Four details that matter:
 - The email and domain rules require the provider's `email_verified`. Without
   it, an open self-registration would let anybody claim an admitted address. A
   domain rule for a public provider such as `gmail.com` is refused at startup.
-- The rules are re-read on every request, never decided at sign-in and kept. A
-  configuration change takes effect now.
+- The rules are checked on every request, never decided at sign-in and kept.
+  Mica reads them at start, so a configuration change takes effect after a
+  restart.
 - A **group** change at the provider does not. Mica sees the claims it was
   given at sign-in, and learns better at the next one, so the session lifetime
   is the upper bound. The cookie keeps only the groups that `MICA_ADMIT_GROUPS`
   names, to stay under the 4 KB cookie limit, so a group added to the rules
-  counts from the next sign-in — hours, not weeks. That trade is recorded as a P1
-  decision in [`decisions.md`](decisions.md).
+  counts from the next sign-in — hours, not weeks. That trade is in
+  [decision record 3](adr/0003-admission-by-provider-claims.md).
 
 **Multi-site is not here.** One runtime serves one site, named by an explicit
 `SiteContext` rather than assumed. There are no tenant, site or membership
@@ -334,7 +335,7 @@ composing app puts its gate in front of `/mcp`, as it does in front of
 `/mcp`: the person signs in with the editor's flow, the admission rules decide,
 a consent page allows one agent, and Mica issues sealed tokens. It stores none
 of them, as it stores no session. The reasons are in
-[`decisions.md`](decisions.md).
+[decision record 29](adr/0029-mica-is-the-authorization-server-for-mcp.md).
 
 ### The local editor has no authentication, no user, and no database
 
@@ -353,9 +354,8 @@ test walks the graph to keep it that way.
 
 It is the most dangerous state the software has, so it is contained: refused
 when `MICA_PUBLIC_URL` is any host but localhost; refused when `HOST` is anything but the loopback address; and a
-**Host allowlist** in front of everything, so a DNS-rebound name gets a 403
-where the old local session cookie used to be the accidental defence. The
-Origin check handles cross-site writes as before.
+**Host allowlist** in front of everything, so a DNS-rebound name gets a 403.
+The Origin check refuses cross-site writes.
 
 ---
 

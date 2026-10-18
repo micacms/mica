@@ -20,8 +20,8 @@ Change content with the Mica MCP servers `mica-site` and `mica-example` (root `.
 
 After a release `X.Y.Z`:
 
-- Add `content/releases/X-Y-Z/` (`index.json` with title, slug, version, publishDate and summary, plus `body.mdoc`). Base the text on that version's section in the root `CHANGELOG.md`. Copy the shape of the newest existing release entry.
-- Move `"latest": true` to the new entry, and remove it from the previous one.
+- Before 1.0: do not add a release entry. Update the one entry `before-1-0` so that it says what Mica does at `X.Y.Z`. It describes the current state only, never the history of a release.
+- From `1.0.0-rc.1`: add a release entry for each version, with title, slug, version, publishDate, summary and body. Base the text on that version's section in the root `CHANGELOG.md`. Copy the shape of the newest entry, and move `"latest": true` to the new one.
 - Update `currentVersion` and the announcement text in `content/site/index.json`, and any other version mention (search for the previous version).
 
 After a docs change, update the matching page in `content/docs/` (architecture, content-model, getting-started, self-hosting) so that it agrees with `docs/*.md`. The site pages are for readers of the website: keep their own structure and length, and do not copy the internal decision records.
