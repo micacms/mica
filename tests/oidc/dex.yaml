@@ -1,6 +1,6 @@
 # Dex for the automated OIDC test — see README.md.
 #
-# Three users with one password, "password". Deliberately insecure: plain HTTP,
+# Five users with one password, "password". Deliberately insecure: plain HTTP,
 # a committed client secret, in-memory storage. A test rig, not a deployment.
 
 issuer: http://localhost:5556/dex
@@ -37,6 +37,18 @@ staticPasswords:
     username: bob
     userID: 0b8f6f62-7a7c-4b8e-9d34-2d8e1d1d0a02
     hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+  # Admitted only by MICA_ADMIT_GROUPS: her address and domain are in no rule.
+  - email: carol@pinecrest.example
+    username: carol
+    userID: 0b8f6f62-7a7c-4b8e-9d34-2d8e1d1d0a04
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+    groups: ["mica-editors"]
+  # In a group, but not in the admitted one.
+  - email: dave@pinecrest.example
+    username: dave
+    userID: 0b8f6f62-7a7c-4b8e-9d34-2d8e1d1d0a05
+    hash: "$2a$10$2b2cU8CPhOTaGrs1HRQuAueS7JTT5ZHsHSzYiFPm1leZck7Mc8T4W"
+    groups: ["everyone"]
   # Authenticates perfectly, and is in no rule: another Gmail address.
   - email: mallory@gmail.com
     username: mallory

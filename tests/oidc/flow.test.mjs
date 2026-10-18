@@ -119,6 +119,21 @@ describe("signing in through Dex", () => {
     assert.equal((await bob.api("/api/auth/me")).status, 200);
   });
 
+  it("admits a member of an admitted group, and only through the group (#140)", async () => {
+    const carol = new Browser();
+    const landed = await carol.signIn("carol@pinecrest.example");
+    assert.equal(landed.pathname, "/admin/");
+    assert.equal((await carol.api("/api/auth/me")).status, 200);
+  });
+
+  it("refuses a member of another group", async () => {
+    const dave = new Browser();
+    const landed = await dave.signIn("dave@pinecrest.example");
+    assert.equal(landed.pathname, "/admin/login");
+    assert.equal(landed.searchParams.get("error"), "not_admitted");
+    assert.equal((await dave.api("/api/auth/me")).status, 401);
+  });
+
   it("refuses somebody the provider vouches for but no rule names", async () => {
     const mallory = new Browser();
     const landed = await mallory.signIn("mallory@gmail.com");

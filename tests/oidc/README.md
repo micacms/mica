@@ -15,6 +15,8 @@ over Git, with the container as it is deployed.
 | ------------------------ | -------------------- | ---------------------- |
 | `alice@gmail.com`        | `MICA_ADMIT_EMAILS`  | Admitted               |
 | `bob@harborlane.example` | `MICA_ADMIT_DOMAINS` | Admitted               |
+| `carol@pinecrest.example` | `MICA_ADMIT_GROUPS` (`mica-editors`) | Admitted |
+| `dave@pinecrest.example` | none (group `everyone`) | Authenticated, refused |
 | `mallory@gmail.com`      | none                 | Authenticated, refused |
 
 And, for an admitted session:
@@ -29,8 +31,9 @@ And, for an admitted session:
   serves LFS. An uploaded PNG is published as a pointer, with the image in
   Forgejo's LFS store. A PNG that Forgejo adds reaches Mica with a sync.
 
-All three users have the password `password`. Dex reports every address as
-verified, as Google does.
+All five users have the password `password`. Dex reports every address as
+verified, as Google does. Mica asks for the `groups` scope, because Dex sends
+the groups claim only then.
 
 ## Run it
 
@@ -47,13 +50,13 @@ token would go, which Forgejo accepts. Run `down -v` to start again from the
 example content.
 
 The login rate limit of this stack is 50 attempts in 15 minutes. One run uses
-9, and the browser test uses 7. After a few runs, restart the `mica` service.
+11, and the browser test uses 7. After a few runs, restart the `mica` service.
 
 ## What it does not check
 
-- **Groups.** Dex's built-in users carry no groups claim. The group rule and the
-  claim shapes of Keycloak and Entra are covered by unit tests and by the manual
-  Keycloak rig in [`tests/e2e/`](../e2e/README.md).
+- **Other shapes of the groups claim.** Dex sends bare group names. A Keycloak
+  path (`/mica-editors`) and the claim of Entra are covered by unit tests and by
+  the manual Keycloak rig in [`tests/e2e/`](../e2e/README.md).
 - **GitHub and GitLab.** Forgejo is a real Git host, but the hosts that Mica
   supports are checked by the weekly live workflow, not here.
 - **The editor UI.** No browser is involved here.
