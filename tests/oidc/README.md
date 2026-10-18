@@ -50,7 +50,7 @@ token would go, which Forgejo accepts. Run `down -v` to start again from the
 example content.
 
 The login rate limit of this stack is 50 attempts in 15 minutes. One run uses
-11, and the browser test uses 7. After a few runs, restart the `mica` service.
+11, and the browser test uses 8. After a few runs, restart the `mica` service.
 
 ## What it does not check
 
