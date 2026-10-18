@@ -14,6 +14,7 @@
 - **External data.** Your entries can link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them. The TinaCMS documentation does not describe this.
 - **Git hosts.** TinaCMS works with GitHub only. Mica works with any Git host.
 - **Self-hosting.** Self-hosted TinaCMS needs a backend function, a database adapter, a Git provider and an auth provider. It lacks search, Git-backed media and branch switching. Mica self-hosted is one container with a volume, HTTPS in front, an OpenID Connect client and a Git token. The TinaCMS documentation does not describe OIDC sign-in.
+- **One commit for several changes.** In TinaCMS, each save is a commit. In Mica, a save writes a draft, and Publish makes one commit of the changes the editor chooses, with a summary.
 - **Astro.** Mica content reaches Astro as Content Collections with types, and there is no generated client.
 - **Price per user.** TinaCloud free allows 2 users, and its plans are priced by project and users. Mica has no paid plan and no user limit.
 - **Large collections.** TinaCMS says that reference fields can time out on large collections. Mica is tested with 1,000 entries in a collection.
@@ -22,6 +23,6 @@
 ### Equal, or not documented
 
 - Both use a TypeScript model and have an official Astro package.
-- Both save as files in Git, and neither has a batch publish.
+- Both save content as files in Git.
 - Content in a Git submodule: the TinaCMS documentation does not say.
 - Upload limits: TinaCMS rejects .html, .js and .xml files and does not document GPX or ZIP. Mica checks JPEG, PNG, GIF, WebP, AVIF, PDF, GPX, KML, GeoJSON, ZIP and CSV files by their bytes.

@@ -128,7 +128,7 @@
           "kind": "repeater",
           "label": "Choose Mica when",
           "itemLabel": "text",
-          "max": 6,
+          "max": 10,
           "fields": {
             "text": {
               "kind": "text",
@@ -141,7 +141,7 @@
           "kind": "repeater",
           "label": "Choose the other product when",
           "itemLabel": "text",
-          "max": 6,
+          "max": 10,
           "fields": {
             "text": {
               "kind": "text",

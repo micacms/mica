@@ -33,7 +33,10 @@
       "text": "Some editors have no GitHub account. Pages CMS invites them by email, with a one-time code."
     },
     {
-      "text": "Your editors work with CSV data in a grid, or you want buttons that start GitHub Actions."
+      "text": "Your editors edit CSV data in a grid."
+    },
+    {
+      "text": "You want buttons that start GitHub Actions."
     }
   ],
   "facts": [

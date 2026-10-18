@@ -27,10 +27,22 @@
       "text": "Editors should edit on the page itself, with visual editing."
     },
     {
-      "text": "You want a hosted service with support, roles, SAML sign-in and deploy previews."
+      "text": "You want a hosted service with support."
     },
     {
-      "text": "You want to publish branches with pull request approval, or keep media in a DAM such as S3, Cloudinary or Bynder."
+      "text": "Your editors need roles, with permission groups."
+    },
+    {
+      "text": "You need SAML sign-in (Enterprise plan)."
+    },
+    {
+      "text": "You want deploy previews of pull requests (Team plan and up)."
+    },
+    {
+      "text": "Editors should publish a branch with a pull request for approval."
+    },
+    {
+      "text": "You want to keep media in a DAM, such as S3, Cloudinary or Bynder."
     }
   ],
   "facts": [

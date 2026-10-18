@@ -71,13 +71,13 @@ export const site = defineSite({
         chooseMica: repeater({
           label: "Choose Mica when",
           itemLabel: "text",
-          max: 6,
+          max: 10,
           fields: { text: text({ label: "Point", required: true }) },
         }),
         chooseOther: repeater({
           label: "Choose the other product when",
           itemLabel: "text",
-          max: 6,
+          max: 10,
           fields: { text: text({ label: "Point", required: true }) },
         }),
         facts: repeater({

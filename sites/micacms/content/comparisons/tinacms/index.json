@@ -10,16 +10,25 @@
       "text": "You want AI agents to edit your content: Mica has an MCP server built in. TinaCMS lists one as Coming Soon."
     },
     {
-      "text": "You do not want a database or an index for your content, and you want to run the editor yourself in one container, behind any OpenID Connect provider."
-    },
-    {
       "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
     },
     {
       "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
     },
     {
-      "text": "Your content is on a Git host other than GitHub, and you want Astro to read it through Content Collections, with types."
+      "text": "You do not want a database or an index for your content."
+    },
+    {
+      "text": "You want to run the editor yourself in one container, behind any OpenID Connect provider."
+    },
+    {
+      "text": "Your content is on a Git host other than GitHub."
+    },
+    {
+      "text": "You want Astro to read your content through Content Collections, with types."
+    },
+    {
+      "text": "An editor should publish several changes as one commit, with a summary."
     },
     {
       "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
@@ -33,7 +42,13 @@
       "text": "You want a hosted service (TinaCloud) with plans and support."
     },
     {
-      "text": "You want search, MDX components, or an editorial workflow with draft pull requests."
+      "text": "You want search over your content, through TinaCloud."
+    },
+    {
+      "text": "You want MDX components in your content."
+    },
+    {
+      "text": "You want an editorial workflow with draft pull requests (Business plan and up)."
     }
   ],
   "facts": [

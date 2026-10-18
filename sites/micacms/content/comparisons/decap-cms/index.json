@@ -10,16 +10,22 @@
       "text": "You want AI agents to edit your content: Mica has an MCP server built in, in the free editor. The MCP server of Decap CMS is experimental and works with the paid Decap Turbo only."
     },
     {
-      "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS, also on GitHub and Gitea. Mica also works with content in a Git submodule."
+      "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS, also on GitHub and Gitea."
     },
     {
       "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
+    },
+    {
+      "text": "You keep your content in a Git submodule, apart from the code of your website."
     },
     {
       "text": "You have many entries. Without Decap Turbo, Decap makes one host API request for each file."
     },
     {
       "text": "You want sign-in through your OpenID Connect provider."
+    },
+    {
+      "text": "An editor should publish several changes as one commit, with a summary."
     },
     {
       "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
@@ -33,7 +39,10 @@
       "text": "Your Git host is Bitbucket or Azure DevOps."
     },
     {
-      "text": "Every editor should see a preview pane while they write, or you want an editorial workflow with a pull request for each entry."
+      "text": "Every editor should see a preview pane while they write."
+    },
+    {
+      "text": "You want an editorial workflow with a pull request for each entry."
     },
     {
       "text": "You want a large community and many years of use in production."
