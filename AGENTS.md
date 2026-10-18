@@ -51,6 +51,7 @@ Ask the user before you:
 - After a code change, run `rush typecheck` and `rush test` before completion.
 - The tests and the typecheck of a package read the packages that it uses from their `dist` folders. After a change to a package that other packages use, run `rush build` before `rush typecheck` and `rush test`.
 - Run `rush build` when a change can affect package output, the CMS bundle, an Astro site, packaging, or a release.
+- `rush build` writes the API reports of the public entry points (`packages/*/api/*.api.md`). Commit a changed report, and state in the pull request why the public API changes.
 - Do not claim that a check passed if you did not run it.
 - If a check cannot run, state the reason and the checks that remain.
 

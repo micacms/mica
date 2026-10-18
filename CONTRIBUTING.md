@@ -52,6 +52,11 @@ the local editor needs only `rush build`. See
    `feature/`, `bugfix/`, `docs/`, `chore/`, `refactor/` or `content/`.
 2. Keep the change focused. Add or change tests when behaviour changes.
 3. Run `rush build`, `rush typecheck` and `rush test`. All must pass.
+   `rush build` also writes the API report of each public entry point of
+   `@micacms/core` and `@micacms/astro` (`packages/*/api/*.api.md`). If a
+   report changes, commit it with your change, and say in the pull request
+   why the public API changes. In CI, the build fails when a report is not
+   the built API.
 4. If you changed a published package (`packages/*`, `apps/local-editor`),
    run `rush change` and describe the change for the release notes. Use the
    bump type `none` when the release notes should not mention it. A change to
