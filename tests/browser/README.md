@@ -33,6 +33,12 @@ the same controls, and puts both orders back. A fifth test chooses the dark
 appearance and checks that the browser keeps it. A sixth test ends a session
 while a form has changes, and checks that the changes come back after the next sign-in.
 
+[`collections.spec.ts`](collections.spec.ts) takes one entry of a collection
+from start to end (#138): it creates a team member, uploads a portrait with alt
+text, changes the URL, discards another edit on the Publish page, publishes, and
+checks the files on the Git host. Then it deletes the entry and publishes the
+deletion, and the files are gone from the Git host.
+
 ## What the local editor test checks
 
 [`local-editor/rich-text.spec.ts`](local-editor/rich-text.spec.ts):
@@ -80,7 +86,7 @@ minutes. The [OIDC test](../oidc/README.md#run-it) says when to restart the
 
 ## What it does not check
 
-- **Other paths.** Collections, media, discard and conflicts are covered by the
-  API tests and by the editor's unit tests.
+- **Conflicts.** Two editors on one entry are covered by the API tests and by
+  the editor's unit tests (#139).
 - **Sign-in in the local editor.** It has no sign-in.
 - **Other browsers.** Chromium only.
