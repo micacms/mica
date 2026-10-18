@@ -11,7 +11,7 @@ The MCP specification needs a token for this resource. Google gives opaque acces
 - In the image, Mica is the OAuth 2.1 authorization server for `/mcp`. The person signs in with the editor's OIDC flow, the admission rules decide, and a consent page asks the person to allow one agent.
 - Mica issues sealed tokens (AES-256-GCM under a key from `MICA_SESSION_SECRET`). It stores no clients, codes or tokens.
 - A client is a Client ID Metadata Document, which Mica fetches with limits (https only, no private address, no redirect, 64 kB, 5 seconds, cached 5 minutes), or a dynamic registration that Mica seals into the client ID.
-- The authorization endpoint first needs an admitted person who signed in in the last five minutes. Each error before the consent stays on Mica's page, to prevent an open redirect. The consent page says that the name of a registered client is not confirmed.
+- The authorization endpoint first needs an admitted person who signed in in the last five minutes. Each error before the consent stays on Mica's page, to prevent an open redirect. The consent page says that the name of a registered client is not confirmed. Its Allow works only after one second, and the server refuses a sooner one, so that a hidden double click cannot allow an agent.
 - A loopback redirect URI matches on any port (RFC 8252), because a native client picks a free port.
 - An access token lives one hour. A grant ends when the sign-in would end. The admission rules are checked on each request and each refresh.
 - Scopes: `content:read`, `content:write`, and `content:publish` only with `MICA_MCP_PUBLISH`.

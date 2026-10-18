@@ -48,6 +48,8 @@ interface AuthorizeRequest {
   state: string | null;
   scopes: string[];
   resource: string;
+  /** When the consent page was made, in milliseconds: an Allow sooner than `CONSENT_DELAY_MS` is refused. */
+  shownAt: number;
 }
 
 interface CodeExtra {

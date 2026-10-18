@@ -32,6 +32,8 @@ import { createUsedCodes, type Grant, type Tokens } from "./tokens.js";
 
 /** The consent needs a sign-in this recent, so that the grant gets the claims and the time of a new one. */
 const FRESH_SIGN_IN_MS = 5 * 60_000;
+/** An Allow this soon after the consent page opened is refused: a person reads the page first, a hidden double click does not. */
+export const CONSENT_DELAY_MS = 1000;
 
 const PKCE = /^[A-Za-z0-9._~-]{43,128}$/;
 
@@ -192,6 +194,7 @@ export function agentRoutes(deps: AgentRoutesDeps): Hono<Env> {
       state,
       scopes,
       resource: resource.href,
+      shownAt: Date.now(),
     });
 
     return html(
@@ -229,6 +232,14 @@ export function agentRoutes(deps: AgentRoutesDeps): Hono<Env> {
 
     if (form["decision"] !== "allow") {
       return c.redirect(back(request.redirectUri, { error: "access_denied", error_description: "The person did not allow access.", state: request.state }), 303);
+    }
+    if (!(Date.now() - request.shownAt >= CONSENT_DELAY_MS)) {
+      deps.logger.warn("Refused an Allow that came too soon after the consent page", { client: request.clientName });
+      return html(
+        c,
+        errorPage("Mica did not allow the app: Allow was chosen less than a second after the page opened. This protects you from a hidden click. Start again from the app."),
+        400,
+      );
     }
 
     const grant: Grant = {

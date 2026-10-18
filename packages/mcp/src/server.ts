@@ -65,6 +65,8 @@ function failure(ctx: RuntimeContext, error: unknown): CallToolResult {
   if (error instanceof ConflictError) return refused(`${error.message} Read it again, then retry with the new revision.`);
   const known = apiErrorOf(error);
   if (known) {
+    // The operator must see a full or read-only disk in the log, as for the editor's own requests.
+    if (known.code === "storage_unavailable") ctx.logger.error("Storage failure in an MCP tool", { error: String(error) });
     const details = { ...(known.issues ? { issues: known.issues } : {}), ...(known.path !== undefined ? { path: known.path } : {}) };
     return refused(Object.keys(details).length > 0 ? `${known.message}\n${JSON.stringify(details)}` : known.message);
   }

@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { createHash, randomBytes } from "node:crypto";
 import { after, before, describe, it } from "node:test";
+import { setTimeout as wait } from "node:timers/promises";
 
 import { createHarness, TEST_ORIGIN, type TestHarness } from "./helpers.js";
 
@@ -84,6 +85,8 @@ describe("agents, with MICA_MCP", () => {
     const session = await h.signIn();
     const page = await (await h.request(`/oauth/authorize?${query}`, { session })).text();
     const field = (name: string) => new RegExp(`name="${name}" value="([^"]+)"`).exec(page)![1]!;
+    // A person reads the page first: Mica refuses an Allow within a second of the page (double-clickjacking).
+    await wait(1000);
 
     const allowed = await h.request("/oauth/authorize", {
       method: "POST",
