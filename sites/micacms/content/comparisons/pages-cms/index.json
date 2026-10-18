@@ -10,16 +10,19 @@
       "text": "You want AI agents to edit your content: Mica has an MCP server built in. The Pages CMS documentation mentions no MCP or agent support."
     },
     {
-      "text": "Your repository is not on GitHub."
+      "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
     },
     {
-      "text": "You use Git LFS."
+      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
+    },
+    {
+      "text": "Your repository is not on GitHub."
     },
     {
       "text": "You want to run the editor yourself with no database, behind your OpenID Connect provider."
     },
     {
-      "text": "You need a map field, or reference data from a file."
+      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
     }
   ],
   "chooseOther": [
@@ -72,7 +75,7 @@
     },
     {
       "key": "lfs",
-      "value": "No. Issue #407 is open. A fix in pull request #451 is open since 17 October 2026."
+      "value": "No (Git LFS keeps large files out of the normal history). Issue #407 is open. A fix in pull request #451 is open since 17 October 2026."
     },
     {
       "key": "submodule",
@@ -84,7 +87,7 @@
     },
     {
       "key": "refdata",
-      "value": "Not supported for external data. A reference field points to a configured collection."
+      "value": "Not supported for external data. Select options are local only. A reference field points only to a configured collection."
     },
     {
       "key": "i18n",

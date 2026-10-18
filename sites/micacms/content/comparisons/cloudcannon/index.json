@@ -10,13 +10,16 @@
       "text": "You want AI agents to edit your content: Mica has an MCP server built in. CloudCannon has agent skills, a CLI and an API, but no MCP server."
     },
     {
+      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica has typed relations to thousands of items from a JSON or CSV file of your website, and never edits them. CloudCannon feeds select inputs from data files, but has no typed relation field."
+    },
+    {
       "text": "You want open source under the MIT licence, with no vendor service and no per-user price."
     },
     {
       "text": "You want to run the editor yourself, behind any OpenID Connect provider."
     },
     {
-      "text": "You need a map field that stores the zoom, or typed relations to reference data from a file."
+      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
     }
   ],
   "chooseOther": [
@@ -69,7 +72,7 @@
     },
     {
       "key": "lfs",
-      "value": "Yes, on Standard and up."
+      "value": "Yes, on Standard and up (Git LFS keeps large files out of the normal history)."
     },
     {
       "key": "submodule",

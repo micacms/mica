@@ -2,21 +2,22 @@
 
 - **No install.** Pages CMS has a free hosted app at app.pagescms.org. Mica has no hosted offering yet. A Mica Cloud is planned.
 - **Editors without GitHub.** Pages CMS can invite collaborators by email with a one-time code. Mica self-hosted needs an OpenID Connect provider that admits the editor.
-- **Data files.** Pages CMS has a data-grid editor for CSV files. Mica links to CSV and JSON files as reference data, but it never edits them.
+- **Data files.** Pages CMS has a data-grid editor for CSV files. Mica links to CSV and JSON files as external data, but it never edits them.
 - **Actions.** Pages CMS has buttons that start GitHub Actions.
 - **Price.** Pages CMS is free everywhere, with no paid plans. Mica is free too, but you run it yourself.
 
 ### Where Mica is better
 
 - **Agents.** Mica has an MCP server, built into the free editor. It runs locally (stdio and HTTP) and in the self-hosted Mica, where each person signs in and allows each agent. An agent reads the content model, and Mica checks every value it sends. Every save carries the revision the agent read, so an agent never overwrites a newer save. Agents save drafts and publish only when allowed. The Pages CMS documentation does not mention MCP or agent support.
+- **Many large files.** Many large photos and files make a Git repository heavy and slow to clone. Mica keeps them in Git LFS, so the history stays small, in the local and the self-hosted editor. Pages CMS does not support Git LFS (issue #407). A fix is open as pull request #451.
+- **External data.** Your entries can link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them. In Pages CMS, select options are local only, and a reference field points only to a configured collection.
 - **Git hosts.** Pages CMS works with GitHub only. Mica works with any Git host over HTTPS.
-- **Git LFS.** Pages CMS does not support Git LFS (issue #407). A fix is open as pull request #451. Mica supports it today.
 - **API calls.** Pages CMS reads and writes every file through the GitHub API, with a PostgreSQL cache. Mica reads a Git clone and has no host API limits.
 - **Self-hosting.** Self-hosted Pages CMS needs Node, PostgreSQL, a GitHub App, a public HTTPS URL and an email service. Mica self-hosted is one container with a volume, HTTPS in front, an OpenID Connect client and a Git token. It needs no database.
 - **Sign-in.** Pages CMS has no SSO or OIDC. Mica self-hosted works with any OpenID Connect provider.
 - **One commit for several changes.** In Pages CMS, each save is one commit. In Mica, Publish makes one commit of the changes the editor chooses, and shows each change field by field first.
-- **Map and reference data.** Pages CMS has no map field and does not support external data. Mica has a map field that stores the zoom, and reference data from JSON or CSV files.
 - **Astro.** Mica has an official Astro package. Pages CMS works on plain files.
+- **Map.** Pages CMS has no map field. Mica has one, and it stores the zoom with the place, so the page can show the same view.
 
 ### Equal, or not documented
 

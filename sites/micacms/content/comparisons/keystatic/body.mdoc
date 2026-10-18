@@ -8,12 +8,12 @@
 ### Where Mica is better
 
 - **Agents.** Mica has an MCP server, built into the free editor. It runs locally (stdio and HTTP) and in the self-hosted Mica, where each person signs in and allows each agent. An agent reads the content model, and Mica checks every value it sends. Every save carries the revision the agent read, so an agent never overwrites a newer save. Agents save drafts and publish only when allowed. The Keystatic documentation does not mention MCP or agent support.
-- **Git LFS.** Mica supports Git LFS, in the local and in the self-hosted editor. Keystatic does not support it. A pull request for it (#1514) is open.
+- **Many large files.** Many large photos and files make a Git repository heavy and slow to clone. Mica keeps them in Git LFS, so the history stays small, in the local and the self-hosted editor. Keystatic does not support Git LFS (pull request #1514 is open).
+- **External data.** Your entries can link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them. The Keystatic documentation does not describe this.
 - **Git hosts.** Mica reads and writes a Git clone, so any Git host works. Keystatic works with GitHub only, and its saves go through the GitHub API. Its issue tracker has a thread about GitHub rate limits (#1466). Mica makes no host API calls for content.
 - **One commit for several changes.** In Keystatic, each save is a commit. In Mica, a save writes a draft file, and Publish makes one commit of the changes the editor chooses, with a summary.
-- **Map with zoom.** Keystatic has no map field. Mica has one, and it stores latitude, longitude and zoom.
-- **Reference data.** Mica links entries to JSON or CSV files that it never edits. The Keystatic documentation does not describe this.
 - **Conflicts.** When an entry changed in the meantime, Keystatic asks the editor to create a new branch. Mica shows both versions side by side, with Keep mine and Use theirs.
+- **Map with zoom.** Keystatic has no map field. Mica has one, and it stores the zoom with the place, so the page can show the same view.
 
 ### Equal, or not documented
 

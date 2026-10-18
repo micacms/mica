@@ -10,15 +10,15 @@
 ### Where Mica is better
 
 - **Agents.** Mica has an MCP server, built into the free editor. It runs locally (stdio and HTTP) and in the self-hosted Mica, where each person signs in and allows each agent. An agent reads the content model, and Mica checks every value it sends. Every save carries the revision the agent read, so an agent never overwrites a newer save. Agents save drafts and publish only when allowed. CloudCannon offers agent skills for coding agents, a CLI and an API, but no MCP server.
+- **External data.** Your entries can link to data that lives elsewhere: product data, place names, regions or codes. Mica has typed relations to thousands of items from a JSON or CSV file of your website, and never edits them. CloudCannon is close here: select inputs can take values from data files. It has no typed relation field.
 - **Price and licence.** Mica is MIT licensed and free. CloudCannon is proprietary, has no free tier, and starts at $55 a month.
 - **No vendor service.** CloudCannon is a SaaS product, and its documentation does not describe self-hosting. Mica runs on your machine or in one container that you run.
 - **Sign-in.** Mica self-hosted works with any OpenID Connect provider. In CloudCannon, SAML SSO is on Enterprise only.
-- **Map with zoom.** CloudCannon has no map field. Mica stores latitude, longitude and zoom.
-- **Reference data.** CloudCannon has select inputs that read collections or data files, but no typed relation field. Mica has relations to reference data from JSON or CSV files that it never edits.
+- **Map with zoom.** CloudCannon has no map field. Mica has one, and it stores the zoom with the place, so the page can show the same view.
 
 ### Equal, or not documented
 
-- Git LFS: both support it. In CloudCannon it needs Standard or a higher plan.
+- Many large photos and files: both keep them out of the normal Git history with Git LFS. In CloudCannon it needs Standard or a higher plan.
 - Batch save: in CloudCannon, one Save commits the chosen files. In Mica, Publish does the same, and shows each change field by field first.
 - Content in a Git submodule: the CloudCannon documentation does not say.
 - Languages: CloudCannon uses Rosey, a separate tool. Mica has two documented patterns. Neither has a built-in setting.

@@ -10,14 +10,14 @@
 ### Where Mica is better
 
 - **Agents.** Mica has an MCP server, built into the free editor. It runs locally (stdio and HTTP) and in the self-hosted Mica, where each person signs in and allows each agent. An agent reads the content model, and Mica checks every value it sends. Every save carries the revision the agent read, so an agent never overwrites a newer save. Agents save drafts and publish only when allowed. Decap CMS has an experimental MCP server and editor bridge in @decap/cli, and they work only with the paid Decap Turbo.
-- **Git LFS.** Decap CMS does not support Git LFS on GitHub (issue #1206 is open) or on Gitea. GitLab media works since version 3.14.0. Mica supports Git LFS in the local and the self-hosted editor.
+- **Many large files.** Many large photos and files make a Git repository heavy and slow to clone. Mica keeps them in Git LFS, so the history stays small, in the local and the self-hosted editor. Decap CMS does not support Git LFS on GitHub (issue #1206 is open) or on Gitea. GitLab media works since version 3.14.0.
+- **External data.** Your entries can link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them. The Decap CMS documentation does not describe this.
 - **Git submodule.** Decap CMS does not support a content folder in a Git submodule (issue #4056, open since 2020). Mica works in the content repository and never commits in the website repository.
 - **Many entries.** Without Decap Turbo, Decap CMS makes one API request for each file, against the rate limit of your Git host. Its documentation says that a thousand entries are a thousand requests. Mica reads a Git clone, so there are no host API limits. It is tested with 1,000 entries in a collection and 5,000 files.
-- **Map with zoom.** The Decap CMS map widget stores a GeoJSON string without a zoom. Mica stores latitude, longitude and zoom.
-- **Reference data.** Mica links entries to JSON or CSV files that it never edits. The Decap CMS documentation does not describe this.
 - **Sign-in.** Decap CMS has no direct OpenID Connect sign-in. Mica self-hosted works with any OpenID Connect provider.
 - **Astro.** Mica has an official Astro package. Decap CMS has a guide in the Astro documentation.
 - **One commit for several changes.** The Decap CMS documentation describes no batch publish. In Mica, Publish makes one commit of the changes the editor chooses.
+- **Map with zoom.** The Decap CMS map widget stores a GeoJSON string without a zoom. Mica stores the zoom with the place, so the page can show the same view.
 
 ### Equal, or not documented
 

@@ -10,16 +10,19 @@
       "text": "You want AI agents to edit your content: Mica has an MCP server built in."
     },
     {
-      "text": "Your content is on a Git host other than GitHub."
+      "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
     },
     {
-      "text": "You keep large media in Git LFS. Keystatic does not support it."
+      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
+    },
+    {
+      "text": "Your content is on a Git host other than GitHub."
     },
     {
       "text": "An editor should publish several changes as one commit, with a summary."
     },
     {
-      "text": "You need a map field that stores the zoom, or links to reference data in a JSON or CSV file."
+      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
     }
   ],
   "chooseOther": [
@@ -72,7 +75,7 @@
     },
     {
       "key": "lfs",
-      "value": "Not supported. Pull request #1514 is open."
+      "value": "Not supported (Git LFS keeps large files out of the normal history). Pull request #1514 is open."
     },
     {
       "key": "submodule",

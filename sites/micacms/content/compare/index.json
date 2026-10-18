@@ -2,6 +2,7 @@
   "eyebrow": "Compare",
   "title": "Mica next to other Git-based editors.",
   "lead": "Six other products also keep content in Git. This page puts them next to Mica, point by point, and says where each one is the better choice. Mica is also ready for AI agents: an MCP server is built in. Each product has its own page with the details and the sources.",
+  "statusNote": null,
   "checkedLabel": "Checked on",
   "changeNote": "These products change often. Read their documentation before you decide.",
   "featureLabel": "Feature",
@@ -61,8 +62,8 @@
     },
     {
       "key": "lfs",
-      "label": "Git LFS",
-      "mica": "Yes, in the local and the self-hosted editor."
+      "label": "Many large photos and files (Git LFS)",
+      "mica": "Yes. Large media stay out of the normal Git history, with Git LFS, in the local and the self-hosted editor."
     },
     {
       "key": "submodule",
@@ -70,14 +71,14 @@
       "mica": "Yes."
     },
     {
+      "key": "refdata",
+      "label": "External data (products, places, codes)",
+      "mica": "Yes. Entries link to items of a JSON or CSV file of your website, thousands of them, which Mica never edits."
+    },
+    {
       "key": "map",
       "label": "Map field",
       "mica": "Yes. It stores latitude, longitude and zoom."
-    },
-    {
-      "key": "refdata",
-      "label": "Data the CMS does not edit (reference data)",
-      "mica": "Yes. Relations to JSON or CSV files that Mica never edits."
     },
     {
       "key": "i18n",

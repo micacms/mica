@@ -10,16 +10,19 @@
       "text": "You want AI agents to edit your content: Mica has an MCP server built in. TinaCMS lists one as Coming Soon."
     },
     {
-      "text": "You do not want a database or an index for your content."
+      "text": "You do not want a database or an index for your content, and you want to run the editor yourself in one container, behind any OpenID Connect provider."
     },
     {
-      "text": "You use Git LFS, or a Git host other than GitHub."
+      "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
     },
     {
-      "text": "You want to run the editor yourself in one container, behind any OpenID Connect provider."
+      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
     },
     {
-      "text": "You want Astro to read the content through Content Collections, with types."
+      "text": "Your content is on a Git host other than GitHub, and you want Astro to read it through Content Collections, with types."
+    },
+    {
+      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
     }
   ],
   "chooseOther": [
@@ -72,7 +75,7 @@
     },
     {
       "key": "lfs",
-      "value": "Not supported. The documentation names limits of the GitHub API."
+      "value": "Not supported (Git LFS keeps large files out of the normal history). The documentation names limits of the GitHub API."
     },
     {
       "key": "submodule",

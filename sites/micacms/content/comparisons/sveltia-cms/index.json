@@ -4,22 +4,25 @@
   "title": "Mica vs. Sveltia CMS",
   "website": "https://sveltiacms.app/",
   "checkedOn": "2026-10-18",
-  "summary": "Sveltia CMS is a fast, Decap-compatible editor with first-class languages, many media providers and a preview pane. Mica supports Git LFS on GitHub and submodules, and has an MCP server for AI agents.",
+  "summary": "Sveltia CMS is a fast, Decap-compatible editor with first-class languages, many media providers and a preview pane. Mica keeps large files out of the Git history on GitHub too, supports submodules, and has an MCP server for AI agents.",
   "chooseMica": [
     {
       "text": "You want AI agents to edit your content: Mica has an MCP server built in. Sveltia CMS has no MCP server."
     },
     {
-      "text": "You use Git LFS on GitHub, or the content is in a Git submodule."
+      "text": "You have many large photos or files on GitHub, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS. Mica also works with content in a Git submodule."
+    },
+    {
+      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
     },
     {
       "text": "You expect thousands of entries and files. Sveltia names small to medium-sized projects as its target."
     },
     {
-      "text": "You need a map field that stores the zoom, or reference data from a JSON or CSV file."
+      "text": "You want sign-in through your OpenID Connect provider."
     },
     {
-      "text": "You want sign-in through your OpenID Connect provider."
+      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
     }
   ],
   "chooseOther": [
@@ -75,7 +78,7 @@
     },
     {
       "key": "lfs",
-      "value": "On GitLab and on Gitea/Forgejo. Not on GitHub."
+      "value": "On GitLab and on Gitea/Forgejo (large files stay outside the normal history). Not on GitHub."
     },
     {
       "key": "submodule",

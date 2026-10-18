@@ -4,22 +4,25 @@
   "title": "Mica vs. Decap CMS",
   "website": "https://decapcms.org/",
   "checkedOn": "2026-10-18",
-  "summary": "Decap CMS is a long-running editor with the widest choice of Git hosts, languages and a preview pane for every editor. Mica supports Git LFS and submodules, makes no API request for each file, and has an MCP server for AI agents.",
+  "summary": "Decap CMS is a long-running editor with the widest choice of Git hosts, languages and a preview pane for every editor. Mica keeps large files out of the Git history, supports submodules, makes no API request for each file, and has an MCP server for AI agents.",
   "chooseMica": [
     {
       "text": "You want AI agents to edit your content: Mica has an MCP server built in, in the free editor. The MCP server of Decap CMS is experimental and works with the paid Decap Turbo only."
     },
     {
-      "text": "You use Git LFS on GitHub or Gitea, or you keep the content in a Git submodule."
+      "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS, also on GitHub and Gitea. Mica also works with content in a Git submodule."
+    },
+    {
+      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
     },
     {
       "text": "You have many entries. Without Decap Turbo, Decap makes one host API request for each file."
     },
     {
-      "text": "You need a map field that stores the zoom, or reference data from a JSON or CSV file."
+      "text": "You want sign-in through your OpenID Connect provider."
     },
     {
-      "text": "You want sign-in through your OpenID Connect provider."
+      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
     }
   ],
   "chooseOther": [
@@ -75,7 +78,7 @@
     },
     {
       "key": "lfs",
-      "value": "Not on GitHub (issue #1206 is open) and not on Gitea. GitLab reads LFS media since version 3.14.0."
+      "value": "Not on GitHub (issue #1206 is open) and not on Gitea. GitLab reads LFS media (large files outside the normal history) since version 3.14.0."
     },
     {
       "key": "submodule",
