@@ -5,6 +5,10 @@
       "href": "/docs/"
     },
     {
+      "label": "Compare",
+      "href": "/compare/"
+    },
+    {
       "label": "Changelog",
       "href": "/changelog/"
     }
@@ -24,6 +28,10 @@
         {
           "label": "Scope and non-goals",
           "href": "/docs/scope/"
+        },
+        {
+          "label": "Compare with other editors",
+          "href": "/compare/"
         },
         {
           "label": "All guides",

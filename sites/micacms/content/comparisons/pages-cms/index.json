@@ -1,0 +1,128 @@
+{
+  "name": "Pages CMS",
+  "slug": "pages-cms",
+  "title": "Mica vs. Pages CMS",
+  "website": "https://pagescms.org/",
+  "checkedOn": "2026-10-18",
+  "summary": "Pages CMS is a free editor for GitHub repositories, with a hosted app that needs no install and email invites for people without GitHub. Mica works with any Git host and needs no database, but it is experimental.",
+  "chooseMica": [
+    {
+      "text": "Your repository is not on GitHub."
+    },
+    {
+      "text": "You use Git LFS."
+    },
+    {
+      "text": "You want to run the editor yourself with no database, behind your OpenID Connect provider."
+    },
+    {
+      "text": "You need a map field, reference data from a file, or an MCP server."
+    }
+  ],
+  "chooseOther": [
+    {
+      "text": "You need an editor that is ready for production. Mica is experimental, not ready for production."
+    },
+    {
+      "text": "You want a free hosted app and no install at all."
+    },
+    {
+      "text": "Some editors have no GitHub account. Pages CMS invites them by email, with a one-time code."
+    },
+    {
+      "text": "Your editors work with CSV data in a grid, or you want buttons that start GitHub Actions."
+    }
+  ],
+  "facts": [
+    {
+      "key": "git",
+      "value": "Yes. GitHub only."
+    },
+    {
+      "key": "service",
+      "value": "Yes. Use the free hosted app (app.pagescms.org), or self-host it: Node, PostgreSQL, a GitHub App, a public HTTPS URL, and email through Resend or SMTP."
+    },
+    {
+      "key": "database",
+      "value": "PostgreSQL for sessions, collaborators and a cache. It holds no content."
+    },
+    {
+      "key": "licence",
+      "value": "MIT. Free everywhere. No paid plans."
+    },
+    {
+      "key": "model",
+      "value": "YAML (.pages.yml)"
+    },
+    {
+      "key": "astro",
+      "value": "Listed as supported. It works on plain files. There is no Astro package."
+    },
+    {
+      "key": "signin",
+      "value": "GitHub, or an email one-time code for invited collaborators. No SSO or OIDC."
+    },
+    {
+      "key": "publish",
+      "value": "Each save is one commit to the branch, through the GitHub Contents API. No pull request or publish workflow. Action buttons start GitHub Actions."
+    },
+    {
+      "key": "preview",
+      "value": "None. A work-in-progress branch exists."
+    },
+    {
+      "key": "lfs",
+      "value": "No. Issue #407 is open. A fix in pull request #451 is open since 17 October 2026."
+    },
+    {
+      "key": "submodule",
+      "value": "Not documented."
+    },
+    {
+      "key": "map",
+      "value": "No map field."
+    },
+    {
+      "key": "refdata",
+      "value": "Not supported for external data. A reference field points to a configured collection."
+    },
+    {
+      "key": "i18n",
+      "value": "None in the release. A branch that is not merged has it."
+    },
+    {
+      "key": "roles",
+      "value": "GitHub users and email collaborators. Granular permissions are listed as Soon. No review."
+    },
+    {
+      "key": "agents",
+      "value": "Not documented."
+    }
+  ],
+  "sources": [
+    {
+      "label": "Pages CMS documentation",
+      "href": "https://pagescms.org/docs/"
+    },
+    {
+      "label": "pagescms.org",
+      "href": "https://pagescms.org/"
+    },
+    {
+      "label": "pagescms.org: self-hosting",
+      "href": "https://pagescms.org/docs/guides/installing/self-host/"
+    },
+    {
+      "label": "pagescms.org: collaborators",
+      "href": "https://pagescms.org/docs/configuration/collaborators/"
+    },
+    {
+      "label": "pagescms.org: media",
+      "href": "https://pagescms.org/docs/configuration/media/"
+    },
+    {
+      "label": "Pages CMS issue 407: Git LFS",
+      "href": "https://github.com/pages-cms/pages-cms/issues/407"
+    }
+  ]
+}

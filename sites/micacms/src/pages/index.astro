@@ -203,7 +203,10 @@ const lead = await renderRichText(hero.lead, home);
           </ul>
         </div>
       </div>
-      <a class="link mt-10 inline-flex items-center gap-1.5" href={fit.link.href}>{fit.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
+      <div class="mt-10 flex flex-wrap gap-x-8 gap-y-3">
+        <a class="link inline-flex items-center gap-1.5" href={fit.link.href}>{fit.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
+        <a class="link inline-flex items-center gap-1.5" href={fit.compareLink.href}>{fit.compareLink.label}<ArrowRight size={16} aria-hidden="true" /></a>
+      </div>
     </div>
   </section>
 

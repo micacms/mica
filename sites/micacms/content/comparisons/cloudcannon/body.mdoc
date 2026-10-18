@@ -1,0 +1,25 @@
+### Where CloudCannon is better
+
+- **Visual editing.** CloudCannon has visual on-page editing, also for Astro. Mica has forms only.
+- **A hosted service with support.** CloudCannon runs the service for you. Mica has no hosted offering, and it has one maintainer.
+- **Roles and review.** CloudCannon has permission groups, and custom groups on Team and Enterprise. Editors can publish a branch with a pull request for approval, and the Team plan has deploy previews of pull requests. Mica has no roles.
+- **Sign-in.** CloudCannon offers MFA on Team and SAML SSO on Enterprise.
+- **Media.** CloudCannon connects to DAMs: S3, R2, Cloudinary, Azure, Google Cloud Storage, Spaces, Bynder and Tenovos. Mica keeps media in the repository.
+- **Git hosts.** CloudCannon works with GitHub, GitLab, Bitbucket and GitHub Enterprise Server.
+- **Status.** Mica is experimental, not ready for production.
+
+### Where Mica is better
+
+- **Price and licence.** Mica is MIT licensed and free. CloudCannon is proprietary, has no free tier, and starts at $55 a month.
+- **No vendor service.** CloudCannon is a SaaS product, and its documentation does not describe self-hosting. Mica runs on your machine or in one container that you run.
+- **Sign-in.** Mica self-hosted works with any OpenID Connect provider. In CloudCannon, SAML SSO is on Enterprise only.
+- **Map with zoom.** CloudCannon has no map field. Mica stores latitude, longitude and zoom.
+- **Reference data.** CloudCannon has select inputs that read collections or data files, but no typed relation field. Mica has relations to reference data from JSON or CSV files that it never edits.
+- **Agents.** CloudCannon offers agent skills, a CLI and an API, but no MCP server. Mica has an MCP server that saves drafts.
+
+### Equal, or not documented
+
+- Git LFS: both support it. In CloudCannon it needs Standard or a higher plan.
+- Batch save: in CloudCannon, one Save commits the chosen files. In Mica, Publish does the same, and shows each change field by field first.
+- Content in a Git submodule: the CloudCannon documentation does not say.
+- Languages: CloudCannon uses Rosey, a separate tool. Mica has two documented patterns. Neither has a built-in setting.

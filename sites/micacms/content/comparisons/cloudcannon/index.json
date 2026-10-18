@@ -1,0 +1,132 @@
+{
+  "name": "CloudCannon",
+  "slug": "cloudcannon",
+  "title": "Mica vs. CloudCannon",
+  "website": "https://cloudcannon.com/",
+  "checkedOn": "2026-10-18",
+  "summary": "CloudCannon is a hosted service with visual on-page editing, roles, deploy previews and support. Mica is free and runs on your own machine or server, but it is experimental.",
+  "chooseMica": [
+    {
+      "text": "You want open source under the MIT licence, with no vendor service and no per-user price."
+    },
+    {
+      "text": "You want to run the editor yourself, behind any OpenID Connect provider."
+    },
+    {
+      "text": "You need a map field that stores the zoom, or typed relations to reference data from a file."
+    },
+    {
+      "text": "You want an MCP server for coding agents."
+    }
+  ],
+  "chooseOther": [
+    {
+      "text": "You need an editor that is ready for production. Mica is experimental, not ready for production."
+    },
+    {
+      "text": "Editors should edit on the page itself, with visual editing."
+    },
+    {
+      "text": "You want a hosted service with support, roles, SAML sign-in and deploy previews."
+    },
+    {
+      "text": "You want to publish branches with pull request approval, or keep media in a DAM such as S3, Cloudinary or Bynder."
+    }
+  ],
+  "facts": [
+    {
+      "key": "git",
+      "value": "Yes. GitHub, GitLab, Bitbucket, GitHub Enterprise Server, and self-hosted GitLab (Enterprise). Direct upload also works."
+    },
+    {
+      "key": "service",
+      "value": "No. It is a SaaS product. Self-hosting is not documented."
+    },
+    {
+      "key": "database",
+      "value": "None for the customer."
+    },
+    {
+      "key": "licence",
+      "value": "Proprietary. No free tier, but a 21-day trial. Standard $55 a month (3 users). Team $350 a month (15 users). Enterprise on request. Extra users $10."
+    },
+    {
+      "key": "model",
+      "value": "cloudcannon.config.yml or JSON, or a configuration UI"
+    },
+    {
+      "key": "astro",
+      "value": "A featured partner in the Astro documentation. @cloudcannon/editable-regions gives visual editing. .astro schemas."
+    },
+    {
+      "key": "signin",
+      "value": "Email and password, or GitHub, GitLab or Bitbucket. MFA on Team. SAML SSO on Enterprise only."
+    },
+    {
+      "key": "publish",
+      "value": "Edits build up in an editing session. One Save commits the chosen files. Publishing a branch merges it at once or opens a pull request."
+    },
+    {
+      "key": "preview",
+      "value": "Yes. Visual on-page editing. It needs a build on CloudCannon. Pull request deploy previews on Team and up."
+    },
+    {
+      "key": "lfs",
+      "value": "Yes, on Standard and up."
+    },
+    {
+      "key": "submodule",
+      "value": "Not documented. Site Mounting is an alternative."
+    },
+    {
+      "key": "map",
+      "value": "No map field."
+    },
+    {
+      "key": "refdata",
+      "value": "Select inputs can use collections or data files. There is no typed relation field."
+    },
+    {
+      "key": "i18n",
+      "value": "Through Rosey, a separate tool. The built-in i18n is deprecated."
+    },
+    {
+      "key": "roles",
+      "value": "Permission groups. Custom groups on Team (10) and Enterprise. Approval through pull request publishing."
+    },
+    {
+      "key": "agents",
+      "value": "Agent skills for coding agents, a CLI and an API. No MCP server."
+    }
+  ],
+  "sources": [
+    {
+      "label": "CloudCannon documentation",
+      "href": "https://cloudcannon.com/documentation/"
+    },
+    {
+      "label": "cloudcannon.com: pricing",
+      "href": "https://cloudcannon.com/pricing/"
+    },
+    {
+      "label": "cloudcannon.com: Git LFS",
+      "href": "https://cloudcannon.com/documentation/articles/using-git-lfs/"
+    },
+    {
+      "label": "cloudcannon.com: visual editing",
+      "href": "https://cloudcannon.com/documentation/articles/what-is-visual-editing/"
+    },
+    {
+      "label": "cloudcannon.com: permission groups",
+      "href": "https://cloudcannon.com/documentation/articles/what-are-permission-groups"
+    },
+    {
+      "label": "cloudcannon.com: internationalization with Rosey",
+      "href": "https://cloudcannon.com/documentation/developer-guides/add-internationalization-with-rosey/"
+    },
+    {
+      "label": "Astro documentation: CloudCannon",
+      "href": "https://docs.astro.build/en/guides/cms/cloudcannon/"
+    }
+  ]
+}

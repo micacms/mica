@@ -1,0 +1,139 @@
+{
+  "name": "Sveltia CMS",
+  "slug": "sveltia-cms",
+  "title": "Mica vs. Sveltia CMS",
+  "website": "https://sveltiacms.app/",
+  "checkedOn": "2026-10-18",
+  "summary": "Sveltia CMS is a fast, Decap-compatible editor with first-class languages, many media providers and a preview pane. Mica supports Git LFS on GitHub and submodules, but it is experimental.",
+  "chooseMica": [
+    {
+      "text": "You use Git LFS on GitHub, or the content is in a Git submodule."
+    },
+    {
+      "text": "You expect thousands of entries and files. Sveltia names small to medium-sized projects as its target."
+    },
+    {
+      "text": "You need a map field that stores the zoom, or reference data from a JSON or CSV file."
+    },
+    {
+      "text": "You want sign-in through your OpenID Connect provider, and an MCP server that saves drafts."
+    }
+  ],
+  "chooseOther": [
+    {
+      "text": "You need an editor that is ready for production. Mica is experimental, not ready for production. Sveltia is also below version 1.0."
+    },
+    {
+      "text": "Your content has several languages, and you want machine translation."
+    },
+    {
+      "text": "You want media in S3, Cloudinary or another provider, not in Git."
+    },
+    {
+      "text": "Every editor should see a preview pane, or you want an address search on the map."
+    },
+    {
+      "text": "Your Git host is GitLab or Gitea, and you want an editor with no server to run."
+    }
+  ],
+  "facts": [
+    {
+      "key": "git",
+      "value": "Yes. GitHub, GitLab, Gitea, Forgejo and Codeberg. No Bitbucket or Azure. Local mode uses the File System Access API of the browser (Chromium only)."
+    },
+    {
+      "key": "service",
+      "value": "Yes. It is a static app. GitHub OAuth needs a server. GitLab and Gitea use PKCE without a server. Personal access tokens also work."
+    },
+    {
+      "key": "database",
+      "value": "No. It caches in the IndexedDB of the browser."
+    },
+    {
+      "key": "licence",
+      "value": "MIT. No paid offering."
+    },
+    {
+      "key": "model",
+      "value": "config.yml, TOML, JSON or JavaScript. It is compatible with Decap CMS."
+    },
+    {
+      "key": "astro",
+      "value": "A framework guide and community starters. Content Collections read the files."
+    },
+    {
+      "key": "signin",
+      "value": "GitHub OAuth, GitLab and Gitea/Forgejo PKCE, tokens. OIDC and SSO are not documented."
+    },
+    {
+      "key": "publish",
+      "value": "simple: each save commits. preview: changes go to a pull request. editorial_workflow: one pull request for each entry, with statuses. No batch publish documented."
+    },
+    {
+      "key": "preview",
+      "value": "An instant preview pane, custom templates and deploy-preview links. Visual editing is a non-goal."
+    },
+    {
+      "key": "lfs",
+      "value": "On GitLab and on Gitea/Forgejo. Not on GitHub."
+    },
+    {
+      "key": "submodule",
+      "value": "Not supported. Local commits are refused in a submodule."
+    },
+    {
+      "key": "map",
+      "value": "Stores a GeoJSON string. The center and the zoom only set the first view and are not stored. Address search with Nominatim."
+    },
+    {
+      "key": "refdata",
+      "value": "Not documented. Relations point to collections or to list items in a file."
+    },
+    {
+      "key": "i18n",
+      "value": "First-class, with machine translation through your own API key."
+    },
+    {
+      "key": "roles",
+      "value": "None yet. An add-on is planned. Review goes through the editorial workflow."
+    },
+    {
+      "key": "agents",
+      "value": "No MCP server. It has an Agent Skill and llms.txt."
+    }
+  ],
+  "sources": [
+    {
+      "label": "Sveltia CMS documentation",
+      "href": "https://sveltiacms.app/en/docs"
+    },
+    {
+      "label": "sveltiacms.app: backends",
+      "href": "https://sveltiacms.app/en/docs/backends"
+    },
+    {
+      "label": "sveltiacms.app: media",
+      "href": "https://sveltiacms.app/en/docs/media"
+    },
+    {
+      "label": "sveltiacms.app: map field",
+      "href": "https://sveltiacms.app/en/docs/fields/map"
+    },
+    {
+      "label": "sveltiacms.app: local workflow",
+      "href": "https://sveltiacms.app/en/docs/workflows/local"
+    },
+    {
+      "label": "sveltiacms.app: i18n",
+      "href": "https://sveltiacms.app/en/docs/i18n"
+    },
+    {
+      "label": "sveltiacms.app: introduction",
+      "href": "https://sveltiacms.app/en/docs/intro"
+    },
+    {
+      "label": "sveltiacms.app: working with AI",
+      "href": "https://sveltiacms.app/en/docs/working-with-ai"
+    }
+  ]
+}

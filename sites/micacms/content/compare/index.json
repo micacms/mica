@@ -1,0 +1,99 @@
+{
+  "eyebrow": "Compare",
+  "title": "Mica next to other Git-based editors.",
+  "lead": "Six other products also keep content in Git. This page puts them next to Mica, point by point, and says where each one is the better choice. Each product has its own page with the details and the sources.",
+  "statusNote": "Mica is experimental and not ready for production. If you need an editor for a live website today, that is a real reason to choose one of the other products.",
+  "checkedLabel": "Checked on",
+  "changeNote": "These products change often. Read their documentation before you decide.",
+  "featureLabel": "Feature",
+  "linkText": "Mica vs. {name}",
+  "backLabel": "All comparisons",
+  "chooseMicaTitle": "Choose Mica when",
+  "chooseOtherTitle": "Choose {name} when",
+  "detailsTitle": "The details",
+  "tableTitle": "Side by side",
+  "sourcesTitle": "Sources",
+  "websiteLabel": "Website of {name}",
+  "rows": [
+    {
+      "key": "git",
+      "label": "Content in Git, and which hosts",
+      "mica": "Yes. Any Git host, with plain Git and no host API. The self-hosted editor pushes over HTTPS only, not SSH."
+    },
+    {
+      "key": "service",
+      "label": "Runs without the vendor's service",
+      "mica": "Yes. The local editor, or one container that you run. There is no hosted offering."
+    },
+    {
+      "key": "database",
+      "label": "Database or index needed",
+      "mica": "No database and no index."
+    },
+    {
+      "key": "licence",
+      "label": "Licence and price",
+      "mica": "MIT. Free. You run it yourself."
+    },
+    {
+      "key": "model",
+      "label": "Model written in",
+      "mica": "TypeScript"
+    },
+    {
+      "key": "astro",
+      "label": "Astro support",
+      "mica": "Official package. Content reaches Astro as Content Collections, with types."
+    },
+    {
+      "key": "signin",
+      "label": "Sign-in for editors",
+      "mica": "Local editor: none, loopback only. Self-hosted: any OpenID Connect provider."
+    },
+    {
+      "key": "publish",
+      "label": "Save and publish",
+      "mica": "A save writes a draft. Publish makes one commit of the changes the editor chooses."
+    },
+    {
+      "key": "preview",
+      "label": "Preview and visual editing",
+      "mica": "Preview in the local editor only. No visual editing."
+    },
+    {
+      "key": "lfs",
+      "label": "Git LFS",
+      "mica": "Yes, in the local and the self-hosted editor."
+    },
+    {
+      "key": "submodule",
+      "label": "Content in a Git submodule",
+      "mica": "Yes."
+    },
+    {
+      "key": "map",
+      "label": "Map field",
+      "mica": "Yes. It stores latitude, longitude and zoom."
+    },
+    {
+      "key": "refdata",
+      "label": "Data the CMS does not edit (reference data)",
+      "mica": "Yes. Relations to JSON or CSV files that Mica never edits."
+    },
+    {
+      "key": "i18n",
+      "label": "Languages",
+      "mica": "No setting. Two documented patterns."
+    },
+    {
+      "key": "roles",
+      "label": "Roles and review",
+      "mica": "No roles. Review with a staging branch and a second Mica."
+    },
+    {
+      "key": "agents",
+      "label": "Agents (MCP)",
+      "mica": "An MCP server. Agents save drafts."
+    }
+  ]
+}

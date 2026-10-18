@@ -8,12 +8,14 @@ export type Navigation = SingletonDocument<Model, "navigation">;
 export type Home = SingletonDocument<Model, "home">;
 export type Imprint = SingletonDocument<Model, "imprint">;
 export type Pages = SingletonDocument<Model, "pages">;
+export type Compare = SingletonDocument<Model, "compare">;
 
 export const getSite = () => getSingleton(site, "site");
 export const getNavigation = () => getSingleton(site, "navigation");
 export const getHome = () => getSingleton(site, "home");
 export const getImprint = () => getSingleton(site, "imprint");
 export const getPages = () => getSingleton(site, "pages");
+export const getCompare = () => getSingleton(site, "compare");
 
 /** The sections of the documentation, in the order the index and the sidebar show them. */
 export const DOC_SECTIONS = [
@@ -63,4 +65,15 @@ export function formatDate(value: string): string {
     year: "numeric",
     timeZone: "UTC",
   }).format(new Date(value));
+}
+
+export async function getComparisons() {
+  return [...(await getCollection("comparisons"))].sort(inEditorOrder);
+}
+
+/** The value of one product for one table row. A missing row stops the build, so that no cell stays empty. */
+export function factValue(entry: { id: string; data: { facts: { key: string; value: string }[] } }, key: string): string {
+  const fact = entry.data.facts.find((item) => item.key === key);
+  if (!fact) throw new Error(`The comparison "${entry.id}" has no value for the row "${key}".`);
+  return fact.value;
 }

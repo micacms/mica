@@ -1,0 +1,26 @@
+### Where TinaCMS is better
+
+- **Editing on the page.** TinaCMS has visual click-to-edit, and it works with Astro. Mica has forms only.
+- **A hosted service.** TinaCloud runs the backend for you. Mica has no hosted offering.
+- **Review.** The Editorial Workflow (Business plan and up) puts edits on a branch with a draft pull request. Mica has no review step in the editor.
+- **Search and MDX.** TinaCMS offers search through its index on TinaCloud, and it supports MDX components. Mica uses Markdoc.
+- **Activity.** TinaCMS is maintained by SSW and is very active. Mica has one maintainer and is experimental, not ready for production.
+
+### Where Mica is better
+
+- **No database and no index.** TinaCMS keeps your content in a Data Layer. TinaCloud hosts it, or you run MongoDB or Redis/Vercel KV. A self-hosted TinaCMS indexes at build time. Mica reads files and needs no database.
+- **Git LFS.** TinaCMS does not support Git LFS. Mica does.
+- **Git hosts.** TinaCMS works with GitHub only. Mica works with any Git host.
+- **Self-hosting.** Self-hosted TinaCMS needs a backend function, a database adapter, a Git provider and an auth provider. It lacks search, Git-backed media and branch switching. Mica self-hosted is one container with a volume, HTTPS in front, an OpenID Connect client and a Git token. The TinaCMS documentation does not describe OIDC sign-in.
+- **Astro.** Mica content reaches Astro as Content Collections with types, and there is no generated client.
+- **Price per user.** TinaCloud free allows 2 users, and its plans are priced by project and users. Mica has no paid plan and no user limit.
+- **Large collections.** TinaCMS says that reference fields can time out on large collections. Mica is tested with 1,000 entries in a collection.
+- **Agents.** Mica has an MCP server now. TinaCMS lists it as Coming Soon.
+- **Map and reference data.** TinaCMS has no map field. Mica stores latitude, longitude and zoom, and links to JSON or CSV files that it never edits.
+
+### Equal, or not documented
+
+- Both use a TypeScript model and have an official Astro package.
+- Both save as files in Git, and neither has a batch publish.
+- Content in a Git submodule: the TinaCMS documentation does not say.
+- Upload limits: TinaCMS rejects .html, .js and .xml files and does not document GPX or ZIP. Mica checks JPEG, PNG, GIF, WebP, AVIF, PDF, GPX, KML, GeoJSON, ZIP and CSV files by their bytes.

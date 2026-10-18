@@ -1,0 +1,43 @@
+---
+import { ArrowRight } from "@lucide/astro";
+import BaseLayout from "@/layouts/BaseLayout.astro";
+import PageHeader from "@/components/PageHeader.astro";
+import CompareTable from "@/components/CompareTable.astro";
+import { factValue, formatDate, getCompare, getComparisons } from "@/lib/content";
+const [compare, comparisons] = await Promise.all([getCompare(), getComparisons()]);
+const fill = (text: string, name: string) => text.replaceAll("{name}", name);
+const columns = [
+  { name: "Mica", mica: true, values: compare.rows.map((row) => row.mica) },
+  ...comparisons.map((entry) => ({
+    name: entry.data.name,
+    href: `/compare/${entry.id}/`,
+    values: compare.rows.map((row) => factValue(entry, row.key)),
+  })),
+];
+const checkedOn = comparisons.map((entry) => entry.data.checkedOn).sort().at(-1);
+---
+
+<BaseLayout title={compare.title} description={compare.lead}>
+  <PageHeader eyebrow={compare.eyebrow} title={compare.title} lead={compare.lead}>
+    <p class="mt-6 max-w-2xl rounded-md bg-strata-soft p-5 text-[15px] text-ink">{compare.statusNote}</p>
+  </PageHeader>
+  <section class="section">
+    <div class="wrap">
+      <div class="min-w-0">
+        <CompareTable featureLabel={compare.featureLabel} rows={compare.rows.map((row) => row.label)} columns={columns} />
+      </div>
+      <p class="mt-5 text-[14px] text-ink-muted">
+        {checkedOn && <>{compare.checkedLabel} <time datetime={checkedOn}>{formatDate(checkedOn)}</time>. </>}{compare.changeNote}
+      </p>
+      <ul class="m-0 mt-10 grid list-none gap-4 p-0 sm:grid-cols-2 lg:grid-cols-3">
+        {comparisons.map((entry) => (
+          <li class="card flex min-w-0 flex-col gap-3 p-6">
+            <h2 class="title-3 m-0">{entry.data.title}</h2>
+            <p class="m-0 text-ink-muted">{entry.data.summary}</p>
+            <a class="link mt-auto inline-flex w-fit items-center gap-1.5 pt-2" href={`/compare/${entry.id}/`}>{fill(compare.linkText, entry.data.name)}<ArrowRight size={16} aria-hidden="true" /></a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+</BaseLayout>

@@ -1,0 +1,25 @@
+### Where Sveltia CMS is better
+
+- **Languages.** Sveltia CMS has first-class support for several languages, with machine translation through your own API key. Mica has no language setting.
+- **Media providers.** Sveltia CMS can store media in S3, R2, Azure Blob, Backblaze B2, Bunny, DigitalOcean Spaces, Supabase, MinIO, Cloudinary or Uploadcare. Mica keeps media in the repository.
+- **Preview.** Sveltia CMS has an instant preview pane for every editor. In Mica, only the local editor has a preview.
+- **Maps and relations.** Sveltia CMS has an address search on its map field. Its relations have backlinks and a cascading rename and delete.
+- **No server with GitLab or Gitea.** The editor is a static app that signs in with PKCE.
+- **Activity.** Sveltia CMS is very active and plans version 1.0 for late 2026. It has one maintainer, like Mica.
+
+### Where Mica is better
+
+- **Git LFS on GitHub.** Sveltia CMS supports Git LFS on GitLab and on Gitea/Forgejo, but not on GitHub. Mica supports Git LFS on GitHub too.
+- **Git submodule.** Sveltia CMS refuses local commits in a submodule. Mica works in the content repository and never commits in the website repository.
+- **Scale.** The Sveltia CMS documentation says that it targets small to medium-sized projects, not thousands of entries and assets, and that it is bound by the API of the Git host. Mica reads a Git clone and is tested with 1,000 entries in a collection and 5,000 files.
+- **Map with zoom.** In Sveltia CMS, the zoom only sets the first view. Mica stores latitude, longitude and zoom.
+- **Reference data.** Mica links entries to JSON or CSV files that it never edits. The Sveltia CMS documentation does not describe this.
+- **Self-hosted sign-in.** The Sveltia CMS documentation does not describe OIDC or SSO. Mica self-hosted works with any OpenID Connect provider.
+- **Agents.** Sveltia CMS has no MCP server. Mica has one that saves drafts.
+- **One commit for several changes.** The Sveltia CMS documentation describes no batch publish. In Mica, Publish makes one commit of the changes the editor chooses.
+- **Astro.** Mica has an official Astro package.
+
+### Equal, or not documented
+
+- Both are MIT licensed, need no database and have no roles yet.
+- Both are below version 1.0 and have one maintainer.

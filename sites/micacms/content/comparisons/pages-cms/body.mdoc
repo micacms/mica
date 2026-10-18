@@ -1,0 +1,25 @@
+### Where Pages CMS is better
+
+- **No install.** Pages CMS has a free hosted app at app.pagescms.org. Mica has no hosted offering.
+- **Editors without GitHub.** Pages CMS can invite collaborators by email with a one-time code. Mica self-hosted needs an OpenID Connect provider that admits the editor.
+- **Data files.** Pages CMS has a data-grid editor for CSV files. Mica links to CSV and JSON files as reference data, but it never edits them.
+- **Actions.** Pages CMS has buttons that start GitHub Actions.
+- **Price.** Pages CMS is free everywhere, with no paid plans. Mica is free too, but you run it yourself.
+
+### Where Mica is better
+
+- **Git hosts.** Pages CMS works with GitHub only. Mica works with any Git host over HTTPS.
+- **Git LFS.** Pages CMS does not support Git LFS (issue #407). A fix is open as pull request #451. Mica supports it today.
+- **API calls.** Pages CMS reads and writes every file through the GitHub API, with a PostgreSQL cache. Mica reads a Git clone and has no host API limits.
+- **Self-hosting.** Self-hosted Pages CMS needs Node, PostgreSQL, a GitHub App, a public HTTPS URL and an email service. Mica self-hosted is one container with a volume, HTTPS in front, an OpenID Connect client and a Git token. It needs no database.
+- **Sign-in.** Pages CMS has no SSO or OIDC. Mica self-hosted works with any OpenID Connect provider.
+- **One commit for several changes.** In Pages CMS, each save is one commit. In Mica, Publish makes one commit of the changes the editor chooses, and shows each change field by field first.
+- **Map, reference data, agents.** Pages CMS has no map field and does not support external data. Its documentation does not mention MCP. Mica has a map field that stores the zoom, reference data from JSON or CSV files, and an MCP server that saves drafts.
+- **Astro.** Mica has an official Astro package. Pages CMS works on plain files.
+
+### Equal, or not documented
+
+- Both are MIT licensed and have one maintainer.
+- Both stop a save when a file changed in the meantime. Pages CMS says that the file has changed since you last loaded it. Mica shows both versions side by side, with Keep mine and Use theirs.
+- Pages CMS has no preview and Mica has a preview in the local editor only.
+- Pages CMS last released on 8 June 2026, and a rewrite is on an unreleased branch.
