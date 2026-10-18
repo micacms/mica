@@ -297,7 +297,7 @@ export function mapMedia(
  * `/shared/logo.svg` for one the whole site uses. Both are ambiguous once the
  * entry is out of its directory, so the root-relative form is what leaves here.
  */
-function resolveMedia(
+export function resolveMedia(
   fields: FieldMap,
   data: Record<string, unknown>,
   base: string,
