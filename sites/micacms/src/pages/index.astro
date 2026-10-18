@@ -70,7 +70,7 @@ const lead = await renderRichText(hero.lead, home);
       </div>
       <div class="mt-12 grid gap-6 md:grid-cols-2">
         {audiences.groups.map((group) => (
-          <article class="card flex flex-col gap-4 p-6 md:p-8">
+          <article class="card flex min-w-0 flex-col gap-4 p-6 md:p-8">
             <h3 class="title-3 m-0">{group.title}</h3>
             <p class="m-0 text-ink-muted">{group.text}</p>
             <ul class="m-0 flex list-none flex-col gap-2.5 p-0">
@@ -95,7 +95,7 @@ const lead = await renderRichText(hero.lead, home);
         {capabilities.items.map((item) => {
           const Icon = icons[item.icon as keyof typeof icons];
           return (
-            <article class="card flex flex-col gap-4 bg-ground! p-6">
+            <article class="card flex min-w-0 flex-col gap-4 bg-ground! p-6">
               <span class="grid h-10 w-10 place-items-center rounded-md bg-primary-soft text-primary" aria-hidden="true">
                 {Icon && <Icon size={20} stroke-width={1.75} />}
               </span>
@@ -160,7 +160,7 @@ const lead = await renderRichText(hero.lead, home);
       </div>
       <div class="mt-12 grid gap-6 md:grid-cols-2">
         {run.options.map((option) => (
-          <article class="card flex flex-col gap-4 p-6 md:p-8">
+          <article class="card flex min-w-0 flex-col gap-4 p-6 md:p-8">
             <span class="w-fit rounded-full bg-strata-soft px-2.5 py-0.5 text-[13px] leading-4.5 font-semibold text-ink">{option.audience}</span>
             <h3 class="title-3 m-0">{option.title}</h3>
             <p class="m-0 text-ink-muted">{option.text}</p>
