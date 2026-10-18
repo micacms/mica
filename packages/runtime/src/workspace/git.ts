@@ -49,7 +49,7 @@ export interface GitRunnerOptions {
  * The developer's own environment. `GIT_TERMINAL_PROMPT=0`: a credential prompt
  * must fail, not hang the request.
  */
-export function developerEnvironment(): NodeJS.ProcessEnv {
+function developerEnvironment(): NodeJS.ProcessEnv {
   return { ...process.env, GIT_TERMINAL_PROMPT: "0" };
 }
 

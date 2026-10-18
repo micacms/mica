@@ -86,7 +86,7 @@ export function requireAccess(deps: GateDeps): MiddlewareHandler<Env> {
 }
 
 /** When the session ends, on every admitted response. */
-export const SESSION_EXPIRES_HEADER = "x-mica-session-expires";
+const SESSION_EXPIRES_HEADER = "x-mica-session-expires";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 

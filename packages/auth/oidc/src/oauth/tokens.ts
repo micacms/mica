@@ -17,7 +17,7 @@ import type { SessionIdentity } from "../session.js";
 export type TokenKind = "authorize" | "code" | "access" | "refresh";
 
 /** How long each kind is valid, at most. The grant's end caps the access and refresh tokens. */
-export const LIFETIME_MS: Record<Exclude<TokenKind, "refresh">, number> = {
+const LIFETIME_MS: Record<Exclude<TokenKind, "refresh">, number> = {
   /** The consent page: time to read it. */
   authorize: 10 * 60_000,
   /** One redirect and one token request. */
@@ -38,7 +38,7 @@ export interface Grant {
 }
 
 /** The consent page's validated request, carried through the form. */
-export interface AuthorizeRequest {
+interface AuthorizeRequest {
   clientId: string;
   clientName: string;
   /** The client's address was verified by its metadata document, not only claimed. */

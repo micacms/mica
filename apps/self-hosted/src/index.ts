@@ -278,7 +278,6 @@ async function serve(): Promise<void> {
 
   logger.info("Mica CMS started", {
     url: config.MICA_PUBLIC_URL,
-    site: ctx.site.id,
     auth: authLabel,
     // A rule that admits nobody and one that admits everybody look the same
     // until somebody signs in.

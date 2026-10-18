@@ -25,7 +25,7 @@ import Markdoc, { type Node as MarkdocNode } from "@markdoc/markdoc";
  * ProseMirror JSON, as much of it as we produce
  * ------------------------------------------------------------------ */
 
-export interface Mark {
+interface Mark {
   type: string;
   attrs?: Record<string, unknown>;
 }

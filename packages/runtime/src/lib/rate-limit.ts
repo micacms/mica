@@ -7,7 +7,7 @@
  * does, with its own limits, so a restart-and-retry loop gains little.
  */
 
-export interface RateLimitResult {
+interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   /** Seconds until the window resets. */

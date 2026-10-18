@@ -21,12 +21,12 @@ import {
   type Site,
 } from "@micacms/core/internal";
 
-export interface KindUsage {
+interface KindUsage {
   kind: FieldKind;
   count: number;
 }
 
-export interface RelationEdge {
+interface RelationEdge {
   /** Collection or singleton the field is declared in. */
   from: string;
   fromType: "collection" | "singleton";
@@ -37,7 +37,7 @@ export interface RelationEdge {
   multiple: boolean;
 }
 
-export interface FieldCounts {
+interface FieldCounts {
   /** Fields declared directly on the collection or singleton. */
   top: number;
   /** Every field, including those nested in objects and repeaters. */
@@ -57,7 +57,7 @@ export interface CollectionStats {
   depth: number;
 }
 
-export interface SingletonStats {
+interface SingletonStats {
   name: string;
   label: string;
   fields: FieldCounts;

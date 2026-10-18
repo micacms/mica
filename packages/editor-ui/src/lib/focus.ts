@@ -1,7 +1,7 @@
 /** Moving to a field from a message about it: the summary, the Publish page. */
 
 /** A smooth scroll, unless the editor asked the system for less motion. */
-export function scrollBehavior(): ScrollBehavior {
+function scrollBehavior(): ScrollBehavior {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth";
 }
 

@@ -43,13 +43,13 @@ export interface ContentGroup {
   target?: SyncConflict["target"];
 }
 
-export interface ConflictGroup extends ContentGroup {
+interface ConflictGroup extends ContentGroup {
   /** Content-relative paths of the group that are drafts or changed upstream. */
   paths: string[];
   upstream: "changed" | "deleted" | "added";
 }
 
-export interface SyncProblem {
+interface SyncProblem {
   code: FailureClass | "prefetch_incomplete" | "fast_forward_failed" | "diverged" | "model_unreadable";
   message: string;
   since: string;

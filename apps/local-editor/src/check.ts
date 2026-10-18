@@ -38,7 +38,7 @@ import {
 import { within } from "@micacms/core/node";
 import { contentFiles } from "@micacms/runtime";
 
-export interface CheckProblem {
+interface CheckProblem {
   level: "error" | "warning";
   /** The file, relative to the content root. */
   path: string;

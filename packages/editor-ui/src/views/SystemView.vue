@@ -87,7 +87,6 @@ function report(): string {
           ...(data.repository.sync.refused ? [`Last publication refused: ${data.repository.sync.refused.reason}`] : []),
         ]
       : []),
-    `Site ${data.deployment.site}`,
     `Base URL ${data.deployment.baseUrl}`,
     `Content model ${data.deployment.schemaOrigin}`,
     `Content root ${data.deployment.contentRoot}`,
@@ -388,10 +387,6 @@ async function copyReport(): Promise<void> {
         </p>
 
         <dl class="spec mt-3">
-          <div>
-            <dt>Site</dt>
-            <dd class="mono">{{ info.deployment.site }}</dd>
-          </div>
           <div>
             <dt>Base URL</dt>
             <dd class="mono">{{ info.deployment.baseUrl }}</dd>

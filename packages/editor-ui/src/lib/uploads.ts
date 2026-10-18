@@ -3,7 +3,7 @@
  * server takes them. A file that fails does not stop the others.
  */
 
-export type UploadStatus = "waiting" | "uploading" | "done" | "failed";
+type UploadStatus = "waiting" | "uploading" | "done" | "failed";
 
 export interface UploadState {
   name: string;

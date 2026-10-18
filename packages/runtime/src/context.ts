@@ -21,8 +21,6 @@ import type { GitTree } from "./workspace/tree.js";
 
 /** The one site this process serves. Several sites means several processes. */
 export interface SiteContext {
-  /** Identifies this site in logs. */
-  id: string;
   /** The content model in use: read at startup, and again when `.mica/schema.json` changes. */
   model: Site;
   /** The working tree's files behind the workspace locks. Only Publish makes a commit. */
@@ -38,7 +36,6 @@ export interface SiteContext {
   modelWarning: { message: string; revision: string | null } | null;
 }
 
-export const DEFAULT_SITE_ID = "default";
 
 /** Facts about the composition that the System page shows and the runtime cannot know. */
 export interface OperationalInfo {
@@ -98,7 +95,6 @@ export interface CreateRuntimeContextOptions {
   files: ContentFiles;
   /** Revision of the manifest the model was read from. Null when unknown. */
   schemaRevision?: string | null;
-  siteId?: string;
   logger?: Logger;
   operational?: () => OperationalInfo;
   health?: RuntimeHealth;
@@ -131,7 +127,6 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
   const locks = options.locks ?? createWorkspaceLocks();
 
   const site: SiteContext = {
-    id: options.siteId ?? DEFAULT_SITE_ID,
     model,
     contentRepository: lockedFiles(options.files, locks.tree),
     schemaRevision,

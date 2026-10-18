@@ -138,7 +138,6 @@ export interface SystemInfo {
     media: MediaUsage;
   };
   deployment: {
-    site: string;
     baseUrl: string;
     /** Where the content model was read from, e.g. `<repo>/.mica/schema.json`. */
     schemaOrigin: string;

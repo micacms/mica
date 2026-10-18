@@ -154,7 +154,6 @@ export function adminSystemRoutes(): Hono<Env> {
         ...repository,
       },
       deployment: {
-        site: ctx.site.id,
         baseUrl: config.MICA_PUBLIC_URL,
         schemaOrigin: schemaOrigin(ctx.site.contentRepository),
         // A clone that Mica keeps names its remote in `repository.url` instead.

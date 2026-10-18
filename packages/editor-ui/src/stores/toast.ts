@@ -7,9 +7,9 @@
 
 import { readonly, ref } from "vue";
 
-export type ToastKind = "success" | "error" | "info";
+type ToastKind = "success" | "error" | "info";
 
-export interface Toast {
+interface Toast {
   id: number;
   kind: ToastKind;
   message: string;

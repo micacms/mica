@@ -45,7 +45,7 @@ import { ConflictError, FilesError, type ContentFiles, type FileChange } from ".
 import { fileUses, type Referrer } from "./links.js";
 import { linkingDocuments, moveFiles, relinkedFiles, renameInOrder, stagedUploads, storedData } from "./url-change.js";
 
-export class ContentError extends FilesError {
+class ContentError extends FilesError {
   override name = "ContentError";
 }
 

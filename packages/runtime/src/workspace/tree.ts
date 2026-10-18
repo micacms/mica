@@ -19,7 +19,7 @@ import { GitError, gitRunner, type GitRunner, type GitRunnerOptions } from "./gi
  * Makes every path argument literal: `tour[1].json` is not a pattern that also
  * matches `tour1.json`.
  */
-export const LITERAL = "--literal-pathspecs";
+const LITERAL = "--literal-pathspecs";
 
 /** A content root inside a Git repository. */
 export interface GitTree {
@@ -409,7 +409,7 @@ function relativeToContent(repoPath: string, prefix: string): string | null {
  * A content-root-relative path as Git sees it, from the repository root.
  * `contentPath` first: `path.join` would resolve a `..` out of the content root.
  */
-export function inRepo(prefix: string, path: string): string {
+function inRepo(prefix: string, path: string): string {
   const clean = contentPath(path);
   return prefix === "" ? clean : `${prefix}/${clean}`;
 }
