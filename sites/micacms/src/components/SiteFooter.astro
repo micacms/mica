@@ -17,7 +17,7 @@ const [navigation, site] = await Promise.all([getNavigation(), getSite()]);
           <span class="h-2 w-2 rounded-full bg-glint ring-1 ring-on-glint ring-inset" aria-hidden="true"></span>v{site.currentVersion} · {site.status.label}
         </a>
       </div>
-      <div class="grid grid-cols-2 gap-8 sm:grid-cols-4">
+      <div class="grid grid-cols-2 gap-8 sm:grid-cols-3 xl:grid-cols-5">
         {navigation.footerGroups.map((group) => (
           <div>
             <h2 class="mt-0 mb-3 font-sans text-[13px] font-semibold tracking-[.08em] text-ink-muted uppercase">{group.title}</h2>
