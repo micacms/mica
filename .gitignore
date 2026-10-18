@@ -27,3 +27,6 @@ common/deploy/
 common/autoinstallers/*/.npmrc
 **/.rush/temp/
 rush-logs/
+
+# API Extractor working files; the reports in api/ are committed.
+packages/*/temp/

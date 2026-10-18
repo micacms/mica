@@ -43,6 +43,8 @@ FROM deps AS build
 
 COPY tsconfig.base.json ./
 COPY scripts/third-party-notices.mjs scripts/third-party-notices.d.mts scripts/
+# The build of @micacms/core writes or checks its API reports (#56).
+COPY scripts/api-report.mjs scripts/api-extractor.base.json scripts/
 COPY packages/core packages/core
 COPY packages/runtime packages/runtime
 COPY packages/mcp packages/mcp

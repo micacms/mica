@@ -17,6 +17,8 @@ All packages share one lockstep version. If each package were public, each refac
 
 ## Consequences
 
+- The API reports in `packages/core/api/` and `packages/astro/api/` show each change of the public TypeScript surface. CI fails when a report is not the built API, so a change is always a decision in a pull request.
+
 - npm has no "internal" flag. A project that depends on an internal package can break in a minor. The line holds only while the public packages do not export internal symbols again.
 - An editor tab that stays open during an upgrade runs the old editor against the new API until it reloads.
 - A move to zod 5 is a Mica major.
