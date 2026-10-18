@@ -139,12 +139,36 @@ export function requestSizeLimit(): MiddlewareHandler<Env> {
  */
 export function apiErrorOf(error: unknown): ApiError | null {
   if (error instanceof ApiError) return error;
+  const storage = storageError(error);
+  if (storage) return storage;
   if (error instanceof ConflictError || error instanceof ReadOnlyError) return new ApiError("conflict", error.message, { cause: error });
   if (error instanceof ValidationError) return new ApiError("validation_failed", error.message, { issues: error.issues, cause: error });
   if (error instanceof ContentReadError) return new ApiError("unreadable_content", error.message, { path: error.path, cause: error });
   if (error instanceof UnknownContentError) return new ApiError("not_found", error.message, { cause: error });
   if (error instanceof FilesError || error instanceof ContentSourceError || error instanceof FormatError) {
     return new ApiError("bad_request", error.message, { cause: error });
+  }
+  return null;
+}
+
+const DISK_FULL = new Set(["ENOSPC", "EDQUOT"]);
+// Not EPERM: on Windows it is also a short lock by another program, which a retry fixes.
+const DISK_LOCKED = new Set(["EROFS", "EACCES"]);
+
+/** A full or read-only disk, found in the error or its causes: a person must act, so it is not a bug. */
+function storageError(error: unknown): ApiError | null {
+  for (let current = error, depth = 0; current instanceof Error && depth < 5; current = current.cause, depth++) {
+    const code = (current as NodeJS.ErrnoException).code;
+    if (code && DISK_FULL.has(code)) {
+      return new ApiError("storage_unavailable", "Mica cannot save, because its disk is full. Ask the person who runs Mica to make space.", { cause: error });
+    }
+    if (code && DISK_LOCKED.has(code)) {
+      return new ApiError(
+        "storage_unavailable",
+        "Mica cannot write its files: the disk is read-only, or Mica has no right to write there. Ask the person who runs Mica to check its data folder.",
+        { cause: error },
+      );
+    }
   }
   return null;
 }
@@ -164,7 +188,12 @@ export function errorHandler(): ErrorHandler<Env> {
 
     const refused = apiErrorOf(error);
     if (refused) {
-      logger.debug("Handled error", { code: refused.code, message: refused.message });
+      if (refused.code === "storage_unavailable") {
+        // The operator must see this in the log, not only the editor in a message.
+        logger.error("Storage failure", { error: String(error), path: new URL(c.req.url).pathname });
+      } else {
+        logger.debug("Handled error", { code: refused.code, message: refused.message });
+      }
       return c.json(refused.toBody(), refused.status as ContentfulStatusCode, refused.headers);
     }
 

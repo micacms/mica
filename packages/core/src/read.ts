@@ -58,14 +58,49 @@ export async function readCollection(
   def: Collection,
   name: string,
 ): Promise<ContentEntry[]> {
-  const slugs = await collectionSlugs(source, name);
-  const ordered = await applyOrder(source, name, slugs);
+  const ordered = await applyOrder(source, name, await collectionSlugs(source, name));
 
   // Eight at a time: a disk or a Git object store answers in parallel, and a
   // limit keeps a large collection from opening every file at once.
   const read = await mapLimit(ordered, 8, (slug) =>
     readEntry(source, def.fields, entryFolder(name, slug)),
   );
+  return entriesOf(def, ordered, read);
+}
+
+/** An entry whose files Mica cannot read: its slug, the file, and the reason. */
+export interface UnreadableEntry {
+  slug: string;
+  path: string;
+  message: string;
+}
+
+/**
+ * The entries of a collection that can be read, and the ones that cannot. The
+ * editor's list uses it, so that one broken file does not hide the rest of a
+ * collection. The build and the checks use `readCollection`, which stops.
+ */
+export async function readReadableCollection(
+  source: ContentSource,
+  def: Collection,
+  name: string,
+): Promise<{ entries: ContentEntry[]; unreadable: UnreadableEntry[] }> {
+  const ordered = await applyOrder(source, name, await collectionSlugs(source, name));
+  const unreadable: UnreadableEntry[] = [];
+
+  const read = await mapLimit(ordered, 8, async (slug) => {
+    try {
+      return await readEntry(source, def.fields, entryFolder(name, slug));
+    } catch (error) {
+      if (!(error instanceof ContentReadError)) throw error;
+      unreadable.push({ slug, path: error.path, message: error.message });
+      return null;
+    }
+  });
+  return { entries: entriesOf(def, ordered, read), unreadable: unreadable.sort((a, b) => byCodeUnits(a.slug, b.slug)) };
+}
+
+function entriesOf(def: Collection, ordered: string[], read: Array<Record<string, unknown> | null>): ContentEntry[] {
   const entries: ContentEntry[] = [];
   ordered.forEach((slug, position) => {
     const data = read[position];

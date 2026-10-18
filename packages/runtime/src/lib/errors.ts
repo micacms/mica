@@ -24,7 +24,9 @@ export type ErrorCode =
   | "rate_limited"
   | "internal_error"
   /** An identity provider Mica depends on could not be reached. */
-  | "service_unavailable";
+  | "service_unavailable"
+  /** The disk is full, read-only, or Mica may not write there. A person must act. */
+  | "storage_unavailable";
 
 const STATUS: Record<ErrorCode, number> = {
   bad_request: 400,
@@ -40,6 +42,7 @@ const STATUS: Record<ErrorCode, number> = {
   rate_limited: 429,
   internal_error: 500,
   service_unavailable: 503,
+  storage_unavailable: 507,
 };
 
 export interface ApiErrorBody {

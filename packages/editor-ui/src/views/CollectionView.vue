@@ -10,7 +10,7 @@
 import { computed, onMounted, ref, watch } from "vue";
 import { Plus } from "@lucide/vue";
 
-import { api, messageOf, type EntrySummary } from "@/api";
+import { api, messageOf, type EntrySummary, type UnreadableEntry } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import ReorderArrows from "@/components/ReorderArrows.vue";
@@ -44,6 +44,8 @@ const entries = ref<EntrySummary[]>([]);
 const loading = ref(true);
 /** Why the entries could not be loaded: the list is then not "empty". */
 const loadError = ref<string | null>(null);
+/** Entries whose files Mica cannot read. The list shows the others. */
+const unreadable = ref<UnreadableEntry[]>([]);
 const search = ref("");
 const reordering = ref(false);
 
@@ -88,9 +90,11 @@ async function load(): Promise<void> {
   try {
     const listed = await api.entries.list(props.collection);
     entries.value = listed.items;
+    unreadable.value = listed.unreadable;
     orderRevision = listed.orderRevision;
   } catch (error) {
     entries.value = [];
+    unreadable.value = [];
     loadError.value = messageOf(error, "Something went wrong.");
   } finally {
     loading.value = false;
@@ -138,7 +142,8 @@ watch(loading, (isLoading) => {
 
 // Reordering a filtered list would move the wrong neighbours.
 const sortable = computed(() => (definition.value?.sortable ?? false) && !definition.value?.readOnly);
-const canReorder = computed(() => sortable.value && !search.value);
+// A new order without the entries that cannot be read would move them to the end.
+const canReorder = computed(() => sortable.value && !search.value && unreadable.value.length === 0);
 
 const reorder = useReorder<EntrySummary>({
   scope: () => `entries-${props.collection}`,
@@ -173,6 +178,21 @@ const reorder = useReorder<EntrySummary>({
         still on the website until you
         <RouterLink :to="{ name: 'changes' }" class="underline">publish</RouterLink>.
       </p>
+      <div v-if="unreadable.length > 0" role="status" class="mb-3 rounded-md border border-warning/15 bg-warning-soft p-4">
+        <p class="text-sm font-medium text-warning">
+          {{ unreadable.length === 1 ? "1 entry cannot be opened" : `${unreadable.length} entries cannot be opened` }}
+        </p>
+        <p class="mt-1 text-xs text-muted">
+          Their files have a problem, so the list does not show them. Ask a developer to repair these files.
+          <template v-if="sortable">You can change the order again after that.</template>
+        </p>
+        <ul class="mt-2 space-y-1 text-xs">
+          <li v-for="entry in unreadable" :key="entry.slug">
+            <!-- The message names the file. -->
+            <span class="font-mono">{{ entry.message }}</span>
+          </li>
+        </ul>
+      </div>
       <div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
         <input
           v-model="search"

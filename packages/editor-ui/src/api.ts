@@ -5,7 +5,7 @@
  * the bundle.
  */
 
-import type { FieldIssue, PublishResult } from "@micacms/core/internal";
+import type { FieldIssue, PublishResult, UnreadableEntry } from "@micacms/core/internal";
 import type {
   AnnotatedChange,
   ChangeOwner,
@@ -30,6 +30,7 @@ import type {
 } from "@micacms/runtime";
 
 export type {
+  UnreadableEntry,
   ChangeOwner,
   CompareTarget,
   Comparison,
@@ -66,13 +67,16 @@ export class ApiError extends Error {
   readonly status: number;
   readonly code: string;
   readonly issues: FieldIssue[];
+  /** The server's id of the request, which its log names too. */
+  readonly requestId: string | null;
 
-  constructor(status: number, code: string, message: string, issues: FieldIssue[] = []) {
+  constructor(status: number, code: string, message: string, issues: FieldIssue[] = [], requestId: string | null = null) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.code = code;
     this.issues = issues;
+    this.requestId = requestId;
   }
 
   /** True when the session has gone; the shell reacts by showing the sign-in view. */
@@ -81,9 +85,13 @@ export class ApiError extends Error {
   }
 }
 
-/** What to tell the editor about a failure: the server's words, or `fallback` for anything else. */
+/**
+ * What to tell the editor about a failure: the server's words, or `fallback` for anything else.
+ * A server failure also gives its request ID, so that the person who runs Mica finds it in the log.
+ */
 export function messageOf(error: unknown, fallback: string): string {
-  return error instanceof ApiError ? error.message : fallback;
+  if (!(error instanceof ApiError)) return fallback;
+  return error.status >= 500 && error.requestId ? `${error.message} Reference: ${error.requestId}.` : error.message;
 }
 
 /** The CSRF cookie is readable by design — it is echoed back as a header. `__Host-` over https. */
@@ -175,7 +183,8 @@ export async function readResponse<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const envelope = isJson(response) ? ((await response.json().catch(() => null)) as ErrorEnvelope | null) : null;
     const error = envelope?.error;
-    throw new ApiError(response.status, error?.code ?? "error", error?.message ?? statusMessage(response.status), error?.issues ?? []);
+    const requestId = error?.requestId ?? response.headers.get("x-request-id");
+    throw new ApiError(response.status, error?.code ?? "error", error?.message ?? statusMessage(response.status), error?.issues ?? [], requestId);
   }
   if (response.status === 204) return undefined as T;
   if (!isJson(response)) throw unreadable(response.status);
@@ -187,7 +196,7 @@ export async function readResponse<T>(response: Response): Promise<T> {
 }
 
 interface ErrorEnvelope {
-  error?: { code?: string; message?: string; issues?: FieldIssue[] };
+  error?: { code?: string; message?: string; issues?: FieldIssue[]; requestId?: string };
 }
 
 const isJson = (response: Response): boolean => /[/+]json\b/.test(response.headers.get("content-type") ?? "");
@@ -256,7 +265,9 @@ export const api = {
 
   entries: {
     list: (collection: string) =>
-      request<{ items: EntrySummary[]; total: number; orderRevision: string | null }>(`/admin/collections/${collection}/entries`),
+      request<{ items: EntrySummary[]; total: number; unreadable: UnreadableEntry[]; orderRevision: string | null }>(
+        `/admin/collections/${collection}/entries`,
+      ),
     get: (collection: string, slug: string) =>
       request<EntryDetail>(`/admin/collections/${collection}/entries/${slug}`),
     create: (collection: string, body: { data: unknown; revision?: string | null }) =>
