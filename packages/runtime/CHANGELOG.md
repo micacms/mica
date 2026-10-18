@@ -1,6 +1,25 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Thu, 15 Oct 2026 04:37:22 GMT and should not be manually modified.
+This log was last generated on Sun, 18 Oct 2026 06:05:29 GMT and should not be manually modified.
+
+## 0.11.0
+Sun, 18 Oct 2026 06:05:29 GMT
+
+### Minor changes
+
+- Support content in a Git submodule of the website repository: when the content repository is on a detached HEAD, the status names the command that checks out the branch, and Publish refuses before it commits.
+- The Content-Security-Policy follows the model: only when a coordinates field has a map does it allow the map's hosts for images and connections, and blob: workers. Without a map, it stays same-origin.
+- MICA_SITE_URL is the website's address; with a url in the model, the schema gives the editor each page's address.
+- Support Git LFS under the content root: Publish sends the LFS files with git lfs push before the push, also from a checkout without the LFS pre-push hook, and the media routes say when a file is an LFS pointer that was not downloaded.
+- The preview route gives the address of a dev server that shows the drafts, when the app has one.
+- Uploads take GPX, KML, GeoJSON, ZIP and CSV files, each checked from its bytes, and only the types of the field.
+- The schema names the reference sets, and a route gives the items of one from its index.
+- While a newer content model cannot be read, every write is refused with a 409 that says why, so that a save no longer leaves out the new fields. A content error gets its own status: 409 for a conflict, 422 for an invalid value or a file that cannot be read, 404 for an unknown collection or singleton, and 400 for the rest. The change list names the group of each change. The response types are exported for the editor, the owner policy is required, and the developer policy and MICA_LOCAL_PUBLISH move to the local editor.
+- Publish takes a new file along that a link in rich text names, such as a new PDF in the shared folder, and refuses to publish the deletion of a file that rich text links to, or of an entry whose media another entry uses. A save of settings with a malformed body is refused. The list of entries no longer takes ?search=, which nothing used. classifyPath moves to @micacms/core, and exports that nothing used are removed: actorOf, adminAssetsExist, badRequest, checkChangePaths, ContentError, createMediaService, DEFAULT_BASE_URL, DEFAULT_SITE_ID, developerEnvironment, editorOf, FilesError, headRevision, headSource, inRepo, LITERAL, notFound, ReadOnlyError, requestContext, schemaStats and UnknownContentError.
+
+### Updates
+
+- Run the tests without a build first. The OIDC gate and the self-hosted app run their tests the same way, and the image build keeps its dependency install when only a change file is new.
 
 ## 0.10.0
 Thu, 15 Oct 2026 04:37:22 GMT

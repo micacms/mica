@@ -2,6 +2,34 @@
   "name": "@micacms/mcp",
   "entries": [
     {
+      "version": "0.11.0",
+      "tag": "@micacms/mcp_v0.11.0",
+      "date": "Sun, 18 Oct 2026 06:05:29 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "upload_media takes GPX, KML, GeoJSON, ZIP and CSV files, and a list of types in accept."
+          },
+          {
+            "comment": "describe_model names the reference sets, and find_reference_items searches their items."
+          },
+          {
+            "comment": "While a newer content model cannot be read, the tools that write refuse with a message that says why; the tools that read go on."
+          }
+        ],
+        "patch": [
+          {
+            "comment": "describe_model says that a coordinates value can have a zoom."
+          }
+        ],
+        "none": [
+          {
+            "comment": "Run the tests without a build first."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.10.0",
       "tag": "@micacms/mcp_v0.10.0",
       "date": "Thu, 15 Oct 2026 04:37:22 GMT",

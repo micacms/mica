@@ -1,6 +1,33 @@
 # Change Log - @micacms/editor
 
-This log was last generated on Thu, 15 Oct 2026 04:37:22 GMT and should not be manually modified.
+This log was last generated on Sun, 18 Oct 2026 06:05:29 GMT and should not be manually modified.
+
+## 0.11.0
+Sun, 18 Oct 2026 06:05:29 GMT
+
+### Minor changes
+
+- Support content in a Git submodule of the website repository: when the submodule is on a detached HEAD, the start banner and the Publish page give the command that checks out its branch, and Publish waits until it is on one.
+- A coordinates field with `map` shows a map below the inputs. Click to set the place, or drag the pin; zoom with Ctrl or Cmd and the scroll wheel. The map loads only for such a field, and the inputs still work when it cannot load.
+- "Open on website" in the header of an entry or a settings page, and links to the published pages after Publish, with MICA_SITE_URL and a url in the model.
+- Files can be dropped on a media field. Uploads of many files show their progress, go on after a file fails, and can try the failed files again.
+- Support Git LFS under the content root: the editor and mica mcp stop at start, and say how to fix it, when the content root uses Git LFS and Git LFS is not installed or not set up.
+- The local editor shows Preview beside an entry or a settings page while astro dev runs: the page with the saved changes, before Publish.
+- The media picker takes the file types of the field, and the Media view shows all files, images or other files.
+- A relation to a reference set chooses from its items. mica check checks the ids against the index.
+- The map of a coordinates field stores its zoom with the place.
+- The editor says beside Save and Publish when they wait for a restart or an upgrade of Mica, because the content model changed. A page that could not load says so, with Try again, and never shows an empty list instead. An answer from a proxy, such as a page for a file that is too large, gives a clear message. A failed load of the content model no longer locks the editor until a reload.
+- At start, the local editor removes the temporary files that an earlier Mica left behind, for example after a crash. mica check names the item of a list field whose file or entry is missing.
+- Rich text is lighter. A field decides when it opens whether it is read-only, and an edit never makes it read-only: the editor refuses an image dropped into a list, or `{% … %}` in a code block, and says why. A `{%` typed in other text stays text. Typing converts the text when you pause, and Save always sends the current text. Tiptap and Markdoc load only for a form with a rich-text field: the chunk that every form loads goes from 232 kB to 42 kB gzip.
+
+### Patches
+
+- mica check names the new renderRichText(source, entry.data, { config }) for Markdoc tags.
+- Entries and settings share one form, so a save, a conflict, "Keep mine" and "Use theirs" work the same in both. The editor no longer says that a save failed when the save worked and only reading the saved version back failed. Two dialogs on one page no longer share their IDs, and the media picker moves the focus to its search at once and keeps it inside, like the other dialogs.
+
+### Updates
+
+- Run the tests without a typecheck first; `rush typecheck` does it once.
 
 ## 0.10.0
 Thu, 15 Oct 2026 04:37:22 GMT

@@ -1,14 +1,14 @@
 ---
-import { renderRichText, type RichTextImage } from "@micacms/astro";
+import { renderRichText, type RichTextSource } from "@micacms/astro";
 
 interface Props {
   text: string | null;
-  /** The entry's `_mica.images`, so that an image in the text gets its address on the website. */
-  images?: RichTextImage[];
+  /** The entry's data, so that an image in the text gets its file, which Astro optimizes. */
+  from?: RichTextSource | null;
 }
 
 // Markdoc to HTML at build time; raw HTML in the text is escaped.
-const html = renderRichText(Astro.props.text, { images: Astro.props.images });
+const html = await renderRichText(Astro.props.text, Astro.props.from);
 ---
 
 {html && <div set:html={html} />}

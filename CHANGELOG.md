@@ -10,6 +10,123 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.11.0] — 2026-10-18
+
+Mica works for larger sites. Git LFS holds the photos, and the content can live
+in a repository of its own, as a Git submodule of the website. A media field
+takes GPX, KML, GeoJSON, ZIP and CSV files beside images and PDF. A coordinates
+field can show a map, and the website shows the place with `<LocationMap>` from
+the new `@micacms/astro/components`. A relation can point to reference data
+that Mica does not edit, such as thousands of place names from a file. Images in
+rich text are optimized by Astro. An entry links to its page on the website,
+and the local editor shows a preview of the saved changes while `astro dev`
+runs. Large galleries fill with a drop. The editor loads rich text only where a
+form has it, and a save never leaves out fields of a newer model.
+
+Read Breaking before upgrading from 0.10: each website changes its calls of
+`renderRichText`.
+
+### Breaking
+
+- **`renderRichText` and `transformRichText` are async, and take the entry's
+  data:** `await renderRichText(entry.data.body, entry.data)`. They find the
+  images of the entry themselves, and Astro's image service optimizes each one
+  (`srcset` and `sizes` in 480, 800, 1200 and 1600 px as WebP, up to the
+  original). `{ optimize: false }` writes the original; `{ config }` moves to
+  the third argument. A site needs Astro's image service, `sharp`, as for
+  `<Image>`. Without `await`, `set:html` still renders, but a check such as
+  `{html && …}` is always true (`@micacms/astro`).
+- **`_mica` holds only `position` and `images`.** Use `entry.id` and the
+  collection's name instead of `_mica.id`, `_mica.slug` and
+  `_mica.collection`. `_mica.position` is now the editor's order, the
+  collection's `defaultSort` included (`@micacms/astro`).
+- **In CI, the build checks `.mica/schema.json` and writes nothing.** A build
+  with `CI` set fails when the committed model is not the one in the code, and
+  the same for the index of each reference set. Run `astro dev` or
+  `astro build` locally and commit the files (`@micacms/astro`).
+- **A model with a relation to a reference set** cannot be read by Mica 0.10
+  and older. Upgrade every Mica that edits the site (`@micacms/core`).
+- **`@micacms/runtime` exports less.** 21 exports that nothing used are
+  removed, `classifyPath` moves to `@micacms/core` as `ownerOfPath`, the owner
+  policy of `createRuntimeContext` is required, and `MICA_LOCAL_PUBLISH` and
+  the developer policy move to the local editor (`@micacms/runtime`).
+
+### Added
+
+- **Git LFS for media under the content root.** The site owner chooses the
+  paths in `.gitattributes`. The image has `git-lfs`; clone, sync and Publish
+  fetch and push the LFS files, and `MICA_REPOSITORY_LFS_URL` sets another LFS
+  address. The local editor stops at start when the content uses LFS and Git
+  LFS is not set up (`@micacms/runtime`, `@micacms/editor`, the image).
+- **Content in a Git submodule.** Mica works in the repository that holds the
+  content root, never in the website repository. On a detached HEAD, Publish
+  waits, and the banner and the Publish page give the command that checks out
+  the branch (`@micacms/runtime`, `@micacms/editor`).
+- **More file types.** A media field's `accept` takes a list, such as
+  `["gpx", "kml"]`. Mica knows images, PDF, GPX, KML, GeoJSON, ZIP and CSV, and
+  checks each from its bytes. Files can be dropped on a media field, and an
+  upload of many files shows its progress and goes on after a failure.
+  `mediaFile(site, path)` gives the file on disk for the build
+  (`@micacms/core`, `@micacms/runtime`, `@micacms/editor`, `@micacms/mcp`,
+  `@micacms/astro`).
+- **A map for coordinates.** `coordinates({ map: "liberty" })` shows an
+  OpenFreeMap map in the editor, and `{ style, hosts }` a style of your own.
+  The value stores the zoom: `{ lat, lng, zoom }`. The Content-Security-Policy
+  allows the map's hosts only when the model has a map (`@micacms/core`,
+  `@micacms/runtime`, `@micacms/editor`).
+- **`@micacms/astro/components`** with `<LocationMap>`: a map of a coordinates
+  value, without styles of its own. It needs `maplibre-gl` on the site.
+  `mapView()` gives the same view for a site's own map (`@micacms/astro`).
+- **Reference data.** `defineSite({ references })` with `referenceSet()`
+  declares a JSON or CSV file of the website that Mica never edits. A relation
+  can point to it. The build writes `.mica/references/<name>.json`; the picker
+  searches it, and Publish, `mica check` and the build check each id. The MCP
+  tool `find_reference_items` searches it (`@micacms/core`, `@micacms/astro`,
+  `@micacms/runtime`, `@micacms/editor`, `@micacms/mcp`).
+- **"Open on website" and Preview.** `collection({ url: "/news/{slug}" })` and
+  `singleton({ url: "/about" })` with `MICA_SITE_URL` link an entry to its
+  page, and Publish links to the pages it published. The local editor shows
+  Preview while `astro dev` runs: the page with the saved changes, before
+  Publish (`@micacms/core`, `@micacms/runtime`, `@micacms/editor`,
+  `@micacms/astro`).
+- **Website helpers.** `getSingleton(site, name)` reads a singleton with its
+  types, and `inEditorOrder` sorts a collection in the editor's order
+  (`@micacms/astro`).
+
+### Changed
+
+- **Rich text is lighter.** Tiptap and Markdoc load only for a form with a
+  rich-text field: the chunk that every form loads goes from 232 kB to 42 kB
+  gzip. A field decides at load whether it is read-only, and the editor refuses
+  an edit it cannot keep. Typing converts the text when you pause, and Save
+  always sends the current text (`@micacms/editor`).
+- **Errors have their own status.** 409 for a conflict, 422 for an invalid
+  value or a file that cannot be read, 404 for an unknown collection or
+  singleton, 400 for the rest. A page that could not load says so, with Try
+  again, and never shows an empty list (`@micacms/runtime`, `@micacms/editor`).
+- **One rule for the links of a document.** Relations, media, and the images
+  and links in rich text are read the same way by Mica, the build and
+  `mica check` (`@micacms/core`, `@micacms/runtime`).
+- **Entries and settings share one form**, so a save and a conflict work the
+  same in both (`@micacms/editor`).
+
+### Fixed
+
+- **A save no longer leaves out the fields of a newer model.** While a newer
+  `.mica/schema.json` cannot be read, every write is refused with a 409 that
+  says why, in the editor and over MCP; reads go on (`@micacms/runtime`,
+  `@micacms/editor`, `@micacms/mcp`).
+- **Publish takes along a new file that rich text links to**, such as a new
+  PDF in the shared folder, and refuses to publish the deletion of a file that
+  rich text links to, or of an entry whose media another entry uses
+  (`@micacms/runtime`).
+- **A `{%` typed in rich text stays text.** It became a tag on the website and
+  made the field read-only (`@micacms/editor`).
+- **A save that worked no longer says that it failed** when only reading the
+  saved version back failed (`@micacms/editor`).
+- **Old temporary upload files are removed** at the start of the local editor
+  (`@micacms/editor`).
+
 ## [0.10.0] — 2026-10-15
 
 Coding agents can edit the content. Claude Code, Cursor, VS Code and other

@@ -1,6 +1,23 @@
 # Change Log - @micacms/mcp
 
-This log was last generated on Thu, 15 Oct 2026 04:37:22 GMT and should not be manually modified.
+This log was last generated on Sun, 18 Oct 2026 06:05:29 GMT and should not be manually modified.
+
+## 0.11.0
+Sun, 18 Oct 2026 06:05:29 GMT
+
+### Minor changes
+
+- upload_media takes GPX, KML, GeoJSON, ZIP and CSV files, and a list of types in accept.
+- describe_model names the reference sets, and find_reference_items searches their items.
+- While a newer content model cannot be read, the tools that write refuse with a message that says why; the tools that read go on.
+
+### Patches
+
+- describe_model says that a coordinates value can have a zoom.
+
+### Updates
+
+- Run the tests without a build first.
 
 ## 0.10.0
 Thu, 15 Oct 2026 04:37:22 GMT

@@ -1,6 +1,22 @@
 # Change Log - @micacms/astro
 
-This log was last generated on Thu, 15 Oct 2026 04:37:22 GMT and should not be manually modified.
+This log was last generated on Sun, 18 Oct 2026 06:05:29 GMT and should not be manually modified.
+
+## 0.11.0
+Sun, 18 Oct 2026 06:05:29 GMT
+
+### Minor changes
+
+- renderRichText(text, entry.data) is async, finds the entry's images itself and optimizes them with Astro's getImage. getSingleton(site, name) reads a singleton with its type, inEditorOrder sorts in the editor's order, and _mica holds only position and images. In CI, the build fails when the committed .mica/schema.json is not the model in the code.
+- In astro dev, the loader tells the local editor the dev server's address, for its Preview.
+- mediaFile(site, path) gives the file on disk for a media path, to read a GPX track or another file at build time.
+- The loader writes the index of each reference set from its JSON or CSV file to .mica/references/<name>.json, writes it again when the file changes in dev, and checks it in CI.
+- The new @micacms/astro/components has <LocationMap>, a map of a coordinates value without styles of its own. mapView() gives the same view for a site's own map.
+
+### Updates
+
+- Run the tests on the source of the package, so a test run builds nothing first.
+- Image fields are read with the shared field walker of @micacms/core.
 
 ## 0.10.0
 Thu, 15 Oct 2026 04:37:22 GMT

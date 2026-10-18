@@ -1,6 +1,26 @@
 # Change Log - @micacms/core
 
-This log was last generated on Thu, 15 Oct 2026 04:37:22 GMT and should not be manually modified.
+This log was last generated on Sun, 18 Oct 2026 06:05:29 GMT and should not be manually modified.
+
+## 0.11.0
+Sun, 18 Oct 2026 06:05:29 GMT
+
+### Minor changes
+
+- A coordinates field can show a map in the editor: `coordinates({ map: "liberty" })` uses an OpenFreeMap style ("liberty", "bright" or "positron"), and `{ style, hosts }` uses a style of your own. The style address and the hosts must use https, and each host is an origin.
+- collection({ url: "/news/{slug}" }) and singleton({ url: "/about" }) name the page of an entry on the website.
+- devServerMarkerPath in @micacms/core/node names the file in which astro dev tells the local editor its address.
+- A media field's `accept` takes a list of file types, such as ["gpx", "kml"]. Mica knows images, PDF, GPX, KML, GeoJSON, ZIP and CSV.
+- Reference sets: defineSite({ references }) with referenceSet() declares data of the website that Mica never edits, and a relation can point to it. The reference check reads its index in .mica/references/.
+- A coordinates value can store the zoom of the map, from 0 to 22: { lat, lng, zoom }.
+
+### Patches
+
+- The links of a document (relations, media, and the images and links in rich text) are read by one rule, which Mica, the website build and mica check share.
+
+### Updates
+
+- Run the tests on the source of the package, so a test run builds nothing first.
 
 ## 0.10.0
 Thu, 15 Oct 2026 04:37:22 GMT
