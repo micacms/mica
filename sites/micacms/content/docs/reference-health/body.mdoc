@@ -42,22 +42,21 @@ The reason codes. Each code makes the status `degraded`, except `cloning` (`erro
 | `branch_not_found` | The branch does not exist at the Git host. | Create the branch, or correct `MICA_REPOSITORY_BRANCH`. |
 | `network` | The Git host cannot be reached. | Check DNS and outgoing HTTPS from the container. Mica tries again at each sync. |
 | `diverged` | The branch was rewritten during a publication. | Nothing: the next sync follows the branch. See "Troubleshooting" in [Self-hosting](/docs/self-hosting/). |
-| `prefetch_incomplete` | A sync could not fetch all files of the new version. | Mica tries again at each sync. If it stays, read the log. |
+| `prefetch_incomplete` | A sync could not fetch all files of the new version, or could not download its Git LFS files. Mica keeps the old version. | Mica tries again at each sync. If it stays, read the log, and check the Git LFS quota and `MICA_REPOSITORY_LFS_URL`. See [Large files with Git LFS](/docs/git-lfs/). |
 | `fast_forward_failed` | A sync could not bring the clone to the new version. | Read the log. |
 | `sync_failing` | Another sync problem. | Read the log, and run `docker compose run --rm mica check`. |
 | `pending_push` | A publication is committed in the clone, but the Git host did not take it yet. | Mica tries again at each sync. Look at the other codes for the cause. |
-| `lfs_refused` | The new version of the branch assigns Git LFS to files under the content root. Mica keeps the old version, and Publish waits. | Keep LFS out of the content root. |
-| `model_unreadable` | This Mica cannot read the content model of the new version. Mica keeps the old version, and Publish waits. | Upgrade Mica, or push a model that it can read. |
+| `model_unreadable` | This Mica cannot read the content model of the new version, for example a model with reference sets in an older Mica. Mica keeps the old version, refuses every save with a message that says why, and Publish waits. | Upgrade Mica, or push a model that it can read. |
 | `read_only` | A sync failed while it changed the files, and Mica could not undo it. Editors cannot save or publish. | Read the log, then restart the container: the start finishes the sync. |
 | `conflict` | An editor's draft and a change at the Git host touch the same entry. | Nothing: the editor chooses a version in the editor. |
 
-While a sync fails, editors can still edit and save: their work is in the clone. Publish works again when the Git host accepts the push.
+While a sync fails, editors can still edit and save: their work is in the clone. The exception is `model_unreadable`: a save would leave out the fields of the newer model, so Mica refuses it. Publish works again when the Git host accepts the push.
 
 Use `/ready` for a readiness check or for monitoring, not for a restart. See [Self-hosting](/docs/self-hosting/) and [Command line](/docs/reference-cli/).
 
 ## What to alert on
 
 - Alert when `status` is not `ok` for longer than a few sync intervals. A short `network` problem is normal.
-- Alert at once on `auth_failed`, `write_forbidden` and `read_only`: they do not go away without a person.
+- Alert at once on `auth_failed`, `write_forbidden`, `read_only` and `model_unreadable`: they do not go away without a person.
 - Alert when `lastSyncAt` is older than one hour.
 - Do not alert on `conflict`.

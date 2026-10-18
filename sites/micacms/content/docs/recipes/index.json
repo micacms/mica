@@ -2,6 +2,6 @@
   "title": "Recipes",
   "slug": "recipes",
   "section": "build",
-  "summary": "Images with alt text, relations, order, settings, custom rich-text tags, checks in CI, a changed URL, and common questions.",
-  "readTime": 7
+  "summary": "Images with alt text, relations, order, settings, maps, files, custom rich-text tags, checks in CI, a changed URL, and common questions.",
+  "readTime": 8
 }

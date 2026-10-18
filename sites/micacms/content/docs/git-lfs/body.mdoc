@@ -1,0 +1,65 @@
+Git LFS (Large File Storage) keeps large files out of the normal Git history. Git holds a small pointer in place of each file, and the Git host holds the file. A site with thousands of photos needs it: without it, each clone and each data volume holds every version of every photo. Mica works with Git LFS since 0.11.0.
+
+Mica never writes Git LFS settings for you. You choose the files, and Mica follows your choice.
+
+## Set it up
+
+1. Install Git LFS from [git-lfs.com](https://git-lfs.com), and run `git lfs install` once on each computer that uses the repository.
+2. Choose the files. In the content repository, run:
+
+```bash
+git lfs track "content/**/media/**"
+```
+
+3. Commit the `.gitattributes` file that this command writes.
+
+From then on, a new media file goes to Git LFS. Files that are already in the history stay there. To move them, rewrite the history with `git lfs migrate import --include="content/**/media/**"`. That changes every commit, so decide it as a team, and publish all drafts first.
+
+Mica reads `.gitattributes` only. A `.lfsconfig` file in the repository does not change where Mica sends the files.
+
+## The local editor
+
+The local editor uses the Git LFS of your computer.
+
+- `npx mica start` and `npx mica mcp` stop when the content uses Git LFS and Git LFS is not installed or not set up. The message says what to do. Install it, run `git lfs install`, and start again.
+- **Publish** sends the large files with `git lfs push` before it pushes the commit. This also works in a checkout that has no LFS hook.
+- A file that Git did not download yet is a pointer. The editor says so, and does not show a broken picture. Run `git lfs pull`.
+
+## The self-hosted editor
+
+The image contains Git LFS. You set up nothing in the image.
+
+- Mica uses the repository token for Git LFS too. GitHub, GitLab and Forgejo serve Git LFS with the same token as Git, at the clone URL with `/info/lfs`.
+- When your host serves Git LFS at another address, set `MICA_REPOSITORY_LFS_URL`. Mica then gives the token to that host too, so use only a host that you trust.
+- The clone downloads only the large files under the content root. Other files stay pointers.
+- A sync downloads the large files of the new version before it fast-forwards. If a download fails, Mica keeps the old version and `/ready` has `prefetch_incomplete`. Mica tries again at each sync.
+- **Publish** runs `git lfs push` before `git push`. If the host refuses the files ("Authorization error"), the changes are drafts again. Another failure keeps the publication pending, and a sync tries again.
+- `docker compose run --rm mica check` reports that the content root uses Git LFS, and that the image has it. It cannot prove write access: a dry run sends no request. The first publication shows a refusal.
+
+## The volume
+
+Each large file is on the data volume twice: in the LFS store (`.git/lfs`) and in the working tree. Old versions stay in the store. Make the volume large enough, and run `docker compose run --rm mica compact` now and then. See [Self-hosting](/docs/self-hosting/).
+
+## The quota of your host
+
+Git LFS storage and bandwidth count against the quota of your Git host, and each clone of the repository by a build counts too. Read the limits of your plan before you move thousands of photos. A host that does not keep within them refuses the push.
+
+## The website build
+
+The build must download the large files. Without that, it sees pointers, and an image fails to build.
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    lfs: true
+```
+
+A host that builds from the repository, such as Netlify or Cloudflare Pages, needs its Git LFS setting turned on. Read its documentation.
+
+## The size of an upload
+
+`MICA_MAX_UPLOAD_BYTES` still limits one upload. The default is 25 MB. Raise it when your files are larger. See [Configuration](/docs/configuration/).
+
+## Next
+
+Keep the content in its own repository: [Content in its own repository](/docs/content-in-its-own-repository/). Set up the editor for your team: [Self-hosting](/docs/self-hosting/).

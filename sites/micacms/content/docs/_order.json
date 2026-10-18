@@ -1,1 +1,27 @@
-["choose-how-to-run", "getting-started", "scope", "content-model", "model-changes", "recipes", "multilingual", "existing-site", "architecture", "editing", "agents", "self-hosting", "configuration", "sign-in-with-google", "other-providers", "security", "accessibility", "reference-cli", "reference-astro", "reference-fields", "reference-health"]
+[
+  "choose-how-to-run",
+  "getting-started",
+  "scope",
+  "content-model",
+  "reference-data",
+  "model-changes",
+  "recipes",
+  "multilingual",
+  "existing-site",
+  "content-in-its-own-repository",
+  "architecture",
+  "editing",
+  "agents",
+  "previews",
+  "self-hosting",
+  "git-lfs",
+  "configuration",
+  "sign-in-with-google",
+  "other-providers",
+  "security",
+  "accessibility",
+  "reference-cli",
+  "reference-astro",
+  "reference-fields",
+  "reference-health"
+]

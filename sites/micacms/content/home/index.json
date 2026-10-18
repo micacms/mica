@@ -27,8 +27,8 @@
         "title": "Editors fill in forms",
         "text": "Mica turns the model into forms. Editors save as often as they like. Nothing goes on the website until someone publishes.",
         "visual": "editor",
-        "file": "",
-        "code": ""
+        "file": null,
+        "code": null
       },
       {
         "title": "Publish makes one commit",
@@ -39,13 +39,86 @@
       }
     ]
   },
+  "capabilities": {
+    "eyebrow": "What it handles",
+    "title": "Real websites have photos, places and long lists.",
+    "lead": "A site with thousands of photos, a map and a list of peaks works with Mica. The content stays plain files in Git.",
+    "items": [
+      {
+        "title": "Photos by the thousand",
+        "icon": "images",
+        "text": "Keep media in Git LFS, out of your normal history. Editors drop a whole set of photos on a field, and Mica goes on when one upload fails.",
+        "file": ".gitattributes",
+        "code": "content/**/media/** filter=lfs diff=lfs merge=lfs -text",
+        "link": {
+          "label": "Large files with Git LFS",
+          "href": "/docs/git-lfs/"
+        }
+      },
+      {
+        "title": "Places on a map",
+        "icon": "map",
+        "text": "Editors select a place on a map, and Mica saves the zoom with it. Your pages draw the same view with MapLibre and OpenFreeMap, or a style of your own.",
+        "file": "src/mica.ts",
+        "code": "place: coordinates({ label: \"Place\", map: \"liberty\" }),",
+        "link": {
+          "label": "Field reference",
+          "href": "/docs/reference-fields/"
+        }
+      },
+      {
+        "title": "Files, not only images",
+        "icon": "files",
+        "text": "Accept GPX, KML, GeoJSON, ZIP and CSV next to images and PDF. Mica checks each file by its bytes, and your build reads them.",
+        "file": "src/mica.ts",
+        "code": "track: media({ label: \"Track\", accept: [\"gpx\", \"kml\"] }),",
+        "link": {
+          "label": "Recipes",
+          "href": "/docs/recipes/"
+        }
+      },
+      {
+        "title": "Reference data",
+        "icon": "database",
+        "text": "Link an entry to one of thousands of items from a JSON or CSV file that Mica never edits: peaks, regions, product codes.",
+        "file": "src/mica.ts",
+        "code": "summit: relation({ collection: \"places\" }),",
+        "link": {
+          "label": "Reference data",
+          "href": "/docs/reference-data/"
+        }
+      },
+      {
+        "title": "Preview and links",
+        "icon": "eye",
+        "text": "With astro dev beside the local editor, an entry shows Preview: the page with your saved changes, before Publish. Each entry can also link to its page on the website.",
+        "file": "src/mica.ts",
+        "code": "news: collection({ label: \"News\", url: \"/news/{slug}\", fields })",
+        "link": {
+          "label": "Preview changes",
+          "href": "/docs/previews/"
+        }
+      },
+      {
+        "title": "Content in its own repository",
+        "icon": "git",
+        "text": "Mount the content as a Git submodule. Mica works in that repository and never commits in the website repository.",
+        "file": "terminal",
+        "code": "git submodule add <url> content",
+        "link": {
+          "label": "Content in its own repository",
+          "href": "/docs/content-in-its-own-repository/"
+        }
+      }
+    ]
+  },
   "audiences": {
     "eyebrow": "Two sides, one repository",
     "title": "Calm for editors. Plain for developers.",
     "groups": [
       {
         "title": "For editors",
-        "text": "Clear forms with the labels and help that your developer wrote. Rich text, images, relations and lists that you can reorder. No Git words, no YAML.",
+        "text": "Clear forms with the labels and help that your developer wrote. Rich text, photo sets, files, places on a map, and lists that you can reorder. No Git words, no YAML.",
         "points": [
           {
             "text": "Save as often as you like"
@@ -63,7 +136,7 @@
       },
       {
         "title": "For developers",
-        "text": "The model is TypeScript. The content is JSON, Markdoc and images in your repository. Astro reads it at build time, with types.",
+        "text": "The model is TypeScript. The content is JSON, Markdoc and media in your repository, in Git LFS if you like. Astro reads it at build time, with types.",
         "points": [
           {
             "text": "No database, no content API, no webhook"
@@ -72,7 +145,7 @@
             "text": "Types without code generation"
           },
           {
-            "text": "mica check in your CI"
+            "text": "mica check and a model check in your CI"
           },
           {
             "text": "One reviewable commit for each publish"
@@ -96,6 +169,9 @@
         "text": "Sends the revision it read, so it never overwrites a newer save"
       },
       {
+        "text": "Finds items of reference data, and uploads photos and files"
+      },
+      {
         "text": "Local: npx mica start serves the tools. Self-hosted: you opt in, and each person allows each agent"
       }
     ],
@@ -104,6 +180,33 @@
     "link": {
       "label": "Edit with an agent",
       "href": "/docs/agents/"
+    }
+  },
+  "scale": {
+    "eyebrow": "Tested at size",
+    "title": "A small team, with real numbers.",
+    "lead": "Tests check these numbers. Above them, Mica can work, but nobody measured it yet.",
+    "facts": [
+      {
+        "value": "1,000",
+        "label": "entries in one collection"
+      },
+      {
+        "value": "5,000",
+        "label": "files in the content root"
+      },
+      {
+        "value": "5",
+        "label": "editors at the same time"
+      },
+      {
+        "value": "0",
+        "label": "databases to run"
+      }
+    ],
+    "link": {
+      "label": "Read the scope and the limits",
+      "href": "/docs/scope/"
     }
   },
   "run": {
@@ -115,14 +218,14 @@
       {
         "title": "Local editor",
         "audience": "For developers",
-        "text": "Runs on your machine, next to astro dev. Publish commits and pushes with your own Git credentials.",
+        "text": "Runs on your machine, next to astro dev, with a Preview of your saved changes. Publish commits and pushes with your own Git credentials.",
         "command": "npx @micacms/editor start",
         "needs": [
           {
             "text": "Node.js 24 and an Astro 7 project"
           },
           {
-            "text": "A Git repository"
+            "text": "A Git repository, and Git LFS if you use it"
           },
           {
             "text": "No sign-in, no account, no database"
@@ -136,7 +239,7 @@
       {
         "title": "Self-hosted editor",
         "audience": "For your editors",
-        "text": "One container on your server. Editors sign in through your identity provider, for example Google. Mica keeps its own Git clone.",
+        "text": "One container on your server. Editors sign in through your identity provider, for example Google. Mica keeps its own Git clone, with Git LFS built in.",
         "command": "ghcr.io/micacms/mica",
         "needs": [
           {
@@ -162,7 +265,7 @@
   "fit": {
     "eyebrow": "Is Mica for you?",
     "title": "Small on purpose.",
-    "lead": "Mica does a few things well. Here is what it does not do yet, so that you can choose well.",
+    "lead": "Mica is experimental, not ready for production, and does a few things well. Here is what it does not do yet, so that you can choose well.",
     "goodTitle": "A good fit",
     "notTitle": "Not a good fit today",
     "good": [
@@ -174,6 +277,9 @@
       },
       {
         "text": "Content in Git, as files that people can read"
+      },
+      {
+        "text": "Many photos, tracks or places, kept in Git LFS"
       },
       {
         "text": "A static website with no CMS code in it"
@@ -191,6 +297,9 @@
       },
       {
         "text": "Many websites from one editor"
+      },
+      {
+        "text": "A 1.0 promise: the API and the content format can still change"
       }
     ],
     "link": {

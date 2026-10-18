@@ -1,0 +1,22 @@
+{
+  "docs": {
+    "eyebrow": "Documentation",
+    "title": "Build the content layer you can keep.",
+    "lead": "Start locally, understand the model, and take the same files to production.",
+    "filterLabel": "Filter guides",
+    "noResults": "No guide matches this filter."
+  },
+  "changelog": {
+    "eyebrow": "Changelog",
+    "title": "What changed, and why.",
+    "lead": "Mica releases all packages and the CMS together. The project is pre-1.0, so read the note before each upgrade. The Breaking part comes first.",
+    "currentLabel": "Current",
+    "sourceNote": "The complete source changelog is in the repository.",
+    "sourceLink": "Read CHANGELOG.md"
+  },
+  "notFound": {
+    "title": "This file is not in the repository.",
+    "text": "The address does not match a page on micacms.com.",
+    "action": "Go to the home page"
+  }
+}

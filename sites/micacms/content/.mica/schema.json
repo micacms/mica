@@ -192,6 +192,138 @@
               "width": "half"
             }
           }
+        },
+        "status": {
+          "kind": "object",
+          "label": "Project status",
+          "description": "Shown in the banner above every page and next to the version in the footer.",
+          "required": true,
+          "fields": {
+            "label": {
+              "kind": "text",
+              "label": "Footer label",
+              "required": true,
+              "width": "half",
+              "description": "After the version, such as pre-1.0."
+            },
+            "bannerTitle": {
+              "kind": "text",
+              "label": "Banner title",
+              "required": true,
+              "width": "half"
+            },
+            "bannerText": {
+              "kind": "text",
+              "label": "Banner text",
+              "required": true
+            },
+            "bannerLink": {
+              "kind": "text",
+              "label": "Banner link text",
+              "required": true
+            }
+          }
+        }
+      }
+    },
+    "pages": {
+      "type": "singleton",
+      "name": "pages",
+      "label": "Page headers",
+      "description": "The headings and the lead texts of the docs index, the changelog and the 404 page.",
+      "fields": {
+        "docs": {
+          "kind": "object",
+          "label": "Documentation index",
+          "required": true,
+          "fields": {
+            "eyebrow": {
+              "kind": "text",
+              "label": "Eyebrow",
+              "required": true
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "lead": {
+              "kind": "textarea",
+              "label": "Lead",
+              "required": true,
+              "rows": 2
+            },
+            "filterLabel": {
+              "kind": "text",
+              "label": "Filter field label",
+              "required": true
+            },
+            "noResults": {
+              "kind": "text",
+              "label": "No result text",
+              "required": true
+            }
+          }
+        },
+        "changelog": {
+          "kind": "object",
+          "label": "Changelog",
+          "required": true,
+          "fields": {
+            "eyebrow": {
+              "kind": "text",
+              "label": "Eyebrow",
+              "required": true
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "lead": {
+              "kind": "textarea",
+              "label": "Lead",
+              "required": true,
+              "rows": 2
+            },
+            "currentLabel": {
+              "kind": "text",
+              "label": "Label of the current release",
+              "required": true
+            },
+            "sourceNote": {
+              "kind": "text",
+              "label": "Note about the source changelog",
+              "required": true
+            },
+            "sourceLink": {
+              "kind": "text",
+              "label": "Link text to the source changelog",
+              "required": true
+            }
+          }
+        },
+        "notFound": {
+          "kind": "object",
+          "label": "Page not found",
+          "required": true,
+          "fields": {
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "text": {
+              "kind": "text",
+              "label": "Text",
+              "required": true
+            },
+            "action": {
+              "kind": "text",
+              "label": "Button",
+              "required": true
+            }
+          }
         }
       }
     },
@@ -406,6 +538,109 @@
             }
           }
         },
+        "capabilities": {
+          "kind": "object",
+          "label": "What it handles",
+          "required": true,
+          "fields": {
+            "eyebrow": {
+              "kind": "text",
+              "label": "Eyebrow",
+              "required": true
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "lead": {
+              "kind": "textarea",
+              "label": "Lead",
+              "required": true,
+              "rows": 2
+            },
+            "items": {
+              "kind": "repeater",
+              "label": "Capabilities",
+              "itemLabel": "title",
+              "min": 3,
+              "max": 6,
+              "fields": {
+                "title": {
+                  "kind": "text",
+                  "label": "Title",
+                  "required": true
+                },
+                "icon": {
+                  "kind": "select",
+                  "label": "Icon",
+                  "required": true,
+                  "options": [
+                    {
+                      "label": "Images",
+                      "value": "images"
+                    },
+                    {
+                      "label": "Map",
+                      "value": "map"
+                    },
+                    {
+                      "label": "Files",
+                      "value": "files"
+                    },
+                    {
+                      "label": "Reference data",
+                      "value": "database"
+                    },
+                    {
+                      "label": "Preview",
+                      "value": "eye"
+                    },
+                    {
+                      "label": "Git branch",
+                      "value": "git"
+                    }
+                  ]
+                },
+                "text": {
+                  "kind": "textarea",
+                  "label": "Text",
+                  "required": true,
+                  "rows": 3
+                },
+                "file": {
+                  "kind": "text",
+                  "label": "File path",
+                  "description": "Shown above the code."
+                },
+                "code": {
+                  "kind": "textarea",
+                  "label": "Code",
+                  "rows": 3
+                },
+                "link": {
+                  "kind": "object",
+                  "label": "Link",
+                  "required": true,
+                  "fields": {
+                    "label": {
+                      "kind": "text",
+                      "label": "Label",
+                      "required": true,
+                      "width": "half"
+                    },
+                    "href": {
+                      "kind": "text",
+                      "label": "Link",
+                      "required": true,
+                      "width": "half"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
         "audiences": {
           "kind": "object",
           "label": "Editors and developers",
@@ -499,6 +734,69 @@
               "kind": "textarea",
               "label": "Code",
               "rows": 6
+            },
+            "link": {
+              "kind": "object",
+              "label": "Link",
+              "required": true,
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Label",
+                  "required": true,
+                  "width": "half"
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "width": "half"
+                }
+              }
+            }
+          }
+        },
+        "scale": {
+          "kind": "object",
+          "label": "Scale and tests",
+          "required": true,
+          "fields": {
+            "eyebrow": {
+              "kind": "text",
+              "label": "Eyebrow",
+              "required": true
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "lead": {
+              "kind": "textarea",
+              "label": "Lead",
+              "required": true,
+              "rows": 2
+            },
+            "facts": {
+              "kind": "repeater",
+              "label": "Facts",
+              "itemLabel": "label",
+              "min": 2,
+              "max": 4,
+              "fields": {
+                "value": {
+                  "kind": "text",
+                  "label": "Value",
+                  "required": true,
+                  "width": "half"
+                },
+                "label": {
+                  "kind": "text",
+                  "label": "What it counts",
+                  "required": true,
+                  "width": "half"
+                }
+              }
             },
             "link": {
               "kind": "object",

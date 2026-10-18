@@ -17,6 +17,12 @@ A field with a red star (*) is required. You can save without it, but you cannot
 
 All editors of a website work on the same saved changes. A colleague sees your saved change on the Publish page, and can publish it. Tell your team before you publish changes that are not yours.
 
+## See your change on the website
+
+When your developer has set it up, an entry shows **Open on website** beside Save. It opens the page as it is on the website now. After Publish, the page shows a link to each page that you published. The website needs a few minutes to show the change. A new entry gets the link after its first Publish.
+
+With the local editor, the entry can also show **Preview**: the page with your saved changes, before Publish. See [Preview changes](/docs/previews/).
+
 ## Publish your changes
 
 Open **Publish** in the menu. The page shows each saved change, with the value **Before** and **After**.
@@ -28,6 +34,8 @@ Open **Publish** in the menu. The page shows each saved change, with the value *
 3. Select **Publish**.
 
 Mica then says "Your website is being rebuilt now." When the website is ready depends on your hosting, usually a few minutes. If Mica says "Published in Mica, not on the website yet", it tries again every minute. You do not have to do anything.
+
+Mica publishes a file together with the text that links to it. It does not let you publish the deletion of a file that a text still links to.
 
 ## Discard a change
 
@@ -52,10 +60,22 @@ After some hours, you must sign in again. When that happens while you edit, Mica
 
 ![The Media page: the files in folders, with a preview and a box to select each one](media/media.png)
 
-- Upload an image in its field, or on the **Media** page.
+- Upload an image in its field, or on the **Media** page. You can also drop files on the field.
+- To add many photos, drop them all at once. Mica shows the progress of each one. If one file fails, Mica goes on with the others, and you can try the failed files again.
+- Some fields take other files than images, for example a GPX track, a KML or GeoJSON file, a ZIP file or a CSV file. The field says which types it takes, and Mica checks the type of each file.
 - Write the alt text in the field, under the image. The alt text tells people who cannot see the image what it shows. It belongs to the place where the image is used, so the same image can have a different alt text on another page.
+- On the **Media** page, you can show all files, only images, or only other files.
 - You can delete a file on the Media page when no entry uses it. Mica tells you which entries use a file.
 - You cannot rename a file. Upload it again with the new name, and change the entries that use it.
+
+## A place on a map
+
+A field for coordinates can show a map under the two number fields.
+
+- Select a place on the map, or drag the pin, to set the place.
+- To zoom with the scroll wheel, hold Ctrl (Windows) or Cmd (Mac). Without it, the page scrolls as usual.
+- Mica saves the zoom with the place. The website shows the same view.
+- You can also type the numbers. If the map cannot load, the number fields still work.
 
 ## Tables and images in the text
 
@@ -70,7 +90,7 @@ Some tables and images that a developer wrote stay read-only, for example an ima
 ## Order and links between entries
 
 - In a list that has a handle (⋮⋮) at the start of each row, drag the rows into the order of the website. This is the same everywhere: the entries of a collection, a list of items in a form, the chosen entries of a field such as the team of a project, and the files of a media field. With the keyboard, press Space on the handle, move with the arrow keys, and press Space again. The arrows at the end of a row move it one step. For files, they move it one step earlier or later.
-- A field that names other entries, such as the team of a project, finds an entry as you type its name.
+- A field that names other entries, such as the team of a project, finds an entry as you type its name. The same is true for a field that names an item of a long list, such as a list of places: type a part of its name.
 
 ## Light or dark
 

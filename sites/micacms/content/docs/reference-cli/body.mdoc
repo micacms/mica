@@ -29,6 +29,12 @@ Opens the editor on this machine. It has no sign-in, and it listens only on loop
 
 From 0.10.0, `start` also serves the tools for coding agents at `http://localhost:<port>/mcp`. See [Edit with an agent](/docs/agents/).
 
+From 0.11.0:
+
+- `start` stops with exit code 78 when the content root stores files with Git LFS and Git LFS is not installed or not set up. The message says what to do. See [Large files with Git LFS](/docs/git-lfs/).
+- When `astro dev` runs, the editor shows **Preview** beside an entry. See [Preview changes](/docs/previews/).
+- When the content is in a Git submodule on a detached HEAD, the banner names the command that checks out the branch, such as `git -C content switch main`, and Publish waits until the branch is checked out. See [Content in its own repository](/docs/content-in-its-own-repository/).
+
 ### init
 
 Added in 0.5.0.
@@ -47,11 +53,13 @@ Added in 0.5.0.
 npx mica check [content dir]
 ```
 
-Checks every entry against the model: fields that do not validate, missing media, relations to entries that do not exist, and files that Mica does not read. It prints each problem. It exits with 0 when there is no error, 1 when there is one, and 78 when it cannot read the model.
+Checks every entry against the model: fields that do not validate, missing media, relations to entries that do not exist, and files that Mica does not read. For a relation to a [reference set](/docs/reference-data/), it checks each id against the index in `.mica/references/`, and it names a set that has no index (0.11.0). It prints each problem. It exits with 0 when there is no error, 1 when there is one, and 78 when it cannot read the model.
 
 | Option | Effect |
 | --- | --- |
-| `-c`, `--content <dir>` | The content root. A path without a flag does the same. | Use it in CI as `npm run check` or `npx --no mica check`: when `@micacms/editor` is missing, for example because CI installs no development dependencies, a plain `npx mica` can download and run an unrelated package called `mica`.
+| `-c`, `--content <dir>` | The content root. A path without a flag does the same. |
+
+Use it in CI as `npm run check` or `npx --no mica check`: when `@micacms/editor` is missing, for example because CI installs no development dependencies, a plain `npx mica` can download and run an unrelated package called `mica`.
 
 ### import
 
@@ -86,7 +94,7 @@ Serves the tools for coding agents over stdio, without the editor. The agent sta
 | `-c`, `--content <dir>` | The content root. A path without a flag does the same. |
 | `--allow-publish` | Offers the `publish` tool too. Without it, the agent saves drafts, and you publish them. `MICA_MCP_PUBLISH=true` does the same. |
 
-`mcp` stops with the same exit codes as `start` when there is no content directory or no model.
+`mcp` stops with the same exit codes as `start` when there is no content directory, no model, or no Git LFS for content that needs it.
 
 ### Exit codes
 
@@ -95,7 +103,7 @@ Serves the tools for coding agents over stdio, without the editor. The agent sta
 | `0` | Done. `check` found no error. |
 | `1` | `check` found an error or no model, `import` failed, or `start` could not start, for example because the port is in use. |
 | `64` | Wrong use: an unknown command or option, a missing value, no content directory, or `init` cannot run here. |
-| `78` | Configuration: `start` found no content model, a model that it cannot read, or a setting that the local editor does not allow, such as a `HOST` that is not on this computer. |
+| `78` | Configuration: `start` found no content model, a model that it cannot read, a setting that the local editor does not allow, such as a `HOST` that is not on this computer, or content that needs Git LFS when Git LFS is not set up. |
 
 ## The self-hosted image
 
@@ -116,7 +124,7 @@ Tests the configuration in a temporary clone, while the server can run:
 - the token can read the branch;
 - the token may push (a dry run, which cannot see branch protection or server hooks);
 - the content root, and its model at `.mica/schema.json` loads;
-- Git LFS is not used under the content root;
+- Git LFS: the line says when the content root does not use it, and otherwise that the image has Git LFS. It cannot prove write access to the LFS storage of the host: a dry run sends no request, and the first publication shows a refusal (0.11.0);
 - the data volume is writable and has a layout that this version knows. If there is a clone, the line shows its head, the number of drafts, a commit that is not pushed, and work that the next start finishes.
 
 It prints one line for each check, `ok` or `FAIL`, and exits with 0 when all pass, 1 when a check fails, and 78 when the configuration does not load. The settings are in [Configuration](/docs/configuration/). The endpoints are in [Health endpoints](/docs/reference-health/).
@@ -129,4 +137,4 @@ docker compose run --rm mica compact
 docker compose start mica
 ```
 
-Makes a new clone on the data volume, with only the current files. The clone grows with each media change on the website, and a new clone is often much smaller. It refuses a clone with drafts or with a publication that is not pushed yet: start Mica, publish or discard them, and stop it again. While another Mica uses the volume, it waits up to 45 seconds, then refuses. It exits with 0 when it compacted the clone or found none, 1 when the clone holds work, and 78 when the configuration does not load or another Mica uses the volume.
+Makes a new clone on the data volume, with only the current files. The clone grows with each media change on the website, and a new clone is often much smaller. With Git LFS, it also drops the old versions of the large files from the store. It refuses a clone with drafts or with a publication that is not pushed yet: start Mica, publish or discard them, and stop it again. While another Mica uses the volume, it waits up to 45 seconds, then refuses. It exits with 0 when it compacted the clone or found none, 1 when the clone holds work, and 78 when the configuration does not load or another Mica uses the volume.

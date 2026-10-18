@@ -10,7 +10,7 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 
 - `MICA_PUBLIC_URL`: the address that the browser shows, an origin with `https://` and no path, such as `https://cms.example.com`. For a trial on this machine: `http://localhost:6422`. It sets the cookie scope, the Origin check and the OIDC redirect.
 - `MICA_SESSION_SECRET`: at least 32 characters, for example from `openssl rand -base64 48`. It encrypts the session cookie, so a new value signs everybody out. Or `MICA_SESSION_SECRET_FILE`: a file that holds it.
-- `MICA_REPOSITORY_URL`: the HTTPS clone URL of the content repository, without credentials.
+- `MICA_REPOSITORY_URL`: the HTTPS clone URL of the content repository, without credentials. When the content is in its own repository, this is the URL of that repository, not of the website. See [Content in its own repository](/docs/content-in-its-own-repository/).
 - `MICA_REPOSITORY_TOKEN`: the token for Git over HTTPS. GitHub: a fine-grained token with Contents: read and write. GitLab: a project access token with `read_repository` and `write_repository`. Or `MICA_REPOSITORY_TOKEN_FILE`: a file that holds it. Mica reads the file for each Git call, so a short-lived token, such as a GitHub App token, can change without a restart.
 - `MICA_OIDC_ISSUER` and `MICA_OIDC_CLIENT_ID`: the OpenID Connect provider and the client that you registered there.
 - At least one of `MICA_ADMIT_GROUPS`, `MICA_ADMIT_DOMAINS`, `MICA_ADMIT_EMAILS` and `MICA_ADMIT_SUBJECTS`. Mica does not start without a rule that says who may edit.
@@ -20,7 +20,7 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 - `MICA_REPOSITORY_BRANCH`: the branch that Mica reads and publishes to. Default: `main`.
 - `MICA_CONTENT_PATH`: the content root in the repository, such as `content` or `site/content`. Mica writes only below it. Without it, Mica uses the one directory in the repository with a `.mica/schema.json`. Set it only when the repository has more than one. The top of the repository cannot be the content root.
 - `MICA_REPOSITORY_USERNAME`: the Git user name for the token. Default: `x-access-token` on GitHub, `oauth2` on GitLab, `mica` on other hosts.
-- `MICA_REPOSITORY_LFS_URL`: the Git LFS address, only when the host does not serve it at the clone URL with `/info/lfs`. Mica also gives the token to this host. Default: the clone URL with `/info/lfs`.
+- `MICA_REPOSITORY_LFS_URL`: the Git LFS address, only when the host does not serve it at the clone URL with `/info/lfs`. Mica also gives the token to this host. Default: the clone URL with `/info/lfs`. Added in 0.11.0. See [Large files with Git LFS](/docs/git-lfs/).
 - `MICA_REPOSITORY_SYNC_SECONDS`: how often Mica fetches the branch, from 5 to 86400. Default: `60`.
 - `MICA_DATA_DIR`: where Mica keeps its clone, in the folder `repository`. Default: `./data`. The image sets `/data`, the volume.
 
@@ -43,9 +43,9 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 - `HOST`: the address to listen on. Default in the image: `0.0.0.0`.
 - `PORT`: the port to listen on. Default: `6422`.
 - `MICA_TRUST_PROXY`: read the client address from `X-Forwarded-For`. Set it to `true` only behind a proxy that you control. Default: `false`.
-- `MICA_MAX_UPLOAD_BYTES`: the largest upload, in bytes. Default: `26214400` (25 MB).
+- `MICA_MAX_UPLOAD_BYTES`: the largest upload, in bytes. Default: `26214400` (25 MB). Raise it for large files, such as a ZIP file or a GPX track.
 - `MICA_LOG_LEVEL`: `debug`, `info`, `warn`, `error` or `silent`. Default: `info`.
-- `MICA_SITE_URL`: the website's address, such as `https://example.com`. With a `url` in the model, an entry shows "Open on website". Added in 0.11.0.
+- `MICA_SITE_URL`: the website's address, such as `https://example.com`. With a `url` in the model, an entry shows "Open on website". Added in 0.11.0. See [Preview changes](/docs/previews/).
 
 ## Self-hosted image: agents
 
@@ -67,9 +67,11 @@ It also reads these variables:
 
 - `MICA_CONTENT_ROOT`: the content root, when no path is given.
 - `MICA_PUBLIC_URL`: the editor's own address. It must be on this computer. Default: `http://localhost:` and the port.
-- `MICA_LOCAL_PUBLISH`: `false` shows the pending changes, but Publish does not commit or push. Default: `true`.
+- `MICA_LOCAL_PUBLISH`: `false` shows the pending changes, but Publish does not commit or push. Default: `true`. Only the local editor reads it.
 - `MICA_MCP_PUBLISH`: `true` gives agents the `publish` tool, at `/mcp` and in `npx mica mcp`. Default: `false`. `npx mica mcp --allow-publish` does the same.
 - `MICA_SITE_URL`, `MICA_MAX_UPLOAD_BYTES` and `MICA_LOG_LEVEL`, as for the image.
+
+The local editor needs no setting for Preview, for Git LFS or for a Git submodule. It finds the dev server of `astro dev` itself, and it uses the Git and the Git LFS of your computer.
 
 ## For work on Mica itself
 

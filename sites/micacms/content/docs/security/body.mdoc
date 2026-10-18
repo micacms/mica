@@ -8,7 +8,7 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 
 ## What Mica protects
 
-- **The repository token.** It can write to the content repository. The self-hosted Mica keeps it in its environment and never sends it to the browser. Mica gives it only to the Git host and never writes it into the clone.
+- **The repository token.** It can write to the content repository. The self-hosted Mica keeps it in its environment and never sends it to the browser. Mica gives it only to the Git host, and to the Git LFS host when you set `MICA_REPOSITORY_LFS_URL`. It never writes the token into the clone.
 - **The session secret.** `MICA_SESSION_SECRET` encrypts the session cookie (AES-256-GCM). A person who knows it can create a session for any editor.
 - **The drafts.** Saved, unpublished changes are files in the Git clone on the data volume. They are not in the repository until somebody publishes them.
 - **The content repository.** Only an admitted editor can publish, and only to the configured branch.
@@ -32,11 +32,12 @@ Do not open a public issue. Use GitHub private vulnerability reporting: open the
 - **No roles.** Every admitted editor can save, publish, discard and delete.
 - **Rate limits are in the process.** Each Mica counts on its own, and a restart resets the counts.
 - **A contributor can already run code.** A person who can change the website's `package.json` runs code in its build and on developers' computers. Mica adds no new way to do that.
-- **The website's templates decide whether an editor can run script.** Rich text cannot add script: Markdoc escapes HTML. A template can still do it. Do not put a script address in a field, for example for analytics: every editor could then load their own script on every page. Keep such addresses in code. When a template writes content into a `<script>` element, for example JSON-LD, escape `<` as `\u003c`, so that a text cannot end the element.
+- **The website's templates decide whether an editor can run script.** Rich text cannot add script: Markdoc escapes HTML. A template can still do it. Do not put a script address in a field, for example for analytics: every editor could then load their own script on every page. Keep such addresses in code. When a template writes content into a `<script>` element, for example JSON-LD, escape `<` as `<`, so that a text cannot end the element.
+- **A map loads tiles from another host.** A coordinates field with a map makes the editor's browser load tiles from OpenFreeMap, or from the hosts of a style that the model names. The model comes from the repository, so only a contributor can change those hosts.
 
 ## What the repository token can reach
 
-Mica writes only below the content root. The token can do more: it can push to the whole repository, the website's code and its CI files included, such as `.github/workflows/` or `.gitlab-ci.yml`. A CI file runs with the secrets of your CI. So a person who steals the token can change what your build does. The content root is not a limit for the token.
+Mica writes only below the content root. The token can do more: it can push to the whole repository, the website's code and its CI files included, such as `.github/workflows/` or `.gitlab-ci.yml`. A CI file runs with the secrets of your CI. So a person who steals the token can change what your build does. The content root is not a limit for the token. When the content is in its own repository, the token reaches that repository only. This is a reason to use one: the website's code and CI files are in another repository.
 
 - Keep the token only in the container's environment, give it an expiry, and replace it when a person who saw it leaves.
 - Let the production deployment run only from a protected branch, with its own secrets, for example with a GitHub environment or a GitLab protected environment.
@@ -69,10 +70,11 @@ When Mica is down, your website stays up: the website does not call Mica. Mica l
 - Over https, every response carries `Strict-Transport-Security`. The self-hosted Mica refuses to start with an `http://` public address, except on this machine.
 - Mica refuses every write from another origin, and every write but the sign-out needs a matching CSRF token. The sign-out needs none, so that it works also with an expired session.
 - Sign-in attempts are rate limited.
-- Responses carry a same-origin `Content-Security-Policy`, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: same-origin`.
-- The editor loads nothing from another origin. Its fonts are served by Mica itself.
-- Mica refuses SVG files, because they can contain scripts: it does not accept them as uploads and does not show them in the editor. Media files are served in a sandbox, and files that are not images are sent as downloads.
+- Responses carry a `Content-Security-Policy` that allows the same origin only, `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` and `Referrer-Policy: same-origin`. Only when the model has a coordinates field with a map does the policy also allow the hosts of that map for images and connections, and `blob:` workers for MapLibre.
+- The editor loads nothing from another origin. Its fonts are served by Mica itself. The one exception is a map, as above.
+- Mica refuses SVG files, because they can contain scripts: it does not accept them as uploads and does not show them in the editor. Mica checks the type of each upload from its bytes, and accepts only the types of the field. Media files are served in a sandbox, and files that are not images are sent as downloads.
 - The self-hosted Mica refuses to start when no admission rule is set.
+- Git runs with its hooks off, and with Git LFS as the only filter. A `.lfsconfig` in the repository cannot send the files to another server. The self-hosted Mica never fetches submodules.
 
 ## Hardening a self-hosted deployment
 

@@ -3,8 +3,11 @@ Mica is small on purpose. This page tells you what it does, what it does not do,
 ## What Mica does
 
 - It gives editors forms for the content model that you write in TypeScript.
-- It keeps the content as JSON, Markdoc and media files in your Git repository. It has no database.
+- It keeps the content as JSON, Markdoc and media files in your Git repository, or in a repository of its own. It has no database.
 - It saves changes as files that are not committed yet, and Publish makes one commit of the changes that the editor chooses.
+- It handles photos, files such as GPX tracks, places on a map, and links to data that it does not edit. Large media can be in Git LFS.
+- It shows a preview of saved changes in the local editor, and a link to the page on the website in both editors.
+- It lets a coding agent edit the content over MCP, as drafts.
 - It runs on your machine with `npx`, with no sign-in, or as one container behind your identity provider.
 - Your Astro build reads the files. The website does not call Mica.
 
@@ -14,7 +17,7 @@ One Mica serves one site and one branch.
 
 | Not in Mica | How to work without it |
 | --- | --- |
-| A preview of changes before Publish | With the local editor, run `astro dev` next to it. For a self-hosted Mica, point a second Mica at a `staging` branch, and let your host build that branch. |
+| A preview of drafts in the self-hosted editor | The local editor has Preview while `astro dev` runs. For a self-hosted Mica, point a second Mica at a `staging` branch, and let your host build that branch. |
 | Roles | Each editor that your identity provider admits can do everything, Publish included. Admit only the people who may publish. For a review step, use a staging branch. |
 | Approval workflows | Point a second Mica at a `staging` branch. Review and merge it on your Git host. |
 | Scheduled publishing | Publish to a branch, and let a scheduled CI job merge it. |
@@ -25,6 +28,7 @@ One Mica serves one site and one branch.
 | A branch switcher | Run one Mica for each branch. |
 | Rename of a media file | Upload the file again, and change the entries that use it. |
 | More than one site | Run one Mica for each site. |
+| SSH remotes for the self-hosted editor | Use an HTTPS URL and a token. |
 
 Mica also has no content API, no GraphQL, no build webhook, no media server and no plugins. A push starts your build.
 
@@ -54,14 +58,14 @@ The table compares Mica with other editors that keep content in Git. It shows wh
 | Needs a database | No | No | Yes, as an index | No | Yes, for users and sessions | Vendor cloud |
 | Licence | MIT | MIT | Apache-2.0 | MIT | MIT | Proprietary |
 | Model written in | TypeScript | YAML or JavaScript | TypeScript | TypeScript | YAML | YAML or JSON, or a UI |
-| Preview while editing | No | Yes | Yes | Partly | No | Yes |
+| Preview while editing | Local editor only | Yes | Yes | Partly | No | Yes |
 | Editing on the page | No | No | Yes | No | No | Yes |
 | Languages as a setting | No | Yes | Partly | Not documented | Not documented | Partly |
 | Roles | No | No | Paid plans | No | Partly | Paid plans |
 | Review before publishing | With a staging branch | Yes | Paid plans | Branches | Branches | Paid plans |
 | Package for Astro | Yes | No | Yes | Yes | No | Yes |
 
-Mica is for a team that wants the content model in code, the content in Git with no database, and an editor that it can run itself with one container. If you need on-page editing, a preview of drafts or roles today, one of the other products fits better.
+Mica is for a team that wants the content model in code, the content in Git with no database, and an editor that it can run itself with one container. If you need on-page editing, a preview of drafts for every editor or roles today, one of the other products fits better.
 
 ## Undo a publish
 

@@ -2,21 +2,18 @@
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { Search } from "@lucide/astro";
 import PageHeader from "@/components/PageHeader.astro";
-import { DOC_SECTIONS, getDocs } from "@/lib/content";
-const docs = await getDocs();
+import { DOC_SECTIONS, getDocs, getPages } from "@/lib/content";
+const [docs, pages] = await Promise.all([getDocs(), getPages()]);
+const index = pages.docs;
 // A section with no page yet is not shown.
 const sections = DOC_SECTIONS.filter((section) => docs.some((doc) => doc.data.section === section.key));
 ---
 
 <BaseLayout title="Documentation" description="Learn how to add Mica to Astro, define content, and run the editor.">
-  <PageHeader
-    eyebrow="Documentation"
-    title="Build the content layer you can keep."
-    lead="Start locally, understand the model, and take the same files to production."
-  >
+  <PageHeader eyebrow={index.eyebrow} title={index.title} lead={index.lead}>
     <div class="mt-8 flex max-w-md items-center gap-3 rounded-md border border-line-strong bg-surface px-4 py-2.5 text-ink-subtle focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-strata">
       <Search size={18} aria-hidden="true" />
-      <input class="min-w-0 flex-1 border-0 bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-subtle" type="search" placeholder="Filter guides" aria-label="Filter documentation" data-doc-search />
+      <input class="min-w-0 flex-1 border-0 bg-transparent text-[15px] text-ink outline-none placeholder:text-ink-subtle" type="search" placeholder={index.filterLabel} aria-label={index.filterLabel} data-doc-search />
       <kbd class="rounded-sm border border-line-strong px-1.5 py-0.5 font-mono text-[12px] text-ink-subtle">/</kbd>
     </div>
   </PageHeader>
@@ -42,7 +39,7 @@ const sections = DOC_SECTIONS.filter((section) => docs.some((doc) => doc.data.se
           </div>
         </div>
       ))}
-      <p class="py-14 text-center text-ink-muted" data-no-results hidden>No guide matches this filter.</p>
+      <p class="py-14 text-center text-ink-muted" data-no-results hidden>{index.noResults}</p>
     </div>
   </section>
 

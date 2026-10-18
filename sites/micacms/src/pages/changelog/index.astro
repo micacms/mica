@@ -2,15 +2,16 @@
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import PageHeader from "@/components/PageHeader.astro";
 import RichText from "@/components/RichText.astro";
-import { formatDate, getReleases, getSite } from "@/lib/content";
-const [releases, site] = await Promise.all([getReleases(), getSite()]);
+import { formatDate, getPages, getReleases, getSite } from "@/lib/content";
+const [releases, site, pages] = await Promise.all([getReleases(), getSite(), getPages()]);
+const { changelog } = pages;
 ---
 
-<BaseLayout title="Changelog" description="Product releases and changes in Mica.">
+<BaseLayout title={changelog.title} description="Product releases and changes in Mica.">
   <PageHeader
-    eyebrow="Changelog"
-    title="What changed, and why."
-    lead="Mica releases all packages and the CMS together. The project is pre-1.0, so read the note before each upgrade."
+    eyebrow={changelog.eyebrow}
+    title={changelog.title}
+    lead={changelog.lead}
   />
   <section class="section">
     <div class="wrap">
@@ -21,7 +22,7 @@ const [releases, site] = await Promise.all([getReleases(), getSite()]);
             <time class="text-[14px] text-ink-muted md:mt-3 md:block" datetime={release.data.publishDate}>{formatDate(release.data.publishDate)}</time>
             {release.data.latest && (
               <b class="inline-flex w-fit items-center gap-2 rounded-full bg-primary-soft py-0.5 pr-2.5 pl-2 text-[13px] leading-4.5 font-semibold text-ink md:mt-4 md:flex">
-                <span class="h-2 w-2 rounded-full bg-primary" aria-hidden="true"></span> Current
+                <span class="h-2 w-2 rounded-full bg-primary" aria-hidden="true"></span> {changelog.currentLabel}
               </b>
             )}
           </aside>
@@ -33,8 +34,8 @@ const [releases, site] = await Promise.all([getReleases(), getSite()]);
         </article>
       ))}
       <div class="mt-6 rounded-md bg-strata-soft p-5 text-[15px] text-ink">
-        The complete source changelog is in the repository.
-        <a class="link ml-1" href={`${site.githubUrl}/blob/main/CHANGELOG.md`}>Read CHANGELOG.md</a>
+        {changelog.sourceNote}
+        <a class="link ml-1" href={`${site.githubUrl}/blob/main/CHANGELOG.md`}>{changelog.sourceLink}</a>
       </div>
     </div>
   </section>

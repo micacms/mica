@@ -31,7 +31,7 @@ The build stops on an option that is not in these tables, for example a typo. A 
 | `select({ options })` | The `value` of the choice, or a list with `multiple`. | `options`: a list of `{ label, value }`. `multiple`, `default`. |
 | `object({ fields })` | An object with the given fields. | `fields`, `collapsible`, `collapsed`. |
 | `repeater({ fields })` | A list of objects. | `fields`, `min`, `max`, `itemLabel` (the key that names a row), `addLabel`. |
-| `relation({ collection })` | The slug of an entry, or a list with `multiple`. | `collection`, `multiple`. |
+| `relation({ collection })` | The slug of an entry, or a list with `multiple`. For a reference set, the id of an item (0.11.0). | `collection`: a collection of the model, or a reference set. `multiple`. |
 | `media()` | The path of a file, or `{ path, alt }` with `alt`. A list with `multiple`. | `accept`: `"image"` (JPEG, PNG, GIF, WebP, AVIF), `"document"` (PDF), `"any"` (every type that Mica knows), or a list of `image`, `pdf`, `gpx`, `kml`, `geojson`, `zip` and `csv` (the list: 0.11.0). `multiple`, `max`, `alt`: `"required"` or `"optional"` (0.6.0). |
 | `color()` | A hex colour, for example `"#0f766e"`. | `presets`: colours to choose from. `default`. |
 | `coordinates()` | `{ lat, lng }`. With a map also `zoom`, from 0 to 22 (0.11.0). | `map`: `"liberty"`, `"bright"` or `"positron"` (OpenFreeMap), or `{ style, hosts }` for a style of your own, with `https` only. The editor's browser loads the tiles from that host. Added in 0.11.0. |
@@ -82,4 +82,8 @@ export const site = defineSite({
 | `sortable` | Editors can put the entries in an order. Mica keeps it in `_order.json`. |
 | `url` | The page of an entry on the website, with `{slug}` once, such as `/news/{slug}`. With `MICA_SITE_URL`, an entry shows "Open on website". See [Preview changes](/docs/previews/). Added in 0.11.0. |
 
-`singleton()` takes `label`, `description`, `fields` and `url` (its page, such as `/about`, without `{slug}`; 0.11.0). `defineSite()` takes `root`, `collections` and `singletons`.
+`singleton()` takes `label`, `description`, `fields` and `url` (its page, such as `/about`, without `{slug}`; 0.11.0). `defineSite()` takes `root`, `collections`, `singletons` and `references`.
+
+## Reference sets
+
+`referenceSet({ label, file, id, title })` declares data of the website that Mica never edits, and that a `relation()` can point to. It goes in `references` of `defineSite()`, under the name of the website's own Astro collection for that file. `file` is the file from the project root, `id` the key of an item's id (default `id`), and `title` the key that the editor shows. See [Reference data](/docs/reference-data/). Added in 0.11.0.
