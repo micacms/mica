@@ -9,6 +9,7 @@ import { Hono } from "hono";
 import { clientIp, type Env } from "../src/http.js";
 import { createLogger, type Logger } from "../src/lib/logger.js";
 import {
+  apiErrorOf,
   contentSecurityPolicy,
   MAX_JSON_BYTES,
   securityHeaders,
@@ -1147,6 +1148,36 @@ describe("the error mapping", () => {
     } finally {
       rmSync(join(harness.contentRoot, "projects/broken"), { recursive: true, force: true });
     }
+  });
+
+  it("a list shows the entries that it can read, and names the files of the others (#78)", async () => {
+    mkdirSync(join(harness.contentRoot, "projects/broken"), { recursive: true });
+    writeFileSync(join(harness.contentRoot, "projects/broken/index.json"), "<<<<<<< HEAD\n{}");
+    try {
+      const response = await harness.request("/api/admin/collections/projects/entries");
+      assert.equal(response.status, 200);
+      const body = (await response.json()) as { items: Array<{ slug: string }>; unreadable: Array<{ slug: string; path: string; message: string }> };
+      assert.ok(!body.items.some((item) => item.slug === "broken"));
+      assert.deepEqual(body.unreadable.map(({ slug, path }) => ({ slug, path })), [{ slug: "broken", path: "projects/broken/index.json" }]);
+      assert.match(body.unreadable[0]!.message, /^projects\/broken\/index\.json: /);
+    } finally {
+      rmSync(join(harness.contentRoot, "projects/broken"), { recursive: true, force: true });
+    }
+  });
+
+  it("a full or read-only disk is a message for a person, not a bug (#78)", () => {
+    const failure = (code: string) => Object.assign(new Error(`${code}: write failed`), { code });
+
+    const full = apiErrorOf(new Error("The save failed.", { cause: failure("ENOSPC") }));
+    assert.equal(full?.code, "storage_unavailable");
+    assert.equal(full?.status, 507);
+    assert.match(full!.message, /disk is full/);
+
+    assert.match(apiErrorOf(failure("EROFS"))!.message, /read-only/);
+    assert.equal(apiErrorOf(failure("EACCES"))?.code, "storage_unavailable");
+    // EPERM is also a short lock on Windows, and other errors stay bugs.
+    assert.equal(apiErrorOf(failure("EPERM")), null);
+    assert.equal(apiErrorOf(new Error("boom")), null);
   });
 
   it("another content error is 400: an order for a collection that cannot sort, an entry without a title or a URL", async () => {

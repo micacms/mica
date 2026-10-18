@@ -56,7 +56,8 @@ export function adminContentRoutes(): Hono<Env> {
 
     // Before the list: the revision is never newer than the order the editor sees.
     const orderRevision = await content.orderRevision(collection);
-    const items = (await content.list(collection))
+    const { entries, unreadable } = await content.listReadable(collection);
+    const items = entries
       .map((entry): EntrySummary => ({
         slug: entry.slug,
         position: entry.position,
@@ -65,7 +66,7 @@ export function adminContentRoutes(): Hono<Env> {
       }))
       .sort(compareEntries(def));
 
-    return c.json({ items, total: items.length, orderRevision });
+    return c.json({ items, total: items.length, unreadable, orderRevision });
   });
 
   app.post("/collections/:collection/entries", async (c) => {

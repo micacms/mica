@@ -26,6 +26,7 @@ import {
   mapMedia,
   ORDER_FILE,
   readCollection,
+  readReadableCollection,
   readCollectionEntry,
   readSingleton,
   relativizeMedia,
@@ -35,6 +36,7 @@ import {
   serializeEntry,
   type Singleton,
   type Site,
+  type UnreadableEntry,
   slugify,
   validateFields,
 } from "@micacms/core/internal";
@@ -226,6 +228,11 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
   return {
     async list(collectionName: string): Promise<ContentEntry[]> {
       return readCollection(workspace, requireCollection(collectionName), collectionName);
+    },
+
+    /** The entries that can be read, and the files of those that cannot: for the editor's list. */
+    async listReadable(collectionName: string): Promise<{ entries: ContentEntry[]; unreadable: UnreadableEntry[] }> {
+      return readReadableCollection(workspace, requireCollection(collectionName), collectionName);
     },
 
     /** How many entries a collection has, from one directory listing: for counts, not for lists. */

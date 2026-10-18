@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { api, ApiError, readResponse, type Schema } from "../src/api.js";
+import { api, ApiError, messageOf, readResponse, type Schema } from "../src/api.js";
 import { useSchema } from "../src/stores/schema.js";
 
 const json = (status: number, body: unknown) =>
@@ -33,6 +33,21 @@ describe("readResponse", () => {
     assert.equal(error.code, "validation_failed");
     assert.equal(error.message, "Check the title.");
     assert.deepEqual(error.issues, [{ path: "title", message: "Too long." }]);
+  });
+
+  it("keeps the request ID, and names it in the message of a server failure (#78)", async () => {
+    const failed = await refusal(json(500, { error: { code: "internal_error", message: "Something went wrong. Please try again.", requestId: "r1b2c3" } }));
+    assert.equal(failed.requestId, "r1b2c3");
+    assert.equal(messageOf(failed, "x"), "Something went wrong. Please try again. Reference: r1b2c3.");
+
+    const header = new Response(JSON.stringify({ error: { code: "storage_unavailable", message: "Mica cannot save." } }), {
+      status: 507,
+      headers: { "content-type": "application/json", "x-request-id": "h4d5" },
+    });
+    assert.equal(messageOf(await refusal(header), "x"), "Mica cannot save. Reference: h4d5.");
+
+    // A refusal that the editor can fix needs no reference.
+    assert.equal(messageOf(await refusal(json(422, { error: { code: "validation_failed", message: "Check the title." } })), "x"), "Check the title.");
   });
 
   it("does not read an HTML page from a proxy as JSON", async () => {
