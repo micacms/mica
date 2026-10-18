@@ -605,6 +605,13 @@
               "label": "Title",
               "required": true
             },
+            "comparisons": {
+              "kind": "relation",
+              "label": "Comparison pages",
+              "collection": "comparisons",
+              "multiple": true,
+              "description": "Shown before the links, with the title of each page."
+            },
             "links": {
               "kind": "repeater",
               "label": "Links",

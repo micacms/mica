@@ -7,6 +7,7 @@ import {
   email,
   number,
   object,
+  relation,
   repeater,
   richText,
   select,
@@ -227,6 +228,12 @@ export const site = defineSite({
           itemLabel: "title",
           fields: {
             title: text({ label: "Title", required: true }),
+            comparisons: relation({
+              label: "Comparison pages",
+              collection: "comparisons",
+              multiple: true,
+              description: "Shown before the links, with the title of each page.",
+            }),
             links: repeater({ label: "Links", itemLabel: "label", fields: linkFields }),
           },
         }),

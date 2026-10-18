@@ -15,7 +15,8 @@
   ],
   "footerGroups": [
     {
-      "title": "Start",
+      "title": "Get started",
+      "comparisons": [],
       "links": [
         {
           "label": "Getting started",
@@ -30,13 +31,18 @@
           "href": "/docs/scope/"
         },
         {
+          "label": "Recipes",
+          "href": "/docs/recipes/"
+        },
+        {
           "label": "All guides",
           "href": "/docs/"
         }
       ]
     },
     {
-      "title": "Build",
+      "title": "Guides",
+      "comparisons": [],
       "links": [
         {
           "label": "Content model",
@@ -51,21 +57,12 @@
           "href": "/docs/content-in-its-own-repository/"
         },
         {
-          "label": "Recipes",
-          "href": "/docs/recipes/"
-        }
-      ]
-    },
-    {
-      "title": "Operate",
-      "links": [
+          "label": "Large files with Git LFS",
+          "href": "/docs/git-lfs/"
+        },
         {
           "label": "Self-hosting",
           "href": "/docs/self-hosting/"
-        },
-        {
-          "label": "Large files with Git LFS",
-          "href": "/docs/git-lfs/"
         },
         {
           "label": "Edit with an agent",
@@ -79,31 +76,15 @@
     },
     {
       "title": "Compare",
+      "comparisons": [
+        "keystatic",
+        "tinacms",
+        "decap-cms",
+        "sveltia-cms",
+        "pages-cms",
+        "cloudcannon"
+      ],
       "links": [
-        {
-          "label": "Mica vs. Keystatic",
-          "href": "/compare/keystatic/"
-        },
-        {
-          "label": "Mica vs. TinaCMS",
-          "href": "/compare/tinacms/"
-        },
-        {
-          "label": "Mica vs. Decap CMS",
-          "href": "/compare/decap-cms/"
-        },
-        {
-          "label": "Mica vs. Sveltia CMS",
-          "href": "/compare/sveltia-cms/"
-        },
-        {
-          "label": "Mica vs. Pages CMS",
-          "href": "/compare/pages-cms/"
-        },
-        {
-          "label": "Mica vs. CloudCannon",
-          "href": "/compare/cloudcannon/"
-        },
         {
           "label": "All comparisons",
           "href": "/compare/"
@@ -112,6 +93,7 @@
     },
     {
       "title": "Open source",
+      "comparisons": [],
       "links": [
         {
           "label": "Changelog",
