@@ -1,8 +1,0 @@
-{
-  "title": "Security hardening",
-  "slug": "0-4-0",
-  "version": "0.4.0",
-  "publishDate": "2026-10-11",
-  "summary": "A security review of the self-hosted Mica. This version has no image. Self-hosters must use 0.4.1.",
-  "latest": false
-}

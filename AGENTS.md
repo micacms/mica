@@ -31,7 +31,7 @@ Ask the user before you:
 - Do not add a content API, public media route, media server, or build webhook.
 - Keep `@micacms/core` independent from Astro and other frameworks; its boundary test enforces this.
 - Keep Node-only code out of browser bundles. Put Node-only model exports in the `@micacms/core/node` entry point.
-- Treat `docs/architecture.md` and `docs/decisions.md` as design constraints.
+- Treat `docs/architecture.md` and the decision records in `docs/adr/` as design constraints.
 - Do not manually edit generated files. Change their source and run the applicable generation process.
 
 ## Code style
@@ -66,7 +66,8 @@ Ask the user before you:
 ## Documentation and releases
 
 - Update related documentation when behavior, configuration, architecture, or a public API changes.
-- Update `docs/decisions.md` when the change adds or changes an architectural decision, trade-off, known gap, or deferred item.
+- Add a decision record in `docs/adr/` when the change adds or replaces an architectural decision or trade-off (see `docs/adr/README.md`). Record a known gap as a GitHub issue with the label `known-gap`.
+- Describe the current design only. Do not add version history ("added in 0.x", "no longer") to the docs, the READMEs or the code comments.
 - Keep README files and examples consistent with the current behavior.
 - Update `CHANGELOG.md` when a new version is created. Do not add routine unreleased changes unless the user asks for them.
 - Record a change file with `rush change` when a change touches a published package; use the bump type `none` when the release notes should not mention it. Record a change to a private project for the published package that ships with it: `@micacms/editor-ui` for `@micacms/editor`, and `@micacms/auth-oidc`, `apps/self-hosted` and the `Dockerfile` (the image) for `@micacms/runtime`. `rush change --verify` does not find a missing change file for a private project, so check it yourself.

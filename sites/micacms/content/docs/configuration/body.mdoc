@@ -20,7 +20,7 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 - `MICA_REPOSITORY_BRANCH`: the branch that Mica reads and publishes to. Default: `main`.
 - `MICA_CONTENT_PATH`: the content root in the repository, such as `content` or `site/content`. Mica writes only below it. Without it, Mica uses the one directory in the repository with a `.mica/schema.json`. Set it only when the repository has more than one. The top of the repository cannot be the content root.
 - `MICA_REPOSITORY_USERNAME`: the Git user name for the token. Default: `x-access-token` on GitHub, `oauth2` on GitLab, `mica` on other hosts.
-- `MICA_REPOSITORY_LFS_URL`: the Git LFS address, only when the host does not serve it at the clone URL with `/info/lfs`. Mica also gives the token to this host. Default: the clone URL with `/info/lfs`. Added in 0.11.0. See [Large files with Git LFS](/docs/git-lfs/).
+- `MICA_REPOSITORY_LFS_URL`: the Git LFS address, only when the host does not serve it at the clone URL with `/info/lfs`. Mica also gives the token to this host. Default: the clone URL with `/info/lfs`. See [Large files with Git LFS](/docs/git-lfs/).
 - `MICA_REPOSITORY_SYNC_SECONDS`: how often Mica fetches the branch, from 5 to 86400. Default: `60`.
 - `MICA_DATA_DIR`: where Mica keeps its clone, in the folder `repository`. Default: `./data`. The image sets `/data`, the volume.
 
@@ -45,11 +45,11 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 - `MICA_TRUST_PROXY`: read the client address from `X-Forwarded-For`. Set it to `true` only behind a proxy that you control. Default: `false`.
 - `MICA_MAX_UPLOAD_BYTES`: the largest upload, in bytes. Default: `26214400` (25 MB). Raise it for large files, such as a ZIP file or a GPX track.
 - `MICA_LOG_LEVEL`: `debug`, `info`, `warn`, `error` or `silent`. Default: `info`.
-- `MICA_SITE_URL`: the website's address, such as `https://example.com`. With a `url` in the model, an entry shows "Open on website". Added in 0.11.0. See [Preview changes](/docs/previews/).
+- `MICA_SITE_URL`: the website's address, such as `https://example.com`. With a `url` in the model, an entry shows "Open on website". See [Preview changes](/docs/previews/).
 
 ## Self-hosted image: agents
 
-Added in 0.10.0. See [Edit with an agent](/docs/agents/).
+See [Edit with an agent](/docs/agents/).
 
 - `MICA_MCP`: `true` lets agents connect at `/mcp`. Each person allows each agent on a consent page, after they sign in. Default: `false`.
 - `MICA_MCP_PUBLISH`: `true` lets a person also allow an agent to publish. Default: `false`: agents save drafts, and people publish them.

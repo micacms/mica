@@ -15,7 +15,7 @@ basis, so a small, focused change is the fastest to review. See
   tests, and how to write documentation (ASD-STE100 Simplified Technical
   English).
 - The design and its reasons are in [docs/architecture.md](docs/architecture.md)
-  and [docs/decisions.md](docs/decisions.md).
+  and the decision records in [docs/adr/](docs/adr/README.md).
 
 ## Set up
 

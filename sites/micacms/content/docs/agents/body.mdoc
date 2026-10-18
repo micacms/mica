@@ -1,5 +1,3 @@
-Added in 0.10.0.
-
 A coding agent, such as Claude Code, Cursor or VS Code, can read and change the content of your website. It connects to Mica over the Model Context Protocol (MCP), and it follows the same rules as the editor: it reads the content model, it validates every value, and it saves drafts. The website changes only when the drafts are published.
 
 ## What an agent can do
@@ -9,16 +7,16 @@ A coding agent, such as Claude Code, Cursor or VS Code, can read and change the 
 | `describe_model` | Reads the collections, the settings, their fields and the format of each value. It names the [reference sets](/docs/reference-data/) too. |
 | `list_entries`, `get_entry`, `get_singleton` | Reads the content. |
 | `find_references`, `list_media` | Finds the links to an entry, and lists the media files. |
-| `find_reference_items` | Searches the items of a reference set, to find the id that a relation stores (0.11.0). |
+| `find_reference_items` | Searches the items of a reference set, to find the id that a relation stores. |
 | `save_entry`, `save_singleton` | Creates or changes an entry or the settings, as a draft. |
 | `delete_entry`, `reorder_entries` | Deletes an entry or changes the order, as a draft. |
-| `upload_media` | Adds an image, a PDF, or another file that the field accepts: GPX, KML, GeoJSON, ZIP or CSV (0.11.0). |
+| `upload_media` | Adds an image, a PDF, or another file that the field accepts: GPX, KML, GeoJSON, ZIP or CSV. |
 | `get_changes`, `discard_changes` | Shows the drafts, or throws them away. |
 | `publish` | Publishes drafts. Only when you allow it: see below. |
 
 Every read gives a revision, and every save sends it back. If you saved the same entry in the editor in the meantime, Mica refuses the agent's save, and the agent reads your version first. An agent never overwrites your work.
 
-Since 0.11.0, Mica also refuses every write while a newer content model cannot be read. The answer says why. Before, such a save could leave out the fields of the newer model and still report success. The agent must stop, and you upgrade Mica or correct the model.
+Mica also refuses every write while a newer content model cannot be read. The answer says why. The agent must stop, and you upgrade Mica or correct the model.
 
 ## On your own machine
 

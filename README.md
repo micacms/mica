@@ -183,7 +183,7 @@ examples/
 └── starter/            the minimal starter for `npm create astro --template`
 docs/                    for contributors; the user guides are on micacms.com/docs
 ├── architecture.md      what Mica is, and why it is shaped this way
-└── decisions.md         accepted trade-offs and known gaps
+└── adr/                 the decision records: what was decided, and why
 deploy/
 ├── self-hosted/         the reference deployment: compose.yml + .env.example
 └── demo-identity/       the deployed shape on your machine: Mica + ZITADEL
@@ -280,8 +280,9 @@ The same workflow builds the container image and pushes it to GHCR
 (`ghcr.io/<owner>/<repo>`). It uses `GITHUB_TOKEN`, so no other secret or
 variable is needed.
 
-Accepted trade-offs and known gaps are in [docs/decisions.md](./docs/decisions.md),
-each with what was decided, why, and what would change it. What each release
+The design decisions are in [docs/adr/](./docs/adr/README.md), each with its
+context, the decision and its consequences. Known gaps are GitHub issues with
+the label `known-gap`. What each release
 contains is in [CHANGELOG.md](./CHANGELOG.md); everything here is released
 together under one version, and while that version starts with `0`, a minor
 bump may break something.

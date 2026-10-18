@@ -1,4 +1,4 @@
-Some websites keep the content in a repository of its own. The history, the size and the access rights of the content are then separate from the code. You mount the content repository in the website as a Git submodule. Mica supports this since 0.11.0.
+Some websites keep the content in a repository of its own. The history, the size and the access rights of the content are then separate from the code. You mount the content repository in the website as a Git submodule.
 
 Mica works in the repository that holds the content root. It never commits in the website repository.
 
@@ -11,7 +11,7 @@ git submodule add https://github.com/acme/website-content.git content
 git commit -m "Add the content as a submodule"
 ```
 
-The model says where the content is, as before:
+The model says where the content is:
 
 ```ts
 export const site = defineSite({ root: "./content", collections: { /* … */ } });

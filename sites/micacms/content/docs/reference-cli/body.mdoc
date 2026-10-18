@@ -1,4 +1,4 @@
-This page lists the commands of `@micacms/editor` (the local editor) and of the self-hosted image. A command or option without a version exists since 0.2.0.
+This page lists the commands of `@micacms/editor` (the local editor) and of the self-hosted image.
 
 ## The local editor
 
@@ -27,17 +27,15 @@ Opens the editor on this machine. It has no sign-in, and it listens only on loop
 
 `start` stops with exit code 64 when the content directory does not exist, and with 78 when `.mica/schema.json` is missing. Run `npx astro sync` to write the model.
 
-From 0.10.0, `start` also serves the tools for coding agents at `http://localhost:<port>/mcp`. See [Edit with an agent](/docs/agents/).
+`start` also serves the tools for coding agents at `http://localhost:<port>/mcp`. See [Edit with an agent](/docs/agents/).
 
-From 0.11.0:
+Also:
 
 - `start` stops with exit code 78 when the content root stores files with Git LFS and Git LFS is not installed or not set up. The message says what to do. See [Large files with Git LFS](/docs/git-lfs/).
 - When `astro dev` runs, the editor shows **Preview** beside an entry. See [Preview changes](/docs/previews/).
 - When the content is in a Git submodule on a detached HEAD, the banner names the command that checks out the branch, such as `git -C content switch main`, and Publish waits until the branch is checked out. See [Content in its own repository](/docs/content-in-its-own-repository/).
 
 ### init
-
-Added in 0.5.0.
 
 ```bash
 npx mica init
@@ -47,13 +45,11 @@ Adds Mica to the Astro project in the current directory. It writes a starter mod
 
 ### check
 
-Added in 0.5.0.
-
 ```bash
 npx mica check [content dir]
 ```
 
-Checks every entry against the model: fields that do not validate, missing media, relations to entries that do not exist, and files that Mica does not read. For a relation to a [reference set](/docs/reference-data/), it checks each id against the index in `.mica/references/`, and it names a set that has no index (0.11.0). It prints each problem. It exits with 0 when there is no error, 1 when there is one, and 78 when it cannot read the model.
+Checks every entry against the model: fields that do not validate, missing media, relations to entries that do not exist, and files that Mica does not read. For a relation to a [reference set](/docs/reference-data/), it checks each id against the index in `.mica/references/`, and it names a set that has no index. It prints each problem. It exits with 0 when there is no error, 1 when there is one, and 78 when it cannot read the model.
 
 | Option | Effect |
 | --- | --- |
@@ -62,8 +58,6 @@ Checks every entry against the model: fields that do not validate, missing media
 Use it in CI as `npm run check` or `npx --no mica check`: when `@micacms/editor` is missing, for example because CI installs no development dependencies, a plain `npx mica` can download and run an unrelated package called `mica`.
 
 ### import
-
-Added in 0.6.0.
 
 ```bash
 npx mica import [content dir] [options]
@@ -80,8 +74,6 @@ Moves Astro content collections into Mica, from Astro's data store. Without `--c
 | `--order <c=field>` | The first order of a sortable collection, by a field. |
 
 ### mcp
-
-Added in 0.10.0.
 
 ```bash
 npx mica mcp [content dir] [options]
@@ -111,8 +103,6 @@ Without a command, or with `serve`, the image serves the editor. `check` tests t
 
 ### check
 
-Added in 0.5.0.
-
 ```bash
 docker compose run --rm mica check
 ```
@@ -124,7 +114,7 @@ Tests the configuration in a temporary clone, while the server can run:
 - the token can read the branch;
 - the token may push (a dry run, which cannot see branch protection or server hooks);
 - the content root, and its model at `.mica/schema.json` loads;
-- Git LFS: the line says when the content root does not use it, and otherwise that the image has Git LFS. It cannot prove write access to the LFS storage of the host: a dry run sends no request, and the first publication shows a refusal (0.11.0);
+- Git LFS: the line says when the content root does not use it, and otherwise that the image has Git LFS. It cannot prove write access to the LFS storage of the host: a dry run sends no request, and the first publication shows a refusal;
 - the data volume is writable and has a layout that this version knows. If there is a clone, the line shows its head, the number of drafts, a commit that is not pushed, and work that the next start finishes.
 
 It prints one line for each check, `ok` or `FAIL`, and exits with 0 when all pass, 1 when a check fails, and 78 when the configuration does not load. The settings are in [Configuration](/docs/configuration/). The endpoints are in [Health endpoints](/docs/reference-health/).

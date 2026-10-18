@@ -1,8 +1,0 @@
-{
-  "title": "Safer URL changes",
-  "slug": "0-2-1",
-  "version": "0.2.1",
-  "publishDate": "2026-10-10",
-  "summary": "The Publish page shows a URL change as one renamed entry. A renamed entry keeps its images and its place in a manually ordered collection.",
-  "latest": false
-}

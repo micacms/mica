@@ -14,10 +14,10 @@ You keep the Markdown documentation of the Mica monorepo true to the code.
 
 ## Method
 
-1. Start from the change you are given (a diff, a PR or a topic). Without one, audit the facts that go stale most often: package counts and names, test counts, commands, Node and tool versions, file paths, and the "Known gaps" and "Deferred scope" in `docs/decisions.md`.
+1. Start from the change you are given (a diff, a PR or a topic). Without one, audit the facts that go stale most often: package counts and names, test counts, commands, Node and tool versions, file paths, and the decision records in `docs/adr/`.
 2. Check each fact against the code, not against another document. Use Bash only to read (`git`, `ls`, `node scripts/version.mjs`).
 3. Fix what is wrong. Keep the structure, the voice and the line width of the file.
-4. In `docs/decisions.md`, keep the entry format (Decided, Why, Consequence, What would change it, Trigger). A gap that the code closed moves to "Settled" when its answer still constrains the design; otherwise remove it.
+4. In `docs/adr/`, follow the rules in `docs/adr/README.md`: a record states the current design and never its history. A known gap is a GitHub issue with the label `known-gap`, not a record. When the code closes such a gap, close the issue.
 
 ## Language
 

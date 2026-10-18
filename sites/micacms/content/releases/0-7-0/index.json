@@ -1,8 +1,0 @@
-{
-  "title": "Choose what to publish, in plain words",
-  "slug": "0-7-0",
-  "version": "0.7.0",
-  "publishDate": "2026-10-13",
-  "summary": "Editors choose what to publish and see on every entry if it is published. The form checks fields while you type. A new content model needs no restart. Read Breaking before you upgrade from 0.6.",
-  "latest": false
-}

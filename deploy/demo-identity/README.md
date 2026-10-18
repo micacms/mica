@@ -98,8 +98,8 @@ ZITADEL's own console is at <http://localhost:8080>, as `admin` /
    A group removed at the *provider* is slower, because Mica only sees the
    claims it was given and learns better at the next sign-in. That is the
    accepted cost of having no user table, and it is why sessions last hours
-   rather than weeks — see the P1 entry in
-   [`decisions.md`](../../docs/decisions.md).
+   rather than weeks — see
+   [decision record 3](../../docs/adr/0003-admission-by-provider-claims.md).
 
 ---
 

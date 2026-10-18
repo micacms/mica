@@ -1,6 +1,6 @@
 ---
 name: reviewer
-description: Reviews a branch or a working-tree diff against the project rules in AGENTS.md, docs/architecture.md and docs/decisions.md, and finds correctness bugs. Read-only. Use before a commit or a PR, or when the user asks for a review.
+description: Reviews a branch or a working-tree diff against the project rules in AGENTS.md, docs/architecture.md and the decision records in docs/adr/, and finds correctness bugs. Read-only. Use before a commit or a PR, or when the user asks for a review.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
@@ -14,7 +14,7 @@ Without other instructions, review `git diff main...HEAD` plus the uncommitted c
 ## Read first
 
 - `AGENTS.md` — the work rules.
-- `docs/architecture.md` and `docs/decisions.md` — design constraints. A change that contradicts a decision must update the decision.
+- `docs/architecture.md` and the decision records in `docs/adr/` — design constraints. A change that contradicts a record must add a new record that replaces it.
 
 ## Project rules to check
 

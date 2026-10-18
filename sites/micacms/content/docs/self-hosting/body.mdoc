@@ -159,7 +159,7 @@ Mica stops at start-up, and lists every problem in one message, when:
 - it cannot make its first clone;
 - the repository has no content model at `.mica/schema.json`, or its content root is the top of the repository;
 - the clone on the volume is for another URL or branch and holds drafts (the message names the files);
-- no admission rule is set, or an old setting is in use.
+- no admission rule is set.
 
 When the token cannot push, Mica starts and logs a warning, and `check` names the cause. When a clone exists, a network or token problem does not stop Mica: editors can continue, the System page shows the sync error, and Mica tries again.
 
@@ -184,7 +184,7 @@ What Mica does with the repository:
 
 - **It clones** the branch into `MICA_DATA_DIR/repository` at the first start. The clone has one branch, and Git downloads only the files of the current tree.
 - **It starts** with the model in its clone, and syncs in the background. Only when the clone has no model that this version can read does the start wait for a sync.
-- **It syncs** at once and then at each interval: it fetches the branch and fast-forwards. It never merges, rebases, or stashes. Developers can push to the branch as before. If a sync is still running at the next interval, Mica skips that interval.
+- **It syncs** at once and then at each interval: it fetches the branch and fast-forwards. It never merges, rebases, or stashes. Developers can push to the branch at any time. If a sync is still running at the next interval, Mica skips that interval.
 - **It holds a version that it cannot use.** If the new version of the branch has a content model that this Mica cannot read (`model_unreadable`), or if the download of its Git LFS files fails (`prefetch_incomplete`), Mica keeps the old version. Editors can save, and Publish waits. While a newer model cannot be read, Mica refuses every save and says why, so that a save never leaves out the new fields. Push a fix, or upgrade Mica.
 - **It finds conflicts.** If somebody changes an entry on the website while an editor has a draft of that entry, this is a conflict. The editor sees it on the Overview, on the Publish page, and on the entry, and chooses **Keep my version** or **Use the website's version**. While a conflict exists, Mica does not fast-forward and Publish waits.
 - **It tries again.** If the branch moved during a publication, Mica removes its commit, catches up, makes the commit again with the same author and message, and pushes. It tries three times. If the host cannot be reached, the publication stays committed in Mica, and the Publish page shows "Published in Mica, not on the website yet". Mica sends it later.
@@ -281,13 +281,13 @@ docker compose pull && docker compose up -d
 
 When you change the content model, run the Astro build, commit `.mica/schema.json`, and push. Mica brings the change in with its next sync and uses the new model at once; editors see a notice to load the page again. The image holds no model, so a model change never needs a new image. If this Mica cannot read the new model, it keeps the old version of the branch, and `/ready` has `model_unreadable`. Upgrade Mica, or push a model that it can read. A change to a `.gitattributes` file needs no restart.
 
-An older Mica cannot read a model with reference sets. Upgrade the image to 0.11.0 or newer before you push such a model.
+A Mica image can read only the models that it knows. Upgrade the image before you push a model that uses a feature of a newer version, such as a reference set.
 
 ## Verify the image
 
 The image is built for `linux/amd64` and `linux/arm64`. Docker pulls the one for your host. The license notices are in `/app/THIRD_PARTY_NOTICES.txt` for the server and in `/app/packages/editor-ui/dist/THIRD_PARTY_NOTICES.txt` for the editor.
 
-From 0.4.0, each image has a keyless [cosign](https://docs.sigstore.dev/) signature from the release workflow of the Mica repository, an SBOM, and build provenance. To verify an image before you run it:
+Each image has a keyless [cosign](https://docs.sigstore.dev/) signature from the release workflow of the Mica repository, an SBOM, and build provenance. To verify an image before you run it:
 
 ```bash
 cosign verify ghcr.io/micacms/mica:<version> \

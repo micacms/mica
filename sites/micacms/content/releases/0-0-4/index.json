@@ -1,8 +1,0 @@
-{
-  "title": "The first reliable npx release",
-  "slug": "0-0-4",
-  "version": "0.0.4",
-  "publishDate": "2026-08-14",
-  "summary": "The Mica command now starts correctly when npm runs it through the node_modules binary link.",
-  "latest": false
-}

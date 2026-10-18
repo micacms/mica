@@ -142,7 +142,7 @@ const PUBLIC_EMAIL_DOMAINS = new Set([
  * The refusals that make a deployment honest before it serves a request.
  *
  * An OIDC deployment that admits every person its issuer knows is a
- * misconfiguration, not a default — see decisions.md.
+ * misconfiguration, not a default — see docs/adr/0003-admission-by-provider-claims.md.
  */
 export function requireAuthConfig(config: {
   MICA_PUBLIC_URL: string;

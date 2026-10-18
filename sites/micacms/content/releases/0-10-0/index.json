@@ -1,8 +1,0 @@
-{
-  "title": "Your agent edits too",
-  "slug": "0-10-0",
-  "version": "0.10.0",
-  "publishDate": "2026-10-15",
-  "summary": "Coding agents read your content model and change your content through MCP. They save drafts, and a person publishes them. Nothing to do before you upgrade from 0.9.",
-  "latest": false
-}
