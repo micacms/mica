@@ -10,6 +10,8 @@ A self-hosted Mica must know who can edit. A table of users and memberships is a
 
 - The configuration admits people: `MICA_ADMIT_GROUPS`, `MICA_ADMIT_DOMAINS`, `MICA_ADMIT_EMAILS` or `MICA_ADMIT_SUBJECTS` (pairs of issuer and subject). The image does not start when no rule is set.
 - The domain and email rules need `email_verified` from the provider. Addresses are compared without case. A domain rule for a public provider, such as `gmail.com`, stops the start.
+- With Google (`https://accounts.google.com`), a domain rule also needs the `hd` claim of the ID token to be an admitted domain. Google reports a personal account with a company address as verified, also after the company deleted the person's Workspace account. `hd` is the organisation's primary domain, so it is compared with the admitted list, not with the domain of the address.
+- A group rule trusts whoever can create the group name. Dex's GitHub connector puts GitHub organisation names into the groups claim, and each GitHub user can create an organisation.
 - `MICA_OIDC_GROUPS_CLAIM` names the group claim, because the claim has no standard name. It takes a Keycloak path or a plain name.
 - Mica reads the rules at start, and checks them on each request against the claims that the provider sent at sign-in.
 

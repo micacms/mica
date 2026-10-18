@@ -30,7 +30,7 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 - `MICA_OIDC_SCOPE`: the scopes that Mica asks for. Default: `openid profile email`.
 - `MICA_OIDC_GROUPS_CLAIM`: the claim that holds the person's groups. Default: `groups`.
 - `MICA_ADMIT_GROUPS`: groups whose members may edit, separated by commas.
-- `MICA_ADMIT_DOMAINS`: email domains whose verified addresses may edit, separated by commas.
+- `MICA_ADMIT_DOMAINS`: email domains whose verified addresses may edit, separated by commas. With Google, the account must also belong to a Workspace whose domain (`hd`) is in this list.
 - `MICA_ADMIT_EMAILS`: verified email addresses that may edit, separated by commas.
 - `MICA_ADMIT_SUBJECTS`: `issuer|subject` pairs that may edit, separated by commas.
 - `MICA_SESSION_TTL_HOURS`: the longest session, in hours. Default: `8`.

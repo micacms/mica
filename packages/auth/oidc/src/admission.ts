@@ -61,6 +61,20 @@ function matchesDomain(identity: SessionIdentity, domains: readonly string[]): b
   return domains.includes(identity.email.slice(at + 1).toLowerCase());
 }
 
+const GOOGLE_ISSUERS = new Set(["https://accounts.google.com", "accounts.google.com"]);
+
+/**
+ * Google reports a personal account with a company address as verified, also
+ * after the company deleted its Workspace account. Only `hd` says that the
+ * account belongs to the Workspace, so a domain rule needs it. `hd` is the
+ * organisation's primary domain, so it must be one of the admitted domains,
+ * not the domain of the address.
+ */
+function hostedDomainAgrees(identity: SessionIdentity, domains: readonly string[]): boolean {
+  if (!GOOGLE_ISSUERS.has(identity.issuer)) return true;
+  return domains.includes((identity.hostedDomain ?? "").toLowerCase());
+}
+
 /**
  * Group names are compared case-sensitively, and a leading `/` is ignored.
  *
@@ -98,7 +112,8 @@ export function createAdmissionPolicy(
       if (matchesGroup(identity, admitGroups)) return { admitted: true };
 
       const byEmail = matchesEmail(identity, admitEmails);
-      if (byEmail || matchesDomain(identity, admitDomains)) {
+      const byDomain = !byEmail && matchesDomain(identity, admitDomains);
+      if (byEmail || byDomain) {
         /**
          * An email or domain rule trusts the provider to have checked the address.
          *
@@ -113,14 +128,25 @@ export function createAdmissionPolicy(
          * providers such as Gmail never reuse an address. See
          * docs/adr/0003-admission-by-provider-claims.md.
          */
-        if (identity.emailVerified) return { admitted: true };
+        if (!identity.emailVerified) {
+          return {
+            admitted: false,
+            reason:
+              `${identity.email} is ${byEmail ? "an admitted address" : "in an admitted domain"}, ` +
+              "but the identity provider does not report the address as verified.",
+          };
+        }
 
-        return {
-          admitted: false,
-          reason:
-            `${identity.email} is ${byEmail ? "an admitted address" : "in an admitted domain"}, ` +
-            "but the identity provider does not report the address as verified.",
-        };
+        if (byDomain && !hostedDomainAgrees(identity, admitDomains)) {
+          return {
+            admitted: false,
+            reason:
+              `${identity.email} is in an admitted domain, but Google does not report the account ` +
+              "as part of an admitted Google Workspace domain (hd). A personal Google account needs MICA_ADMIT_EMAILS.",
+          };
+        }
+
+        return { admitted: true };
       }
 
       return {

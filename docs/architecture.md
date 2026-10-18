@@ -282,6 +282,9 @@ Four details that matter:
 - The email and domain rules require the provider's `email_verified`. Without
   it, an open self-registration would let anybody claim an admitted address. A
   domain rule for a public provider such as `gmail.com` is refused at startup.
+  With Google, a domain rule also requires the `hd` claim (the Workspace
+  domain) to be an admitted domain, so a personal account with a company
+  address does not get in.
 - The rules are checked on every request, never decided at sign-in and kept.
   Mica reads them at start, so a configuration change takes effect after a
   restart.

@@ -52,6 +52,8 @@ MICA_ADMIT_DOMAINS=example.com
 
 Mica refuses `MICA_ADMIT_DOMAINS=gmail.com` at start-up, because it would admit the public. Mica accepts only addresses that Google reports as verified.
 
+With Google, the domain rule also needs the Workspace domain of the account: the `hd` claim, which Google sends for an account of a Workspace organisation. Google also reports a personal Google account with an address at your domain as verified, for example an account that a former employee keeps. That account has no `hd`, so the domain rule does not admit it. Put the primary domain of your Workspace in `MICA_ADMIT_DOMAINS`. To admit a personal account, add its address to `MICA_ADMIT_EMAILS`.
+
 Remove or comment out the `MICA_ADMIT_GROUPS` line in the example file. Google does not send groups.
 
 ## 4. Start and sign in
@@ -69,7 +71,7 @@ You should see the editor with your collections. The log shows the rule in force
 ## If it does not work
 
 - **Google shows `redirect_uri_mismatch`.** The redirect URI in Google must equal `<MICA_PUBLIC_URL>/api/auth/callback`, character for character.
-- **"No access to this site".** The person signed in, but no rule admits them. Check the address in `MICA_ADMIT_EMAILS`.
+- **"No access to this site".** The person signed in, but no rule admits them. Check the address in `MICA_ADMIT_EMAILS`. With the domain rule, the account must belong to your Workspace: a personal Google account is not admitted. Set `MICA_LOG_LEVEL=debug` to see the reason in the log.
 - **The login page says "expired".** `MICA_PUBLIC_URL` is not what the browser shows. Make them identical.
 - **Mica says it cannot reach the identity provider.** Check that `MICA_OIDC_ISSUER` is `https://accounts.google.com` and that the container can reach the internet.
 

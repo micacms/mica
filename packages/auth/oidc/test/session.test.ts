@@ -43,6 +43,14 @@ describe("cookie sessions", () => {
     assert.equal(record.identity.subject, "subject-1");
     assert.equal(record.identity.emailVerified, true);
     assert.deepEqual(record.identity.groups, ["/mica-editors"]);
+    assert.equal(record.identity.hostedDomain, undefined);
+  });
+
+  it("keeps Google's hosted domain, which a domain rule checks on each request", () => {
+    const sessions = createSessionService(config);
+    const { cookie } = sessions.create({ ...person, issuer: "https://accounts.google.com", hostedDomain: "example.com" });
+
+    assert.equal(sessions.resolve(cookie)?.identity.hostedDomain, "example.com");
   });
 
   it("does not show the identity in the cookie", () => {

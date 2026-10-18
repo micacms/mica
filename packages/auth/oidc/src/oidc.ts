@@ -60,6 +60,8 @@ export interface OidcClaims {
   name: string;
   /** The configured groups claim, or empty when the provider sends none. */
   groups: string[];
+  /** Google's `hd` claim from the ID token, when the provider sends one. */
+  hostedDomain?: string;
 }
 
 /* ------------------------------------------------------------------ *
@@ -268,6 +270,9 @@ export function createOidcService(deps: OidcServiceDeps) {
         );
       }
 
+      // Only the signed ID token can say which Workspace an account belongs to.
+      const hostedDomain = typeof claims["hd"] === "string" ? claims["hd"] : "";
+
       return {
         issuer: String(claims.iss),
         subject: String(claims.sub),
@@ -275,6 +280,7 @@ export function createOidcService(deps: OidcServiceDeps) {
         emailVerified,
         name: name || email,
         groups,
+        ...(hostedDomain ? { hostedDomain } : {}),
       };
     },
 

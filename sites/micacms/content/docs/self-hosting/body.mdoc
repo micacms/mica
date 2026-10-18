@@ -101,7 +101,7 @@ MICA_ADMIT_SUBJECTS=https://auth.example.com|a1b2c3
 Each rule is a comma-separated list. One rule is enough.
 
 - **Group:** the usual choice. Put a person in the group at your provider to add an editor. The claim name is `groups`. If your provider uses another name, set `MICA_OIDC_GROUPS_CLAIM`. A Keycloak path such as `/mica-editors` and the bare name both match. Google sends no groups claim.
-- **Domain:** every address in a domain, but only addresses that the provider verified. Mica refuses a public domain such as `gmail.com` at start-up.
+- **Domain:** every address in a domain, but only addresses that the provider verified. Mica refuses a public domain such as `gmail.com` at start-up. With Google, the account must also belong to a Workspace whose domain is in the list (the `hd` claim), so that a personal Google account with a company address does not get in.
 - **Emails:** these addresses, if the provider verified them. The comparison ignores case. Use this rule for Google accounts. One cost: if an organisation gives the address of a former editor to a new person, that person gets access. Gmail never reuses an address.
 - **Subjects:** `issuer|subject` pairs. This is the strictest rule. A subject is never reassigned. The subject is the `sub` claim in the ID token. Your provider's console shows it as the user ID.
 

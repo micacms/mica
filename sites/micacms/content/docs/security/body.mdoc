@@ -60,8 +60,8 @@ When Mica is down, your website stays up: the website does not call Mica. Mica l
 ## Which claims of the identity provider Mica trusts
 
 - **Subject:** the `sub` claim with the issuer. It never changes for a person. The subject rule is the strictest.
-- **Groups:** the claim in `MICA_OIDC_GROUPS_CLAIM`, as the provider sends it. Whoever can change a group at the provider can admit a person.
-- **Email and domain:** only with `email_verified`. The provider vouches for the address, not for the person who owns the domain. With a public provider such as Google, a domain rule can admit a personal account that uses an address at your domain. With such a provider, use a group or subjects.
+- **Groups:** the claim in `MICA_OIDC_GROUPS_CLAIM`, as the provider sends it. Whoever can change a group at the provider can admit a person. Make sure that only your administrators can create a group with an admitted name. For example, the GitHub connector of Dex puts GitHub organisation names into the groups claim, and each GitHub user can create an organisation: see [Other sign-in providers](/docs/other-providers/).
+- **Email and domain:** only with `email_verified`. The provider vouches for the address, not for the person who owns the domain. Google reports a personal Google account with an address at your domain as verified. So with Google, a domain rule also needs the Workspace domain of the account (the `hd` claim) in `MICA_ADMIT_DOMAINS`. With another public provider, use a group or subjects.
 
 ## What Mica does for you
 
