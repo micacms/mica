@@ -1,0 +1,75 @@
+This page states what Mica promises from version 1.0: which parts follow semantic versioning, how a part goes away, which versions get fixes, and which other software Mica supports.
+
+> Mica is experimental and not ready for production. Before 1.0, a minor version can break each part on this page, and the [changelog](/changelog/) says how. Pin the versions.
+
+## Semantic versioning
+
+From 1.0, Mica follows [Semantic Versioning](https://semver.org). All packages and the image have one version.
+
+- A **patch** version fixes defects.
+- A **minor** version adds features. It does not break a covered part.
+- A **major** version can break a covered part. The changelog says how to upgrade.
+
+## The covered parts
+
+| Part | What is covered |
+| --- | --- |
+| Content format | The files in the content root and what they hold: entry folders, `index.json`, the `.mdoc` files, media, and `_order.json`. |
+| Manifest | `.mica/schema.json` and its `protocolVersion`. |
+| `@micacms/core` | The exports of `@micacms/core` and `@micacms/core/node`. |
+| `@micacms/astro` | The exports of `@micacms/astro`, `@micacms/astro/relations` and `@micacms/astro/components`. |
+| Command line | The commands of `@micacms/editor`, their flags and their exit codes. See [Command line](/docs/reference-cli/). |
+| Agents | The names and the inputs of the MCP tools. See [Edit with an agent](/docs/agents/). |
+| Configuration | The environment variables of the local editor and the image: their names, values and defaults. See [Configuration](/docs/configuration/). |
+| Image | The tags, port 6422, the `/data` volume and its layout version, the answers of `/health` and `/ready`, and the commands `check` and `compact`. |
+
+The repository has an API report for each public entry point of the two packages. A change to a report is always a decision in a pull request.
+
+## The internal parts
+
+These parts can change in any release. Do not depend on them:
+
+- The HTTP routes of the editor (`/api/admin/*`, `/api/auth/*`) and their answers. Agents use the MCP tools.
+- The names of the cookies.
+- The packages `@micacms/runtime` and `@micacms/mcp`, and `@micacms/core/internal`. The editor installs them; they are not for your own code.
+- The files in the data volume. The volume as a whole, its mount point and its layout version are covered.
+- The words of messages and log lines.
+
+## Image tags
+
+Each release has the image `ghcr.io/micacms/mica:X.Y.Z`. `latest` is the newest release, never a release candidate. A release candidate has its own tag, such as `1.0.0-rc.1`. Pin a version in `compose.yml`, so that an upgrade is your decision.
+
+## When a part goes away
+
+1. A minor version deprecates the part. The changelog has a "Deprecated" section, and Mica shows a warning when you use the part.
+2. The part goes away only in the next major version.
+
+## Which versions get fixes
+
+- Fixes, security fixes included, go into the next release of the latest 1.x minor version. An earlier minor version gets no fixes: the upgrade inside 1.x is the fix, and it breaks no covered part.
+- 0.x ends when 1.0 ships. A 0.x version gets no more fixes.
+- Before 1.0, a change of the content format or of an API comes with no migration. Change your content by hand, or start again from the current shape.
+- When 2.0 ships, its release notes say how long 1.x gets fixes.
+
+## The image and @micacms/astro
+
+Your website's build uses `@micacms/astro`, which writes the manifest. The image reads it. The two can have different versions:
+
+- The image reads each manifest with its protocol version. A new protocol version comes only with a major version.
+- When the manifest has a field kind or an option that the image does not know, the image still starts. That collection or settings page is read-only until you upgrade the image, and the editor says why.
+- So upgrade the image first, or at the same time as `@micacms/astro`. An older `@micacms/astro` with a newer image of the same major version always works.
+
+The local editor installs its own version. Keep `@micacms/editor` and `@micacms/astro` at the same version in your project.
+
+## Supported versions
+
+Mica supports only what CI tests.
+
+| Software | Supported |
+| --- | --- |
+| Node.js | 24 or later. Mica removes a Node.js line in a minor version after the line's end of life, and the minor version before says so. |
+| Astro | 7. A new Astro major version comes in a Mica minor version when CI tests it. Mica removes an Astro major version only in a Mica major version. |
+| The local editor | Linux, macOS and Windows. |
+| The image | `linux/amd64` and `linux/arm64`. |
+| The browser of an editor | The two latest versions of Chrome, Edge, Firefox and Safari. |
+| Git hosts | See the tiers in [Self-hosting](/docs/self-hosting/). |

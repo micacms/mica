@@ -8,7 +8,7 @@ All packages share one lockstep version. If each package were public, each refac
 
 ## Decision
 
-- From 1.0, semver covers: the main entry points of `@micacms/core` and `@micacms/core/node`, `@micacms/astro`, the `@micacms/editor` CLI, the MCP tool names and inputs, the image contract (environment variables, port, volume, `/health` and `/ready`), the content format and the manifest protocol.
+- From 1.0, semver covers: the entry points `@micacms/core` and `@micacms/core/node`, `@micacms/astro`, `@micacms/astro/relations` and `@micacms/astro/components`, the `@micacms/editor` CLI (commands, flags and exit codes), the MCP tool names and inputs, the image contract (environment variables, port, volume, `/health` and `/ready`), the content format and the manifest protocol.
 - `@micacms/runtime` and `@micacms/mcp` are internal. They are on npm only because `@micacms/editor` installs them, pinned exactly. `@micacms/core/internal` is internal.
 - `@micacms/editor-ui` and `@micacms/auth-oidc` are not published. A change to the editor UI records its change file for `@micacms/editor`; a change to the OIDC gate or the image records it for `@micacms/runtime`.
 - In `rush change`, a break of an internal package is `minor`. `major` is only for a break of the public surface.
@@ -16,6 +16,8 @@ All packages share one lockstep version. If each package were public, each refac
 - The admin HTTP API (`/api/admin/*`, `/api/auth/*`) is internal and has no version. The editor UI and the runtime ship together. The routes check their answers against the types that the editor imports. One mapping (`apiErrorOf`) gives the status of a content error for the admin API and the MCP tools: 409 for a conflict or a read-only part, 422 for an invalid value or a file that Mica cannot read, 404 for an unknown part, 400 for other content errors, and 500 for a bug.
 
 ## Consequences
+
+- The page "Versions and support" on micacms.com states this surface, the deprecation rule, the support window and the version skew between the image and `@micacms/astro`.
 
 - The API reports in `packages/core/api/` and `packages/astro/api/` show each change of the public TypeScript surface. CI fails when a report is not the built API, so a change is always a decision in a pull request.
 
