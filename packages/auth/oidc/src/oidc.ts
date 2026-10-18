@@ -25,7 +25,7 @@
  * garbage to collect.
  */
 
-import { createHmac, hkdfSync, randomBytes, timingSafeEqual } from "node:crypto";
+import { createHmac, hkdfSync, timingSafeEqual } from "node:crypto";
 
 import * as client from "openid-client";
 
@@ -323,5 +323,3 @@ function readGroups(value: unknown): string[] {
   return value.filter((entry): entry is string => typeof entry === "string");
 }
 
-/** A random return path token, for the local mode that has no provider. */
-export const randomToken = (): string => randomBytes(32).toString("base64url");

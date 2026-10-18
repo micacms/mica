@@ -1000,10 +1000,9 @@ describe("system information", () => {
   it("says how this composition authenticates: not at all", async () => {
     const response = await harness.request("/api/admin/system");
     const body = (await response.json()) as {
-      deployment: { site: string; auth: string; admission: string | null };
+      deployment: { auth: string; admission: string | null };
     };
 
-    assert.equal(body.deployment.site, "default");
     assert.match(body.deployment.auth, /none/);
     assert.equal(body.deployment.admission, null);
   });

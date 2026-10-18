@@ -104,7 +104,7 @@ export interface ContentFiles extends ContentSource {
  * Refuses, before any write, a change or expectation that names the content
  * root or a path outside it.
  */
-export function checkChangePaths(input: FileChanges): void {
+function checkChangePaths(input: FileChanges): void {
   for (const change of input.changes) {
     contentPath(change.path);
     if (change.type === "copy") contentPath(change.from);

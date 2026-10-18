@@ -43,7 +43,7 @@ const identityOf = (claims: OidcClaims): SessionIdentity => ({
 });
 
 /** Why a sign-in came back to the login view. The SPA has the words for each. */
-export type SignInRefusal = "rate_limited" | "expired" | "failed" | "not_admitted" | "too_large";
+type SignInRefusal = "rate_limited" | "expired" | "failed" | "not_admitted" | "too_large";
 
 export interface AuthRoutesDeps {
   config: AuthConfig;

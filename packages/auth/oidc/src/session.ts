@@ -31,7 +31,7 @@ import { seal as sealValue, sealingKey, unseal } from "./sealed.js";
 export const SESSION_COOKIE = "mica_session";
 export const CSRF_COOKIE = "mica_csrf";
 export const CSRF_HEADER = "x-csrf-token";
-export const TRANSACTION_COOKIE = "mica_oidc";
+const TRANSACTION_COOKIE = "mica_oidc";
 
 export interface CookieNames {
   session: string;
@@ -100,7 +100,7 @@ export interface SessionService {
   clearedCookieOptions(): CookieOptions;
 }
 
-export interface CookieOptions {
+interface CookieOptions {
   path: string;
   httpOnly: boolean;
   secure: boolean;

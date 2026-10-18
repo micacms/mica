@@ -43,5 +43,5 @@ export function createAgentAuthorization(deps: AgentAuthorizationDeps): AgentAut
   };
 }
 
-export { checkRedirectUri, isPublicAddress, matchRedirectUri, type Client } from "./clients.js";
+export { checkRedirectUri, isPublicAddress } from "./clients.js";
 export { resourceMetadataUrl } from "./routes.js";

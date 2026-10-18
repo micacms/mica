@@ -46,7 +46,6 @@ export type {
   SingletonDetail,
   StagingProblem,
   SyncConflict,
-  SyncStatus,
   SystemInfo,
 };
 
@@ -100,7 +99,7 @@ function csrfToken(): string {
   return match?.[1] ? decodeURIComponent(match[1]) : "";
 }
 
-export interface RequestOptions {
+interface RequestOptions {
   method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: unknown;
   /** A list repeats the parameter: `?path=a&path=b`. */
@@ -127,7 +126,7 @@ export function whenModelUnreadable(handler: () => void): void {
   onModelUnreadable = handler;
 }
 
-export async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const url = new URL(`${BASE}${path}`, window.location.origin);
 
   for (const [key, value] of Object.entries(options.query ?? {})) {
