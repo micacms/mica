@@ -194,7 +194,7 @@ export const site = defineSite({
         eyebrow: text({ label: "Eyebrow", required: true }),
         title: text({ label: "Title", required: true }),
         lead: textarea({ label: "Lead", required: true, rows: 3 }),
-        statusNote: textarea({ label: "Status note", required: true, rows: 2 }),
+        statusNote: textarea({ label: "Status note", rows: 2 }),
         checkedLabel: text({ label: "Label before the date", required: true, width: "half" }),
         changeNote: text({ label: "Note that products change", required: true, width: "half" }),
         featureLabel: text({ label: "Header of the first column", required: true, width: "half" }),

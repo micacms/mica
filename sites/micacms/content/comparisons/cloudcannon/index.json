@@ -4,8 +4,11 @@
   "title": "Mica vs. CloudCannon",
   "website": "https://cloudcannon.com/",
   "checkedOn": "2026-10-18",
-  "summary": "CloudCannon is a hosted service with visual on-page editing, roles, deploy previews and support. Mica is free and runs on your own machine or server, but it is experimental.",
+  "summary": "CloudCannon is a hosted service with visual on-page editing, roles, deploy previews and support. Mica is free, runs on your own machine or server, and has an MCP server for AI agents.",
   "chooseMica": [
+    {
+      "text": "You want AI agents to edit your content: Mica has an MCP server built in. CloudCannon has agent skills, a CLI and an API, but no MCP server."
+    },
     {
       "text": "You want open source under the MIT licence, with no vendor service and no per-user price."
     },
@@ -14,15 +17,9 @@
     },
     {
       "text": "You need a map field that stores the zoom, or typed relations to reference data from a file."
-    },
-    {
-      "text": "You want an MCP server for coding agents."
     }
   ],
   "chooseOther": [
-    {
-      "text": "You need an editor that is ready for production. Mica is experimental, not ready for production."
-    },
     {
       "text": "Editors should edit on the page itself, with visual editing."
     },

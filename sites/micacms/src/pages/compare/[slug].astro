@@ -19,7 +19,7 @@ const columns = [
 
 <BaseLayout title={data.title} description={data.summary}>
   <PageHeader eyebrow={compare.eyebrow} title={data.title} lead={data.summary} back={{ label: compare.backLabel, href: "/compare/" }}>
-    <p class="mt-6 max-w-2xl rounded-md bg-strata-soft p-5 text-[15px] text-ink">{compare.statusNote}</p>
+    {compare.statusNote && <p class="mt-6 max-w-2xl rounded-md bg-strata-soft p-5 text-[15px] text-ink">{compare.statusNote}</p>}
     <p class="mt-5 text-[14px] text-ink-muted">
       {compare.checkedLabel} <time datetime={data.checkedOn}>{formatDate(data.checkedOn)}</time>. {compare.changeNote}
       <a class="link ml-1" href={data.website}>{fill(compare.websiteLabel)}</a>

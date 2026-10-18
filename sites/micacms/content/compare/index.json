@@ -1,8 +1,7 @@
 {
   "eyebrow": "Compare",
   "title": "Mica next to other Git-based editors.",
-  "lead": "Six other products also keep content in Git. This page puts them next to Mica, point by point, and says where each one is the better choice. Each product has its own page with the details and the sources.",
-  "statusNote": "Mica is experimental and not ready for production. If you need an editor for a live website today, that is a real reason to choose one of the other products.",
+  "lead": "Six other products also keep content in Git. This page puts them next to Mica, point by point, and says where each one is the better choice. Mica is also ready for AI agents: an MCP server is built in. Each product has its own page with the details and the sources.",
   "checkedLabel": "Checked on",
   "changeNote": "These products change often. Read their documentation before you decide.",
   "featureLabel": "Feature",
@@ -23,7 +22,7 @@
     {
       "key": "service",
       "label": "Runs without the vendor's service",
-      "mica": "Yes. The local editor, or one container that you run. There is no hosted offering."
+      "mica": "Yes. The local editor, or one container that you run. No hosted offering yet. A Mica Cloud is planned."
     },
     {
       "key": "database",
@@ -92,8 +91,8 @@
     },
     {
       "key": "agents",
-      "label": "Agents (MCP)",
-      "mica": "An MCP server. Agents save drafts."
+      "label": "AI agents (MCP)",
+      "mica": "Built in, free: an MCP server for local and self-hosted editing. Agents save drafts; Mica checks each value."
     }
   ]
 }

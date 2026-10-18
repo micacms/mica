@@ -4,8 +4,11 @@
   "title": "Mica vs. Pages CMS",
   "website": "https://pagescms.org/",
   "checkedOn": "2026-10-18",
-  "summary": "Pages CMS is a free editor for GitHub repositories, with a hosted app that needs no install and email invites for people without GitHub. Mica works with any Git host and needs no database, but it is experimental.",
+  "summary": "Pages CMS is a free editor for GitHub repositories, with a hosted app that needs no install and email invites for people without GitHub. Mica works with any Git host, needs no database, and has an MCP server for AI agents.",
   "chooseMica": [
+    {
+      "text": "You want AI agents to edit your content: Mica has an MCP server built in. The Pages CMS documentation mentions no MCP or agent support."
+    },
     {
       "text": "Your repository is not on GitHub."
     },
@@ -16,13 +19,10 @@
       "text": "You want to run the editor yourself with no database, behind your OpenID Connect provider."
     },
     {
-      "text": "You need a map field, reference data from a file, or an MCP server."
+      "text": "You need a map field, or reference data from a file."
     }
   ],
   "chooseOther": [
-    {
-      "text": "You need an editor that is ready for production. Mica is experimental, not ready for production."
-    },
     {
       "text": "You want a free hosted app and no install at all."
     },
@@ -96,7 +96,7 @@
     },
     {
       "key": "agents",
-      "value": "Not documented."
+      "value": "Not documented. The documentation mentions no MCP server and no agent support."
     }
   ],
   "sources": [

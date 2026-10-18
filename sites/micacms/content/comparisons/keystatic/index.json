@@ -4,8 +4,11 @@
   "title": "Mica vs. Keystatic",
   "website": "https://keystatic.com/",
   "checkedOn": "2026-10-18",
-  "summary": "Keystatic is a polished editor for GitHub-based sites, with an optional cloud for teams. Mica works with any Git host and publishes chosen changes as one commit, but it is experimental.",
+  "summary": "Keystatic is a polished editor for GitHub-based sites, with an optional cloud for teams. Mica works with any Git host, publishes chosen changes as one commit, and has an MCP server for AI agents.",
   "chooseMica": [
+    {
+      "text": "You want AI agents to edit your content: Mica has an MCP server built in."
+    },
     {
       "text": "Your content is on a Git host other than GitHub."
     },
@@ -20,9 +23,6 @@
     }
   ],
   "chooseOther": [
-    {
-      "text": "You need an editor that is ready for production. Mica is experimental, not ready for production."
-    },
     {
       "text": "You want a polished editor that is free to use, with saves that know about branches."
     },
@@ -96,7 +96,7 @@
     },
     {
       "key": "agents",
-      "value": "Not documented."
+      "value": "Not documented. The documentation mentions no MCP server and no agent support."
     }
   ],
   "sources": [

@@ -473,7 +473,6 @@
         "statusNote": {
           "kind": "textarea",
           "label": "Status note",
-          "required": true,
           "rows": 2
         },
         "checkedLabel": {

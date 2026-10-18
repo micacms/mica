@@ -4,8 +4,11 @@
   "title": "Mica vs. Sveltia CMS",
   "website": "https://sveltiacms.app/",
   "checkedOn": "2026-10-18",
-  "summary": "Sveltia CMS is a fast, Decap-compatible editor with first-class languages, many media providers and a preview pane. Mica supports Git LFS on GitHub and submodules, but it is experimental.",
+  "summary": "Sveltia CMS is a fast, Decap-compatible editor with first-class languages, many media providers and a preview pane. Mica supports Git LFS on GitHub and submodules, and has an MCP server for AI agents.",
   "chooseMica": [
+    {
+      "text": "You want AI agents to edit your content: Mica has an MCP server built in. Sveltia CMS has no MCP server."
+    },
     {
       "text": "You use Git LFS on GitHub, or the content is in a Git submodule."
     },
@@ -16,13 +19,10 @@
       "text": "You need a map field that stores the zoom, or reference data from a JSON or CSV file."
     },
     {
-      "text": "You want sign-in through your OpenID Connect provider, and an MCP server that saves drafts."
+      "text": "You want sign-in through your OpenID Connect provider."
     }
   ],
   "chooseOther": [
-    {
-      "text": "You need an editor that is ready for production. Mica is experimental, not ready for production. Sveltia is also below version 1.0."
-    },
     {
       "text": "Your content has several languages, and you want machine translation."
     },
@@ -99,7 +99,7 @@
     },
     {
       "key": "agents",
-      "value": "No MCP server. It has an Agent Skill and llms.txt."
+      "value": "No MCP server. It has an Agent Skill, llms.txt and AI translation."
     }
   ],
   "sources": [

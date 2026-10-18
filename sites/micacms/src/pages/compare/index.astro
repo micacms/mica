@@ -19,7 +19,7 @@ const checkedOn = comparisons.map((entry) => entry.data.checkedOn).sort().at(-1)
 
 <BaseLayout title={compare.title} description={compare.lead}>
   <PageHeader eyebrow={compare.eyebrow} title={compare.title} lead={compare.lead}>
-    <p class="mt-6 max-w-2xl rounded-md bg-strata-soft p-5 text-[15px] text-ink">{compare.statusNote}</p>
+    {compare.statusNote && <p class="mt-6 max-w-2xl rounded-md bg-strata-soft p-5 text-[15px] text-ink">{compare.statusNote}</p>}
   </PageHeader>
   <section class="section">
     <div class="wrap">

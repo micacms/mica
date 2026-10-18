@@ -4,8 +4,11 @@
   "title": "Mica vs. Decap CMS",
   "website": "https://decapcms.org/",
   "checkedOn": "2026-10-18",
-  "summary": "Decap CMS is a long-running editor with the widest choice of Git hosts, languages and a preview pane for every editor. Mica supports Git LFS and submodules and makes no API request for each file, but it is experimental.",
+  "summary": "Decap CMS is a long-running editor with the widest choice of Git hosts, languages and a preview pane for every editor. Mica supports Git LFS and submodules, makes no API request for each file, and has an MCP server for AI agents.",
   "chooseMica": [
+    {
+      "text": "You want AI agents to edit your content: Mica has an MCP server built in, in the free editor. The MCP server of Decap CMS is experimental and works with the paid Decap Turbo only."
+    },
     {
       "text": "You use Git LFS on GitHub or Gitea, or you keep the content in a Git submodule."
     },
@@ -16,13 +19,10 @@
       "text": "You need a map field that stores the zoom, or reference data from a JSON or CSV file."
     },
     {
-      "text": "You want sign-in through your OpenID Connect provider, and an MCP server in the free editor."
+      "text": "You want sign-in through your OpenID Connect provider."
     }
   ],
   "chooseOther": [
-    {
-      "text": "You need an editor that is ready for production. Mica is experimental, not ready for production."
-    },
     {
       "text": "Your content has several languages as a setting."
     },
@@ -99,7 +99,7 @@
     },
     {
       "key": "agents",
-      "value": "An experimental MCP server in @decap/cli, for Turbo only."
+      "value": "An experimental MCP server and editor bridge in @decap/cli. They work with the paid Decap Turbo only."
     }
   ],
   "sources": [

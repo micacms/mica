@@ -1,13 +1,14 @@
 ### Where TinaCMS is better
 
 - **Editing on the page.** TinaCMS has visual click-to-edit, and it works with Astro. Mica has forms only.
-- **A hosted service.** TinaCloud runs the backend for you. Mica has no hosted offering.
+- **A hosted service.** TinaCloud runs the backend for you. Mica has no hosted offering yet. A Mica Cloud is planned.
 - **Review.** The Editorial Workflow (Business plan and up) puts edits on a branch with a draft pull request. Mica has no review step in the editor.
 - **Search and MDX.** TinaCMS offers search through its index on TinaCloud, and it supports MDX components. Mica uses Markdoc.
-- **Activity.** TinaCMS is maintained by SSW and is very active. Mica has one maintainer and is experimental, not ready for production.
+- **Activity.** TinaCMS is maintained by SSW and is very active.
 
 ### Where Mica is better
 
+- **Agents.** Mica has an MCP server now, built into the free editor. It runs locally (stdio and HTTP) and in the self-hosted Mica, where each person signs in and allows each agent. An agent reads the content model, and Mica checks every value it sends. Every save carries the revision the agent read, so an agent never overwrites a newer save. Agents save drafts and publish only when allowed. TinaCMS lists an MCP server as Coming Soon.
 - **No database and no index.** TinaCMS keeps your content in a Data Layer. TinaCloud hosts it, or you run MongoDB or Redis/Vercel KV. A self-hosted TinaCMS indexes at build time. Mica reads files and needs no database.
 - **Git LFS.** TinaCMS does not support Git LFS. Mica does.
 - **Git hosts.** TinaCMS works with GitHub only. Mica works with any Git host.
@@ -15,7 +16,6 @@
 - **Astro.** Mica content reaches Astro as Content Collections with types, and there is no generated client.
 - **Price per user.** TinaCloud free allows 2 users, and its plans are priced by project and users. Mica has no paid plan and no user limit.
 - **Large collections.** TinaCMS says that reference fields can time out on large collections. Mica is tested with 1,000 entries in a collection.
-- **Agents.** Mica has an MCP server now. TinaCMS lists it as Coming Soon.
 - **Map and reference data.** TinaCMS has no map field. Mica stores latitude, longitude and zoom, and links to JSON or CSV files that it never edits.
 
 ### Equal, or not documented

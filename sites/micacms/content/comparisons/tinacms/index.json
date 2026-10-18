@@ -4,8 +4,11 @@
   "title": "Mica vs. TinaCMS",
   "website": "https://tina.io/",
   "checkedOn": "2026-10-18",
-  "summary": "TinaCMS offers visual click-to-edit, a hosted service and an editorial workflow with pull requests. It keeps an index of your content in a database. Mica has none, but it is experimental.",
+  "summary": "TinaCMS offers visual click-to-edit, a hosted service and an editorial workflow with pull requests. It keeps an index of your content in a database. Mica has none, and it has an MCP server for AI agents.",
   "chooseMica": [
+    {
+      "text": "You want AI agents to edit your content: Mica has an MCP server built in. TinaCMS lists one as Coming Soon."
+    },
     {
       "text": "You do not want a database or an index for your content."
     },
@@ -20,9 +23,6 @@
     }
   ],
   "chooseOther": [
-    {
-      "text": "You need an editor that is ready for production. Mica is experimental, not ready for production."
-    },
     {
       "text": "Editors should click on the page and edit it there. TinaCMS does this, also in Astro."
     },
