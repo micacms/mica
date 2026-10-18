@@ -73,6 +73,8 @@ export interface SessionIdentity {
   name: string;
   /** The groups claim, reduced at sign-in to the groups the rules name. */
   groups: string[];
+  /** Google's `hd`: the Workspace domain of the account. Absent for other providers and personal accounts. */
+  hostedDomain?: string;
 }
 
 export interface SessionRecord {
@@ -150,6 +152,7 @@ function parseRecord(json: string): SessionRecord | null {
         groups: Array.isArray(identity.groups)
           ? identity.groups.filter((group): group is string => typeof group === "string")
           : [],
+        ...(typeof identity.hostedDomain === "string" ? { hostedDomain: identity.hostedDomain } : {}),
       },
       csrfToken: value.csrfToken,
       createdAt: value.createdAt,

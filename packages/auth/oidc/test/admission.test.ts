@@ -60,6 +60,31 @@ describe("admission rules", () => {
     assert.match((unverified as { reason: string }).reason, /verified/);
   });
 
+  it("admits a Google account by domain only when its Workspace domain (hd) is admitted", () => {
+    const p = policy({ admitDomains: ["example.com", "example.org"] });
+    const google = (overrides: Partial<SessionIdentity> = {}) =>
+      person({ issuer: "https://accounts.google.com", ...overrides });
+
+    assert.equal(p.admits(google({ hostedDomain: "example.com" })).admitted, true);
+    // `hd` is the organisation's primary domain, so an address on another admitted domain still counts.
+    assert.equal(p.admits(google({ email: "person@example.org", hostedDomain: "Example.com" })).admitted, true);
+
+    // A personal Google account with a company address is verified, but has no `hd`.
+    const personal = p.admits(google());
+    assert.equal(personal.admitted, false);
+    assert.match((personal as { reason: string }).reason, /Google Workspace domain \(hd\).*MICA_ADMIT_EMAILS/);
+
+    assert.equal(p.admits(google({ hostedDomain: "other.example" })).admitted, false);
+    // Another provider sends no `hd`, and the rule does not ask for it.
+    assert.equal(p.admits(person()).admitted, true);
+  });
+
+  it("admits a listed Google address without a Workspace domain", () => {
+    const p = policy({ admitDomains: ["example.com"], admitEmails: ["person@example.com"] });
+
+    assert.equal(p.admits(person({ issuer: "https://accounts.google.com" })).admitted, true);
+  });
+
   it("admits a listed address, case-insensitively, only when verified", () => {
     const p = policy({ admitEmails: ["alice@gmail.com"] });
 

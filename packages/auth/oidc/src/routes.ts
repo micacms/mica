@@ -39,6 +39,7 @@ const identityOf = (claims: OidcClaims): SessionIdentity => ({
   emailVerified: claims.emailVerified,
   name: claims.name,
   groups: claims.groups,
+  ...(claims.hostedDomain ? { hostedDomain: claims.hostedDomain } : {}),
 });
 
 /** Why a sign-in came back to the login view. The SPA has the words for each. */

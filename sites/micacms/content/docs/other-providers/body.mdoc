@@ -14,6 +14,7 @@ The provider must report a verified email address if you use the email or domain
 [Dex](https://dexidp.io) is a small OpenID Connect provider with one YAML file. It can hold a few users itself, with static passwords as bcrypt hashes. It can also connect to GitHub, GitLab, LDAP, SAML, or Google, and pass an OpenID Connect token to Mica.
 
 - The built-in users of Dex have no groups. Use `MICA_ADMIT_EMAILS`.
+- The GitHub connector of Dex puts the names of GitHub organisations and teams into the groups claim, and each GitHub user can create an organisation. Use a group rule only when the connector lists your organisations (`orgs` in `dex.yaml`). Otherwise, use `MICA_ADMIT_EMAILS` or `MICA_ADMIT_SUBJECTS`.
 - In production, Dex needs its own HTTPS host. Read the [Dex documentation](https://dexidp.io/docs/) for deployment.
 - The Mica repository tests against Dex in `tests/oidc/`. The file `dex.yaml` there is a useful reference, but it is insecure and only for tests: plain HTTP, a committed secret, and in-memory storage.
 
