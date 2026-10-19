@@ -9,7 +9,8 @@ are two configurations:
   request that can change the image, in
   [`image.yml`](../../.github/workflows/image.yml), after the OIDC test.
 - `local-editor.config.ts`: the local editor, `mica start`, from the local
-  build. It needs no Docker. CI does not run it yet.
+  build. It needs no Docker. CI runs it on every pull request, in the job
+  `local-editor-browser` of `ci.yml`.
 
 The OIDC test proves the protocol with `fetch`. These tests prove that an
 editor can do the same by clicking.
@@ -41,17 +42,27 @@ deletion, and the files are gone from the Git host.
 
 ## What the local editor test checks
 
+Each spec starts `apps/local-editor/dist/cli.js start` on a free port, on a
+temporary Git repository with the starter's content (`examples/starter/content`),
+with [`local-editor/editor.ts`](local-editor/editor.ts).
+
 [`local-editor/rich-text.spec.ts`](local-editor/rich-text.spec.ts):
 
-- copies the starter's content (`examples/starter/content`) into a temporary
-  Git repository;
-- starts `apps/local-editor/dist/cli.js start` on it, on a free port;
 - opens the post, and types a heading, a paragraph with bold text and a list
   into its rich text field, with the Markdown shortcuts;
 - saves at once, without a pause, so the save must take the text that the
   field still holds back;
 - compares the written `body.mdoc` with the expected Markdoc, and checks that
   the repository did not move.
+
+[`local-editor/publish.spec.ts`](local-editor/publish.spec.ts), with a bare
+remote (#139):
+
+- two pages open the same post, and both save: the second page shows the save
+  conflict, and "Keep mine" writes its version;
+- Publish makes one commit and pushes it to the remote;
+- with the remote out of reach, Publish keeps the commit and says so; "Try
+  again" sends the same commit, and makes no new one.
 
 ## Run it
 
@@ -86,7 +97,8 @@ minutes. The [OIDC test](../oidc/README.md#run-it) says when to restart the
 
 ## What it does not check
 
-- **Conflicts.** Two editors on one entry are covered by the API tests and by
-  the editor's unit tests (#139).
+- **Conflicts in the self-hosted editor.** The local editor test covers the
+  save conflict. A conflict between a draft and a change at the Git host is
+  covered by the API tests of the managed clone.
 - **Sign-in in the local editor.** It has no sign-in.
 - **Other browsers.** Chromium only.
