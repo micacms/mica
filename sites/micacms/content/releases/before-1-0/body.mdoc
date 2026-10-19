@@ -1,17 +1,16 @@
-Mica is experimental and not ready for production. The API and the content format can still change before 1.0. This is what Mica does today, at 0.11.
+Mica is experimental and not ready for production. The API and the content format can still change before 1.0. This is what Mica does today, at 0.12.
 
 ## The model and the website
 
 - You write the content model in TypeScript: collections, singletons and fields for text, rich text, media, relations, places on a map and more.
-- `@micacms/astro` turns the model into Astro collections. The build needs no server, no token and no network.
-- Rich text is Markdoc. Images in it come out as optimised `srcset` images.
+- `@micacms/astro` turns the model into Astro collections. The build needs no server, no token and no network. Rich text is Markdoc, and images in it come out as optimised `srcset` images.
 
 ## Editing
 
 - The local editor runs with `npx mica start`. It has no sign-in and listens only on your machine.
-- The self-hosted editor is one Docker container with OpenID Connect sign-in. Editors who are not developers use it.
+- The self-hosted editor is one Docker container with OpenID Connect sign-in. Editors who are not developers use it. With Google, a domain rule admits only accounts of your Workspace domain.
 - A save is a draft. Publish makes one Git commit of the changes that the editor chooses.
-- Coding agents can edit the content over MCP, and they follow the same rules as the editor.
+- Coding agents can edit the content over MCP, and they follow the same rules as the editor. An agent needs your consent, and the consent page waits one second before it accepts Allow.
 - An entry links to its page on the website. With `astro dev`, the local editor also shows a preview.
 
 ## Content in Git
@@ -20,6 +19,11 @@ Mica is experimental and not ready for production. The API and the content forma
 - Large media can live in Git LFS. The content can live in a repository of its own, as a Git submodule.
 - Reference sets let an entry link to data that Mica does not edit, such as a list of thousands of places.
 - `mica check` tests every entry against the model, and `mica import` moves Astro collections into Mica.
+
+## Checked and clear
+
+- A broken entry file does not hide its collection. Mica names the file it cannot read. A full disk or a server failure gives a clear message with a reference that is also in the log.
+- The tests run on Windows, macOS and Node.js 26, on the packed packages in a new Astro project, and on the local editor in a browser.
 
 ## The details of each release
 
