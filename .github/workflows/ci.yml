@@ -1,9 +1,12 @@
 name: CI
 
-# Pull requests only: a merge to main runs nothing again, and the release
-# workflow runs the whole gate before it publishes.
+# On each pull request, and again on main after a merge: two pull requests that
+# pass alone can break main together (#304). The release workflow runs the
+# whole gate again before it publishes.
 on:
   pull_request:
+  push:
+    branches: [main]
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -78,6 +81,11 @@ jobs:
       - name: Test
         run: node common/scripts/install-run-rush.js test
 
+      # The tarballs that the release publishes, installed in a copy of the
+      # starter: `mica check`, `astro build` and `mica start` (#128).
+      - name: Test the packed packages in a new Astro project
+        run: node scripts/pack-test.mjs
+
       # No CMS is started. The build reads its content directory directly,
       # which is the property worth protecting — if this step ever needs a
       # server again, something has regressed.
@@ -119,3 +127,76 @@ jobs:
       - name: Check the starter's content
         run: node apps/local-editor/dist/cli.js check examples/starter/content
 
+  # The supported versions (#131, docs/versions on micacms.com): the newest
+  # Node.js line on Linux, and the local editor's platforms with Node.js 24.
+  # Windows and macOS run the tests of core and of the local editor, where
+  # paths and the `git` binary differ.
+  platforms:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: "Node.js 26", os: ubuntu-latest, node: 26, tests: "" }
+          - { name: "Windows", os: windows-latest, node: 24, tests: "--only @micacms/core --only @micacms/editor" }
+          - { name: "macOS", os: macos-latest, node: 24, tests: "--only @micacms/core --only @micacms/editor" }
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node }}
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.rush
+            common/temp/pnpm-store
+          key: rush-${{ runner.os }}-${{ hashFiles('rush.json', 'common/config/rush/pnpm-lock.yaml') }}
+          restore-keys: rush-${{ runner.os }}-
+      - run: node common/scripts/install-run-rush.js install
+      - run: node common/scripts/install-run-rush.js build --to tag:packages
+      - run: node common/scripts/install-run-rush.js test ${{ matrix.tests }}
+
+  # The local editor in a browser, with no Docker (#139): rich text, the save
+  # conflict of two pages, and Publish to a bare remote with its retry.
+  local-editor-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ~/.rush
+            common/temp/pnpm-store
+          key: rush-${{ runner.os }}-${{ hashFiles('rush.json', 'common/config/rush/pnpm-lock.yaml') }}
+          restore-keys: rush-${{ runner.os }}-
+      - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('common/config/rush/pnpm-lock.yaml') }}
+      - run: node common/scripts/install-run-rush.js install --to @micacms/editor --to @micacms/browser-test
+      - run: node common/scripts/install-run-rush.js build --to @micacms/editor
+      - name: Install Chromium
+        working-directory: tests/browser
+        run: ./node_modules/.bin/playwright install --with-deps chromium
+      - name: The local editor in a browser
+        working-directory: tests/browser
+        run: ./node_modules/.bin/playwright test -c local-editor.config.ts
+      - name: Browser test report
+        if: failure()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: local-editor-playwright-report
+          path: tests/browser/playwright-report
+          if-no-files-found: ignore

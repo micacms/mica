@@ -79,6 +79,8 @@ jobs:
       - run: node common/scripts/install-run-rush.js build
       - run: node common/scripts/install-run-rush.js typecheck
       - run: node common/scripts/install-run-rush.js test
+      # The tarballs, installed in a copy of the starter, before anything is published (#128).
+      - run: node scripts/pack-test.mjs
 
       # `rush publish --pack` packs every project marked `shouldPublish`, with
       # `workspace:*` ranges rewritten to the real versions. The npm job
