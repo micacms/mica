@@ -9,7 +9,7 @@
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { after, before, describe, it } from "node:test";
 
 import { contentPath, ContentPathError, ContentSourceError, memorySource, type ContentSource } from "../src/index.js";
@@ -143,7 +143,8 @@ describe("within", () => {
     for (const path of ["", "x/..", "a/b/../.."]) {
       assert.throws(() => within(base, path), ContentPathError, path);
     }
-    assert.equal(within(base, "", { allowRoot: true }), base);
-    assert.equal(within(base, "theme.json"), "/srv/content/theme.json");
+    // A path on this platform: `D:\srv\content` on Windows.
+    assert.equal(within(base, "", { allowRoot: true }), resolve(base));
+    assert.equal(within(base, "theme.json"), join(resolve(base), "theme.json"));
   });
 });

@@ -73,9 +73,11 @@ export function within(base: string, path: string, options: { allowRoot?: boolea
   }
   const relative = contentPath(path, options);
 
-  const full = resolve(base, relative);
-  // A second check after resolving: `startsWith(base)` alone would accept a sibling called `content-old`.
-  if (full !== base && !full.startsWith(base + sep)) {
+  // Resolved first, so that the comparison holds for any spelling of the root, also `D:/site/content` on Windows.
+  const root = resolve(base);
+  const full = resolve(root, relative);
+  // A second check after resolving: `startsWith(root)` alone would accept a sibling called `content-old`.
+  if (full !== root && !full.startsWith(root + sep)) {
     throw new ContentPathError(`Content path "${path}" escapes the content root.`);
   }
   return full;
