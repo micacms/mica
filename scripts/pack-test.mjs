@@ -13,7 +13,7 @@
  */
 
 import { spawn, spawnSync } from "node:child_process";
-import { cpSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -42,12 +42,21 @@ function freePort() {
   });
 }
 
+/** A command that the project installed, from `node_modules/.bin`: npx would take some flags, such as `--version`, for itself. */
+function bin(name) {
+  const file = path.join(site, "node_modules", ".bin", windows ? `${name}.cmd` : name);
+  if (!existsSync(file)) {
+    const found = existsSync(path.dirname(file)) ? readdirSync(path.dirname(file)).join(", ") : "nothing";
+    throw new Error(`The project has no ${name} command. node_modules/.bin holds: ${found}`);
+  }
+  return file;
+}
+
 /** Starts the editor, waits until `/health` answers, and stops it. */
 async function startAndStop() {
   const port = await freePort();
-  const bin = path.join(site, "node_modules", ".bin", windows ? "mica.cmd" : "mica");
   console.log(`\n$ mica start --no-open --port ${port}`);
-  const editor = spawn(bin, ["start", "--no-open", "--port", String(port)], { cwd: site, stdio: "inherit", shell: windows });
+  const editor = spawn(bin("mica"), ["start", "--no-open", "--port", String(port)], { cwd: site, stdio: "inherit", shell: windows });
   try {
     for (let attempt = 0; attempt < 60; attempt++) {
       if (editor.exitCode !== null) throw new Error(`mica start stopped with ${editor.exitCode}.`);
@@ -96,9 +105,13 @@ try {
   if (fromRegistry.length > 0) throw new Error(`Not from a tarball: ${fromRegistry.join(", ")}`);
   if (installed.length < Object.keys(tarballs).length) throw new Error(`Only ${installed.length} @micacms packages are installed.`);
   console.log(`All ${installed.length} @micacms packages come from the tarballs.`);
-  run("npx", ["--no", "mica", "--version"], site);
-  run("npx", ["--no", "mica", "check"], site);
-  run("npx", ["--no", "astro", "build"], site);
+  const version = spawnSync(bin("mica"), ["--version"], { cwd: site, encoding: "utf8", shell: windows }).stdout.trim();
+  console.log(`\n$ mica --version\n${version}`);
+  if (version !== manifest.dependencies["@micacms/core"]?.replace(/^.*-(\d+\.\d+\.\d+[^/]*)\.tgz$/, "$1")) {
+    throw new Error(`mica --version says ${version}, which is not the version of the tarballs.`);
+  }
+  run(bin("mica"), ["check"], site);
+  run(bin("astro"), ["build"], site);
   await startAndStop();
   console.log("\nThe packed packages work in a new Astro project.");
 } finally {
