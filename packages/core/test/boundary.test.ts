@@ -14,9 +14,11 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, it } from "node:test";
 
-const root = new URL("..", import.meta.url).pathname;
+// fileURLToPath, not `.pathname`: on Windows, the pathname is `/D:/…`, which is no path.
+const root = fileURLToPath(new URL("..", import.meta.url));
 
 describe("the core boundary", () => {
   it("depends on zod as a peer, and on nothing else", () => {

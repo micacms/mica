@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The content root can be given in any spelling, such as D:/site/content on Windows: Mica resolves it before it checks that a path stays inside.",
+      "type": "patch",
+      "packageName": "@micacms/core"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

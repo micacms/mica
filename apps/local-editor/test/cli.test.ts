@@ -46,8 +46,9 @@ describe("arguments", () => {
   it("takes the content root from the path, else MICA_CONTENT_ROOT, else the model, else ./content", () => {
     const project = mkdtempSync(path.join(tmpdir(), "mica-root-"));
     const env = { MICA_CONTENT_ROOT: "/from/env" };
-    assert.equal(contentRoot({ content: "/from/flag" }, env, project), path.resolve("/from/flag"));
-    assert.equal(contentRoot({}, env, project), path.resolve("/from/env"));
+    // Resolved against the project: on Windows, a path without a drive takes the project's drive.
+    assert.equal(contentRoot({ content: "/from/flag" }, env, project), path.resolve(project, "/from/flag"));
+    assert.equal(contentRoot({}, env, project), path.resolve(project, "/from/env"));
     assert.equal(contentRoot({}, { MICA_CONTENT_ROOT: "" }, project), path.join(project, "content"));
 
     for (const dir of ["site/data/.mica", "node_modules/x/.mica", ".astro/.mica"]) mkdirSync(path.join(project, dir), { recursive: true });

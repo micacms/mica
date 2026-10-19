@@ -1,7 +1,7 @@
 # Builds the CMS image, scans it, and runs the OIDC and browser tests on it.
 #
-# Only for a pull request that can change the image or these tests. A pull
-# request that changes only docs, the website or the starter skips it.
+# Only for a pull request, or a push to main, that can change the image or
+# these tests. A change to only docs, the website or the starter skips it.
 
 name: Image
 
@@ -20,6 +20,30 @@ on:
       - "common/config/**"
       - "common/scripts/**"
       - "scripts/third-party-notices.*"
+      - "scripts/api-report.mjs"
+      - "scripts/api-extractor.base.json"
+      - "scripts/licenses/**"
+      # The test stack seeds its Git host with the example's content.
+      - "examples/company-site/content/**"
+      - ".github/workflows/image.yml"
+  # Again on main after a merge, with the same paths (#304).
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile"
+      - ".dockerignore"
+      - "packages/**"
+      - "apps/self-hosted/**"
+      - "tests/oidc/**"
+      - "tests/browser/**"
+      - "rush.json"
+      - "tsconfig.base.json"
+      - "**/package.json"
+      - "common/config/**"
+      - "common/scripts/**"
+      - "scripts/third-party-notices.*"
+      - "scripts/api-report.mjs"
+      - "scripts/api-extractor.base.json"
       - "scripts/licenses/**"
       # The test stack seeds its Git host with the example's content.
       - "examples/company-site/content/**"
