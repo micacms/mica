@@ -1,6 +1,13 @@
 # Change Log - @micacms/mcp
 
-This log was last generated on Sun, 18 Oct 2026 06:05:29 GMT and should not be manually modified.
+This log was last generated on Mon, 19 Oct 2026 07:02:35 GMT and should not be manually modified.
+
+## 0.12.0
+Mon, 19 Oct 2026 07:02:35 GMT
+
+### Patches
+
+- An MCP tool writes a full or read-only disk to the log as an error, as the editor does.
 
 ## 0.11.0
 Sun, 18 Oct 2026 06:05:29 GMT

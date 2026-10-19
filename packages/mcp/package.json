@@ -1,6 +1,6 @@
 {
   "name": "@micacms/mcp",
-  "version": "0.11.0",
+  "version": "0.12.0",
   "type": "module",
   "description": "The Mica tools for agents over the Model Context Protocol: read the model and the content, save drafts, publish when allowed. Composed by @micacms/editor locally and @micacms/self-hosted behind OAuth.",
   "license": "MIT",

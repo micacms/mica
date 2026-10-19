@@ -2,6 +2,18 @@
   "name": "@micacms/core",
   "entries": [
     {
+      "version": "0.12.0",
+      "tag": "@micacms/core_v0.12.0",
+      "date": "Mon, 19 Oct 2026 07:02:35 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "The content root can be given in any spelling, such as D:/site/content on Windows: Mica resolves it before it checks that a path stays inside."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.11.0",
       "tag": "@micacms/core_v0.11.0",
       "date": "Sun, 18 Oct 2026 06:05:29 GMT",

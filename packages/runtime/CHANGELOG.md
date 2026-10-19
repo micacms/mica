@@ -1,6 +1,18 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Sun, 18 Oct 2026 06:05:29 GMT and should not be manually modified.
+This log was last generated on Mon, 19 Oct 2026 07:02:35 GMT and should not be manually modified.
+
+## 0.12.0
+Mon, 19 Oct 2026 07:02:35 GMT
+
+### Minor changes
+
+- A domain rule (`MICA_ADMIT_DOMAINS`) with Google now also needs the account's Workspace domain (the `hd` claim) to be an admitted domain. Google reports a personal account with a company address as verified, so before this, such an account could get in, also after the company removed the person. This tightens admission: a personal Google account needs `MICA_ADMIT_EMAILS`. Put the primary domain of your Workspace in `MICA_ADMIT_DOMAINS`. Editors who sign in with Google through a domain rule must sign in again after the upgrade.
+- A full or read-only disk gives a clear message that asks the person who runs Mica to act, and the log names it, instead of "Something went wrong".
+
+### Patches
+
+- The consent page for an agent accepts Allow only one second after it opens, and Mica refuses a sooner one, so that a click hidden behind a pop-up window cannot allow an agent (double-clickjacking). The address check of a client document refuses more IPv6 ranges, and a loopback redirect address must not have a fragment or a user name.
 
 ## 0.11.0
 Sun, 18 Oct 2026 06:05:29 GMT

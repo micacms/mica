@@ -10,6 +10,42 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.12.0] — 2026-10-19
+
+Mica is ready for its release candidate. This version adds no features. It
+tightens sign-in, makes failures clear, and tests much more: Windows, macOS and
+Node.js 26, the packed packages in a new Astro project, and the local editor in
+a browser.
+
+### Breaking
+
+- **A domain rule with Google needs the Workspace domain.** With
+  `MICA_ADMIT_DOMAINS` and Google, the account's `hd` claim must be an admitted
+  domain. A personal Google account with a company address is no longer
+  admitted: add it to `MICA_ADMIT_EMAILS`. Put the primary domain of your
+  Workspace in `MICA_ADMIT_DOMAINS`. Editors who sign in with Google through a
+  domain rule must sign in again after the upgrade.
+
+### Changed
+
+- **The consent page for an agent** accepts Allow only one second after it
+  opens, so that a click hidden behind a pop-up window cannot allow an agent.
+  The check of a client document refuses more private IPv6 ranges, and a
+  loopback redirect address must not have a fragment or a user name.
+- **A broken entry file no longer hides its collection.** The list shows the
+  other entries and names each file that Mica cannot read.
+- **A full or read-only disk** gives a clear message that asks the person who
+  runs Mica to act, and an error in the log, also for an MCP tool.
+- **A server failure shows its reference** in the editor, which the log names
+  too.
+- The page "Versions and support" on micacms.com states what semantic
+  versioning covers from 1.0, and which versions Mica supports.
+
+### Fixed
+
+- **Windows:** the content root can be given in any spelling, such as
+  `D:/site/content`.
+
 ## 0.x — 2026-08-14 to 2026-10-18
 
 The 0.x releases built Mica up to 0.11.0. Mica is experimental and not ready for

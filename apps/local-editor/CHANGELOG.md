@@ -1,6 +1,13 @@
 # Change Log - @micacms/editor
 
-This log was last generated on Sun, 18 Oct 2026 06:05:29 GMT and should not be manually modified.
+This log was last generated on Mon, 19 Oct 2026 07:02:35 GMT and should not be manually modified.
+
+## 0.12.0
+Mon, 19 Oct 2026 07:02:35 GMT
+
+### Minor changes
+
+- A collection list shows the entries that Mica can read and names the files of the others, instead of failing as a whole. A server failure shows its reference, which the log also names.
 
 ## 0.11.0
 Sun, 18 Oct 2026 06:05:29 GMT
