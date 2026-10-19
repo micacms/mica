@@ -159,7 +159,8 @@ jobs:
           restore-keys: rush-${{ runner.os }}-
       - run: node common/scripts/install-run-rush.js install
       - run: node common/scripts/install-run-rush.js build --to tag:packages
-      - run: node common/scripts/install-run-rush.js test ${{ matrix.tests }}
+      # Verbose: Rush shows only the end of a failed test otherwise.
+      - run: node common/scripts/install-run-rush.js test --verbose ${{ matrix.tests }}
 
   # The local editor in a browser, with no Docker (#139): rich text, the save
   # conflict of two pages, and Publish to a bare remote with its retry.

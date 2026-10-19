@@ -73,7 +73,7 @@ Keep-a-Changelog style, and the source of the GitHub release notes —
 - `node scripts/version.mjs` — must exit 0: every version-bearing file agrees
   and the CHANGELOG section is found.
 - `common/changes/` holds no `.json` files anymore.
-- `rush build`, then `node scripts/pack-test.mjs` — must end with "The packed
+- `node scripts/pack-test.mjs` — must end with "The packed
   packages work in a new Astro project.": the tarballs of this version install
   in a copy of the starter, and `mica check`, `astro build` and `mica start`
   work there.

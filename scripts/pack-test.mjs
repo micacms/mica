@@ -2,9 +2,10 @@
 /**
  * Tests the packed packages in a new Astro project, as a user installs them (#128).
  *
- *   rush build && node scripts/pack-test.mjs
+ *   node scripts/pack-test.mjs
  *
- * It packs the published packages as the release does, copies the starter
+ * It builds the published packages (`@micacms/editor` has the tag `apps`, so a
+ * `rush build --to tag:packages` does not build it), packs them as the release does, copies the starter
  * (`examples/starter`) to a temporary folder, installs the tarballs there
  * instead of the registry versions, and then runs what a user runs first:
  * `mica --version`, `mica check`, `astro build`, and `mica start` until the
@@ -74,6 +75,8 @@ async function startAndStop() {
 }
 
 try {
+  // What it packs must be built: a tarball without `dist/` installs, but has no `mica` command.
+  run("node", ["common/scripts/install-run-rush.js", "build", "--to", "@micacms/editor", "--to", "@micacms/astro"], ROOT);
   // `--pack --publish` writes the tarballs that the release publishes; it publishes nothing.
   run("node", ["common/scripts/install-run-rush.js", "publish", "--include-all", "--pack", "--publish", "--release-folder", packages], ROOT);
   const tarballs = Object.fromEntries(

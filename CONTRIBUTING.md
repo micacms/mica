@@ -37,7 +37,7 @@ of `rush`.
 | `rush typecheck` | Checks the types of every package, `.vue` and `.astro` included. |
 | `rush test` | Runs the tests of every package, with real Git on temporary repositories. |
 | `rush build` | Builds every package, the example and the website. |
-| `node scripts/pack-test.mjs` | After `rush build`: installs the packed packages in a copy of the starter, and runs `mica check`, `astro build` and `mica start` there. It needs the network. |
+| `node scripts/pack-test.mjs` | Builds and packs the published packages, installs them in a copy of the starter, and runs `mica check`, `astro build` and `mica start` there. It needs the network. |
 
 The tests run on the source of their package, so a test run builds nothing.
 The tests and the typecheck read the other packages from their build output:
