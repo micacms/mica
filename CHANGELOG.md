@@ -12,10 +12,9 @@ release note before upgrading.
 
 ## [0.12.0] — 2026-10-19
 
-Mica is ready for its release candidate. This version adds no features. It
-tightens sign-in, makes failures clear, and tests much more: Windows, macOS and
-Node.js 26, the packed packages in a new Astro project, and the local editor in
-a browser.
+This version adds no features. It tightens sign-in, makes failures clear, and
+tests much more: Windows, macOS and Node.js 26, the packed packages in a new
+Astro project, and the local editor in a browser.
 
 ### Breaking
 

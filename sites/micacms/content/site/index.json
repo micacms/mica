@@ -6,7 +6,7 @@
   "githubUrl": "https://github.com/micacms/mica",
   "npmUrl": "https://www.npmjs.com/package/@micacms/editor",
   "announcement": {
-    "text": "Mica 0.12.0: ready for the release candidate",
+    "text": "Mica 0.12.0: safer sign-in, clearer errors, more tests",
     "href": "https://github.com/micacms/mica/releases/tag/v0.12.0"
   },
   "status": {
