@@ -97,6 +97,14 @@ against every manifest and the CHANGELOG section, and re-runs the full CI gate
 without any write right. Then it pushes the image, publishes npm behind the
 `release` environment, and creates the GitHub release from that section.
 
+When the workflow is green, check what reached the user:
+
+- `npm view @micacms/core@X.Y.Z dist.attestations` is not empty: npm has the
+  provenance of the release workflow. The workflow adds it only for a public
+  repository. Check one more package the same way, such as `@micacms/editor`.
+- `docker buildx imagetools inspect ghcr.io/micacms/mica:X.Y.Z` lists
+  `linux/amd64` and `linux/arm64`, and an anonymous pull works.
+
 ## A release candidate (`X.Y.Z-rc.N`)
 
 A version with a `-` is a pre-release. The release workflow publishes it to
