@@ -219,16 +219,16 @@ describe("an admitted session", () => {
     const synced = await (await alice.api("/api/admin/sync", { method: "POST" })).json();
     assert.deepEqual(
       synced.sync.conflicts.map((conflict) => [conflict.group, conflict.upstream]),
-      [["singleton:site", "changed"]],
+      [["singleton:general", "changed"]],
     );
     assert.equal(synced.publish.enabled, false);
 
-    const compared = await (await alice.api("/api/admin/changes/compare?kind=singleton&name=site&against=origin")).json();
+    const compared = await (await alice.api("/api/admin/changes/compare?kind=singleton&name=general&against=origin")).json();
     assert.equal(compared.before.tagline, "Theirs");
     assert.equal(compared.after.tagline, mine);
 
     const resolved = await (
-      await alice.api("/api/admin/changes/resolve", { method: "POST", body: { group: "singleton:site", choice: "mine" } })
+      await alice.api("/api/admin/changes/resolve", { method: "POST", body: { group: "singleton:general", choice: "mine" } })
     ).json();
     assert.deepEqual(resolved.sync.conflicts, []);
     assert.equal(resolved.head, developerCommit);

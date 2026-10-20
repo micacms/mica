@@ -1,6 +1,8 @@
 {
   "title": "Services",
   "slug": "services",
+  "template": null,
+  "eyebrow": null,
   "intro": "Strategy, operations and technology projects, scoped to what a small team can deliver.",
   "heroImage": {
     "path": "media/workshop.jpg",
@@ -10,23 +12,23 @@
     {
       "_key": "rjle54",
       "heading": "Our approach",
-      "layout": "image-right",
       "image": {
         "path": "/media/workspace.jpg",
         "alt": "Sticky notes, a process sketch and a notebook on an oak work table"
-      }
+      },
+      "layout": "image-right"
     },
     {
       "_key": "u715at",
       "heading": "Engagement models",
-      "layout": "full",
-      "image": null
+      "image": null,
+      "layout": "full"
     },
     {
       "_key": "nk21nh",
       "heading": "After the handover",
-      "layout": "full",
-      "image": null
+      "image": null,
+      "layout": "full"
     }
   ],
   "seo": {
