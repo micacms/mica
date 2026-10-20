@@ -147,8 +147,10 @@ jobs:
       # The live preview of the self-hosted Mica (ADR 38): the example website's
       # astro dev in a container of its own, behind Mica's gate on another host
       # name — see tests/preview/README.md.
+      # A new stack: the seed runs once, on an empty Git host.
       - name: Start the live preview
         run: |
+          docker compose -f tests/oidc/compose.yml down -v
           docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml build preview
           docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml up -d --no-build --wait
 
