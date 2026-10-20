@@ -269,6 +269,7 @@ export function useDocumentEditor<Version extends SavedVersion, Saved extends { 
     const written = plain(data);
     const basis = conflict.basis(revision.value, options.keepMine);
     const send = () => source.write(written, basis);
+    let done = false;
 
     try {
       // Nothing is saved yet to compare with: a 409 is a duplicate.
@@ -285,6 +286,7 @@ export function useDocumentEditor<Version extends SavedVersion, Saved extends { 
       savedValues = written;
       failed.value = null;
       unsaved.markClean(written);
+      done = true;
       if (!dirty.value) kept.forget();
       void staging.refresh();
       if (mounted && (await source.saved(outcome.result, !!options.auto))) await readBack(sent, written, !!options.auto);
@@ -309,7 +311,8 @@ export function useDocumentEditor<Version extends SavedVersion, Saved extends { 
     } finally {
       saving.value = false;
       busy.value = false;
-      if (again) {
+      // A change back to the values before this save planned no save, but differs from what it wrote.
+      if (again || (done && mounted)) {
         again = false;
         void autosave();
       }
