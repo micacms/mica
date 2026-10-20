@@ -13,6 +13,8 @@ const props = defineProps<{
   backLabel?: string;
   /** While true, the title is not final, so the page is announced later. */
   loading?: boolean;
+  /** In the overlay form: the page keeps its own title and announcement. */
+  embedded?: boolean;
 }>();
 
 const route = useRoute();
@@ -25,11 +27,11 @@ const pageTitle = computed(() => {
 });
 
 watchEffect(() => {
-  document.title = `${pageTitle.value} · Mica`;
+  if (!props.embedded) document.title = `${pageTitle.value} · Mica`;
 });
 
 function arrive(): void {
-  if (!props.loading && heading.value) pageArrived(heading.value, pageTitle.value);
+  if (!props.loading && !props.embedded && heading.value) pageArrived(heading.value, pageTitle.value);
 }
 
 onMounted(arrive);
@@ -37,8 +39,10 @@ watch(() => props.loading, arrive, { flush: "post" });
 </script>
 
 <template>
-  <header class="border-b border-line bg-raised">
-    <div class="mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-4 py-4 sm:px-6">
+  <!-- Sticky, so that the title and the status stay in view: below the phone's menu bar, or at the top of the overlay form. -->
+  <header :class="['sticky z-10 border-b border-line bg-raised', embedded ? 'top-0' : 'top-14 lg:top-0']">
+    <!-- One line from a small tablet up: a status that changes while the editor types must not wrap the header. -->
+    <div :class="['mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-4 sm:flex-nowrap sm:px-6', embedded ? 'py-3' : 'py-4']">
       <div class="min-w-0 flex-1">
         <RouterLink
           v-if="back"
@@ -49,10 +53,10 @@ watch(() => props.loading, arrive, { flush: "post" });
           {{ backLabel ?? "Back" }}
         </RouterLink>
 
-        <h1 ref="heading" tabindex="-1" class="truncate text-[22px] leading-7 font-semibold">
+        <component :is="embedded ? 'h2' : 'h1'" ref="heading" tabindex="-1" :class="['truncate font-semibold', embedded ? 'text-lg leading-6' : 'text-[22px] leading-7']">
           {{ title }}
-        </h1>
-        <p v-if="subtitle" class="mt-1 truncate text-xs text-muted">{{ subtitle }}</p>
+        </component>
+        <p v-if="subtitle" class="mt-1 text-xs break-words text-muted">{{ subtitle }}</p>
       </div>
 
       <div class="flex shrink-0 items-center gap-2">

@@ -34,8 +34,11 @@ import { announcement } from "@/lib/announce";
 import { useSchema } from "@/stores/schema";
 import { useSession } from "@/stores/session";
 import { useStaging } from "@/stores/staging";
+import DocumentOverlay from "./DocumentOverlay.vue";
+import PreviewPane from "./PreviewPane.vue";
 import Wordmark from "./Wordmark.vue";
 import { useColorScheme, type ColorScheme } from "@/composables/useColorScheme";
+import { usePreviewPane } from "@/composables/usePreviewPane";
 
 const route = useRoute();
 
@@ -48,6 +51,7 @@ const appearances: Array<{ value: ColorScheme; label: string; icon: typeof Sun }
 ];
 const router = useRouter();
 const session = useSession();
+const pane = usePreviewPane();
 const staging = useStaging();
 const { collections, singletons, schema } = useSchema();
 
@@ -168,12 +172,13 @@ async function signOut(): Promise<void> {
       @click="menuOpen = false"
     />
 
+    <!-- On a wide screen it stays in place, with the window's height: only its list of content scrolls. -->
     <aside
       id="main-navigation"
       ref="drawer"
       :inert="drawerHidden"
       :class="[
-        'fixed inset-y-0 left-0 z-30 flex w-[220px] shrink-0 flex-col border-r border-line bg-sidebar text-ink-soft transition-transform lg:static lg:translate-x-0',
+        'fixed inset-y-0 left-0 z-30 flex w-[220px] shrink-0 flex-col border-r border-line bg-sidebar text-ink-soft transition-transform lg:sticky lg:top-0 lg:h-screen lg:translate-x-0',
         menuOpen ? 'translate-x-0' : '-translate-x-full',
       ]"
       @keydown="onDrawerKeydown"
@@ -292,7 +297,7 @@ async function signOut(): Promise<void> {
       </div>
     </aside>
 
-    <div class="flex min-w-0 flex-1 flex-col">
+    <div class="relative flex min-w-0 flex-1 flex-col">
       <header
         class="sticky top-0 z-10 flex h-14 items-center gap-3 border-b border-line bg-surface/90 px-4 backdrop-blur lg:hidden"
       >
@@ -310,7 +315,8 @@ async function signOut(): Promise<void> {
         <Wordmark class="h-5" />
       </header>
 
-      <main id="main" tabindex="-1" class="min-w-0 flex-1 bg-ground focus:outline-none">
+      <!-- Below the overlay form, the main form keeps its state, and takes no input. -->
+      <main id="main" tabindex="-1" data-document-form :inert="!!pane.overlay.value" class="min-w-0 flex-1 bg-ground focus:outline-none">
         <div v-if="session.ended.value" role="alert" class="flex flex-wrap items-center gap-3 border-b border-line bg-danger-soft px-4 py-2.5 text-sm sm:px-6">
           <span class="min-w-0 flex-1">
             Your session ended, so Mica cannot save. Your changes stay in this tab: sign in again, and you can restore them.
@@ -329,7 +335,11 @@ async function signOut(): Promise<void> {
         </div>
         <slot />
       </main>
+
+      <DocumentOverlay />
     </div>
+
+    <PreviewPane />
   </div>
 </template>
 

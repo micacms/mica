@@ -9,15 +9,26 @@ news: collection({ label: "News", url: "/news/{slug}", fields: { … } }),
 about: singleton({ label: "About", url: "/about", fields: { … } }),
 ```
 
-Set `MICA_SITE_URL` to the website's address, such as `https://example.com`. Then an entry shows "Open on website" beside Save, and the Publish page links to each page that it published. A new entry gets the link after its first Publish, because its page does not exist before.
+Set `MICA_SITE_URL` to the website's address, such as `https://example.com`. Then an entry shows "Open on website" at the top, and the Publish page links to each page that it published. A new entry gets the link after its first Publish, because its page does not exist before.
 
 The link opens the published page. After a Publish, the host needs a few minutes to build it.
 
 ## Preview with the local editor
 
-Run `astro dev` beside the local editor. The dev server reads the saved drafts, so it shows a change as soon as you save it, before Publish. With a `url` in the model, an entry shows "Preview" beside Save while the dev server runs, also a new entry.
+Run `astro dev` beside the local editor. The dev server reads the saved drafts, so it shows a change about one second after you stop typing, before Publish. With a `url` in the model, the editor shows the page beside the form while the dev server runs, also for a new entry. The divider between them changes the width, and its button folds the page away. On a small screen, **Preview** opens the page in a new tab.
 
 The local editor finds the dev server at the port and the base path of the Astro config, `http://localhost:4321` by default. If Astro takes another port because that one is busy, set `server.port` in `astro.config`. The self-hosted Mica has no preview.
+
+## Click a text to edit it
+
+Add `micaPreview()` from `@micacms/astro/preview` to `astro.config`, and start the dev server with `MICA_PREVIEW=1 astro dev`. Then the preview marks the texts of the page:
+
+- In **Edit** mode, a click on a text opens its field. A text of another entry with a page opens that entry. A text without a page of its own, such as the navigation, opens its form over the current one. Alt-click follows a link.
+- In **Browse** mode, the page acts as the website does. Back in Edit mode, the form of the page that the preview shows opens.
+- A text with changes that are not published has a yellow outline.
+- When you click in a field of the form, the preview scrolls to its text.
+
+For now, the texts of text and textarea fields have marks. See [@micacms/astro](/docs/reference-astro/) for the setup.
 
 ## Use a staging site
 

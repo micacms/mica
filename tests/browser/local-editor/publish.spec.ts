@@ -22,9 +22,10 @@ test.afterEach(() => editor?.stop());
 const POST = "content/posts/hello-world/index.json";
 const teaserOnDisk = () => (JSON.parse(readFileSync(join(editor.site, POST), "utf8")) as { excerpt: string }).excerpt;
 
+/** The form saves by itself; leaving the field saves at once. */
 async function saveTeaser(page: Page, teaser: string): Promise<void> {
   await page.getByLabel("Teaser").fill(teaser);
-  await page.getByRole("button", { name: "Save changes" }).click();
+  await page.getByLabel("Teaser").press("Tab");
 }
 
 async function publish(page: Page, message: string): Promise<void> {

@@ -63,9 +63,8 @@ test("an editor signs in, edits, saves and publishes", async ({ page, request, b
   const tagline = `Edited in a browser at ${new Date().toISOString()}`;
   await page.getByLabel("Tagline").fill(tagline);
 
+  // It saves by itself after a pause.
   const before = await headOfMain(request);
-  await page.getByRole("button", { name: "Save changes" }).click();
-  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
   await expect(page.getByText("Saved · not published")).toBeVisible();
 
   // Saved is not published: the repository has not moved.
@@ -115,22 +114,22 @@ test("an editor whose session ends signs in again and keeps the unsaved changes"
 
   const sidebar = page.getByRole("complementary");
   await sidebar.getByRole("link", { name: "General" }).click();
+  await expect(page.getByRole("heading", { name: "General" })).toBeVisible();
+
+  // The session ends, and then the form changes: the autosave finds no session.
+  await context.clearCookies();
   const tagline = `Kept across a sign-in at ${new Date().toISOString()}`;
   await page.getByLabel("Tagline").fill(tagline);
-
-  // The session ends while the form has changes: the cookies are gone.
-  await context.clearCookies();
-  await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Your session ended")).toBeVisible();
 
   // Signing in again comes back to the same page, which offers the changes.
   await page.getByRole("button", { name: "Sign in again" }).click();
   await signIn();
-  await expect(page).toHaveURL(/\/admin\/singletons\/site$/);
+  await expect(page).toHaveURL(/\/admin\/singletons\/general$/);
   await page.getByRole("button", { name: "Restore them" }).click();
   await expect(page.getByLabel("Tagline")).toHaveValue(tagline);
 
-  await page.getByRole("button", { name: "Save changes" }).click();
+  // Restored changes save by themselves.
   await expect(page.getByText("Saved · not published")).toBeVisible();
 
   // Leave nothing pending for the next run.
@@ -201,8 +200,8 @@ test("entries and list items change their order in the same way", async ({ page 
   await page.keyboard.press("Home");
   await page.keyboard.press("Space");
   await expect(headings.nth(0)).toHaveText("Our approach");
-  // The form is back as it was: there is nothing to save.
-  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  // The form is back as it was: nothing was saved, and the page is still as published.
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
 
   // The chosen entries of a relation: the same controls again.
   await page.goto("/admin/collections/projects/order-to-cash-review");
@@ -215,5 +214,5 @@ test("entries and list items change their order in the same way", async ({ page 
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Space");
   await expect(team.nth(0)).toContainText("Amara Okafor");
-  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  await expect(page.getByText("Published", { exact: true })).toBeVisible();
 });

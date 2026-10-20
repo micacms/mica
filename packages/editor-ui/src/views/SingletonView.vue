@@ -1,34 +1,39 @@
 <script setup lang="ts">
 /**
  * Singleton editor: the shared form (`useDocumentEditor`) without the parts
- * that need a slug (no rename, no delete, no list).
+ * that need a slug (no rename, no delete, no list). Settings save by
+ * themselves (`useDocumentEditor`). `embedded`: in the overlay
+ * form beside the live preview.
  */
 
-import { computed, onMounted, provide } from "vue";
+import { computed, onMounted, provide, ref } from "vue";
 
 import { withEmptyValues } from "@micacms/core/internal";
 
 import { api, type SingletonDetail } from "@/api";
+import DocumentStatus from "@/components/DocumentStatus.vue";
 import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
 import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
 import ModelNotice from "@/components/ModelNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PageLink from "@/components/PageLink.vue";
-import PendingNotice from "@/components/PendingNotice.vue";
 import PreviewLink from "@/components/PreviewLink.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
 import StatusNotice from "@/components/StatusNotice.vue";
 import { useDocumentEditor } from "@/composables/useDocumentEditor";
 import { usePreview } from "@/composables/usePreview";
+import { usePreviewPage } from "@/composables/usePreviewPane";
+import { formRootOf } from "@/lib/focus";
 import { MEDIA_FOLDER } from "@/lib/media-folder";
 import { pageHref } from "@/lib/pages";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
-const props = defineProps<{ name: string }>();
+const props = defineProps<{ name: string; embedded?: boolean; focus?: string }>();
+const formElement = ref<HTMLFormElement | null>(null);
 
 // Settings keep their media in their own folder, as an entry does.
 provide(
@@ -44,6 +49,8 @@ const definition = computed(() => schema.singleton(props.name));
 const page = computed(() => pageHref(definition.value?.page));
 const devServer = usePreview();
 const preview = computed(() => (devServer.address.value && definition.value?.url ? `${devServer.address.value}${definition.value.url}` : null));
+// The overlay form shows a document of the main form's page: that page stays in the preview.
+if (!props.embedded) usePreviewPage(preview);
 
 const doc = useDocumentEditor<SingletonDetail, { revision: string }>({
   noun: "these settings",
@@ -55,12 +62,13 @@ const doc = useDocumentEditor<SingletonDetail, { revision: string }>({
   // A field added to the model since the file was written opens empty.
   values: (data) => withEmptyValues(definition.value?.fields ?? {}, data ?? {}),
   write: (data, basis) => api.singletons.save(props.name, data, basis.revision, basis.keepMine),
-  saved: async () => {
-    toast.success("Settings saved.");
+  saved: async (_result, auto) => {
+    if (!auto) toast.success("Settings saved.");
     return true;
   },
+  root: () => formRootOf(formElement.value),
 });
-const { values, loading, loadError, saving, issues, dirty, kept, pending, state } = doc;
+const { values, loading, loadError, saving, busy, issues, failed, kept, pending, state } = doc;
 const { state: conflict, theirs } = doc.conflict;
 
 /**
@@ -73,23 +81,20 @@ const websiteConflict = computed(() =>
   ),
 );
 
-/** Where these settings live, as the server reports it. */
-const location = computed(() => doc.version.value?.path ?? "");
+onMounted(() => doc.open(props.embedded ? (props.focus ?? null) : undefined));
 
-onMounted(doc.open);
+defineExpose({ atRisk: doc.atRisk });
 </script>
 
 <template>
   <template v-if="definition">
-    <PageHeader :title="definition.label" :subtitle="location" :loading="loading">
-      <PreviewLink v-if="preview" :href="preview" />
+    <PageHeader :title="definition.label" :subtitle="definition.description" :loading="loading" :embedded="embedded">
+      <PreviewLink v-if="preview && !embedded" :href="preview" />
       <PageLink v-if="page" :href="page" />
       <template v-if="!definition.readOnly && !loadError">
-        <span :class="['status', state.tone]">
-          {{ state.label }}
-        </span>
-        <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="doc.save()">
-          {{ saving ? "Saving…" : "Save changes" }}
+        <DocumentStatus :state="state" :edit="pending" @discarded="doc.reopen()" />
+        <button v-if="failed" type="button" class="btn-secondary" :disabled="saving" :title="failed" @click="doc.retry()">
+          Try again
         </button>
       </template>
     </PageHeader>
@@ -100,13 +105,8 @@ onMounted(doc.open);
       <StatusNotice v-else-if="loadError" kind="error" title="These settings could not be loaded" :message="loadError" @retry="doc.load" />
 
       <template v-else>
-        <p v-if="definition.description" class="mb-5 text-sm text-muted">
-          {{ definition.description }}
-        </p>
-
         <ModelNotice v-if="!definition.readOnly" class="mb-5" />
         <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
-        <PendingNotice v-else-if="pending && !dirty" :edit="pending" @discarded="doc.reopen()" />
 
         <div
           v-if="websiteConflict"
@@ -134,12 +134,12 @@ onMounted(doc.open);
         <KeptChangesNotice v-if="kept.offered.value" :at="kept.offered.value.at" @restore="kept.restore()" @forget="kept.forget()" />
         <IssueSummary :issues="issues" />
 
-        <form novalidate @submit.prevent="doc.save()" @focusout="doc.onLeave">
+        <form ref="formElement" novalidate @submit.prevent="doc.autosave()" @focusout="doc.onLeave">
           <FieldList
             v-model="values"
             :fields="definition.fields"
             :issues="issues"
-            :disabled="saving || !!definition.readOnly"
+            :disabled="busy || !!definition.readOnly"
           />
           <button v-if="!definition.readOnly" type="submit" class="sr-only">Save</button>
         </form>

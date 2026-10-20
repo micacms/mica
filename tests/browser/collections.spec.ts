@@ -65,19 +65,19 @@ test("an editor creates an entry with an image, changes its URL, discards anothe
   await picker.locator("input[type=file]").setInputFiles({ name: `portrait-${stamp}.png`, mimeType: "image/png", buffer: PNG });
   await expect(picker).toBeHidden();
   await page.getByLabel("Alt text").fill("A test portrait");
-  await page.getByRole("button", { name: "Save changes" }).click();
+  await page.getByRole("button", { name: "Create" }).click();
   await expect(page.getByText("Saved · not published")).toBeVisible();
 
-  // Change the URL: the entry and its image move together.
+  // Change the URL: it waits for its button, and the entry and its image move together.
   await page.getByLabel("URL", { exact: true }).fill(slug);
-  await page.getByRole("button", { name: "Save changes" }).click();
+  await page.getByRole("button", { name: "Change URL" }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/collections/team/${slug}$`));
-  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
+  await expect(page.getByText("Saved · not published")).toBeVisible();
 
   // Another edit, which the editor then discards on the Publish page.
   await page.getByRole("complementary").getByRole("link", { name: "General" }).click();
+  // It saves by itself.
   await page.getByLabel("Tagline").fill(`Not to be published ${stamp}`);
-  await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Saved · not published")).toBeVisible();
 
   await page.getByRole("complementary").getByRole("link", { name: /Publish/ }).click();

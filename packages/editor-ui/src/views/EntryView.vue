@@ -3,7 +3,11 @@
  * Entry editor: the shared form (`useDocumentEditor`) and what an entry has
  * that settings do not. The slug is the address: changing it moves the entry,
  * the route follows, and the links to it can follow too. A new entry has no
- * slug yet, and an entry can be deleted.
+ * slug yet, and an entry can be deleted. A new entry has a Create button; after
+ * that it saves by itself, except a new URL, which waits for "Change URL".
+ *
+ * `embedded`: in the overlay form beside the live preview. It then changes no
+ * address: a rename and a discard go to the overlay, and there is no delete.
  */
 
 import { computed, onMounted, provide, ref, watch } from "vue";
@@ -13,26 +17,29 @@ import { defaultValues, isValidSlug } from "@micacms/core/internal";
 
 import { api, messageOf, type EntryDetail, type Referrer, type SavedEntry } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import DocumentStatus from "@/components/DocumentStatus.vue";
 import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
 import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
 import ModelNotice from "@/components/ModelNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import PageLink from "@/components/PageLink.vue";
-import PendingNotice from "@/components/PendingNotice.vue";
 import PreviewLink from "@/components/PreviewLink.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
 import { useDocumentEditor } from "@/composables/useDocumentEditor";
 import { usePreview } from "@/composables/usePreview";
+import { usePreviewPage } from "@/composables/usePreviewPane";
 import type { Edit } from "@/lib/edits";
+import { formRootOf } from "@/lib/focus";
 import { MEDIA_FOLDER } from "@/lib/media-folder";
 import { pageHref } from "@/lib/pages";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
-const props = defineProps<{ collection: string; slug?: string }>();
+const props = defineProps<{ collection: string; slug?: string; embedded?: boolean; focus?: string }>();
+const emit = defineEmits<{ renamed: [slug: string]; close: [] }>();
 
 const router = useRouter();
 const schema = useSchema();
@@ -41,6 +48,7 @@ const toast = useToast();
 
 const definition = computed(() => schema.collection(props.collection));
 const updateLinks = ref(true);
+const formElement = ref<HTMLFormElement | null>(null);
 
 const doc = useDocumentEditor<EntryDetail, SavedEntry>({
   noun: "this entry",
@@ -61,19 +69,27 @@ const doc = useDocumentEditor<EntryDetail, SavedEntry>({
     };
     return props.slug ? api.entries.update(props.collection, props.slug, payload) : api.entries.create(props.collection, payload);
   },
-  saved: async (saved) => {
+  saved: async (saved, auto) => {
+    if (auto) return true;
     toast.success(
       saved.renamed ? `Saved as “${saved.slug}”.` : "Saved.",
       saved.relinked > 0 ? `Updated the links in ${saved.relinked} other entr${saved.relinked === 1 ? "y or page" : "ies or pages"}.` : undefined,
     );
     // The server derives and de-duplicates the slug and can move the entry: open it at what it decided.
     if (saved.slug === props.slug) return true;
+    if (props.embedded) {
+      emit("renamed", saved.slug);
+      return false;
+    }
     await router.replace({ name: "entry", params: { collection: props.collection, slug: saved.slug } });
     return false;
   },
-  duplicate: "An entry with this URL exists already. Change the URL, then save.",
+  duplicate: "An entry with this URL exists already. Change the URL, then try again.",
+  // A new URL moves the entry and can change links in other entries: it waits for "Change URL".
+  heldField: (): string | null => (urlChanging.value ? (definition.value?.slugField ?? null) : null),
+  root: () => formRootOf(formElement.value),
 });
-const { values, revision, loading, saving, isNew, issues, dirty, kept, pending, state } = doc;
+const { values, revision, loading, saving, busy, isNew, issues, failed, kept, pending, state } = doc;
 const { state: conflict, theirs } = doc.conflict;
 
 /** This entry was changed on the website while it has a draft here: Mica's own clone only. */
@@ -94,7 +110,8 @@ const newSlug = computed<string>(() => {
   const value = values.value[definition.value?.slugField ?? ""];
   return typeof value === "string" ? value.trim() : "";
 });
-const urlChanging = computed<boolean>(() => !!props.slug && newSlug.value !== "" && newSlug.value !== props.slug);
+/** Also an empty URL: the server would make a new one from the title, so it waits for "Change URL" too. */
+const urlChanging = computed<boolean>(() => !!props.slug && newSlug.value !== props.slug);
 const linkers = ref<Referrer[] | null>(null);
 
 // Uploads go into the entry's folder: the saved URL's, or for a new entry a valid URL in the form.
@@ -127,6 +144,8 @@ const devServer = usePreview();
 const preview = computed(() =>
   props.slug && devServer.address.value && definition.value?.url ? `${devServer.address.value}${pageHref(definition.value.url, props.slug)}` : null,
 );
+// The overlay form shows a document of the main form's page: that page stays in the preview.
+if (!props.embedded) usePreviewPage(preview);
 
 /** Its page on the website: not for an entry that was never published, because that page does not exist yet. */
 const page = computed(() => (props.slug && pending.value?.state !== "new" ? pageHref(definition.value?.page, props.slug) : null));
@@ -147,14 +166,21 @@ onMounted(async () => {
     loading.value = false;
     return;
   }
-  if (await doc.open()) return;
+  if (await doc.open(props.embedded ? (props.focus ?? null) : undefined)) return;
   toast.error(doc.loadError.value ?? "Could not open this entry.");
+  if (props.embedded) return emit("close");
   await router.replace({ name: "collection", params: { collection: props.collection } });
 });
 
 /** After a discard, a new entry is gone, and a URL change goes back to the old URL. */
 async function discarded(edit: Edit): Promise<void> {
-  if (edit.state === "new") {
+  if (props.embedded && edit.state === "new") {
+    kept.forget();
+    emit("close");
+  } else if (props.embedded && edit.target?.kind === "entry" && edit.target.from) {
+    kept.forget();
+    emit("renamed", edit.target.from);
+  } else if (edit.state === "new") {
     kept.forget();
     await router.replace({ name: "collection", params: { collection: props.collection } });
   } else if (edit.target?.kind === "entry" && edit.target.from) {
@@ -200,6 +226,14 @@ async function remove(): Promise<void> {
     confirmDelete.value = false;
   }
 }
+
+/** "Keep the old URL": the URL field goes back to the saved one. */
+function keepUrl(): void {
+  const field = definition.value?.slugField;
+  if (field && props.slug) values.value = { ...values.value, [field]: props.slug };
+}
+
+defineExpose({ atRisk: doc.atRisk });
 </script>
 
 <template>
@@ -208,17 +242,19 @@ async function remove(): Promise<void> {
       :title="title"
       :subtitle="location"
       :loading="loading"
-      :back="{ name: 'collection', params: { collection } }"
+      :back="embedded ? null : { name: 'collection', params: { collection } }"
       :back-label="definition.label"
+      :embedded="embedded"
     >
-      <PreviewLink v-if="preview" :href="preview" />
+      <PreviewLink v-if="preview && !embedded" :href="preview" />
       <PageLink v-if="page" :href="page" />
       <template v-if="!definition.readOnly">
-        <span :class="['status', state.tone]">
-          {{ state.label }}
-        </span>
-        <button type="button" class="btn-primary" :disabled="saving || !dirty" @click="doc.save()">
-          {{ saving ? "Saving…" : "Save changes" }}
+        <DocumentStatus :state="state" :edit="pending" @discarded="discarded" />
+        <button v-if="isNew" type="button" class="btn-primary" :disabled="saving" @click="doc.save()">
+          {{ saving ? "Creating…" : "Create" }}
+        </button>
+        <button v-else-if="failed" type="button" class="btn-secondary" :disabled="saving" :title="failed" @click="doc.retry()">
+          Try again
         </button>
       </template>
     </PageHeader>
@@ -229,7 +265,6 @@ async function remove(): Promise<void> {
       <template v-else>
         <ModelNotice v-if="!definition.readOnly" class="mb-5" />
         <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
-        <PendingNotice v-else-if="pending && !dirty" :edit="pending" @discarded="discarded" />
 
         <div
           v-if="websiteConflict"
@@ -258,7 +293,9 @@ async function remove(): Promise<void> {
         <IssueSummary :issues="issues" />
 
         <div v-if="urlChanging" role="status" class="mb-5 rounded-md border border-line bg-subtle p-4">
-          <p class="text-sm font-medium">The URL changes from “{{ slug }}” to “{{ newSlug }}” when you save</p>
+          <p v-if="newSlug" class="text-sm font-medium">The URL changes from “{{ slug }}” to “{{ newSlug }}” when you choose Change URL</p>
+          <p v-else class="text-sm font-medium">The URL is empty. Change URL makes a new one from the title</p>
+          <p class="mt-1 text-xs text-muted">Your other changes save as usual.</p>
           <template v-if="linkers?.length">
             <p class="mt-1 text-xs text-muted">
               {{ linkers.length }} other entr{{ linkers.length === 1 ? "y or page links" : "ies or pages link" }} to it:
@@ -271,7 +308,7 @@ async function remove(): Promise<void> {
             </p>
             <label class="mt-2 flex items-center gap-2 text-xs">
               <input v-model="updateLinks" type="checkbox" class="h-4 w-4" />
-              Update their links when I save
+              Update their links when the URL changes
             </label>
             <p v-if="!updateLinks" class="mt-1 text-xs font-medium text-warning">
               Their links then point to a URL that does not exist, and Publish waits until they are changed.
@@ -281,14 +318,20 @@ async function remove(): Promise<void> {
             Visitors who use the old URL, from a bookmark or a search engine, need a redirect. Ask the developer of
             the website for one.
           </p>
+          <div class="mt-3 flex flex-wrap gap-2">
+            <button type="button" class="btn-primary" :disabled="saving" @click="doc.save()">
+              {{ saving ? "Saving…" : "Change URL" }}
+            </button>
+            <button type="button" class="btn-secondary" :disabled="saving" @click="keepUrl">Keep the old URL</button>
+          </div>
         </div>
 
-        <form novalidate @submit.prevent="doc.save()" @focusout="doc.onLeave">
+        <form ref="formElement" novalidate @submit.prevent="isNew ? doc.save() : doc.autosave()" @focusout="doc.onLeave">
           <FieldList
             v-model="values"
             :fields="definition.fields"
             :issues="issues"
-            :disabled="saving || !!definition.readOnly"
+            :disabled="busy || !!definition.readOnly"
             :collection="collection"
             :entry-slug="slug"
           />
@@ -297,7 +340,7 @@ async function remove(): Promise<void> {
           <button v-if="!definition.readOnly" type="submit" class="sr-only">Save</button>
         </form>
 
-        <div v-if="!isNew && !definition.readOnly" class="mt-10 border-t border-line pt-5">
+        <div v-if="!isNew && !definition.readOnly && !embedded" class="mt-10 border-t border-line pt-5">
           <button type="button" class="btn-danger" @click="askDelete">
             Delete this {{ definition.labelSingular.toLowerCase() }}
           </button>

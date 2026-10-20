@@ -75,11 +75,14 @@ export function useKeptChanges(
   }
   onMounted(() => window.addEventListener("pagehide", onPageHide));
 
+  /** A save that runs after the form closed: the tab keeps the changes until it succeeds (`forget`). */
+  let keepForSave = false;
+
   // Leaving the page in the app (after "Leave without saving", or a delete) gives the
   // changes up. A sign-in redirect or a closed tab does not unmount, so they stay.
   onUnmounted(() => {
     window.removeEventListener("pagehide", onPageHide);
-    if (session.leaving.value) {
+    if (session.leaving.value || keepForSave) {
       keepSoon.flush();
       return;
     }
@@ -103,6 +106,12 @@ export function useKeptChanges(
       values.value = structuredClone(kept.values);
       revision.value = kept.revision;
       offered.value = null;
+    },
+    /** Keeps the changes now, also after the form closes: an autosave on leaving is still on its way. */
+    holdForSave(): void {
+      keepForSave = true;
+      keepSoon.cancel();
+      keepNow();
     },
     /** After a save or a discard, or when the editor declines: nothing to keep. */
     forget(): void {

@@ -10,27 +10,36 @@
  *
  * A field can hold an edit back for a moment (`PENDING_EDITS`, provided here
  * for the form's fields). The checks flush it first, so they see the current text.
+ *
+ * With autosave, leaving asks nothing when `saveOnLeave` saves the changes.
  */
 
 import { computed, onMounted, onUnmounted, provide, ref, type ComputedRef, type Ref } from "vue";
 import { onBeforeRouteLeave, onBeforeRouteUpdate } from "vue-router";
 
+import { onlyOverlayChanged } from "@/lib/overlay-address";
 import { createPendingEdits, PENDING_EDITS } from "@/lib/pending-edits";
 import { useSession } from "@/stores/session";
 
-const PROMPT = "You have unsaved changes. Leave without saving?";
+export const PROMPT = "You have unsaved changes. Leave without saving?";
 
 export interface UnsavedChanges {
   dirty: ComputedRef<boolean>;
-  /** Take the current values as the reference point — nothing to warn about. */
-  markClean: () => void;
+  /** Take the current values, or the values that a save wrote, as the reference point. */
+  markClean: (saved?: Record<string, unknown>) => void;
+  /** Whether `data` is what is saved. */
+  isSaved: (data: Record<string, unknown>) => boolean;
   /** Stop guarding for good, e.g. once the record has been deleted. */
   release: () => void;
   /** Gives the form the edits that its fields hold back. Call it before a save reads the values. */
   flush: () => void;
 }
 
-export function useUnsavedChanges(values: Ref<Record<string, unknown>>): UnsavedChanges {
+export function useUnsavedChanges(
+  values: Ref<Record<string, unknown>>,
+  /** Starts the save of the changes on leaving; false when it cannot save them, and the editor must be asked. */
+  saveOnLeave?: () => boolean,
+): UnsavedChanges {
   const baseline = ref(snapshot(values.value));
   const guarded = ref(true);
   const pending = createPendingEdits();
@@ -38,9 +47,11 @@ export function useUnsavedChanges(values: Ref<Record<string, unknown>>): Unsaved
 
   const dirty = computed(() => guarded.value && snapshot(values.value) !== baseline.value);
 
-  function markClean(): void {
-    baseline.value = snapshot(values.value);
+  function markClean(saved: Record<string, unknown> = values.value): void {
+    baseline.value = snapshot(saved);
   }
+
+  const isSaved = (data: Record<string, unknown>): boolean => snapshot(data) === baseline.value;
 
   function release(): void {
     guarded.value = false;
@@ -61,12 +72,13 @@ export function useUnsavedChanges(values: Ref<Record<string, unknown>>): Unsaved
   // same route, which reuses the component and so never counts as leaving.
   const confirmLeave = (): boolean => {
     pending.flush();
-    return !dirty.value || window.confirm(PROMPT);
+    return !dirty.value || !!saveOnLeave?.() || window.confirm(PROMPT);
   };
   onBeforeRouteLeave(confirmLeave);
-  onBeforeRouteUpdate(confirmLeave);
+  // The overlay form opens over the form, which stays: nothing is left.
+  onBeforeRouteUpdate((to, from) => onlyOverlayChanged(to, from) || confirmLeave());
 
-  return { dirty, markClean, release, flush: pending.flush };
+  return { dirty, markClean, isSaved, release, flush: pending.flush };
 }
 
 /**

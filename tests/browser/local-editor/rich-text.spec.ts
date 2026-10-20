@@ -38,10 +38,8 @@ test("rich text typed in the editor is saved as Markdoc", async ({ page }) => {
   await page.keyboard.press("Enter");
   await page.keyboard.type("two");
 
-  // At once, without a pause: the save must take the text that the field still holds back.
-  await page.getByRole("button", { name: "Save changes" }).click();
+  // The form saves by itself, with all the text that the field held back.
   await expect(page.getByText("Saved · not published")).toBeVisible();
-  await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
 
   const body = readFileSync(join(editor.site, "content/posts/hello-world/body.mdoc"), "utf8");
   expect(body).toBe("## Typed in a browser\n\nIt has **bold** words.\n\n- one\n- two\n");
