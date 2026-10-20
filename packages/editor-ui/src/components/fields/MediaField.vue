@@ -24,7 +24,7 @@ import { api, type MediaItem } from "@/api";
 import { useField, type FieldProps } from "@/composables/useField";
 import { useReorder } from "@/composables/useReorder";
 import { useUploads } from "@/composables/useUploads";
-import { FIELD_BLOCK } from "@/lib/focus";
+import { focusListItem, reportListItem } from "@/lib/focus";
 import { MEDIA_FOLDER } from "@/lib/media-folder";
 import { addPaths, roomFor } from "@/lib/uploads";
 
@@ -164,23 +164,6 @@ const reorder = useReorder<Value>({
   layout: "grid",
 });
 
-/** A click on an image of a gallery in the live preview: its item comes into view, with the focus on its alt text. */
-function focusItem(event: Event): void {
-  const index: unknown = (event as CustomEvent).detail;
-  const root = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
-  const item = typeof index === "number" ? root?.querySelector("ul")?.children[index] : undefined;
-  if (!(item instanceof HTMLElement)) return;
-  event.preventDefault();
-  const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  item.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "center" });
-  item.querySelector<HTMLElement>('input:not([type="hidden"]), button')?.focus({ preventScroll: true });
-}
-
-/** The focus moved to an image of a gallery: the live preview shows that one. */
-function reportItem(index: number, event: FocusEvent): void {
-  if (field.value.multiple) event.target?.dispatchEvent(new CustomEvent(FIELD_BLOCK, { bubbles: true, detail: index }));
-}
-
 function setAlt(index: number, event: Event): void {
   const text = (event.target as HTMLInputElement).value;
   update(values.value.map((value, position) => (position === index ? { ...value, alt: text === "" ? null : text } : value)));
@@ -196,7 +179,7 @@ function setAlt(index: number, event: Event): void {
     :error="error"
     :hint-id="hintId"
     :error-id="errorId"
-    @focus-block="focusItem"
+    @focus-block="focusListItem($event, 'ul')"
   >
     <div
       :aria-describedby="describedBy"
@@ -227,7 +210,7 @@ function setAlt(index: number, event: Event): void {
             field.multiple && reorder.isMoving(values[index]!) && 'ring-2 ring-accent',
           ]"
           v-bind="field.multiple ? reorder.row(values[index]!) : {}"
-          @focusin="reportItem(index, $event)"
+          @focusin="field.multiple && reportListItem($event, index)"
         >
           <div class="aspect-4/3">
             <img

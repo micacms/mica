@@ -57,3 +57,23 @@ export function focusField(path: string, root: ParentNode = document, options: {
   }
   return false;
 }
+
+/**
+ * For a field with a list of items, such as a gallery or the chosen entries of
+ * a relation: goes to the item that `FOCUS_BLOCK` names, in the first `list`
+ * element of the field. Its first control gets the focus.
+ */
+export function focusListItem(event: Event, list: string): void {
+  const index: unknown = (event as CustomEvent).detail;
+  const root = event.currentTarget instanceof HTMLElement ? event.currentTarget : null;
+  const item = typeof index === "number" ? root?.querySelector(list)?.children[index] : undefined;
+  if (!(item instanceof HTMLElement)) return;
+  event.preventDefault();
+  item.scrollIntoView({ behavior: scrollBehavior(), block: "center" });
+  item.querySelector<HTMLElement>('input:not([type="hidden"]), button')?.focus({ preventScroll: true });
+}
+
+/** The focus moved to the item `index` of a list field: the live preview shows that one. */
+export function reportListItem(event: FocusEvent, index: number): void {
+  event.target?.dispatchEvent(new CustomEvent(FIELD_BLOCK, { bubbles: true, detail: index }));
+}

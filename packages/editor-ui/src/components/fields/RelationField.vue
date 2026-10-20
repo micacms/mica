@@ -17,8 +17,10 @@ import FieldShell from "./FieldShell.vue";
 import ReorderArrows from "@/components/ReorderArrows.vue";
 import ReorderHandle from "@/components/ReorderHandle.vue";
 import { useField, type FieldProps } from "@/composables/useField";
+import { usePreviewPane } from "@/composables/usePreviewPane";
 import { useReorder } from "@/composables/useReorder";
 import { announce } from "@/lib/announce";
+import { focusListItem, reportListItem } from "@/lib/focus";
 import { entryOptions, type RelationOption } from "@/lib/entry-options";
 import { matchEntries } from "@/lib/order";
 import { useSchema } from "@/stores/schema";
@@ -59,6 +61,13 @@ const selected = computed<string[]>(() =>
       ? [props.modelValue]
       : [],
 );
+
+const pane = usePreviewPane();
+
+/** "Edit": the chosen entry in the overlay form, over this one. A reference set is data of the code: it has none. */
+function edit(slug: string): void {
+  pane.openOverlay({ kind: "entry", document: field.value.collection, id: slug, field: "" });
+}
 
 const titleFor = (slug: string): string => options.value.find((item) => item.slug === slug)?.title ?? slug;
 
@@ -161,6 +170,7 @@ function onInput(event: Event): void {
     :error="error"
     :hint-id="hintId"
     :error-id="errorId"
+    @focus-block="focusListItem($event, 'ol')"
   >
     <p v-if="loading" role="status" class="text-sm text-muted">Loading {{ targetLabel }}…</p>
     <p v-else-if="failed" role="alert" class="text-sm text-danger">
@@ -182,6 +192,7 @@ function onInput(event: Event): void {
           :key="slug"
           :class="['flex items-center gap-2 py-1.5 pr-1.5 text-sm', field.multiple ? 'pl-1' : 'pl-3', reorder.isMoving(slug) && 'bg-accent-soft']"
           v-bind="field.multiple ? reorder.row(slug) : {}"
+          @focusin="field.multiple && reportListItem($event, index)"
         >
           <ReorderHandle
             v-if="field.multiple"
@@ -192,6 +203,9 @@ function onInput(event: Event): void {
           />
           <span class="min-w-0 flex-1 truncate">{{ titleFor(slug) }}</span>
           <span class="shrink-0 font-mono text-[11px] text-muted">{{ slug }}</span>
+          <button v-if="target && !isMissing(slug)" type="button" class="btn-ghost px-1.5 py-0.5 text-xs" @click="edit(slug)">
+            Edit<span class="sr-only"> "{{ titleFor(slug) }}"</span>
+          </button>
           <button
             type="button"
             class="btn-ghost px-1.5 py-0.5 text-xs aria-disabled:cursor-not-allowed aria-disabled:opacity-40"

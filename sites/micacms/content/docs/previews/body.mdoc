@@ -26,9 +26,10 @@ Add `micaPreview()` from `@micacms/astro/preview` to `astro.config`, and start t
 - In **Edit** mode, a click on a text opens its field. A text of another entry with a page opens that entry. A text without a page of its own, such as the navigation, opens its form over the current one. Alt-click follows a link.
 - A click on a paragraph of a rich text puts the cursor in that paragraph. When the cursor moves to another paragraph, the preview shows it.
 - A click on an image opens its media field. In a gallery, the form goes to that image.
+- A click on the name of a linked entry, such as the author of an article, goes to the field that links to it, such as **Author**. The label also has a button with the entry's name: it opens the entry over the current form, to edit it. In the field, **Edit** next to a chosen entry does the same.
 - In **Browse** mode, the page acts as the website does. Back in Edit mode, the form of the page that the preview shows opens.
 - A text with changes that are not published has a yellow outline.
-- When you click in a field of the form, the preview scrolls to its text.
+- When you click in a field of the form, the preview scrolls to its text. For a field that links to other entries, it shows the linked entry.
 
 For now, text, textarea and rich-text fields, and images with alt text, have marks. See [@micacms/astro](/docs/reference-astro/) for the setup.
 

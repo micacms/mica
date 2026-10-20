@@ -11,7 +11,8 @@
  * Messages, both ways with `postMessage`:
  * - editor → page: `hello` with the colours, then `state` with the mode, the changed markers and the labels,
  *   `focus` with the marker of the form's focused field, or null, and `reload`;
- * - page → editor: `fields` with the page's path and its markers, `select` with one.
+ * - page → editor: `fields` with the page's path and its markers, `select` with one, and
+ *   `select-secondary` with a marker whose label offers a second action, such as editing a related entry.
  * A block of rich text has its number (`data-mica-block`): `select` and `focus` carry it, so
  * that a click on a paragraph puts the cursor there, and the cursor's paragraph comes into view.
  * The page takes messages only from its parent, and `hello` only from an
@@ -80,11 +81,17 @@ const styles = (colours: Colours) => `
   html:not([${BROWSE}]) [${CHANGED}][${HOVERED}] { outline-style: solid !important; }
   html:not([${BROWSE}]) [${FOCUSED}] { outline: 2px solid ${colours.edit} !important; outline-offset: 2px; }
   #mica-preview-label {
-    position: fixed; z-index: 2147483647; pointer-events: none; display: none;
-    padding: 2px 6px; border-radius: 4px; max-width: 320px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    position: fixed; z-index: 2147483647; pointer-events: none; display: none; align-items: center; gap: 6px;
+    padding: 2px 6px; border-radius: 4px; max-width: 360px; white-space: nowrap;
     font: 600 12px/1.4 system-ui, sans-serif; letter-spacing: normal; text-transform: none;
     background: ${colours.edit}; color: ${colours.onEdit};
   }
+  #mica-preview-label > span { overflow: hidden; text-overflow: ellipsis; }
+  #mica-preview-label > button {
+    pointer-events: auto; cursor: pointer; border: 0; margin: 0; padding: 0 6px; border-radius: 3px;
+    font: inherit; color: inherit; background: color-mix(in srgb, currentColor 22%, transparent);
+  }
+  #mica-preview-label > button:hover { background: color-mix(in srgb, currentColor 36%, transparent); }
   #mica-preview-label[data-changed] { background: ${colours.changed}; color: ${colours.onChanged}; }
 `;
 
@@ -107,7 +114,8 @@ function start(editors: readonly string[]): void {
   let editor: string | null = null;
   let browsing = false;
   let changed = new Set<string>();
-  let labels = new Map<string, string>();
+  /** The hover label of each field; `secondary` names a second action, such as the related entry that a click on its button edits. */
+  let labels = new Map<string, { text: string; secondary?: string }>();
   let sent = "";
 
   const post = (message: Record<string, unknown>) => editor && window.parent.postMessage({ source: FROM_PAGE, ...message }, editor);
@@ -134,49 +142,79 @@ function start(editors: readonly string[]): void {
   const style = document.createElement("style");
   const label = document.createElement("div");
   label.id = "mica-preview-label";
+  const labelText = document.createElement("span");
+  const secondaryButton = document.createElement("button");
+  secondaryButton.type = "button";
+  label.append(labelText, secondaryButton);
   let hovered: Element | null = null;
 
   /** The label above the hovered element, or inside it at the top of the window. */
   const placeLabel = () => {
     const key = hovered?.getAttribute(ATTRIBUTE);
-    const text = key ? labels.get(key) : undefined;
-    if (!hovered || !text || browsing) {
+    const entry = key ? labels.get(key) : undefined;
+    if (!hovered || !entry || browsing) {
       label.style.display = "none";
       return;
     }
-    label.textContent = text;
+    labelText.textContent = entry.text;
+    secondaryButton.hidden = !entry.secondary;
+    secondaryButton.textContent = entry.secondary ? `${entry.secondary} ↗` : "";
+    secondaryButton.title = entry.secondary ? `Edit “${entry.secondary}”` : "";
+    secondaryButton.dataset["key"] = key ?? "";
     label.toggleAttribute("data-changed", hovered.hasAttribute(CHANGED));
-    label.style.display = "block";
+    label.style.display = "flex";
     const box = hovered.getBoundingClientRect();
     const above = box.top - label.offsetHeight - 4;
     label.style.top = `${above >= 0 ? above : box.top + 4}px`;
     label.style.left = `${Math.max(0, Math.min(box.left - 2, window.innerWidth - label.offsetWidth))}px`;
   };
 
-  const hover = (next: Element | null) => {
-    if (next === hovered) return;
+  const setHovered = (next: Element | null) => {
     for (const element of document.querySelectorAll(`[${HOVERED}]`)) element.removeAttribute(HOVERED);
     hovered = next;
     const key = next?.getAttribute(ATTRIBUTE);
     if (key) for (const element of fieldElements(key)) element.setAttribute(HOVERED, "");
     placeLabel();
   };
-  document.addEventListener("mouseover", (event) => hover(event.target instanceof Element ? event.target.closest(`[${ATTRIBUTE}]`) : null));
+
+  // The label stays a moment after the pointer leaves the field, so that its button can be reached.
+  let leaving: ReturnType<typeof setTimeout> | undefined;
+  const hover = (next: Element | null) => {
+    clearTimeout(leaving);
+    if (next === hovered) return;
+    if (next === null && hovered && !secondaryButton.hidden) leaving = setTimeout(() => setHovered(null), 400);
+    else setHovered(next);
+  };
+  document.addEventListener("mouseover", (event) => {
+    if (event.target instanceof Node && label.contains(event.target)) {
+      clearTimeout(leaving);
+      return;
+    }
+    hover(event.target instanceof Element ? event.target.closest(`[${ATTRIBUTE}]`) : null);
+  });
   document.documentElement.addEventListener("mouseleave", () => hover(null));
+
+  secondaryButton.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    const marker = markerOfKey(secondaryButton.dataset["key"] ?? null);
+    if (marker) post({ type: "select-secondary", marker });
+  });
   window.addEventListener("scroll", placeLabel, { passive: true, capture: true });
   window.addEventListener("resize", placeLabel);
 
   /**
    * Outlines the elements of a field, and scrolls to the first one when it is
-   * not in view. A group, such as `seo`, finds the fields in it. With a block,
-   * only that block of a rich text.
+   * not in view. A group, such as `seo`, finds the fields in it; an empty path,
+   * all fields of a related entry. With a block, only that block.
    */
   const focus = (marker: FieldMarker | null, block: number | null) => {
     for (const element of document.querySelectorAll(`[${FOCUSED}]`)) element.removeAttribute(FOCUSED);
     if (!marker) return;
     let found = [...document.querySelectorAll(`[${ATTRIBUTE}]`)].filter((element) => {
       const other = markerOfKey(element.getAttribute(ATTRIBUTE));
-      return !!other && other.document === marker.document && other.id === marker.id && (other.path === marker.path || other.path.startsWith(`${marker.path}.`));
+      const inField = marker.path === "" || other?.path === marker.path || !!other?.path.startsWith(`${marker.path}.`);
+      return !!other && other.document === marker.document && other.id === marker.id && inField;
     });
     if (block !== null) {
       // The block itself; a page that left it out shows the field's first element.
@@ -216,7 +254,9 @@ function start(editors: readonly string[]): void {
       if (Array.isArray(data["labels"])) {
         labels = new Map(
           data["labels"].flatMap((item: unknown) =>
-            isRecord(item) && isMarker(item["marker"]) && typeof item["label"] === "string" ? [[keyOf(item["marker"]), item["label"]] as const] : [],
+            isRecord(item) && isMarker(item["marker"]) && typeof item["label"] === "string"
+              ? [[keyOf(item["marker"]), { text: item["label"], ...(typeof item["secondary"] === "string" ? { secondary: item["secondary"] } : {}) }] as const]
+              : [],
           ),
         );
       }

@@ -10,6 +10,11 @@
  * a document of its own opens that document's form, also after a link was
  * followed in Browse mode. Fields with unpublished changes get the glint
  * outline. When a field of a form gets the focus, the page scrolls to its text.
+ *
+ * A name on the page can come from a related entry, such as the author of an
+ * article. A click goes to the relation field of the form's document; the
+ * hover label also offers to edit the related entry, in the overlay form. The
+ * focus of a relation field shows its entry on the page.
  */
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
@@ -23,7 +28,9 @@ import { FIELD_BLOCK, focusField } from "@/lib/focus";
 import { withoutOverlay } from "@/lib/overlay-address";
 import { documentAtPath } from "@/lib/pages";
 import { changedMarkers, isPreviewMarker, type PreviewMarker } from "@/lib/preview-changes";
+import { linkKey, linkTarget, relationLinks, type RelationLink } from "@/lib/preview-relations";
 import { useSchema } from "@/stores/schema";
+import { api } from "@/api";
 import { useStaging } from "@/stores/staging";
 
 const pane = usePreviewPane();
@@ -87,6 +94,29 @@ const mainDocument = computed(() => {
 const sameDocument = (a: { document: string; id: string } | null, b: { document: string; id: string }) =>
   !!a && a.document === b.document && a.id === b.id;
 
+/** The entries that the form's document links to, read again with each page that the preview loads. */
+const links = ref(new Map<string, RelationLink>());
+
+async function loadLinks(): Promise<void> {
+  const main = mainDocument.value;
+  const collection = main ? schema.collection(main.document) : undefined;
+  const fields = collection?.fields ?? (main ? schema.singleton(main.document)?.fields : undefined);
+  if (!main || !fields) {
+    links.value = new Map();
+    return;
+  }
+  try {
+    const saved = collection ? await api.entries.get(main.document, main.id) : await api.singletons.get(main.document);
+    links.value = relationLinks(fields, saved.data);
+  } catch {
+    // Without them, a related name still opens its own entry.
+    links.value = new Map();
+  }
+}
+
+/** The relation field of the form's document that links to the marker's entry, if any. */
+const linkOf = (marker: PreviewMarker): RelationLink | undefined => links.value.get(linkKey(marker.document, marker.id));
+
 /** On hover: the field's name in an open form, else the document that the field belongs to. */
 function labelOf(marker: PreviewMarker): string {
   const collection = schema.collection(marker.document);
@@ -104,7 +134,11 @@ function sendState(): void {
     type: "state",
     mode: pane.mode.value,
     changed: changed.value,
-    labels: markers.value.map((marker) => ({ marker, label: labelOf(marker) })),
+    labels: markers.value.map((marker) => {
+      // A related entry: the label names the relation field, and its button the entry.
+      const link = sameDocument(mainDocument.value, marker) ? undefined : linkOf(marker);
+      return link ? { marker, label: link.label, secondary: labelOf(marker) } : { marker, label: labelOf(marker) };
+    }),
   });
 }
 
@@ -136,7 +170,24 @@ const onFieldBlock = (event: Event) => {
   if (typeof block === "number") setFocused(focusOf(event.target, block));
 };
 
-const sendFocus = () => post({ type: "focus", marker: focused.value?.marker ?? null, block: focused.value?.block });
+/**
+ * Sends the focused field to the page. A relation field of the form's document
+ * has no text there: the page shows the linked entry instead, all of it.
+ */
+function sendFocus(): void {
+  const current = focused.value;
+  if (current && sameDocument(mainDocument.value, current.marker)) {
+    const linked = [...links.value].find(
+      ([, link]) => link.path === current.marker.path && (current.block === undefined || link.block === undefined || link.block === current.block),
+    );
+    if (linked) {
+      const { collection, slug } = linkTarget(linked[0]);
+      post({ type: "focus", marker: { document: collection, id: slug, path: "" } });
+      return;
+    }
+  }
+  post({ type: "focus", marker: current?.marker ?? null, block: current?.block });
+}
 watch(focused, sendFocus);
 
 async function findChanges(): Promise<void> {
@@ -149,11 +200,13 @@ async function select(marker: PreviewMarker, block?: number): Promise<void> {
   const singleton = collection ? undefined : schema.singleton(marker.document);
   if (!collection && !singleton) return;
   if (sameDocument(mainDocument.value, marker)) {
-    const hadOverlay = !!pane.overlay.value;
-    if (!pane.closeOverlay()) return;
-    if (hadOverlay) void router.replace({ query: withoutOverlay(route.query) });
-    await nextTick();
-    focusField(marker.path, document.getElementById("main") ?? document, { block });
+    await focusMain(marker.path, block);
+    return;
+  }
+  // A related entry: the relation field of the form's document that shows it here.
+  const link = linkOf(marker);
+  if (link) {
+    await focusMain(link.path, link.block);
     return;
   }
   // A document with a page of its own opens its form, and the preview its page.
@@ -163,6 +216,15 @@ async function select(marker: PreviewMarker, block?: number): Promise<void> {
     return;
   }
   pane.openOverlay({ kind: collection ? "entry" : "singleton", document: marker.document, id: marker.id, field: marker.path });
+}
+
+/** Goes to a field of the main form; an overlay over it closes first, and leaves the address. */
+async function focusMain(path: string, block?: number): Promise<void> {
+  const hadOverlay = !!pane.overlay.value;
+  if (!pane.closeOverlay()) return;
+  if (hadOverlay) void router.replace({ query: withoutOverlay(route.query) });
+  await nextTick();
+  focusField(path, document.getElementById("main") ?? document, { block });
 }
 
 /** A path of the dev server without its `base`, as the model's `url` options name it. */
@@ -204,10 +266,16 @@ function onMessage(event: MessageEvent): void {
     if (typeof message["path"] === "string") shown.value = `${origin.value}${message["path"]}`;
     markers.value = message["markers"].filter(isPreviewMarker);
     void follow();
+    void loadLinks().then(sendState);
     sendState();
     // After a reload, the page goes back to the field that has the focus.
     sendFocus();
     void staging.refresh().then(findChanges);
+  }
+  // The button in the hover label of a related entry: edit that entry in the overlay form, at the clicked field.
+  if (message["type"] === "select-secondary" && isPreviewMarker(message["marker"])) {
+    const marker = message["marker"];
+    if (schema.collection(marker.document)) pane.openOverlay({ kind: "entry", document: marker.document, id: marker.id, field: marker.path });
   }
   if (message["type"] === "select" && isPreviewMarker(message["marker"])) {
     void select(message["marker"], typeof message["block"] === "number" ? message["block"] : undefined);
