@@ -33,7 +33,7 @@ cd examples/company-site && rushx dev
 Open <http://localhost:4321>. To edit the content, run Mica beside it:
 
 ```bash
-rushx mica        # the editor, on http://localhost:3000
+rushx mica        # the editor, on http://localhost:3333
 ```
 
 `rush dev` from the repository root also starts the editor with this project's

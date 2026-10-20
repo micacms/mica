@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "@micacms/astro/preview: micaPreview() marks the text fields of each page in MICA_PREVIEW=1 astro dev, so that the editor's live preview can open a field from its text.",
+      "type": "minor",
+      "packageName": "@micacms/astro"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

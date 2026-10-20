@@ -48,8 +48,9 @@ Each record states a decision that is still true: its context, the decision and 
 ## Editor
 
 - [25. The editor speaks of saving and publishing, not of Git](0025-editor-words.md)
-- [26. Preview in the local editor only; a link to the published page](0026-preview.md)
+- [26. Preview in the local editor only; a link to the published page](0026-preview.md) (replaced by 37)
 - [27. The 1.0 scale target, and views that read only what they show](0027-scale-target.md)
+- [37. A live preview beside the form; a link to the published page](0037-live-preview.md)
 
 ## Agents
 

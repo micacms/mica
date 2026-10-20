@@ -70,33 +70,36 @@ export function requestContext(ctx: Env["Variables"]["ctx"]): MiddlewareHandler<
  * editor starts MapLibre's worker from a `blob:` address, so that the worker
  * keeps this page's policy and not the one cached with its script.
  */
-export function contentSecurityPolicy(model: Site): string {
+export function contentSecurityPolicy(model: Site, frames: readonly string[] = []): string {
   const hosts = mapHosts(model);
   const map = hosts.length > 0 ? [`connect-src 'self' ${hosts.join(" ")}`, "worker-src 'self' blob:"] : [];
   return [
     "default-src 'self'",
     ["img-src 'self' blob: data:", ...hosts].join(" "),
     ...map,
+    // The live preview shows the website's dev server in a frame.
+    ...(frames.length > 0 ? [`frame-src ${frames.join(" ")}`] : []),
     "object-src 'none'",
     "base-uri 'none'",
     "frame-ancestors 'none'",
   ].join("; ");
 }
 
-// The model changes rarely, and each change is a new object.
-const policies = new WeakMap<Site, string>();
-const policyFor = (model: Site): string => {
-  let policy = policies.get(model);
-  if (policy === undefined) policies.set(model, (policy = contentSecurityPolicy(model)));
-  return policy;
-};
-
 export function securityHeaders(): MiddlewareHandler<Env> {
+  // The model changes rarely, and each change is a new object. One app has one context, so one set of frames.
+  const policies = new WeakMap<Site, string>();
+  const policyFor = (model: Site, frames: readonly string[]): string => {
+    let policy = policies.get(model);
+    if (policy === undefined) policies.set(model, (policy = contentSecurityPolicy(model, frames)));
+    return policy;
+  };
+
   return async (c, next) => {
     await next();
 
     if (!c.res.headers.has("content-security-policy")) {
-      c.header("content-security-policy", policyFor(c.get("ctx").site.model));
+      const ctx = c.get("ctx");
+      c.header("content-security-policy", policyFor(ctx.site.model, ctx.previewFrames));
     }
     // Only for an https public URL: HSTS over plain HTTP is ignored, and on
     // localhost it would pin a developer's other projects to https.

@@ -17,7 +17,7 @@ A small scope is what one maintainer can keep stable. Each item below can come i
 - A blocks field with items of different shapes.
 - A branch switcher. One Mica serves one branch.
 - A `renamedFrom` field option. The rename recipe makes a rename one commit.
-- Native multilingual content ([22](0022-no-native-multilingual-content.md)) and a self-hosted draft preview ([26](0026-preview.md)).
+- Native multilingual content ([22](0022-no-native-multilingual-content.md)) and a self-hosted draft preview ([37](0037-live-preview.md)).
 
 ## Consequences
 

@@ -1,6 +1,6 @@
 # 26. Preview in the local editor only; a link to the published page
 
-**Status:** Accepted
+**Status:** Replaced by [37](0037-live-preview.md)
 
 ## Context
 

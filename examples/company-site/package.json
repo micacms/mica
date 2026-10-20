@@ -7,9 +7,10 @@
   "scripts": {
     "astro": "astro",
     "build": "astro build",
-    "dev": "astro dev",
-    "mica": "mica start --port 3000",
     "check": "mica check && astro check",
+    "dev": "astro dev",
+    "dev:preview": "MICA_PREVIEW=1 astro dev",
+    "mica": "mica start --port 3333",
     "preview": "astro preview",
     "typecheck": "astro check"
   },

@@ -37,6 +37,11 @@
       "types": "./dist/relations.d.ts",
       "default": "./dist/relations.js"
     },
+    "./preview": {
+      "types": "./dist/preview/index.d.ts",
+      "default": "./dist/preview/index.js"
+    },
+    "./preview/client": "./dist/preview/client.js",
     "./components": "./components/index.ts"
   },
   "files": [

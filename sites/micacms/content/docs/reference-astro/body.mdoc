@@ -113,6 +113,24 @@ import { LocationMap } from "@micacms/astro/components";
 
 The website needs `maplibre-gl` in its dependencies. The map loads when it comes near the screen. Until then, and without JavaScript, the element holds a link to the place on OpenStreetMap. `mapView(place, { map, zoom })` from `@micacms/astro` gives the same view as data, for a map that you draw yourself.
 
+## Live preview: @micacms/astro/preview
+
+`micaPreview()` lets the local editor's preview find the texts of a page. A click on a text in the preview opens its field, and the preview scrolls to the field that the editor works in.
+
+```js
+// astro.config.mjs
+import { micaPreview } from "@micacms/astro/preview";
+
+export default defineConfig({ integrations: [micaPreview()] });
+```
+
+Start the dev server with `MICA_PREVIEW=1 astro dev`. Only then does the integration do something. A build and a plain `astro dev` do not change.
+
+- The loaders append invisible characters to the values of text and textarea fields. Values that look like an address or a phone number get none, because a template puts them in a link. In the preview, a template that compares a text value or makes an address from it can act differently.
+- Each page gets a small script. It answers only an editor on the same computer. To allow another editor, set `MICA_PREVIEW_EDITOR` to its origins, separated by commas.
+
+See [Preview changes](/docs/previews/).
+
 ## Types
 
 ```ts
