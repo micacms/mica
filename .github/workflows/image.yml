@@ -14,6 +14,7 @@ on:
       - "apps/self-hosted/**"
       - "tests/oidc/**"
       - "tests/browser/**"
+      - "tests/preview/**"
       - "rush.json"
       - "tsconfig.base.json"
       - "**/package.json"
@@ -23,8 +24,8 @@ on:
       - "scripts/api-report.mjs"
       - "scripts/api-extractor.base.json"
       - "scripts/licenses/**"
-      # The test stack seeds its Git host with the example's content.
-      - "examples/company-site/content/**"
+      # The test stack seeds its Git host with the example's content, and the preview runs the example site.
+      - "examples/company-site/**"
       - ".github/workflows/image.yml"
   # Again on main after a merge, with the same paths (#304).
   push:
@@ -36,6 +37,7 @@ on:
       - "apps/self-hosted/**"
       - "tests/oidc/**"
       - "tests/browser/**"
+      - "tests/preview/**"
       - "rush.json"
       - "tsconfig.base.json"
       - "**/package.json"
@@ -45,8 +47,8 @@ on:
       - "scripts/api-report.mjs"
       - "scripts/api-extractor.base.json"
       - "scripts/licenses/**"
-      # The test stack seeds its Git host with the example's content.
-      - "examples/company-site/content/**"
+      # The test stack seeds its Git host with the example's content, and the preview runs the example site.
+      - "examples/company-site/**"
       - ".github/workflows/image.yml"
   workflow_dispatch:
 
@@ -142,6 +144,20 @@ jobs:
         working-directory: tests/browser
         run: ./node_modules/.bin/playwright test
 
+      # The live preview of the self-hosted Mica (ADR 38): the example website's
+      # astro dev in a container of its own, behind Mica's gate on another host
+      # name — see tests/preview/README.md.
+      - name: Start the live preview
+        run: |
+          docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml build preview
+          docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml up -d --no-build --wait
+
+      - name: The live preview in a browser
+        working-directory: tests/browser
+        env:
+          MICA_PREVIEW_STACK: "1"
+        run: ./node_modules/.bin/playwright test preview-self-hosted
+
       - name: Browser test report
         if: failure()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -152,4 +168,4 @@ jobs:
 
       - name: Logs of the test stack
         if: failure()
-        run: docker compose -f tests/oidc/compose.yml logs
+        run: docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml logs

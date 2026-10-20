@@ -1,0 +1,39 @@
+# The live preview of the self-hosted Mica (ADR 38), on top of the OIDC test
+# stack: the example website's `astro dev` in a container of its own, behind
+# Mica's gate on another host name. See README.md.
+#
+#   docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml up -d --build --wait
+
+services:
+  dex:
+    ports:
+      - "127.0.0.1:6423:6423"
+
+  mica:
+    volumes:
+      - mica-data:/data
+    environment:
+      # Two names under localhost, on one site: the browser sends the editor's cookies to neither the other name nor the website.
+      MICA_PUBLIC_URL: http://cms.localhost:6422
+      MICA_PREVIEW_URL: http://preview.cms.localhost:6423
+      MICA_PREVIEW_UPSTREAM: http://preview:4321
+
+  preview:
+    build:
+      context: ../..
+      dockerfile: tests/preview/Dockerfile
+    depends_on:
+      mica:
+        condition: service_healthy
+    environment:
+      MICA_PREVIEW_EDITOR: http://cms.localhost:6422
+    volumes:
+      - mica-data:/mica:ro
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:4321/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 5s
+      retries: 60
+
+volumes:
+  mica-data:

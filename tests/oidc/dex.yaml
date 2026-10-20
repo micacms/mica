@@ -24,6 +24,8 @@ staticClients:
     secret: oidc-test-client-secret-not-for-production
     redirectURIs:
       - http://localhost:6422/api/auth/callback
+      # The live preview's stack (tests/preview) gives Mica another host name.
+      - http://cms.localhost:6422/api/auth/callback
 
 # Dex reports every address here as verified, as Google does.
 staticPasswords:
