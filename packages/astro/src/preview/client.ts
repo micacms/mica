@@ -43,6 +43,8 @@ const FOCUSED = "data-mica-focused";
 const BLOCK = "data-mica-block";
 /** On an element that the page could not give to a document with the current models: it is not tried again until they change. */
 const UNRESOLVED = "data-mica-unresolved";
+/** On an element whose template fields the page has given out. */
+const RESOLVED = "data-mica-resolved";
 /** On the root element in Browse mode: the page then acts as the website does. */
 const BROWSE = "data-mica-browse";
 
@@ -93,6 +95,21 @@ function itemOf(marker: FieldMarker, fields: ReadonlySet<string> | undefined): F
   return { ...marker, path: match[1]!, block: Number(match[2]) };
 }
 
+/** The controls of a page: a click on one inside a section that only the template marked stays the page's. */
+const CONTROLS = "a[href], button, summary, input, select, textarea, label, [role=button]";
+
+/**
+ * The marked element of a click or a pointer: the nearest one around the
+ * target. Not a section that the template marked when the target is in an
+ * unmarked control of it, such as a button of a carousel or a fixed link.
+ */
+function fieldElement(target: EventTarget | null): Element | null {
+  const element = target instanceof Element ? target.closest(`[${ATTRIBUTE}]`) : null;
+  if (!element || !element.hasAttribute(RESOLVED) || !(target instanceof Element)) return element;
+  const control = target.closest(CONTROLS);
+  return control && control !== element && element.contains(control) ? null : element;
+}
+
 const alsoOf = (element: Element): string[] => {
   try {
     const keys: unknown = JSON.parse(element.getAttribute(ALSO) ?? "[]");
@@ -106,31 +123,44 @@ const alsoOf = (element: Element): string[] => {
  * Gives each element that its template marks with the fields that it reads to
  * the documents of those fields: a date, a number or an option, which have no
  * text that can carry a marker. The primary field is one of the form's
- * document; the others are kept for the label. A container with marked
- * elements inside is left to them, and the page's `<head>` shows nothing.
+ * document; the others are kept for the label. An element offers only the
+ * fields that no element inside it shows, also in part: a link with a marked
+ * text offers its address as a button, and a section offers its layout in its
+ * own space, around the marked elements inside it; the list around the
+ * sections offers nothing. The page's `<head>` shows nothing.
  */
 function resolveFields(models: Models): void {
   if (models.fields.size === 0) return;
-  for (const element of document.body.querySelectorAll(`[${FIELDS}]:not([${ATTRIBUTE}]):not([${UNRESOLVED}])`)) {
-    if (element.querySelector(`[${ATTRIBUTE}], [${FIELDS}]`)) continue;
+  const own = (marker: FieldMarker) => !!models.main && marker.document === models.main.document && marker.id === models.main.id;
+  // The deepest first: an element must know what the elements inside it show.
+  for (const element of [...document.body.querySelectorAll(`[${FIELDS}]:not([${RESOLVED}]):not([${UNRESOLVED}])`)].reverse()) {
     const paths = (element.getAttribute(FIELDS) ?? "").split(" ").filter(Boolean);
-    const found = [
-      ...new Map(
-        paths
-          .map((path) => nearestDocument(element, path, models))
-          .filter((marker) => marker !== null)
-          .map((marker) => itemOf(marker, models.fields.get(marker.document)))
-          .map((marker) => [keyOf(marker), marker]),
-      ).values(),
-    ];
-    const own = (marker: FieldMarker) => !!models.main && marker.document === models.main.document && marker.id === models.main.id;
-    const [primary, ...others] = [...found.filter(own), ...found.filter((marker) => !own(marker))];
-    if (!primary) {
+    const resolved = paths
+      .map((path) => nearestDocument(element, path, models))
+      .filter((marker) => marker !== null)
+      .map((marker) => itemOf(marker, models.fields.get(marker.document)));
+    if (resolved.length === 0) {
       element.setAttribute(UNRESOLVED, "");
       continue;
     }
-    element.setAttribute(ATTRIBUTE, keyOf(primary));
-    if (primary.block !== undefined) element.setAttribute(BLOCK, String(primary.block));
+    element.setAttribute(RESOLVED, "");
+    const shown = [element, ...element.querySelectorAll(`[${ATTRIBUTE}]`)]
+      .flatMap((marked) => (marked.hasAttribute(ATTRIBUTE) ? [marked.getAttribute(ATTRIBUTE), ...alsoOf(marked)] : []))
+      .map(markerOfKey)
+      .filter((marker) => marker !== null);
+    // A list whose rows show inside, such as `sections` around `sections.0.heading`, is theirs: it is not offered again.
+    const shownInside = (marker: FieldMarker) =>
+      shown.some((inner) => inner.document === marker.document && inner.id === marker.id && (inner.path === marker.path || inner.path.startsWith(`${marker.path}.`)));
+    const found = [...new Map(resolved.map((marker) => [keyOf(marker), marker])).values()].filter((marker) => !shownInside(marker));
+    if (found.length === 0) continue;
+    // A text of the element itself is its field already: the others become buttons.
+    if (element.hasAttribute(ATTRIBUTE)) {
+      element.setAttribute(ALSO, JSON.stringify([...alsoOf(element), ...found.map(keyOf)]));
+      continue;
+    }
+    const [primary, ...others] = [...found.filter(own), ...found.filter((marker) => !own(marker))];
+    element.setAttribute(ATTRIBUTE, keyOf(primary!));
+    if (primary!.block !== undefined) element.setAttribute(BLOCK, String(primary!.block));
     if (others.length > 0) element.setAttribute(ALSO, JSON.stringify(others.map(keyOf)));
   }
 }
@@ -361,7 +391,7 @@ function start(editors: readonly string[]): void {
     const box = hovered.getBoundingClientRect();
     const above = box.top - PADDING - label.offsetHeight - 4;
     const below = box.bottom + PADDING + 4;
-    label.style.top = `${above >= 0 ? above : below + label.offsetHeight <= window.innerHeight ? below : box.top + 4}px`;
+    label.style.top = `${above >= 0 ? above : below + label.offsetHeight <= window.innerHeight ? below : Math.max(box.top, 0) + 4}px`;
     label.style.left = `${Math.max(0, Math.min(box.left - PADDING, window.innerWidth - label.offsetWidth))}px`;
   };
 
@@ -383,7 +413,7 @@ function start(editors: readonly string[]): void {
       clearTimeout(leaving);
       return;
     }
-    hover(event.target instanceof Element ? event.target.closest(`[${ATTRIBUTE}]`) : null);
+    hover(fieldElement(event.target));
   });
   document.documentElement.addEventListener("mouseleave", () => hover(null));
   window.addEventListener("scroll", placeLabel, { passive: true, capture: true });
@@ -500,7 +530,7 @@ function start(editors: readonly string[]): void {
     "click",
     (event) => {
       if (!editor || browsing || event.altKey || !(event.target instanceof Element)) return;
-      const element = event.target.closest(`[${ATTRIBUTE}]`);
+      const element = fieldElement(event.target);
       const marker = markerOfKey(element?.getAttribute(ATTRIBUTE) ?? null);
       if (!element || !marker) return;
       event.preventDefault();

@@ -58,6 +58,14 @@ const card = { heading: title };
     assert.deepEqual(fieldsIn(template), ["div: ↑", "p: title"]);
   });
 
+  it("counts a field in the key of a lookup, such as a layout's class", () => {
+    const template = `---
+const { layout, title } = entry.data;
+---
+<section class={LAYOUTS[layout ?? "full"]}><h2>{title}</h2></section>`;
+    assert.deepEqual(fieldsIn(template), ["section: ↑ layout", "h2: title"]);
+  });
+
   it("leaves scripts, styles and an element that has the attribute as they are, and finds positions after other scripts", () => {
     const template = `---
 const { title } = entry.data;
