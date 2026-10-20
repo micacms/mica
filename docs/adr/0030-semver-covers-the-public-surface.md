@@ -8,7 +8,7 @@ All packages share one lockstep version. If each package were public, each refac
 
 ## Decision
 
-- From 1.0, semver covers: the entry points `@micacms/core` and `@micacms/core/node`, `@micacms/astro`, `@micacms/astro/relations` and `@micacms/astro/components`, the `@micacms/editor` CLI (commands, flags and exit codes), the MCP tool names and inputs, the image contract (environment variables, port, volume, `/health` and `/ready`), the content format and the manifest protocol.
+- From 1.0, semver covers: the entry points `@micacms/core` and `@micacms/core/node`, `@micacms/astro`, `@micacms/astro/relations`, `@micacms/astro/components` and `@micacms/astro/preview` ([37](0037-live-preview.md)), the `@micacms/editor` CLI (commands, flags and exit codes), the MCP tool names and inputs, the image contract (environment variables, port, volume, `/health` and `/ready`), the content format and the manifest protocol.
 - `@micacms/runtime` and `@micacms/mcp` are internal. They are on npm only because `@micacms/editor` installs them, pinned exactly. `@micacms/core/internal` is internal.
 - `@micacms/editor-ui` and `@micacms/auth-oidc` are not published. A change to the editor UI records its change file for `@micacms/editor`; a change to the OIDC gate or the image records it for `@micacms/runtime`.
 - In `rush change`, a break of an internal package is `minor`. `major` is only for a break of the public surface.

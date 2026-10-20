@@ -31,10 +31,7 @@ export const GET: APIRoute = async ({ site }) => {
    */
   const urls: Array<{ path: string; lastmod: string | null }> = [
     { path: "/", lastmod: null },
-    { path: "/projects/", lastmod: null },
-    { path: "/news/", lastmod: null },
-    { path: "/events/", lastmod: null },
-    { path: "/team/", lastmod: null },
+    // The list pages, such as /news/, are pages too.
     ...pages.map((page) => ({ path: `/${page.id}/`, lastmod: null })),
     ...projects.map((item) => ({ path: `/projects/${item.id}/`, lastmod: null })),
     ...events.map((item) => ({ path: `/events/${item.id}/`, lastmod: null })),

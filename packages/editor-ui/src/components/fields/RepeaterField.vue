@@ -108,6 +108,12 @@ function updateRow(index: number, value: Record<string, unknown>): void {
   emitRows(rows.value.map((item, position) => (position === index ? value : item)));
 }
 
+/** A field in the row must take the focus (`focusField`): the row opens. */
+function reveal(row: Record<string, unknown>): void {
+  const id = rowId(row);
+  if (collapsed.value.has(id)) collapsed.value = new Set([...collapsed.value].filter((other) => other !== id));
+}
+
 function toggle(row: Record<string, unknown>): void {
   const id = rowId(row);
   const next = new Set(collapsed.value);
@@ -148,6 +154,7 @@ const reorder = useReorder<Record<string, unknown>>({
         :key="rowId(row)"
         :class="['card overflow-hidden', reorder.isMoving(row) && 'ring-2 ring-accent']"
         v-bind="reorder.row(row)"
+        @reveal-field="reveal(row)"
       >
         <div class="flex items-center gap-1 bg-canvas/60 py-2 pr-2 pl-1">
           <ReorderHandle

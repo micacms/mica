@@ -3,7 +3,7 @@ import { Image } from "astro:assets";
 import type { CollectionEntry } from "astro:content";
 
 import TagList from "@/components/TagList.astro";
-import { CATEGORY_LABELS } from "@/lib/content";
+import { categoryLabel, getLabels } from "@/lib/content";
 
 interface Props {
   project: CollectionEntry<"projects">;
@@ -14,6 +14,7 @@ const { project, priority = false } = Astro.props;
 const { title, year, category, gallery, location, tags } = project.data;
 
 const cover = gallery[0] ?? null;
+const { projects: labels } = await getLabels();
 ---
 
 <article class="group">
@@ -31,13 +32,13 @@ const cover = gallery[0] ?? null;
             fetchpriority={priority ? "high" : "auto"}
           />
         ) : (
-          <div class="flex h-full items-center justify-center text-sm text-muted">No image yet</div>
+          <div class="flex h-full items-center justify-center text-sm text-muted">{labels.noImage}</div>
         )
       }
     </div>
 
     <div class="mt-5">
-      {category && <p class="eyebrow text-accent">{CATEGORY_LABELS[category]}</p>}
+      {category && <p class="eyebrow text-accent">{categoryLabel(category)}</p>}
       <h3 class="mt-2 text-lg font-semibold leading-snug transition group-hover:text-primary">
         {title}
       </h3>

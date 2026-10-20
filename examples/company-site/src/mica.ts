@@ -43,7 +43,44 @@ import {
   text,
   textarea,
   url,
+  type FieldMap,
 } from "@micacms/core";
+
+/**
+ * Every text that a page shows is content, also a heading or the label of a
+ * link: so an editor can change it, and the live preview can open it. A label
+ * is required, because an empty one leaves a gap in the page.
+ */
+const label = (name: string, description?: string) =>
+  text({
+    label: name,
+    required: true,
+    ...(description ? { description } : {}),
+  });
+
+/** A link of a page: its text and its address. */
+const link = (name: string) =>
+  object({
+    label: name,
+    fields: {
+      label: label("Text", "The text of the link."),
+      href: label("Link", "An address on this website, like /contact/."),
+    },
+  });
+
+/** A folded group of labels in the Labels singleton. */
+const labelGroup = <F extends FieldMap>(
+  name: string,
+  description: string,
+  fields: F,
+) =>
+  object({
+    label: name,
+    description,
+    collapsible: true,
+    collapsed: true,
+    fields,
+  });
 
 export const site = defineSite({
   /**
@@ -74,6 +111,27 @@ export const site = defineSite({
           label: "URL",
           from: "title",
           description: "The address of the page, e.g. /about-us.",
+        }),
+        template: select({
+          label: "Template",
+          description:
+            "A list page shows its collection below the content. Its URL must be the collection's: news for News, projects for Projects.",
+          width: "half",
+          default: "standard",
+          options: [
+            { label: "Standard page", value: "standard" },
+            { label: "List of projects", value: "projects" },
+            { label: "List of news", value: "news" },
+            { label: "List of events", value: "events" },
+            { label: "List of the team", value: "team" },
+            { label: "Glossary", value: "glossary" },
+          ],
+        }),
+        eyebrow: text({
+          label: "Eyebrow",
+          maxLength: 40,
+          width: "half",
+          description: "The short line above the title.",
         }),
         intro: textarea({
           label: "Introduction",
@@ -194,7 +252,15 @@ export const site = defineSite({
         }),
         description: richText({
           label: "Description",
-          toolbar: ["bold", "italic", "heading", "bulletList", "orderedList", "link", "image"],
+          toolbar: [
+            "bold",
+            "italic",
+            "heading",
+            "bulletList",
+            "orderedList",
+            "link",
+            "image",
+          ],
         }),
         location: object({
           label: "Location",
@@ -238,7 +304,8 @@ export const site = defineSite({
           accept: ["pdf", "zip", "csv"],
           multiple: true,
           max: 4,
-          description: "Files that visitors can download, such as a case study.",
+          description:
+            "Files that visitors can download, such as a case study.",
         }),
         featured: boolean({
           label: "Show on the homepage",
@@ -386,8 +453,8 @@ export const site = defineSite({
   },
 
   singletons: {
-    site: singleton({
-      label: "Website",
+    general: singleton({
+      label: "General",
       description: "Company details, contact information and default SEO.",
       fields: {
         companyName: text({ label: "Company name", required: true }),
@@ -457,9 +524,179 @@ export const site = defineSite({
               ],
               default: "none",
             }),
-            siteId: text({ label: "Site ID", description: "The script address is in the website's code, not here." }),
+            siteId: text({
+              label: "Site ID",
+              description:
+                "The script address is in the website's code, not here.",
+            }),
           },
         }),
+      },
+    }),
+
+    homePage: singleton({
+      label: "Home page",
+      description:
+        "The texts of the home page. Its title and introduction are the tagline and the description in General.",
+      url: "/",
+      fields: {
+        primaryLink: link("First button"),
+        secondaryLink: link("Second button"),
+        projects: object({
+          label: "Projects section",
+          fields: { eyebrow: label("Eyebrow"), title: label("Title") },
+        }),
+        events: object({
+          label: "Events section",
+          fields: { eyebrow: label("Eyebrow"), title: label("Title") },
+        }),
+        news: object({
+          label: "News section",
+          fields: { eyebrow: label("Eyebrow"), title: label("Title") },
+        }),
+        contact: object({
+          label: "Contact box",
+          fields: {
+            title: label("Title"),
+            text: textarea({ label: "Text", rows: 2 }),
+            link: link("Button"),
+          },
+        }),
+      },
+    }),
+
+    labels: singleton({
+      label: "Labels",
+      description:
+        "The short texts of the templates, such as headings and the text of links. The pages themselves are in Pages.",
+      fields: {
+        general: labelGroup(
+          "On every page",
+          "In the header, and for screen readers.",
+          {
+            skipLink: label(
+              "Skip link",
+              "The first link of each page, for keyboard users.",
+            ),
+            menu: label(
+              "Menu button",
+              "On small screens. Only screen readers read it.",
+            ),
+            mainMenu: label(
+              "Name of the main menu",
+              "Only screen readers read it.",
+            ),
+            tags: label(
+              "Name of a list of tags",
+              "Only screen readers read it.",
+            ),
+          },
+        ),
+        footer: labelGroup(
+          "Footer",
+          "Below each page. The links are in Navigation.",
+          {
+            link: link("Link below the company name"),
+            contact: label("Contact heading"),
+            openingHours: label("Opening hours heading"),
+            more: label("Heading of the links"),
+            sitemap: label("Sitemap link"),
+          },
+        ),
+        projects: labelGroup(
+          "Projects",
+          "On the list of projects and on each project's page.",
+          {
+            allLink: label(
+              "Link to the list",
+              "On the home page and on each project, like “All projects”.",
+            ),
+            empty: label("Text without projects"),
+            noImage: label(
+              "Text without an image",
+              "On a project's card that has no image.",
+            ),
+            keyFacts: label("Key facts"),
+            project: label("Project details"),
+            number: label("Number"),
+            duration: label("Duration"),
+            weeks: label(
+              "Unit of the duration",
+              "After the number, like “weeks”.",
+            ),
+            sector: label("Sector"),
+            downloads: label("Downloads"),
+            location: label("Location"),
+            team: label("Team"),
+            gallery: label("Gallery", "Only screen readers read it."),
+          },
+        ),
+        news: labelGroup("News", "On the list of news and on each article.", {
+          allLink: label(
+            "Link to the list",
+            "On the home page and on each article, like “All news”.",
+          ),
+          empty: label("Text without articles"),
+          readMore: label("Read more"),
+          by: label("By", "Before the author's name, like “by”."),
+          relatedProject: label("Related project"),
+        }),
+        events: labelGroup(
+          "Events",
+          "On the list of events and on each event's page.",
+          {
+            allLink: label(
+              "Link to the list",
+              "On the home page and on each event, like “All events”.",
+            ),
+            upcoming: label("Upcoming events"),
+            noUpcoming: label("Text without upcoming events"),
+            past: label("Past events"),
+            when: label("When"),
+            until: label("Until", "Between the start and the end."),
+            format: label("Format"),
+            and: label(
+              "And",
+              "Between two formats, like “In person and Online”.",
+            ),
+            seats: label(
+              "Unit of the capacity",
+              "After the number, like “seats”.",
+            ),
+            venue: label("Venue"),
+            map: label(
+              "Name of the map",
+              "Before the venue's name. Only screen readers read it.",
+            ),
+            speakers: label("Speakers"),
+            register: label("Register"),
+            isPast: label("Text after the event"),
+          },
+        ),
+        team: labelGroup(
+          "Team",
+          "On the list of the team and on each person's page.",
+          {
+            allLink: label(
+              "Link to the list",
+              "On each person's page, like “Team”.",
+            ),
+            empty: label("Text without team members"),
+            projects: label("Projects"),
+            events: label("Events"),
+          },
+        ),
+        notFound: labelGroup(
+          "Page not found",
+          "For an address that does not exist.",
+          {
+            pageTitle: label("Title of the browser tab", "Search engines also show it."),
+            eyebrow: label("Eyebrow"),
+            title: label("Title"),
+            text: textarea({ label: "Text", rows: 2 }),
+            link: link("Button"),
+          },
+        ),
       },
     }),
 
@@ -551,6 +788,10 @@ export const site = defineSite({
    * for the editor's picker.
    */
   references: {
-    sectors: referenceSet({ label: "Sectors", file: "src/reference/sectors.json", title: "name" }),
+    sectors: referenceSet({
+      label: "Sectors",
+      file: "src/reference/sectors.json",
+      title: "name",
+    }),
   },
 });

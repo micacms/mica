@@ -226,7 +226,7 @@ export function validateRichText(source: string, options?: RichTextOptions): Mar
 
 // Warnings were encountered during analysis:
 //
-// src/richtext.ts:41:3 - (ae-forgotten-export) The symbol "TextImage" needs to be exported by the entry point index.d.ts
+// src/richtext.ts:43:3 - (ae-forgotten-export) The symbol "TextImage" needs to be exported by the entry point index.d.ts
 
 // (No @packageDocumentation comment for this package)
 

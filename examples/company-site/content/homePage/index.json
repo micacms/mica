@@ -1,0 +1,30 @@
+{
+  "primaryLink": {
+    "label": "See our work",
+    "href": "/projects/"
+  },
+  "secondaryLink": {
+    "label": "Get in touch",
+    "href": "/contact/"
+  },
+  "projects": {
+    "eyebrow": "Our work",
+    "title": "Selected projects"
+  },
+  "events": {
+    "eyebrow": "Meet us",
+    "title": "Upcoming events"
+  },
+  "news": {
+    "eyebrow": "Journal",
+    "title": "Latest news"
+  },
+  "contact": {
+    "title": "Have a project in mind?",
+    "text": "Tell us where you are and where you want to go. The first conversation is free.",
+    "link": {
+      "label": "Get in touch",
+      "href": "/contact/"
+    }
+  }
+}

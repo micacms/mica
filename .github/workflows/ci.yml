@@ -186,8 +186,9 @@ jobs:
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ runner.os }}-${{ hashFiles('common/config/rush/pnpm-lock.yaml') }}
-      - run: node common/scripts/install-run-rush.js install --to @micacms/editor --to @micacms/browser-test
-      - run: node common/scripts/install-run-rush.js build --to @micacms/editor
+      # The live preview's test runs the example site with `astro dev`: it needs its packages and a built @micacms/astro.
+      - run: node common/scripts/install-run-rush.js install --to @micacms/editor --to @micacms/browser-test --to @micacms/example-company-site
+      - run: node common/scripts/install-run-rush.js build --to @micacms/editor --to @micacms/astro
       - name: Install Chromium
         working-directory: tests/browser
         run: ./node_modules/.bin/playwright install --with-deps chromium

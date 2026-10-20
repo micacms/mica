@@ -7,9 +7,9 @@ import { execFileSync, spawn, type ChildProcess } from "node:child_process";
 import { cpSync, existsSync, mkdtempSync, renameSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { basename, join, resolve } from "node:path";
 
-const REPOSITORY = resolve(import.meta.dirname, "../../..");
+export const REPOSITORY = resolve(import.meta.dirname, "../../..");
 const CLI = join(REPOSITORY, "apps/local-editor/dist/cli.js");
 const FIXTURE = join(REPOSITORY, "examples/starter/content");
 
@@ -31,7 +31,7 @@ function run(cwd: string, args: string[]): string {
 }
 
 /** A port that nothing listens on now. */
-async function freePort(): Promise<number> {
+export async function freePort(): Promise<number> {
   return new Promise((done, fail) => {
     const server = createServer();
     server.once("error", fail);
@@ -42,11 +42,12 @@ async function freePort(): Promise<number> {
   });
 }
 
-/** Waits until the editor answers, or fails with what it printed. */
-async function ready(editor: ChildProcess, url: string, output: () => string): Promise<void> {
-  const until = Date.now() + 30_000;
+/** Waits until a process answers at `url`, or fails with what it printed. */
+export async function ready(child: ChildProcess, url: string, output: () => string, seconds = 30): Promise<void> {
+  const name = child.spawnargs.slice(1, 3).map((arg) => basename(arg)).join(" ");
+  const until = Date.now() + seconds * 1000;
   while (Date.now() < until) {
-    if (editor.exitCode !== null) throw new Error(`mica start stopped:\n${output()}`);
+    if (child.exitCode !== null) throw new Error(`${name} stopped:\n${output()}`);
     try {
       if ((await fetch(url)).ok) return;
     } catch {
@@ -54,12 +55,27 @@ async function ready(editor: ChildProcess, url: string, output: () => string): P
     }
     await new Promise((wait) => setTimeout(wait, 200));
   }
-  throw new Error(`mica start did not answer in 30 seconds:\n${output()}`);
+  throw new Error(`${name} did not answer in ${seconds} seconds:\n${output()}`);
+}
+
+/** Starts `mica start` on a content folder, and waits until it answers. */
+export async function spawnEditor(content: string, cwd: string): Promise<{ address: string; editor: ChildProcess }> {
+  if (!existsSync(CLI)) throw new Error(`There is no local editor build at ${CLI}. Run rush build first.`);
+  const port = await freePort();
+  const address = `http://localhost:${port}`;
+  let output = "";
+  const editor = spawn(process.execPath, [CLI, "start", content, "--port", String(port), "--no-open"], {
+    cwd,
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  editor.stdout?.on("data", (chunk: Buffer) => (output += chunk.toString()));
+  editor.stderr?.on("data", (chunk: Buffer) => (output += chunk.toString()));
+  await ready(editor, `${address}/api/auth/config`, () => output);
+  return { address, editor };
 }
 
 /** With `remote: true`, the checkout has a bare `origin`, and the branch tracks it. */
 export async function startLocalEditor(options: { remote?: boolean } = {}): Promise<LocalEditor> {
-  if (!existsSync(CLI)) throw new Error(`There is no local editor build at ${CLI}. Run rush build first.`);
 
   const site = mkdtempSync(join(tmpdir(), "mica-browser-"));
   const bare = options.remote ? mkdtempSync(join(tmpdir(), "mica-browser-remote-")) : null;
@@ -77,16 +93,7 @@ export async function startLocalEditor(options: { remote?: boolean } = {}): Prom
     git("push", "--quiet", "--set-upstream", "origin", "main");
   }
 
-  const port = await freePort();
-  const address = `http://localhost:${port}`;
-  let output = "";
-  const editor = spawn(process.execPath, [CLI, "start", join(site, "content"), "--port", String(port), "--no-open"], {
-    cwd: site,
-    stdio: ["ignore", "pipe", "pipe"],
-  });
-  editor.stdout?.on("data", (chunk: Buffer) => (output += chunk.toString()));
-  editor.stderr?.on("data", (chunk: Buffer) => (output += chunk.toString()));
-  await ready(editor, `${address}/api/auth/config`, () => output);
+  const { address, editor } = await spawnEditor(join(site, "content"), site);
 
   return {
     site,

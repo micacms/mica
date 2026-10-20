@@ -1,0 +1,15 @@
+{
+  "title": "News",
+  "slug": "news",
+  "template": "news",
+  "eyebrow": "Journal",
+  "intro": "Updates from our practice.",
+  "heroImage": null,
+  "sections": [],
+  "seo": {
+    "metaTitle": null,
+    "metaDescription": null,
+    "ogImage": null,
+    "noindex": false
+  }
+}

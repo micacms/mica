@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router"
 
 import { pageChanged } from "@/lib/announce";
 import { forgetEntryOptions } from "@/lib/entry-options";
+import { onlyOverlayChanged } from "@/lib/overlay-address";
 import { useSession } from "@/stores/session";
 import { useSchema } from "@/stores/schema";
 
@@ -97,7 +98,8 @@ router.beforeEach(async (to) => {
 });
 
 router.afterEach((to, from, failure) => {
-  if (failure) return;
+  // The overlay form opened or closed over the same page: its title stays.
+  if (failure || onlyOverlayChanged(to, from)) return;
   // A page with a header sets a fuller title when it appears.
   const title = typeof to.meta.title === "string" ? to.meta.title : null;
   document.title = title ? `${title} · Mica` : "Mica";

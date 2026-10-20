@@ -85,6 +85,8 @@ async function main(): Promise<void> {
     }),
     policy: developerPolicy({ publishEnabled: config.MICA_LOCAL_PUBLISH, logger }),
     preview: devServerPreview(config.contentRoot),
+    // The dev server's port can change on each start; the marker accepts only localhost.
+    previewFrames: ["http://localhost:*"],
   });
 
   const app = createApp(ctx, {

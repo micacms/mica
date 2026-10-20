@@ -15,7 +15,7 @@ npm run dev     # the website
 npm run mica    # the editor, in a second terminal
 ```
 
-Change the post in the editor and save; the website shows it at once. Publish commits the change and pushes it. Before the first Publish, create an empty repository on your Git host and push the starter's commit once:
+Change the post in the editor. Mica saves it by itself, and the website shows it at once. Publish commits the change and pushes it. Before the first Publish, create an empty repository on your Git host and push the starter's commit once:
 
 ```bash
 git remote add origin <url>
@@ -134,7 +134,7 @@ npm install --save-dev @micacms/editor
 
 With the editor installed, `npx mica init` writes a starter `src/mica.ts` and `src/content.config.ts` and never overwrites a file. `npx mica check` checks every entry against the model and exits with an error code when it finds a problem. Run it in CI, or after a change to the content files. [Recipes](/docs/recipes/) has the CI steps.
 
-While `astro dev` runs, an entry also shows **Preview** beside Save: the page with the saved changes, before Publish. See [Preview changes](/docs/previews/).
+While `astro dev` runs, the editor shows the page beside the form, with the saved changes, before Publish. See [Preview changes](/docs/previews/).
 
 ## 5. Render the content
 
@@ -185,7 +185,7 @@ const author = await related("team", post.data.author);
 
 ## 6. Save, then publish
 
-Create an entry, fill in the form, and press **Save**. Save writes files into your checkout, and the Astro dev server reloads them at once. Run `git status` and `git diff` after a save. You should see the whole change as JSON, Markdoc and media files, uncommitted:
+Create an entry: fill in its title, and press **Create**. After that, Mica saves each change by itself. A save writes files into your checkout, and the Astro dev server reloads them at once. Run `git status` and `git diff` after a save. You should see the whole change as JSON, Markdoc and media files, uncommitted:
 
 ```text
 content/posts/we-are-hiring/

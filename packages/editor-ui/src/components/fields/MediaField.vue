@@ -24,6 +24,7 @@ import { api, type MediaItem } from "@/api";
 import { useField, type FieldProps } from "@/composables/useField";
 import { useReorder } from "@/composables/useReorder";
 import { useUploads } from "@/composables/useUploads";
+import { focusListItem, reportListItem } from "@/lib/focus";
 import { MEDIA_FOLDER } from "@/lib/media-folder";
 import { addPaths, roomFor } from "@/lib/uploads";
 
@@ -178,6 +179,7 @@ function setAlt(index: number, event: Event): void {
     :error="error"
     :hint-id="hintId"
     :error-id="errorId"
+    @focus-block="focusListItem($event, 'ul')"
   >
     <div
       :aria-describedby="describedBy"
@@ -208,6 +210,7 @@ function setAlt(index: number, event: Event): void {
             field.multiple && reorder.isMoving(values[index]!) && 'ring-2 ring-accent',
           ]"
           v-bind="field.multiple ? reorder.row(values[index]!) : {}"
+          @focusin="field.multiple && reportListItem($event, index)"
         >
           <div class="aspect-4/3">
             <img

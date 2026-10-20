@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "In the live preview, dates, numbers, options, tags, maps and images without alt text can be clicked too: the preview's dev server reads the templates with Astro's parser and finds the fields that each element shows, also through components, with no change to the templates. A field of the page's own entry comes first; the others are buttons in its label. A rich text has one outline, and the rest of the page dims around the field. New peer dependency: @astrojs/compiler-rs, which Astro 7 installs.",
+      "type": "minor",
+      "packageName": "@micacms/astro"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

@@ -2,6 +2,6 @@
   "title": "@micacms/astro",
   "slug": "reference-astro",
   "section": "reference",
-  "summary": "The loader options, the _mica metadata, the helpers for pages, the rich-text functions, the map component, and the shape of images and relations.",
-  "readTime": 6
+  "summary": "The loader options, the _mica metadata, the helpers for pages, the rich-text functions, the map component, the live preview, and the shape of images and relations.",
+  "readTime": 7
 }

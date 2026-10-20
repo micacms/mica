@@ -1,6 +1,8 @@
 {
   "title": "About us",
   "slug": "about-us",
+  "template": null,
+  "eyebrow": null,
   "intro": "An independent consultancy for growing companies, working from Porto Celeste since 2012.",
   "heroImage": {
     "path": "/media/studio.jpg",
@@ -10,14 +12,14 @@
     {
       "_key": "zzk3xj",
       "heading": "Who we work with",
-      "layout": "full",
-      "image": null
+      "image": null,
+      "layout": "full"
     },
     {
       "_key": "q2xss6",
       "heading": "Our studio",
-      "layout": "full",
-      "image": null
+      "image": null,
+      "layout": "full"
     }
   ],
   "seo": {

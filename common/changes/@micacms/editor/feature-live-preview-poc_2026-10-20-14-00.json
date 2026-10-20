@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The live preview knows relations: a click on the name of a related entry, such as the author of an article, goes to the relation field, and the label also offers to edit that entry. A relation field has Edit for each chosen entry, which opens it over the current form. The focus on a relation field shows the related entry in the preview.",
+      "type": "minor",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

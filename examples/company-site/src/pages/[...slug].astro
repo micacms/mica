@@ -2,19 +2,31 @@
 import { Image } from "astro:assets";
 import { getCollection, type CollectionEntry } from "astro:content";
 
+import EventList from "@/components/lists/EventList.astro";
+import GlossaryList from "@/components/lists/GlossaryList.astro";
+import NewsList from "@/components/lists/NewsList.astro";
+import ProjectList from "@/components/lists/ProjectList.astro";
+import TeamList from "@/components/lists/TeamList.astro";
+import PageIntro from "@/components/PageIntro.astro";
 import RichText from "@/components/RichText.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { toPlainText } from "@/lib/content";
+import { listPageProblems, toPlainText } from "@/lib/content";
 
 /**
  * Catch-all for the `pages` collection — About, Services, Contact and whatever
- * else an editor creates, at the URL they chose.
- *
- * More specific routes (`/projects`, `/news`, `/team`) win, so a page whose
- * slug collides with one of those is simply shadowed.
+ * else an editor creates, at the URL they chose. A page with a list template,
+ * such as /news/, shows its collection below its content. A new page needs no
+ * change of the model; a new kind of list needs a template and an option.
  */
 export async function getStaticPaths() {
   const pages = await getCollection("pages");
+  const problems = listPageProblems(pages);
+  if (problems.length > 0) {
+    const message = `The list pages in Pages need a change:\n  ${problems.join("\n  ")}`;
+    // In dev the next save is likely the fix; a build must not publish a site without its lists.
+    if (import.meta.env.DEV) console.warn(message);
+    else throw new Error(message);
+  }
   return pages.map((page) => ({
     params: { slug: page.id },
     props: { page },
@@ -26,7 +38,12 @@ interface Props {
 }
 
 const { page } = Astro.props;
-const { title, intro, heroImage, body, sections, seo } = page.data;
+const { title, eyebrow, intro, heroImage, body, sections, seo } = page.data;
+const template = page.data.template ?? "standard";
+
+const LISTS = { projects: ProjectList, news: NewsList, events: EventList, team: TeamList, glossary: GlossaryList };
+// An option that has no list yet renders as a standard page.
+const List = template in LISTS ? LISTS[template as keyof typeof LISTS] : null;
 
 const SECTION_LAYOUTS: Record<string, string> = {
   "image-right": "lg:grid-cols-2",
@@ -41,12 +58,19 @@ const SECTION_LAYOUTS: Record<string, string> = {
   image={seo?.ogImage ?? heroImage?.src}
   noindex={seo?.noindex ?? false}
 >
-  <div class="container-page pb-12 pt-16 sm:pt-24">
-    <div class="max-w-3xl">
-      <h1 class="text-4xl font-semibold sm:text-5xl lg:text-6xl">{title}</h1>
-      {intro && <p class="mt-6 text-lg text-muted text-pretty sm:text-xl">{intro}</p>}
-    </div>
-  </div>
+  {
+    List ? (
+      <PageIntro eyebrow={eyebrow} title={title} lead={intro} />
+    ) : (
+      <div class="container-page pb-12 pt-16 sm:pt-24">
+        <div class="max-w-3xl">
+          {eyebrow && <p class="eyebrow text-accent">{eyebrow}</p>}
+          <h1 class:list={["text-4xl font-semibold sm:text-5xl lg:text-6xl", eyebrow && "mt-3"]}>{title}</h1>
+          {intro && <p class="mt-6 text-lg text-muted text-pretty sm:text-xl">{intro}</p>}
+        </div>
+      </div>
+    )
+  }
 
   {
     heroImage && (
@@ -72,6 +96,8 @@ const SECTION_LAYOUTS: Record<string, string> = {
       </div>
     )
   }
+
+  {List && <List />}
 
   {
     sections.length > 0 && (

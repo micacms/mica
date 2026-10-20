@@ -46,6 +46,7 @@ import { z } from "zod";
 import { announceDevServer, type DevServerConfig } from "./dev-server.js";
 import { imagePathsFromEntry, richTextImageSources } from "./images.js";
 import { manifestFor } from "./manifest.js";
+import { markFields, previewMarkersEnabled } from "./preview/mark.js";
 import { publishReferences } from "./references.js";
 import { DEFAULT_CONTENT_ROOT, resolveContentRoot } from "./root.js";
 
@@ -216,6 +217,9 @@ export function micaCollections<S extends Site>(
     }
   };
 
+  /** The live preview's field markers: after the schema, so that they count for no length rule. */
+  const markers = (context: LoaderContext): boolean => !options.source && previewMarkersEnabled(!!context.watcher);
+
   const projectRootOf = (context: LoaderContext): string => (context.config?.root ? fileURLToPath(context.config.root) : process.cwd());
 
   const publish = (context: LoaderContext): Promise<void> =>
@@ -363,10 +367,11 @@ export function micaCollections<S extends Site>(
                 }),
               );
               if (data === undefined) continue;
+              const shown = markers(context) ? markFields(def.fields, data, name, entry.slug) : data;
               context.store.set({
                 id: entry.slug,
-                data,
-                digest: context.generateDigest(data),
+                data: shown,
+                digest: context.generateDigest(shown),
                 ...(file.inProject ? { filePath: file.inProject } : {}),
               });
             }
@@ -430,10 +435,11 @@ export function micaCollections<S extends Site>(
               }),
             );
             if (parsed === undefined) return;
+            const shown = markers(context) ? markFields(def.fields, parsed, name, name) : parsed;
             context.store.set({
               id: name,
-              data: parsed,
-              digest: context.generateDigest(parsed),
+              data: shown,
+              digest: context.generateDigest(shown),
               ...(file.inProject ? { filePath: file.inProject } : {}),
             });
           };

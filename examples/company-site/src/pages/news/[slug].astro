@@ -6,7 +6,7 @@ import { getCollection, type CollectionEntry } from "astro:content";
 import RichText from "@/components/RichText.astro";
 import TagList from "@/components/TagList.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { formatDate, toPlainText } from "@/lib/content";
+import { formatDate, getLabels, toPlainText } from "@/lib/content";
 
 export async function getStaticPaths() {
   const articles = await getCollection("news");
@@ -25,6 +25,7 @@ const { title, publishDate, excerpt, coverImage, body, author, relatedProject, t
 
 const writer = await related("team", author);
 const project = await related("projects", relatedProject);
+const { news: texts } = await getLabels();
 ---
 
 <BaseLayout
@@ -34,7 +35,7 @@ const project = await related("projects", relatedProject);
 >
   <article>
     <div class="container-prose pb-10 pt-16 sm:pt-24">
-      <a href="/news/" class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> All news</a>
+      <a href="/news/" class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> {texts.allLink}</a>
 
       <h1 class="mt-4 text-4xl font-semibold sm:text-5xl">{title}</h1>
 
@@ -43,7 +44,7 @@ const project = await related("projects", relatedProject);
         {
           writer && (
             <span>
-              {publishDate ? " · " : ""}by{" "}
+              {publishDate ? " · " : ""}{texts.by}{" "}
               <a href={`/team/${writer.id}/`} class="font-medium text-ink hover:text-primary">{writer.data.name}</a>
             </span>
           )
@@ -78,7 +79,7 @@ const project = await related("projects", relatedProject);
         project && (
           <a href={`/projects/${project.id}/`} class="card-surface group mt-12 flex items-center justify-between gap-4 p-5 transition hover:border-primary/40">
             <span>
-              <span class="eyebrow block text-muted">Related project</span>
+              <span class="eyebrow block text-muted">{texts.relatedProject}</span>
               <span class="mt-1 block font-semibold group-hover:text-primary">{project.data.title}</span>
             </span>
             <span aria-hidden="true" class="text-primary transition-transform group-hover:translate-x-0.5">→</span>

@@ -1,0 +1,6 @@
+{
+  "extends": "../../scripts/api-extractor.base.json",
+  "projectFolder": ".",
+  "mainEntryPointFilePath": "<projectFolder>/dist/preview/index.d.ts",
+  "apiReport": { "reportFileName": "astro-preview" }
+}

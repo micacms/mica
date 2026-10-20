@@ -123,6 +123,12 @@ describe("security headers", () => {
     assert.doesNotMatch(policy, /unsafe-eval/);
   });
 
+  it("allows a frame only for the origins of the live preview", () => {
+    const site = withMap({});
+    assert.doesNotMatch(contentSecurityPolicy(site), /frame-src/);
+    assert.match(contentSecurityPolicy(site, ["http://localhost:*"]), /; frame-src http:\/\/localhost:\*; /);
+  });
+
   it("allows the origin and the hosts of a custom style, from the model in use", async () => {
     const site = withMap({
       stops: repeater({ fields: { at: coordinates({ map: { style: "https://maps.example.com/style.json?key=abc", hosts: ["https://tiles.example.com"] } }) } }),

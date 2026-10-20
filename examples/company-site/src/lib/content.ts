@@ -6,7 +6,7 @@
  * the editor's order with `inEditorOrder`.
  */
 
-import { getCollection } from "astro:content";
+import { getCollection, type CollectionEntry } from "astro:content";
 
 import { getSingleton, inEditorOrder, type SingletonDocument } from "@micacms/astro";
 
@@ -14,13 +14,15 @@ import { site } from "../mica";
 
 type Model = typeof site;
 
-export type SiteSettings = SingletonDocument<Model, "site">;
+export type SiteSettings = SingletonDocument<Model, "general">;
 export type Navigation = SingletonDocument<Model, "navigation">;
 export type Theme = SingletonDocument<Model, "theme">;
 
-export const getSiteSettings = () => getSingleton(site, "site");
+export const getSiteSettings = () => getSingleton(site, "general");
 export const getNavigation = () => getSingleton(site, "navigation");
 export const getTheme = () => getSingleton(site, "theme");
+export const getLabels = () => getSingleton(site, "labels");
+export const getHomePage = () => getSingleton(site, "homePage");
 
 /* ------------------------------------------------------------------ *
  * Collection helpers
@@ -95,23 +97,43 @@ export async function getPages() {
   return [...items].sort(inEditorOrder);
 }
 
+/**
+ * The URL of the page of each list template. It is the collection's own,
+ * because the collection's pages are below it: /news/ lists /news/hello/.
+ */
+export const LIST_PAGES = { projects: "projects", news: "news", events: "events", team: "team", glossary: "glossary" } as const;
+
+/** What is wrong with the list pages: a wrong URL, a template on two pages, or a list without a page. */
+export function listPageProblems(pages: ReadonlyArray<CollectionEntry<"pages">>): string[] {
+  const problems: string[] = [];
+  for (const [template, slug] of Object.entries(LIST_PAGES)) {
+    const found = pages.filter((page) => page.data.template === template);
+    if (found.length === 0) problems.push(`No page has the template "${template}", so /${slug}/ does not exist.`);
+    if (found.length > 1) problems.push(`The pages ${found.map((page) => page.id).join(", ")} all have the template "${template}". Give it to one page.`);
+    for (const page of found) {
+      if (page.id !== slug) problems.push(`The page "${page.id}" has the template "${template}", so its URL must be "${slug}".`);
+    }
+  }
+  return problems;
+}
+
+/** The page with a list template, for a link to it: null while no page has it. */
+export async function getListPage(template: keyof typeof LIST_PAGES) {
+  return (await getCollection("pages")).find((page) => page.data.template === template) ?? null;
+}
+
 /* ------------------------------------------------------------------ *
  * Presentation helpers
  * ------------------------------------------------------------------ */
 
-/** Labels for the `category` options of a project. */
-export const CATEGORY_LABELS: Record<string, string> = {
-  strategy: "Strategy",
-  operations: "Operations",
-  technology: "Technology",
-  "public-sector": "Public sector",
-};
+/** The label of a select option, as the model gives it to the editor: "public-sector" → "Public sector". */
+export function optionLabel(field: { options: readonly { label: string; value: string }[] }, value: string): string {
+  return field.options.find((option) => option.value === value)?.label ?? value;
+}
 
-/** Labels for the `format` options of an event. */
-export const FORMAT_LABELS: Record<string, string> = {
-  "in-person": "In person",
-  online: "Online",
-};
+export const categoryLabel = (value: string) => optionLabel(site.collections.projects.fields.category, value);
+export const formatLabel = (value: string) => optionLabel(site.collections.events.fields.format, value);
+export const platformLabel = (value: string) => optionLabel(site.singletons.general.fields.social.fields.platform, value);
 
 /** Formats an ISO date for display, in the site's locale. */
 export function formatDate(iso: string | null, locale = "en"): string {

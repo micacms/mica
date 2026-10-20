@@ -85,6 +85,8 @@ export interface RuntimeContext {
   refreshModel(options?: { force?: boolean }): Promise<void>;
   /** The address of the website's dev server that shows the drafts, or null. Only the local editor has one. */
   preview(): Promise<string | null>;
+  /** The origins that the editor may show in a frame for the live preview. Empty without a preview. */
+  previewFrames: readonly string[];
   shutdown(): Promise<void>;
 }
 
@@ -108,6 +110,8 @@ export interface CreateRuntimeContextOptions {
   onModel?: (model: Site) => void;
   /** See `RuntimeContext.preview`. Without it, there is no preview. */
   preview?: () => Promise<string | null>;
+  /** See `RuntimeContext.previewFrames`. */
+  previewFrames?: readonly string[];
   onShutdown?: () => void | Promise<void>;
 }
 
@@ -210,6 +214,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
     health: options.health ?? {},
     refreshModel,
     preview: options.preview ?? (async () => null),
+    previewFrames: options.previewFrames ?? [],
 
     async shutdown() {
       limiters.api.stop();

@@ -1,0 +1,15 @@
+{
+  "title": "Projects",
+  "slug": "projects",
+  "template": "projects",
+  "eyebrow": "Portfolio",
+  "intro": "A selection of our completed work.",
+  "heroImage": null,
+  "sections": [],
+  "seo": {
+    "metaTitle": null,
+    "metaDescription": null,
+    "ogImage": null,
+    "noindex": false
+  }
+}

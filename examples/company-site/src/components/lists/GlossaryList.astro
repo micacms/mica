@@ -1,0 +1,34 @@
+---
+/**
+ * The terms, below the content of the page with the template "Glossary".
+ *
+ * `glossary` is an ordinary Astro collection — Markdown in `src/glossary`,
+ * defined with `defineCollection` beside the Mica ones in `content.config.ts`.
+ * Read here exactly like the collections an editor writes, because by the time
+ * a page asks for one, they are all just collections. The developers keep the
+ * terms; the page around them is an entry of Pages.
+ */
+
+import { getCollection, render } from "astro:content";
+
+const terms = (await getCollection("glossary")).sort((a, b) => a.data.order - b.data.order);
+
+const rendered = await Promise.all(
+  terms.map(async (entry) => ({ term: entry.data.term, Content: (await render(entry)).Content })),
+);
+---
+
+<div class="container-page pb-8">
+  <dl class="max-w-2xl divide-y divide-line border-t border-line">
+    {
+      rendered.map(({ term, Content }) => (
+        <div class="py-6">
+          <dt class="font-semibold tracking-tight">{term}</dt>
+          <dd class="mt-2 text-sm text-muted text-pretty">
+            <Content />
+          </dd>
+        </div>
+      ))
+    }
+  </dl>
+</div>

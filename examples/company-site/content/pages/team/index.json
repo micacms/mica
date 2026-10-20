@@ -1,0 +1,15 @@
+{
+  "title": "Team",
+  "slug": "team",
+  "template": "team",
+  "eyebrow": "People",
+  "intro": "The people behind the work.",
+  "heroImage": null,
+  "sections": [],
+  "seo": {
+    "metaTitle": null,
+    "metaDescription": null,
+    "ogImage": null,
+    "noindex": false
+  }
+}

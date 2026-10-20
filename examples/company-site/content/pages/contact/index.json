@@ -1,6 +1,8 @@
 {
   "title": "Contact",
   "slug": "contact",
+  "template": null,
+  "eyebrow": null,
   "intro": "Come by the studio, or send a message.",
   "heroImage": {
     "path": "media/entrance.jpg",
@@ -10,11 +12,11 @@
     {
       "_key": "l38501",
       "heading": "Find the studio",
-      "layout": "full",
       "image": {
         "path": "media/city-map.jpg",
         "alt": "City map of fictional Porto Celeste, with Harbor Lane at Via dei Mercanti 27 near Piazza delle Vele, plus Porto Vecchio, Borgo Alto, San Telmo, Parco degli Olivi and Stazione Centrale"
-      }
+      },
+      "layout": "full"
     }
   ],
   "seo": {

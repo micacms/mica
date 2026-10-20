@@ -1,5 +1,6 @@
 import { fileURLToPath } from "node:url";
 
+import { micaPreview } from "@micacms/astro/preview";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 
@@ -29,11 +30,13 @@ export default defineConfig({
   site: process.env.SITE_URL || "http://localhost:4321",
 
   /**
-   * No Mica here at all. The content model, the content root, the collections,
-   * publishing the model for Mica to read and reloading on an editor's save are
-   * all in `src/content.config.ts` — which is also what lets that file define
-   * ordinary Astro collections beside Mica's.
+   * The content model, the content root, the collections, publishing the model
+   * for Mica to read and reloading on an editor's save are all in
+   * `src/content.config.ts` — which is also what lets that file define ordinary
+   * Astro collections beside Mica's. The integration here only adds the live
+   * preview's script, and only with `MICA_PREVIEW=1 astro dev` (`npm run dev:preview`).
    */
+  integrations: [micaPreview()],
 
   build: {
     // Directory-style URLs work identically on nginx, S3, Netlify and Pages.

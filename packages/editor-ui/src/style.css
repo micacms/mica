@@ -230,6 +230,8 @@ img.ProseMirror-separator {
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
+    /* A field that gets the focus scrolls into view below the sticky page header. */
+    scroll-padding-top: 8rem;
   }
 
   body {

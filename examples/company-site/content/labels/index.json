@@ -1,0 +1,72 @@
+{
+  "general": {
+    "skipLink": "Skip to content",
+    "menu": "Menu",
+    "mainMenu": "Main",
+    "tags": "Tags"
+  },
+  "footer": {
+    "link": {
+      "label": "Start a conversation",
+      "href": "/contact/"
+    },
+    "contact": "Contact",
+    "openingHours": "Opening hours",
+    "more": "More",
+    "sitemap": "Sitemap"
+  },
+  "projects": {
+    "allLink": "All projects",
+    "empty": "No projects have been published yet.",
+    "noImage": "No image yet",
+    "keyFacts": "Key facts",
+    "project": "Project",
+    "number": "Number",
+    "duration": "Duration",
+    "weeks": "weeks",
+    "sector": "Sector",
+    "downloads": "Downloads",
+    "location": "Location",
+    "team": "Team",
+    "gallery": "Gallery"
+  },
+  "news": {
+    "allLink": "All news",
+    "empty": "Nothing published yet.",
+    "readMore": "Read more",
+    "by": "by",
+    "relatedProject": "Related project"
+  },
+  "events": {
+    "allLink": "All events",
+    "upcoming": "Upcoming",
+    "noUpcoming": "No events are planned right now.",
+    "past": "Past",
+    "when": "When",
+    "until": "until",
+    "format": "Format",
+    "and": "and",
+    "seats": "seats",
+    "venue": "Venue",
+    "map": "Map",
+    "speakers": "Speakers",
+    "register": "Register",
+    "isPast": "This event has taken place."
+  },
+  "team": {
+    "allLink": "Team",
+    "empty": "No team members have been published yet.",
+    "projects": "Projects",
+    "events": "Events"
+  },
+  "notFound": {
+    "pageTitle": "Page not found",
+    "eyebrow": "404",
+    "title": "This page does not exist",
+    "text": "The address may be out of date, or the page may have been removed.",
+    "link": {
+      "label": "Back to the homepage",
+      "href": "/"
+    }
+  }
+}

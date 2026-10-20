@@ -37,6 +37,11 @@
       "types": "./dist/relations.d.ts",
       "default": "./dist/relations.js"
     },
+    "./preview": {
+      "types": "./dist/preview/index.d.ts",
+      "default": "./dist/preview/index.js"
+    },
+    "./preview/client": "./dist/preview/client.js",
     "./components": "./components/index.ts"
   },
   "files": [
@@ -55,6 +60,7 @@
     "@markdoc/markdoc": "^0.5.9"
   },
   "peerDependencies": {
+    "@astrojs/compiler-rs": "^0.5.1",
     "@micacms/core": "workspace:^",
     "astro": "^7.0.0",
     "maplibre-gl": "^6.11.2",
@@ -68,7 +74,8 @@
     "tsx": "^4.19.2",
     "typescript": "^5.7.3",
     "zod": "^4.3.6",
-    "@microsoft/api-extractor": "7.59.3"
+    "@microsoft/api-extractor": "7.59.3",
+    "@astrojs/compiler-rs": "^0.5.1"
   },
   "peerDependenciesMeta": {
     "maplibre-gl": {

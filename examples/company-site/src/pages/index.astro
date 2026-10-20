@@ -8,12 +8,16 @@ import {
   formatDate,
   formatDateTime,
   getEvents,
+  getHomePage,
+  getLabels,
   getNews,
   getProjects,
   getSiteSettings,
 } from "@/lib/content";
 
 const settings = await getSiteSettings();
+const home = await getHomePage();
+const labels = await getLabels();
 
 const featured = await getProjects({ featuredOnly: true });
 const allProjects = await getProjects();
@@ -43,8 +47,8 @@ const heroImage = settings.seo?.defaultImage ?? null;
       }
 
       <div class="mt-10 flex flex-wrap gap-3">
-        <a href="/projects/" class="btn-solid">See our work</a>
-        <a href="/contact/" class="btn-outline">Get in touch</a>
+        <a href={home.primaryLink.href} class="btn-solid">{home.primaryLink.label}</a>
+        <a href={home.secondaryLink.href} class="btn-outline">{home.secondaryLink.label}</a>
       </div>
     </div>
 
@@ -72,7 +76,7 @@ const heroImage = settings.seo?.defaultImage ?? null;
     showcase.length > 0 && (
       <section class="border-t border-line bg-sunken py-20 sm:py-24" aria-labelledby="projects-heading">
         <div class="container-page">
-          <SectionHeader id="projects-heading" eyebrow="Our work" title="Selected projects" href="/projects/" linkLabel="All projects" />
+          <SectionHeader id="projects-heading" eyebrow={home.projects.eyebrow} title={home.projects.title} href="/projects/" linkLabel={labels.projects.allLink} />
 
           <div class="mt-12 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {showcase.map((project) => (
@@ -87,7 +91,7 @@ const heroImage = settings.seo?.defaultImage ?? null;
   {
     upcomingEvents.length > 0 && (
       <section class="container-page mt-20 sm:mt-24" aria-labelledby="events-heading">
-        <SectionHeader id="events-heading" eyebrow="Meet us" title="Upcoming events" href="/events/" linkLabel="All events" />
+        <SectionHeader id="events-heading" eyebrow={home.events.eyebrow} title={home.events.title} href="/events/" linkLabel={labels.events.allLink} />
 
         <ul class="mt-12 grid gap-6 md:grid-cols-3">
           {upcomingEvents.map((event) => {
@@ -124,7 +128,7 @@ const heroImage = settings.seo?.defaultImage ?? null;
   {
     news.length > 0 && (
       <section class="container-page mt-20 sm:mt-24" aria-labelledby="news-heading">
-        <SectionHeader id="news-heading" eyebrow="Journal" title="Latest news" href="/news/" linkLabel="All news" />
+        <SectionHeader id="news-heading" eyebrow={home.news.eyebrow} title={home.news.title} href="/news/" linkLabel={labels.news.allLink} />
 
         <div class="mt-12 grid gap-x-8 gap-y-12 md:grid-cols-3">
           {news.map((article) => (
@@ -166,13 +170,11 @@ const heroImage = settings.seo?.defaultImage ?? null;
       <div class="absolute -right-24 -top-24 size-72 rounded-full bg-white/10" aria-hidden="true" />
       <div class="absolute -bottom-32 right-24 size-64 rounded-full bg-accent/30" aria-hidden="true" />
       <div class="relative max-w-2xl">
-        <h2 id="contact-heading" class="text-3xl font-semibold sm:text-4xl">Have a project in mind?</h2>
-        <p class="mt-4 text-lg text-white/85 text-pretty">
-          Tell us where you are and where you want to go. The first conversation is free.
-        </p>
+        <h2 id="contact-heading" class="text-3xl font-semibold sm:text-4xl">{home.contact.title}</h2>
+        {home.contact.text && <p class="mt-4 text-lg text-white/85 text-pretty">{home.contact.text}</p>}
         <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
-          <a href="/contact/" class="inline-flex items-center justify-center bg-white px-5 py-3 text-sm font-medium text-primary shadow-sm transition hover:-translate-y-px hover:shadow-md" style="border-radius: var(--radius-theme)">
-            Get in touch
+          <a href={home.contact.link.href} class="inline-flex items-center justify-center bg-white px-5 py-3 text-sm font-medium text-primary shadow-sm transition hover:-translate-y-px hover:shadow-md" style="border-radius: var(--radius-theme)">
+            {home.contact.link.label}
           </a>
           {settings.email && (
             <a href={`mailto:${settings.email}`} class="text-sm font-medium text-white/90 underline decoration-white/40 underline-offset-4 hover:decoration-white">

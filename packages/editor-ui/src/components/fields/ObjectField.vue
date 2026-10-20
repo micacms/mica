@@ -36,7 +36,8 @@ const expanded = computed(() => open.value || hasIssueInside.value);
 </script>
 
 <template>
-  <fieldset class="card overflow-hidden">
+  <!-- A field inside that must take the focus opens the group (`focusField`). -->
+  <fieldset class="card overflow-hidden" @reveal-field="open = true">
     <legend class="sr-only">{{ label }}</legend>
 
     <component
