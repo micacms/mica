@@ -124,7 +124,15 @@ import { micaPreview } from "@micacms/astro/preview";
 export default defineConfig({ integrations: [micaPreview()] });
 ```
 
-Start the dev server with `MICA_PREVIEW=1 astro dev`. Only then does the integration do something. A build and a plain `astro dev` do not change.
+Start the dev server with `MICA_PREVIEW=1 astro dev`. Only then does the integration do something. A build and a plain `astro dev` do not change. The command sets the variable in a POSIX shell only. For a package script that also runs on Windows, use `cross-env`:
+
+```json
+{
+  "scripts": {
+    "dev:preview": "cross-env MICA_PREVIEW=1 astro dev"
+  }
+}
+```
 
 - The loaders append invisible characters to the values of text and textarea fields. Values that look like an address or a phone number get none, because a template puts them in a link. In the preview, a template that compares a text value or makes an address from it can act differently.
 - Each page gets a small script. It answers only an editor on the same computer. To allow another editor, set `MICA_PREVIEW_EDITOR` to its origins, separated by commas.
