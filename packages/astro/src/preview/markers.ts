@@ -22,7 +22,7 @@ export interface FieldMarker {
   id: string;
   /** The field's path as the editor names it: `title`, `seo.title`, `facts.2.label`. */
   path: string;
-  /** The place of an image in a gallery. */
+  /** The place of an image in a gallery, or of another item of a list. */
   block?: number;
 }
 
@@ -43,12 +43,13 @@ export const FIELDS_ATTRIBUTE = "data-mica-fields";
 /**
  * The part of a path that a model has: the longest one from the start. A
  * template reads `coverImage.src` or `place.lat`; the field is `coverImage`, `place`.
+ * The numbers of rows stay: `sections.2.layout` is the field `sections.layout` in row 2.
  */
 export function modelPath(path: string, fields: ReadonlySet<string> | undefined): string | null {
   const parts = path.split(".");
   for (let length = parts.length; length > 0; length--) {
-    const candidate = parts.slice(0, length).join(".");
-    if (fields?.has(candidate)) return candidate;
+    const candidate = parts.slice(0, length);
+    if (fields?.has(candidate.filter((part) => !/^\d+$/.test(part)).join("."))) return candidate.join(".");
   }
   return null;
 }

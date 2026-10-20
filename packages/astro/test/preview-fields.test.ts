@@ -7,12 +7,17 @@ import { parse } from "@astrojs/compiler-rs";
 
 import { annotateFields } from "../src/preview/fields.js";
 
-/** Each annotated element of a template, as `tag: fields`; a root element, which puts the fields it receives first, as `tag: ↑ fields`. */
+/**
+ * Each annotated element of a template, as `tag: fields`; a root element, which puts the fields it receives first, as
+ * `tag: ↑ fields`. The row of a loop shows as `[index]`.
+ */
 function fieldsIn(template: string): string[] {
   const annotated = annotateFields(template, parse);
-  return [...annotated.matchAll(/<([A-Za-z][\w.]*) data-mica-fields=(?:"([^"]*)"|\{\[Astro\.props\["data-mica-fields"\], "([^"]*)"\])/g)].map((match) =>
-    match[2] !== undefined ? `${match[1]}: ${match[2]}` : `${match[1]}: ↑ ${match[3]}`.trimEnd(),
-  );
+  const attribute = /<([A-Za-z][\w.]*) data-mica-fields=(?:"([^"]*)"|\{`([^`]*)`\}|\{\[Astro\.props\["data-mica-fields"\], (?:"([^"]*)"|`([^`]*)`)\])/g;
+  return [...annotated.matchAll(attribute)].map((match) => {
+    const [own, root] = [match[2] ?? match[3], match[4] ?? match[5]].map((text) => text?.replace(/\$\{(\w+)\}/g, "[$1]"));
+    return own !== undefined ? `${match[1]}: ${own}` : `${match[1]}: ↑ ${root}`.trimEnd();
+  });
 }
 
 describe("the fields of a template's elements", () => {
@@ -33,7 +38,7 @@ const events = await getCollection("events");
   const badge = dateBadge(event.data.startsAt);
   return <li><span>{badge.day}</span>{event.data.tags.map((tag) => <b>{tag}</b>)}</li>;
 })}</ul>`;
-    assert.deepEqual(fieldsIn(template), ["ul: ↑", "li: tags", "span: startsAt", "b: tags"]);
+    assert.deepEqual(fieldsIn(template), ["ul: ↑", "li: tags", "span: startsAt", "b: tags.[__micaRow0]"]);
   });
 
   it("reads a fetched document as data: a singleton's fields", () => {
@@ -69,6 +74,56 @@ const labels = await getLabels();
 ---
 {tags.length > 0 && (<ul aria-label={labels.general.tags}>{tags.map((tag) => <li>{tag}</li>)}</ul>)}`;
     assert.deepEqual(fieldsIn(template), ["ul: ↑ general.tags"]);
+  });
+
+  it("names the row of a loop on a field with the callback's index, and gives the callback one if it has none", () => {
+    const template = `---
+const { sections } = page.data;
+const settings = await getSiteSettings();
+---
+<div>{sections.map((section) => <section><h2>{section.heading}</h2><time>{format(section.date)}</time></section>)}
+<ul>{settings.social.map((link, index) => <li><a href={link.url}>{icon(link.platform)}</a></li>)}</ul>
+<ol>{sections.filter(visible).map((section) => <li>{section.heading}</li>)}</ol></div>`;
+    assert.deepEqual(fieldsIn(template), [
+      "div: ↑ sections",
+      "h2: sections.[__micaRow0].heading",
+      "time: sections.[__micaRow0].date",
+      "ul: social",
+      "a: social.[index].url social.[index].platform",
+      "ol: sections",
+      "li: sections",
+    ]);
+    const annotated = annotateFields(template, parse);
+    assert.match(annotated, /sections\.map\(\(section, __micaRow0\) =>/);
+    // After a filter, the index is not the row: that callback stays as it was.
+    assert.match(annotated, /\.map\(\(section\) => <li data-mica-fields="sections">/);
+    assert.equal(parse(annotated).diagnostics?.some((diagnostic) => diagnostic.severity === "error"), false);
+  });
+
+  it("names the rows of nested loops, adds parentheses where a callback has none, and names no row that an inner name hides", () => {
+    const template = `---
+const navigation = await getNavigation();
+---
+<nav>{navigation.main.map(item => <a href={item.href}>{item.children.map((child, i) => <b>{child.label}</b>)}</a>)}
+{navigation.main.map((item, i) => item.children.map((child, i) => <i>{child.label}</i>))}
+{navigation.main.map((item) => item.label).join(", ")}
+{navigation.main.map((item, i) => item.children.slice(0, 2).map((child, i) => <u>{item.label}</u>))}
+{navigation.main.map((item, i) => { if (item.label) { const i = 0; return <s>{item.label}</s>; } })}
+{navigation.main.map((...items) => <em>{items[0].label}</em>)}</nav>`;
+    assert.deepEqual(fieldsIn(template), [
+      "nav: ↑ main main.children main.label",
+      "a: main.[__micaRow0].href main.[__micaRow0].children",
+      "b: main.[__micaRow0].children.[i].label",
+      "i: main.children.label",
+      "u: main.label",
+      "s: main.label",
+      "em: main",
+    ]);
+    const annotated = annotateFields(template, parse);
+    assert.match(annotated, /navigation\.main\.map\(\(item, __micaRow0\) =>/);
+    // No element uses the row of the last loop: it gets no parameter.
+    assert.match(annotated, /navigation\.main\.map\(\(item\) => item\.label\)/);
+    assert.equal(parse(annotated).diagnostics?.some((diagnostic) => diagnostic.severity === "error"), false);
   });
 
   it("leaves a template that does not parse exactly as it is", () => {

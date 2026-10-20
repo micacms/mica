@@ -96,6 +96,13 @@ describe("field markers", () => {
     assert.equal(modelPath("tags", undefined), null);
   });
 
+  it("keeps the number of a row in the path that it finds", () => {
+    const fields = new Set(["sections", "sections.image", "sections.layout", "gallery"]);
+    assert.equal(modelPath("sections.2.image.src", fields), "sections.2.image");
+    assert.equal(modelPath("sections.0.layout", fields), "sections.0.layout");
+    assert.equal(modelPath("gallery.3", fields), "gallery.3");
+  });
+
   it("is on only in dev with MICA_PREVIEW", () => {
     const before = process.env["MICA_PREVIEW"];
     try {

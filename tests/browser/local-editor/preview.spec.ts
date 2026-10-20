@@ -27,6 +27,8 @@ test("a click in the preview opens the field, and a save shows on the page", asy
   await expect(heading).toBeVisible({ timeout: 30_000 });
 
   // Edit mode: the label names the field, and a click puts the cursor in it.
+  // A hover before the script marks the heading finds no field: a person's next move would.
+  await expect(heading).toHaveAttribute("data-mica-field", /"title"/);
   await heading.hover();
   await expect(preview.locator("#mica-preview-label")).toContainText("Title");
   await heading.click();
@@ -40,6 +42,13 @@ test("a click in the preview opens the field, and a save shows on the page", asy
   await overlay.getByRole("button", { name: /^Back to page Services/ }).click();
   await expect(overlay).toBeHidden();
   await expect(page).toHaveURL(/\/admin\/collections\/pages\/services$/);
+
+  // A row of a list that the template reads: the social link opens General at the URL of its row.
+  await preview.getByRole("contentinfo").getByRole("link", { name: "LinkedIn" }).click();
+  const general = page.getByRole("region", { name: "Edit General" });
+  await expect(general.getByRole("group", { name: /^Social links/ }).getByRole("textbox", { name: /^URL/ }).first()).toBeFocused();
+  await general.getByRole("button", { name: /^Back to page Services/ }).click();
+  await expect(general).toBeHidden();
 
   // The form saves by itself, the page loads again with the new text, and marks it as not published.
   const intro = "Typed in the browser, and shown in the preview.";

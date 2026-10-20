@@ -139,6 +139,7 @@ Start the dev server with `MICA_PREVIEW=1 astro dev`. Only then does the integra
 - The parser is `@astrojs/compiler-rs`, a peer dependency, which Astro 7 installs. Without it, only the marked values can be clicked.
 - `renderRichText` and `transformRichText` take the characters off a rich text. They mark the whole text with its field (`data-mica-field`) and each top-level block with its place (`data-mica-block`). A template that renders rich text in another way gets no marks for it.
 - A component gets its values as props. The element that uses it reads the fields, such as `<TagList tags={tags} />`, and the root element of the component gets them too.
+- In `sections.map((section) => …)` directly on a field, the elements name the row of the item, such as `sections.2.layout`, and a click goes to that row. For this, the dev server gives the callback an index parameter when it has none. After `.filter()`, `.slice()` or another call, the index is not the row, and the elements name the whole list.
 - Each page gets a small script. It answers only an editor on the same computer. To allow another editor, set `MICA_PREVIEW_EDITOR` to its origins, separated by commas.
 
 See [Preview changes](/docs/previews/).

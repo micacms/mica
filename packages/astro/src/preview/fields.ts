@@ -10,7 +10,9 @@
  * - `x.data` is the data of an entry; a member access on a field extends its path (`venue.name`);
  * - destructuring and renaming follow the path (`const { startsAt: start } = event.data`);
  * - a computed value keeps the fields it comes from (`const badge = dateBadge(event.data.startsAt)`);
- * - in `items.map((item) => …)`, `item` holds what `items` holds;
+ * - in `items.map((item) => …)`, `item` holds what `items` holds; on a field itself, the row too: the
+ *   attribute is then an expression with the callback's index (`sections.${index}.layout`), and the
+ *   callback gets an index parameter if it has none;
  * - `await getSomething()` without a field among its arguments is a document, such as a singleton (`settings.phone`).
  *
  * A component gets its values as props, so it cannot know which fields they are. The
@@ -39,6 +41,14 @@ interface Value {
 
 type Scope = Map<string, Value>;
 
+/** What the walk collects: the fields of each element by the position of its attribute, and the index parameters that it adds, by name. */
+interface Found {
+  fields: Map<number, Set<string>>;
+  parameters: Map<string, Insertion[]>;
+}
+
+type Insertion = [at: number, text: string];
+
 /** The `parse` of `@astrojs/compiler-rs`. */
 export type ParseAstro = (source: string) => { ast: unknown; diagnostics?: ReadonlyArray<{ severity?: string }> };
 
@@ -46,6 +56,9 @@ export type ParseAstro = (source: string) => { ast: unknown; diagnostics?: Reado
 const SKIPPED = new Set(["script", "style", "slot", "Fragment"]);
 
 const NOTHING: Value = { fields: new Set() };
+
+/** Around the name of a callback's index in a path: the page puts in the row. Not a character of a field name. */
+const ROW = "\u0001";
 
 const isNode = (value: unknown): value is AstNode =>
   typeof value === "object" && value !== null && typeof (value as { type?: unknown }).type === "string";
@@ -128,12 +141,69 @@ function callbackValue(argument: unknown, items: Value, scope: Scope): Value {
   return isNode(body) && body.type !== "BlockStatement" ? evaluate(body, inner) : NOTHING;
 }
 
-/** A callback's scope: its parameters hold an item of `items`. */
-function withParameters(callback: AstNode, items: Value, scope: Scope): Scope {
-  const inner = new Map(scope);
-  const [first] = (callback["params"] as unknown[]) ?? [];
-  if (first) bind(first, items, inner);
+/** A callback's scope: its parameters hold an item of `items`, in the row at the index named `row`. */
+function withParameters(callback: AstNode, items: Value, scope: Scope, row: string | null = null): Scope {
+  const params = (callback["params"] as unknown[]) ?? [];
+  const names = params.flatMap(boundNames);
+  const inner = hidden(scope, names);
+  const list = withoutRows(items, names);
+  const item = row !== null && list.exact ? { exact: join(list.exact, `${ROW}${row}${ROW}`), fields: list.fields } : list;
+  if (params[0]) bind(params[0], item, inner);
   return inner;
+}
+
+/** The names that a parameter or a declaration binds. */
+function boundNames(pattern: unknown): string[] {
+  if (!isNode(pattern)) return [];
+  switch (pattern.type) {
+    case "Identifier":
+      return [pattern["name"] as string];
+    case "AssignmentPattern":
+      return boundNames(pattern["left"]);
+    case "RestElement":
+      return boundNames(pattern["argument"]);
+    case "ArrayPattern":
+      return ((pattern["elements"] as unknown[]) ?? []).flatMap(boundNames);
+    case "ObjectPattern":
+      return ((pattern["properties"] as unknown[]) ?? []).flatMap((property) =>
+        isNode(property) ? boundNames(property.type === "RestElement" ? property : property["value"]) : [],
+      );
+    default:
+      return [];
+  }
+}
+
+/** A value without the rows of the indexes in `names`: an inner name hides them, and the list is all that stays. */
+function withoutRows(value: Value, names: string[]): Value {
+  if (names.length === 0) return value;
+  const strip = (path: string) => names.reduce((result, name) => result.replaceAll(`.${ROW}${name}${ROW}`, ""), path);
+  const fields = new Set([...value.fields].map(strip));
+  return value.exact === undefined ? { fields } : { exact: strip(value.exact), fields };
+}
+
+/** A copy of a scope in which `names` hide the rows of outer indexes. */
+function hidden(scope: Scope, names: string[]): Scope {
+  return new Map([...scope].map(([name, value]) => [name, withoutRows(value, names)]));
+}
+
+/**
+ * The name of the index of `items.map(callback)`: its second parameter, or one
+ * that the template gets. Null when a row cannot be named, also when the name
+ * hides the index of an outer loop.
+ */
+function rowParameter(callback: AstNode, items: Value, source: string, found: Found): string | null {
+  const params = ((callback["params"] as unknown[]) ?? []).filter(isNode);
+  const [first, second] = params;
+  if (second) {
+    const name = second.type === "Identifier" ? (second["name"] as string) : null;
+    return name && !items.exact?.includes(`${ROW}${name}${ROW}`) ? name : null;
+  }
+  if (!first || params.length !== 1 || first.type === "RestElement") return null;
+  const name = `__micaRow${found.parameters.size}`;
+  // `item => …` gets parentheses too.
+  const parenthesized = source.slice(callback.start, first.start).includes("(");
+  found.parameters.set(name, parenthesized ? [[first.end, `, ${name}`]] : [[first.start, "("], [first.end, `, ${name})`]]);
+  return name;
 }
 
 /** Binds the names of a declaration or a parameter: `x`, `{ a, b: c }`, `[first]`, with defaults and rest. */
@@ -207,7 +277,7 @@ function rootElements(node: unknown): AstNode[] {
 }
 
 /** Collects, for each element, where its attribute goes and the fields that its own expressions read. */
-function walk(node: unknown, scope: Scope, source: string, found: Map<number, Set<string>>): void {
+function walk(node: unknown, scope: Scope, source: string, found: Found): void {
   if (!isNode(node)) return;
 
   if (node.type === "JSXElement") {
@@ -220,25 +290,34 @@ function walk(node: unknown, scope: Scope, source: string, found: Map<number, Se
         ...((node["children"] as unknown[]) ?? []).filter((child) => isNode(child) && child.type === "JSXExpressionContainer").map((child) => evaluate(child, scope)),
       ];
       const fields = fieldsOf(union(...values));
-      if (fields.size > 0) found.set(at, fields);
+      if (fields.size > 0) found.fields.set(at, fields);
     }
   }
 
   // A callback holds an item of what its call is on; a block declares names before it uses them.
   if (node.type === "CallExpression") {
     const callee = node["callee"];
-    const items = isNode(callee) && callee.type === "MemberExpression" ? evaluate(callee["object"], scope) : NOTHING;
+    const method = isNode(callee) && callee.type === "MemberExpression" ? callee : null;
+    const items = method ? evaluate(method["object"], scope) : NOTHING;
+    // The index is the row only on the field itself: after `.filter()` or `.slice()`, it is not.
+    const rows = !!method && ["map", "flatMap"].includes(String(propertyKey(method))) && !!items.exact;
     walk(callee, scope, source, found);
-    for (const argument of (node["arguments"] as unknown[]) ?? []) {
+    for (const [index, argument] of ((node["arguments"] as unknown[]) ?? []).entries()) {
       if (isNode(argument) && (argument.type === "ArrowFunctionExpression" || argument.type === "FunctionExpression")) {
-        walk(argument["body"], withParameters(argument, items, scope), source, found);
+        const row = rows && index === 0 ? rowParameter(argument, items, source, found) : null;
+        walk(argument["body"], withParameters(argument, items, scope, row), source, found);
       } else walk(argument, scope, source, found);
     }
     return;
   }
   if (node.type === "BlockStatement") {
-    const inner = new Map(scope);
     const statements = (node["body"] as unknown[]) ?? [];
+    const declared = statements.flatMap((statement) =>
+      isNode(statement) && statement.type === "VariableDeclaration"
+        ? ((statement["declarations"] as unknown[]) ?? []).flatMap((declarator) => (isNode(declarator) ? boundNames(declarator["id"]) : []))
+        : [],
+    );
+    const inner = hidden(scope, declared);
     declare(statements, inner);
     for (const statement of statements) walk(statement, inner, source, found);
     return;
@@ -269,22 +348,37 @@ function annotate(source: string, parse: ParseAstro): string {
   const program = isNode(frontmatter) ? frontmatter["program"] : undefined;
   if (isNode(program)) declare((program["body"] as unknown[]) ?? [], scope);
 
-  const found = new Map<number, Set<string>>();
+  const found: Found = { fields: new Map(), parameters: new Map() };
   const body = ((ast["body"] as unknown[]) ?? []).filter(isNode);
   for (const node of body) walk(node, scope, source, found);
 
   // The root elements of a component: the fields of the element that uses it first.
   const roots = new Set(body.flatMap(rootElements).map((node) => attributePosition(node, source)).filter((at) => at !== null));
-  if (found.size === 0 && roots.size === 0) return source;
+  if (found.fields.size === 0 && roots.size === 0) return source;
+
+  const insertions: Insertion[] = [];
+  for (const at of new Set([...found.fields.keys(), ...roots])) {
+    const own = [...(found.fields.get(at) ?? [])].join(" ");
+    const attribute = roots.has(at)
+      ? `${FIELDS_ATTRIBUTE}={[Astro.props[${JSON.stringify(FIELDS_ATTRIBUTE)}], ${fieldsExpression(own)}].filter(Boolean).join(" ") || undefined}`
+      : own.includes(ROW)
+        ? `${FIELDS_ATTRIBUTE}={${fieldsExpression(own)}}`
+        : `${FIELDS_ATTRIBUTE}="${own.replaceAll('"', "&quot;")}"`;
+    insertions.push([at, ` ${attribute}`]);
+  }
+  // Only the index parameters that an attribute uses.
+  const used = [...found.fields.values()].flatMap((fields) => [...fields]).join(" ");
+  for (const [name, added] of found.parameters) if (used.includes(`${ROW}${name}${ROW}`)) insertions.push(...added);
 
   // From the end, so that each position stays right.
   let annotated = source;
-  for (const at of [...new Set([...found.keys(), ...roots])].sort((a, b) => b - a)) {
-    const own = [...(found.get(at) ?? [])].join(" ");
-    const attribute = roots.has(at)
-      ? `${FIELDS_ATTRIBUTE}={[Astro.props[${JSON.stringify(FIELDS_ATTRIBUTE)}], ${JSON.stringify(own)}].filter(Boolean).join(" ") || undefined}`
-      : `${FIELDS_ATTRIBUTE}="${own.replaceAll('"', "&quot;")}"`;
-    annotated = `${annotated.slice(0, at)} ${attribute}${annotated.slice(at)}`;
-  }
+  for (const [at, text] of insertions.sort(([a], [b]) => b - a)) annotated = `${annotated.slice(0, at)}${text}${annotated.slice(at)}`;
   return annotated;
+}
+
+/** The fields as JavaScript: a string, or a template literal that puts in the rows. */
+function fieldsExpression(fields: string): string {
+  if (!fields.includes(ROW)) return JSON.stringify(fields);
+  const parts = fields.split(ROW).map((part, index) => (index % 2 === 1 ? `\${${part}}` : part.replace(/[`\\]|\$\{/g, (text) => `\\${text}`)));
+  return `\`${parts.join("")}\``;
 }
