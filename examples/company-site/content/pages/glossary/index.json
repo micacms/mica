@@ -1,0 +1,15 @@
+{
+  "title": "Glossary",
+  "slug": "glossary",
+  "template": "glossary",
+  "eyebrow": "Reference",
+  "intro": "The words we use, and what we mean by them.",
+  "heroImage": null,
+  "sections": [],
+  "seo": {
+    "metaTitle": null,
+    "metaDescription": null,
+    "ogImage": null,
+    "noindex": false
+  }
+}

@@ -28,6 +28,46 @@
           "from": "title",
           "description": "The address of the page, e.g. /about-us."
         },
+        "template": {
+          "kind": "select",
+          "label": "Template",
+          "description": "A list page shows its collection below the content. Its URL must be the collection's: news for News, projects for Projects.",
+          "width": "half",
+          "default": "standard",
+          "options": [
+            {
+              "label": "Standard page",
+              "value": "standard"
+            },
+            {
+              "label": "List of projects",
+              "value": "projects"
+            },
+            {
+              "label": "List of news",
+              "value": "news"
+            },
+            {
+              "label": "List of events",
+              "value": "events"
+            },
+            {
+              "label": "List of the team",
+              "value": "team"
+            },
+            {
+              "label": "Glossary",
+              "value": "glossary"
+            }
+          ]
+        },
+        "eyebrow": {
+          "kind": "text",
+          "label": "Eyebrow",
+          "maxLength": 40,
+          "width": "half",
+          "description": "The short line above the title."
+        },
         "intro": {
           "kind": "textarea",
           "label": "Introduction",
@@ -554,10 +594,10 @@
     }
   },
   "singletons": {
-    "site": {
+    "general": {
       "type": "singleton",
-      "name": "site",
-      "label": "Website",
+      "name": "general",
+      "label": "General",
       "description": "Company details, contact information and default SEO.",
       "fields": {
         "companyName": {
@@ -695,6 +735,497 @@
               "kind": "text",
               "label": "Site ID",
               "description": "The script address is in the website's code, not here."
+            }
+          }
+        }
+      }
+    },
+    "homePage": {
+      "type": "singleton",
+      "name": "homePage",
+      "label": "Home page",
+      "description": "The texts of the home page. Its title and introduction are the tagline and the description in General.",
+      "url": "/",
+      "fields": {
+        "primaryLink": {
+          "kind": "object",
+          "label": "First button",
+          "fields": {
+            "label": {
+              "kind": "text",
+              "label": "Text",
+              "required": true,
+              "description": "The text of the link."
+            },
+            "href": {
+              "kind": "text",
+              "label": "Link",
+              "required": true,
+              "description": "An address on this website, like /contact/."
+            }
+          }
+        },
+        "secondaryLink": {
+          "kind": "object",
+          "label": "Second button",
+          "fields": {
+            "label": {
+              "kind": "text",
+              "label": "Text",
+              "required": true,
+              "description": "The text of the link."
+            },
+            "href": {
+              "kind": "text",
+              "label": "Link",
+              "required": true,
+              "description": "An address on this website, like /contact/."
+            }
+          }
+        },
+        "projects": {
+          "kind": "object",
+          "label": "Projects section",
+          "fields": {
+            "eyebrow": {
+              "kind": "text",
+              "label": "Eyebrow",
+              "required": true
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            }
+          }
+        },
+        "events": {
+          "kind": "object",
+          "label": "Events section",
+          "fields": {
+            "eyebrow": {
+              "kind": "text",
+              "label": "Eyebrow",
+              "required": true
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            }
+          }
+        },
+        "news": {
+          "kind": "object",
+          "label": "News section",
+          "fields": {
+            "eyebrow": {
+              "kind": "text",
+              "label": "Eyebrow",
+              "required": true
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            }
+          }
+        },
+        "contact": {
+          "kind": "object",
+          "label": "Contact box",
+          "fields": {
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "text": {
+              "kind": "textarea",
+              "label": "Text",
+              "rows": 2
+            },
+            "link": {
+              "kind": "object",
+              "label": "Button",
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Text",
+                  "required": true,
+                  "description": "The text of the link."
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "description": "An address on this website, like /contact/."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "labels": {
+      "type": "singleton",
+      "name": "labels",
+      "label": "Labels",
+      "description": "The short texts of the templates, such as headings and the text of links. The pages themselves are in Pages.",
+      "fields": {
+        "general": {
+          "kind": "object",
+          "label": "On every page",
+          "description": "In the header, and for screen readers.",
+          "collapsible": true,
+          "collapsed": true,
+          "fields": {
+            "skipLink": {
+              "kind": "text",
+              "label": "Skip link",
+              "required": true,
+              "description": "The first link of each page, for keyboard users."
+            },
+            "menu": {
+              "kind": "text",
+              "label": "Menu button",
+              "required": true,
+              "description": "On small screens. Only screen readers read it."
+            },
+            "mainMenu": {
+              "kind": "text",
+              "label": "Name of the main menu",
+              "required": true,
+              "description": "Only screen readers read it."
+            },
+            "tags": {
+              "kind": "text",
+              "label": "Name of a list of tags",
+              "required": true,
+              "description": "Only screen readers read it."
+            }
+          }
+        },
+        "footer": {
+          "kind": "object",
+          "label": "Footer",
+          "description": "Below each page. The links are in Navigation.",
+          "collapsible": true,
+          "collapsed": true,
+          "fields": {
+            "link": {
+              "kind": "object",
+              "label": "Link below the company name",
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Text",
+                  "required": true,
+                  "description": "The text of the link."
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "description": "An address on this website, like /contact/."
+                }
+              }
+            },
+            "contact": {
+              "kind": "text",
+              "label": "Contact heading",
+              "required": true
+            },
+            "openingHours": {
+              "kind": "text",
+              "label": "Opening hours heading",
+              "required": true
+            },
+            "more": {
+              "kind": "text",
+              "label": "Heading of the links",
+              "required": true
+            },
+            "sitemap": {
+              "kind": "text",
+              "label": "Sitemap link",
+              "required": true
+            }
+          }
+        },
+        "projects": {
+          "kind": "object",
+          "label": "Projects",
+          "description": "On the list of projects and on each project's page.",
+          "collapsible": true,
+          "collapsed": true,
+          "fields": {
+            "allLink": {
+              "kind": "text",
+              "label": "Link to the list",
+              "required": true,
+              "description": "On the home page and on each project, like “All projects”."
+            },
+            "empty": {
+              "kind": "text",
+              "label": "Text without projects",
+              "required": true
+            },
+            "noImage": {
+              "kind": "text",
+              "label": "Text without an image",
+              "required": true,
+              "description": "On a project's card that has no image."
+            },
+            "keyFacts": {
+              "kind": "text",
+              "label": "Key facts",
+              "required": true
+            },
+            "project": {
+              "kind": "text",
+              "label": "Project details",
+              "required": true
+            },
+            "number": {
+              "kind": "text",
+              "label": "Number",
+              "required": true
+            },
+            "duration": {
+              "kind": "text",
+              "label": "Duration",
+              "required": true
+            },
+            "weeks": {
+              "kind": "text",
+              "label": "Unit of the duration",
+              "required": true,
+              "description": "After the number, like “weeks”."
+            },
+            "sector": {
+              "kind": "text",
+              "label": "Sector",
+              "required": true
+            },
+            "downloads": {
+              "kind": "text",
+              "label": "Downloads",
+              "required": true
+            },
+            "location": {
+              "kind": "text",
+              "label": "Location",
+              "required": true
+            },
+            "team": {
+              "kind": "text",
+              "label": "Team",
+              "required": true
+            },
+            "gallery": {
+              "kind": "text",
+              "label": "Gallery",
+              "required": true,
+              "description": "Only screen readers read it."
+            }
+          }
+        },
+        "news": {
+          "kind": "object",
+          "label": "News",
+          "description": "On the list of news and on each article.",
+          "collapsible": true,
+          "collapsed": true,
+          "fields": {
+            "allLink": {
+              "kind": "text",
+              "label": "Link to the list",
+              "required": true,
+              "description": "On the home page and on each article, like “All news”."
+            },
+            "empty": {
+              "kind": "text",
+              "label": "Text without articles",
+              "required": true
+            },
+            "readMore": {
+              "kind": "text",
+              "label": "Read more",
+              "required": true
+            },
+            "by": {
+              "kind": "text",
+              "label": "By",
+              "required": true,
+              "description": "Before the author's name, like “by”."
+            },
+            "relatedProject": {
+              "kind": "text",
+              "label": "Related project",
+              "required": true
+            }
+          }
+        },
+        "events": {
+          "kind": "object",
+          "label": "Events",
+          "description": "On the list of events and on each event's page.",
+          "collapsible": true,
+          "collapsed": true,
+          "fields": {
+            "allLink": {
+              "kind": "text",
+              "label": "Link to the list",
+              "required": true,
+              "description": "On the home page and on each event, like “All events”."
+            },
+            "upcoming": {
+              "kind": "text",
+              "label": "Upcoming events",
+              "required": true
+            },
+            "noUpcoming": {
+              "kind": "text",
+              "label": "Text without upcoming events",
+              "required": true
+            },
+            "past": {
+              "kind": "text",
+              "label": "Past events",
+              "required": true
+            },
+            "when": {
+              "kind": "text",
+              "label": "When",
+              "required": true
+            },
+            "until": {
+              "kind": "text",
+              "label": "Until",
+              "required": true,
+              "description": "Between the start and the end."
+            },
+            "format": {
+              "kind": "text",
+              "label": "Format",
+              "required": true
+            },
+            "and": {
+              "kind": "text",
+              "label": "And",
+              "required": true,
+              "description": "Between two formats, like “In person and Online”."
+            },
+            "seats": {
+              "kind": "text",
+              "label": "Unit of the capacity",
+              "required": true,
+              "description": "After the number, like “seats”."
+            },
+            "venue": {
+              "kind": "text",
+              "label": "Venue",
+              "required": true
+            },
+            "map": {
+              "kind": "text",
+              "label": "Name of the map",
+              "required": true,
+              "description": "Before the venue's name. Only screen readers read it."
+            },
+            "speakers": {
+              "kind": "text",
+              "label": "Speakers",
+              "required": true
+            },
+            "register": {
+              "kind": "text",
+              "label": "Register",
+              "required": true
+            },
+            "isPast": {
+              "kind": "text",
+              "label": "Text after the event",
+              "required": true
+            }
+          }
+        },
+        "team": {
+          "kind": "object",
+          "label": "Team",
+          "description": "On the list of the team and on each person's page.",
+          "collapsible": true,
+          "collapsed": true,
+          "fields": {
+            "allLink": {
+              "kind": "text",
+              "label": "Link to the list",
+              "required": true,
+              "description": "On each person's page, like “Team”."
+            },
+            "empty": {
+              "kind": "text",
+              "label": "Text without team members",
+              "required": true
+            },
+            "projects": {
+              "kind": "text",
+              "label": "Projects",
+              "required": true
+            },
+            "events": {
+              "kind": "text",
+              "label": "Events",
+              "required": true
+            }
+          }
+        },
+        "notFound": {
+          "kind": "object",
+          "label": "Page not found",
+          "description": "For an address that does not exist.",
+          "collapsible": true,
+          "collapsed": true,
+          "fields": {
+            "pageTitle": {
+              "kind": "text",
+              "label": "Title of the browser tab",
+              "required": true,
+              "description": "Search engines also show it."
+            },
+            "eyebrow": {
+              "kind": "text",
+              "label": "Eyebrow",
+              "required": true
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "text": {
+              "kind": "textarea",
+              "label": "Text",
+              "rows": 2
+            },
+            "link": {
+              "kind": "object",
+              "label": "Button",
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Text",
+                  "required": true,
+                  "description": "The text of the link."
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "description": "An address on this website, like /contact/."
+                }
+              }
             }
           }
         }

@@ -52,7 +52,7 @@ test("an editor creates an entry with an image, changes its URL, discards anothe
   const name = `Browser Tester ${stamp}`;
   const slug = `moved-${stamp}`;
   const folder = `content/team/${slug}`;
-  const taglineBefore = (JSON.parse(await publishedFile(request, "content/site/index.json")) as { tagline: string }).tagline;
+  const taglineBefore = (JSON.parse(await publishedFile(request, "content/general/index.json")) as { tagline: string }).tagline;
 
   await signIn(page);
 
@@ -75,7 +75,7 @@ test("an editor creates an entry with an image, changes its URL, discards anothe
   await expect(page.getByRole("button", { name: "Save changes" })).toBeDisabled();
 
   // Another edit, which the editor then discards on the Publish page.
-  await page.getByRole("complementary").getByRole("link", { name: "Website" }).click();
+  await page.getByRole("complementary").getByRole("link", { name: "General" }).click();
   await page.getByLabel("Tagline").fill(`Not to be published ${stamp}`);
   await page.getByRole("button", { name: "Save changes" }).click();
   await expect(page.getByText("Saved · not published")).toBeVisible();
@@ -84,11 +84,11 @@ test("an editor creates an entry with an image, changes its URL, discards anothe
   await expect(page.getByRole("checkbox", { name: `Publish Team member: ${name}` })).toBeChecked();
   await page
     .getByRole("listitem")
-    .filter({ has: page.getByRole("checkbox", { name: "Publish Website" }) })
+    .filter({ has: page.getByRole("checkbox", { name: "Publish General" }) })
     .getByRole("button", { name: "Discard" })
     .click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Discard", exact: true }).click();
-  await expect(page.getByRole("checkbox", { name: "Publish Website" })).toBeHidden();
+  await expect(page.getByRole("checkbox", { name: "Publish General" })).toBeHidden();
 
   // Publish the new entry: its data and its image reach the repository, the discarded edit does not.
   await publish(page, `Add ${name}`);
@@ -97,7 +97,7 @@ test("an editor creates an entry with an image, changes its URL, discards anothe
     portrait: { path: `media/portrait-${stamp}.png`, alt: "A test portrait" },
   });
   expect(await published(request, `${folder}/media/portrait-${stamp}.png`)).toBe(true);
-  expect((JSON.parse(await publishedFile(request, "content/site/index.json")) as { tagline: string }).tagline).toBe(taglineBefore);
+  expect((JSON.parse(await publishedFile(request, "content/general/index.json")) as { tagline: string }).tagline).toBe(taglineBefore);
 
   // Delete it, with its image, and publish the deletion.
   await page.goto(`/admin/collections/team/${slug}`);

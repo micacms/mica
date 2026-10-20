@@ -20,7 +20,7 @@ editor can do the same by clicking.
 `alice@gmail.com`, in one browser:
 
 - signs in through Mica's login view and Dex's login form;
-- opens the Website settings from the sidebar and changes the tagline;
+- opens the General settings from the sidebar and changes the tagline;
 - saves, and the repository does not move;
 - sees the edit on the Publish page and publishes it as one commit on top of
   the old head, by the editor who pressed Publish;

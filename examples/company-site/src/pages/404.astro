@@ -1,18 +1,19 @@
 ---
 import BaseLayout from "@/layouts/BaseLayout.astro";
+import { getLabels } from "@/lib/content";
+
+const { notFound: texts } = await getLabels();
 ---
 
-<BaseLayout title="Page not found" noindex>
+<BaseLayout title={texts.pageTitle} noindex>
   <div class="container-page grid min-h-[55vh] place-items-center py-20 text-center">
     <div>
-      <p class="text-sm font-semibold uppercase tracking-wider text-accent">404</p>
+      <p class="text-sm font-semibold uppercase tracking-wider text-accent">{texts.eyebrow}</p>
       <h1 class="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">
-        This page does not exist
+        {texts.title}
       </h1>
-      <p class="mt-3 text-muted">
-        The address may be out of date, or the page may have been removed.
-      </p>
-      <a href="/" class="btn-solid mt-8">Back to the homepage</a>
+      {texts.text && <p class="mt-3 text-muted">{texts.text}</p>}
+      <a href={texts.link.href} class="btn-solid mt-8">{texts.link.label}</a>
     </div>
   </div>
 </BaseLayout>

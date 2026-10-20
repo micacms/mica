@@ -23,7 +23,7 @@ async function headOfMain(request: APIRequestContext): Promise<string> {
 }
 
 async function publishedTagline(request: APIRequestContext): Promise<string> {
-  const site = (await forgejo(request, "raw/content/site/index.json?ref=main", true)) as { tagline: string };
+  const site = (await forgejo(request, "raw/content/general/index.json?ref=main", true)) as { tagline: string };
   return site.tagline;
 }
 
@@ -56,9 +56,9 @@ test("an editor signs in, edits, saves and publishes", async ({ page, request, b
   const sidebar = page.getByRole("complementary");
   await expect(sidebar.getByRole("button", { name: "Sign out" })).toBeVisible();
 
-  // Edit: open the Website settings from the sidebar and change the tagline.
-  await sidebar.getByRole("link", { name: "Website" }).click();
-  await expect(page.getByRole("heading", { name: "Website" })).toBeVisible();
+  // Edit: open the General settings from the sidebar and change the tagline.
+  await sidebar.getByRole("link", { name: "General" }).click();
+  await expect(page.getByRole("heading", { name: "General" })).toBeVisible();
 
   const tagline = `Edited in a browser at ${new Date().toISOString()}`;
   await page.getByLabel("Tagline").fill(tagline);
@@ -114,7 +114,7 @@ test("an editor whose session ends signs in again and keeps the unsaved changes"
   await expect(page).toHaveURL(/\/admin\/$/);
 
   const sidebar = page.getByRole("complementary");
-  await sidebar.getByRole("link", { name: "Website" }).click();
+  await sidebar.getByRole("link", { name: "General" }).click();
   const tagline = `Kept across a sign-in at ${new Date().toISOString()}`;
   await page.getByLabel("Tagline").fill(tagline);
 

@@ -2,10 +2,11 @@
 import { Image } from "astro:assets";
 /** Header and main menu, both driven by the `navigation` singleton. */
 
-import { getNavigation, getSiteSettings } from "@/lib/content";
+import { getLabels, getNavigation, getSiteSettings } from "@/lib/content";
 
 const settings = await getSiteSettings();
 const navigation = await getNavigation();
+const { general: labels } = await getLabels();
 
 const path = Astro.url.pathname.replace(/\/$/, "") || "/";
 const isCurrent = (href: string): boolean => {
@@ -37,7 +38,7 @@ const isCurrent = (href: string): boolean => {
     <details class="group ml-auto md:hidden">
       <summary
         class="flex cursor-pointer list-none items-center rounded p-2 [&::-webkit-details-marker]:hidden"
-        aria-label="Menu"
+        aria-label={labels.menu}
       >
         <svg viewBox="0 0 20 20" class="h-6 w-6" fill="none" stroke="currentColor" stroke-width="1.75">
           <path d="M3 5h14M3 10h14M3 15h14" stroke-linecap="round" class="group-open:hidden" />
@@ -47,7 +48,7 @@ const isCurrent = (href: string): boolean => {
 
       <nav
         class="absolute inset-x-0 top-18 border-b border-line bg-canvas p-5 shadow-lg"
-        aria-label="Main"
+        aria-label={labels.mainMenu}
       >
         <ul class="space-y-1">
           {
@@ -78,7 +79,7 @@ const isCurrent = (href: string): boolean => {
       </nav>
     </details>
 
-    <nav class="ml-auto hidden md:block" aria-label="Main">
+    <nav class="ml-auto hidden md:block" aria-label={labels.mainMenu}>
       <ul class="flex items-center gap-1">
         {
           navigation.main.map((item) => (

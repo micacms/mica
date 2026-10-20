@@ -20,7 +20,7 @@ async function forgejo(path, raw = false) {
 }
 
 const headOfMain = async () => (await forgejo("branches/main")).commit.id;
-const publishedSite = async () => JSON.parse(await forgejo("raw/content/site/index.json?ref=main", true));
+const publishedSite = async () => JSON.parse(await forgejo("raw/content/general/index.json?ref=main", true));
 
 /** One person's browser: a cookie jar and a redirect loop. */
 class Browser {
@@ -152,18 +152,18 @@ describe("an admitted session", () => {
     const alice = new Browser();
     await alice.signIn("alice@gmail.com");
 
-    const current = await alice.api("/api/admin/singletons/site");
+    const current = await alice.api("/api/admin/singletons/general");
     assert.equal(current.status, 200);
     const { data, revision } = await current.json();
 
     const tagline = `Edited through Dex at ${new Date().toISOString()}`;
     const edit = { data: { ...data, tagline }, revision };
 
-    const forged = await alice.api("/api/admin/singletons/site", { method: "PUT", body: edit, csrf: false });
+    const forged = await alice.api("/api/admin/singletons/general", { method: "PUT", body: edit, csrf: false });
     assert.equal(forged.status, 403);
 
     const before = await headOfMain();
-    const saved = await alice.api("/api/admin/singletons/site", { method: "PUT", body: edit });
+    const saved = await alice.api("/api/admin/singletons/general", { method: "PUT", body: edit });
     assert.equal(saved.status, 200);
 
     // Saved is not published: the repository has not moved.
@@ -192,18 +192,18 @@ describe("an admitted session", () => {
     const alice = new Browser();
     await alice.signIn("alice@gmail.com");
 
-    const current = await (await alice.api("/api/admin/singletons/site")).json();
+    const current = await (await alice.api("/api/admin/singletons/general")).json();
     const mine = `Mine, at ${new Date().toISOString()}`;
-    const saved = await alice.api("/api/admin/singletons/site", {
+    const saved = await alice.api("/api/admin/singletons/general", {
       method: "PUT",
       body: { data: { ...current.data, tagline: mine }, revision: current.revision },
     });
     assert.equal(saved.status, 200);
 
     // A developer changes the same file on the website, through the Git host.
-    const file = await forgejo("contents/content/site/index.json?ref=main");
+    const file = await forgejo("contents/content/general/index.json?ref=main");
     const theirs = { ...JSON.parse(Buffer.from(file.content, "base64").toString()), tagline: "Theirs" };
-    const updated = await fetch(`${FORGEJO}/contents/content/site/index.json`, {
+    const updated = await fetch(`${FORGEJO}/contents/content/general/index.json`, {
       method: "PUT",
       headers: { authorization: FORGEJO_AUTH, "content-type": "application/json" },
       body: JSON.stringify({

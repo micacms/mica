@@ -6,7 +6,7 @@ import { getCollection, type CollectionEntry } from "astro:content";
 import RichText from "@/components/RichText.astro";
 import TagList from "@/components/TagList.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { FORMAT_LABELS, formatDateTime } from "@/lib/content";
+import { formatDateTime, formatLabel, getLabels } from "@/lib/content";
 
 export async function getStaticPaths() {
   const events = await getCollection("events");
@@ -25,13 +25,14 @@ const { title, startsAt, endsAt, format, capacity, venue, registrationUrl, speak
   event.data;
 
 const people = await relatedAll("team", speakers);
+const { events: texts } = await getLabels();
 const isPast = new Date(startsAt).getTime() < Date.now();
 ---
 
 <BaseLayout title={title} description={summary}>
   <article>
     <div class="container-page pb-12 pt-16 sm:pt-24">
-      <a href="/events/" class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> All events</a>
+      <a href="/events/" class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> {texts.allLink}</a>
 
       <div class="mt-4 max-w-3xl">
         <h1 class="text-4xl font-semibold sm:text-5xl lg:text-6xl">{title}</h1>
@@ -47,14 +48,14 @@ const isPast = new Date(startsAt).getTime() < Date.now();
 
       <aside class="space-y-8 self-start bg-sunken p-6 sm:p-8 lg:sticky lg:top-28" style="border-radius: var(--radius-theme)">
         <div>
-          <h2 class="eyebrow text-muted">When</h2>
+          <h2 class="eyebrow text-muted">{texts.when}</h2>
           <p class="mt-3 text-sm">
             <time datetime={startsAt}>{formatDateTime(startsAt)}</time>
             {
               endsAt && (
                 <>
                   <br />
-                  <span class="text-muted">until </span>
+                  <span class="text-muted">{texts.until} </span>
                   <time datetime={endsAt}>{formatDateTime(endsAt)}</time>
                 </>
               )
@@ -63,17 +64,17 @@ const isPast = new Date(startsAt).getTime() < Date.now();
         </div>
 
         <div>
-          <h2 class="eyebrow text-muted">Format</h2>
+          <h2 class="eyebrow text-muted">{texts.format}</h2>
           <p class="mt-3 text-sm">
-            {format.map((value) => FORMAT_LABELS[value] ?? value).join(" and ")}
-            {capacity ? ` · ${capacity} seats` : ""}
+            {format.map(formatLabel).join(` ${texts.and} `)}
+            {capacity ? ` · ${capacity} ${texts.seats}` : ""}
           </p>
         </div>
 
         {
           venue?.name && (
             <div>
-              <h2 class="eyebrow text-muted">Venue</h2>
+              <h2 class="eyebrow text-muted">{texts.venue}</h2>
               <address class="mt-3 whitespace-pre-line text-sm not-italic">
                 <span class="font-medium">{venue.name}</span>
                 {venue.address ? `\n${venue.address}` : ""}
@@ -83,7 +84,7 @@ const isPast = new Date(startsAt).getTime() < Date.now();
                 <LocationMap
                   place={venue.place}
                   map="positron"
-                  label={`Map: ${venue.name}`}
+                  label={`${texts.map}: ${venue.name}`}
                   class="mt-4 block h-56 w-full overflow-hidden border border-line"
                   style="border-radius: var(--radius-theme)"
                 />
@@ -95,7 +96,7 @@ const isPast = new Date(startsAt).getTime() < Date.now();
         {
           people.length > 0 && (
             <div>
-              <h2 class="eyebrow text-muted">Speakers</h2>
+              <h2 class="eyebrow text-muted">{texts.speakers}</h2>
               <ul class="mt-3 space-y-2 text-sm">
                 {people.map((person) => (
                   <li>
@@ -113,11 +114,11 @@ const isPast = new Date(startsAt).getTime() < Date.now();
         {
           registrationUrl && !isPast && (
             <a href={registrationUrl} class="btn-solid w-full" rel="noopener noreferrer">
-              Register
+              {texts.register}
             </a>
           )
         }
-        {isPast && <p class="text-sm text-muted">This event has taken place.</p>}
+        {isPast && <p class="text-sm text-muted">{texts.isPast}</p>}
       </aside>
     </div>
   </article>

@@ -46,7 +46,7 @@ for (const colorScheme of ["light", "dark"] as const) {
       ["Collection", "/admin/collections/projects"],
       ["Entry", "/admin/collections/projects/order-to-cash-review"],
       ["Entry with one relation", "/admin/collections/news/we-are-hiring-a-junior-consultant"],
-      ["Singleton", "/admin/singletons/site"],
+      ["Singleton", "/admin/singletons/general"],
       ["Media", "/admin/media"],
       ["Publish", "/admin/changes"],
       ["System", "/admin/system"],

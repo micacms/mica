@@ -1,0 +1,15 @@
+{
+  "title": "Events",
+  "slug": "events",
+  "template": "events",
+  "eyebrow": "Meet us",
+  "intro": "Workshops and talks, in person and online.",
+  "heroImage": null,
+  "sections": [],
+  "seo": {
+    "metaTitle": null,
+    "metaDescription": null,
+    "ogImage": null,
+    "noindex": false
+  }
+}
