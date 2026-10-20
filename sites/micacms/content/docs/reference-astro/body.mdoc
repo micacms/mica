@@ -135,8 +135,10 @@ Start the dev server with `MICA_PREVIEW=1 astro dev`. Only then does the integra
 ```
 
 - The loaders append invisible characters to the values of text, textarea and rich-text fields, and to the alt text of images. Values that look like an address or a phone number get none, because a template puts them in a link. In the preview, a template that compares a text value or makes an address from it can act differently.
-- An image without alt text gets no mark: Astro resolves its source only when the page renders, so it has no text to carry one.
-- `renderRichText` and `transformRichText` take the characters off a rich text, and mark each top-level block of it instead (`data-mica-field`, `data-mica-block`). A template that renders rich text in another way gets no marks for it.
+- A value that the page shows formatted, such as a date, a number, an option, a map or an image without alt text, cannot carry the characters. The dev server reads each `.astro` template with Astro's own parser before Astro compiles it, and adds `data-mica-fields` to each element, with the fields that its expressions read. The file on disk does not change. A value that another module reads and formats by itself is not found.
+- The parser is `@astrojs/compiler-rs`, a peer dependency, which Astro 7 installs. Without it, only the marked values can be clicked.
+- `renderRichText` and `transformRichText` take the characters off a rich text. They mark the whole text with its field (`data-mica-field`) and each top-level block with its place (`data-mica-block`). A template that renders rich text in another way gets no marks for it.
+- A component gets its values as props. The element that uses it reads the fields, such as `<TagList tags={tags} />`, and the root element of the component gets them too.
 - Each page gets a small script. It answers only an editor on the same computer. To allow another editor, set `MICA_PREVIEW_EDITOR` to its origins, separated by commas.
 
 See [Preview changes](/docs/previews/).

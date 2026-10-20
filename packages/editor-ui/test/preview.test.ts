@@ -6,7 +6,7 @@ import { describe, it } from "node:test";
 import { object, relation, repeater, text } from "@micacms/core/internal";
 
 import type { Edit } from "../src/lib/edits.js";
-import { fieldLabel } from "../src/lib/field-labels.js";
+import { fieldLabel, fieldPaths } from "../src/lib/field-labels.js";
 import { changedMarkers } from "../src/lib/preview-changes.js";
 import { linkKey, relationLinks } from "../src/lib/preview-relations.js";
 
@@ -23,6 +23,10 @@ describe("preview field labels", () => {
     assert.equal(fieldLabel(fields, "metaTitle"), "Meta title");
     assert.equal(fieldLabel(fields, "seo.description"), "Description");
     assert.equal(fieldLabel(fields, "facts.2.label"), "Fact");
+  });
+
+  it("lists every field path, nested ones too, as a template reads them", () => {
+    assert.deepEqual(fieldPaths(fields), ["title", "metaTitle", "seo", "seo.description", "facts", "facts.label"]);
   });
 
   it("gives null for a path that the model does not have", () => {

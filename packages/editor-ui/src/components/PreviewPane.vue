@@ -23,7 +23,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, RotateCw } from "@lucide/vue";
 
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPane, type PreviewMode } from "@/composables/usePreviewPane";
-import { fieldLabel } from "@/lib/field-labels";
+import { fieldLabel, fieldPaths } from "@/lib/field-labels";
 import { FIELD_BLOCK, focusField } from "@/lib/focus";
 import { withoutOverlay } from "@/lib/overlay-address";
 import { documentAtPath } from "@/lib/pages";
@@ -77,10 +77,20 @@ function token(name: string): string {
   return value;
 }
 
+/** A token's value as written, such as a radius. */
+const cssToken = (name: string): string => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
 function hello(): void {
   post({
     type: "hello",
-    colours: { edit: token("--mica-primary"), onEdit: token("--mica-on-primary"), changed: token("--mica-glint"), onChanged: token("--mica-on-glint") },
+    colours: {
+      edit: token("--mica-primary"),
+      onEdit: token("--mica-on-primary"),
+      changed: token("--mica-glint"),
+      onChanged: token("--mica-on-glint"),
+    },
+    // The brand's radii: panels for the frames, chips for the buttons of the label.
+    radii: { frame: cssToken("--radius-md"), chip: cssToken("--radius-sm") },
   });
 }
 
@@ -125,19 +135,47 @@ function labelOf(marker: PreviewMarker): string {
   if (sameDocument(mainDocument.value, marker) || sameDocument(pane.overlay.value, marker)) {
     return (fields && fieldLabel(fields, marker.path)) ?? marker.path;
   }
-  if (singleton) return singleton.label;
+  // Another document's field: which document, and which field, such as "Labels: Map".
+  const field = fields ? fieldLabel(fields, marker.path) : null;
+  if (singleton) return field ? `${singleton.label}: ${field}` : singleton.label;
   return collection ? `${collection.labelSingular}: ${marker.id}` : marker.document;
+}
+
+/** The field paths of each model on the page, and of the form's: the page gives the elements that its templates mark to a document with them. */
+function models(): Record<string, string[]> {
+  const names = new Set([...markers.value.map((marker) => marker.document), ...(mainDocument.value ? [mainDocument.value.document] : [])]);
+  return Object.fromEntries(
+    [...names].flatMap((name) => {
+      const fields = schema.collection(name)?.fields ?? schema.singleton(name)?.fields;
+      return fields ? [[name, fieldPaths(fields)] as const] : [];
+    }),
+  );
+}
+
+/**
+ * What a click on a field does, for its label: go to the field of the form, open
+ * another form (a document with a page), or open the overlay form, which the
+ * page marks with ↗. The same as `select`.
+ */
+function opensOf(marker: PreviewMarker): "field" | "form" | "overlay" {
+  if (sameDocument(mainDocument.value, marker) || linkOf(marker)) return "field";
+  const page = schema.collection(marker.document)?.url ?? schema.singleton(marker.document)?.url;
+  return page ? "form" : "overlay";
 }
 
 function sendState(): void {
   post({
     type: "state",
     mode: pane.mode.value,
+    models: models(),
+    main: mainDocument.value,
     changed: changed.value,
     labels: markers.value.map((marker) => {
       // A related entry: the label names the relation field, and its button the entry.
       const link = sameDocument(mainDocument.value, marker) ? undefined : linkOf(marker);
-      return link ? { marker, label: link.label, secondary: labelOf(marker) } : { marker, label: labelOf(marker) };
+      return link
+        ? { marker, label: link.label, opens: "field", secondary: labelOf(marker) }
+        : { marker, label: labelOf(marker), opens: opensOf(marker) };
     }),
   });
 }

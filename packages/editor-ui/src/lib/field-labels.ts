@@ -17,3 +17,11 @@ export function fieldLabel(fields: FieldMap, path: string): string | null {
   }
   return label;
 }
+
+/** Every field path of a model, nested ones too, as a template reads them: `venue.name`, and `facts.label` for a row's field. */
+export function fieldPaths(fields: FieldMap, prefix = ""): string[] {
+  return Object.entries(fields).flatMap(([key, field]) => {
+    const path = prefix ? `${prefix}.${key}` : key;
+    return field.kind === "object" || field.kind === "repeater" ? [path, ...fieldPaths(field.fields, path)] : [path];
+  });
+}

@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The live preview gives the page the field paths of each model, so that it can find the fields of dates, numbers and options, and names a field of another document with that document, such as \"Labels: Map\".",
+      "type": "minor",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

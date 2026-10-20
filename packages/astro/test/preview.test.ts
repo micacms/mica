@@ -6,7 +6,7 @@ import { describe, it } from "node:test";
 import { media, object, repeater, richText, slug, text, textarea } from "@micacms/core/internal";
 
 import { markFields, previewMarkersEnabled } from "../src/preview/mark.js";
-import { decodeMarkers, encodeMarker, markerKey, markerOfKey, splitMarkers } from "../src/preview/markers.js";
+import { decodeMarkers, encodeMarker, markerKey, markerOfKey, modelPath, splitMarkers } from "../src/preview/markers.js";
 import { renderRichText, validateRichText } from "../src/richtext.js";
 
 describe("field markers", () => {
@@ -64,13 +64,14 @@ describe("field markers", () => {
     assert.equal(markerOfKey("not json"), null);
   });
 
-  it("marks a rich text, and renderRichText marks each block instead, with its place", async () => {
+  it("marks a rich text, and renderRichText marks the whole text instead, and each block with its place", async () => {
     const marked = markFields({ body: richText() }, { body: "# Hi\n\nOne\n\n- a\n- b" }, "news", "a") as { body: string };
     const html = await renderRichText(marked.body);
     const key = markerKey({ document: "news", id: "a", path: "body" }).replaceAll('"', "&quot;");
-    assert.match(html, new RegExp(`<h1 data-mica-field="${key.replaceAll("[", "\\[").replaceAll("]", "\\]")}" data-mica-block="0">Hi</h1>`));
-    assert.match(html, /<p [^>]*data-mica-block="1">One<\/p>/);
-    assert.match(html, /<ul [^>]*data-mica-block="2">/);
+    assert.ok(html.startsWith(`<article data-mica-field="${key}">`));
+    assert.match(html, /<h1 data-mica-block="0">Hi<\/h1>/);
+    assert.match(html, /<p data-mica-block="1">One<\/p>/);
+    assert.match(html, /<ul data-mica-block="2">/);
     assert.doesNotMatch(html, /[\u2064\ufe00-\ufe0f]/u);
     assert.deepEqual(validateRichText(marked.body), []);
   });
@@ -84,6 +85,15 @@ describe("field markers", () => {
     assert.deepEqual(decodeMarkers(marked.gallery[1]!.alt), [{ document: "pages", id: "home", path: "gallery", block: 1 }]);
     assert.deepEqual(decodeMarkers(marked.gallery[0]!.alt), [{ document: "pages", id: "home", path: "gallery", block: 0 }]);
     assert.equal(marked.logo, data.logo);
+  });
+
+  it("finds the field of a path that a template reads: the longest start of it that the model has", () => {
+    const fields = new Set(["coverImage", "venue", "venue.place", "tags"]);
+    assert.equal(modelPath("coverImage.src", fields), "coverImage");
+    assert.equal(modelPath("venue.place.lat", fields), "venue.place");
+    assert.equal(modelPath("tags", fields), "tags");
+    assert.equal(modelPath("length", fields), null);
+    assert.equal(modelPath("tags", undefined), null);
   });
 
   it("is on only in dev with MICA_PREVIEW", () => {

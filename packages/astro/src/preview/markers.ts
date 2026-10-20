@@ -37,6 +37,22 @@ export function encodeMarker(marker: FieldMarker): string {
 /** A new expression each time: a global one keeps its position between calls. */
 const markerPattern = () => new RegExp(`${START}([\\ufe00-\\ufe0f]+)`, "gu");
 
+/** The fields that a template's element reads, which the preview's dev server writes before Astro compiles it (`fields.ts`). */
+export const FIELDS_ATTRIBUTE = "data-mica-fields";
+
+/**
+ * The part of a path that a model has: the longest one from the start. A
+ * template reads `coverImage.src` or `place.lat`; the field is `coverImage`, `place`.
+ */
+export function modelPath(path: string, fields: ReadonlySet<string> | undefined): string | null {
+  const parts = path.split(".");
+  for (let length = parts.length; length > 0; length--) {
+    const candidate = parts.slice(0, length).join(".");
+    if (fields?.has(candidate)) return candidate;
+  }
+  return null;
+}
+
 /** The value of `data-mica-field` on a marked element: the same in the loader's HTML and in the page's script. The field only, without a block. */
 export const markerKey = (marker: FieldMarker): string => JSON.stringify([marker.document, marker.id, marker.path]);
 

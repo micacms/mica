@@ -196,18 +196,16 @@ export async function transformRichText(
 }
 
 /**
- * Marks each top-level block for the live preview: its field, and its place,
- * which is also its place in the editor's text. A click on a paragraph then
- * puts the cursor in that paragraph.
+ * Marks the text for the live preview: the whole text is its field, one outline
+ * for one field, and each top-level block has its place, which is also its
+ * place in the editor's text. A click on a paragraph then puts the cursor there.
  */
 function markBlocks(tree: RenderableTreeNode, marker: FieldMarker): RenderableTreeNode {
   if (!Markdoc.Tag.isTag(tree)) return tree;
-  const key = markerKey(marker);
+  tree.attributes["data-mica-field"] = markerKey(marker);
   let block = 0;
   for (const child of tree.children) {
-    if (!Markdoc.Tag.isTag(child)) continue;
-    child.attributes["data-mica-field"] = key;
-    child.attributes["data-mica-block"] = String(block++);
+    if (Markdoc.Tag.isTag(child)) child.attributes["data-mica-block"] = String(block++);
   }
   return tree;
 }
