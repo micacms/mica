@@ -22,7 +22,7 @@
  *   focused field, or null; and `reload`;
  * - page → editor: `fields` with the page's path and its markers, `select` with one, and
  *   `select-secondary` with a marker whose label offers a second action, such as editing a related entry.
- * A block of rich text, or an image of a gallery, has its number (`data-mica-block`): `select` and
+ * A block of rich text, an image of a gallery or another item of a list has its number (`data-mica-block`): `select` and
  * `focus` carry it, so that a click on a paragraph puts the cursor there, and back.
  * The page takes messages only from its parent, and `hello` only from an
  * editor that the integration allows (`startPreview`). It answers only that origin.
@@ -38,7 +38,7 @@ const ALSO = "data-mica-also";
 const CHANGED = "data-mica-changed";
 /** On the elements of the field that has the focus in the form. */
 const FOCUSED = "data-mica-focused";
-/** The place of a block of rich text, or of an image in a gallery. */
+/** The place of a block of rich text, of an image in a gallery, or of another item of a list. */
 const BLOCK = "data-mica-block";
 /** On an element that the page could not give to a document with the current models: it is not tried again until they change. */
 const UNRESOLVED = "data-mica-unresolved";
@@ -79,6 +79,19 @@ function nearestDocument(element: Element, path: string, models: Models): FieldM
   return main && field ? { ...main, path: field } : null;
 }
 
+/**
+ * A path that ends with a place in a list whose items have no fields, such as
+ * `gallery.2` or `team.1`: the field, and the place as its block, as for an image
+ * of a gallery or a chosen entry. A row of a repeater keeps its path.
+ */
+function itemOf(marker: FieldMarker, fields: ReadonlySet<string> | undefined): FieldMarker {
+  const match = /^(.+)\.(\d+)$/.exec(marker.path);
+  if (!match) return marker;
+  const list = match[1]!.split(".").filter((part) => !/^\d+$/.test(part)).join(".");
+  if ([...(fields ?? [])].some((field) => field.startsWith(`${list}.`))) return marker;
+  return { ...marker, path: match[1]!, block: Number(match[2]) };
+}
+
 const alsoOf = (element: Element): string[] => {
   try {
     const keys: unknown = JSON.parse(element.getAttribute(ALSO) ?? "[]");
@@ -105,6 +118,7 @@ function resolveFields(models: Models): void {
         paths
           .map((path) => nearestDocument(element, path, models))
           .filter((marker) => marker !== null)
+          .map((marker) => itemOf(marker, models.fields.get(marker.document)))
           .map((marker) => [keyOf(marker), marker]),
       ).values(),
     ];
@@ -115,6 +129,7 @@ function resolveFields(models: Models): void {
       continue;
     }
     element.setAttribute(ATTRIBUTE, keyOf(primary));
+    if (primary.block !== undefined) element.setAttribute(BLOCK, String(primary.block));
     if (others.length > 0) element.setAttribute(ALSO, JSON.stringify(others.map(keyOf)));
   }
 }
