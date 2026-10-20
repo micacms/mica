@@ -19,7 +19,7 @@ import { ChevronLeft, ChevronRight, ExternalLink, RotateCw } from "@lucide/vue";
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPane, type PreviewMode } from "@/composables/usePreviewPane";
 import { fieldLabel } from "@/lib/field-labels";
-import { focusField } from "@/lib/focus";
+import { FIELD_BLOCK, focusField } from "@/lib/focus";
 import { withoutOverlay } from "@/lib/overlay-address";
 import { documentAtPath } from "@/lib/pages";
 import { changedMarkers, isPreviewMarker, type PreviewMarker } from "@/lib/preview-changes";
@@ -108,27 +108,43 @@ function sendState(): void {
   });
 }
 
-/** The field that has the focus in the main form or in the overlay, as a marker of the page. */
-const focused = ref<PreviewMarker | null>(null);
+/** The field that has the focus in the main form or in the overlay, as a marker of the page; in a rich text, with the cursor's block. */
+const focused = ref<{ marker: PreviewMarker; block?: number } | null>(null);
 
-function onFocusIn(event: FocusEvent): void {
-  const target = event.target instanceof Element ? event.target : null;
-  const path = target?.closest("[data-field-path]")?.getAttribute("data-field-path") ?? null;
-  const form = target?.closest("[data-document-form]");
+function focusOf(target: EventTarget | null, block?: number): typeof focused.value {
+  const element = target instanceof Element ? target : null;
+  const path = element?.closest("[data-field-path]")?.getAttribute("data-field-path") ?? null;
+  const form = element?.closest("[data-document-form]");
   const owner = !form ? null : form.id === "main" ? mainDocument.value : pane.overlay.value;
-  const next = path && owner ? { document: owner.document, id: owner.id, path } : null;
+  if (!path || !owner) return null;
+  return { marker: { document: owner.document, id: owner.id, path }, ...(block === undefined ? {} : { block }) };
+}
+
+function setFocused(next: typeof focused.value): void {
   if (JSON.stringify(next) !== JSON.stringify(focused.value)) focused.value = next;
 }
 
-const sendFocus = () => post({ type: "focus", marker: focused.value });
+function onFocusIn(event: FocusEvent): void {
+  const next = focusOf(event.target);
+  // A rich text reports its block before `focusin` comes: the same field keeps it.
+  const same = next && focused.value?.block !== undefined && JSON.stringify(next.marker) === JSON.stringify(focused.value.marker);
+  if (!same) setFocused(next);
+}
+// The cursor of a rich text moved to another paragraph: the preview shows that one.
+const onFieldBlock = (event: Event) => {
+  const block: unknown = (event as CustomEvent).detail;
+  if (typeof block === "number") setFocused(focusOf(event.target, block));
+};
+
+const sendFocus = () => post({ type: "focus", marker: focused.value?.marker ?? null, block: focused.value?.block });
 watch(focused, sendFocus);
 
 async function findChanges(): Promise<void> {
   changed.value = markers.value.length === 0 ? [] : await changedMarkers(markers.value, staging.edits.value);
 }
 
-/** Goes to the field that a click in the page names. */
-async function select(marker: PreviewMarker): Promise<void> {
+/** Goes to the field that a click in the page names; for a block of rich text, to that block. */
+async function select(marker: PreviewMarker, block?: number): Promise<void> {
   const collection = schema.collection(marker.document);
   const singleton = collection ? undefined : schema.singleton(marker.document);
   if (!collection && !singleton) return;
@@ -137,7 +153,7 @@ async function select(marker: PreviewMarker): Promise<void> {
     if (!pane.closeOverlay()) return;
     if (hadOverlay) void router.replace({ query: withoutOverlay(route.query) });
     await nextTick();
-    focusField(marker.path, document.getElementById("main") ?? document);
+    focusField(marker.path, document.getElementById("main") ?? document, { block });
     return;
   }
   // A document with a page of its own opens its form, and the preview its page.
@@ -193,7 +209,9 @@ function onMessage(event: MessageEvent): void {
     sendFocus();
     void staging.refresh().then(findChanges);
   }
-  if (message["type"] === "select" && isPreviewMarker(message["marker"])) void select(message["marker"]);
+  if (message["type"] === "select" && isPreviewMarker(message["marker"])) {
+    void select(message["marker"], typeof message["block"] === "number" ? message["block"] : undefined);
+  }
 }
 
 // A save, a discard or a publication changes which fields differ.
@@ -223,10 +241,12 @@ watch(
 onMounted(() => {
   window.addEventListener("message", onMessage);
   document.addEventListener("focusin", onFocusIn);
+  document.addEventListener(FIELD_BLOCK, onFieldBlock);
 });
 onBeforeUnmount(() => {
   window.removeEventListener("message", onMessage);
   document.removeEventListener("focusin", onFocusIn);
+  document.removeEventListener(FIELD_BLOCK, onFieldBlock);
 });
 
 /** Loads the page that the frame shows again; without its script, the form's page. */

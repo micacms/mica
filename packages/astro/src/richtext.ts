@@ -15,6 +15,8 @@
 
 import Markdoc, { type Config, type RenderableTreeNode } from "@markdoc/markdoc";
 
+import { markerKey, splitMarkers, type FieldMarker } from "./preview/markers.js";
+
 /** An image as the loader gives it in `_mica.images`: the path as Markdoc writes it, and Astro's image. */
 interface TextImage {
   path: string;
@@ -185,9 +187,29 @@ export async function transformRichText(
   from?: RichTextSource | null,
   options: RichTextOptions = {},
 ): Promise<RenderableTreeNode> {
-  const document = Markdoc.parse(source);
+  // In the live preview the loader appends a marker; it never reaches Markdoc.
+  const { text, markers } = splitMarkers(source);
+  const document = Markdoc.parse(text);
   const found = await imageAttributes(imageSources(document), from?._mica?.images ?? [], options);
-  return Markdoc.transform(document, withImages(options.config ?? {}, found));
+  const tree = Markdoc.transform(document, withImages(options.config ?? {}, found));
+  return markers[0] ? markBlocks(tree, markers[0]) : tree;
+}
+
+/**
+ * Marks each top-level block for the live preview: its field, and its place,
+ * which is also its place in the editor's text. A click on a paragraph then
+ * puts the cursor in that paragraph.
+ */
+function markBlocks(tree: RenderableTreeNode, marker: FieldMarker): RenderableTreeNode {
+  if (!Markdoc.Tag.isTag(tree)) return tree;
+  const key = markerKey(marker);
+  let block = 0;
+  for (const child of tree.children) {
+    if (!Markdoc.Tag.isTag(child)) continue;
+    child.attributes["data-mica-field"] = key;
+    child.attributes["data-mica-block"] = String(block++);
+  }
+  return tree;
 }
 
 /**
@@ -198,5 +220,5 @@ export async function transformRichText(
  * Exposed so a project can decide otherwise.
  */
 export function validateRichText(source: string, options: RichTextOptions = {}) {
-  return Markdoc.validate(Markdoc.parse(source), options.config ?? {});
+  return Markdoc.validate(Markdoc.parse(splitMarkers(source).text), options.config ?? {});
 }

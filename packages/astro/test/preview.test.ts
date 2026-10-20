@@ -3,10 +3,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { object, repeater, slug, text, textarea } from "@micacms/core/internal";
+import { object, repeater, richText, slug, text, textarea } from "@micacms/core/internal";
 
 import { markTextFields, previewMarkersEnabled } from "../src/preview/mark.js";
-import { decodeMarkers, encodeMarker } from "../src/preview/markers.js";
+import { decodeMarkers, encodeMarker, markerKey, markerOfKey, splitMarkers } from "../src/preview/markers.js";
+import { renderRichText, validateRichText } from "../src/richtext.js";
 
 describe("field markers", () => {
   it("reads back what it wrote, also in another script", () => {
@@ -54,6 +55,24 @@ describe("field markers", () => {
     const marked = markTextFields(fields, data, "site", "site");
     assert.deepEqual({ ...marked, e: data.e }, data);
     assert.equal(decodeMarkers(marked["e"] as string).length, 1);
+  });
+
+  it("splits a text from its markers, and reads a key back", () => {
+    const marker = { document: "news", id: "a", path: "body" };
+    assert.deepEqual(splitMarkers(`# Hi${encodeMarker(marker)}`), { text: "# Hi", markers: [marker] });
+    assert.deepEqual(markerOfKey(markerKey(marker)), marker);
+    assert.equal(markerOfKey("not json"), null);
+  });
+
+  it("marks a rich text, and renderRichText marks each block instead, with its place", async () => {
+    const marked = markTextFields({ body: richText() }, { body: "# Hi\n\nOne\n\n- a\n- b" }, "news", "a") as { body: string };
+    const html = await renderRichText(marked.body);
+    const key = markerKey({ document: "news", id: "a", path: "body" }).replaceAll('"', "&quot;");
+    assert.match(html, new RegExp(`<h1 data-mica-field="${key.replaceAll("[", "\\[").replaceAll("]", "\\]")}" data-mica-block="0">Hi</h1>`));
+    assert.match(html, /<p [^>]*data-mica-block="1">One<\/p>/);
+    assert.match(html, /<ul [^>]*data-mica-block="2">/);
+    assert.doesNotMatch(html, /[\u2064\ufe00-\ufe0f]/u);
+    assert.deepEqual(validateRichText(marked.body), []);
   });
 
   it("is on only in dev with MICA_PREVIEW", () => {

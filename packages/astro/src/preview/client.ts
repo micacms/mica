@@ -12,11 +12,13 @@
  * - editor → page: `hello` with the colours, then `state` with the mode, the changed markers and the labels,
  *   `focus` with the marker of the form's focused field, or null, and `reload`;
  * - page → editor: `fields` with the page's path and its markers, `select` with one.
+ * A block of rich text has its number (`data-mica-block`): `select` and `focus` carry it, so
+ * that a click on a paragraph puts the cursor there, and the cursor's paragraph comes into view.
  * The page takes messages only from its parent, and `hello` only from an
  * editor that the integration allows (`startPreview`). It answers only that origin.
  */
 
-import { decodeMarkers, type FieldMarker } from "./markers.js";
+import { decodeMarkers, markerKey as keyOf, markerOfKey, type FieldMarker } from "./markers.js";
 
 const FROM_EDITOR = "mica-editor";
 const FROM_PAGE = "mica-preview";
@@ -24,10 +26,12 @@ const ATTRIBUTE = "data-mica-field";
 const CHANGED = "data-mica-changed";
 /** On the elements of the field that has the focus in the form. */
 const FOCUSED = "data-mica-focused";
+/** On all elements of the hovered field: the blocks of a rich text light up together. */
+const HOVERED = "data-mica-hover";
+/** The place of a block of rich text, which `renderRichText` writes. */
+const BLOCK = "data-mica-block";
 /** On the root element in Browse mode: the page then acts as the website does. */
 const BROWSE = "data-mica-browse";
-
-const keyOf = (marker: FieldMarker): string => JSON.stringify([marker.document, marker.id, marker.path]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> => typeof value === "object" && value !== null;
 
@@ -35,7 +39,7 @@ function isMarker(value: unknown): value is FieldMarker {
   return isRecord(value) && typeof value["document"] === "string" && typeof value["id"] === "string" && typeof value["path"] === "string";
 }
 
-/** Marks the parent element of each text with a marker. Returns every marker in the page. */
+/** Marks the parent element of each text with a marker. Returns every marker in the page, also those of rich text. */
 function scan(): FieldMarker[] {
   const markers = new Map<string, FieldMarker>();
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -46,6 +50,11 @@ function scan(): FieldMarker[] {
     // One element, one field: the first marker in it.
     if (!element.hasAttribute(ATTRIBUTE)) element.setAttribute(ATTRIBUTE, keyOf(first));
     for (const marker of [first, ...rest]) markers.set(keyOf(marker), marker);
+  }
+  // Rich text comes marked: `renderRichText` writes the attribute on each block.
+  for (const element of document.querySelectorAll(`[${ATTRIBUTE}]`)) {
+    const marker = markerOfKey(element.getAttribute(ATTRIBUTE));
+    if (marker) markers.set(keyOf(marker), marker);
   }
   return [...markers.values()];
 }
@@ -59,9 +68,9 @@ interface Colours {
 
 const styles = (colours: Colours) => `
   html:not([${BROWSE}]) [${ATTRIBUTE}] { cursor: pointer; }
-  html:not([${BROWSE}]) [${ATTRIBUTE}]:hover { outline: 2px solid ${colours.edit} !important; outline-offset: 2px; }
+  html:not([${BROWSE}]) [${HOVERED}] { outline: 2px solid ${colours.edit} !important; outline-offset: 2px; }
   html:not([${BROWSE}]) [${CHANGED}] { outline: 2px dashed ${colours.changed} !important; outline-offset: 2px; }
-  html:not([${BROWSE}]) [${CHANGED}]:hover { outline-style: solid !important; }
+  html:not([${BROWSE}]) [${CHANGED}][${HOVERED}] { outline-style: solid !important; }
   html:not([${BROWSE}]) [${FOCUSED}] { outline: 2px solid ${colours.edit} !important; outline-offset: 2px; }
   #mica-preview-label {
     position: fixed; z-index: 2147483647; pointer-events: none; display: none;
@@ -95,6 +104,9 @@ function start(editors: readonly string[]): void {
   let sent = "";
 
   const post = (message: Record<string, unknown>) => editor && window.parent.postMessage({ source: FROM_PAGE, ...message }, editor);
+
+  /** The elements of one field: the blocks of a rich text, or the one element of a text. */
+  const fieldElements = (key: string) => [...document.querySelectorAll(`[${ATTRIBUTE}]`)].filter((element) => element.getAttribute(ATTRIBUTE) === key);
 
   const paint = () => {
     for (const element of document.querySelectorAll(`[${ATTRIBUTE}]`)) {
@@ -134,30 +146,36 @@ function start(editors: readonly string[]): void {
     label.style.left = `${Math.max(0, Math.min(box.left - 2, window.innerWidth - label.offsetWidth))}px`;
   };
 
-  document.addEventListener("mouseover", (event) => {
-    const next = event.target instanceof Element ? event.target.closest(`[${ATTRIBUTE}]`) : null;
+  const hover = (next: Element | null) => {
     if (next === hovered) return;
+    for (const element of document.querySelectorAll(`[${HOVERED}]`)) element.removeAttribute(HOVERED);
     hovered = next;
+    const key = next?.getAttribute(ATTRIBUTE);
+    if (key) for (const element of fieldElements(key)) element.setAttribute(HOVERED, "");
     placeLabel();
-  });
-  document.documentElement.addEventListener("mouseleave", () => {
-    hovered = null;
-    placeLabel();
-  });
+  };
+  document.addEventListener("mouseover", (event) => hover(event.target instanceof Element ? event.target.closest(`[${ATTRIBUTE}]`) : null));
+  document.documentElement.addEventListener("mouseleave", () => hover(null));
   window.addEventListener("scroll", placeLabel, { passive: true, capture: true });
   window.addEventListener("resize", placeLabel);
 
   /**
    * Outlines the elements of a field, and scrolls to the first one when it is
-   * not in view. A group, such as `seo`, finds the fields in it.
+   * not in view. A group, such as `seo`, finds the fields in it. With a block,
+   * only that block of a rich text.
    */
-  const focus = (marker: FieldMarker | null) => {
+  const focus = (marker: FieldMarker | null, block: number | null) => {
     for (const element of document.querySelectorAll(`[${FOCUSED}]`)) element.removeAttribute(FOCUSED);
     if (!marker) return;
-    const found = [...document.querySelectorAll(`[${ATTRIBUTE}]`)].filter((element) => {
-      const [document_, id, path] = JSON.parse(element.getAttribute(ATTRIBUTE) ?? "[]") as string[];
-      return document_ === marker.document && id === marker.id && (path === marker.path || path?.startsWith(`${marker.path}.`));
+    let found = [...document.querySelectorAll(`[${ATTRIBUTE}]`)].filter((element) => {
+      const other = markerOfKey(element.getAttribute(ATTRIBUTE));
+      return !!other && other.document === marker.document && other.id === marker.id && (other.path === marker.path || other.path.startsWith(`${marker.path}.`));
     });
+    if (block !== null) {
+      // The block itself; a page that left it out shows the field's first element.
+      const exact = found.find((element) => element.getAttribute(BLOCK) === String(block));
+      found = exact ? [exact] : found.slice(0, 1);
+    }
     for (const element of found) element.setAttribute(FOCUSED, "");
     const first = found[0];
     if (!first) return;
@@ -198,7 +216,7 @@ function start(editors: readonly string[]): void {
       paint();
       placeLabel();
     }
-    if (data["type"] === "focus") focus(isMarker(data["marker"]) ? data["marker"] : null);
+    if (data["type"] === "focus") focus(isMarker(data["marker"]) ? data["marker"] : null, typeof data["block"] === "number" ? data["block"] : null);
     if (data["type"] === "reload") location.reload();
   });
 
@@ -207,12 +225,13 @@ function start(editors: readonly string[]): void {
     "click",
     (event) => {
       if (!editor || browsing || event.altKey || !(event.target instanceof Element)) return;
-      const key = event.target.closest(`[${ATTRIBUTE}]`)?.getAttribute(ATTRIBUTE);
-      if (!key) return;
+      const element = event.target.closest(`[${ATTRIBUTE}]`);
+      const marker = markerOfKey(element?.getAttribute(ATTRIBUTE) ?? null);
+      if (!element || !marker) return;
       event.preventDefault();
       event.stopPropagation();
-      const [document, id, path] = JSON.parse(key) as [string, string, string];
-      post({ type: "select", marker: { document, id, path } });
+      const block = element.getAttribute(BLOCK);
+      post({ type: "select", marker, ...(block === null ? {} : { block: Number(block) }) });
     },
     true,
   );

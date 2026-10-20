@@ -9,10 +9,15 @@ const ADDRESS = /^(\/|#|[a-z][a-z0-9+.-]*:)\S*$/i;
 /** A phone number: a template makes a `tel:` link of it. */
 const PHONE = /^\+?[\d\s()./-]{6,}$/;
 
-/** Adds a marker to each text and textarea value that a page shows as text. */
+/**
+ * Adds a marker to each text and textarea value that a page shows as text, and
+ * to each rich text: `renderRichText` takes it off again and marks each block.
+ */
 export function markTextFields(fields: FieldMap, data: Record<string, unknown>, document: string, id: string): Record<string, unknown> {
   return mapFields(fields, data, (field, value, path) =>
-    (field.kind === "text" || field.kind === "textarea") && typeof value === "string" && value !== "" && !ADDRESS.test(value) && !PHONE.test(value)
+    typeof value === "string" &&
+    value !== "" &&
+    (field.kind === "richText" || ((field.kind === "text" || field.kind === "textarea") && !ADDRESS.test(value) && !PHONE.test(value)))
       ? value + encodeMarker({ document, id, path: path.join(".") })
       : value,
   );

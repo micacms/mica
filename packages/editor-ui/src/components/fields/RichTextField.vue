@@ -18,6 +18,7 @@
  */
 
 import { computed, inject, onBeforeUnmount, ref, watch } from "vue";
+import { Selection } from "@tiptap/pm/state";
 
 import { EditorContent, useEditor } from "@tiptap/vue-3";
 
@@ -29,6 +30,7 @@ import InputDialog from "@/components/InputDialog.vue";
 import MediaPicker from "@/components/MediaPicker.vue";
 import { useField, type FieldProps } from "@/composables/useField";
 import { debounce } from "@/lib/debounce";
+import { FIELD_BLOCK, FOCUS_BLOCK } from "@/lib/focus";
 import { linkProblem } from "@/lib/links";
 import { equivalentMarkdoc, toMarkdoc, type ProseMirrorNode } from "@/lib/markdoc";
 import { MEDIA_FOLDER } from "@/lib/media-folder";
@@ -113,8 +115,45 @@ const editor = useEditor({
 
   // A keystroke only asks for the conversion. The first one after a pause gets it at once, so the form is dirty at once.
   onUpdate: () => convertSoon(),
-  onBlur: () => convertSoon.flush(),
+  onBlur: () => {
+    convertSoon.flush();
+    shownBlock = -1;
+  },
+  onFocus: () => reportBlock(),
+  onSelectionUpdate: () => reportBlock(),
+  onCreate: ({ editor: instance }) => instance.view.dom.addEventListener(FOCUS_BLOCK, focusBlock),
 });
+
+/** The top-level block of the cursor, as last reported: the live preview scrolls to it. */
+let shownBlock = -1;
+
+/** Tells the form, and so the live preview, which block the cursor is in. */
+function reportBlock(): void {
+  const instance = editor.value;
+  if (!instance?.isFocused) return;
+  const block = instance.state.selection.$from.index(0);
+  if (block === shownBlock) return;
+  shownBlock = block;
+  instance.view.dom.dispatchEvent(new CustomEvent(FIELD_BLOCK, { bubbles: true, detail: block }));
+}
+
+/** A click on a paragraph in the live preview: the cursor goes to the start of that block, and it comes into view. */
+function focusBlock(event: Event): void {
+  const instance = editor.value;
+  const index: unknown = (event as CustomEvent).detail;
+  if (!instance || typeof index !== "number" || index < 0 || index >= instance.state.doc.childCount) return;
+  event.preventDefault();
+  let position = 0;
+  for (let child = 0; child < index; child++) position += instance.state.doc.child(child).nodeSize;
+  const { state, view } = instance;
+  view.dispatch(state.tr.setSelection(Selection.near(state.doc.resolve(position + 1))));
+  view.focus();
+  const node = view.nodeDOM(position);
+  if (node instanceof HTMLElement) {
+    const smooth = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    node.scrollIntoView({ behavior: smooth ? "smooth" : "auto", block: "center" });
+  }
+}
 
 /** Converts the document to Markdoc and gives it to the form. */
 function convert(): void {

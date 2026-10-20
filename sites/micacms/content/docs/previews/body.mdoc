@@ -24,11 +24,12 @@ The local editor finds the dev server at the port and the base path of the Astro
 Add `micaPreview()` from `@micacms/astro/preview` to `astro.config`, and start the dev server with `MICA_PREVIEW=1 astro dev`. Then the preview marks the texts of the page:
 
 - In **Edit** mode, a click on a text opens its field. A text of another entry with a page opens that entry. A text without a page of its own, such as the navigation, opens its form over the current one. Alt-click follows a link.
+- A click on a paragraph of a rich text puts the cursor in that paragraph. When the cursor moves to another paragraph, the preview shows it.
 - In **Browse** mode, the page acts as the website does. Back in Edit mode, the form of the page that the preview shows opens.
 - A text with changes that are not published has a yellow outline.
 - When you click in a field of the form, the preview scrolls to its text.
 
-For now, the texts of text and textarea fields have marks. See [@micacms/astro](/docs/reference-astro/) for the setup.
+For now, the texts of text, textarea and rich-text fields have marks. See [@micacms/astro](/docs/reference-astro/) for the setup.
 
 ## Use a staging site
 

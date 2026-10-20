@@ -34,6 +34,27 @@ export function encodeMarker(marker: FieldMarker): string {
 /** A new expression each time: a global one keeps its position between calls. */
 const markerPattern = () => new RegExp(`${START}([\\ufe00-\\ufe0f]+)`, "gu");
 
+/** The value of `data-mica-field` on a marked element: the same in the loader's HTML and in the page's script. */
+export const markerKey = (marker: FieldMarker): string => JSON.stringify([marker.document, marker.id, marker.path]);
+
+/** The marker of a `data-mica-field` value, or null. */
+export function markerOfKey(key: string | null): FieldMarker | null {
+  try {
+    const parts: unknown = JSON.parse(key ?? "");
+    if (!Array.isArray(parts) || parts.length !== 3 || !parts.every((part) => typeof part === "string")) return null;
+    const [document, id, path] = parts as [string, string, string];
+    return { document, id, path };
+  } catch {
+    return null;
+  }
+}
+
+/** A text without its markers, and the markers that it had. */
+export function splitMarkers(text: string): { text: string; markers: FieldMarker[] } {
+  if (!text.includes(START)) return { text, markers: [] };
+  return { text: text.replace(markerPattern(), ""), markers: decodeMarkers(text) };
+}
+
 /** The markers in a text, in order. A marker that a template cut short is left out. */
 export function decodeMarkers(text: string): FieldMarker[] {
   if (!text.includes(START)) return [];
