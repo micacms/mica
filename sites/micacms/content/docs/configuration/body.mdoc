@@ -47,6 +47,16 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 - `MICA_LOG_LEVEL`: `debug`, `info`, `warn`, `error` or `silent`. Default: `info`.
 - `MICA_SITE_URL`: the website's address, such as `https://example.com`. With a `url` in the model, an entry shows "Open on website". See [Preview changes](/docs/previews/).
 
+## Self-hosted image: live preview
+
+These variables turn on the live preview. Set `MICA_PREVIEW_URL` and `MICA_PREVIEW_UPSTREAM` together, or set neither. See [Add the live preview](/docs/self-hosting/) in the self-hosting guide.
+
+- `MICA_PREVIEW_URL`: the public origin of the preview, such as `https://preview.cms.example.com`. It must have another host name than `MICA_PUBLIC_URL`, on the same site, for example a subdomain of the same domain. Mica refuses the same host name, also on another port. It has no path. It needs `https://`, except for a trial on this machine: `http://preview.cms.localhost:6423` beside `http://cms.localhost:6422`.
+- `MICA_PREVIEW_UPSTREAM`: the `http://` address of the dev server in the container network, such as `http://preview:4321`.
+- `MICA_PREVIEW_PORT`: the port of the preview's gate in the Mica container. Default: `6423`. It must differ from `PORT`.
+
+The preview container sets `MICA_PREVIEW_EDITOR` to the value of `MICA_PUBLIC_URL`. Mica does not read that variable.
+
 ## Self-hosted image: agents
 
 See [Edit with an agent](/docs/agents/).

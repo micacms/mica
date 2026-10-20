@@ -17,7 +17,15 @@ The link opens the published page. After a Publish, the host needs a few minutes
 
 Run `astro dev` beside the local editor. The dev server reads the saved drafts, so it shows a change about one second after you stop typing, before Publish. With a `url` in the model, the editor shows the page beside the form while the dev server runs, also for a new entry. The divider between them changes the width, and its button folds the page away. On a small screen, **Preview** opens the page in a new tab.
 
-The local editor finds the dev server at the port and the base path of the Astro config, `http://localhost:4321` by default. If Astro takes another port because that one is busy, set `server.port` in `astro.config`. The self-hosted Mica has no preview.
+The local editor finds the dev server at the port and the base path of the Astro config, `http://localhost:4321` by default. If Astro takes another port because that one is busy, set `server.port` in `astro.config`.
+
+## Preview in the self-hosted Mica
+
+The self-hosted Mica shows the same preview beside the form. The page comes from a preview container: the dev server of the website, which reads the drafts of Mica's data volume. The preview shows a draft about two seconds after you stop typing. Click to edit and the outline of changes that are not published work as in the local editor.
+
+The preview has a host name of its own, such as `preview.cms.example.com` beside `cms.example.com`. When an editor opens an entry, Mica gives the editor's browser a pass for that address. The pass ends after ten minutes. The editor renews it when the person types or clicks, at most every five minutes. A tab that nobody uses does not renew it. The website never sees the cookies of Mica, and only the editor can frame the preview.
+
+A change of a template shows in the preview after a new preview image, as it shows on the website after a deploy. Mica does not start, stop or build the preview. The setup is in [Add the live preview](/docs/self-hosting/).
 
 ## Click a text to edit it
 
