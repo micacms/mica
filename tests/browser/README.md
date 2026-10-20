@@ -43,8 +43,9 @@ deletion, and the files are gone from the Git host.
 ## What the local editor test checks
 
 Each spec starts `apps/local-editor/dist/cli.js start` on a free port, on a
-temporary Git repository with the starter's content (`examples/starter/content`),
-with [`local-editor/editor.ts`](local-editor/editor.ts).
+temporary Git repository, with [`local-editor/editor.ts`](local-editor/editor.ts).
+The repository has the starter's content (`examples/starter/content`), except
+for the live preview's spec.
 
 [`local-editor/rich-text.spec.ts`](local-editor/rich-text.spec.ts):
 
@@ -63,6 +64,20 @@ remote (#139):
 - Publish makes one commit and pushes it to the remote;
 - with the remote out of reach, Publish keeps the commit and says so; "Try
   again" sends the same commit, and makes no new one.
+
+[`local-editor/preview.spec.ts`](local-editor/preview.spec.ts) uses the
+example site, not the starter. [`local-editor/preview-site.ts`](local-editor/preview-site.ts)
+copies it to the repository's ignored `.tmp/`, starts `MICA_PREVIEW=1 astro dev`
+on the copy, and starts the editor on its content. The test:
+
+- opens a page, and a click on its heading in the preview puts the cursor in
+  the Title field;
+- clicks a link of the footer menu: the Navigation form opens over the page's
+  form, and "Back to page" closes it;
+- types a new introduction: the form saves by itself, the preview shows the
+  new text and marks it as not published, and the repository does not move;
+- in Browse mode, follows the link to another page: back in Edit mode, the
+  form is the form of that page.
 
 ## Run it
 
