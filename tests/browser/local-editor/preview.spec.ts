@@ -50,6 +50,25 @@ test("a click in the preview opens the field, and a save shows on the page", asy
   await general.getByRole("button", { name: /^Back to page Services/ }).click();
   await expect(general).toBeHidden();
 
+  // A link with a marked text offers its address as a second button in the label.
+  await privacy.hover();
+  const actions = preview.locator("#mica-preview-label").getByRole("button");
+  await expect(actions).toHaveText([/Label/, /Link/]);
+  await actions.nth(1).click();
+  const navigation = page.getByRole("region", { name: "Edit Navigation" });
+  await expect(navigation.getByRole("group", { name: /^Footer links/ }).getByRole("textbox", { name: /^Link/ }).nth(1)).toBeFocused();
+  await navigation.getByRole("button", { name: /^Back to page Services/ }).click();
+  await expect(navigation).toBeHidden();
+
+  // The space of a section around its heading and text: the section's own field, its layout.
+  const section = preview.locator("section", { has: preview.getByRole("heading", { name: /^Our approach/ }) });
+  await expect(section).toHaveAttribute("data-mica-field", /"sections\.0\.layout"/);
+  // The list around all sections shows its rows inside: it offers nothing of its own.
+  await expect(section.locator("xpath=..")).not.toHaveAttribute("data-mica-field");
+  const [outer, inner] = [await section.boundingBox(), await section.locator(":scope > div").boundingBox()];
+  await section.click({ position: { x: 4, y: inner!.y + inner!.height - outer!.y + 12 } });
+  await expect(page.getByRole("group", { name: /^Extra sections/ }).getByRole("combobox", { name: /^Layout/ }).first()).toBeFocused();
+
   // The form saves by itself, the page loads again with the new text, and marks it as not published.
   const intro = "Typed in the browser, and shown in the preview.";
   await page.getByRole("textbox", { name: "Introduction" }).fill(intro);

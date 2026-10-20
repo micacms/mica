@@ -96,8 +96,11 @@ function evaluate(node: unknown, scope: Scope): Value {
   switch (node.type) {
     case "Identifier":
       return scope.get(node["name"] as string) ?? NOTHING;
-    case "MemberExpression":
-      return member(evaluate(node["object"], scope), propertyKey(node));
+    case "MemberExpression": {
+      const value = member(evaluate(node["object"], scope), propertyKey(node));
+      // `LAYOUTS[section.layout]`: the key is a field too.
+      return node["computed"] && propertyKey(node) === null ? union(value, evaluate(node["property"], scope)) : value;
+    }
     case "ChainExpression":
     case "ParenthesizedExpression":
     case "TSAsExpression":
