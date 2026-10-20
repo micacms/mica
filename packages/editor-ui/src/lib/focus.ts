@@ -10,12 +10,13 @@ import { nextTick } from "vue";
 const REVEAL_FIELD = "reveal-field";
 
 /**
- * Sent to a field's control with the number of a block of its text. A rich-text
- * field puts the cursor in that block, scrolls to it, and cancels the event.
+ * Sent to a field's control with the number of a block: a paragraph of a rich
+ * text, or an image of a gallery. The field goes there, scrolls to it, and
+ * cancels the event. It bubbles, so that a field can listen on its own element.
  */
 export const FOCUS_BLOCK = "focus-block";
 
-/** Sent from a rich-text field when its cursor moves to another block, with the block's number. */
+/** Sent from a field when its cursor or focus moves to another block, with the block's number. */
 export const FIELD_BLOCK = "field-block";
 
 /** A smooth scroll, unless the editor asked the system for less motion. */
@@ -46,7 +47,7 @@ export function focusField(path: string, root: ParentNode = document, options: {
     // After the opened groups are on the page.
     void nextTick(() => {
       if (options.block !== undefined && current === path) {
-        const block = new CustomEvent(FOCUS_BLOCK, { detail: options.block, cancelable: true });
+        const block = new CustomEvent(FOCUS_BLOCK, { detail: options.block, cancelable: true, bubbles: true });
         if (!control.dispatchEvent(block)) return;
       }
       wrapper.scrollIntoView({ behavior: scrollBehavior(), block: "center" });

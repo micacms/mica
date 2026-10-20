@@ -46,7 +46,7 @@ import { z } from "zod";
 import { announceDevServer, type DevServerConfig } from "./dev-server.js";
 import { imagePathsFromEntry, richTextImageSources } from "./images.js";
 import { manifestFor } from "./manifest.js";
-import { markTextFields, previewMarkersEnabled } from "./preview/mark.js";
+import { markFields, previewMarkersEnabled } from "./preview/mark.js";
 import { publishReferences } from "./references.js";
 import { DEFAULT_CONTENT_ROOT, resolveContentRoot } from "./root.js";
 
@@ -367,7 +367,7 @@ export function micaCollections<S extends Site>(
                 }),
               );
               if (data === undefined) continue;
-              const shown = markers(context) ? markTextFields(def.fields, data, name, entry.slug) : data;
+              const shown = markers(context) ? markFields(def.fields, data, name, entry.slug) : data;
               context.store.set({
                 id: entry.slug,
                 data: shown,
@@ -435,7 +435,7 @@ export function micaCollections<S extends Site>(
               }),
             );
             if (parsed === undefined) return;
-            const shown = markers(context) ? markTextFields(def.fields, parsed, name, name) : parsed;
+            const shown = markers(context) ? markFields(def.fields, parsed, name, name) : parsed;
             context.store.set({
               id: name,
               data: shown,

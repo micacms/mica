@@ -39,7 +39,7 @@ function isMarker(value: unknown): value is FieldMarker {
   return isRecord(value) && typeof value["document"] === "string" && typeof value["id"] === "string" && typeof value["path"] === "string";
 }
 
-/** Marks the parent element of each text with a marker. Returns every marker in the page, also those of rich text. */
+/** Marks the parent element of each text with a marker, and each image whose alt text has one. Returns every marker in the page, also those of rich text. */
 function scan(): FieldMarker[] {
   const markers = new Map<string, FieldMarker>();
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
@@ -49,7 +49,14 @@ function scan(): FieldMarker[] {
     if (!element || !first) continue;
     // One element, one field: the first marker in it.
     if (!element.hasAttribute(ATTRIBUTE)) element.setAttribute(ATTRIBUTE, keyOf(first));
-    for (const marker of [first, ...rest]) markers.set(keyOf(marker), marker);
+    for (const marker of [first, ...rest]) markers.set(keyOf(marker), { document: marker.document, id: marker.id, path: marker.path });
+  }
+  // An image of a media field carries its marker in the alt text, with its place in a gallery.
+  for (const image of document.querySelectorAll("img[alt]")) {
+    const [marker] = decodeMarkers(image.getAttribute("alt") ?? "");
+    if (!marker || image.hasAttribute(ATTRIBUTE)) continue;
+    image.setAttribute(ATTRIBUTE, keyOf(marker));
+    if (marker.block !== undefined) image.setAttribute(BLOCK, String(marker.block));
   }
   // Rich text comes marked: `renderRichText` writes the attribute on each block.
   for (const element of document.querySelectorAll(`[${ATTRIBUTE}]`)) {

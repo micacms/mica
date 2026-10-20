@@ -134,7 +134,8 @@ Start the dev server with `MICA_PREVIEW=1 astro dev`. Only then does the integra
 }
 ```
 
-- The loaders append invisible characters to the values of text, textarea and rich-text fields. Values that look like an address or a phone number get none, because a template puts them in a link. In the preview, a template that compares a text value or makes an address from it can act differently.
+- The loaders append invisible characters to the values of text, textarea and rich-text fields, and to the alt text of images. Values that look like an address or a phone number get none, because a template puts them in a link. In the preview, a template that compares a text value or makes an address from it can act differently.
+- An image without alt text gets no mark: Astro resolves its source only when the page renders, so it has no text to carry one.
 - `renderRichText` and `transformRichText` take the characters off a rich text, and mark each top-level block of it instead (`data-mica-field`, `data-mica-block`). A template that renders rich text in another way gets no marks for it.
 - Each page gets a small script. It answers only an editor on the same computer. To allow another editor, set `MICA_PREVIEW_EDITOR` to its origins, separated by commas.
 

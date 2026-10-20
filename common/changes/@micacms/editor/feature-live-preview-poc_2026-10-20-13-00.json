@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The live preview also works for images: a click on an image opens its media field, and in a gallery it goes to that image.",
+      "type": "minor",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

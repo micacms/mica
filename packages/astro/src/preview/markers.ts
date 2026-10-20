@@ -22,10 +22,13 @@ export interface FieldMarker {
   id: string;
   /** The field's path as the editor names it: `title`, `seo.title`, `facts.2.label`. */
   path: string;
+  /** The place of an image in a gallery. */
+  block?: number;
 }
 
 export function encodeMarker(marker: FieldMarker): string {
-  const bytes = new TextEncoder().encode([marker.document, marker.id, marker.path, ""].join(SEPARATOR));
+  const parts = [marker.document, marker.id, marker.path, ...(marker.block === undefined ? [] : [String(marker.block)])];
+  const bytes = new TextEncoder().encode([...parts, ""].join(SEPARATOR));
   let out = START;
   for (const byte of bytes) out += String.fromCharCode(FIRST_DIGIT + (byte >> 4), FIRST_DIGIT + (byte & 15));
   return out;
@@ -34,7 +37,7 @@ export function encodeMarker(marker: FieldMarker): string {
 /** A new expression each time: a global one keeps its position between calls. */
 const markerPattern = () => new RegExp(`${START}([\\ufe00-\\ufe0f]+)`, "gu");
 
-/** The value of `data-mica-field` on a marked element: the same in the loader's HTML and in the page's script. */
+/** The value of `data-mica-field` on a marked element: the same in the loader's HTML and in the page's script. The field only, without a block. */
 export const markerKey = (marker: FieldMarker): string => JSON.stringify([marker.document, marker.id, marker.path]);
 
 /** The marker of a `data-mica-field` value, or null. */
@@ -68,7 +71,10 @@ export function decodeMarkers(text: string): FieldMarker[] {
     }
     try {
       const parts = new TextDecoder("utf-8", { fatal: true }).decode(bytes).split(SEPARATOR);
-      if (parts.length === 4 && parts[3] === "") found.push({ document: parts[0]!, id: parts[1]!, path: parts[2]! });
+      if (parts.at(-1) !== "") continue;
+      const [document, id, path, block] = parts;
+      if (parts.length === 4) found.push({ document: document!, id: id!, path: path! });
+      if (parts.length === 5 && /^\d+$/.test(block!)) found.push({ document: document!, id: id!, path: path!, block: Number(block) });
     } catch {
       // Not one of ours.
     }

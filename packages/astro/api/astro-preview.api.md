@@ -8,6 +8,7 @@ import type { AstroIntegration } from 'astro';
 
 // @public
 export interface FieldMarker {
+    block?: number;
     document: string;
     id: string;
     path: string;

@@ -3,9 +3,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { object, repeater, richText, slug, text, textarea } from "@micacms/core/internal";
+import { media, object, repeater, richText, slug, text, textarea } from "@micacms/core/internal";
 
-import { markTextFields, previewMarkersEnabled } from "../src/preview/mark.js";
+import { markFields, previewMarkersEnabled } from "../src/preview/mark.js";
 import { decodeMarkers, encodeMarker, markerKey, markerOfKey, splitMarkers } from "../src/preview/markers.js";
 import { renderRichText, validateRichText } from "../src/richtext.js";
 
@@ -40,7 +40,7 @@ describe("field markers", () => {
       facts: repeater({ fields: { label: text() } }),
     };
     const data = { title: "Haus A", slug: "haus-a", summary: "", seo: { title: "SEO" }, facts: [{ label: "One" }, { label: "Two" }] };
-    const marked = markTextFields(fields, data, "projects", "haus-a") as typeof data;
+    const marked = markFields(fields, data, "projects", "haus-a") as typeof data;
 
     assert.equal(marked.slug, "haus-a");
     assert.equal(marked.summary, "");
@@ -52,7 +52,7 @@ describe("field markers", () => {
   it("leaves out values that a template can use as a link, also a phone number", () => {
     const fields = { a: text(), b: text(), c: text(), d: text(), e: text(), f: text() };
     const data = { a: "/about-us", b: "#team", c: "tel:+41445550100", d: "https://example.com/x", e: "Ask: 10 / 12", f: "+990 40 555 0143" };
-    const marked = markTextFields(fields, data, "site", "site");
+    const marked = markFields(fields, data, "site", "site");
     assert.deepEqual({ ...marked, e: data.e }, data);
     assert.equal(decodeMarkers(marked["e"] as string).length, 1);
   });
@@ -65,7 +65,7 @@ describe("field markers", () => {
   });
 
   it("marks a rich text, and renderRichText marks each block instead, with its place", async () => {
-    const marked = markTextFields({ body: richText() }, { body: "# Hi\n\nOne\n\n- a\n- b" }, "news", "a") as { body: string };
+    const marked = markFields({ body: richText() }, { body: "# Hi\n\nOne\n\n- a\n- b" }, "news", "a") as { body: string };
     const html = await renderRichText(marked.body);
     const key = markerKey({ document: "news", id: "a", path: "body" }).replaceAll('"', "&quot;");
     assert.match(html, new RegExp(`<h1 data-mica-field="${key.replaceAll("[", "\\[").replaceAll("]", "\\]")}" data-mica-block="0">Hi</h1>`));
@@ -73,6 +73,17 @@ describe("field markers", () => {
     assert.match(html, /<ul [^>]*data-mica-block="2">/);
     assert.doesNotMatch(html, /[\u2064\ufe00-\ufe0f]/u);
     assert.deepEqual(validateRichText(marked.body), []);
+  });
+
+  it("marks the alt text of an image, with its place in a gallery, and leaves its source as it is", () => {
+    const fields = { hero: media({ accept: "image", alt: "required" }), gallery: media({ accept: "image", alt: "optional", multiple: true }), logo: media({ accept: "image" }) };
+    const data = { hero: { src: "__ASTRO_IMAGE_./media/a.jpg", alt: "A" }, gallery: [{ src: "x", alt: "" }, { src: "y", alt: "Y" }], logo: "__ASTRO_IMAGE_./media/logo.png" };
+    const marked = markFields(fields, data, "pages", "home") as typeof data;
+    assert.equal(marked.hero.src, data.hero.src);
+    assert.deepEqual(decodeMarkers(marked.hero.alt), [{ document: "pages", id: "home", path: "hero" }]);
+    assert.deepEqual(decodeMarkers(marked.gallery[1]!.alt), [{ document: "pages", id: "home", path: "gallery", block: 1 }]);
+    assert.deepEqual(decodeMarkers(marked.gallery[0]!.alt), [{ document: "pages", id: "home", path: "gallery", block: 0 }]);
+    assert.equal(marked.logo, data.logo);
   });
 
   it("is on only in dev with MICA_PREVIEW", () => {
