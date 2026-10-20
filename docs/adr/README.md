@@ -52,6 +52,7 @@ Each record states a decision that is still true: its context, the decision and 
 - [27. The 1.0 scale target, and views that read only what they show](0027-scale-target.md)
 - [36. The editor saves by itself](0036-the-editor-saves-by-itself.md)
 - [37. A live preview beside the form; a link to the published page](0037-live-preview.md)
+- [38. A live preview for the self-hosted Mica, on an origin of its own](0038-self-hosted-live-preview.md)
 
 ## Agents
 
