@@ -1,13 +1,35 @@
 # Finish the setup
 
-## 1. Add scripts
+## 1. Add the live preview and scripts
 
-Add two scripts to `package.json`, so that the user has short commands:
+Add `micaPreview()` to the integrations in `astro.config.*`. It does
+something only in `MICA_PREVIEW=1 astro dev`: then the editor shows the page
+beside the form, and a click on a text in the page opens its field. A build
+and a plain `astro dev` do not change.
+
+```js
+import { micaPreview } from "@micacms/astro/preview";
+
+export default defineConfig({
+  integrations: [micaPreview()],
+});
+```
+
+Keep the integrations that are there, and add it to them.
+
+Add three scripts to `package.json`, so that the user has short commands:
 
 ```json
 "mica": "mica start",
+"dev:preview": "MICA_PREVIEW=1 astro dev",
 "check": "mica check && astro check"
 ```
+
+- `MICA_PREVIEW=1 astro dev` works in a POSIX shell only. If somebody works
+  on Windows, ask the user whether to add `cross-env` as a development
+  dependency, and use `"dev:preview": "cross-env MICA_PREVIEW=1 astro dev"`.
+  If the user says no, keep the script as it is and tell the user that it
+  does not run on Windows.
 
 - If the project has no `@astrojs/check`, use `"check": "mica check"`. Do not
   install it only for this: without it, `astro check` asks to install it, and a
@@ -44,7 +66,8 @@ paths if the project uses others.
 ## Content (Mica)
 
 - The content model is `src/mica.ts`. The content is JSON and Markdoc in
-  `content/`; editors change it with `npm run mica`.
+  `content/`; editors change it with `npm run mica`. With
+  `npm run dev:preview` beside it, the editor shows the page next to the form.
 - After a change to `src/mica.ts`, run `npx astro sync` and `npm run check`,
   and commit `content/.mica/schema.json` with the change.
 - Renaming or removing a field or a collection does not move the stored
@@ -77,9 +100,9 @@ compares with the version before>.
 ## Commit it
 
 ```bash
-# 1. The setup: packages, model, collections config, agent notes.
-git add package.json package-lock.json src/mica.ts src/content.config.ts \
-  content/.mica/schema.json AGENTS.md <other setup files>
+# 1. The setup: packages, Astro config, model, collections config, agent notes.
+git add package.json package-lock.json astro.config.mjs src/mica.ts \
+  src/content.config.ts content/.mica/schema.json AGENTS.md <other setup files>
 git commit -m "Add Mica"
 # 2. The content and the page changes.
 git add -A
@@ -93,6 +116,8 @@ git push -u origin <branch>
 
 `npm run mica` opens the editor on this computer. A save writes files in
 `content/`; Publish commits them, and pushes a new branch the first time.
+Run `npm run dev:preview` beside it: the editor then shows the page next to
+the form, and a click on a text in the page opens its field.
 `npm run check` checks the content (and the types, if `@astrojs/check` is
 there). On another clone, run `npm install` first. A self-hosted editor for
 other people: https://micacms.com/docs/self-hosting/.
