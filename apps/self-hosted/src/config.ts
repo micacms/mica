@@ -54,6 +54,12 @@ const fields = {
   MICA_REPOSITORY_LFS_URL: z.string().optional(),
   /** Agents can connect over MCP at `/mcp`, after a person allows each one on a consent page. */
   MICA_MCP: bool(false),
+  /** The live preview's public origin, such as `https://preview.cms.example.com`. With MICA_PREVIEW_UPSTREAM. */
+  MICA_PREVIEW_URL: z.url().optional(),
+  /** The website's `MICA_PREVIEW=1 astro dev` inside the network, such as `http://preview:4321`. */
+  MICA_PREVIEW_UPSTREAM: z.url().optional(),
+  /** The port of the preview's gate in the container. */
+  MICA_PREVIEW_PORT: z.coerce.number().int().min(1).max(65_535).default(6423),
 };
 
 /** Every variable the image reads. Built from the schema's fields, so the two cannot drift. */
@@ -86,6 +92,9 @@ export type SelfHostedConfig = RuntimeConfig &
     repository: RepositoryConfig;
     /** Agents can connect at `/mcp`. */
     MICA_MCP: boolean;
+    MICA_PREVIEW_URL?: string | undefined;
+    MICA_PREVIEW_UPSTREAM?: string | undefined;
+    MICA_PREVIEW_PORT: number;
     /** `MICA_*` names in the environment that nothing reads: likely typos. */
     unknownVariables: string[];
   };
@@ -105,6 +114,33 @@ function isBranchName(name: string): boolean {
     !name.includes("@{") &&
     !/[\s~^:?*[\\\x00-\x1f\x7f]/.test(name)
   );
+}
+
+/** The live preview needs both addresses, an origin of its own and a port of its own (ADR 38). */
+function checkPreview(env: z.infer<typeof schema>, problems: string[]): void {
+  const { MICA_PREVIEW_URL: url, MICA_PREVIEW_UPSTREAM: upstream } = env;
+  if (!url && !upstream) return;
+  if (!url || !upstream) {
+    problems.push("MICA_PREVIEW_URL and MICA_PREVIEW_UPSTREAM go together: set both for the live preview, or neither.");
+    return;
+  }
+  const preview = new URL(url);
+  if (preview.pathname !== "/" || preview.search || preview.hash) {
+    problems.push(`MICA_PREVIEW_URL is ${url}, but it must be an origin with no path, such as https://preview.cms.example.com.`);
+  }
+  if (preview.protocol !== "https:" && !isLoopbackUrl(url)) {
+    problems.push(`MICA_PREVIEW_URL is ${url}, but an address on another machine needs https://.`);
+  }
+  // Another port is not enough: a browser sends the editor's cookies to each port of its host.
+  if (env.MICA_PUBLIC_URL && preview.hostname === new URL(env.MICA_PUBLIC_URL).hostname) {
+    problems.push(
+      "MICA_PREVIEW_URL must have another host name than MICA_PUBLIC_URL, such as preview.cms.example.com, or preview.cms.localhost for a trial: the website must not get the editor's cookies.",
+    );
+  }
+  if (new URL(upstream).protocol !== "http:") {
+    problems.push(`MICA_PREVIEW_UPSTREAM is ${upstream}, but it must be the http:// address of the dev server in the network, such as http://preview:4321.`);
+  }
+  if (env.MICA_PREVIEW_PORT === env.PORT) problems.push(`MICA_PREVIEW_PORT and PORT are both ${env.PORT}: the preview's gate needs a port of its own.`);
 }
 
 /** Puts the contents of `<NAME>_FILE` into `<NAME>`, for each secret that can come from a file. */
@@ -203,6 +239,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
   const parsed = schema.safeParse(present);
   if (!parsed.success) throw new ConfigError(describeConfigIssues(parsed.error));
   const repository = repositoryOf(parsed.data, problems);
+  checkPreview(parsed.data, problems);
 
   if (problems.length > 0 || !repository) {
     throw new ConfigError(

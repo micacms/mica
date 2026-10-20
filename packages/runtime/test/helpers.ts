@@ -24,7 +24,7 @@ import {
 } from "@micacms/core/internal";
 
 import { createApp } from "../src/app.js";
-import { createRuntimeContext, type RuntimeContext } from "../src/context.js";
+import { createRuntimeContext, type CreateRuntimeContextOptions, type RuntimeContext } from "../src/context.js";
 import type { RuntimeConfig } from "../src/config.js";
 import { createLogger, type Logger } from "../src/lib/logger.js";
 
@@ -114,7 +114,7 @@ export interface TestHarness {
 
 export async function createHarness(
   overrides: Partial<RuntimeConfig> = {},
-  options: { site?: Site; logger?: Logger } = {},
+  options: { site?: Site; logger?: Logger; preview?: Pick<CreateRuntimeContextOptions, "preview" | "previewFrames" | "previewHandover"> } = {},
 ): Promise<TestHarness> {
   const contentRoot = mkdtempSync(join(tmpdir(), "mica-runtime-test-"));
   const config = testConfig(contentRoot, overrides);
@@ -126,6 +126,7 @@ export async function createHarness(
     logger: options.logger ?? createLogger({ level: "silent", pretty: false }),
     operational: () => ({ auth: "none — test harness" }),
     policy: commitOnlyPolicy(),
+    ...options.preview,
   });
 
   const app = createApp(ctx);

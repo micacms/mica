@@ -70,13 +70,15 @@ export function requestContext(ctx: Env["Variables"]["ctx"]): MiddlewareHandler<
  * editor starts MapLibre's worker from a `blob:` address, so that the worker
  * keeps this page's policy and not the one cached with its script.
  */
-export function contentSecurityPolicy(model: Site, frames: readonly string[] = []): string {
+export function contentSecurityPolicy(model: Site, frames: readonly string[] = [], handover = false): string {
   const hosts = mapHosts(model);
-  const map = hosts.length > 0 ? [`connect-src 'self' ${hosts.join(" ")}`, "worker-src 'self' blob:"] : [];
+  // The editor gives a preview on an origin of its own its sign-in with a request.
+  const connect = [...hosts, ...(handover ? frames : [])];
   return [
     "default-src 'self'",
     ["img-src 'self' blob: data:", ...hosts].join(" "),
-    ...map,
+    ...(connect.length > 0 ? [`connect-src 'self' ${connect.join(" ")}`] : []),
+    ...(hosts.length > 0 ? ["worker-src 'self' blob:"] : []),
     // The live preview shows the website's dev server in a frame.
     ...(frames.length > 0 ? [`frame-src ${frames.join(" ")}`] : []),
     "object-src 'none'",
@@ -88,9 +90,9 @@ export function contentSecurityPolicy(model: Site, frames: readonly string[] = [
 export function securityHeaders(): MiddlewareHandler<Env> {
   // The model changes rarely, and each change is a new object. One app has one context, so one set of frames.
   const policies = new WeakMap<Site, string>();
-  const policyFor = (model: Site, frames: readonly string[]): string => {
+  const policyFor = (model: Site, frames: readonly string[], handover: boolean): string => {
     let policy = policies.get(model);
-    if (policy === undefined) policies.set(model, (policy = contentSecurityPolicy(model, frames)));
+    if (policy === undefined) policies.set(model, (policy = contentSecurityPolicy(model, frames, handover)));
     return policy;
   };
 
@@ -99,7 +101,7 @@ export function securityHeaders(): MiddlewareHandler<Env> {
 
     if (!c.res.headers.has("content-security-policy")) {
       const ctx = c.get("ctx");
-      c.header("content-security-policy", policyFor(ctx.site.model, ctx.previewFrames));
+      c.header("content-security-policy", policyFor(ctx.site.model, ctx.previewFrames, !!ctx.previewHandover));
     }
     // Only for an https public URL: HSTS over plain HTTP is ignored, and on
     // localhost it would pin a developer's other projects to https.

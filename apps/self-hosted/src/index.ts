@@ -7,7 +7,7 @@
 
 import { join } from "node:path";
 
-import { createOidcAuth } from "@micacms/auth-oidc";
+import { createOidcAuth, sessionOf } from "@micacms/auth-oidc";
 import { MANIFEST_PATH, memorySource, type Site } from "@micacms/core/internal";
 import {
   ConfigError,
@@ -35,6 +35,7 @@ import { agentRoutes } from "./agents.js";
 import { runCheck } from "./check.js";
 import { runCompact } from "./compact.js";
 import { operationalInfo } from "./operational.js";
+import { createPreviewGate } from "./preview-gate.js";
 import { readiness } from "./readiness.js";
 import { currentToken, loadConfig, type SelfHostedConfig } from "./config.js";
 import { cloneLayout, CloneRefusal, openClone } from "./workspace/clone.js";
@@ -242,6 +243,17 @@ async function serve(): Promise<void> {
 
   const auth = createOidcAuth({ config, logger });
   const workspace = managed;
+  const previewOrigin = config.MICA_PREVIEW_URL ? new URL(config.MICA_PREVIEW_URL).origin : null;
+  const gate =
+    previewOrigin && config.MICA_PREVIEW_UPSTREAM
+      ? createPreviewGate({
+          editorOrigin: new URL(config.MICA_PUBLIC_URL).origin,
+          previewOrigin,
+          upstream: config.MICA_PREVIEW_UPSTREAM,
+          secret: config.sessionSecret,
+          logger,
+        })
+      : null;
 
   ctx = createRuntimeContext({
     config,
@@ -261,8 +273,17 @@ async function serve(): Promise<void> {
 
     health: { ready: () => readiness(workspace.state()) },
 
+    ...(gate && previewOrigin
+      ? {
+          preview: async () => previewOrigin,
+          previewFrames: [previewOrigin],
+          previewHandover: (c) => gate.handover(sessionOf(c).identity.subject),
+        }
+      : {}),
+
     onShutdown: () => {
       auth.loginLimiter.stop();
+      gate?.close();
     },
   });
 
@@ -274,6 +295,7 @@ async function serve(): Promise<void> {
     }),
   );
   workspace.start();
+  gate?.listen(config.HOST, config.MICA_PREVIEW_PORT).catch((error: Error) => logger.error("The preview's gate cannot listen", { port: config.MICA_PREVIEW_PORT, error: error.message }));
   void checkWrite(workspace, logger, clean);
 
   logger.info("Mica CMS started", {

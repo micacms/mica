@@ -6,7 +6,10 @@
 
 import { MANIFEST_PATH, readOnlyParts, type Site } from "@micacms/core/internal";
 
+import type { Context } from "hono";
+
 import type { RuntimeConfig } from "./config.js";
+import type { Env } from "./http.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
 import { loadSchema, SchemaError } from "./schema.js";
@@ -83,10 +86,16 @@ export interface RuntimeContext {
    * unless `force`.
    */
   refreshModel(options?: { force?: boolean }): Promise<void>;
-  /** The address of the website's dev server that shows the drafts, or null. Only the local editor has one. */
+  /** The address of the website's dev server that shows the drafts, or null: the local `astro dev`, or the self-hosted preview's gate. */
   preview(): Promise<string | null>;
   /** The origins that the editor may show in a frame for the live preview. Empty without a preview. */
   previewFrames: readonly string[];
+  /**
+   * A short token that lets the editor's browser into a preview on an origin of
+   * its own, for the person of the request. Absent when the preview needs none,
+   * as the local editor's.
+   */
+  previewHandover?: ((c: Context<Env>) => string) | undefined;
   shutdown(): Promise<void>;
 }
 
@@ -112,6 +121,8 @@ export interface CreateRuntimeContextOptions {
   preview?: () => Promise<string | null>;
   /** See `RuntimeContext.previewFrames`. */
   previewFrames?: readonly string[];
+  /** See `RuntimeContext.previewHandover`. */
+  previewHandover?: ((c: Context<Env>) => string) | undefined;
   onShutdown?: () => void | Promise<void>;
 }
 
@@ -215,6 +226,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
     refreshModel,
     preview: options.preview ?? (async () => null),
     previewFrames: options.previewFrames ?? [],
+    previewHandover: options.previewHandover,
 
     async shutdown() {
       limiters.api.stop();

@@ -47,6 +47,8 @@ services:
       # Bound to loopback: put a reverse proxy in front for TLS. Change to
       # "6422:6422" only if the host itself is not reachable from the internet.
       - "127.0.0.1:6422:6422"
+      # The gate of the live preview, for MICA_PREVIEW_URL: see `preview` below.
+      # - "127.0.0.1:6423:6423"
 
     volumes:
       # Mica's clone of the content repository, with the drafts in it. Size it
@@ -85,6 +87,25 @@ services:
       options:
         max-size: "10m"
         max-file: "5"
+
+  # The live preview, optional: the website's `astro dev` on the drafts, beside
+  # the form. Build its image from the website project; its command waits for
+  # Mica's clone and links the clone's content folder in place of the site's
+  # (https://micacms.com/docs/self-hosting/). Set MICA_PREVIEW_URL, with
+  # another host name than MICA_PUBLIC_URL, and
+  # MICA_PREVIEW_UPSTREAM=http://preview:4321 in .env, and the gate's port
+  # above. The container gets no secret, and nothing publishes its port: only
+  # Mica's gate reaches it.
+  #
+  # preview:
+  #   image: registry.example.com/website-preview:latest
+  #   restart: unless-stopped
+  #   environment:
+  #     MICA_PREVIEW_EDITOR: ${MICA_PUBLIC_URL}
+  #   volumes:
+  #     # Mica's volume, read-only: the drafts are in repository/<content root>.
+  #     - mica-data:/mica:ro
+  #   mem_limit: 1g
 
 volumes:
   mica-data:

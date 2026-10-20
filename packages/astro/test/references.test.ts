@@ -46,7 +46,7 @@ describe("publishReferences", () => {
   it("writes the index, and in CI fails when the committed one differs", async () => {
     const dir = await mkdtemp(join(tmpdir(), "mica-references-"));
     const logs: string[] = [];
-    const logger = { info: (message: string) => logs.push(message) };
+    const logger = { info: (message: string) => logs.push(message), warn: (message: string) => logs.push(message) };
     try {
       await writeFile(join(dir, "places.json"), JSON.stringify([{ id: "toedi", title: "Tödi" }]));
       const references = { places: set("places.json") };
@@ -57,6 +57,21 @@ describe("publishReferences", () => {
       assert.deepEqual(parseReferenceIndex(await readFile(join(content, referenceIndexPath("places")), "utf8")), [{ id: "toedi", title: "Tödi" }]);
       await publishReferences(references, content, dir, true, logger);
       assert.equal(logs.length, 1, "written once, then left alone");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("warns, and goes on, when the content root cannot be written, as in a self-hosted preview", async () => {
+    const dir = await mkdtemp(join(tmpdir(), "mica-references-"));
+    const warnings: string[] = [];
+    const logger = { info: () => {}, warn: (message: string) => warnings.push(message) };
+    try {
+      await writeFile(join(dir, "places.json"), JSON.stringify([{ id: "toedi", title: "Tödi" }]));
+      // A file where the folder should be: no write can succeed, also for root.
+      await writeFile(join(dir, "content"), "");
+      await publishReferences({ places: set("places.json") }, join(dir, "content"), dir, false, logger);
+      assert.match(warnings[0] ?? "", /Could not write the index of "Places"/);
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

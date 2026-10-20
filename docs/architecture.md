@@ -317,6 +317,17 @@ The self-hosted app passes the OIDC surface from `@micacms/auth-oidc`; the
 local editor passes nothing and gets the unauthenticated surface, which is a
 statement of fact rather than a bypass.
 
+### The live preview is the website's own dev server
+
+The editor shows the page beside the form ([37](adr/0037-live-preview.md),
+[38](adr/0038-self-hosted-live-preview.md)). In both apps it is the website's
+`MICA_PREVIEW=1 astro dev`, which reads the drafts from the files: on the
+developer's checkout for the local editor, and in a container of its own on the
+content of Mica's clone, read-only, for the self-hosted app. Mica never renders
+a page, and the website never calls Mica. In the self-hosted app, a gate in the
+Mica process answers on an origin of its own and lets only the editors'
+browsers through, so the website's scripts never run with an editor's rights.
+
 ### Agents are a second interface, not a second app
 
 `@micacms/mcp` puts a fixed set of tools on the same services as the editor:
