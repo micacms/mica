@@ -30,7 +30,7 @@ Add `micaPreview()` from `@micacms/astro/preview` to `astro.config`, and start t
 - A click on an image opens its media field. In a gallery, the form goes to that image.
 - A click on the name of a linked entry, such as the author of an article, goes to the field that links to it, such as **Author**. The label also has a button with the entry's name: it opens the entry over the current form, to edit it. In the field, **Edit** next to a chosen entry does the same.
 - In **Browse** mode, the page acts as the website does. Back in Edit mode, the form of the page that the preview shows opens.
-- A field with changes that are not published has a yellow outline.
+- A field with changes that are not published has a yellow outline. In a rich text, each changed or new paragraph, heading, list or table has it. When the change has no such part, for example when you only deleted a paragraph, the whole text has it.
 - When you click in a field of the form, the preview scrolls to it, and the rest of the page dims. For a field that links to other entries, it shows the linked entry.
 
 Texts, rich text and images with alt text carry invisible marks. Dates, numbers, options, tags, maps and other values do not: the preview finds them in the templates of the website instead, and gives each one to the entry around it. The templates do not change for this. See [@micacms/astro](/docs/reference-astro/) for the setup.

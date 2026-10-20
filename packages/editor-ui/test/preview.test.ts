@@ -8,6 +8,7 @@ import { object, relation, repeater, text } from "@micacms/core/internal";
 import type { Edit } from "../src/lib/edits.js";
 import { fieldLabel, fieldPaths } from "../src/lib/field-labels.js";
 import { changedMarkers } from "../src/lib/preview-changes.js";
+import { changedBlocks } from "../src/lib/rich-text-changes.js";
 import { linkKey, relationLinks } from "../src/lib/preview-relations.js";
 
 describe("preview field labels", () => {
@@ -55,6 +56,29 @@ describe("changed preview fields", () => {
     ];
     const changed = await changedMarkers(markers, [edit({ kind: "entry", collection: "news", slug: "hello" }, "new")]);
     assert.deepEqual(changed, [markers[0]]);
+  });
+});
+
+describe("changed blocks of a rich text", () => {
+  it("finds a changed and an added block, and not the blocks after them that only moved", () => {
+    const before = "## Our work\n\nWe plan.\n\nWe build.\n\n- one\n- two\n";
+    const after = "## Our work\n\nWe plan carefully.\n\nA new paragraph.\n\nWe build.\n\n- one\n- two\n";
+    assert.deepEqual(changedBlocks(before, after), [1, 2]);
+  });
+
+  it("finds a change between equal blocks at the start and at the end, and a swap", () => {
+    // Either moved block can be the changed one: one of them is.
+    assert.equal(changedBlocks("A.\n\nB.\n\nC.\n\nD.\n", "A.\n\nC.\n\nB.\n\nD.\n").length, 1);
+    assert.deepEqual(changedBlocks("A.\n\nB.\n", "A.\n\nA.\n\nB.\n"), [1]);
+  });
+
+  it("finds none when blocks were only removed, so that the page marks the whole text", () => {
+    assert.deepEqual(changedBlocks("One.\n\nTwo.\n\nThree.\n", "One.\n\nThree.\n"), []);
+  });
+
+  it("marks every block of a new text, and finds none in a text that the editor cannot show", () => {
+    assert.deepEqual(changedBlocks(null, "One.\n\nTwo.\n"), [0, 1]);
+    assert.deepEqual(changedBlocks("One.\n", "One.\n\n{% callout %}Two.{% /callout %}\n"), []);
   });
 });
 

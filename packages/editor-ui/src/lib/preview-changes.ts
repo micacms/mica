@@ -1,7 +1,9 @@
 /**
  * Which fields of the live preview have unpublished changes. The page names its
  * fields; this compares each one that a pending edit touches with the
- * repository's version, as the Publish page does.
+ * repository's version, as the Publish page does. In a rich text, it also finds
+ * the blocks that changed (`rich-text-changes.ts`), so that the page marks them
+ * and not the whole text.
  */
 
 import { api, type CompareTarget } from "@/api";
@@ -12,6 +14,11 @@ export interface PreviewMarker {
   document: string;
   id: string;
   path: string;
+}
+
+/** A changed field. A rich text names its changed top-level blocks, when the change has some. */
+export interface ChangedMarker extends PreviewMarker {
+  blocks?: number[];
 }
 
 export function isPreviewMarker(value: unknown): value is PreviewMarker {
@@ -36,8 +43,12 @@ function matches(target: CompareTarget | null, marker: PreviewMarker): boolean {
   return false;
 }
 
-/** The markers whose field differs from the repository's version. */
-export async function changedMarkers(markers: PreviewMarker[], edits: Edit[]): Promise<PreviewMarker[]> {
+/** The markers whose field differs from the repository's version. `isRichText` says which ones get their changed blocks. */
+export async function changedMarkers(
+  markers: PreviewMarker[],
+  edits: Edit[],
+  isRichText: (marker: PreviewMarker) => boolean = () => false,
+): Promise<ChangedMarker[]> {
   const byEdit = new Map<Edit, PreviewMarker[]>();
   for (const marker of markers) {
     const edit = edits.find((item) => matches(item.target, marker));
@@ -49,7 +60,16 @@ export async function changedMarkers(markers: PreviewMarker[], edits: Edit[]): P
       if (edit.state === "new") return own;
       try {
         const { before, after } = await api.staging.compare(edit.target!);
-        return own.filter((marker) => JSON.stringify(valueAt(before, marker.path)) !== JSON.stringify(valueAt(after, marker.path)));
+        const found = await Promise.all(
+          own.map(async (marker): Promise<ChangedMarker[]> => {
+            const [old, now] = [valueAt(before, marker.path), valueAt(after, marker.path)];
+            if (JSON.stringify(old) === JSON.stringify(now)) return [];
+            // Loaded here, so that Markdoc stays out of the editor's first download.
+            const blocks = isRichText(marker) ? (await import("@/lib/rich-text-changes")).changedBlocks(old, now) : [];
+            return [blocks.length > 0 ? { ...marker, blocks } : marker];
+          }),
+        );
+        return found.flat();
       } catch {
         // The outline is a help: without the comparison, the fields keep the plain one.
         return [];

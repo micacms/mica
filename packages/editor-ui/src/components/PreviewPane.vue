@@ -23,11 +23,11 @@ import { ChevronLeft, ChevronRight, ExternalLink, RotateCw } from "@lucide/vue";
 
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPane, type PreviewMode } from "@/composables/usePreviewPane";
-import { fieldLabel, fieldPaths } from "@/lib/field-labels";
+import { fieldAt, fieldLabel, fieldPaths } from "@/lib/field-labels";
 import { FIELD_BLOCK, focusField } from "@/lib/focus";
 import { withoutOverlay } from "@/lib/overlay-address";
 import { documentAtPath } from "@/lib/pages";
-import { changedMarkers, isPreviewMarker, type PreviewMarker } from "@/lib/preview-changes";
+import { changedMarkers, isPreviewMarker, type ChangedMarker, type PreviewMarker } from "@/lib/preview-changes";
 import { linkKey, linkTarget, relationLinks, type RelationLink } from "@/lib/preview-relations";
 import { useSchema } from "@/stores/schema";
 import { api } from "@/api";
@@ -47,7 +47,7 @@ const origin = computed(() => (pane.frame.value ? new URL(pane.frame.value).orig
 const shown = ref<string | null>(null);
 /** The fields in the page, as its script last named them. */
 const markers = ref<PreviewMarker[]>([]);
-const changed = ref<PreviewMarker[]>([]);
+const changed = ref<ChangedMarker[]>([]);
 
 const MIN_WIDTH = 320;
 /** A drag that leaves less than this folds the preview away. */
@@ -229,7 +229,11 @@ function sendFocus(): void {
 watch(focused, sendFocus);
 
 async function findChanges(): Promise<void> {
-  changed.value = markers.value.length === 0 ? [] : await changedMarkers(markers.value, staging.edits.value);
+  const isRichText = (marker: PreviewMarker) => {
+    const fields = schema.collection(marker.document)?.fields ?? schema.singleton(marker.document)?.fields;
+    return !!fields && fieldAt(fields, marker.path)?.kind === "richText";
+  };
+  changed.value = markers.value.length === 0 ? [] : await changedMarkers(markers.value, staging.edits.value, isRichText);
 }
 
 /** Goes to the field that a click in the page names; for a block of rich text, to that block. */

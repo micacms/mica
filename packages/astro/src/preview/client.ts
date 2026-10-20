@@ -17,7 +17,8 @@
  * belongs to the form's document; the others become buttons in its label.
  *
  * Messages, both ways with `postMessage`:
- * - editor → page: `hello` with the colours and the corner radii; `state` with the mode, the changed markers, the labels,
+ * - editor → page: `hello` with the colours and the corner radii; `state` with the mode, the changed markers (a rich text
+ *   with its changed blocks, `blocks`), the labels,
  *   the field paths of each model and the form's document; `focus` with the marker of the form's
  *   focused field, or null; and `reload`;
  * - page → editor: `fields` with the page's path and its markers, `select` with one, and
@@ -224,7 +225,8 @@ const smooth = (): ScrollBehavior => (window.matchMedia("(prefers-reduced-motion
 function start(editors: readonly string[]): void {
   let editor: string | null = null;
   let browsing = false;
-  let changed = new Set<string>();
+  /** The changed fields; for a rich text, the places of its changed blocks, when the editor knows them. */
+  let changed = new Map<string, number[]>();
   /**
    * The hover label of each field. `opens` says what a click does: go to a field
    * of the form, open another form, or open the overlay form (shown with ↗).
@@ -251,9 +253,16 @@ function start(editors: readonly string[]): void {
     return box.width > 0 && box.height > 0 && (element.checkVisibility?.() ?? true);
   };
 
-  /** A dashed frame around each shown element with unpublished changes. */
+  /** A dashed frame around each shown element with unpublished changes; in a rich text, around each changed block. */
   const placeChanges = () => {
-    const elements = [...document.querySelectorAll(`[${CHANGED}]`)].filter(shown);
+    const elements = [...document.querySelectorAll(`[${CHANGED}]`)]
+      .flatMap((element) => {
+        const blocks = (changed.get(element.getAttribute(ATTRIBUTE) ?? "") ?? []).flatMap((block) => [
+          ...element.querySelectorAll(`:scope > [${BLOCK}="${block}"]`),
+        ]);
+        return blocks.length > 0 ? blocks : [element];
+      })
+      .filter(shown);
     while (changes.children.length > elements.length) changes.lastElementChild?.remove();
     while (changes.children.length < elements.length) changes.append(document.createElement("div"));
     elements.forEach((element, index) => Object.assign((changes.children[index] as HTMLElement).style, frameOf(element)));
@@ -453,7 +462,14 @@ function start(editors: readonly string[]): void {
       }
       browsing = data["mode"] === "browse";
       document.documentElement.toggleAttribute(BROWSE, browsing);
-      if (Array.isArray(data["changed"])) changed = new Set(data["changed"].filter(isMarker).map(keyOf));
+      if (Array.isArray(data["changed"])) {
+        changed = new Map(
+          data["changed"].filter(isMarker).map((marker) => {
+            const blocks: unknown = (marker as unknown as Record<string, unknown>)["blocks"];
+            return [keyOf(marker), Array.isArray(blocks) ? blocks.filter((block) => Number.isInteger(block)) : []] as const;
+          }),
+        );
+      }
       if (Array.isArray(data["labels"])) {
         labels = new Map(
           data["labels"].flatMap((item: unknown) =>
