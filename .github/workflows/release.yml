@@ -98,8 +98,9 @@ jobs:
   #
   # It goes to this repository's own container registry, which needs no account
   # and no secret: GITHUB_TOKEN is the credential. One manual step remains, once
-  # — the package is created private, and self-hosters cannot pull it until it
-  # is made public under Packages → mica → Package settings.
+  # for each package — a package is created private, and self-hosters cannot
+  # pull it until it is made public under Packages → mica (and → preview, after
+  # the first release that has it) → Package settings.
   image:
     runs-on: ubuntu-latest
     needs: verify
@@ -135,6 +136,7 @@ jobs:
         run: |
           echo "value=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
           case "$GITHUB_REF_NAME" in *-*) echo "latest=" ;; *) echo "latest=ghcr.io/${GITHUB_REPOSITORY}:latest" ;; esac >> "$GITHUB_OUTPUT"
+          case "$GITHUB_REF_NAME" in *-*) echo "preview_latest=" ;; *) echo "preview_latest=ghcr.io/${GITHUB_REPOSITORY_OWNER}/preview:latest" ;; esac >> "$GITHUB_OUTPUT"
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         id: build
@@ -156,6 +158,24 @@ jobs:
 
       - name: Sign the image
         run: cosign sign --yes "ghcr.io/${{ github.repository }}@${{ steps.build.outputs.digest }}"
+
+      # The live preview's image (ADR 38): the second target of the same
+      # Dockerfile, with the same version, attestations and signature.
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        id: preview
+        with:
+          context: .
+          target: preview
+          platforms: linux/amd64,linux/arm64
+          push: true
+          sbom: true
+          provenance: mode=max
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/preview:${{ steps.version.outputs.value }}
+            ${{ steps.version.outputs.preview_latest }}
+
+      - name: Sign the preview image
+        run: cosign sign --yes "ghcr.io/${{ github.repository_owner }}/preview@${{ steps.preview.outputs.digest }}"
 
   npm:
     runs-on: ubuntu-latest

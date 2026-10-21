@@ -57,6 +57,7 @@ work.
 | `@micacms/auth-oidc`      | The server-only OIDC gate: sign-in, cookie sessions, admission, and the OAuth server for agents; not published, part of the image |
 | `@micacms/editor`         | `apps/local-editor` — the `npx` composition: loopback, no auth, no database           |
 | `@micacms/self-hosted`    | `apps/self-hosted` — the Docker composition: runtime + UI behind OIDC, on its own clone |
+| `@micacms/preview`        | `apps/preview` — the live preview's image: the website's `astro dev` from Mica's clone |
 | `examples/company-site` | A complete Astro site that uses every field kind: an example to read, not a dependency |
 | `examples/starter`      | The minimal starter for `npm create astro -- --template micacms/mica/examples/starter` |
 
@@ -323,7 +324,8 @@ The editor shows the page beside the form ([37](adr/0037-live-preview.md),
 [38](adr/0038-self-hosted-live-preview.md)). In both apps it is the website's
 `MICA_PREVIEW=1 astro dev`, which reads the drafts from the files: on the
 developer's checkout for the local editor, and in a container of its own on the
-content of Mica's clone, read-only, for the self-hosted app. Mica never renders
+content of Mica's clone, read-only, for the self-hosted app: Mica's preview
+image copies the website from the clone and follows each sync. Mica never renders
 a page, and the website never calls Mica. In the self-hosted app, a gate in the
 Mica process answers on an origin of its own and lets only the editors'
 browsers through, so the website's scripts never run with an editor's rights.

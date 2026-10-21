@@ -31,12 +31,14 @@ COPY packages/auth/oidc/package.json packages/auth/oidc/
 COPY packages/editor-ui/package.json packages/editor-ui/
 COPY apps/local-editor/package.json apps/local-editor/
 COPY apps/self-hosted/package.json apps/self-hosted/
+COPY apps/preview/package.json apps/preview/
 COPY sites/micacms/package.json sites/micacms/
 COPY examples/company-site/package.json examples/company-site/
 COPY tests/browser/package.json tests/browser/
 
-# Installs only the closure the image needs. `rush install` never updates the committed lockfile.
-RUN node common/scripts/install-run-rush.js install --to @micacms/self-hosted
+# Installs only the closures the images need: the preview's adds nothing to the
+# Mica image's. `rush install` never updates the committed lockfile.
+RUN node common/scripts/install-run-rush.js install --to @micacms/self-hosted --to @micacms/preview
 
 # ---------------------------------------------------------------- build
 FROM deps AS build
@@ -64,6 +66,44 @@ RUN node scripts/third-party-notices.mjs /deploy > /deploy/THIRD_PARTY_NOTICES.t
 
 # A native module would be built for the build machine, not for the target.
 RUN if find /deploy -name '*.node' | grep .; then echo "A native module is in the image; build it per platform." >&2; exit 1; fi
+
+# ---------------------------------------------------------------- preview
+# The live preview's image (ADR 38): `docker build --target preview .`. It runs
+# the website's `astro dev` from Mica's clone, so it keeps the package managers
+# that the Mica image removes, and it has none of Mica's code. On Debian, so
+# that the website's native packages, such as sharp, install as they do on a
+# developer's computer. The Mica image below stays the default target.
+FROM deps AS preview-build
+
+COPY tsconfig.base.json ./
+COPY apps/preview apps/preview
+RUN node common/scripts/install-run-rush.js build --to @micacms/preview
+
+FROM node:24-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS preview
+
+# tini reaps the dev server's children and forwards SIGTERM. The working copy
+# and the package caches belong to the unprivileged `node` user.
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends tini \
+ && rm -rf /var/lib/apt/lists/* \
+ && mkdir -p /work /cache \
+ && chown node:node /work /cache
+
+COPY --from=preview-build /app/apps/preview/dist /opt/mica-preview
+COPY LICENSE /opt/mica-preview/LICENSE
+
+USER node
+WORKDIR /work
+
+# The package managers' caches: a volume here makes a restart take seconds.
+VOLUME ["/cache"]
+EXPOSE 4321
+
+# The first start installs the website's packages, which takes minutes.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=15m --retries=3 \
+  CMD node -e "fetch('http://127.0.0.1:4321/').then(r=>process.exit(r.status<500?0:1)).catch(()=>process.exit(1))"
+
+ENTRYPOINT ["/usr/bin/tini", "--", "node", "/opt/mica-preview/index.js"]
 
 # ---------------------------------------------------------------- runtime
 FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS runtime

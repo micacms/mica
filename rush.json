@@ -85,6 +85,12 @@
       "projectFolder": "apps/self-hosted",
       "tags": ["apps"]
     },
+    // Not published either: it ships only as the preview image (ADR 38), with the same version.
+    {
+      "packageName": "@micacms/preview",
+      "projectFolder": "apps/preview",
+      "tags": ["apps"]
+    },
 
     // ------------------------------------------------------------- sites
     // Never published: no version policy, and their manifests say
