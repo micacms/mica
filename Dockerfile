@@ -11,7 +11,7 @@
 # Install and build run on the build machine for every target platform: the
 # server's dependencies are plain JavaScript, so their output is the same on
 # amd64 and arm64. The build stage refuses a native module below.
-FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS deps
+FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS deps
 
 WORKDIR /app
 
@@ -108,7 +108,7 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=15m --retries=3 \
 ENTRYPOINT ["/usr/bin/tini", "--", "node", "/opt/mica-preview/index.js"]
 
 # ---------------------------------------------------------------- runtime
-FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS runtime
+FROM node:24-alpine@sha256:44fce696f38ba8c987c4db89954051000bbd05ffd8d8659ba15ed4a8602e937f AS runtime
 
 # tini reaps zombies and forwards SIGTERM, so the graceful shutdown runs. Git
 # keeps the clone of the content repository that Mica edits and publishes, and
