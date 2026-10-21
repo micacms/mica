@@ -12,6 +12,7 @@ on:
       - ".dockerignore"
       - "packages/**"
       - "apps/self-hosted/**"
+      - "apps/preview/**"
       - "tests/oidc/**"
       - "tests/browser/**"
       - "tests/preview/**"
@@ -35,6 +36,7 @@ on:
       - ".dockerignore"
       - "packages/**"
       - "apps/self-hosted/**"
+      - "apps/preview/**"
       - "tests/oidc/**"
       - "tests/browser/**"
       - "tests/preview/**"
@@ -83,6 +85,17 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      # The live preview's image: the second target of the same Dockerfile.
+      - name: Build the preview image
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: preview
+          push: false
+          load: true
+          tags: micacms/preview:ci
+          cache-from: type=gha
+
       # The release builds amd64 and arm64 after npm is published; a failure
       # there would cost a patch release, so both build here first.
       - uses: docker/setup-qemu-action@99012661954931238ded8c8b007157a8430204e1 # v4.4.0
@@ -94,12 +107,30 @@ jobs:
           push: false
           cache-from: type=gha
 
+      - name: Build the preview image for amd64 and arm64
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: preview
+          platforms: linux/amd64,linux/arm64
+          push: false
+          cache-from: type=gha
+
       # Fails on a critical vulnerability that has a fix. One without a fix is
       # listed, not fatal: it would block every pull request until upstream acts.
       - name: Scan the CMS image
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           image-ref: micacms/editor:ci
+          scanners: vuln
+          severity: CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"
+
+      - name: Scan the preview image
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: micacms/preview:ci
           scanners: vuln
           severity: CRITICAL
           ignore-unfixed: true
@@ -147,11 +178,16 @@ jobs:
       # The live preview of the self-hosted Mica (ADR 38): the example website's
       # astro dev in a container of its own, behind Mica's gate on another host
       # name — see tests/preview/README.md.
+      # The example website with the packed packages, as a user's repository has it.
+      - name: Prepare the website of the live preview
+        run: |
+          node common/scripts/install-run-rush.js install --to @micacms/editor --to @micacms/astro --to @micacms/browser-test
+          node tests/preview/prepare-site.mjs
+
       # A new stack: the seed runs once, on an empty Git host.
       - name: Start the live preview
         run: |
           docker compose -f tests/oidc/compose.yml down -v
-          docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml build preview
           docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml up -d --no-build --wait
 
       - name: The live preview in a browser

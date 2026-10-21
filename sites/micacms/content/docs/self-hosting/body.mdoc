@@ -238,38 +238,17 @@ Editors commit more frequently than developers. To keep expensive CI jobs away f
 
 ## Add the live preview
 
-The live preview shows the drafts of the editors on the real templates of the website. It is optional. You run one more container, the preview, and give it a name of its own. Mica does not start, stop or build the preview. For what the editor shows, see [Preview changes](/docs/previews/).
+The live preview shows the drafts of the editors on the real templates of the website. It is optional. You run one more container, the preview, from the image `ghcr.io/micacms/preview`, and give it a name of its own. You write no Dockerfile. Mica does not start, stop or build the preview. For what the editor shows, see [Preview changes](/docs/previews/).
 
-The preview container runs the dev server of the website: `MICA_PREVIEW=1 astro dev`. It reads the content root from Mica's data volume, read-only. It gets none of Mica's secrets, and Mica's image does not change. A gate in the Mica process answers the requests for the preview's name, on Mica's own port, and forwards them to the dev server.
+The preview container runs the dev server of the website: `MICA_PREVIEW=1 astro dev`. It reads Mica's data volume, read-only. It gets none of Mica's secrets, and Mica's image does not change. A gate in the Mica process answers the requests for the preview's name, on Mica's own port, and forwards them to the dev server.
 
-To set it up, you do four things: build the preview image, add the `preview` service and `MICA_PREVIEW_UPSTREAM`, make a DNS record for the preview's name, and add that name to the reverse proxy.
+To set it up, you do three things: add the `preview` service and `MICA_PREVIEW_UPSTREAM`, make a DNS record for the preview's name, and add that name to the reverse proxy.
 
 The website needs `micaPreview()` in `astro.config`: see [Preview changes](/docs/previews/).
 
-### Build the preview image
-
-Build the image from the website project, because it holds the code of the site and its packages. This example is for an Astro project with npm:
-
-```dockerfile
-FROM node:24-slim
-WORKDIR /site
-COPY package*.json ./
-RUN npm ci
-COPY . .
-ENV MICA_PREVIEW=1
-# The drafts: the content of Mica's clone, read-only, in place of the site's own.
-CMD ["sh", "-c", "until [ -d /mica/repository/content ]; do sleep 2; done; rm -rf content && ln -s /mica/repository/content content && exec npx astro dev --host 0.0.0.0 --port 4321"]
-```
-
-The command waits for the clone of Mica. Then it links the content folder of the clone in place of the content folder of the site. `repository/content` is the content root of the clone: `repository/<content path>`. Change it for another content root, such as `repository/site/content`.
-
-Add a `.dockerignore` file beside the Dockerfile with these lines: `node_modules`, `dist`, `.astro` and the content folder, such as `content`. Then the image gets its packages from `npm ci`, and its content only from Mica's volume.
-
-The dev server must listen on an address that the Mica container reaches. This is why the command has `--host`.
-
 ### Add the container
 
-Add the service `preview` beside `mica` in `compose.yml`, and the variable `MICA_PREVIEW_UPSTREAM` to `mica`:
+Add the service `preview` beside `mica` in `compose.yml`, the volume `preview-cache`, and the variable `MICA_PREVIEW_UPSTREAM` to `mica`. Use the same version for both images:
 
 ```yaml
 services:
@@ -280,22 +259,51 @@ services:
       MICA_PREVIEW_UPSTREAM: http://preview:4321
 
   preview:
-    image: registry.example.com/acme/website-preview:1
+    image: ghcr.io/micacms/preview:0.12.0
     restart: unless-stopped
     environment:
-      MICA_PREVIEW_EDITOR: https://cms.example.com
+      MICA_PUBLIC_URL: https://cms.example.com
     volumes:
       - mica-data:/mica:ro
+      - preview-cache:/cache
+    mem_limit: 1g
+
+volumes:
+  mica-data:
+  preview-cache:
 ```
 
-- The `preview` service mounts the whole volume, read-only, at `/mica`. The command of the image reads the content from there.
-- After Mica clones again, for example after a change of `MICA_REPOSITORY_BRANCH`, restart the preview container.
-- `MICA_PREVIEW_EDITOR` is the value of `MICA_PUBLIC_URL`. The page script of the preview answers only that editor.
+- The `preview` service mounts the whole volume of Mica, read-only, at `/mica`. The image refuses to start when it can write to the volume. The volume `preview-cache` holds the caches of the package manager.
+- `MICA_PUBLIC_URL` of the `preview` service is the address of the editor. The page script of the preview answers only that editor.
 - Do not publish a port of `preview`. Only Mica's gate talks to it.
 - `MICA_PREVIEW_UPSTREAM` turns the preview on. You can set it in `.env` instead of `compose.yml`.
 - The address of the preview is the address in `MICA_PUBLIC_URL` with `preview.` in front of the host name: `https://preview.cms.example.com` for `https://cms.example.com`. Set `MICA_PREVIEW_URL` only for another name on the same site. It must have another host name than `MICA_PUBLIC_URL`, and it has no path. A name set there needs `https://`, except a name under `localhost` for a trial on this machine. Mica refuses the same host name, because a browser sends the cookies of the editor to every port of its host. `MICA_PREVIEW_URL` without `MICA_PREVIEW_UPSTREAM` is an error.
 - With the preview on, `MICA_PUBLIC_URL` must have a host name, not `localhost`, an IP address or a name of one label, such as `cms`. Mica refuses these, because a name beside them is on another site.
 - For a trial on one computer, set `MICA_PUBLIC_URL=http://cms.localhost:6422`. The preview is then `http://preview.cms.localhost:6422`. Browsers send every `*.localhost` name to the computer itself, and plain HTTP is allowed for them.
+
+### What the image does
+
+1. It waits for the clone of Mica, and finds the content root as Mica does. Set `MICA_CONTENT_PATH` when the repository has more than one.
+2. It finds the website: the nearest folder with an `astro.config` above the content root. Set `MICA_PREVIEW_SITE_PATH` to the folder of the website when there is none.
+3. It copies the repository, without `.git` and the content root, and links the content root of the clone in its place. Each draft is there at once.
+4. It installs the packages with the lock file at or above the website: `npm ci`, `pnpm install --frozen-lockfile` or `yarn install`. The caches are in `/cache`.
+5. It starts `astro dev` on port 4321.
+6. When a sync or a publication changes the commit of the clone, it copies again. It installs again only if the lock file changed, and starts the dev server again only if a file changed. Thus a Publish of content does not restart the preview.
+7. After a failure, such as an install while the npm registry is away, it tries again after 30 seconds, then after longer waits, up to ten minutes. It also tries again at once at the next change of the website.
+
+It removes only the files that it copied itself. Files that an install makes outside `node_modules` stay.
+
+The other variables of the `preview` service reach the dev server, for a website that reads its own. [Configuration](/docs/configuration/) lists the variables of the image.
+
+The limits:
+
+- It uses Node 24. It works with npm, pnpm and Yarn. It does not work with Bun, and not with the Plug'n'Play of Yarn. `nodeLinker: node-modules` works.
+- It needs the npm registry.
+- The first start installs the packages for some minutes. With the cache, a restart takes seconds.
+- The image has no `git` and no compiler. A package from a Git URL does not install. A package that builds native code from source does not install.
+- In the copy, a symbolic link is a plain file, and a Git LFS file outside the content root is a pointer file.
+- When the content is in a Git submodule, the clone of Mica has no website. Such a site uses an image of your own.
+- It runs the code of the branch, as the build of the website in CI does. It has no secret of Mica.
 
 ### Give the preview a name
 
@@ -317,7 +325,36 @@ Then run `docker compose up -d`, open an entry in the editor, and check that the
 - A person whom the admission rules no longer admit keeps the preview for ten minutes at most.
 - The website never sees the cookies of Mica, and only the editor's origin can frame the preview.
 - The preview shows a draft about two seconds after typing. The autosave and the reload of the dev server take this time.
-- A change of a template shows in the preview only after a new preview image, as it shows on the website only after a deploy.
+- A change of a template shows in the preview after the next sync of Mica, every 60 seconds by default. The dev server starts again, and the page shows the change a few seconds later.
+
+### An image of your own
+
+Use an image of your own for another Node version, a private registry or Bun. It needs the same mount and settings as the image of Mica:
+
+- the volume of Mica, read-only: `mica-data:/mica:ro`;
+- `MICA_PREVIEW=1`;
+- `MICA_PREVIEW_EDITOR`, the address of the editor, which is the value of `MICA_PUBLIC_URL`;
+- `astro dev --host 0.0.0.0 --port 4321`, so that the Mica container reaches the dev server;
+- the content folder of the website linked to `/mica/repository/<content root>`.
+
+This example is for an Astro project with npm:
+
+```dockerfile
+FROM node:24-slim
+WORKDIR /site
+COPY package*.json ./
+RUN npm ci
+COPY . .
+ENV MICA_PREVIEW=1
+# The drafts: the content of Mica's clone, read-only, in place of the site's own.
+CMD ["sh", "-c", "until [ -d /mica/repository/content ]; do sleep 2; done; rm -rf content && ln -s /mica/repository/content content && exec npx astro dev --host 0.0.0.0 --port 4321"]
+```
+
+The command waits for the clone of Mica. Then it links the content folder of the clone in place of the content folder of the site. `repository/content` is the content root of the clone: `repository/<content path>`. Change it for another content root, such as `repository/site/content`.
+
+Add a `.dockerignore` file beside the Dockerfile with these lines: `node_modules`, `dist`, `.astro` and the content folder, such as `content`. Then the image gets its packages from `npm ci`, and its content only from Mica's volume.
+
+Use the image as the `preview` service, with `MICA_PREVIEW_EDITOR` in place of `MICA_PUBLIC_URL`. After Mica clones again, for example after a change of `MICA_REPOSITORY_BRANCH`, restart the preview container. A change of a template shows in this preview only after a new image.
 
 ## Sessions and removal of access
 

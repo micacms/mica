@@ -41,6 +41,18 @@ importers:
         specifier: ^5.7.3
         version: 5.9.3
 
+  ../../apps/preview:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.20.1
+        version: 22.20.5
+      tsx:
+        specifier: ^4.19.2
+        version: 4.23.15
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+
   ../../apps/self-hosted:
     dependencies:
       '@micacms/auth-oidc':

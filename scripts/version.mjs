@@ -17,6 +17,8 @@ const VERSION_FIELD = /^(\s*"version":\s*")([^"]+)(")/m;
 
 /** The image tag in the reference deployment, which carries the same version. */
 const IMAGE_TAG = /^(\s*image:\s*ghcr\.io\/micacms\/mica:)(\S+)(\s*)$/m;
+/** The preview image's tag in the reference deployment, where the optional service is a comment. */
+const PREVIEW_TAG = /^(\s*#?\s*image:\s*ghcr\.io\/micacms\/preview:)(\S+)(\s*)$/m;
 
 /**
  * Every file that carries the release version, and the pattern that finds it.
@@ -34,7 +36,9 @@ export const MANIFESTS = [
   { file: "packages/auth/oidc/package.json", pattern: VERSION_FIELD },
   { file: "apps/local-editor/package.json", pattern: VERSION_FIELD },
   { file: "apps/self-hosted/package.json", pattern: VERSION_FIELD },
+  { file: "apps/preview/package.json", pattern: VERSION_FIELD },
   { file: "deploy/self-hosted/compose.yml", pattern: IMAGE_TAG },
+  { file: "deploy/self-hosted/compose.yml", pattern: PREVIEW_TAG },
   { file: "deploy/demo-identity/compose.yml", pattern: IMAGE_TAG },
   // The starter installs the published packages; it follows each release.
   { file: "examples/starter/package.json", pattern: /^(\s*"@micacms\/astro":\s*"\^)([^"]+)(")/m },

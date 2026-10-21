@@ -1,9 +1,0 @@
-**/node_modules
-**/dist
-**/.astro
-**/.env
-.git
-common/temp
-common/deploy
-tests/browser/test-results
-.tmp

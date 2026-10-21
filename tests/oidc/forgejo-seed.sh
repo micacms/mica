@@ -1,5 +1,6 @@
 #!/bin/sh
-# Seeds the test Forgejo: one user, one repository, the example content.
+# Seeds the test Forgejo: one user, one repository, the example content. The
+# stack of tests/preview mounts a whole website at /seed-site instead.
 #
 # Runs once, in the Forgejo image, as Forgejo's own user and on Forgejo's data
 # volume: the first user can only be made with the `forgejo admin` command,
@@ -21,7 +22,7 @@ wget -qO- --header "Authorization: Basic $AUTH" --header "Content-Type: applicat
 
 export HOME=/tmp
 mkdir -p /tmp/site
-cp -R /seed /tmp/site/content
+if [ -d /seed-site ]; then cp -R /seed-site/. /tmp/site/; else cp -R /seed /tmp/site/content; fi
 # The example content has no PNG files, so this gives only new ones to Git LFS.
 printf '*.png filter=lfs diff=lfs merge=lfs -text\n' > /tmp/site/content/.gitattributes
 cd /tmp/site

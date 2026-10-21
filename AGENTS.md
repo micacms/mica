@@ -71,7 +71,7 @@ Ask the user before you:
 - Describe the current design only. Do not add version history ("added in 0.x", "no longer") to the docs, the READMEs or the code comments.
 - Keep README files and examples consistent with the current behavior.
 - Update `CHANGELOG.md` when a new version is created. Do not add routine unreleased changes unless the user asks for them.
-- Record a change file with `rush change` when a change touches a published package; use the bump type `none` when the release notes should not mention it. Record a change to a private project for the published package that ships with it: `@micacms/editor-ui` for `@micacms/editor`, and `@micacms/auth-oidc`, `apps/self-hosted` and the `Dockerfile` (the image) for `@micacms/runtime`. `rush change --verify` does not find a missing change file for a private project, so check it yourself.
+- Record a change file with `rush change` when a change touches a published package; use the bump type `none` when the release notes should not mention it. Record a change to a private project for the published package that ships with it: `@micacms/editor-ui` for `@micacms/editor`, and `@micacms/auth-oidc`, `apps/self-hosted`, `apps/preview` and the `Dockerfile` (both images) for `@micacms/runtime`. `rush change --verify` does not find a missing change file for a private project, so check it yourself.
 - Use `rush version-bump` to release the pending change files, or `rush release-version --version <version>` to set an explicit version. Do not edit package versions separately. The `/release` skill (`.claude/skills/release/`) walks the whole flow — bump choice, changelog section, verification.
 
 ## Subagents
@@ -107,6 +107,7 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `packages/auth/oidc`: the server-only OIDC gate (`@micacms/auth-oidc`). Never a dependency of the local editor.
 - `apps/local-editor`: the `npx @micacms/editor` composition — loopback, no auth, no database.
 - `apps/self-hosted`: the Docker composition — runtime and UI behind OIDC, on a Git clone that it keeps, syncs and pushes itself.
+- `apps/preview`: the live preview's image (`docker build --target preview`) — the website's `astro dev` from Mica's clone, beside the self-hosted Mica.
 - `sites/micacms`: public Mica website, and the canonical user documentation (`content/docs`).
 - `examples/company-site`: example website and evolving reference project.
 - `examples/starter`: the minimal starter for `npm create astro -- --template micacms/mica/examples/starter`. It installs the published packages, so it is not a Rush project; each release sets its versions.

@@ -7,11 +7,13 @@
 import { expect, test } from "@playwright/test";
 
 const EDITOR = "http://cms.localhost:6422";
+const FORGEJO = `http://localhost:${process.env["FORGEJO_PORT"] ?? "3000"}/api/v1/repos/editor/site`;
+const FORGEJO_AUTH = `Basic ${Buffer.from("editor:Forgejo-test-password-not-for-production").toString("base64")}`;
 const PREVIEW = "http://preview.cms.localhost:6422";
 
 test.skip(!process.env["MICA_PREVIEW_STACK"], "Runs on the stack of tests/preview.");
 
-test("an editor sees the drafts beside the form, behind the preview's gate", async ({ page, browser }) => {
+test("an editor sees the drafts beside the form, behind the preview's gate", async ({ page, browser, request }) => {
   test.setTimeout(120_000);
 
   // Without the editor's sign-in, the gate lets nobody to the website's dev server.
@@ -46,4 +48,20 @@ test("an editor sees the drafts beside the form, behind the preview's gate", asy
   const intro = `Typed in the self-hosted editor at ${Date.now()}.`;
   await page.getByRole("textbox", { name: "Introduction" }).fill(intro);
   await expect(preview.locator("[data-mica-changed]", { hasText: intro })).toBeVisible({ timeout: 30_000 });
+
+  // A developer changes a template: Mica's sync brings it into the clone, and the preview copies the website again.
+  const path = "src/components/SiteFooter.astro";
+  const file = (await (await request.get(`${FORGEJO}/contents/${path}?ref=main`, { headers: { authorization: FORGEJO_AUTH } })).json()) as {
+    content: string;
+    sha: string;
+  };
+  const changed = Buffer.from(file.content, "base64").toString().replace("</footer>", "<p>Changed in the template</p></footer>");
+  const updated = await request.put(`${FORGEJO}/contents/${path}`, {
+    headers: { authorization: FORGEJO_AUTH },
+    data: { branch: "main", sha: file.sha, message: "A developer changes the footer", content: Buffer.from(changed).toString("base64") },
+  });
+  expect(updated.ok(), await updated.text()).toBe(true);
+  await expect(preview.getByText("Changed in the template")).toBeVisible({ timeout: 90_000 });
+  // The draft is still there.
+  await expect(preview.getByText(intro)).toBeVisible();
 });

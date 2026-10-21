@@ -56,7 +56,15 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 
 Mica answers the requests for the preview's host name on its own port, `PORT`. With the preview on, `MICA_PUBLIC_URL` must have a host name, not `localhost`, an IP address or a name of one label, such as `cms`. Mica refuses these, because a name beside them is on another site. For a trial on this machine: `MICA_PUBLIC_URL=http://cms.localhost:6422`. The preview is then `http://preview.cms.localhost:6422`.
 
-The preview container sets `MICA_PREVIEW_EDITOR` to the value of `MICA_PUBLIC_URL`. Mica does not read that variable.
+## Preview image
+
+The preview image `ghcr.io/micacms/preview` reads these variables. They are not variables of the Mica image.
+
+- `MICA_PUBLIC_URL`: the editor's address, the same value as for Mica. The page of the preview answers only that editor.
+- `MICA_CONTENT_PATH`: the content root, when the repository has more than one. The same as for Mica.
+- `MICA_PREVIEW_SITE_PATH`: the folder of the website in the repository, when no `astro.config` is above the content root.
+
+The other variables of the container reach the dev server, for a website that reads its own. An image of your own sets `MICA_PREVIEW_EDITOR` to the editor's address instead of `MICA_PUBLIC_URL`. Mica does not read that variable.
 
 ## Self-hosted image: agents
 

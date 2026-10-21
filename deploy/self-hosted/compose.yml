@@ -87,22 +87,25 @@ services:
         max-file: "5"
 
   # The live preview, optional: the website's `astro dev` on the drafts, beside
-  # the form. Build its image from the website project; its command waits for
-  # Mica's clone and links the clone's content folder in place of the site's
-  # (https://micacms.com/docs/self-hosting/). Set
+  # the form. Mica's preview image installs and runs the website from Mica's
+  # clone, and follows each sync (https://micacms.com/docs/self-hosting/). Set
   # MICA_PREVIEW_UPSTREAM=http://preview:4321 in .env, and send the name
   # preview.<the editor's name> to Mica's port, as the editor's. The container
   # gets no secret, and nothing publishes its port: only Mica's gate reaches it.
+  # It needs the npm registry, and its first start installs for some minutes.
   #
   # preview:
-  #   image: registry.example.com/website-preview:latest
+  #   image: ghcr.io/micacms/preview:0.12.0
   #   restart: unless-stopped
   #   environment:
-  #     MICA_PREVIEW_EDITOR: ${MICA_PUBLIC_URL}
+  #     MICA_PUBLIC_URL: ${MICA_PUBLIC_URL}
   #   volumes:
-  #     # Mica's volume, read-only: the drafts are in repository/<content root>.
+  #     # Mica's volume, read-only: the website and its drafts are in repository/.
   #     - mica-data:/mica:ro
+  #     # The package managers' caches, for a restart in seconds.
+  #     - preview-cache:/cache
   #   mem_limit: 1g
 
 volumes:
   mica-data:
+  # preview-cache:
