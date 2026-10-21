@@ -1,10 +1,16 @@
 # The live preview of the self-hosted Mica (ADR 38), on top of the OIDC test
-# stack: the example website's `astro dev` in a container of its own, behind
-# Mica's gate on another host name. See README.md.
+# stack: Mica's preview image runs the example website from Mica's clone, behind
+# Mica's gate on another host name. Run `node tests/preview/prepare-site.mjs`
+# first. See README.md.
 #
 #   docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml up -d --build --wait
 
 services:
+  # The whole website goes into the repository, not only its content.
+  forgejo-seed:
+    volumes:
+      - ../preview/site:/seed-site:ro
+
   mica:
     volumes:
       - mica-data:/data
@@ -12,23 +18,24 @@ services:
       # A name under localhost: the preview is preview.cms.localhost, on the same site and port, and the browser sends the editor's cookies to neither it nor the website.
       MICA_PUBLIC_URL: http://cms.localhost:6422
       MICA_PREVIEW_UPSTREAM: http://preview:4321
+      # The test changes a template on the Git host: Mica brings it in soon.
+      MICA_REPOSITORY_SYNC_SECONDS: "5"
 
+  # Set up as micacms.com/docs/self-hosting/ tells a user to: the image, Mica's volume read-only, and a cache.
   preview:
+    image: micacms/preview:ci
     build:
       context: ../..
-      dockerfile: tests/preview/Dockerfile
+      target: preview
     depends_on:
       mica:
         condition: service_healthy
     environment:
-      MICA_PREVIEW_EDITOR: http://cms.localhost:6422
+      MICA_PUBLIC_URL: http://cms.localhost:6422
     volumes:
       - mica-data:/mica:ro
-    healthcheck:
-      test: ["CMD", "node", "-e", "fetch('http://localhost:4321/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
-      interval: 3s
-      timeout: 5s
-      retries: 60
+      - preview-cache:/cache
 
 volumes:
   mica-data:
+  preview-cache:

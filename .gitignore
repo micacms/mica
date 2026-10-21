@@ -30,3 +30,6 @@ rush-logs/
 
 # API Extractor working files; the reports in api/ are committed.
 packages/*/temp/
+
+# The website that tests/preview/prepare-site.mjs makes for the preview test stack.
+tests/preview/site/
