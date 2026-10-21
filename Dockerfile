@@ -81,9 +81,11 @@ RUN node common/scripts/install-run-rush.js build --to @micacms/preview
 
 FROM node:24-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS preview
 
-# tini reaps the dev server's children and forwards SIGTERM. The working copy
-# and the package caches belong to the unprivileged `node` user.
+# tini reaps the dev server's children and forwards SIGTERM. Debian's security
+# fixes go in at each build, also before the Node image has them. The working
+# copy and the package caches belong to the unprivileged `node` user.
 RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
  && apt-get install -y --no-install-recommends tini \
  && rm -rf /var/lib/apt/lists/* \
  && mkdir -p /work /cache \
