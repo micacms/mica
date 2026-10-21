@@ -181,7 +181,7 @@ jobs:
       # The example website with the packed packages, as a user's repository has it.
       - name: Prepare the website of the live preview
         run: |
-          node common/scripts/install-run-rush.js install --to @micacms/astro --to @micacms/browser-test
+          node common/scripts/install-run-rush.js install --to @micacms/editor --to @micacms/astro --to @micacms/browser-test
           node tests/preview/prepare-site.mjs
 
       # A new stack: the seed runs once, on an empty Git host.
