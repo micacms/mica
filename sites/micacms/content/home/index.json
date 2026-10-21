@@ -91,7 +91,7 @@
       {
         "title": "Preview and links",
         "icon": "eye",
-        "text": "With astro dev beside the local editor, an entry shows Preview: the page with your saved changes, before Publish. Each entry can also link to its page on the website.",
+        "text": "With astro dev beside the local editor, an entry shows Preview: the page with your saved changes, before Publish. The self-hosted editor shows it too, from a preview container of your website. Each entry can also link to its page on the website.",
         "file": "src/mica.ts",
         "code": "news: collection({ label: \"News\", url: \"/news/{slug}\", fields })",
         "link": {
@@ -286,9 +286,6 @@
       }
     ],
     "not": [
-      {
-        "text": "A preview of drafts in the self-hosted editor"
-      },
       {
         "text": "Roles or approval steps inside the editor"
       },

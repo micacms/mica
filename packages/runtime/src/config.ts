@@ -32,7 +32,9 @@ export const LOOPBACK = new Set(["localhost", "127.0.0.1", "[::1]", "::1", "0:0:
 
 /** Whether a URL points at this machine: then plain HTTP is allowed, for a trial or a test. */
 export function isLoopbackUrl(url: string): boolean {
-  return LOOPBACK.has(new URL(url).hostname.replace(/^\[|\]$/g, ""));
+  const host = new URL(url).hostname.replace(/^\[|\]$/g, "");
+  // Browsers send every `*.localhost` name to this machine (RFC 6761): `preview.cms.localhost` for a trial.
+  return LOOPBACK.has(host) || host.endsWith(".localhost");
 }
 
 /** The variables the runtime itself reads. Apps spread this into their schema. */

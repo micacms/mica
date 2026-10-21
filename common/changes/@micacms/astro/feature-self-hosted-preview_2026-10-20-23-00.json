@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "A content root that cannot be written, such as the read-only one of a self-hosted preview, gets a warning for the index of a reference set, as for the model, and the site builds.",
+      "type": "patch",
+      "packageName": "@micacms/astro"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

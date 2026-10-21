@@ -6,7 +6,7 @@ Mica is small on purpose. This page tells you what it does, what it does not do,
 - It keeps the content as JSON, Markdoc and media files in your Git repository, or in a repository of its own. It has no database.
 - It saves changes as files that are not committed yet, and Publish makes one commit of the changes that the editor chooses.
 - It handles photos, files such as GPX tracks, places on a map, and links to data that it does not edit. Large media can be in Git LFS.
-- It shows a preview of saved changes in the local editor, and a link to the page on the website in both editors.
+- It shows a live preview of saved changes in the local editor and in the self-hosted editor, and a link to the page on the website in both. The self-hosted editor needs a preview container of the website.
 - It lets a coding agent edit the content over MCP, as drafts.
 - It runs on your machine with `npx`, with no sign-in, or as one container behind your identity provider.
 - Your Astro build reads the files. The website does not call Mica.
@@ -17,7 +17,6 @@ One Mica serves one site and one branch.
 
 | Not in Mica | How to work without it |
 | --- | --- |
-| A preview of drafts in the self-hosted editor | The local editor has Preview while `astro dev` runs. For a self-hosted Mica, point a second Mica at a `staging` branch, and let your host build that branch. |
 | Roles | Each editor that your identity provider admits can do everything, Publish included. Admit only the people who may publish. For a review step, use a staging branch. |
 | Approval workflows | Point a second Mica at a `staging` branch. Review and merge it on your Git host. |
 | Scheduled publishing | Publish to a branch, and let a scheduled CI job merge it. |
@@ -49,7 +48,7 @@ Other limits:
 
 ## Compared with other editors
 
-Mica is for a team that wants the content model in code, the content in Git with no database, and an editor that it can run itself with one container. If you need on-page editing, a preview of drafts for every editor or roles today, one of the other products fits better. Mica is also experimental and not ready for production.
+Mica is for a team that wants the content model in code, the content in Git with no database, and an editor that it can run itself with one container. If you need full on-page editing or roles today, one of the other products fits better. Mica is also experimental and not ready for production.
 
 The page [Compare Mica with other editors](/compare/) has one table and one page for each of Keystatic, TinaCMS, Decap CMS, Sveltia CMS, Pages CMS and CloudCannon. It shows what their documentation said on 18 October 2026. These products change often, so read their documentation before you decide.
 

@@ -58,7 +58,7 @@
     {
       "key": "preview",
       "label": "Preview and visual editing",
-      "mica": "Preview in the local editor only. No visual editing."
+      "mica": "Live preview in the local editor and in the self-hosted Mica, with click to edit. No full visual editing."
     },
     {
       "key": "lfs",

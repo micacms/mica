@@ -86,5 +86,23 @@ services:
         max-size: "10m"
         max-file: "5"
 
+  # The live preview, optional: the website's `astro dev` on the drafts, beside
+  # the form. Build its image from the website project; its command waits for
+  # Mica's clone and links the clone's content folder in place of the site's
+  # (https://micacms.com/docs/self-hosting/). Set
+  # MICA_PREVIEW_UPSTREAM=http://preview:4321 in .env, and send the name
+  # preview.<the editor's name> to Mica's port, as the editor's. The container
+  # gets no secret, and nothing publishes its port: only Mica's gate reaches it.
+  #
+  # preview:
+  #   image: registry.example.com/website-preview:latest
+  #   restart: unless-stopped
+  #   environment:
+  #     MICA_PREVIEW_EDITOR: ${MICA_PUBLIC_URL}
+  #   volumes:
+  #     # Mica's volume, read-only: the drafts are in repository/<content root>.
+  #     - mica-data:/mica:ro
+  #   mem_limit: 1g
+
 volumes:
   mica-data:

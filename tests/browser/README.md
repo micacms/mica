@@ -40,6 +40,11 @@ text, changes the URL, discards another edit on the Publish page, publishes, and
 checks the files on the Git host. Then it deletes the entry and publishes the
 deletion, and the files are gone from the Git host.
 
+[`preview-self-hosted.spec.ts`](preview-self-hosted.spec.ts) runs only on the
+stack of [`tests/preview`](../preview/README.md), with `MICA_PREVIEW_STACK=1`:
+the live preview of the self-hosted Mica, behind its gate on another host name.
+CI runs it in `image.yml`, after the other tests.
+
 ## What the local editor test checks
 
 Each spec starts `apps/local-editor/dist/cli.js start` on a free port, on a

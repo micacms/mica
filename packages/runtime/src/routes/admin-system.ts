@@ -35,8 +35,12 @@ export function adminSystemRoutes(): Hono<Env> {
     return c.json({ items });
   });
 
-  /** The dev server that shows the drafts, for "Preview". Null in the self-hosted Mica. */
-  app.get("/preview", async (c) => c.json({ address: await c.get("ctx").preview() }));
+  /** The dev server that shows the drafts, for "Preview", and the token that lets the browser into it when it is on another origin. */
+  app.get("/preview", async (c) => {
+    const ctx = c.get("ctx");
+    const address = await ctx.preview();
+    return c.json({ address, handover: address && ctx.previewHandover ? ctx.previewHandover(c) : null });
+  });
 
   app.get("/schema", (c) => {
     const { site, config } = c.get("ctx");

@@ -7,7 +7,7 @@
 
 import { join } from "node:path";
 
-import { createOidcAuth } from "@micacms/auth-oidc";
+import { createOidcAuth, sessionOf } from "@micacms/auth-oidc";
 import { MANIFEST_PATH, memorySource, type Site } from "@micacms/core/internal";
 import {
   ConfigError,
@@ -35,8 +35,9 @@ import { agentRoutes } from "./agents.js";
 import { runCheck } from "./check.js";
 import { runCompact } from "./compact.js";
 import { operationalInfo } from "./operational.js";
+import { createPreviewGate } from "./preview-gate.js";
 import { readiness } from "./readiness.js";
-import { currentToken, loadConfig, type SelfHostedConfig } from "./config.js";
+import { currentToken, loadConfig, previewOrigin, type SelfHostedConfig } from "./config.js";
 import { cloneLayout, CloneRefusal, openClone } from "./workspace/clone.js";
 import { coarseGroups, contentGroups, revalidator } from "./workspace/content-groups.js";
 import { redact } from "./workspace/credentials.js";
@@ -133,6 +134,18 @@ async function serve(): Promise<void> {
   }
 
   const dispatcher = createDispatcher();
+  // The preview's host name goes to its gate from the start, never to the editor's app (ADR 38).
+  const preview = previewOrigin(config);
+  const gate =
+    preview && config.MICA_PREVIEW_UPSTREAM
+      ? createPreviewGate({
+          editorOrigin: new URL(config.MICA_PUBLIC_URL).origin,
+          previewOrigin: preview,
+          upstream: config.MICA_PREVIEW_UPSTREAM,
+          secret: config.sessionSecret,
+          logger,
+        })
+      : null;
   let ctx: RuntimeContext | null = null;
   let managed: ManagedWorkspace | null = null;
   let locks: WorkspaceLocks | null = null;
@@ -140,6 +153,7 @@ async function serve(): Promise<void> {
 
   startServer({
     app: dispatcher.app,
+    ...(gate ? { beside: gate } : {}),
     host: config.HOST,
     port: config.PORT,
     logger,
@@ -261,8 +275,17 @@ async function serve(): Promise<void> {
 
     health: { ready: () => readiness(workspace.state()) },
 
+    ...(gate && preview
+      ? {
+          preview: async () => preview,
+          previewFrames: [preview],
+          previewHandover: (c) => gate.handover(sessionOf(c).identity.subject),
+        }
+      : {}),
+
     onShutdown: () => {
       auth.loginLimiter.stop();
+      gate?.close();
     },
   });
 
@@ -283,6 +306,7 @@ async function serve(): Promise<void> {
     // until somebody signs in.
     admission: auth.admission.summary,
     mcp: config.MICA_MCP ? `on${config.MICA_MCP_PUBLISH ? ", with publish" : ""}` : "off",
+    preview: preview ?? "off",
     repository: remote.url,
     branch,
     root,

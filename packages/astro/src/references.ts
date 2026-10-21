@@ -70,14 +70,16 @@ export async function readReferenceItems(set: ReferenceSet, projectRoot: string)
 
 /**
  * Writes the index of each reference set when it differs. In CI, fails when the
- * committed index is not the one of the file, as for the model.
+ * committed index is not the one of the file, as for the model. A content root
+ * that cannot be written, such as the read-only one of a self-hosted preview,
+ * gets a warning, as for the model.
  */
 export async function publishReferences(
   references: Record<string, ReferenceSet>,
   contentRoot: string,
   projectRoot: string,
   ci: boolean,
-  logger: { info(message: string): void },
+  logger: { info(message: string): void; warn(message: string): void },
 ): Promise<void> {
   for (const set of Object.values(references)) {
     const target = join(contentRoot, referenceIndexPath(set.name));
@@ -85,8 +87,12 @@ export async function publishReferences(
     const committed = await readFile(target, "utf8").catch(() => null);
     if (committed === contents) continue;
     if (ci) throw new Error(`The index of "${set.label}" in ${referenceIndexPath(set.name)} is not the one of ${set.file}. Run astro dev or astro build, and commit the file.`);
-    await mkdir(dirname(target), { recursive: true });
-    await writeFile(target, contents, "utf8");
-    logger.info(`Wrote the index of "${set.label}" to ${referenceIndexPath(set.name)} — commit it for Mica to read.`);
+    try {
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, contents, "utf8");
+      logger.info(`Wrote the index of "${set.label}" to ${referenceIndexPath(set.name)} — commit it for Mica to read.`);
+    } catch (error) {
+      logger.warn(`Could not write the index of "${set.label}": ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }

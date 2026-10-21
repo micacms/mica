@@ -236,6 +236,89 @@ Editors commit more frequently than developers. To keep expensive CI jobs away f
 
 `MICA_REPOSITORY_BRANCH` can be any branch. A second Mica, with its own volume, on `MICA_REPOSITORY_BRANCH=staging` gives editors a staging site. You then review and merge that branch like any other change. Mica itself has no approval step.
 
+## Add the live preview
+
+The live preview shows the drafts of the editors on the real templates of the website. It is optional. You run one more container, the preview, and give it a name of its own. Mica does not start, stop or build the preview. For what the editor shows, see [Preview changes](/docs/previews/).
+
+The preview container runs the dev server of the website: `MICA_PREVIEW=1 astro dev`. It reads the content root from Mica's data volume, read-only. It gets none of Mica's secrets, and Mica's image does not change. A gate in the Mica process answers the requests for the preview's name, on Mica's own port, and forwards them to the dev server.
+
+To set it up, you do four things: build the preview image, add the `preview` service and `MICA_PREVIEW_UPSTREAM`, make a DNS record for the preview's name, and add that name to the reverse proxy.
+
+The website needs `micaPreview()` in `astro.config`: see [Preview changes](/docs/previews/).
+
+### Build the preview image
+
+Build the image from the website project, because it holds the code of the site and its packages. This example is for an Astro project with npm:
+
+```dockerfile
+FROM node:24-slim
+WORKDIR /site
+COPY package*.json ./
+RUN npm ci
+COPY . .
+ENV MICA_PREVIEW=1
+# The drafts: the content of Mica's clone, read-only, in place of the site's own.
+CMD ["sh", "-c", "until [ -d /mica/repository/content ]; do sleep 2; done; rm -rf content && ln -s /mica/repository/content content && exec npx astro dev --host 0.0.0.0 --port 4321"]
+```
+
+The command waits for the clone of Mica. Then it links the content folder of the clone in place of the content folder of the site. `repository/content` is the content root of the clone: `repository/<content path>`. Change it for another content root, such as `repository/site/content`.
+
+Add a `.dockerignore` file beside the Dockerfile with these lines: `node_modules`, `dist`, `.astro` and the content folder, such as `content`. Then the image gets its packages from `npm ci`, and its content only from Mica's volume.
+
+The dev server must listen on an address that the Mica container reaches. This is why the command has `--host`.
+
+### Add the container
+
+Add the service `preview` beside `mica` in `compose.yml`, and the variable `MICA_PREVIEW_UPSTREAM` to `mica`:
+
+```yaml
+services:
+  mica:
+    # ... as before
+    environment:
+      MICA_DATA_DIR: /data
+      MICA_PREVIEW_UPSTREAM: http://preview:4321
+
+  preview:
+    image: registry.example.com/acme/website-preview:1
+    restart: unless-stopped
+    environment:
+      MICA_PREVIEW_EDITOR: https://cms.example.com
+    volumes:
+      - mica-data:/mica:ro
+```
+
+- The `preview` service mounts the whole volume, read-only, at `/mica`. The command of the image reads the content from there.
+- After Mica clones again, for example after a change of `MICA_REPOSITORY_BRANCH`, restart the preview container.
+- `MICA_PREVIEW_EDITOR` is the value of `MICA_PUBLIC_URL`. The page script of the preview answers only that editor.
+- Do not publish a port of `preview`. Only Mica's gate talks to it.
+- `MICA_PREVIEW_UPSTREAM` turns the preview on. You can set it in `.env` instead of `compose.yml`.
+- The address of the preview is the address in `MICA_PUBLIC_URL` with `preview.` in front of the host name: `https://preview.cms.example.com` for `https://cms.example.com`. Set `MICA_PREVIEW_URL` only for another name on the same site. It must have another host name than `MICA_PUBLIC_URL`, and it has no path. A name set there needs `https://`, except a name under `localhost` for a trial on this machine. Mica refuses the same host name, because a browser sends the cookies of the editor to every port of its host. `MICA_PREVIEW_URL` without `MICA_PREVIEW_UPSTREAM` is an error.
+- With the preview on, `MICA_PUBLIC_URL` must have a host name, not `localhost`, an IP address or a name of one label, such as `cms`. Mica refuses these, because a name beside them is on another site.
+- For a trial on one computer, set `MICA_PUBLIC_URL=http://cms.localhost:6422`. The preview is then `http://preview.cms.localhost:6422`. Browsers send every `*.localhost` name to the computer itself, and plain HTTP is allowed for them.
+
+### Give the preview a name
+
+Make a DNS record for the preview's name, such as `preview.cms.example.com`, or one wildcard record. Put the name in the reverse proxy, with TLS. The certificate must cover both names. The proxy sends the preview's name to the same port as the editor's name, 6422. It must pass WebSockets, because the reload of the dev server uses one, and the `Host` header of the browser. Caddy does this by default:
+
+```text
+cms.example.com, preview.cms.example.com {
+    reverse_proxy 127.0.0.1:6422
+}
+```
+
+In nginx, put both names in `server_name`, and set `proxy_set_header Host $host;`, `proxy_http_version 1.1`, and the headers `Upgrade` and `Connection`.
+
+Then run `docker compose up -d`, open an entry in the editor, and check that the page shows beside the form.
+
+### Sign-in and updates
+
+- The editor gets a token from Mica for the signed-in person. The token is valid for one minute. The editor posts it to the preview's origin, and the gate answers with a cookie of that origin for ten minutes. The editor renews it when the person types or clicks, at most every five minutes. A tab that nobody uses does not renew it. The reload connection of the dev server closes when the cookie ends.
+- A person whom the admission rules no longer admit keeps the preview for ten minutes at most.
+- The website never sees the cookies of Mica, and only the editor's origin can frame the preview.
+- The preview shows a draft about two seconds after typing. The autosave and the reload of the dev server take this time.
+- A change of a template shows in the preview only after a new preview image, as it shows on the website only after a deploy.
+
 ## Sessions and removal of access
 
 A session is an encrypted cookie. Mica keeps no list of sessions.

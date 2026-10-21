@@ -32,7 +32,7 @@ Run the Docker image `ghcr.io/micacms/mica` on a server. It runs on amd64 and ar
 - **Publish** commits the drafts that the editor chooses as one commit and pushes it over HTTPS. The editor is the author, and Mica is the committer.
 - Mica fetches the branch on its own and never merges. If the website changes an entry that has a draft, the editor keeps their version or uses the website's version.
 - Whoever your rules admit is an editor. There are no roles.
-- It has no preview of drafts. Each entry can link to its page on the website.
+- It shows a live preview of drafts, from a preview container of your website. Each entry can also link to its page on the website.
 
 ## Side by side
 
@@ -41,7 +41,7 @@ Run the Docker image `ghcr.io/micacms/mica` on a server. It runs on amd64 and ar
 - **Sign-in:** local, none. Self-hosted, OpenID Connect.
 - **Saves go to:** local, files in your checkout. Self-hosted, draft files in a Git clone on the server.
 - **Publish does:** local, `git` commit and push. Self-hosted, one commit and a push over HTTPS.
-- **Preview:** local, yes, while `astro dev` runs. Self-hosted, no.
+- **Preview:** local, yes, while `astro dev` runs. Self-hosted, yes, with a preview container of the website.
 - **Needs a token:** local, no. Self-hosted, yes: a token for your Git host.
 
 ## How they work together

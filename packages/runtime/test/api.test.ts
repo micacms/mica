@@ -123,10 +123,12 @@ describe("security headers", () => {
     assert.doesNotMatch(policy, /unsafe-eval/);
   });
 
-  it("allows a frame only for the origins of the live preview", () => {
+  it("allows a frame only for the origins of the live preview, and a request to it only with a handover", () => {
     const site = withMap({});
     assert.doesNotMatch(contentSecurityPolicy(site), /frame-src/);
     assert.match(contentSecurityPolicy(site, ["http://localhost:*"]), /; frame-src http:\/\/localhost:\*; /);
+    assert.doesNotMatch(contentSecurityPolicy(site, ["http://localhost:*"]), /connect-src/);
+    assert.match(contentSecurityPolicy(site, ["https://preview.example.com"], true), /; connect-src 'self' https:\/\/preview\.example\.com; /);
   });
 
   it("allows the origin and the hosts of a custom style, from the model in use", async () => {
@@ -335,9 +337,21 @@ describe("content", () => {
     }
   });
 
-  it("gives no preview without a dev server, as in the self-hosted Mica", async () => {
-    assert.deepEqual(await (await harness.request("/api/admin/preview")).json(), { address: null });
+  it("gives no preview without a dev server", async () => {
+    assert.deepEqual(await (await harness.request("/api/admin/preview")).json(), { address: null, handover: null });
     assert.equal(((await (await harness.request("/api/admin/schema")).json()) as { collections: Array<{ url: unknown }> }).collections[0]?.url, null);
+  });
+
+  it("gives the address of a preview on an origin of its own with a token for the browser", async () => {
+    const other = await createHarness(
+      {},
+      { preview: { preview: async () => "https://preview.example.com", previewFrames: ["https://preview.example.com"], previewHandover: () => "token" } },
+    );
+    try {
+      assert.deepEqual(await (await other.request("/api/admin/preview")).json(), { address: "https://preview.example.com", handover: "token" });
+    } finally {
+      other.close();
+    }
   });
 
   it("gives the page address of a collection only with a url in the model and MICA_SITE_URL", async () => {

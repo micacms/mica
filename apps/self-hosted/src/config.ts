@@ -24,6 +24,7 @@ import {
   type RuntimeConfig,
 } from "@micacms/runtime";
 
+import { hostName } from "./preview-gate.js";
 import { defaultUsername, parseRemote, type Remote } from "./workspace/credentials.js";
 
 /** What the runtime reads, minus the content root: the start finds it in the clone. */
@@ -54,6 +55,10 @@ const fields = {
   MICA_REPOSITORY_LFS_URL: z.string().optional(),
   /** Agents can connect over MCP at `/mcp`, after a person allows each one on a consent page. */
   MICA_MCP: bool(false),
+  /** The website's `MICA_PREVIEW=1 astro dev` inside the network, such as `http://preview:4321`: it turns the live preview on. */
+  MICA_PREVIEW_UPSTREAM: z.url().optional(),
+  /** The live preview's public origin. Default: the editor's, with `preview.` in front of its host name. */
+  MICA_PREVIEW_URL: z.url().optional(),
 };
 
 /** Every variable the image reads. Built from the schema's fields, so the two cannot drift. */
@@ -86,6 +91,8 @@ export type SelfHostedConfig = RuntimeConfig &
     repository: RepositoryConfig;
     /** Agents can connect at `/mcp`. */
     MICA_MCP: boolean;
+    MICA_PREVIEW_URL?: string | undefined;
+    MICA_PREVIEW_UPSTREAM?: string | undefined;
     /** `MICA_*` names in the environment that nothing reads: likely typos. */
     unknownVariables: string[];
   };
@@ -105,6 +112,51 @@ function isBranchName(name: string): boolean {
     !name.includes("@{") &&
     !/[\s~^:?*[\\\x00-\x1f\x7f]/.test(name)
   );
+}
+
+/**
+ * The preview's origin (ADR 38): MICA_PREVIEW_URL, else the editor's with
+ * `preview.` in front of its host name. Null without MICA_PREVIEW_UPSTREAM.
+ */
+export function previewOrigin(env: { MICA_PUBLIC_URL?: string | undefined; MICA_PREVIEW_URL?: string | undefined; MICA_PREVIEW_UPSTREAM?: string | undefined }): string | null {
+  if (!env.MICA_PREVIEW_UPSTREAM || !env.MICA_PUBLIC_URL) return null;
+  if (env.MICA_PREVIEW_URL) return new URL(env.MICA_PREVIEW_URL).origin;
+  const editor = new URL(env.MICA_PUBLIC_URL);
+  editor.hostname = `preview.${hostName(editor.hostname)}`;
+  return editor.origin;
+}
+
+/** The live preview: the dev server in the network, and a host name of its own on the editor's site. */
+function checkPreview(env: z.infer<typeof schema>, problems: string[]): void {
+  const { MICA_PREVIEW_URL: url, MICA_PREVIEW_UPSTREAM: upstream } = env;
+  if (!upstream) {
+    if (url) problems.push("MICA_PREVIEW_URL needs MICA_PREVIEW_UPSTREAM, the address of the website's dev server.");
+    return;
+  }
+  if (new URL(upstream).protocol !== "http:") {
+    problems.push(`MICA_PREVIEW_UPSTREAM is ${upstream}, but it must be the http:// address of the dev server in the network, such as http://preview:4321.`);
+  }
+  if (!env.MICA_PUBLIC_URL) return;
+  const editor = hostName(new URL(env.MICA_PUBLIC_URL).hostname);
+  // `localhost`, a name of one label and an address are sites of their own: a preview beside them would be on another site, where its cookie does not go.
+  if (!editor.includes(".") || /^[\d.]+$/.test(editor) || editor.startsWith("[")) {
+    problems.push(
+      `The live preview needs a host name for the editor, such as cms.example.com, or http://cms.localhost:6422 for a trial: MICA_PUBLIC_URL is ${env.MICA_PUBLIC_URL}.`,
+    );
+    return;
+  }
+  if (!url) return;
+  const preview = new URL(url);
+  if (preview.pathname !== "/" || preview.search || preview.hash) {
+    problems.push(`MICA_PREVIEW_URL is ${url}, but it must be an origin with no path, such as https://preview.cms.example.com.`);
+  }
+  if (preview.protocol !== "https:" && !isLoopbackUrl(url)) {
+    problems.push(`MICA_PREVIEW_URL is ${url}, but an address on another machine needs https://.`);
+  }
+  // Another port is not enough: a browser sends the editor's cookies to each port of its host.
+  if (hostName(preview.hostname) === editor) {
+    problems.push("MICA_PREVIEW_URL must have another host name than MICA_PUBLIC_URL, such as preview.cms.example.com: the website must not get the editor's cookies.");
+  }
 }
 
 /** Puts the contents of `<NAME>_FILE` into `<NAME>`, for each secret that can come from a file. */
@@ -203,6 +255,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): SelfHostedConf
   const parsed = schema.safeParse(present);
   if (!parsed.success) throw new ConfigError(describeConfigIssues(parsed.error));
   const repository = repositoryOf(parsed.data, problems);
+  checkPreview(parsed.data, problems);
 
   if (problems.length > 0 || !repository) {
     throw new ConfigError(
