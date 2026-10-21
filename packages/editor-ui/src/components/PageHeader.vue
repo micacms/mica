@@ -40,9 +40,12 @@ watch(() => props.loading, arrive, { flush: "post" });
 
 <template>
   <!-- Sticky, so that the title and the status stay in view: below the phone's menu bar, or at the top of the overlay form. -->
-  <header :class="['sticky z-10 border-b border-line bg-raised', embedded ? 'top-0' : 'top-14 lg:top-0']">
-    <!-- One line from a small tablet up: a status that changes while the editor types must not wrap the header. -->
-    <div :class="['mx-auto flex max-w-5xl flex-wrap items-center gap-4 px-4 sm:flex-nowrap sm:px-6', embedded ? 'py-3' : 'py-4']">
+  <header :class="['@container sticky z-10 border-b border-line bg-raised', embedded ? 'top-0' : 'top-14 lg:top-0']">
+    <!--
+      By the header's own width, as a wide preview narrows the form: one line when the actions fit, else the actions
+      always on a line of their own. A status that changes while the editor types must not wrap the header.
+    -->
+    <div :class="['mx-auto flex max-w-5xl flex-wrap items-center gap-x-4 gap-y-3 px-4 @xl:flex-nowrap @xl:px-6', embedded ? 'py-3' : 'py-4']">
       <div class="min-w-0 flex-1">
         <RouterLink
           v-if="back"
@@ -59,7 +62,7 @@ watch(() => props.loading, arrive, { flush: "post" });
         <p v-if="subtitle" class="mt-1 text-xs break-words text-muted">{{ subtitle }}</p>
       </div>
 
-      <div class="flex shrink-0 items-center gap-2">
+      <div class="flex w-full shrink-0 items-center gap-2 whitespace-nowrap @xl:w-auto">
         <slot />
       </div>
     </div>
