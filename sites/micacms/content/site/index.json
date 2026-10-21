@@ -1,7 +1,7 @@
 {
   "productName": "Mica",
-  "tagline": "The Git-native content editor for Astro",
-  "description": "Give editors a clear CMS. Keep content as reviewable files in Git. Build a fast, static Astro website with no runtime CMS dependency.",
+  "tagline": "A Git-backed CMS for static Astro websites",
+  "description": "Mica adds structured editing and a live preview to Astro. Content stays as JSON and Markdoc in Git, Astro builds static pages, and nothing needs a database.",
   "currentVersion": "0.12.0",
   "githubUrl": "https://github.com/micacms/mica",
   "npmUrl": "https://www.npmjs.com/package/@micacms/editor",

@@ -1,26 +1,29 @@
-### Where Sveltia CMS is better
+### Two previews, built in different ways
 
-- **Languages.** Sveltia CMS has first-class support for several languages, with machine translation through your own API key. Mica has no language setting.
-- **Media providers.** Sveltia CMS can store media in S3, R2, Azure Blob, Backblaze B2, Bunny, DigitalOcean Spaces, Supabase, MinIO, Cloudinary or Uploadcare. Mica keeps media in the repository.
-- **Preview pane.** Sveltia CMS has a two-pane live preview with scroll sync, built from custom React templates in a sandboxed iframe. Mica shows the real page, but only after the editor stops typing, and the self-hosted Mica needs a second container for it.
-- **Maps and relations.** Sveltia CMS has an address search on its map field. Its relations have backlinks and a cascading rename and delete.
-- **No server with GitLab or Gitea.** The editor is a static app that signs in with PKCE.
-- **Activity.** Sveltia CMS is very active and plans version 1.0 for late 2026.
+Both products have a preview. Sveltia CMS has a two-pane live preview with scroll sync, built from custom React templates in a sandboxed iframe. Its deploy previews of unpublished entries run through CI. On 21 October 2026, its roadmap lists an out-of-the-box live site preview as a non-goal.
 
-### Where Mica is better
+Mica shows the real Astro page beside the form, with the drafts in it, about 1 to 2 seconds after typing stops. A click on the page moves the cursor to the field, and fields with unpublished changes get an outline. Locally, it runs beside `astro dev`. The self-hosted Mica needs the optional preview container and a second host name.
 
-- **The real page in the preview.** Mica shows the real Astro page beside the form, with the drafts in it, about one to two seconds after the editor stops typing. A click on a text opens its field, and fields with unpublished changes get an outline. It works in the local and the self-hosted editor, and the templates need no change except one integration, `micaPreview()`. Sveltia CMS builds its preview from React templates, and its roadmap lists an out-of-the-box live site preview as a non-goal. Its deploy previews of unpublished entries run through CI.
-- **Agents.** Mica has an MCP server, built into the free editor. It runs locally (stdio and HTTP) and in the self-hosted Mica, where each person signs in and allows each agent. An agent reads the content model, and Mica checks every value it sends. Every save carries the revision the agent read, so an agent never overwrites a newer save. Agents save drafts and publish only when allowed. Sveltia CMS has no MCP server. It has an Agent Skill, llms.txt and AI translation.
-- **Many large files on GitHub.** Many large photos and files make a Git repository heavy and slow to clone. Mica keeps them in Git LFS, so the history stays small, in the local and the self-hosted editor, on GitHub too. Sveltia CMS supports Git LFS on GitLab and on Gitea/Forgejo, but not on GitHub.
-- **External data.** Your entries can link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them. The Sveltia CMS documentation does not describe this.
-- **Git submodule.** Sveltia CMS refuses local commits in a submodule. Mica works in the content repository and never commits in the website repository.
-- **Scale.** The Sveltia CMS documentation says that it targets small to medium-sized projects, not thousands of entries and assets, and that it is bound by the API of the Git host. Mica reads a Git clone and is tested with 1,000 entries in a collection and 5,000 files.
-- **Self-hosted sign-in.** The Sveltia CMS documentation does not describe OIDC or SSO. Mica self-hosted works with any OpenID Connect provider.
-- **One commit for several changes.** The Sveltia CMS documentation describes no batch publish. In Mica, Publish makes one commit of the changes the editor chooses.
-- **Astro.** Mica has an official Astro package.
-- **Map with zoom.** In Sveltia CMS, the zoom only sets the first view. Mica stores the zoom with the place, so the page can show the same view.
+### Static app or a service you run
+
+Sveltia CMS is a static app. GitHub OAuth needs a server, GitLab and Gitea use PKCE without one, and personal access tokens also work. Its local mode uses the File System Access API of the browser, which is Chromium only. Mica is a local editor with no sign-in, or a container you run, with OpenID Connect sign-in. OIDC and SSO are not documented for Sveltia CMS.
+
+Choose Sveltia when you want a static app with no server of your own. Choose Mica when you want OpenID Connect sign-in in a container you run.
+
+### Media and files
+
+Sveltia CMS can store media in S3, R2, Azure Blob, Backblaze B2, Bunny, DigitalOcean Spaces, Supabase, MinIO, Cloudinary or Uploadcare. Mica keeps media in the repository, with Git LFS in the local and the self-hosted editor, on GitHub too. Sveltia CMS documents Git LFS on GitLab and on Gitea/Forgejo, not on GitHub, and it refuses local commits in a Git submodule.
+
+The Sveltia CMS documentation says that it targets small to medium-sized projects and is bound by the API of the Git host. Mica reads a Git clone. It is tested with 1,000 entries in a collection, 5,000 files and 5 editors at the same time. These are tested bounds, not proof that Mica is faster or bigger.
+
+### Languages and maps
+
+Sveltia CMS has first-class support for several languages, with machine translation through your own API key. Mica has no language setting, only two documented patterns. Sveltia CMS also has an address search on its map field. In Mica, the map field stores the zoom with the place, so the page can show the same view. In Sveltia CMS, the zoom only sets the first view.
 
 ### Equal, or not documented
 
-- Both are MIT licensed, need no database and have no roles yet.
-- Sveltia CMS has no paid offering. Mica has no hosted offering yet, and a Mica Cloud is planned.
+- Both are MIT licensed. Sveltia CMS has no paid offering documented. Mica has no hosted offering.
+- Neither needs a database. Sveltia CMS caches in the IndexedDB of the browser.
+- Roles: neither has them yet.
+- Publish: Sveltia CMS has the modes simple, preview and editorial_workflow, and documents no batch publish. In Mica, Publish makes one commit of the changes the editor chooses.
+- MCP: not documented for Sveltia CMS as of 21 October 2026. It has an Agent Skill, llms.txt and AI translation.

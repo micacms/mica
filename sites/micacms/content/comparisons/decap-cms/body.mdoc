@@ -1,27 +1,27 @@
-### Where Decap CMS is better
+### Two ways to deploy
 
-- **Languages.** Decap CMS supports content in several languages, with three file structures. Mica has no language setting, only two documented patterns.
-- **Git hosts.** Decap CMS works with GitHub, GitLab, Bitbucket, Gitea, Forgejo and Azure. Mica works with any Git host over HTTPS, but only a few are tested: GitHub, GitLab-style and Forgejo hosts.
-- **Preview as you type.** Decap CMS updates its preview pane as editors type, from a React template that you register. Mica updates its preview about one to two seconds after the editor stops typing, and the self-hosted Mica needs a second container for it.
-- **Editorial workflow.** Decap CMS can open one branch and one pull request for each entry. Mica has no such step.
-- **Community and age.** Decap CMS has a large community and many years of use in production. It had releases in September and October 2026.
-- **A static app.** Decap CMS is a static app under /admin. With GitLab or Gitea PKCE it needs no server of your own. Decap Turbo is a hosted service. Mica has no hosted offering yet. A Mica Cloud is planned.
+Decap CMS is a static app under /admin of your website. It talks to your Git provider, so sign-in depends on the provider: GitHub needs an OAuth server, and GitLab and Gitea can use PKCE without one. Decap Turbo is a hosted service. Mica is not a static app. It is a local editor on your machine, with no sign-in, or a container you run, with OpenID Connect sign-in, on a Git working tree. Mica has no hosted offering.
 
-### Where Mica is better
+Choose Decap when you want a static app and no service of your own. Choose Mica when you want one sign-in through your own provider, or a local editor for Astro.
 
-- **The real page in the preview.** Decap CMS shows a React template, not the real site, and its deploy preview links need the editorial workflow and a CI build per save. Mica shows the real Astro page beside the form, with the drafts in it, in the local and the self-hosted editor. A click on a text opens its field, and fields with unpublished changes get an outline. The templates need no change except one integration, `micaPreview()`.
-- **Agents.** Mica has an MCP server, built into the free editor. It runs locally (stdio and HTTP) and in the self-hosted Mica, where each person signs in and allows each agent. An agent reads the content model, and Mica checks every value it sends. Every save carries the revision the agent read, so an agent never overwrites a newer save. Agents save drafts and publish only when allowed. Decap CMS has an experimental MCP server and editor bridge in @decap/cli, and they work only with the paid Decap Turbo.
-- **Many large files.** Many large photos and files make a Git repository heavy and slow to clone. Mica keeps them in Git LFS, so the history stays small, in the local and the self-hosted editor. Decap CMS does not support Git LFS on GitHub (issue #1206 is open) or on Gitea. GitLab media works since version 3.14.0.
-- **External data.** Your entries can link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them. The Decap CMS documentation does not describe this.
-- **Git submodule.** Decap CMS does not support a content folder in a Git submodule (issue #4056, open since 2020). Mica works in the content repository and never commits in the website repository.
-- **Many entries.** Without Decap Turbo, Decap CMS makes one API request for each file, against the rate limit of your Git host. Its documentation says that a thousand entries are a thousand requests. Mica reads a Git clone, so there are no host API limits. It is tested with 1,000 entries in a collection and 5,000 files.
-- **Sign-in.** Decap CMS has no direct OpenID Connect sign-in. Mica self-hosted works with any OpenID Connect provider.
-- **Astro.** Mica has an official Astro package. Decap CMS has a guide in the Astro documentation.
-- **One commit for several changes.** The Decap CMS documentation describes no batch publish. In Mica, Publish makes one commit of the changes the editor chooses.
-- **Map with zoom.** The Decap CMS map widget stores a GeoJSON string without a zoom. Mica stores the zoom with the place, so the page can show the same view.
+### Preview: a template or the real page
+
+Decap CMS shows a preview pane from a React template that you register, updated as editors type. Mica shows the real Astro page beside the form, with the drafts in it, about 1 to 2 seconds after typing stops. A click on the page moves the cursor to the field. Locally, it runs beside `astro dev`. The self-hosted Mica needs the optional preview container and a second host name.
+
+Choose Decap for a custom pane that updates as you type. Choose Mica when you want the real page and no template to write.
+
+### Git hosts and tested hosts
+
+Decap CMS works with GitHub, GitLab, Bitbucket, Gitea, Forgejo and Azure through their APIs. Mica uses plain Git and no host API. The self-hosted Mica pushes over HTTPS. Mica tests github.com and gitlab.com every week and Forgejo in CI. Bitbucket, Gitea, GitHub Enterprise Server and self-managed GitLab are expected to work, but are not tested. Test your host before you rely on it.
+
+The documentation of Decap CMS says that, without Decap Turbo, each file is one request to the host API. Mica reads a Git clone. It is tested with 1,000 entries in a collection, 5,000 files and 5 editors at the same time. These are tested bounds, not proof that Mica is faster. Git LFS and a content submodule also work in Mica; the table shows what Decap CMS documents.
+
+### Review and languages
+
+Decap CMS has an editorial workflow with one branch and one pull request for each entry, and content in several languages with three file structures. Mica has no roles and no language setting, only two documented patterns. In Mica, a save writes a draft, and Publish makes one commit of the changes the editor chooses. Review uses a staging branch and a second Mica.
 
 ### Equal, or not documented
 
-- Both are MIT licensed and need no database in the free product.
+- Both are MIT licensed, and neither needs a database in the free product.
 - Roles: neither has them in the free product.
 - Conflicts between two editors: the Decap CMS documentation does not say.

@@ -1,20 +1,109 @@
 {
   "hero": {
-    "eyebrow": "The content editor for Astro",
-    "title": "Astro reaches for the stars. Mica keeps your content down to earth.",
+    "eyebrow": "A Git-backed CMS for Astro",
+    "title": "A small CMS layer for static Astro websites.",
     "primary": {
       "label": "Get started",
-      "href": "/docs/getting-started/"
+      "href": "#get-started"
     },
     "secondary": {
-      "label": "See how it works",
+      "label": "How it works",
       "href": "#how-it-works"
     }
   },
+  "architecture": {
+    "eyebrow": "How it works",
+    "title": "Your Astro website stays an Astro website.",
+    "lead": "You describe the content in TypeScript. Mica gives editors forms for it and saves their work as files in Git. Astro reads the files through Content Collections and builds the static site. Mica looks after the content, and Astro serves the website.",
+    "flow": [
+      {
+        "title": "Content model",
+        "detail": "src/mica.ts",
+        "note": "You write it once, next to your pages."
+      },
+      {
+        "title": "Files in Git",
+        "detail": "JSON, Markdoc, media",
+        "note": "Editors and coding agents change them in Mica."
+      },
+      {
+        "title": "Astro build",
+        "detail": "Content Collections",
+        "note": "Your build and your host, as they are today."
+      },
+      {
+        "title": "Static website",
+        "detail": "HTML on any host",
+        "note": "Visitors never reach Mica."
+      }
+    ],
+    "examples": [
+      {
+        "caption": "What you write: the fields, labels and rules, in one file",
+        "kind": "code",
+        "file": "src/mica.ts",
+        "code": "export const site = defineSite({\n  root: \"./content\",\n  collections: {\n    news: collection({\n      label: \"News\",\n      fields: {\n        title: text({ label: \"Title\", required: true }),\n        slug: slug({ from: \"title\" }),\n        image: media({ label: \"Image\", alt: \"required\" }),\n        body: richText({ label: \"Text\" }),\n      },\n    }),\n  },\n});"
+      },
+      {
+        "caption": "What a publish adds: one commit with the changes the editor chose",
+        "kind": "change",
+        "file": "content/news/opening-hours/index.json",
+        "code": "-  \"title\": \"Opening hours\",\n+  \"title\": \"New opening hours\",\n   \"slug\": \"opening-hours\",\n\ncommit 3f07610\n    New opening hours\n\n    Published-with: Mica"
+      }
+    ]
+  },
+  "benefits": {
+    "eyebrow": "Why it stays small",
+    "title": "Less between your content and your website.",
+    "items": [
+      {
+        "title": "No database, no CMS at runtime",
+        "text": "Your website builds from files in Git. There is no content database to run, no content API to call, and no CMS service that your pages wait for."
+      },
+      {
+        "title": "Made for Astro",
+        "text": "One TypeScript model gives the editor its forms and Astro its Content Collections, with types and validation. Fields go to JSON, rich text to Markdoc."
+      },
+      {
+        "title": "Your repository, your deploys",
+        "text": "Content has a history that you can read and review. Publish makes a commit, and your build and your hosting stay as they are."
+      },
+      {
+        "title": "Add it to the site you have",
+        "text": "Start a new Astro site with Mica, or add Mica to an existing one. Move the collections that people edit, and keep the others in Astro."
+      }
+    ]
+  },
+  "start": {
+    "eyebrow": "Get started",
+    "title": "Use Mica with the Astro project you have.",
+    "text": "You keep your framework, your repository and your hosting. A coding agent can do the setup for you: it reads the setup guide, asks about your content, and shows you a plan before it changes anything. Or install Mica by hand.",
+    "paths": [
+      {
+        "label": "Add Mica to your existing Astro site",
+        "kind": "prompt",
+        "content": "Read https://micacms.com/setup.md and extend this existing Astro project to work with Mica."
+      },
+      {
+        "label": "Create a new website with Astro and Mica",
+        "kind": "prompt",
+        "content": "Read https://micacms.com/setup.md and create a new website with Astro and Mica in this folder."
+      },
+      {
+        "label": "Install by hand",
+        "kind": "commands",
+        "content": "# 1) Install the Mica packages\nnpm install @micacms/astro @micacms/core\n\n# 2) Describe your content model; see https://micacms.com/docs/content-model/\n\n# 3) Start the local Mica editor\nnpx @micacms/editor start"
+      }
+    ],
+    "link": {
+      "label": "Read the getting started guide",
+      "href": "/docs/getting-started/"
+    }
+  },
   "preview": {
-    "eyebrow": "Live preview",
-    "title": "Click the page. Edit the field.",
-    "lead": "The editor shows your real Astro page beside the form, with the drafts in it. A second after you stop typing, the page shows the change. Click a heading, a paragraph, an image or a date on the page, and the cursor goes to its field.",
+    "eyebrow": "Edit and preview",
+    "title": "Edit content. See the result. Publish when ready.",
+    "lead": "Mica turns the model into forms for text, structured data, rich text and media. The form saves drafts by itself, and the real Astro page beside it shows them a second after you stop typing. Click a heading, a paragraph or an image on the page, and the cursor goes to its field. Publish puts the changes you choose on the website.",
     "image": {
       "path": "/media/live-preview.webp",
       "alt": "The Mica editor with the form of the Services page on the left and the live preview of the page on the right. The page heading has an outline and the label Title, and the changed introduction has a dashed outline."
@@ -27,10 +116,10 @@
         "text": "Changes that are not published yet have an outline of their own"
       },
       {
-        "text": "Menus and settings open in a form over the page's form"
+        "text": "Local: beside astro dev. Self-hosted: with an optional preview container"
       },
       {
-        "text": "In the local editor and in the self-hosted editor"
+        "text": "Forms beside the page, not a page builder"
       }
     ],
     "link": {
@@ -38,220 +127,16 @@
       "href": "/docs/previews/"
     }
   },
-  "how": {
-    "eyebrow": "How it works",
-    "title": "One model. Forms for editors. Files for your build.",
-    "lead": "The content model connects the editor and the website. Git connects everything else.",
-    "steps": [
-      {
-        "title": "Describe your content",
-        "text": "Write the content model in TypeScript, next to your pages. Fields, labels, help texts and rules live in one file.",
-        "visual": "code",
-        "file": "src/mica.ts",
-        "code": "export const site = defineSite({\n  root: \"./content\",\n  collections: {\n    news: collection({\n      label: \"News\",\n      fields: {\n        title: text({ label: \"Title\", required: true }),\n        slug: slug({ from: \"title\" }),\n        image: media({ label: \"Image\", alt: \"required\" }),\n        body: richText({ label: \"Text\" }),\n      },\n    }),\n  },\n});"
-      },
-      {
-        "title": "Editors fill in forms",
-        "text": "Mica turns the model into forms. The form saves by itself, and the page beside it shows each change. Nothing goes on the website until someone publishes.",
-        "visual": "editor",
-        "file": null,
-        "code": null
-      },
-      {
-        "title": "Publish makes one commit",
-        "text": "Publish commits the saved JSON, Markdoc and images to your repository, as one commit. Your build reads the files. The website never calls Mica.",
-        "visual": "change",
-        "file": "content/news/opening-hours/index.json",
-        "code": "-  \"title\": \"Opening hours\",\n+  \"title\": \"New opening hours\",\n   \"slug\": \"opening-hours\",\n\ncommit 3f07610\n    New opening hours\n\n    Published-with: Mica"
-      }
-    ]
-  },
-  "capabilities": {
-    "eyebrow": "What it handles",
-    "title": "Real websites have photos, places and long lists.",
-    "lead": "A site with thousands of photos, a map and a list of peaks works with Mica. The content stays plain files in Git.",
-    "items": [
-      {
-        "title": "Photos by the thousand",
-        "icon": "images",
-        "text": "Keep media in Git LFS, out of your normal history. Editors drop a whole set of photos on a field, and Mica goes on when one upload fails.",
-        "file": ".gitattributes",
-        "code": "content/**/media/** filter=lfs diff=lfs merge=lfs -text",
-        "link": {
-          "label": "Large files with Git LFS",
-          "href": "/docs/git-lfs/"
-        }
-      },
-      {
-        "title": "Places on a map",
-        "icon": "map",
-        "text": "Editors select a place on a map, and Mica saves the zoom with it. Your pages draw the same view with MapLibre and OpenFreeMap, or a style of your own.",
-        "file": "src/mica.ts",
-        "code": "place: coordinates({ label: \"Place\", map: \"liberty\" }),",
-        "link": {
-          "label": "Field reference",
-          "href": "/docs/reference-fields/"
-        }
-      },
-      {
-        "title": "Files, not only images",
-        "icon": "files",
-        "text": "Accept GPX, KML, GeoJSON, ZIP and CSV next to images and PDF. Mica checks each file by its bytes, and your build reads them.",
-        "file": "src/mica.ts",
-        "code": "track: media({ label: \"Track\", accept: [\"gpx\", \"kml\"] }),",
-        "link": {
-          "label": "Recipes",
-          "href": "/docs/recipes/"
-        }
-      },
-      {
-        "title": "Reference data",
-        "icon": "database",
-        "text": "Link an entry to one of thousands of items from a JSON or CSV file that Mica never edits: peaks, regions, product codes.",
-        "file": "src/mica.ts",
-        "code": "summit: relation({ collection: \"places\" }),",
-        "link": {
-          "label": "Reference data",
-          "href": "/docs/reference-data/"
-        }
-      },
-      {
-        "title": "Live preview and links",
-        "icon": "eye",
-        "text": "The editor shows the real page beside the form, with the drafts in it, in the local and in the self-hosted editor. A click on the page opens its field. Each entry can also link to its published page.",
-        "file": "astro.config.mjs",
-        "code": "integrations: [micaPreview()],",
-        "link": {
-          "label": "Preview changes",
-          "href": "/docs/previews/"
-        }
-      },
-      {
-        "title": "Content in its own repository",
-        "icon": "git",
-        "text": "Mount the content as a Git submodule. Mica works in that repository and never commits in the website repository.",
-        "file": "terminal",
-        "code": "git submodule add <url> content",
-        "link": {
-          "label": "Content in its own repository",
-          "href": "/docs/content-in-its-own-repository/"
-        }
-      }
-    ]
-  },
-  "audiences": {
-    "eyebrow": "Two sides, one repository",
-    "title": "Calm for editors. Plain for developers.",
-    "groups": [
-      {
-        "title": "For editors",
-        "text": "Clear forms with the labels and help that your developer wrote. Rich text, photo sets, files, places on a map, and lists that you can reorder. No Git words, no YAML.",
-        "points": [
-          {
-            "text": "The form saves by itself"
-          },
-          {
-            "text": "See each change on the real page before you publish"
-          },
-          {
-            "text": "Click a text on the page to edit its field"
-          },
-          {
-            "text": "Choose what goes on the website"
-          },
-          {
-            "text": "Keep mine or use theirs when two people edit"
-          }
-        ]
-      },
-      {
-        "title": "For developers",
-        "text": "The model is TypeScript. The content is JSON, Markdoc and media in your repository, in Git LFS if you like. Astro reads it at build time, with types.",
-        "points": [
-          {
-            "text": "No database, no content API, no webhook"
-          },
-          {
-            "text": "Types without code generation"
-          },
-          {
-            "text": "A live preview with no change to your templates"
-          },
-          {
-            "text": "mica check and a model check in your CI"
-          },
-          {
-            "text": "One reviewable commit for each publish"
-          }
-        ]
-      }
-    ]
-  },
-  "agents": {
-    "eyebrow": "Agents",
-    "title": "Your agent edits too. It saves drafts, like everybody else.",
-    "lead": "Claude Code, Cursor, VS Code or any other MCP client can read your content model and change your content. It follows the rules of the editor. A person publishes the drafts.",
-    "points": [
-      {
-        "text": "Reads the content model, and Mica checks every value"
-      },
-      {
-        "text": "Saves drafts. Publishing by an agent is off, unless you turn it on"
-      },
-      {
-        "text": "Sends the revision it read, so it never overwrites a newer save"
-      },
-      {
-        "text": "Finds items of reference data, and uploads photos and files"
-      },
-      {
-        "text": "Local: npx mica start serves the tools. Self-hosted: you opt in, and each person allows each agent"
-      }
-    ],
-    "file": ".mcp.json",
-    "code": "{\n  \"mcpServers\": {\n    \"mica\": { \"type\": \"http\", \"url\": \"http://localhost:6422/mcp\" }\n  }\n}",
-    "link": {
-      "label": "Edit with an agent",
-      "href": "/docs/agents/"
-    }
-  },
-  "scale": {
-    "eyebrow": "Tested at size",
-    "title": "A small team, with real numbers.",
-    "lead": "Tests check these numbers. Above them, Mica can work, but nobody measured it yet.",
-    "facts": [
-      {
-        "value": "1,000",
-        "label": "entries in one collection"
-      },
-      {
-        "value": "5,000",
-        "label": "files in the content root"
-      },
-      {
-        "value": "5",
-        "label": "editors at the same time"
-      },
-      {
-        "value": "0",
-        "label": "databases to run"
-      }
-    ],
-    "link": {
-      "label": "Read the scope and the limits",
-      "href": "/docs/scope/"
-    }
-  },
   "run": {
     "eyebrow": "Run it your way",
-    "title": "On your laptop, or on your server.",
-    "lead": "Both edit the same files in the same repository. Start with one, and add the other when you need it.",
+    "title": "On your laptop while you build. On your server for your team.",
+    "lead": "Both edit the same files in the same repository, and the website depends on neither. The choice is who edits, and where the editor runs.",
     "needsTitle": "What you need",
     "options": [
       {
         "title": "Local editor",
         "audience": "For developers",
-        "text": "Runs on your machine, next to astro dev, with the live preview of your drafts. Publish commits and pushes with your own Git credentials.",
+        "text": "Runs on your machine, on your Git checkout, beside astro dev with the live preview. Only your machine can reach it. Publish commits and pushes with your own Git credentials.",
         "command": "npx @micacms/editor start",
         "needs": [
           {
@@ -272,7 +157,7 @@
       {
         "title": "Self-hosted editor",
         "audience": "For your editors",
-        "text": "One container on your server, and a second one for the live preview. Editors sign in through your identity provider, for example Google. Mica keeps its own Git clone, with Git LFS built in.",
+        "text": "A container on your server. Editors sign in through your identity provider, for example Google. Mica keeps its own Git clone on a volume, with Git LFS built in. An optional second container gives the live preview.",
         "command": "ghcr.io/micacms/mica",
         "needs": [
           {
@@ -288,7 +173,7 @@
             "text": "A token that can push to the repository"
           },
           {
-            "text": "For the live preview: a second host name"
+            "text": "For the live preview: the preview container and a second host name"
           }
         ],
         "link": {
@@ -298,10 +183,75 @@
       }
     ]
   },
+  "agents": {
+    "eyebrow": "Agents",
+    "title": "Your agent edits too. It saves drafts, like everybody else.",
+    "lead": "Mica has an MCP server built in. Claude Code, Cursor, VS Code or any other MCP client can read your content model and change your content, with the same checks as the editor. You do not need an agent to use Mica.",
+    "points": [
+      {
+        "text": "Reads the content model, and Mica checks every value"
+      },
+      {
+        "text": "Saves drafts. Publishing by an agent is off, unless you turn it on"
+      },
+      {
+        "text": "Sends the revision it read, so it never overwrites a newer save"
+      },
+      {
+        "text": "Local: the local editor serves the tools. Self-hosted: you opt in, and each person allows each agent"
+      }
+    ],
+    "file": ".mcp.json",
+    "code": "{\n  \"mcpServers\": {\n    \"mica\": { \"type\": \"http\", \"url\": \"http://localhost:6422/mcp\" }\n  }\n}",
+    "link": {
+      "label": "Edit with an agent",
+      "href": "/docs/agents/"
+    }
+  },
+  "capabilities": {
+    "eyebrow": "What it handles",
+    "title": "Enough for real content.",
+    "lead": "Every model has text, rich text, lists, relations and media. When a site grows, these help too.",
+    "items": [
+      {
+        "title": "Photos and files in Git LFS",
+        "icon": "images",
+        "text": "Keep large media out of your normal Git history. Editors drop a whole set of photos on a field, and GPX, KML, PDF or CSV files go in next to them.",
+        "file": ".gitattributes",
+        "code": "content/**/media/** filter=lfs diff=lfs merge=lfs -text",
+        "link": {
+          "label": "Large files with Git LFS",
+          "href": "/docs/git-lfs/"
+        }
+      },
+      {
+        "title": "Places and reference data",
+        "icon": "map",
+        "text": "Editors select a place on a map, and Mica saves the zoom with it. Entries can link to thousands of items of a JSON or CSV file that Mica never edits.",
+        "file": "src/mica.ts",
+        "code": "summit: relation({ collection: \"places\" }),",
+        "link": {
+          "label": "Reference data",
+          "href": "/docs/reference-data/"
+        }
+      },
+      {
+        "title": "Content in its own repository",
+        "icon": "git",
+        "text": "Mount the content as a Git submodule. Mica works in that repository and never commits in the website repository.",
+        "file": "terminal",
+        "code": "git submodule add <url> content",
+        "link": {
+          "label": "Content in its own repository",
+          "href": "/docs/content-in-its-own-repository/"
+        }
+      }
+    ]
+  },
   "fit": {
     "eyebrow": "Is Mica for you?",
     "title": "Small on purpose.",
-    "lead": "Mica is experimental, not ready for production, and does a few things well. Here is what it does not do yet, so that you can choose well.",
+    "lead": "Mica is for content-driven Astro websites whose owners want static builds and Git as the source of truth. It is experimental and not ready for production. Here is what it does not do, so that you can choose well.",
     "goodTitle": "A good fit",
     "notTitle": "Not a good fit today",
     "good": [
@@ -313,9 +263,6 @@
       },
       {
         "text": "Content in Git, as files that people can read"
-      },
-      {
-        "text": "Many photos, tracks or places, kept in Git LFS"
       },
       {
         "text": "A static website with no CMS code in it"
@@ -335,6 +282,21 @@
         "text": "A 1.0 promise: the API and the content format can still change"
       }
     ],
+    "facts": [
+      {
+        "value": "1,000",
+        "label": "entries in one collection"
+      },
+      {
+        "value": "5,000",
+        "label": "files in the content root"
+      },
+      {
+        "value": "5",
+        "label": "editors at the same time"
+      }
+    ],
+    "factsNote": "Tests check these numbers. Above them, Mica can work, but nobody measured it yet.",
     "link": {
       "label": "Read the scope and non-goals",
       "href": "/docs/scope/"
@@ -344,34 +306,16 @@
       "href": "/compare/"
     }
   },
-  "start": {
-    "title": "Start in five minutes.",
-    "text": "Give one prompt to your coding agent. It reads the setup guide, asks you about your content, and shows you a plan before it changes anything. Or install Mica by hand.",
-    "paths": [
-      {
-        "label": "Add Mica to your existing Astro site",
-        "kind": "prompt",
-        "content": "Read https://micacms.com/setup.md and extend this existing Astro project to work with Mica."
-      },
-      {
-        "label": "Create a new website with Astro and Mica",
-        "kind": "prompt",
-        "content": "Read https://micacms.com/setup.md and create a new website with Astro and Mica in this folder."
-      },
-      {
-        "label": "Migrate your website from another CMS",
-        "kind": "soon",
-        "content": "Coming soon."
-      },
-      {
-        "label": "Install manually",
-        "kind": "commands",
-        "content": "# 1) Install the Mica packages\nnpm install @micacms/astro @micacms/core\n\n# 2) Set up your content model; see https://micacms.com/docs/content-model/\n\n# 3) Start the local Mica editor\nnpx @micacms/editor start"
-      }
-    ],
-    "link": {
-      "label": "Read the getting started guide",
+  "cta": {
+    "title": "Add content editing without replacing Astro.",
+    "text": "Try Mica on your laptop, with a new or an existing Astro site. Put the editor on your server when other people need it in their browser.",
+    "primary": {
+      "label": "Get started",
       "href": "/docs/getting-started/"
+    },
+    "secondary": {
+      "label": "Self-hosting",
+      "href": "/docs/self-hosting/"
     }
   }
 }

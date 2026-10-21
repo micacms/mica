@@ -4,49 +4,46 @@
   "title": "Mica vs. Keystatic",
   "website": "https://keystatic.com/",
   "checkedOn": "2026-10-21",
-  "summary": "Keystatic is a polished editor for GitHub-based sites, with an optional cloud for teams. Mica works with any Git host, publishes chosen changes as one commit, and has an MCP server for AI agents.",
+  "summary": "Both are Git-backed, database-free editors with a TypeScript model and an Astro integration. Keystatic saves each edit as a commit on GitHub and offers an optional cloud. Mica uses plain Git with no host API, saves drafts and publishes them as one commit. Keystatic suits teams that live on GitHub.",
   "chooseMica": [
-    {
-      "text": "You want AI agents to edit your content: Mica has an MCP server built in."
-    },
-    {
-      "text": "Your editors should see the real page beside the form, and click a text to edit it. Mica needs no change to your templates."
-    },
-    {
-      "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
-    },
-    {
-      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
-    },
     {
       "text": "Your content is on a Git host other than GitHub."
     },
     {
-      "text": "An editor should publish several changes as one commit, with a summary."
+      "text": "Editors should save drafts, then publish several changes as one commit with a summary."
     },
     {
-      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
+      "text": "Editors should see the real Astro page beside the form, with a click on the page that moves the cursor to the field."
+    },
+    {
+      "text": "You want to run the editor on your own machine or in a container that you run, with no GitHub App."
+    },
+    {
+      "text": "You want AI agents to save drafts through a built-in MCP server."
     }
   ],
   "chooseOther": [
     {
-      "text": "You want a polished editor that is free to use, with saves that know about branches."
+      "text": "Your team already works on GitHub, and you want editors to save on branches."
     },
     {
-      "text": "Your editors should work together in real time. Keystatic Cloud Pro has an experimental multiplayer mode."
+      "text": "Editors should review changes in GitHub pull requests."
     },
     {
       "text": "You want Keystatic Cloud, so that editors need no server that you run."
+    },
+    {
+      "text": "Editors should work together in real time: Keystatic Cloud Pro has an experimental multiplayer mode."
     }
   ],
   "facts": [
     {
       "key": "git",
-      "value": "Yes. GitHub only. Support for GitLab is an open request. Local mode edits files on disk."
+      "value": "Yes. GitHub only; GitLab support is an open request. Local mode edits files on disk."
     },
     {
       "key": "service",
-      "value": "Yes. Local mode, or GitHub mode with your own GitHub App and API routes in your site. That needs a Node or SSR host. Keystatic Cloud is optional."
+      "value": "Hosted service available: Keystatic Cloud, optional. Self-hosting possible: local mode, or GitHub mode with your own GitHub App and API routes on a Node or SSR host."
     },
     {
       "key": "database",
@@ -54,7 +51,7 @@
     },
     {
       "key": "licence",
-      "value": "MIT. Keystatic Cloud is free up to 3 users. Pro costs from $10 a month plus $5 for each extra user."
+      "value": "MIT. Keystatic Cloud is free up to 3 users; Pro costs from $10 a month plus $5 for each extra user."
     },
     {
       "key": "model",
@@ -62,7 +59,7 @@
     },
     {
       "key": "astro",
-      "value": "Official @keystatic/astro. It needs React, Markdoc and an SSR adapter. Content comes through Content Collections or the Reader API."
+      "value": "Yes. Official @keystatic/astro. It needs React, Markdoc and an SSR adapter. Content comes through Content Collections or the Reader API."
     },
     {
       "key": "signin",
@@ -70,35 +67,35 @@
     },
     {
       "key": "publish",
-      "value": "Each save is one commit to the current branch. Editors can create branches. A protected branch leads to a new branch. No batch publish."
+      "value": "Each save is one commit to the current branch. Editors can create branches. A protected branch leads to a new branch. No batch publish is documented."
     },
     {
       "key": "preview",
-      "value": "No preview pane. A previewUrl link opens a Next.js draft-mode page after a save to a branch. The documented recipe is for the Next.js App Router, and needs GitHub mode or Keystatic Cloud. No click to edit; issues #1071 and #1447 are open."
+      "value": "No preview pane. A previewUrl link opens a Next.js draft-mode page after a save to a branch; the documented recipe is for the Next.js App Router. Issues #1071 and #1447 are open."
     },
     {
       "key": "lfs",
-      "value": "Not supported (Git LFS keeps large files out of the normal history). Pull request #1514 is open."
+      "value": "Not supported. Pull request #1514 is open."
     },
     {
       "key": "submodule",
       "value": "Not documented."
     },
     {
-      "key": "map",
-      "value": "No map field."
-    },
-    {
       "key": "refdata",
       "value": "Not documented. The relationship field links to entries by slug."
     },
     {
+      "key": "map",
+      "value": "No map field is documented."
+    },
+    {
       "key": "i18n",
-      "value": "No translation of content. Issues #1553 and #1080 are open."
+      "value": "Not documented as a feature. Issues #1553 and #1080 are open."
     },
     {
       "key": "roles",
-      "value": "No roles. GitHub permissions apply. Review goes through GitHub pull requests."
+      "value": "No roles of its own. GitHub permissions apply. Review goes through GitHub pull requests."
     },
     {
       "key": "agents",
@@ -133,10 +130,6 @@
     {
       "label": "Keystatic issue 1553: content translation",
       "href": "https://github.com/Thinkmill/keystatic/issues/1553"
-    },
-    {
-      "label": "Keystatic issue 1466: GitHub rate limits",
-      "href": "https://github.com/Thinkmill/keystatic/issues/1466"
     },
     {
       "label": "Keystatic issue 1071: preview",

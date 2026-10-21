@@ -4,39 +4,27 @@
   "title": "Mica vs. Sveltia CMS",
   "website": "https://sveltiacms.app/",
   "checkedOn": "2026-10-21",
-  "summary": "Sveltia CMS is a fast, Decap-compatible editor with first-class languages, many media providers and a preview pane. Mica keeps large files out of the Git history on GitHub too, supports submodules, and has an MCP server for AI agents.",
+  "summary": "Both are database-free, Git-backed editors with a preview. Sveltia CMS is a static, Decap-compatible app with first-class languages and many media providers. Mica is for Astro, with a preview of the real page. Sveltia suits multilingual sites and a static app with no server of your own.",
   "chooseMica": [
     {
-      "text": "You want AI agents to edit your content: Mica has an MCP server built in. Sveltia CMS has no MCP server."
+      "text": "You build with Astro and want an official package, with your content as typed Content Collections."
     },
     {
-      "text": "Your editors should see the real page beside the form, and click a text to edit it. Mica needs no change to your templates."
+      "text": "You want the preview to be the real Astro page, with no preview template to write."
     },
     {
-      "text": "You have many large photos or files on GitHub, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
+      "text": "You want sign-in through your OpenID Connect provider, in a container you run."
     },
     {
-      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
+      "text": "You keep large files in Git LFS on GitHub, or your content in a Git submodule."
     },
     {
-      "text": "You keep your content in a Git submodule, apart from the code of your website."
-    },
-    {
-      "text": "You expect thousands of entries and files. Sveltia names small to medium-sized projects as its target."
-    },
-    {
-      "text": "You want sign-in through your OpenID Connect provider."
-    },
-    {
-      "text": "An editor should publish several changes as one commit, with a summary."
-    },
-    {
-      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
+      "text": "You want AI agents to save drafts through an MCP server that is built into Mica."
     }
   ],
   "chooseOther": [
     {
-      "text": "Your content has several languages, and you want machine translation."
+      "text": "Your content has several languages, and you want machine translation with your own API key."
     },
     {
       "text": "You want media in S3, Cloudinary or another provider, not in Git."
@@ -45,20 +33,20 @@
       "text": "You want a two-pane live preview with scroll sync, from React templates of your own."
     },
     {
-      "text": "You want an address search on the map."
+      "text": "You want an address search on the map field."
     },
     {
-      "text": "Your Git host is GitLab or Gitea, and you want an editor with no server to run."
+      "text": "Your Git host is GitLab or Gitea, and you want a static app with no server to run."
     }
   ],
   "facts": [
     {
       "key": "git",
-      "value": "Yes. GitHub, GitLab, Gitea, Forgejo and Codeberg. No Bitbucket or Azure. Local mode uses the File System Access API of the browser (Chromium only)."
+      "value": "Yes. GitHub, GitLab, Gitea, Forgejo and Codeberg. Bitbucket and Azure are not documented. Local mode uses the File System Access API of the browser (Chromium only)."
     },
     {
       "key": "service",
-      "value": "Yes. It is a static app. GitHub OAuth needs a server. GitLab and Gitea use PKCE without a server. Personal access tokens also work."
+      "value": "Self-hosting: a static app. GitHub OAuth needs a server. GitLab and Gitea use PKCE without a server. Personal access tokens also work. A hosted service is not documented."
     },
     {
       "key": "database",
@@ -66,7 +54,7 @@
     },
     {
       "key": "licence",
-      "value": "MIT. No paid offering."
+      "value": "MIT. No paid offering documented."
     },
     {
       "key": "model",
@@ -86,11 +74,11 @@
     },
     {
       "key": "preview",
-      "value": "A two-pane live preview with scroll sync, from custom React templates in a sandboxed iframe. Deploy previews of unpublished entries through CI. The roadmap lists an out-of-the-box live site preview as a non-goal."
+      "value": "A two-pane live preview with scroll sync, from custom React templates in a sandboxed iframe. Deploy previews of unpublished entries through CI. On 21 October 2026 the roadmap lists an out-of-the-box live site preview as a non-goal."
     },
     {
       "key": "lfs",
-      "value": "On GitLab and on Gitea/Forgejo (large files stay outside the normal history). Not on GitHub."
+      "value": "Documented on GitLab and on Gitea/Forgejo (large files stay outside the normal history). Not documented on GitHub."
     },
     {
       "key": "submodule",
@@ -106,15 +94,15 @@
     },
     {
       "key": "i18n",
-      "value": "First-class, with machine translation through your own API key."
+      "value": "Yes, first-class, with machine translation through your own API key."
     },
     {
       "key": "roles",
-      "value": "None yet. An add-on is planned. Review goes through the editorial workflow."
+      "value": "None documented. An add-on is planned on the roadmap (21 October 2026). Review goes through the editorial workflow."
     },
     {
       "key": "agents",
-      "value": "No MCP server. It has an Agent Skill, llms.txt and AI translation."
+      "value": "MCP server: not documented as of 21 October 2026. It has an Agent Skill, llms.txt and AI translation."
     }
   ],
   "sources": [
