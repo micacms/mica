@@ -715,6 +715,68 @@
             }
           }
         },
+        "preview": {
+          "kind": "object",
+          "label": "Live preview",
+          "required": true,
+          "fields": {
+            "eyebrow": {
+              "kind": "text",
+              "label": "Eyebrow",
+              "required": true
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "lead": {
+              "kind": "textarea",
+              "label": "Lead",
+              "required": true,
+              "rows": 3
+            },
+            "image": {
+              "kind": "media",
+              "label": "Screenshot",
+              "accept": "image",
+              "alt": "required",
+              "required": true
+            },
+            "points": {
+              "kind": "repeater",
+              "label": "Points",
+              "itemLabel": "text",
+              "max": 4,
+              "fields": {
+                "text": {
+                  "kind": "text",
+                  "label": "Point",
+                  "required": true
+                }
+              }
+            },
+            "link": {
+              "kind": "object",
+              "label": "Link",
+              "required": true,
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Label",
+                  "required": true,
+                  "width": "half"
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "width": "half"
+                }
+              }
+            }
+          }
+        },
         "how": {
           "kind": "object",
           "label": "How it works",

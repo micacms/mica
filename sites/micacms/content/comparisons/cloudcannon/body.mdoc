@@ -1,6 +1,6 @@
 ### Where CloudCannon is better
 
-- **Visual editing.** CloudCannon has visual on-page editing, also for Astro. Mica has forms only.
+- **Editing on the page.** CloudCannon has a Visual Editor: editors change text and images inline on the page, and components re-render in the browser as they edit. It works with Astro. In Mica, a click on the page opens its field, but the form does the editing, and Mica has no editing on the page itself.
 - **A hosted service with support.** CloudCannon runs the service for you. Mica has no hosted offering yet. A Mica Cloud is planned.
 - **Roles and review.** CloudCannon has permission groups, and custom groups on Team and Enterprise. Editors can publish a branch with a pull request for approval, and the Team plan has deploy previews of pull requests. Mica has no roles.
 - **Sign-in.** CloudCannon offers MFA on Team and SAML SSO on Enterprise.
@@ -9,6 +9,7 @@
 
 ### Where Mica is better
 
+- **Preview without changes to the templates.** For Astro, CloudCannon needs `data-editable` attributes or the `@cloudcannon/editable-regions` integration in the site. Mica needs one integration, `micaPreview()`, and reads the templates with Astro's own parser. It shows the real Astro page beside the form, with the drafts in it, in the local and the self-hosted editor.
 - **Agents.** Mica has an MCP server, built into the free editor. It runs locally (stdio and HTTP) and in the self-hosted Mica, where each person signs in and allows each agent. An agent reads the content model, and Mica checks every value it sends. Every save carries the revision the agent read, so an agent never overwrites a newer save. Agents save drafts and publish only when allowed. CloudCannon offers agent skills for coding agents, a CLI and an API, but no MCP server.
 - **External data.** Your entries can link to data that lives elsewhere: product data, place names, regions or codes. Mica has typed relations to thousands of items from a JSON or CSV file of your website, and never edits them. CloudCannon is close here: select inputs can take values from data files. It has no typed relation field.
 - **Price and licence.** Mica is MIT licensed and free. CloudCannon is proprietary, has no free tier, and starts at $55 a month.

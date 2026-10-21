@@ -1,7 +1,7 @@
 {
   "eyebrow": "Compare",
   "title": "Mica next to other Git-based editors.",
-  "lead": "Six other products also keep content in Git. This page puts them next to Mica, point by point, and says where each one is the better choice. Mica is also ready for AI agents: an MCP server is built in. Each product has its own page with the details and the sources.",
+  "lead": "Six other products also keep content in Git. This page puts them next to Mica, point by point, and says where each one is the better choice. Mica shows a live preview of the real Astro page beside the form, and it is ready for AI agents: an MCP server is built in. Each product has its own page with the details and the sources.",
   "statusNote": null,
   "checkedLabel": "Checked on",
   "changeNote": "These products change often. Read their documentation before you decide.",
@@ -58,7 +58,7 @@
     {
       "key": "preview",
       "label": "Preview and visual editing",
-      "mica": "Live preview in the local editor and in the self-hosted Mica, with click to edit. No full visual editing."
+      "mica": "Live preview of the real Astro page beside the form, in the local and the self-hosted editor. A click on the page opens its field. No change to the templates. No editing on the page itself."
     },
     {
       "key": "lfs",

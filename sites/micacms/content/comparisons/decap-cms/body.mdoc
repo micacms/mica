@@ -2,13 +2,14 @@
 
 - **Languages.** Decap CMS supports content in several languages, with three file structures. Mica has no language setting, only two documented patterns.
 - **Git hosts.** Decap CMS works with GitHub, GitLab, Bitbucket, Gitea, Forgejo and Azure. Mica works with any Git host over HTTPS, but only a few are tested: GitHub, GitLab-style and Forgejo hosts.
-- **Preview for every editor.** Decap CMS shows a preview pane while editors write. Mica has a live preview in the local editor and in the self-hosted Mica. The self-hosted Mica needs a preview container of the website.
+- **Preview as you type.** Decap CMS updates its preview pane as editors type, from a React template that you register. Mica updates its preview about one to two seconds after the editor stops typing, and the self-hosted Mica needs a second container for it.
 - **Editorial workflow.** Decap CMS can open one branch and one pull request for each entry. Mica has no such step.
 - **Community and age.** Decap CMS has a large community and many years of use in production. It had releases in September and October 2026.
 - **A static app.** Decap CMS is a static app under /admin. With GitLab or Gitea PKCE it needs no server of your own. Decap Turbo is a hosted service. Mica has no hosted offering yet. A Mica Cloud is planned.
 
 ### Where Mica is better
 
+- **The real page in the preview.** Decap CMS shows a React template, not the real site, and its deploy preview links need the editorial workflow and a CI build per save. Mica shows the real Astro page beside the form, with the drafts in it, in the local and the self-hosted editor. A click on a text opens its field, and fields with unpublished changes get an outline. The templates need no change except one integration, `micaPreview()`.
 - **Agents.** Mica has an MCP server, built into the free editor. It runs locally (stdio and HTTP) and in the self-hosted Mica, where each person signs in and allows each agent. An agent reads the content model, and Mica checks every value it sends. Every save carries the revision the agent read, so an agent never overwrites a newer save. Agents save drafts and publish only when allowed. Decap CMS has an experimental MCP server and editor bridge in @decap/cli, and they work only with the paid Decap Turbo.
 - **Many large files.** Many large photos and files make a Git repository heavy and slow to clone. Mica keeps them in Git LFS, so the history stays small, in the local and the self-hosted editor. Decap CMS does not support Git LFS on GitHub (issue #1206 is open) or on Gitea. GitLab media works since version 3.14.0.
 - **External data.** Your entries can link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them. The Decap CMS documentation does not describe this.

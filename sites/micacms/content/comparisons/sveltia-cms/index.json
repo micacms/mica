@@ -3,11 +3,14 @@
   "slug": "sveltia-cms",
   "title": "Mica vs. Sveltia CMS",
   "website": "https://sveltiacms.app/",
-  "checkedOn": "2026-10-18",
+  "checkedOn": "2026-10-21",
   "summary": "Sveltia CMS is a fast, Decap-compatible editor with first-class languages, many media providers and a preview pane. Mica keeps large files out of the Git history on GitHub too, supports submodules, and has an MCP server for AI agents.",
   "chooseMica": [
     {
       "text": "You want AI agents to edit your content: Mica has an MCP server built in. Sveltia CMS has no MCP server."
+    },
+    {
+      "text": "Your editors should see the real page beside the form, and click a text to edit it. Mica needs no change to your templates."
     },
     {
       "text": "You have many large photos or files on GitHub, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
@@ -39,7 +42,7 @@
       "text": "You want media in S3, Cloudinary or another provider, not in Git."
     },
     {
-      "text": "Every editor should see a preview pane while they write."
+      "text": "You want a two-pane live preview with scroll sync, from React templates of your own."
     },
     {
       "text": "You want an address search on the map."
@@ -83,7 +86,7 @@
     },
     {
       "key": "preview",
-      "value": "An instant preview pane, custom templates and deploy-preview links. Visual editing is a non-goal."
+      "value": "A two-pane live preview with scroll sync, from custom React templates in a sandboxed iframe. Deploy previews of unpublished entries through CI. The roadmap lists an out-of-the-box live site preview as a non-goal."
     },
     {
       "key": "lfs",
@@ -142,6 +145,18 @@
     {
       "label": "sveltiacms.app: introduction",
       "href": "https://sveltiacms.app/en/docs/intro"
+    },
+    {
+      "label": "sveltiacms.app: features",
+      "href": "https://sveltiacms.app/en/docs/features"
+    },
+    {
+      "label": "sveltiacms.app: deploy previews",
+      "href": "https://sveltiacms.app/en/docs/workflows/deploy-previews"
+    },
+    {
+      "label": "sveltiacms.app: roadmap",
+      "href": "https://sveltiacms.app/en/docs/roadmap"
     },
     {
       "label": "sveltiacms.app: working with AI",

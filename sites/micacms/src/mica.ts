@@ -5,6 +5,7 @@ import {
   date,
   defineSite,
   email,
+  media,
   number,
   object,
   relation,
@@ -254,6 +255,18 @@ export const site = defineSite({
             lead: richText({ label: "Lead", required: true, toolbar: ["bold", "italic", "link"] }),
             primary: object({ label: "Main action", required: true, fields: linkFields }),
             secondary: object({ label: "Second action", required: true, fields: linkFields }),
+          },
+        }),
+        preview: object({
+          label: "Live preview",
+          required: true,
+          fields: {
+            eyebrow: text({ label: "Eyebrow", required: true }),
+            title: text({ label: "Title", required: true }),
+            lead: textarea({ label: "Lead", required: true, rows: 3 }),
+            image: media({ label: "Screenshot", accept: "image", alt: "required", required: true }),
+            points: repeater({ label: "Points", itemLabel: "text", max: 4, fields: { text: text({ label: "Point", required: true }) } }),
+            link: object({ label: "Link", required: true, fields: linkFields }),
           },
         }),
         how: object({

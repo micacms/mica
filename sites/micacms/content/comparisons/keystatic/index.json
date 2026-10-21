@@ -3,11 +3,14 @@
   "slug": "keystatic",
   "title": "Mica vs. Keystatic",
   "website": "https://keystatic.com/",
-  "checkedOn": "2026-10-18",
+  "checkedOn": "2026-10-21",
   "summary": "Keystatic is a polished editor for GitHub-based sites, with an optional cloud for teams. Mica works with any Git host, publishes chosen changes as one commit, and has an MCP server for AI agents.",
   "chooseMica": [
     {
       "text": "You want AI agents to edit your content: Mica has an MCP server built in."
+    },
+    {
+      "text": "Your editors should see the real page beside the form, and click a text to edit it. Mica needs no change to your templates."
     },
     {
       "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
@@ -71,7 +74,7 @@
     },
     {
       "key": "preview",
-      "value": "Branch draft preview through previewUrl. The documented recipe is for Next.js only. No visual editing."
+      "value": "No preview pane. A previewUrl link opens a Next.js draft-mode page after a save to a branch. The documented recipe is for the Next.js App Router, and needs GitHub mode or Keystatic Cloud. No click to edit; issues #1071 and #1447 are open."
     },
     {
       "key": "lfs",
@@ -120,6 +123,10 @@
       "href": "https://keystatic.com/docs/fields/relationship"
     },
     {
+      "label": "keystatic.com: real-time previews",
+      "href": "https://keystatic.com/docs/recipes/real-time-previews"
+    },
+    {
       "label": "Keystatic issue 1514: Git LFS",
       "href": "https://github.com/Thinkmill/keystatic/issues/1514"
     },
@@ -130,6 +137,14 @@
     {
       "label": "Keystatic issue 1466: GitHub rate limits",
       "href": "https://github.com/Thinkmill/keystatic/issues/1466"
+    },
+    {
+      "label": "Keystatic issue 1071: preview",
+      "href": "https://github.com/Thinkmill/keystatic/issues/1071"
+    },
+    {
+      "label": "Keystatic issue 1447: preview",
+      "href": "https://github.com/Thinkmill/keystatic/issues/1447"
     }
   ]
 }

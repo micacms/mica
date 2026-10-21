@@ -3,11 +3,14 @@
   "slug": "tinacms",
   "title": "Mica vs. TinaCMS",
   "website": "https://tina.io/",
-  "checkedOn": "2026-10-18",
+  "checkedOn": "2026-10-21",
   "summary": "TinaCMS offers visual click-to-edit, a hosted service and an editorial workflow with pull requests. It keeps an index of your content in a database. Mica has none, and it has an MCP server for AI agents.",
   "chooseMica": [
     {
       "text": "You want AI agents to edit your content: Mica has an MCP server built in. TinaCMS lists one as Coming Soon."
+    },
+    {
+      "text": "You use Astro and want click to edit on the real page without code in each template. Mica needs one integration, `micaPreview()`, and no change to the templates."
     },
     {
       "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
@@ -36,7 +39,7 @@
   ],
   "chooseOther": [
     {
-      "text": "Editors should click on the page and edit it there. TinaCMS does this, also in Astro."
+      "text": "Editors should see the page change as they type, in real time in React, and click on the page to edit it. TinaCMS does this, also in Astro."
     },
     {
       "text": "You want a hosted service (TinaCloud) with plans and support."
@@ -86,7 +89,7 @@
     },
     {
       "key": "preview",
-      "value": "Yes. Visual click-to-edit, also in Astro."
+      "value": "Yes. The site and the editor side by side, in real time in React (useTina). A click on an element opens its form. On Astro, the site needs the tina() integration, requestWithMetadata() loaders, an island registry and route, TinaIsland and tinaField() in components, and SSR or islands. Each page is wired by hand."
     },
     {
       "key": "lfs",
@@ -133,6 +136,14 @@
     {
       "label": "tina.io: Astro",
       "href": "https://tina.io/docs/frameworks/astro"
+    },
+    {
+      "label": "tina.io: contextual editing",
+      "href": "https://tina.io/docs/contextual-editing/overview"
+    },
+    {
+      "label": "tina.io: self-hosted overview",
+      "href": "https://tina.io/docs/self-hosted/overview"
     },
     {
       "label": "tina.io: FAQ",

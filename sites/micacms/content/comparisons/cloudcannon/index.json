@@ -3,11 +3,14 @@
   "slug": "cloudcannon",
   "title": "Mica vs. CloudCannon",
   "website": "https://cloudcannon.com/",
-  "checkedOn": "2026-10-18",
+  "checkedOn": "2026-10-21",
   "summary": "CloudCannon is a hosted service with visual on-page editing, roles, deploy previews and support. Mica is free, runs on your own machine or server, and has an MCP server for AI agents.",
   "chooseMica": [
     {
       "text": "You want AI agents to edit your content: Mica has an MCP server built in. CloudCannon has agent skills, a CLI and an API, but no MCP server."
+    },
+    {
+      "text": "Your editors should see the real page beside the form, and click a text to edit it, without `data-editable` attributes in your templates. Mica needs one integration, `micaPreview()`."
     },
     {
       "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica has typed relations to thousands of items from a JSON or CSV file of your website, and never edits them. CloudCannon feeds select inputs from data files, but has no typed relation field."
@@ -24,7 +27,7 @@
   ],
   "chooseOther": [
     {
-      "text": "Editors should edit on the page itself, with visual editing."
+      "text": "Editors should edit on the page itself: inline editing of text and images, and components that re-render in the browser as they edit."
     },
     {
       "text": "You want a hosted service with support."
@@ -80,7 +83,7 @@
     },
     {
       "key": "preview",
-      "value": "Yes. Visual on-page editing. It needs a build on CloudCannon. Pull request deploy previews on Team and up."
+      "value": "Yes. A Visual Editor with inline editing of text and images on the page, and in-browser re-rendering of components as you edit. The site needs data-editable attributes or the @cloudcannon/editable-regions integration for Astro. Hosted and paid. Pull request deploy previews on Team and up."
     },
     {
       "key": "lfs",
@@ -127,6 +130,10 @@
     {
       "label": "cloudcannon.com: visual editing",
       "href": "https://cloudcannon.com/documentation/articles/what-is-visual-editing/"
+    },
+    {
+      "label": "cloudcannon.com: set up visual editing",
+      "href": "https://cloudcannon.com/documentation/developer-guides/set-up-visual-editing/"
     },
     {
       "label": "cloudcannon.com: permission groups",

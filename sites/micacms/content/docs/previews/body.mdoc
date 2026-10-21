@@ -31,6 +31,8 @@ A change of a template shows in the preview after Mica's next sync of the branch
 
 Add `micaPreview()` from `@micacms/astro/preview` to `astro.config`, and start the dev server with `MICA_PREVIEW=1 astro dev`. Then the preview marks the fields of the page:
 
+![The form of the Services page beside its live preview. The heading of the page has an outline and the label Title. The introduction, which has a change that is not published, has a dashed yellow outline.](/media/live-preview.webp)
+
 - In **Edit** mode, a click on a text opens its field. A text of another entry with a page opens that entry. A text without a page of its own, such as the navigation, opens its form over the current one. Alt-click follows a link.
 - When you point at a field, it gets an outline, the rest of the page dims, and a label names the field.
 - Some parts of a page show more than one field, such as a map with the place of an event and the word "Map" from the labels. A click opens the field of the entry that you edit. The other fields are buttons in the label. A link also offers its address there.
@@ -41,6 +43,8 @@ Add `micaPreview()` from `@micacms/astro/preview` to `astro.config`, and start t
 - In **Browse** mode, the page acts as the website does. Back in Edit mode, the form of the page that the preview shows opens.
 - A field with changes that are not published has a yellow outline. In a rich text, each changed or new paragraph, heading, list or table has it. When the change has no such part, for example when you only deleted a paragraph, the whole text has it.
 - When you click in a field of the form, the preview scrolls to it, and the rest of the page dims. For a field that links to other entries, it shows the linked entry.
+
+![A click on the company name in the page header: the form of the General settings opens over the form of the page, with "Back to page Services" at the top. In the preview, the name has an outline and the label Company name.](/media/live-preview-overlay.webp)
 
 Texts, rich text and images with alt text carry invisible marks. Dates, numbers, options, tags, maps and other values do not: the preview finds them in the templates of the website instead, and gives each one to the entry around it. The templates do not change for this. See [@micacms/astro](/docs/reference-astro/) for the setup.
 

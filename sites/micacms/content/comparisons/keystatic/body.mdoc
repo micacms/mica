@@ -7,6 +7,7 @@
 
 ### Where Mica is better
 
+- **Live preview.** Keystatic has no preview pane. A `previewUrl` link opens a Next.js draft-mode page after a save to a branch, and the documented recipe is for the Next.js App Router. Mica shows the real Astro page beside the form, with the drafts in it, about one to two seconds after the editor stops typing. A click on a text opens its field, and fields with unpublished changes get an outline. It works in the local and the self-hosted editor, and the templates need no change except one integration, `micaPreview()`.
 - **Agents.** Mica has an MCP server, built into the free editor. It runs locally (stdio and HTTP) and in the self-hosted Mica, where each person signs in and allows each agent. An agent reads the content model, and Mica checks every value it sends. Every save carries the revision the agent read, so an agent never overwrites a newer save. Agents save drafts and publish only when allowed. The Keystatic documentation does not mention MCP or agent support.
 - **Many large files.** Many large photos and files make a Git repository heavy and slow to clone. Mica keeps them in Git LFS, so the history stays small, in the local and the self-hosted editor. Keystatic does not support Git LFS (pull request #1514 is open).
 - **External data.** Your entries can link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them. The Keystatic documentation does not describe this.

@@ -3,11 +3,14 @@
   "slug": "pages-cms",
   "title": "Mica vs. Pages CMS",
   "website": "https://pagescms.org/",
-  "checkedOn": "2026-10-18",
+  "checkedOn": "2026-10-21",
   "summary": "Pages CMS is a free editor for GitHub repositories, with a hosted app that needs no install and email invites for people without GitHub. Mica works with any Git host, needs no database, and has an MCP server for AI agents.",
   "chooseMica": [
     {
       "text": "You want AI agents to edit your content: Mica has an MCP server built in. The Pages CMS documentation mentions no MCP or agent support."
+    },
+    {
+      "text": "Your editors should see the real page beside the form, and click a text to edit it. Mica needs no change to your templates."
     },
     {
       "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
@@ -74,7 +77,7 @@
     },
     {
       "key": "preview",
-      "value": "None. A work-in-progress branch exists."
+      "value": "No preview. Issue #190 is open, and pull request #336, live previews, is a work in progress."
     },
     {
       "key": "lfs",
@@ -129,6 +132,14 @@
     {
       "label": "Pages CMS issue 407: Git LFS",
       "href": "https://github.com/pages-cms/pages-cms/issues/407"
+    },
+    {
+      "label": "Pages CMS issue 190: preview",
+      "href": "https://github.com/hunvreus/pagescms/issues/190"
+    },
+    {
+      "label": "Pages CMS pull request 336: live previews",
+      "href": "https://github.com/hunvreus/pagescms/pull/336"
     }
   ]
 }

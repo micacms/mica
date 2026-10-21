@@ -11,6 +11,33 @@
       "href": "#how-it-works"
     }
   },
+  "preview": {
+    "eyebrow": "Live preview",
+    "title": "Click the page. Edit the field.",
+    "lead": "The editor shows your real Astro page beside the form, with the drafts in it. A second after you stop typing, the page shows the change. Click a heading, a paragraph, an image or a date on the page, and the cursor goes to its field.",
+    "image": {
+      "path": "/media/live-preview.webp",
+      "alt": "The Mica editor with the form of the Services page on the left and the live preview of the page on the right. The page heading has an outline and the label Title, and the changed introduction has a dashed outline."
+    },
+    "points": [
+      {
+        "text": "Your templates stay as they are: one line in astro.config"
+      },
+      {
+        "text": "Changes that are not published yet have an outline of their own"
+      },
+      {
+        "text": "Menus and settings open in a form over the page's form"
+      },
+      {
+        "text": "In the local editor and in the self-hosted editor"
+      }
+    ],
+    "link": {
+      "label": "See how the preview works",
+      "href": "/docs/previews/"
+    }
+  },
   "how": {
     "eyebrow": "How it works",
     "title": "One model. Forms for editors. Files for your build.",
@@ -25,7 +52,7 @@
       },
       {
         "title": "Editors fill in forms",
-        "text": "Mica turns the model into forms. Editors save as often as they like. Nothing goes on the website until someone publishes.",
+        "text": "Mica turns the model into forms. The form saves by itself, and the page beside it shows each change. Nothing goes on the website until someone publishes.",
         "visual": "editor",
         "file": null,
         "code": null
@@ -89,11 +116,11 @@
         }
       },
       {
-        "title": "Preview and links",
+        "title": "Live preview and links",
         "icon": "eye",
-        "text": "With astro dev beside the local editor, an entry shows Preview: the page with your saved changes, before Publish. The self-hosted editor shows it too, from a preview container of your website. Each entry can also link to its page on the website.",
-        "file": "src/mica.ts",
-        "code": "news: collection({ label: \"News\", url: \"/news/{slug}\", fields })",
+        "text": "The editor shows the real page beside the form, with the drafts in it, in the local and in the self-hosted editor. A click on the page opens its field. Each entry can also link to its published page.",
+        "file": "astro.config.mjs",
+        "code": "integrations: [micaPreview()],",
         "link": {
           "label": "Preview changes",
           "href": "/docs/previews/"
@@ -121,10 +148,13 @@
         "text": "Clear forms with the labels and help that your developer wrote. Rich text, photo sets, files, places on a map, and lists that you can reorder. No Git words, no YAML.",
         "points": [
           {
-            "text": "Save as often as you like"
+            "text": "The form saves by itself"
           },
           {
-            "text": "See each change before you publish"
+            "text": "See each change on the real page before you publish"
+          },
+          {
+            "text": "Click a text on the page to edit its field"
           },
           {
             "text": "Choose what goes on the website"
@@ -143,6 +173,9 @@
           },
           {
             "text": "Types without code generation"
+          },
+          {
+            "text": "A live preview with no change to your templates"
           },
           {
             "text": "mica check and a model check in your CI"
@@ -218,7 +251,7 @@
       {
         "title": "Local editor",
         "audience": "For developers",
-        "text": "Runs on your machine, next to astro dev, with a Preview of your saved changes. Publish commits and pushes with your own Git credentials.",
+        "text": "Runs on your machine, next to astro dev, with the live preview of your drafts. Publish commits and pushes with your own Git credentials.",
         "command": "npx @micacms/editor start",
         "needs": [
           {
@@ -239,7 +272,7 @@
       {
         "title": "Self-hosted editor",
         "audience": "For your editors",
-        "text": "One container on your server. Editors sign in through your identity provider, for example Google. Mica keeps its own Git clone, with Git LFS built in.",
+        "text": "One container on your server, and a second one for the live preview. Editors sign in through your identity provider, for example Google. Mica keeps its own Git clone, with Git LFS built in.",
         "command": "ghcr.io/micacms/mica",
         "needs": [
           {
@@ -253,6 +286,9 @@
           },
           {
             "text": "A token that can push to the repository"
+          },
+          {
+            "text": "For the live preview: a second host name"
           }
         ],
         "link": {
@@ -290,7 +326,7 @@
         "text": "Roles or approval steps inside the editor"
       },
       {
-        "text": "A page builder, or editing on the page"
+        "text": "A page builder, or typing text directly into the page"
       },
       {
         "text": "Many websites from one editor"

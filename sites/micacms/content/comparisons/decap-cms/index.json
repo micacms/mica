@@ -3,11 +3,14 @@
   "slug": "decap-cms",
   "title": "Mica vs. Decap CMS",
   "website": "https://decapcms.org/",
-  "checkedOn": "2026-10-18",
+  "checkedOn": "2026-10-21",
   "summary": "Decap CMS is a long-running editor with the widest choice of Git hosts, languages and a preview pane for every editor. Mica keeps large files out of the Git history, supports submodules, makes no API request for each file, and has an MCP server for AI agents.",
   "chooseMica": [
     {
       "text": "You want AI agents to edit your content: Mica has an MCP server built in, in the free editor. The MCP server of Decap CMS is experimental and works with the paid Decap Turbo only."
+    },
+    {
+      "text": "Your editors should see the real page beside the form, and click a text to edit it. Mica needs no change to your templates."
     },
     {
       "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS, also on GitHub and Gitea."
@@ -39,7 +42,7 @@
       "text": "Your Git host is Bitbucket or Azure DevOps."
     },
     {
-      "text": "Every editor should see a preview pane while they write."
+      "text": "You want a preview pane with a React template of your own, updated as editors type."
     },
     {
       "text": "You want an editorial workflow with a pull request for each entry."
@@ -83,7 +86,7 @@
     },
     {
       "key": "preview",
-      "value": "A preview pane with React templates for every editor. Opt-in click-to-edit in the preview."
+      "value": "A preview pane from a React template (registerPreviewTemplate), not the real site, updated as you type. Deploy preview links need the editorial workflow and a CI build per save. No click to edit on the page."
     },
     {
       "key": "lfs",
@@ -134,6 +137,14 @@
     {
       "label": "decapcms.org: editorial workflow",
       "href": "https://decapcms.org/docs/editorial-workflows/"
+    },
+    {
+      "label": "decapcms.org: customization",
+      "href": "https://decapcms.org/docs/customization/"
+    },
+    {
+      "label": "decapcms.org: deploy preview links",
+      "href": "https://decapcms.org/docs/deploy-preview-links/"
     },
     {
       "label": "decapcms.org: map widget",
