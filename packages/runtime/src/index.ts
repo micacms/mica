@@ -27,7 +27,7 @@ export {
   type RuntimeConfig,
   type RuntimeEnv,
 } from "./config.js";
-export { startServer, type StartServerOptions } from "./server.js";
+export { createAppServer, startServer, type BesideTheApp, type StartServerOptions } from "./server.js";
 export { AGENT_SCOPES, clientIp, type AgentGrant, type Env } from "./http.js";
 export {
   loadSchema,

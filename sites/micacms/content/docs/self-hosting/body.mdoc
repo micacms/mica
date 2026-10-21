@@ -240,7 +240,9 @@ Editors commit more frequently than developers. To keep expensive CI jobs away f
 
 The live preview shows the drafts of the editors on the real templates of the website. It is optional. You run one more container, the preview, and give it a name of its own. Mica does not start, stop or build the preview. For what the editor shows, see [Preview changes](/docs/previews/).
 
-The preview container runs the dev server of the website: `MICA_PREVIEW=1 astro dev`. It reads the content root from Mica's data volume, read-only. It gets none of Mica's secrets, and Mica's image does not change. A gate in the Mica process answers on the preview's name and forwards the requests to the dev server.
+The preview container runs the dev server of the website: `MICA_PREVIEW=1 astro dev`. It reads the content root from Mica's data volume, read-only. It gets none of Mica's secrets, and Mica's image does not change. A gate in the Mica process answers the requests for the preview's name, on Mica's own port, and forwards them to the dev server.
+
+To set it up, you do four things: build the preview image, add the `preview` service and `MICA_PREVIEW_UPSTREAM`, make a DNS record for the preview's name, and add that name to the reverse proxy.
 
 The website needs `micaPreview()` in `astro.config`: see [Preview changes](/docs/previews/).
 
@@ -267,7 +269,7 @@ The dev server must listen on an address that the Mica container reaches. This i
 
 ### Add the container
 
-Add the service `preview` beside `mica` in `compose.yml`, and the variables to `mica`:
+Add the service `preview` beside `mica` in `compose.yml`, and the variable `MICA_PREVIEW_UPSTREAM` to `mica`:
 
 ```yaml
 services:
@@ -275,11 +277,7 @@ services:
     # ... as before
     environment:
       MICA_DATA_DIR: /data
-      MICA_PREVIEW_URL: https://preview.cms.example.com
       MICA_PREVIEW_UPSTREAM: http://preview:4321
-    ports:
-      - "127.0.0.1:6422:6422"
-      - "127.0.0.1:6423:6423"
 
   preview:
     image: registry.example.com/acme/website-preview:1
@@ -294,21 +292,22 @@ services:
 - After Mica clones again, for example after a change of `MICA_REPOSITORY_BRANCH`, restart the preview container.
 - `MICA_PREVIEW_EDITOR` is the value of `MICA_PUBLIC_URL`. The page script of the preview answers only that editor.
 - Do not publish a port of `preview`. Only Mica's gate talks to it.
-- `MICA_PREVIEW_URL` is the origin of the preview. It must have another host name than `MICA_PUBLIC_URL`, on the same site, for example `preview.cms.example.com` beside `cms.example.com`. Mica refuses the same host name, also on another port, because a browser sends the cookies of the editor to every port of its host. The origin has no path. Set it with `MICA_PREVIEW_UPSTREAM`, or set neither.
-- For a trial on one computer, use `http://cms.localhost:6422` for the editor and `http://preview.cms.localhost:6423` for the preview. Browsers send every `*.localhost` name to the computer itself, and plain HTTP is allowed for them.
-- The gate listens on `MICA_PREVIEW_PORT`. The default is `6423`. It must differ from `PORT`.
+- `MICA_PREVIEW_UPSTREAM` turns the preview on. You can set it in `.env` instead of `compose.yml`.
+- The address of the preview is the address in `MICA_PUBLIC_URL` with `preview.` in front of the host name: `https://preview.cms.example.com` for `https://cms.example.com`. Set `MICA_PREVIEW_URL` only for another name on the same site. It must have another host name than `MICA_PUBLIC_URL`, and it has no path. A name set there needs `https://`, except a name under `localhost` for a trial on this machine. Mica refuses the same host name, because a browser sends the cookies of the editor to every port of its host. `MICA_PREVIEW_URL` without `MICA_PREVIEW_UPSTREAM` is an error.
+- With the preview on, `MICA_PUBLIC_URL` must have a host name, not `localhost`, an IP address or a name of one label, such as `cms`. Mica refuses these, because a name beside them is on another site.
+- For a trial on one computer, set `MICA_PUBLIC_URL=http://cms.localhost:6422`. The preview is then `http://preview.cms.localhost:6422`. Browsers send every `*.localhost` name to the computer itself, and plain HTTP is allowed for them.
 
 ### Give the preview a name
 
-Make a DNS name for the preview, such as `preview.cms.example.com`, and put TLS in front of it. The reverse proxy sends the name to port 6423 of Mica. It must pass WebSockets, because the reload of the dev server uses one. Caddy does this by default:
+Make a DNS record for the preview's name, such as `preview.cms.example.com`, or one wildcard record. Put the name in the reverse proxy, with TLS. The certificate must cover both names. The proxy sends the preview's name to the same port as the editor's name, 6422. It must pass WebSockets, because the reload of the dev server uses one, and the `Host` header of the browser. Caddy does this by default:
 
 ```text
-preview.cms.example.com {
-    reverse_proxy 127.0.0.1:6423
+cms.example.com, preview.cms.example.com {
+    reverse_proxy 127.0.0.1:6422
 }
 ```
 
-In nginx, set `proxy_http_version 1.1` and the headers `Upgrade` and `Connection`.
+In nginx, put both names in `server_name`, and set `proxy_set_header Host $host;`, `proxy_http_version 1.1`, and the headers `Upgrade` and `Connection`.
 
 Then run `docker compose up -d`, open an entry in the editor, and check that the page shows beside the form.
 

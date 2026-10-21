@@ -1,7 +1,7 @@
 {
   "changes": [
     {
-      "comment": "The self-hosted image can show the live preview: the website's astro dev runs in a container of its own on the drafts, and Mica's gate lets only the signed-in editors in, on an origin of its own (MICA_PREVIEW_URL, MICA_PREVIEW_UPSTREAM, MICA_PREVIEW_PORT).",
+      "comment": "The self-hosted image can show the live preview: the website's astro dev runs in a container of its own on the drafts, and Mica lets only the signed-in editors in, on the name preview.<the editor's name> on Mica's own port. MICA_PREVIEW_UPSTREAM turns it on; MICA_PREVIEW_URL sets another name.",
       "type": "minor",
       "packageName": "@micacms/runtime"
     }

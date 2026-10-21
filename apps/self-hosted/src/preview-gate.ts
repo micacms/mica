@@ -1,8 +1,8 @@
 /**
- * The live preview of the self-hosted Mica (ADR 38): a gate on an origin of its
- * own in front of the website's `MICA_PREVIEW=1 astro dev`, which runs in
- * another container on the clone's content. The website's scripts run on that
- * origin, so they never get the editor's cookies or its API.
+ * The live preview of the self-hosted Mica (ADR 38): a gate on a host name of
+ * its own, on Mica's port, in front of the website's `MICA_PREVIEW=1 astro dev`,
+ * which runs in another container on the clone's content. The website's
+ * scripts run on that origin, so they never get the editor's cookies or its API.
  *
  * The editor's browser comes in with a short token from `/api/admin/preview`,
  * which it posts to `/__mica/session`; the gate answers with a cookie of its own
@@ -12,11 +12,11 @@
  */
 
 import { createHmac, timingSafeEqual } from "node:crypto";
-import { createServer, request as httpRequest, type IncomingMessage, type ServerResponse } from "node:http";
-import { connect, type AddressInfo } from "node:net";
+import { request as httpRequest, type IncomingMessage, type ServerResponse } from "node:http";
+import { connect } from "node:net";
 import { pipeline, type Duplex } from "node:stream";
 
-import type { Logger } from "@micacms/runtime";
+import type { BesideTheApp, Logger } from "@micacms/runtime";
 
 const SESSION_PATH = "/__mica/session";
 const HANDOVER_MS = 60_000;
@@ -36,11 +36,10 @@ export interface PreviewGateOptions {
   logger: Logger;
 }
 
-export interface PreviewGate {
+/** The requests for the preview's host name, beside the editor's app on the same port. */
+export interface PreviewGate extends BesideTheApp {
   /** A token for the person of an editor's request, valid for one minute. */
   handover(person: string): string;
-  /** Listens, and gives the port: the one asked for, or a free one for 0. */
-  listen(host: string, port: number): Promise<number>;
   close(): void;
 }
 
@@ -52,6 +51,7 @@ interface Pass {
 export function createPreviewGate(options: PreviewGateOptions): PreviewGate {
   const key = createHmac("sha256", options.secret).update("mica preview gate v1").digest();
   const upstream = new URL(options.upstream);
+  const previewHost = hostName(new URL(options.previewOrigin).hostname);
   const port = Number(upstream.port || 80);
   // Vite answers only `localhost` and addresses, against DNS rebinding. Only the gate reaches the dev server.
   const host = `localhost:${port}`;
@@ -129,7 +129,7 @@ export function createPreviewGate(options: PreviewGateOptions): PreviewGate {
     pipeline(request, outgoing, () => {});
   };
 
-  const server = createServer((request, response) => {
+  const handle = (request: IncomingMessage, response: ServerResponse) => {
     // A request target that Node takes but a URL parser refuses must not stop Mica: no parse here, and each error stays with its request.
     try {
       if ((request.url ?? "").split("?")[0] === SESSION_PATH) session(request, response);
@@ -139,14 +139,17 @@ export function createPreviewGate(options: PreviewGateOptions): PreviewGate {
       if (!response.headersSent) end(response, 400, "Bad request.");
       else response.destroy();
     }
-  });
+  };
 
   const upgraded = new Set<Duplex>();
   // Vite's reload comes over a WebSocket: from the preview's own pages, with the cookie, until the cookie expires.
-  server.on("upgrade", (request: IncomingMessage, socket: Duplex, head: Buffer) => {
+  const upgrade = (request: IncomingMessage, socket: Duplex, head: Buffer) => {
+    // Node takes its own error handler off an upgraded socket: a reset must not stop Mica.
+    socket.on("error", () => socket.destroy());
     const pass = passOf(request);
     if (!pass || request.headers.origin !== options.previewOrigin) {
-      socket.end("HTTP/1.1 401 Unauthorized\r\nconnection: close\r\n\r\n");
+      socket.once("finish", () => socket.destroy());
+      socket.end("HTTP/1.1 401 Unauthorized\r\nconnection: close\r\ncontent-length: 0\r\n\r\n");
       return;
     }
     upgraded.add(socket);
@@ -168,25 +171,29 @@ export function createPreviewGate(options: PreviewGateOptions): PreviewGate {
       upgraded.delete(socket);
       target.destroy();
     });
-  });
+  };
 
   return {
     handover: (person) => sign("handover", person, HANDOVER_MS),
-    listen: (address, listenPort) =>
-      new Promise((resolve, reject) => {
-        server.once("error", reject);
-        server.listen(listenPort, address, () => {
-          const bound = (server.address() as AddressInfo).port;
-          options.logger.info("Preview gate listening", { listening: `${address}:${bound}`, url: options.previewOrigin });
-          resolve(bound);
-        });
-      }),
+    handles: (request) => hostnameOf(request) === previewHost,
+    request: handle,
+    upgrade,
     close() {
-      server.close();
-      server.closeAllConnections();
       for (const socket of upgraded) socket.destroy();
     },
   };
+}
+
+/** The host name that a request names, without its port. A proxy in front must pass the browser's Host. */
+function hostnameOf(request: IncomingMessage): string {
+  const host = (request.headers.host ?? "").toLowerCase();
+  return hostName(host.startsWith("[") ? host.slice(0, host.indexOf("]") + 1) : host.split(":")[0]!);
+}
+
+/** A host name as the gate compares it: lower case, without a final dot. */
+export function hostName(name: string): string {
+  const lower = name.toLowerCase();
+  return lower.endsWith(".") ? lower.slice(0, -1) : lower;
 }
 
 function cookies(request: IncomingMessage): Map<string, string> {

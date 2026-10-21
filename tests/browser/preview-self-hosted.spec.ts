@@ -7,7 +7,7 @@
 import { expect, test } from "@playwright/test";
 
 const EDITOR = "http://cms.localhost:6422";
-const PREVIEW = "http://preview.cms.localhost:6423";
+const PREVIEW = "http://preview.cms.localhost:6422";
 
 test.skip(!process.env["MICA_PREVIEW_STACK"], "Runs on the stack of tests/preview.");
 

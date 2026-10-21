@@ -7,9 +7,10 @@ on top of the [OIDC test stack](../oidc/README.md):
   this repository with [`Dockerfile`](Dockerfile). It mounts Mica's volume
   read-only, waits for the clone, and links the clone's `content/` in place of
   the site's own, as the self-hosting guide tells a user to do.
-- Mica answers at `http://cms.localhost:6422`. Its gate answers at
-  `http://preview.cms.localhost:6423` and forwards to `http://preview:4321`.
-  Browsers send every `*.localhost` name to this computer.
+- Mica answers at `http://cms.localhost:6422`. Its gate answers on the same
+  port for `http://preview.cms.localhost:6422`, the derived name, and forwards
+  to `http://preview:4321`. Browsers send every `*.localhost` name to this
+  computer.
 
 [`preview-self-hosted.spec.ts`](../browser/preview-self-hosted.spec.ts) signs
 in, checks that the gate refuses a browser without its cookie, clicks a text in

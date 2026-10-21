@@ -8,7 +8,7 @@ import { describe, it } from "node:test";
 
 import { ConfigError, runtimeEnv } from "@micacms/runtime";
 
-import { currentToken, KNOWN, loadConfig } from "../src/config.js";
+import { currentToken, KNOWN, loadConfig, previewOrigin } from "../src/config.js";
 
 /** A valid environment; tests subtract from it. */
 const base: NodeJS.ProcessEnv = {
@@ -58,32 +58,36 @@ describe("public URL", () => {
 });
 
 describe("live preview", () => {
-  const preview = { ...base, MICA_PREVIEW_URL: "https://preview.cms.example.com", MICA_PREVIEW_UPSTREAM: "http://preview:4321" };
+  const preview = { ...base, MICA_PREVIEW_UPSTREAM: "http://preview:4321" };
 
-  it("takes an origin of its own and the dev server in the network, on a port of its own", () => {
-    const config = loadConfig(preview);
-    assert.equal(config.MICA_PREVIEW_URL, "https://preview.cms.example.com");
-    assert.equal(config.MICA_PREVIEW_PORT, 6423);
+  it("takes the dev server in the network, and gives the preview the editor's name with preview. in front", () => {
+    assert.equal(previewOrigin(loadConfig(preview)), "https://preview.cms.example.com");
+    assert.equal(previewOrigin(loadConfig({ ...preview, MICA_PUBLIC_URL: "http://cms.localhost:6422" })), "http://preview.cms.localhost:6422");
+    assert.equal(previewOrigin(loadConfig(base)), null);
   });
 
-  it("takes plain HTTP on this machine for a trial, with two names under localhost", () => {
-    const trial = loadConfig({ ...preview, MICA_PUBLIC_URL: "http://cms.localhost:6422", MICA_PREVIEW_URL: "http://preview.cms.localhost:6423" });
-    assert.equal(trial.MICA_PREVIEW_URL, "http://preview.cms.localhost:6423");
+  it("takes another name of the same site", () => {
+    assert.equal(previewOrigin(loadConfig({ ...preview, MICA_PREVIEW_URL: "https://drafts.example.com" })), "https://drafts.example.com");
   });
 
-  it("needs both addresses, or neither", () => {
-    refuses({ ...base, MICA_PREVIEW_URL: "https://preview.cms.example.com" }, /go together/);
-    refuses({ ...base, MICA_PREVIEW_UPSTREAM: "http://preview:4321" }, /go together/);
+  it("needs the dev server for a name", () => {
+    refuses({ ...base, MICA_PREVIEW_URL: "https://preview.cms.example.com" }, /needs MICA_PREVIEW_UPSTREAM/);
   });
 
-  it("refuses the editor's host, also on another port, a path, plain HTTP to another machine, and the editor's port", () => {
-    refuses({ ...preview, MICA_PREVIEW_URL: "https://cms.example.com" }, /another host name than MICA_PUBLIC_URL/);
+  it("refuses the editor's host, also on another port, a path, plain HTTP to another machine, and a dev server over https", () => {
     refuses({ ...preview, MICA_PREVIEW_URL: "https://cms.example.com:8443" }, /another host name than MICA_PUBLIC_URL/);
-    refuses({ ...preview, MICA_PUBLIC_URL: "http://localhost:6422", MICA_PREVIEW_URL: "http://localhost:6423" }, /another host name/);
     refuses({ ...preview, MICA_PREVIEW_URL: "https://preview.cms.example.com/site" }, /origin with no path/);
     refuses({ ...preview, MICA_PREVIEW_URL: "http://preview.cms.example.com" }, /needs https/);
     refuses({ ...preview, MICA_PREVIEW_UPSTREAM: "https://preview:4321" }, /http:\/\/ address of the dev server/);
-    refuses({ ...preview, MICA_PREVIEW_PORT: "6422" }, /port of its own/);
+  });
+
+  it("refuses localhost, a name of one label and an address for the editor: a name beside them is on another site", () => {
+    for (const url of ["http://localhost:6422", "http://localhost.:6422", "https://cms", "http://127.0.0.1:6422"]) refuses({ ...preview, MICA_PUBLIC_URL: url }, /cms\.localhost/);
+  });
+
+  it("takes a final dot as the same name", () => {
+    assert.equal(previewOrigin(loadConfig({ ...preview, MICA_PUBLIC_URL: "https://cms.example.com." })), "https://preview.cms.example.com");
+    refuses({ ...preview, MICA_PUBLIC_URL: "https://cms.example.com.", MICA_PREVIEW_URL: "https://cms.example.com" }, /another host name/);
   });
 });
 

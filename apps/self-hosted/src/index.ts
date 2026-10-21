@@ -37,7 +37,7 @@ import { runCompact } from "./compact.js";
 import { operationalInfo } from "./operational.js";
 import { createPreviewGate } from "./preview-gate.js";
 import { readiness } from "./readiness.js";
-import { currentToken, loadConfig, type SelfHostedConfig } from "./config.js";
+import { currentToken, loadConfig, previewOrigin, type SelfHostedConfig } from "./config.js";
 import { cloneLayout, CloneRefusal, openClone } from "./workspace/clone.js";
 import { coarseGroups, contentGroups, revalidator } from "./workspace/content-groups.js";
 import { redact } from "./workspace/credentials.js";
@@ -134,6 +134,18 @@ async function serve(): Promise<void> {
   }
 
   const dispatcher = createDispatcher();
+  // The preview's host name goes to its gate from the start, never to the editor's app (ADR 38).
+  const preview = previewOrigin(config);
+  const gate =
+    preview && config.MICA_PREVIEW_UPSTREAM
+      ? createPreviewGate({
+          editorOrigin: new URL(config.MICA_PUBLIC_URL).origin,
+          previewOrigin: preview,
+          upstream: config.MICA_PREVIEW_UPSTREAM,
+          secret: config.sessionSecret,
+          logger,
+        })
+      : null;
   let ctx: RuntimeContext | null = null;
   let managed: ManagedWorkspace | null = null;
   let locks: WorkspaceLocks | null = null;
@@ -141,6 +153,7 @@ async function serve(): Promise<void> {
 
   startServer({
     app: dispatcher.app,
+    ...(gate ? { beside: gate } : {}),
     host: config.HOST,
     port: config.PORT,
     logger,
@@ -243,17 +256,6 @@ async function serve(): Promise<void> {
 
   const auth = createOidcAuth({ config, logger });
   const workspace = managed;
-  const previewOrigin = config.MICA_PREVIEW_URL ? new URL(config.MICA_PREVIEW_URL).origin : null;
-  const gate =
-    previewOrigin && config.MICA_PREVIEW_UPSTREAM
-      ? createPreviewGate({
-          editorOrigin: new URL(config.MICA_PUBLIC_URL).origin,
-          previewOrigin,
-          upstream: config.MICA_PREVIEW_UPSTREAM,
-          secret: config.sessionSecret,
-          logger,
-        })
-      : null;
 
   ctx = createRuntimeContext({
     config,
@@ -273,10 +275,10 @@ async function serve(): Promise<void> {
 
     health: { ready: () => readiness(workspace.state()) },
 
-    ...(gate && previewOrigin
+    ...(gate && preview
       ? {
-          preview: async () => previewOrigin,
-          previewFrames: [previewOrigin],
+          preview: async () => preview,
+          previewFrames: [preview],
           previewHandover: (c) => gate.handover(sessionOf(c).identity.subject),
         }
       : {}),
@@ -295,7 +297,6 @@ async function serve(): Promise<void> {
     }),
   );
   workspace.start();
-  gate?.listen(config.HOST, config.MICA_PREVIEW_PORT).catch((error: Error) => logger.error("The preview's gate cannot listen", { port: config.MICA_PREVIEW_PORT, error: error.message }));
   void checkWrite(workspace, logger, clean);
 
   logger.info("Mica CMS started", {
@@ -305,6 +306,7 @@ async function serve(): Promise<void> {
     // until somebody signs in.
     admission: auth.admission.summary,
     mcp: config.MICA_MCP ? `on${config.MICA_MCP_PUBLISH ? ", with publish" : ""}` : "off",
+    preview: preview ?? "off",
     repository: remote.url,
     branch,
     root,

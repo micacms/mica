@@ -5,17 +5,12 @@
 #   docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml up -d --build --wait
 
 services:
-  dex:
-    ports:
-      - "127.0.0.1:6423:6423"
-
   mica:
     volumes:
       - mica-data:/data
     environment:
-      # Two names under localhost, on one site: the browser sends the editor's cookies to neither the other name nor the website.
+      # A name under localhost: the preview is preview.cms.localhost, on the same site and port, and the browser sends the editor's cookies to neither it nor the website.
       MICA_PUBLIC_URL: http://cms.localhost:6422
-      MICA_PREVIEW_URL: http://preview.cms.localhost:6423
       MICA_PREVIEW_UPSTREAM: http://preview:4321
 
   preview:

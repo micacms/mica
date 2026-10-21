@@ -49,11 +49,12 @@ At the start, the image logs a warning for each `MICA_` name that it does not kn
 
 ## Self-hosted image: live preview
 
-These variables turn on the live preview. Set `MICA_PREVIEW_URL` and `MICA_PREVIEW_UPSTREAM` together, or set neither. See [Add the live preview](/docs/self-hosting/) in the self-hosting guide.
+`MICA_PREVIEW_UPSTREAM` turns the live preview on. See [Add the live preview](/docs/self-hosting/) in the self-hosting guide.
 
-- `MICA_PREVIEW_URL`: the public origin of the preview, such as `https://preview.cms.example.com`. It must have another host name than `MICA_PUBLIC_URL`, on the same site, for example a subdomain of the same domain. Mica refuses the same host name, also on another port. It has no path. It needs `https://`, except for a trial on this machine: `http://preview.cms.localhost:6423` beside `http://cms.localhost:6422`.
 - `MICA_PREVIEW_UPSTREAM`: the `http://` address of the dev server in the container network, such as `http://preview:4321`.
-- `MICA_PREVIEW_PORT`: the port of the preview's gate in the Mica container. Default: `6423`. It must differ from `PORT`.
+- `MICA_PREVIEW_URL`: the public origin of the preview. It is optional. Default: the address in `MICA_PUBLIC_URL` with `preview.` in front of the host name, such as `https://preview.cms.example.com` for `https://cms.example.com`. Set it only for another name on the same site. It must have another host name than `MICA_PUBLIC_URL`, and it has no path. A name set there needs `https://`, except a name under `localhost` for a trial on this machine. `MICA_PREVIEW_URL` without `MICA_PREVIEW_UPSTREAM` is an error.
+
+Mica answers the requests for the preview's host name on its own port, `PORT`. With the preview on, `MICA_PUBLIC_URL` must have a host name, not `localhost`, an IP address or a name of one label, such as `cms`. Mica refuses these, because a name beside them is on another site. For a trial on this machine: `MICA_PUBLIC_URL=http://cms.localhost:6422`. The preview is then `http://preview.cms.localhost:6422`.
 
 The preview container sets `MICA_PREVIEW_EDITOR` to the value of `MICA_PUBLIC_URL`. Mica does not read that variable.
 
