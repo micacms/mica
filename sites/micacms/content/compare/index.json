@@ -44,7 +44,7 @@
     {
       "key": "git",
       "label": "Content in Git, and which hosts",
-      "mica": "Yes. Plain Git, no host API. Tested: github.com, gitlab.com, Forgejo. The self-hosted editor pushes over HTTPS."
+      "mica": "Yes. Plain Git, no host API. Tested in CI: Forgejo. In use with github.com and gitlab.com. The self-hosted editor pushes over HTTPS."
     },
     {
       "key": "service",

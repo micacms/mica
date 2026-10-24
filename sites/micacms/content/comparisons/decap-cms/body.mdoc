@@ -12,7 +12,7 @@ Choose Decap for a custom pane that updates as you type. Choose Mica when you wa
 
 ### Git hosts and tested hosts
 
-Decap CMS works with GitHub, GitLab, Bitbucket, Gitea, Forgejo and Azure through their APIs. Mica uses plain Git and no host API. The self-hosted Mica pushes over HTTPS. Mica tests github.com and gitlab.com every week and Forgejo in CI. Bitbucket, Gitea, GitHub Enterprise Server and self-managed GitLab are expected to work, but are not tested. Test your host before you rely on it.
+Decap CMS works with GitHub, GitLab, Bitbucket, Gitea, Forgejo and Azure through their APIs. Mica uses plain Git and no host API. The self-hosted Mica pushes over HTTPS. Mica is tested with Forgejo in CI. It is in use with github.com and gitlab.com, which are not tested automatically yet. Bitbucket, Gitea, GitHub Enterprise Server and self-managed GitLab are expected to work, but are not tested. Test your host before you rely on it.
 
 The documentation of Decap CMS says that, without Decap Turbo, each file is one request to the host API. Mica reads a Git clone. It is tested with 1,000 entries in a collection, 5,000 files and 5 editors at the same time. These are tested bounds, not proof that Mica is faster. Git LFS and a content submodule also work in Mica; the table shows what Decap CMS documents.
 
