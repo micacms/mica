@@ -3,7 +3,8 @@
 ## Content (Mica)
 
 - The content model is `src/mica.ts`. The content is JSON and Markdoc in
-  `content/`; editors change it with `npm run mica`.
+  `content/`; editors change it with `npm run mica`. It also starts the dev
+  server, so the editor shows the page next to the form.
 - After a change to `src/mica.ts`, run `npx astro sync` and `npm run check`,
   and commit `content/.mica/schema.json` with the change.
 - Renaming or removing a field or a collection does not move the stored

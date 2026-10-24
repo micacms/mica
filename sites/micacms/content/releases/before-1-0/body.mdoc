@@ -1,4 +1,4 @@
-Mica is experimental and not ready for production. The API and the content format can still change before 1.0. This is what Mica does today, at 0.12.
+Mica is experimental and not ready for production. The API and the content format can still change before 1.0. This is what Mica does today, at 0.13.
 
 ## The model and the website
 
@@ -7,11 +7,11 @@ Mica is experimental and not ready for production. The API and the content forma
 
 ## Editing
 
-- The local editor runs with `npx mica start`. It has no sign-in and listens only on your machine.
+- The local editor runs with `npx mica start`. It has no sign-in and listens only on your machine. `npx mica start --preview` also starts the website's `astro dev`.
 - The self-hosted editor is one Docker container with OpenID Connect sign-in. Editors who are not developers use it. With Google, a domain rule admits only accounts of your Workspace domain.
-- A save is a draft. Publish makes one Git commit of the changes that the editor chooses.
+- The editor saves by itself. A save is a draft. Publish makes one Git commit of the changes that the editor chooses.
+- The live preview shows the real page of the website beside the form, with the drafts in it. A click on a text, an image, a date or an option in the page opens its field. The self-hosted editor shows it with the optional preview container `ghcr.io/micacms/preview`.
 - Coding agents can edit the content over MCP, and they follow the same rules as the editor. An agent needs your consent, and the consent page waits one second before it accepts Allow.
-- An entry links to its page on the website. With `astro dev`, the local editor also shows a preview.
 
 ## Content in Git
 
@@ -23,7 +23,7 @@ Mica is experimental and not ready for production. The API and the content forma
 ## Checked and clear
 
 - A broken entry file does not hide its collection. Mica names the file it cannot read. A full disk or a server failure gives a clear message with a reference that is also in the log.
-- The tests run on Windows, macOS and Node.js 26, on the packed packages in a new Astro project, and on the local editor in a browser.
+- The tests run on Windows, macOS and Node.js 26, on the packed packages in a new Astro project, on the local editor in a browser, and on the self-hosted live preview in a browser.
 
 ## The details of each release
 

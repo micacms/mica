@@ -191,7 +191,7 @@ export default defineConfig({
 
 **Why can I not rename a media file?** An entry finds a file by its path, so a rename changes each entry that uses it. Upload the file again and change the entries. You can delete a file when no entry uses it.
 
-**Can I see a page before I publish it?** Yes. With the local editor, run `astro dev` beside it. A self-hosted Mica shows the same preview from a preview container of the website. See [Preview changes](/docs/previews/).
+**Can I see a page before I publish it?** Yes. Start the local editor with `npx mica start --preview`: it also starts `astro dev`, and the editor shows the page beside the form. A self-hosted Mica shows the same preview from a preview container of the website. See [Preview changes](/docs/previews/).
 
 **Can the site hold thousands of photos?** Yes. Keep them in Git LFS. See [Large files with Git LFS](/docs/git-lfs/).
 

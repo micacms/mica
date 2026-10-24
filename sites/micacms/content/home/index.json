@@ -95,7 +95,7 @@
         "label": "Install by hand",
         "kind": "commands",
         "instruction": "Run these commands in a terminal, in your Astro project.",
-        "content": "# 1) Install the Mica packages\nnpm install @micacms/astro @micacms/core\n\n# 2) Describe your content model; see https://micacms.com/docs/content-model/\n\n# 3) Start the local Mica editor\nnpx @micacms/editor start"
+        "content": "# 1) Install the Mica packages\nnpm install @micacms/astro @micacms/core\n\n# 2) Describe your content model; see https://micacms.com/docs/content-model/\n\n# 3) Start the local Mica editor, with the live preview\nnpx @micacms/editor start --preview"
       }
     ],
     "link": {
@@ -140,7 +140,7 @@
         "title": "Local editor",
         "audience": "For developers",
         "text": "Runs on your machine, on your Git checkout, beside astro dev with the live preview. Only your machine can reach it. Publish commits and pushes with your own Git credentials.",
-        "command": "npx @micacms/editor start",
+        "command": "npx @micacms/editor start --preview",
         "needs": [
           {
             "text": "Node.js 24 and an Astro 7 project"
