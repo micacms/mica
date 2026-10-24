@@ -12,15 +12,15 @@ npm install
 git init && git add -A && git commit -m "Start from the Mica starter"
 ```
 
-Then, in two terminals:
+Then start the editor. It also starts the website's dev server, for the live
+preview:
 
 ```bash
-npm run dev    # the website, at http://localhost:4321
-npm run mica   # the editor, at http://localhost:6422
+npm run mica   # the editor, at http://localhost:6422, and the website, at http://localhost:4321
 ```
 
-Change the post in the editor and save: the website shows it at once. Publish
-commits the change and pushes it. Before the first Publish, create an empty
+Change the post in the editor: it saves by itself, and the page beside the form
+shows the change. Publish commits the change and pushes it. Before the first Publish, create an empty
 repository on your Git host and push the starter's commit once:
 
 ```bash
@@ -41,7 +41,7 @@ git push -u origin main
 
 ## Next
 
-- Add a field in `src/mica.ts`, run `npm run dev` once, and the editor shows it.
+- Add a field in `src/mica.ts`, run `npx astro sync`, and the editor shows it.
 - `npm run check` runs `mica check` and `astro check` together.
 - A coding agent can edit the content: `.mcp.json` adds Mica to it, and `AGENTS.md`
   says how to work. The agent saves drafts; you publish them in the editor:

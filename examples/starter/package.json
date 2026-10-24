@@ -7,7 +7,7 @@
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "mica": "mica start",
+    "mica": "mica start --preview",
     "check": "mica check && astro check"
   },
   "dependencies": {

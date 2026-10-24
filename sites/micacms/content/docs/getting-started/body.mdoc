@@ -11,11 +11,10 @@ npm create astro@latest -- --template micacms/mica/examples/starter
 cd <your-project>
 npm install
 git init && git add -A && git commit -m "Start from the Mica starter"
-npm run dev     # the website
-npm run mica    # the editor, in a second terminal
+npm run mica    # the editor, and the website's dev server for the live preview
 ```
 
-Change the post in the editor. Mica saves it by itself, and the website shows it at once. Publish commits the change and pushes it. Before the first Publish, create an empty repository on your Git host and push the starter's commit once:
+Change the post in the editor. Mica saves it by itself, and the page beside the form shows the change at once. Publish commits the change and pushes it. Before the first Publish, create an empty repository on your Git host and push the starter's commit once:
 
 ```bash
 git remote add origin <url>
@@ -108,10 +107,10 @@ To keep your own Astro collections beside the Mica collections, see [Content mod
 ## 4. Start Mica
 
 ```bash
-npx @micacms/editor start
+npx @micacms/editor start --preview
 ```
 
-The command reads `./content`, prints the address, and opens your browser on `http://localhost:6422/admin/`. To use a different content root, give its path: `npx @micacms/editor start ./site/content`. To keep the browser closed, add `--no-open`. Port 6422 is Mica's own, so `astro dev` can run at the same time. [Command line](/docs/reference-cli/) lists every flag.
+The command reads `./content`, prints the address, and opens your browser on `http://localhost:6422/admin/`. With `--preview`, it also starts the project's `astro dev`, and stops it when the editor stops. To use a different content root, give its path: `npx @micacms/editor start ./site/content`. To keep the browser closed, add `--no-open`. Port 6422 is Mica's own, so `astro dev` can run at the same time. [Command line](/docs/reference-cli/) lists every flag.
 
 You should see the editor in your browser, with your collections in the menu. It opens directly. There is no sign-in, no account, no user, and no database. It listens on the local computer only, and it answers only to the names of this computer.
 
@@ -124,7 +123,7 @@ npm install --save-dev @micacms/editor
 ```json
 {
   "scripts": {
-    "mica": "mica start",
+    "mica": "mica start --preview",
     "check": "mica check && astro check"
   }
 }
@@ -134,7 +133,7 @@ npm install --save-dev @micacms/editor
 
 With the editor installed, `npx mica init` writes a starter `src/mica.ts` and `src/content.config.ts` and never overwrites a file. `npx mica check` checks every entry against the model and exits with an error code when it finds a problem. Run it in CI, or after a change to the content files. [Recipes](/docs/recipes/) has the CI steps.
 
-While `astro dev` runs, the editor shows the page beside the form, with the saved changes, before Publish. See [Preview changes](/docs/previews/).
+While `astro dev` runs, the editor shows the page beside the form, with the saved changes, before Publish. Add `micaPreview()` to `astro.config`, and a click on a text in the page opens its field. See [Preview changes](/docs/previews/).
 
 ## 5. Render the content
 
