@@ -124,15 +124,19 @@ import { micaPreview } from "@micacms/astro/preview";
 export default defineConfig({ integrations: [micaPreview()] });
 ```
 
-Start the dev server with `MICA_PREVIEW=1 astro dev`. Only then does the integration do something. A build and a plain `astro dev` do not change. The command sets the variable in a POSIX shell only. For a package script that also runs on Windows, use `cross-env`:
+Start the dev server with `MICA_PREVIEW=1 astro dev`. Only then does the integration mark the page. A build and a plain `astro dev` do not change. `mica start --preview` starts the dev server like this beside the local editor, on every system:
 
 ```json
 {
   "scripts": {
-    "dev:preview": "cross-env MICA_PREVIEW=1 astro dev"
+    "mica": "mica start --preview"
   }
 }
 ```
+
+`MICA_PREVIEW=1 astro dev` sets the variable in a POSIX shell only. For a package script of the dev server alone that also runs on Windows, use `cross-env MICA_PREVIEW=1 astro dev`.
+
+In each `astro dev`, also without `MICA_PREVIEW`, the integration tells the local editor the port that the dev server listens on. So the editor finds the dev server also when Astro takes another port, because the port of the config is busy.
 
 - The loaders append invisible characters to the values of text, textarea and rich-text fields, and to the alt text of images. Values that look like an address or a phone number get none, because a template puts them in a link. In the preview, a template that compares a text value or makes an address from it can act differently.
 - A value that the page shows formatted, such as a date, a number, an option, a map or an image without alt text, cannot carry the characters. The dev server reads each `.astro` template with Astro's own parser before Astro compiles it, and adds `data-mica-fields` to each element, with the fields that its expressions read. The file on disk does not change. A value that another module reads and formats by itself is not found.
