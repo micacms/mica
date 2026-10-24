@@ -1,6 +1,6 @@
 {
   "name": "@micacms/editor",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "type": "module",
   "description": "The local Mica editor — `npx @micacms/editor` against a checkout on your own machine. No authentication, no database, loopback only.",
   "license": "MIT",

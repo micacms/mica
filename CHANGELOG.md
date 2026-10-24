@@ -10,6 +10,50 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.13.0] — 2026-10-24
+
+This version adds the live preview: the real page of the website beside the
+form, with the drafts in it, in the local and in the self-hosted editor. The
+editor also saves by itself.
+
+### Added
+
+- **The live preview.** The editor shows the page of an entry beside its form,
+  with the drafts in it, about a second after you stop typing. A click on a
+  text, a paragraph, an image, a date or an option in the page opens its field,
+  and a related entry, such as the author of an article, opens over the current
+  form. Unpublished changes have an outline. Add `micaPreview()` from
+  `@micacms/astro/preview` to `astro.config`; the templates do not change.
+- **`mica start --preview`** starts the editor and the website's
+  `astro dev` with one command, also on Windows. The dev server stops with the
+  editor.
+- **The live preview in the self-hosted editor.** The image
+  `ghcr.io/micacms/preview` runs the website's dev server on the drafts of
+  Mica's clone, in a container of its own. Mica lets only signed-in editors in,
+  on the name `preview.<the editor's name>`. `MICA_PREVIEW_UPSTREAM` turns it
+  on. See "Add the live preview" in the self-hosting guide.
+- **The editor saves by itself:** after a short pause in typing, when you leave
+  a field, and when a form closes. A new entry has a Create button. A new URL
+  waits for Change URL, which can also update the links in other entries.
+
+### Changed
+
+- `@micacms/astro` has a new peer dependency, `@astrojs/compiler-rs`, which
+  Astro 7 installs. The preview uses it to find dates, numbers and options in
+  the templates.
+- The sidebar and the page header stay in place while the page scrolls.
+  Settings show their description below the title.
+- The editor's Content-Security-Policy allows frames from the origins of the
+  live preview, and from no other.
+
+### Fixed
+
+- The local editor finds the dev server also when Astro takes another port,
+  with `micaPreview()`. The dev server deletes its note for the editor also on
+  Ctrl+C.
+- A content root that cannot be written, such as the one of the self-hosted
+  preview, gets a warning for the index of a reference set, and the site builds.
+
 ## [0.12.0] — 2026-10-19
 
 This version adds no features. It tightens sign-in, makes failures clear, and

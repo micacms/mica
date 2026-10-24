@@ -1,6 +1,11 @@
 # Change Log - @micacms/mcp
 
-This log was last generated on Mon, 19 Oct 2026 07:02:35 GMT and should not be manually modified.
+This log was last generated on Sat, 24 Oct 2026 13:39:21 GMT and should not be manually modified.
+
+## 0.13.0
+Sat, 24 Oct 2026 13:39:21 GMT
+
+_Version update only_
 
 ## 0.12.0
 Mon, 19 Oct 2026 07:02:35 GMT

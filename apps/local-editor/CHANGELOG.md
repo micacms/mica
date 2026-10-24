@@ -1,6 +1,26 @@
 # Change Log - @micacms/editor
 
-This log was last generated on Mon, 19 Oct 2026 07:02:35 GMT and should not be manually modified.
+This log was last generated on Sat, 24 Oct 2026 13:39:21 GMT and should not be manually modified.
+
+## 0.13.0
+Sat, 24 Oct 2026 13:39:21 GMT
+
+### Minor changes
+
+- `mica start --preview` also starts the project's `astro dev` with `MICA_PREVIEW=1`, so one command gives the editor and its live preview. The dev server stops with the editor.
+- The editor saves by itself: after a short pause in typing, when you leave a field, and when a form closes. A new entry has a Create button, and a new URL waits for Change URL, with the choice to update the links in other entries. The header shows the status, with Publish and Discard.
+- The live preview: the local editor shows the page beside the form while astro dev runs. A click on a text in the page opens its field, a page without its own form opens in a form over the current one, and the form follows the page that the preview shows.
+- The sidebar and the page header stay in place while the page scrolls. Settings show their description below the title.
+- The live preview also works for rich text: a click on a paragraph puts the cursor there, and the paragraph of the cursor comes into view in the preview.
+- The live preview also works for images: a click on an image opens its media field, and in a gallery it goes to that image.
+- The live preview knows relations: a click on the name of a related entry, such as the author of an article, goes to the relation field, and the label also offers to edit that entry. A relation field has Edit for each chosen entry, which opens it over the current form. The focus on a relation field shows the related entry in the preview.
+- The live preview gives the page the field paths of each model, so that it can find the fields of dates, numbers and options, and names a field of another document with that document, such as "Labels: Map".
+
+### Updates
+
+- The header of a form keeps its title and its buttons readable when a wide preview makes the form narrow.
+- In the live preview, a rich text with unpublished changes has the outline around each changed paragraph, not around the whole text.
+- The editor signs in to a live preview on an origin of its own.
 
 ## 0.12.0
 Mon, 19 Oct 2026 07:02:35 GMT

@@ -1,6 +1,22 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Mon, 19 Oct 2026 07:02:35 GMT and should not be manually modified.
+This log was last generated on Sat, 24 Oct 2026 13:39:21 GMT and should not be manually modified.
+
+## 0.13.0
+Sat, 24 Oct 2026 13:39:21 GMT
+
+### Minor changes
+
+- The live preview of the self-hosted Mica has an image of its own: ghcr.io/micacms/preview installs and runs the website from Mica's clone, and follows each sync. A self-hoster writes no Dockerfile for it.
+- The self-hosted image can show the live preview: the website's astro dev runs in a container of its own on the drafts, and Mica lets only the signed-in editors in, on the name preview.<the editor's name> on Mica's own port. MICA_PREVIEW_UPSTREAM turns it on; MICA_PREVIEW_URL sets another name.
+
+### Patches
+
+- The editor's Content-Security-Policy allows frames from the origins of the live preview, and from no other.
+
+### Updates
+
+- The image and the preview image use the current Node 24 base images.
 
 ## 0.12.0
 Mon, 19 Oct 2026 07:02:35 GMT

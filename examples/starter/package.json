@@ -11,14 +11,14 @@
     "check": "mica check && astro check"
   },
   "dependencies": {
-    "@micacms/astro": "^0.12.0",
-    "@micacms/core": "^0.12.0",
+    "@micacms/astro": "^0.13.0",
+    "@micacms/core": "^0.13.0",
     "astro": "^7.2.2",
     "zod": "^4.3.6"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.4",
-    "@micacms/editor": "^0.12.0",
+    "@micacms/editor": "^0.13.0",
     "typescript": "^5.7.3"
   }
 }

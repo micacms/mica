@@ -1,6 +1,30 @@
 # Change Log - @micacms/astro
 
-This log was last generated on Mon, 19 Oct 2026 07:02:35 GMT and should not be manually modified.
+This log was last generated on Sat, 24 Oct 2026 13:39:21 GMT and should not be manually modified.
+
+## 0.13.0
+Sat, 24 Oct 2026 13:39:21 GMT
+
+### Minor changes
+
+- @micacms/astro/preview: micaPreview() marks the text fields of each page in MICA_PREVIEW=1 astro dev, so that the editor's live preview can open a field from its text.
+- In the live preview, renderRichText and transformRichText mark each block of a rich text, so that a click on a paragraph opens the field with the cursor in that paragraph.
+- In the live preview, an image of a media field with alt text is marked too, with its place in a gallery.
+- The hover label of the live preview can offer a second action, such as editing the related entry that a text comes from.
+- In the live preview, dates, numbers, options, tags, maps and images without alt text can be clicked too: the preview's dev server reads the templates with Astro's parser and finds the fields that each element shows, also through components, with no change to the templates. A field of the page's own entry comes first; the others are buttons in its label. A rich text has one outline, and the rest of the page dims around the field. New peer dependency: @astrojs/compiler-rs, which Astro 7 installs.
+
+### Patches
+
+- The local editor's preview finds the dev server also when Astro takes another port, with micaPreview() in the config. The dev server deletes its note for the editor also on Ctrl+C, and never the note of another dev server.
+- A content root that cannot be written, such as the read-only one of a self-hosted preview, gets a warning for the index of a reference set, as for the model, and the site builds.
+
+### Updates
+
+- The setup guides for coding agents use `mica start --preview` for the live preview, in place of a separate dev:preview script.
+- The setup guides for coding agents add the live preview: micaPreview() in the Astro config and a dev:preview script.
+- In the live preview, a rich text with unpublished changes has the outline around each changed paragraph, not around the whole text.
+- In the live preview, a link also offers its address, and a section or a list offers its own fields, such as a layout, in the space around the elements inside it.
+- In the live preview, a click on a field in a row of a list goes to that row: the dev server gives the template's map callback an index when it has none.
 
 ## 0.12.0
 Mon, 19 Oct 2026 07:02:35 GMT

@@ -2,6 +2,31 @@
   "name": "@micacms/runtime",
   "entries": [
     {
+      "version": "0.13.0",
+      "tag": "@micacms/runtime_v0.13.0",
+      "date": "Sat, 24 Oct 2026 13:39:21 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "The image and the preview image use the current Node 24 base images."
+          }
+        ],
+        "patch": [
+          {
+            "comment": "The editor's Content-Security-Policy allows frames from the origins of the live preview, and from no other."
+          }
+        ],
+        "minor": [
+          {
+            "comment": "The live preview of the self-hosted Mica has an image of its own: ghcr.io/micacms/preview installs and runs the website from Mica's clone, and follows each sync. A self-hoster writes no Dockerfile for it."
+          },
+          {
+            "comment": "The self-hosted image can show the live preview: the website's astro dev runs in a container of its own on the drafts, and Mica lets only the signed-in editors in, on the name preview.<the editor's name> on Mica's own port. MICA_PREVIEW_UPSTREAM turns it on; MICA_PREVIEW_URL sets another name."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.12.0",
       "tag": "@micacms/runtime_v0.12.0",
       "date": "Mon, 19 Oct 2026 07:02:35 GMT",
