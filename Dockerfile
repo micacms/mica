@@ -11,7 +11,7 @@
 # Install and build run on the build machine for every target platform: the
 # server's dependencies are plain JavaScript, so their output is the same on
 # amd64 and arm64. The build stage refuses a native module below.
-FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS deps
+FROM --platform=$BUILDPLATFORM node:24-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS deps
 
 WORKDIR /app
 
@@ -79,7 +79,7 @@ COPY tsconfig.base.json ./
 COPY apps/preview apps/preview
 RUN node common/scripts/install-run-rush.js build --to @micacms/preview
 
-FROM node:24-slim@sha256:a5f4366e834695d5f363b920c104953a535d3a9864d1bdf74566a0ebe01daee5 AS preview
+FROM node:24-slim@sha256:55fb5f5a527ea2c5c4a95f963e48ef90aa38c7b346054fdc8ee9957a2b55d205 AS preview
 
 # tini reaps the dev server's children and forwards SIGTERM. Debian's security
 # fixes go in at each build, also before the Node image has them. The working
@@ -108,7 +108,7 @@ HEALTHCHECK --interval=10s --timeout=5s --start-period=15m --retries=3 \
 ENTRYPOINT ["/usr/bin/tini", "--", "node", "/opt/mica-preview/index.js"]
 
 # ---------------------------------------------------------------- runtime
-FROM node:24-alpine@sha256:ebfe2f90462722a7a4de65e91990e97fe0d401c70e0e762c5b53302f905ec1c1 AS runtime
+FROM node:24-alpine@sha256:06d7adf3e0ef61a13f1d28682726366f97a15aa1888c934d3ecec86c33918b53 AS runtime
 
 # tini reaps zombies and forwards SIGTERM, so the graceful shutdown runs. Git
 # keeps the clone of the content repository that Mica edits and publishes, and
