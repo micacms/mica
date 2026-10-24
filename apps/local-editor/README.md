@@ -24,6 +24,7 @@ localhost:6422
 ```bash
 npm install --save-dev @micacms/editor
 npx mica start ./content
+npx mica start --preview   # also the project's astro dev, for the live preview
 ```
 
 The published package carries the API and the built admin, so this is one
@@ -109,7 +110,8 @@ src/
 ├── developer.ts  the developer policy: Publish commits and pushes with your own Git
 ├── config.ts     the local slice of the environment, and the refusals
 ├── guards.ts     the Host allowlist
-└── banner.ts     what a person sees instead of log lines
+├── banner.ts     what a person sees instead of log lines
+└── astro-dev.ts  `--preview`: the project's `astro dev` beside the editor
 ```
 
 Everything of substance is elsewhere: the API and services in

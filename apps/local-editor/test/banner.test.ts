@@ -39,3 +39,12 @@ describe("the banner on a detached HEAD", () => {
     assert.doesNotMatch(startupBanner(base, false), /detached/);
   });
 });
+
+describe("the banner with --preview", () => {
+  const base = { version: "0.12.0", url: "http://localhost:7000", contentRoot: "/tmp/content", collections: 1, singletons: 0 };
+
+  it("says that the dev server runs beside the editor, and that Ctrl+C stops both", () => {
+    assert.match(startupBanner({ ...base, devServer: true }, false), /dev server runs beside this for the live preview\. Ctrl\+C stops both\./);
+    assert.match(startupBanner(base, false), /Run your site's dev server beside this/);
+  });
+});

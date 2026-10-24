@@ -2,10 +2,10 @@
 
 ## 1. Add the live preview and scripts
 
-Add `micaPreview()` to the integrations in `astro.config.*`. It does
-something only in `MICA_PREVIEW=1 astro dev`: then the editor shows the page
-beside the form, and a click on a text in the page opens its field. A build
-and a plain `astro dev` do not change.
+Add `micaPreview()` to the integrations in `astro.config.*`. It marks the
+page only in `MICA_PREVIEW=1 astro dev`, which `mica start --preview`
+starts: then the editor shows the page beside the form, and a click on a text
+in the page opens its field. A build and a plain `astro dev` do not change.
 
 ```js
 import { micaPreview } from "@micacms/astro/preview";
@@ -17,20 +17,15 @@ export default defineConfig({
 
 Keep the integrations that are there, and add it to them.
 
-Add three scripts to `package.json`, so that the user has short commands:
+Add two scripts to `package.json`, so that the user has short commands:
 
 ```json
-"mica": "mica start",
-"dev:preview": "MICA_PREVIEW=1 astro dev",
+"mica": "mica start --preview",
 "check": "mica check && astro check"
 ```
 
-- `MICA_PREVIEW=1 astro dev` works in a POSIX shell only. If somebody works
-  on Windows, ask the user whether to add `cross-env` as a development
-  dependency, and use `"dev:preview": "cross-env MICA_PREVIEW=1 astro dev"`.
-  If the user says no, keep the script as it is and tell the user that it
-  does not run on Windows.
-
+- `--preview` starts the project's `astro dev` with `MICA_PREVIEW=1` beside
+  the editor, and stops it with the editor.
 - If the project has no `@astrojs/check`, use `"check": "mica check"`. Do not
   install it only for this: without it, `astro check` asks to install it, and a
   script cannot answer. Tell the user that nothing checks the types in
@@ -66,8 +61,8 @@ paths if the project uses others.
 ## Content (Mica)
 
 - The content model is `src/mica.ts`. The content is JSON and Markdoc in
-  `content/`; editors change it with `npm run mica`. With
-  `npm run dev:preview` beside it, the editor shows the page next to the form.
+  `content/`; editors change it with `npm run mica`. It also starts the dev
+  server, so the editor shows the page next to the form.
 - After a change to `src/mica.ts`, run `npx astro sync` and `npm run check`,
   and commit `content/.mica/schema.json` with the change.
 - Renaming or removing a field or a collection does not move the stored
@@ -114,10 +109,10 @@ git push -u origin <branch>
 
 ## Edit the content
 
-`npm run mica` opens the editor on this computer. A save writes files in
-`content/`; Publish commits them, and pushes a new branch the first time.
-Run `npm run dev:preview` beside it: the editor then shows the page next to
-the form, and a click on a text in the page opens its field.
+`npm run mica` opens the editor on this computer, and starts the website's
+dev server beside it: the editor shows the page next to the form, and a click
+on a text in the page opens its field. A save writes files in `content/`;
+Publish commits them, and pushes a new branch the first time.
 `npm run check` checks the content (and the types, if `@astrojs/check` is
 there). On another clone, run `npm install` first. A self-hosted editor for
 other people: https://micacms.com/docs/self-hosting/.

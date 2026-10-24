@@ -107,6 +107,11 @@ describe("arguments", () => {
     assert.equal(parse(["--open"]).open, true);
     assert.equal(parse(["--no-open"]).open, false);
   });
+
+  it("takes --preview for start only", () => {
+    assert.equal(parse([]).preview, undefined);
+    assert.equal(parse(["--preview"]).preview, true);
+  });
 });
 
 describe("opening a browser", () => {
@@ -205,6 +210,18 @@ describe("running it", () => {
     assert.equal(imported.status, 78);
     assert.match(imported.stderr, /npx astro sync/);
     assert.doesNotMatch(imported.stderr, /    at /);
+  });
+
+  it("names the missing Astro project for --preview", () => {
+    const project = mkdtempSync(path.join(tmpdir(), "mica-cli-"));
+    mkdirSync(path.join(project, "content", path.dirname(MANIFEST_PATH)), { recursive: true });
+    writeFileSync(path.join(project, "content", MANIFEST_PATH), "{}");
+
+    const result = run(["start", "--preview"], project);
+
+    assert.equal(result.status, 78);
+    assert.match(result.stderr, /no Astro project at or above/);
+    assert.match(run(["check", "--preview"], project).stderr, /check has no option --preview/);
   });
 
   it("gets past its own checks once the model is published", () => {

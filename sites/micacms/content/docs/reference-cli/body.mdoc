@@ -22,6 +22,7 @@ Opens the editor on this machine. It has no sign-in, and it listens only on loop
 | `-p`, `--port <number>` | `PORT`, else `6422` | The port to listen on. |
 | `--host <address>` | `HOST`, else `127.0.0.1` | The address to bind. |
 | `--open`, `--no-open` | open in an interactive terminal, not in CI | Opens the browser, or does not. |
+| `--preview` | off | Also starts the project's `astro dev` with `MICA_PREVIEW=1`, for the live preview. |
 | `-h`, `--help` | | Shows the help. |
 | `-v`, `--version` | | Shows the version. |
 
@@ -33,6 +34,7 @@ Also:
 
 - `start` stops with exit code 78 when the content root stores files with Git LFS and Git LFS is not installed or not set up. The message says what to do. See [Large files with Git LFS](/docs/git-lfs/).
 - When `astro dev` runs, the editor shows **Preview** beside an entry. See [Preview changes](/docs/previews/).
+- With `--preview`, `start` runs `astro dev` in the Astro project of the content: the nearest directory at or above the content root with an `astro.config.*`. It uses the project's own Astro. The dev server stops when the editor stops. When the dev server fails, the editor stops too, with the exit code of the dev server. `start` stops with exit code 78 when it finds no Astro project or Astro is not installed.
 - When the content is in a Git submodule on a detached HEAD, the banner names the command that checks out the branch, such as `git -C content switch main`, and Publish waits until the branch is checked out. See [Content in its own repository](/docs/content-in-its-own-repository/).
 
 ### init
@@ -95,7 +97,9 @@ Serves the tools for coding agents over stdio, without the editor. The agent sta
 | `0` | Done. `check` found no error. |
 | `1` | `check` found an error or no model, `import` failed, or `start` could not start, for example because the port is in use. |
 | `64` | Wrong use: an unknown command or option, a missing value, no content directory, or `init` cannot run here. |
-| `78` | Configuration: `start` found no content model, a model that it cannot read, a setting that the local editor does not allow, such as a `HOST` that is not on this computer, or content that needs Git LFS when Git LFS is not set up. |
+| `78` | Configuration: `start` found no content model, a model that it cannot read, a setting that the local editor does not allow, such as a `HOST` that is not on this computer, content that needs Git LFS when Git LFS is not set up, or, with `--preview`, no Astro project. |
+
+With `--preview`, `start` can also stop with the exit code of a dev server that failed.
 
 ## The self-hosted image
 
