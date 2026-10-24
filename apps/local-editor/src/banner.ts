@@ -22,6 +22,8 @@ export interface Banner {
   contentRoot: string;
   collections: number;
   singletons: number;
+  /** Whether `mica start --preview` runs the site's dev server beside the editor. */
+  devServer?: boolean;
   /** The command that checks out the branch, when the content repository is on a detached HEAD. */
   detached?: { submodule: boolean; command: string };
 }
@@ -105,7 +107,9 @@ export function startupBanner(banner: Banner, useColor: boolean): string {
     `  ${c.dim("No sign-in on your own machine — the link above opens straight into the editor.")}`,
     `  ${c.dim("Mica keeps no state of its own here: everything you save is a file in that directory.")}`,
     "",
-    `  ${c.dim("Run your site's dev server beside this to see the changes. Ctrl+C stops Mica.")}`,
+    banner.devServer
+      ? `  ${c.dim("Your site's dev server runs beside this for the live preview. Ctrl+C stops both.")}`
+      : `  ${c.dim("Run your site's dev server beside this to see the changes. Ctrl+C stops Mica.")}`,
     "",
     `  ${c.dim("To let a coding agent edit the content too, add Mica to it:")}`,
     ...agentSetup({ url: `${banner.url}/mcp` }, useColor),

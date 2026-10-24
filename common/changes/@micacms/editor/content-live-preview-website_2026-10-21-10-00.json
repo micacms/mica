@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The header of a form keeps its title and its buttons readable when a wide preview makes the form narrow.",
+      "type": "none",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

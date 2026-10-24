@@ -1,8 +1,34 @@
 {
   "eyebrow": "Compare",
-  "title": "Mica next to other Git-based editors.",
-  "lead": "Six other products also keep content in Git. This page puts them next to Mica, point by point, and says where each one is the better choice. Mica is also ready for AI agents: an MCP server is built in. Each product has its own page with the details and the sources.",
-  "statusNote": null,
+  "title": "Mica next to other Git-backed editors.",
+  "lead": "Mica is a small content editor for static Astro websites. It keeps structured content in Git, uses Astro's Content Collections, and needs no database and no CMS on the published website. Here is how it compares with six other editors, and when one of them is the better choice.",
+  "statusNote": "Mica is experimental and not ready for production. It has no roles, no approval steps and no page builder.",
+  "guideTitle": "Which approach fits you?",
+  "guide": [
+    {
+      "title": "Choose Mica",
+      "text": "You build with Astro and want content as plain files in Git, a local or self-hosted editor, a live preview of the real page, and agents through MCP, with no database."
+    },
+    {
+      "title": "Choose a hosted CMS",
+      "text": "Managed infrastructure, support, roles or approval steps matter more to you than an editor that you run yourself."
+    },
+    {
+      "title": "Choose another Git editor",
+      "text": "Its Git hosts, languages, editing experience or way to integrate fit your project better."
+    }
+  ],
+  "links": [
+    {
+      "label": "Try Mica with Astro",
+      "href": "/docs/getting-started/"
+    },
+    {
+      "label": "Read the scope and limits",
+      "href": "/docs/scope/"
+    }
+  ],
+  "productsTitle": "Product by product",
   "checkedLabel": "Checked on",
   "changeNote": "These products change often. Read their documentation before you decide.",
   "featureLabel": "Feature",
@@ -18,22 +44,22 @@
     {
       "key": "git",
       "label": "Content in Git, and which hosts",
-      "mica": "Yes. Any Git host, with plain Git and no host API. The self-hosted editor pushes over HTTPS only, not SSH."
+      "mica": "Yes. Plain Git, no host API. Tested: github.com, gitlab.com, Forgejo. The self-hosted editor pushes over HTTPS."
     },
     {
       "key": "service",
-      "label": "Runs without the vendor's service",
-      "mica": "Yes. The local editor, or one container that you run. No hosted offering yet. A Mica Cloud is planned."
+      "label": "Hosted service, self-hosting",
+      "mica": "No hosted service. A local editor, or a container that you run."
     },
     {
       "key": "database",
-      "label": "Database or index needed",
-      "mica": "No database and no index."
+      "label": "Database or index",
+      "mica": "None, for the editor and for the website."
     },
     {
       "key": "licence",
       "label": "Licence and price",
-      "mica": "MIT. Free. You run it yourself."
+      "mica": "MIT. Free."
     },
     {
       "key": "model",
@@ -48,7 +74,7 @@
     {
       "key": "signin",
       "label": "Sign-in for editors",
-      "mica": "Local editor: none, loopback only. Self-hosted: any OpenID Connect provider."
+      "mica": "Local: none, only on your machine. Self-hosted: any OpenID Connect provider."
     },
     {
       "key": "publish",
@@ -58,12 +84,12 @@
     {
       "key": "preview",
       "label": "Preview and visual editing",
-      "mica": "Live preview in the local editor and in the self-hosted Mica, with click to edit. No full visual editing."
+      "mica": "The real Astro page beside the form, with the drafts. A click moves the cursor to the field. Self-hosted: with an optional preview container. No editing on the page."
     },
     {
       "key": "lfs",
-      "label": "Many large photos and files (Git LFS)",
-      "mica": "Yes. Large media stay out of the normal Git history, with Git LFS, in the local and the self-hosted editor."
+      "label": "Git LFS for large files",
+      "mica": "Yes, local and self-hosted."
     },
     {
       "key": "submodule",
@@ -73,7 +99,7 @@
     {
       "key": "refdata",
       "label": "External data (products, places, codes)",
-      "mica": "Yes. Entries link to items of a JSON or CSV file of your website, thousands of them, which Mica never edits."
+      "mica": "Yes. Entries link to items of a JSON or CSV file that Mica does not edit."
     },
     {
       "key": "map",
@@ -92,8 +118,8 @@
     },
     {
       "key": "agents",
-      "label": "AI agents (MCP)",
-      "mica": "Built in, free: an MCP server for local and self-hosted editing. Agents save drafts; Mica checks each value."
+      "label": "AI agents",
+      "mica": "MCP server built in, local and self-hosted. Agents save drafts. Publishing by an agent is off by default."
     }
   ]
 }

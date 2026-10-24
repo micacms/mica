@@ -10,7 +10,7 @@
  */
 
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -33,7 +33,8 @@ import {
 
 import { devServerMarkerPath } from "@micacms/core/node";
 
-import { devServerAddress } from "../src/dev-server.js";
+import { announceDevServer, devServerAddress } from "../src/dev-server.js";
+import { micaPreview } from "../src/preview/index.js";
 import { micaCollections, type LoaderContext } from "../src/index.js";
 
 // Outside CI, the loader writes the model; in CI, it only checks it. These tests write it, except where one says CI.
@@ -494,6 +495,106 @@ describe("the dev server's marker, for the local editor's Preview", () => {
 
   it("names the default port without a config", () => {
     assert.equal(devServerAddress(undefined), "http://localhost:4321");
+  });
+
+  /** The state that the loader and micaPreview() share in a process; each test starts without it. */
+  const resetState = () => delete (globalThis as Record<symbol, unknown>)[Symbol.for("@micacms/astro/dev-server")];
+
+  /** micaPreview()'s hook, as Astro calls it when the server listens. */
+  const serverStart = (port: number) => {
+    const hook = micaPreview().hooks["astro:server:start"] as unknown as (options: { address: { port: number }; logger: { warn(message: string): void } }) => void;
+    hook({ address: { port }, logger: { warn: () => {} } });
+  };
+
+  it("gets the port that the server listens on from micaPreview(), before or after the loader", async () => {
+    const dir = await project();
+    const marker = devServerMarkerPath(join(dir, "content"));
+    const config = { server: { port: 4321 }, base: "/blog/" };
+    try {
+      resetState();
+      announceDevServer(join(dir, "content"), config);
+      serverStart(4322);
+      assert.deepEqual(JSON.parse(await readFile(marker, "utf8")), { pid: process.pid, address: "http://localhost:4322/blog" });
+
+      resetState();
+      serverStart(4323);
+      announceDevServer(join(dir, "content"), config);
+      assert.deepEqual(JSON.parse(await readFile(marker, "utf8")), { pid: process.pid, address: "http://localhost:4323/blog" });
+    } finally {
+      resetState();
+      await rm(marker, { force: true });
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("is deleted only while it is this process's: another dev server can have written it since", async () => {
+    const dir = await project();
+    const marker = devServerMarkerPath(join(dir, "content"));
+    try {
+      resetState();
+      const remove = announceDevServer(join(dir, "content"), undefined);
+      await writeFile(marker, JSON.stringify({ pid: process.pid + 1, address: "http://localhost:4322" }));
+      remove();
+      assert.equal(JSON.parse(await readFile(marker, "utf8")).pid, process.pid + 1);
+
+      announceDevServer(join(dir, "content"), undefined)();
+      await assert.rejects(stat(marker));
+    } finally {
+      resetState();
+      await rm(marker, { force: true });
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  /** A dev server in a child process that writes its marker; `before` runs first, as another library of the dev server. */
+  async function ctrlC(before: string) {
+    const dir = await project();
+    const content = join(dir, "content");
+    const marker = devServerMarkerPath(content);
+    const script = join(dir, "dev-server.mjs");
+    await writeFile(
+      script,
+      `${before}
+import(${JSON.stringify(pathToFileURL(join(import.meta.dirname, "../src/dev-server.ts")).href)}).then(({ announceDevServer }) => {
+  announceDevServer(${JSON.stringify(content)}, undefined);
+  process.stdout.write("ready\\n");
+});
+setInterval(() => {}, 1000);
+`,
+    );
+    try {
+      const child = spawn(process.execPath, ["--import", import.meta.resolve("tsx"), script], { stdio: ["ignore", "pipe", "inherit"] });
+      await new Promise<void>((resolve) => child.stdout.once("data", () => resolve()));
+      assert.equal(JSON.parse(await readFile(marker, "utf8")).pid, child.pid);
+      // A process that the signal does not end must fail the test, not hang it.
+      const ended = new Promise<NodeJS.Signals | "still running" | null>((resolve) => {
+        const timer = setTimeout(() => {
+          child.kill("SIGKILL");
+          resolve("still running");
+        }, 5000);
+        child.once("exit", (_, signal) => {
+          clearTimeout(timer);
+          resolve(signal);
+        });
+      });
+      child.kill("SIGINT");
+      const signal = await ended;
+      return { signal, markerLeft: await stat(marker).then(() => true, () => false) };
+    } finally {
+      await rm(marker, { force: true });
+      await rm(dir, { recursive: true, force: true });
+    }
+  }
+
+  it("is deleted on Ctrl+C, which neither Astro nor Vite handles, and the process still ends by the signal", async () => {
+    assert.deepEqual(await ctrlC(""), { signal: "SIGINT", markerLeft: false });
+  });
+
+  it("does not keep a dev server alive whose terminal library also waits for SIGINT, as signal-exit does", async () => {
+    // signal-exit ends the process only when no other listener is left: it removes its own, then raises the signal again.
+    const signalExit = `const onSigint = () => { if (process.listeners("SIGINT").length === 1) { process.off("SIGINT", onSigint); process.kill(process.pid, "SIGINT"); } };
+process.on("SIGINT", onSigint);`;
+    assert.deepEqual(await ctrlC(signalExit), { signal: "SIGINT", markerLeft: false });
   });
 });
 

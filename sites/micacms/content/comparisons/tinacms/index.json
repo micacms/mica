@@ -3,40 +3,28 @@
   "slug": "tinacms",
   "title": "Mica vs. TinaCMS",
   "website": "https://tina.io/",
-  "checkedOn": "2026-10-18",
-  "summary": "TinaCMS offers visual click-to-edit, a hosted service and an editorial workflow with pull requests. It keeps an index of your content in a database. Mica has none, and it has an MCP server for AI agents.",
+  "checkedOn": "2026-10-21",
+  "summary": "Both keep content as files in Git and have an official Astro package. TinaCMS edits on the page itself and adds a content index, a hosted service and search. Mica edits in forms beside the real page, and Astro reads the files. Tina suits teams that want on-page editing.",
   "chooseMica": [
     {
-      "text": "You want AI agents to edit your content: Mica has an MCP server built in. TinaCMS lists one as Coming Soon."
+      "text": "You want forms with the real Astro page beside them, and no wiring in each template."
     },
     {
-      "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
+      "text": "You want Astro to read your files through Content Collections, with types."
     },
     {
-      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
-    },
-    {
-      "text": "You do not want a database or an index for your content."
-    },
-    {
-      "text": "You want to run the editor yourself in one container, behind any OpenID Connect provider."
+      "text": "You want no content index and no database in the editor."
     },
     {
       "text": "Your content is on a Git host other than GitHub."
     },
     {
-      "text": "You want Astro to read your content through Content Collections, with types."
-    },
-    {
-      "text": "An editor should publish several changes as one commit, with a summary."
-    },
-    {
-      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
+      "text": "You want to run the editor yourself in one container, behind any OpenID Connect provider."
     }
   ],
   "chooseOther": [
     {
-      "text": "Editors should click on the page and edit it there. TinaCMS does this, also in Astro."
+      "text": "Editors should click on the page to edit it, and see it change as they type. TinaCMS does this, also in Astro."
     },
     {
       "text": "You want a hosted service (TinaCloud) with plans and support."
@@ -45,10 +33,10 @@
       "text": "You want search over your content, through TinaCloud."
     },
     {
-      "text": "You want MDX components in your content."
+      "text": "You want an editorial workflow with draft pull requests (Business plan and up)."
     },
     {
-      "text": "You want an editorial workflow with draft pull requests (Business plan and up)."
+      "text": "You want MDX components in your content."
     }
   ],
   "facts": [
@@ -58,11 +46,11 @@
     },
     {
       "key": "service",
-      "value": "The local dev server works without the cloud. Editing in production needs TinaCloud, or a self-hosted backend: a backend function, a database adapter, a Git provider and an auth provider."
+      "value": "Hosted service available: TinaCloud. Self-hosting possible: a backend function, a database adapter, a Git provider and an auth provider. The local dev server works without the cloud."
     },
     {
       "key": "database",
-      "value": "Yes. The Data Layer indexes your content. TinaCloud hosts it. Self-hosted needs MongoDB or Redis/Vercel KV."
+      "value": "Yes. The Data Layer indexes your content in a database; the files stay the source of truth. TinaCloud hosts it. Self-hosted needs MongoDB or Redis/Vercel KV."
     },
     {
       "key": "licence",
@@ -74,7 +62,7 @@
     },
     {
       "key": "astro",
-      "value": "Official @tinacms/astro. Astro is the default starter. Content comes through a generated GraphQL client, not Content Collections. It needs an SSR adapter."
+      "value": "Yes. Official @tinacms/astro; Astro is the default starter. Content comes through a generated GraphQL client, not Content Collections. The setup adds an SSR adapter."
     },
     {
       "key": "signin",
@@ -82,31 +70,31 @@
     },
     {
       "key": "publish",
-      "value": "Each save is a commit. The Editorial Workflow (Business and up) uses a branch and a draft pull request. No batch publish."
+      "value": "Each save is a commit. The Editorial Workflow (Business and up) uses a branch and a draft pull request. No batch publish is documented."
     },
     {
       "key": "preview",
-      "value": "Yes. Visual click-to-edit, also in Astro."
+      "value": "Yes. Site and editor side by side, in real time in React (useTina); a click on an element opens its form. On Astro, each page is wired by hand with TinaIsland, tinaField() and requestWithMetadata()."
     },
     {
       "key": "lfs",
-      "value": "Not supported (Git LFS keeps large files out of the normal history). The documentation names limits of the GitHub API."
+      "value": "Not documented. The documentation names limits of the GitHub API."
     },
     {
       "key": "submodule",
       "value": "Not documented. localContentPath points local development to a separate content repository."
     },
     {
-      "key": "map",
-      "value": "No map field."
-    },
-    {
       "key": "refdata",
       "value": "Not documented. The reference field links to collections. Large collections can time out."
     },
     {
+      "key": "map",
+      "value": "No map field is documented."
+    },
+    {
       "key": "i18n",
-      "value": "Documented patterns, by directory or by field. No locale switcher."
+      "value": "Documented patterns, by directory or by field. No locale switcher is documented."
     },
     {
       "key": "roles",
@@ -114,7 +102,7 @@
     },
     {
       "key": "agents",
-      "value": "An MCP server and AI features are listed as Coming Soon."
+      "value": "Planned. An MCP server and AI features are listed as Coming Soon on the roadmap."
     }
   ],
   "sources": [
@@ -133,6 +121,14 @@
     {
       "label": "tina.io: Astro",
       "href": "https://tina.io/docs/frameworks/astro"
+    },
+    {
+      "label": "tina.io: contextual editing",
+      "href": "https://tina.io/docs/contextual-editing/overview"
+    },
+    {
+      "label": "tina.io: self-hosted overview",
+      "href": "https://tina.io/docs/self-hosted/overview"
     },
     {
       "label": "tina.io: FAQ",

@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The setup guides for coding agents use `mica start --preview` for the live preview, in place of a separate dev:preview script.",
+      "type": "none",
+      "packageName": "@micacms/astro"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

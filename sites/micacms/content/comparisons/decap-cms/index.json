@@ -3,49 +3,40 @@
   "slug": "decap-cms",
   "title": "Mica vs. Decap CMS",
   "website": "https://decapcms.org/",
-  "checkedOn": "2026-10-18",
-  "summary": "Decap CMS is a long-running editor with the widest choice of Git hosts, languages and a preview pane for every editor. Mica keeps large files out of the Git history, supports submodules, makes no API request for each file, and has an MCP server for AI agents.",
+  "checkedOn": "2026-10-21",
+  "summary": "Both edit Git content for static websites. Decap CMS is a static admin app with an editorial workflow, languages and many Git providers. Mica is a local editor or a container you run, on a Git working tree, for Astro. Decap suits teams that want a static app and no service of their own.",
   "chooseMica": [
     {
-      "text": "You want AI agents to edit your content: Mica has an MCP server built in, in the free editor. The MCP server of Decap CMS is experimental and works with the paid Decap Turbo only."
+      "text": "You build with Astro and want an official package, with your content as typed Content Collections."
     },
     {
-      "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS, also on GitHub and Gitea."
+      "text": "You want a local editor, or one container you run, with sign-in through your OpenID Connect provider."
     },
     {
-      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
+      "text": "Editors should see the real Astro page beside the form, with the drafts in it."
     },
     {
-      "text": "You keep your content in a Git submodule, apart from the code of your website."
+      "text": "You want an editor to publish several changes as one commit, with a summary."
     },
     {
-      "text": "You have many entries. Without Decap Turbo, Decap makes one host API request for each file."
-    },
-    {
-      "text": "You want sign-in through your OpenID Connect provider."
-    },
-    {
-      "text": "An editor should publish several changes as one commit, with a summary."
-    },
-    {
-      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
+      "text": "You want AI agents to save drafts through an MCP server that is built in and free."
     }
   ],
   "chooseOther": [
     {
-      "text": "Your content has several languages as a setting."
+      "text": "You want an editorial workflow, with a pull request for each entry."
     },
     {
-      "text": "Your Git host is Bitbucket or Azure DevOps."
+      "text": "You need languages as a setting, with three file structures."
     },
     {
-      "text": "Every editor should see a preview pane while they write."
+      "text": "Your Git host is Bitbucket or Azure DevOps, or you want a wide choice of Git providers."
     },
     {
-      "text": "You want an editorial workflow with a pull request for each entry."
+      "text": "You want a preview pane from a React template of your own, updated as editors type."
     },
     {
-      "text": "You want a large community and many years of use in production."
+      "text": "You want a static app and no service to run, and a project with a large community."
     }
   ],
   "facts": [
@@ -55,7 +46,7 @@
     },
     {
       "key": "service",
-      "value": "Yes. It is a static app under /admin. GitHub needs an OAuth server: Netlify, your own proxy, or Decap Turbo. GitLab and Gitea can use PKCE without a server."
+      "value": "Self-hosting: a static app under /admin. GitHub needs an OAuth server: Netlify, your own proxy, or Decap Turbo. GitLab and Gitea can use PKCE without a server. Hosted service: Decap Turbo."
     },
     {
       "key": "database",
@@ -63,11 +54,11 @@
     },
     {
       "key": "licence",
-      "value": "MIT. Turbo: Free €0 (1 site, 1 seat), Pro €19 a month (1 site, 5 seats), Enterprise."
+      "value": "MIT. Turbo on 21 October 2026: Free €0 (1 site, 1 seat), Pro €19 a month (1 site, 5 seats), Enterprise."
     },
     {
       "key": "model",
-      "value": "YAML (config.yml) or JavaScript"
+      "value": "YAML (config.yml) or JavaScript."
     },
     {
       "key": "astro",
@@ -75,7 +66,7 @@
     },
     {
       "key": "signin",
-      "value": "GitHub OAuth through a proxy, GitLab and Gitea PKCE, Bitbucket, Netlify Identity, Turbo accounts. No direct OIDC."
+      "value": "GitHub OAuth through a proxy, GitLab and Gitea PKCE, Bitbucket, Netlify Identity, Turbo accounts. Direct OIDC is not documented."
     },
     {
       "key": "publish",
@@ -83,19 +74,19 @@
     },
     {
       "key": "preview",
-      "value": "A preview pane with React templates for every editor. Opt-in click-to-edit in the preview."
+      "value": "A preview pane from a React template (registerPreviewTemplate), not the real site, updated as you type. Deploy preview links need the editorial workflow and a CI build per save. Click to edit on the page is not documented."
     },
     {
       "key": "lfs",
-      "value": "Not on GitHub (issue #1206 is open) and not on Gitea. GitLab reads LFS media (large files outside the normal history) since version 3.14.0."
+      "value": "Not on GitHub (issue #1206 is open on 21 October 2026) and not on Gitea. GitLab reads LFS media since version 3.14.0."
     },
     {
       "key": "submodule",
-      "value": "Not supported. Issue #4056 has been open since 2020."
+      "value": "Not supported. Issue #4056 is open on 21 October 2026."
     },
     {
       "key": "map",
-      "value": "The map widget stores a GeoJSON string. No zoom is stored."
+      "value": "The map widget stores a GeoJSON string. A stored zoom is not documented."
     },
     {
       "key": "refdata",
@@ -107,11 +98,11 @@
     },
     {
       "key": "roles",
-      "value": "None in the core (issue #2 is open). Turbo has roles as a paid add-on. Review goes through the editorial workflow."
+      "value": "Not in the core (issue #2 is open on 21 October 2026). Turbo has roles as a paid add-on. Review goes through the editorial workflow."
     },
     {
       "key": "agents",
-      "value": "An experimental MCP server and editor bridge in @decap/cli. They work with the paid Decap Turbo only."
+      "value": "Experimental. An MCP server and editor bridge in @decap/cli work with the paid Decap Turbo only."
     }
   ],
   "sources": [
@@ -134,6 +125,14 @@
     {
       "label": "decapcms.org: editorial workflow",
       "href": "https://decapcms.org/docs/editorial-workflows/"
+    },
+    {
+      "label": "decapcms.org: customization",
+      "href": "https://decapcms.org/docs/customization/"
+    },
+    {
+      "label": "decapcms.org: deploy preview links",
+      "href": "https://decapcms.org/docs/deploy-preview-links/"
     },
     {
       "label": "decapcms.org: map widget",

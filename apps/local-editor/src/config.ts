@@ -52,6 +52,8 @@ const schema = z
     MICA_CLI: bool(false),
     /** Whether that front door should open a browser once it is listening. */
     MICA_OPEN: bool(false),
+    /** Set by `mica start --preview`: it runs the site's dev server beside the editor. */
+    MICA_DEV_SERVER: bool(false),
   })
   .transform((env) => ({
     ...deriveRuntime({
@@ -67,6 +69,7 @@ export type LocalConfig = RuntimeConfig & {
   MICA_LOCAL_PUBLISH: boolean;
   MICA_CLI: boolean;
   MICA_OPEN: boolean;
+  MICA_DEV_SERVER: boolean;
   MICA_ADMIN_DIR?: string | undefined;
 };
 

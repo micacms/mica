@@ -1,23 +1,23 @@
-### Where Keystatic is better
+### Saves, branches and publishing
 
-- **The editor.** Keystatic gives you a polished editor for free. Its saves know about branches: editors can create a branch, and a protected branch leads to a new one.
-- **Working together.** Keystatic Cloud Pro has an experimental real-time multiplayer mode. Mica has no real-time mode.
-- **No server of your own.** With Keystatic Cloud, editors need no server that you run. Mica has no hosted offering yet. A Mica Cloud is planned.
-- **Review.** Keystatic uses GitHub pull requests for review. Mica has no review step in the editor.
+In GitHub mode, each Keystatic save is one commit to the current branch. Editors can create branches, and a protected branch leads to a new branch. Review goes through GitHub pull requests. This suits teams that want every save in the history and a pull request for each change.
 
-### Where Mica is better
+In Mica, a save writes a draft file. Publish makes one commit of the changes the editor chooses, with a summary. When an entry changed in the meantime, Mica shows both versions side by side, with Keep mine and Use theirs. Mica has no review step in the editor: a team can review with a staging branch and a second Mica.
 
-- **Agents.** Mica has an MCP server, built into the free editor. It runs locally (stdio and HTTP) and in the self-hosted Mica, where each person signs in and allows each agent. An agent reads the content model, and Mica checks every value it sends. Every save carries the revision the agent read, so an agent never overwrites a newer save. Agents save drafts and publish only when allowed. The Keystatic documentation does not mention MCP or agent support.
-- **Many large files.** Many large photos and files make a Git repository heavy and slow to clone. Mica keeps them in Git LFS, so the history stays small, in the local and the self-hosted editor. Keystatic does not support Git LFS (pull request #1514 is open).
-- **External data.** Your entries can link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them. The Keystatic documentation does not describe this.
-- **Git hosts.** Mica reads and writes a Git clone, so any Git host works. Keystatic works with GitHub only, and its saves go through the GitHub API. Its issue tracker has a thread about GitHub rate limits (#1466). Mica makes no host API calls for content.
-- **One commit for several changes.** In Keystatic, each save is a commit. In Mica, a save writes a draft file, and Publish makes one commit of the changes the editor chooses, with a summary.
-- **Conflicts.** When an entry changed in the meantime, Keystatic asks the editor to create a new branch. Mica shows both versions side by side, with Keep mine and Use theirs.
-- **Map with zoom.** Keystatic has no map field. Mica has one, and it stores the zoom with the place, so the page can show the same view.
+### Git host, hosting and working together
+
+Keystatic GitHub mode works with GitHub only, through a GitHub App and API routes in your site. Editors sign in with GitHub. Keystatic Cloud is optional: with it, editors need no server that you run, and Pro adds an experimental real-time multiplayer mode.
+
+Mica reads and writes a Git clone, so it makes no host API call for content. github.com and gitlab.com are tested every week, and Forgejo is tested in CI. Other hosts are expected to work, but are not tested. Mica has no hosted offering: it runs as a local editor, or as a container that you run, with OpenID Connect sign-in.
+
+### Preview
+
+Keystatic has no preview pane. A `previewUrl` link opens a Next.js draft-mode page after a save to a branch. Mica shows the real Astro page beside the form, with the drafts in it, about 1-2 seconds after the editor stops typing. A click on the page moves the cursor to the field, and unpublished changes get an outline. Mica edits no text on the page itself. The templates need one integration, `micaPreview()`, and no other change.
 
 ### Equal, or not documented
 
-- Both use a TypeScript model and both have an official Astro package.
+- Both keep content in Git, use a TypeScript model and have an official Astro package.
 - Neither needs a database.
-- Content in a Git submodule: the Keystatic documentation does not say. Mica supports it.
-- Keystatic is maintained by Thinkmill. Its repository shows mostly dependency and fix commits in 2026, and the last commit was on 1 October 2026.
+- Both are MIT-licensed.
+- Content in a Git submodule: the Keystatic documentation does not say.
+- Entries that link to a JSON or CSV file of reference data: the Keystatic documentation does not say.

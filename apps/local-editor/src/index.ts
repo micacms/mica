@@ -118,6 +118,7 @@ async function main(): Promise<void> {
               contentRoot: files.origin,
               collections: Object.keys(model.collections).length,
               singletons: Object.keys(model.singletons).length,
+              devServer: config.MICA_DEV_SERVER,
               ...(detached ? { detached: { submodule: detached.superproject !== null, command: detached.command } } : {}),
             },
             useColor,

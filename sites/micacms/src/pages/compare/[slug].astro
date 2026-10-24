@@ -45,17 +45,17 @@ const columns = [
           </ul>
         </div>
       </div>
-      <h2 class="title-2 mt-16 mb-6">{compare.tableTitle}</h2>
-      <div class="min-w-0">
-        <CompareTable featureLabel={compare.featureLabel} rows={compare.rows.map((row) => row.label)} columns={columns} />
+      <div class="mt-16 min-w-0 max-w-3xl">
+        <h2 class="title-2 m-0 mb-6">{compare.detailsTitle}</h2>
+        <RichText text={data.body} from={data} />
       </div>
     </div>
   </section>
   <section class="section border-t border-line bg-surface">
     <div class="wrap">
       <div class="min-w-0">
-        <h2 class="title-2 m-0 mb-6">{compare.detailsTitle}</h2>
-        <RichText text={data.body} from={data} />
+        <h2 class="title-2 m-0 mb-6">{compare.tableTitle}</h2>
+        <CompareTable featureLabel={compare.featureLabel} rows={compare.rows.map((row) => row.label)} columns={columns} />
         <h2 class="title-3 mt-14 mb-4">{compare.sourcesTitle}</h2>
         <ul class="m-0 flex list-none flex-col gap-2 p-0 text-[15px]">
           {data.sources.map((source) => (
@@ -63,6 +63,14 @@ const columns = [
           ))}
         </ul>
         <p class="mt-6 text-[14px] text-ink-muted">{compare.checkedLabel} {formatDate(data.checkedOn)}. {compare.changeNote}</p>
+        {compare.links.length > 0 && (
+          <div class="mt-10 flex flex-wrap gap-3">
+            {compare.links.map((link, index) => (
+              <a class={index === 0 ? "btn-primary" : "btn-secondary"} href={link.href}>{link.label}</a>
+            ))}
+            <a class="btn-secondary" href="/compare/">{compare.backLabel}</a>
+          </div>
+        )}
       </div>
     </div>
   </section>

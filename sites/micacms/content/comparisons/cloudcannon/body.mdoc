@@ -1,24 +1,23 @@
-### Where CloudCannon is better
+### A commercial service or a tool you run
 
-- **Visual editing.** CloudCannon has visual on-page editing, also for Astro. Mica has forms only.
-- **A hosted service with support.** CloudCannon runs the service for you. Mica has no hosted offering yet. A Mica Cloud is planned.
-- **Roles and review.** CloudCannon has permission groups, and custom groups on Team and Enterprise. Editors can publish a branch with a pull request for approval, and the Team plan has deploy previews of pull requests. Mica has no roles.
-- **Sign-in.** CloudCannon offers MFA on Team and SAML SSO on Enterprise.
-- **Media.** CloudCannon connects to DAMs: S3, R2, Cloudinary, Azure, Google Cloud Storage, Spaces, Bynder and Tenovos. Mica keeps media in the repository.
-- **Git hosts.** CloudCannon works with GitHub, GitLab, Bitbucket and GitHub Enterprise Server.
+CloudCannon is a managed service with support. It runs the infrastructure, so "no database" is not a useful question for a customer. Mica is MIT licensed, free, experimental and not ready for production. It has no hosted offering: you run it on your machine or as a container. On 21 October 2026, CloudCannon lists a 21-day trial, then Standard at $55 a month for 3 users, Team at $350 a month for 15 users, and Enterprise on request. Extra users cost $10 a month. Choose CloudCannon for a supported service. Choose Mica for control and a small system to run.
 
-### Where Mica is better
+### Editing on the page, or a form with a preview
 
-- **Agents.** Mica has an MCP server, built into the free editor. It runs locally (stdio and HTTP) and in the self-hosted Mica, where each person signs in and allows each agent. An agent reads the content model, and Mica checks every value it sends. Every save carries the revision the agent read, so an agent never overwrites a newer save. Agents save drafts and publish only when allowed. CloudCannon offers agent skills for coding agents, a CLI and an API, but no MCP server.
-- **External data.** Your entries can link to data that lives elsewhere: product data, place names, regions or codes. Mica has typed relations to thousands of items from a JSON or CSV file of your website, and never edits them. CloudCannon is close here: select inputs can take values from data files. It has no typed relation field.
-- **Price and licence.** Mica is MIT licensed and free. CloudCannon is proprietary, has no free tier, and starts at $55 a month.
-- **No vendor service.** CloudCannon is a SaaS product, and its documentation does not describe self-hosting. Mica runs on your machine or in one container that you run.
-- **Sign-in.** Mica self-hosted works with any OpenID Connect provider. In CloudCannon, SAML SSO is on Enterprise only.
-- **Map with zoom.** CloudCannon has no map field. Mica has one, and it stores the zoom with the place, so the page can show the same view.
+CloudCannon has a Visual Editor. Editors change text and images on the page, and components re-render in the browser as they edit. For Astro, the site needs `data-editable` attributes or the `@cloudcannon/editable-regions` integration. Mica shows the real Astro page beside the form, with the drafts in it. A click on the page moves the cursor to its field, but the form does the editing, and Mica has no editing on the page and no page builder. Choose CloudCannon for editors who work on the page. Choose Mica for editors who work in forms.
+
+### Roles, review and sign-in
+
+CloudCannon has permission groups, with custom groups on Team and Enterprise. Editors can publish a branch with a pull request for approval. SAML SSO is on Enterprise only. Mica has no roles. It reviews with a staging branch and a second Mica, and the self-hosted editor signs in through any OpenID Connect provider. Choose CloudCannon when roles and approval are a requirement. Choose Mica for a small team with one identity provider.
+
+### Media and Git hosts
+
+CloudCannon connects to DAMs: S3, R2, Cloudinary, Azure, Google Cloud Storage, Spaces, Bynder and Tenovos. It works with GitHub, GitLab, Bitbucket and GitHub Enterprise Server. Mica keeps media in the repository and uses plain Git, with no host API. Choose CloudCannon when media must live in a DAM.
 
 ### Equal, or not documented
 
-- Many large photos and files: both keep them out of the normal Git history with Git LFS. In CloudCannon it needs Standard or a higher plan.
-- Batch save: in CloudCannon, one Save commits the chosen files. In Mica, Publish does the same, and shows each change field by field first.
+- Git LFS: both keep large files out of the normal Git history. In CloudCannon it needs Standard or a higher plan.
+- Batch save: in CloudCannon, one Save commits the chosen files. In Mica, Publish makes one commit of the changes the editor chooses, and shows each change field by field first.
+- Agents: CloudCannon has agent skills, a CLI and an API. Mica has an MCP server. The routes differ.
 - Content in a Git submodule: the CloudCannon documentation does not say.
 - Languages: CloudCannon uses Rosey, a separate tool. Mica has two documented patterns. Neither has a built-in setting.

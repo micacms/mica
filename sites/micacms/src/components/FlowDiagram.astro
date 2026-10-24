@@ -1,0 +1,26 @@
+---
+/** The way of the content, from the model to the static website: steps in a row on wide screens, in a column on phones. */
+import { ArrowDown, ArrowRight } from "@lucide/astro";
+
+interface Step { title: string; detail: string; note: string; }
+interface Props { steps: Step[]; }
+const { steps } = Astro.props;
+const columns = { 3: "lg:grid-cols-3", 4: "lg:grid-cols-4" }[steps.length] ?? "lg:grid-cols-4";
+---
+
+<ol class:list={["m-0 grid list-none gap-10 p-0", columns]}>
+  {steps.map((step, index) => (
+    <li class="card relative flex min-w-0 flex-col gap-1.5 p-5">
+      {index > 0 && (
+        <span class="absolute -top-8 left-1/2 -translate-x-1/2 text-ink-subtle lg:top-1/2 lg:-left-8 lg:translate-x-0 lg:-translate-y-1/2" aria-hidden="true">
+          <ArrowDown size={20} class="lg:hidden" />
+          <ArrowRight size={20} class="hidden lg:block" />
+        </span>
+      )}
+      <span class="text-[13px] font-semibold tracking-[.08em] text-ink-muted uppercase">{index + 1}</span>
+      <h3 class="title-3 m-0">{step.title}</h3>
+      <p class="m-0 font-mono text-[14px] text-ink-muted">{step.detail}</p>
+      <p class="m-0 mt-3 border-t border-line pt-3 text-[15px] text-ink">{step.note}</p>
+    </li>
+  ))}
+</ol>

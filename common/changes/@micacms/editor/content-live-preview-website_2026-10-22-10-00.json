@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "`mica start --preview` also starts the project's `astro dev` with `MICA_PREVIEW=1`, so one command gives the editor and its live preview. The dev server stops with the editor.",
+      "type": "minor",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

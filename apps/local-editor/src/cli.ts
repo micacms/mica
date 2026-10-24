@@ -6,6 +6,7 @@
  * repository. Everything it does is set environment variables and hand over to
  * the same entry point a container runs, so there is one server with one
  * configuration path and this is a front door rather than a second one.
+ * `--preview` also starts the project's `astro dev` beside it.
  *
  * Two defaults differ from a container's, and both are deliberate:
  *
@@ -34,6 +35,7 @@ import { parseArgs, type ParseArgsOptionsConfig } from "node:util";
 import { MANIFEST_PATH } from "@micacms/core/internal";
 import { DEFAULT_PORT, SchemaError, VERSION } from "@micacms/runtime";
 
+import { astroCommand, astroProjectRoot, startAstroDev } from "./astro-dev.js";
 import { checkContent, formatReport } from "./check.js";
 import { formatInit, initProject, InitError } from "./init.js";
 import { formatImport, importCollections, ImportError } from "./import.js";
@@ -45,6 +47,8 @@ export interface Options {
   host?: string;
   /** Undefined means "decide from the terminal" — see `shouldOpenBrowser`. */
   open?: boolean;
+  /** `start`: run `astro dev` for the live preview too. */
+  preview?: boolean;
   /** `import`: Astro's data store. */
   from?: string;
   /** `import`: `collection.field` → the key in Astro's data. */
@@ -65,6 +69,7 @@ const OPTIONS = {
   port: { type: "string", short: "p" },
   host: { type: "string" },
   open: { type: "boolean" },
+  preview: { type: "boolean" },
   from: { type: "string" },
   map: { type: "string", multiple: true },
   order: { type: "string", multiple: true },
@@ -76,7 +81,7 @@ const OPTIONS = {
 
 /** The options of each command. A path without an option is always the content root. */
 const ALLOWED: Record<Command, ReadonlyArray<keyof typeof OPTIONS>> = {
-  start: ["content", "port", "host", "open", "help", "version"],
+  start: ["content", "port", "host", "open", "preview", "help", "version"],
   check: ["content", "help", "version"],
   import: ["content", "from", "map", "order", "collection", "help", "version"],
   mcp: ["content", "allow-publish", "help", "version"],
@@ -99,6 +104,7 @@ const USAGE = `
     -p, --port <number>      Port to listen on (default: ${DEFAULT_PORT})
         --host <address>     Address to bind (default: 127.0.0.1)
         --no-open            Do not open the browser
+        --preview            Start the project's astro dev for the live preview too
 
   Options of check
     -c, --content <dir>      The content root
@@ -166,6 +172,7 @@ export function parse(argv: string[], command: Command = "start"): Options {
     ...(values.port !== undefined ? { port: values.port } : {}),
     ...(values.host !== undefined ? { host: values.host } : {}),
     ...(values.open !== undefined ? { open: values.open } : {}),
+    ...(values.preview !== undefined ? { preview: values.preview } : {}),
     ...(values.from !== undefined ? { from: values.from } : {}),
     map: pairs("--map", values.map),
     order: pairs("--order", values.order),
@@ -229,7 +236,7 @@ export function contentRootsUnder(dir: string, depth = 3): string[] {
 }
 
 /** What the server reads: a flag wins over the environment, and the environment over a default. */
-export function serverEnvironment(options: Pick<Options, "port" | "host" | "open">, env: NodeJS.ProcessEnv, content: string): Record<string, string> {
+export function serverEnvironment(options: Pick<Options, "port" | "host" | "open" | "preview">, env: NodeJS.ProcessEnv, content: string): Record<string, string> {
   const port = options.port ?? set(env["PORT"]) ?? String(DEFAULT_PORT);
   return {
     // The checks ran on this path, so it is the one the server gets.
@@ -241,6 +248,7 @@ export function serverEnvironment(options: Pick<Options, "port" | "host" | "open
     // A person, not a log collector: one banner instead of startup log lines.
     MICA_CLI: "true",
     MICA_OPEN: String(shouldOpenBrowser(options, env)),
+    MICA_DEV_SERVER: String(Boolean(options.preview)),
   };
 }
 
@@ -259,6 +267,8 @@ export async function main(): Promise<void> {
   const content = contentRoot(options, process.env);
   requireContent(content);
 
+  // Before the server's variables are set: they are not the dev server's.
+  if (options.preview) startPreview(content, process.env);
   Object.assign(process.env, serverEnvironment(options, process.env, content));
 
   // The server is imported rather than spawned: one process, one signal
@@ -295,6 +305,34 @@ function requireContent(content: string): void {
     ]);
     process.exit(78); // EX_CONFIG
   }
+}
+
+/** Starts `astro dev` beside the editor. Stops with a message when there is no Astro project to start. */
+function startPreview(content: string, env: NodeJS.ProcessEnv): void {
+  const projectRoot = astroProjectRoot(content);
+  if (!projectRoot) {
+    report(`There is no Astro project at or above ${content}.`, [
+      "--preview starts `astro dev` in the nearest directory with an astro.config.",
+      "Start the dev server in another terminal instead:",
+      "",
+      "  MICA_PREVIEW=1 npx astro dev",
+    ]);
+    process.exit(78); // EX_CONFIG
+  }
+  const command = astroCommand(projectRoot);
+  if (!command) {
+    report(`Astro is not installed in ${projectRoot}.`, ["Run `npm install` in the project, then start Mica again."]);
+    process.exit(78); // EX_CONFIG
+  }
+  startAstroDev({
+    projectRoot,
+    command,
+    env: { ...env },
+    onFail(code) {
+      report(`The Astro dev server stopped with exit code ${code}.`, ["Its messages are above. Mica stops too."]);
+      process.exit(code);
+    },
+  });
 }
 
 /** The tools over stdio. The agent starts this command; everything it prints goes to stderr. */

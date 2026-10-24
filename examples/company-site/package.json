@@ -10,7 +10,7 @@
     "check": "mica check && astro check",
     "dev": "astro dev",
     "dev:preview": "cross-env MICA_PREVIEW=1 astro dev",
-    "mica": "mica start --port 3333",
+    "mica": "mica start --port 3333 --preview",
     "preview": "astro preview",
     "typecheck": "astro check"
   },

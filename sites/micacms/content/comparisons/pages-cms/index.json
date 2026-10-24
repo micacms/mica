@@ -3,26 +3,23 @@
   "slug": "pages-cms",
   "title": "Mica vs. Pages CMS",
   "website": "https://pagescms.org/",
-  "checkedOn": "2026-10-18",
-  "summary": "Pages CMS is a free editor for GitHub repositories, with a hosted app that needs no install and email invites for people without GitHub. Mica works with any Git host, needs no database, and has an MCP server for AI agents.",
+  "checkedOn": "2026-10-21",
+  "summary": "Both edit content that stays in Git files, and neither stores content in a database. Pages CMS gives hosted convenience: a free app with no install, and email invites for editors without GitHub. Mica gives developer control for Astro: a typed model and an editor that you run.",
   "chooseMica": [
     {
-      "text": "You want AI agents to edit your content: Mica has an MCP server built in. The Pages CMS documentation mentions no MCP or agent support."
+      "text": "You want to run the editor yourself, on your machine or as a container behind your OpenID Connect provider."
     },
     {
-      "text": "You have many large photos or files, which would bloat your Git repository. Mica keeps them out of the normal history, with Git LFS."
+      "text": "You want the content model in TypeScript, with types in Astro Content Collections."
     },
     {
-      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica uses thousands of items from a JSON or CSV file of your website, and never edits them."
+      "text": "You want saves to stay drafts, and one Publish to make one commit of the changes you choose."
     },
     {
-      "text": "Your repository is not on GitHub."
+      "text": "You want to see the real Astro page beside the form, with the drafts in it."
     },
     {
-      "text": "You want to run the editor yourself with no database, behind your OpenID Connect provider."
-    },
-    {
-      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
+      "text": "Your repository is on GitLab or another Git host that is not GitHub."
     }
   ],
   "chooseOther": [
@@ -42,19 +39,19 @@
   "facts": [
     {
       "key": "git",
-      "value": "Yes. GitHub only."
+      "value": "GitHub only. Reads and writes files through the GitHub API."
     },
     {
       "key": "service",
-      "value": "Yes. Use the free hosted app (app.pagescms.org), or self-host it: Node, PostgreSQL, a GitHub App, a public HTTPS URL, and email through Resend or SMTP."
+      "value": "Yes. A free hosted app at app.pagescms.org. Self-hosting is possible: Node, PostgreSQL, a GitHub App, a public HTTPS URL and email through Resend or SMTP."
     },
     {
       "key": "database",
-      "value": "PostgreSQL for sessions, collaborators and a cache. It holds no content."
+      "value": "PostgreSQL in self-hosting, for collaboration and caching (sessions, collaborators, cache). It holds no content."
     },
     {
       "key": "licence",
-      "value": "MIT. Free everywhere. No paid plans."
+      "value": "MIT. Free. No paid plans are listed."
     },
     {
       "key": "model",
@@ -66,39 +63,39 @@
     },
     {
       "key": "signin",
-      "value": "GitHub, or an email one-time code for invited collaborators. No SSO or OIDC."
+      "value": "GitHub, or an email one-time code for invited collaborators. SSO and OIDC are not documented."
     },
     {
       "key": "publish",
-      "value": "Each save is one commit to the branch, through the GitHub Contents API. No pull request or publish workflow. Action buttons start GitHub Actions."
+      "value": "Each save is one commit to the branch. No pull request or publish step is documented. Action buttons can start GitHub Actions."
     },
     {
       "key": "preview",
-      "value": "None. A work-in-progress branch exists."
+      "value": "Not documented. On 21 October 2026, issue #190 is open, and pull request #336 (live previews, work in progress) is open."
     },
     {
       "key": "lfs",
-      "value": "No (Git LFS keeps large files out of the normal history). Issue #407 is open. A fix in pull request #451 is open since 17 October 2026."
+      "value": "No. On 21 October 2026, issue #407 (broken images with Git LFS) is open. Pull request #451, a fix for images, is open since 17 October 2026."
     },
     {
       "key": "submodule",
       "value": "Not documented."
     },
     {
-      "key": "map",
-      "value": "No map field."
+      "key": "refdata",
+      "value": "Not documented for external data. Select options are local. A reference field points to a configured collection."
     },
     {
-      "key": "refdata",
-      "value": "Not supported for external data. Select options are local only. A reference field points only to a configured collection."
+      "key": "map",
+      "value": "Not documented."
     },
     {
       "key": "i18n",
-      "value": "None in the release. A branch that is not merged has it."
+      "value": "Not documented."
     },
     {
       "key": "roles",
-      "value": "GitHub users and email collaborators. Granular permissions are listed as Soon. No review."
+      "value": "GitHub users and email collaborators. Granular permissions are listed as Soon. No review workflow is documented."
     },
     {
       "key": "agents",
@@ -129,6 +126,22 @@
     {
       "label": "Pages CMS issue 407: Git LFS",
       "href": "https://github.com/pages-cms/pages-cms/issues/407"
+    },
+    {
+      "label": "Pages CMS pull request 451: LFS for images",
+      "href": "https://github.com/pages-cms/pages-cms/pull/451"
+    },
+    {
+      "label": "Pages CMS issue 190: preview",
+      "href": "https://github.com/hunvreus/pagescms/issues/190"
+    },
+    {
+      "label": "Pages CMS pull request 336: live previews",
+      "href": "https://github.com/hunvreus/pagescms/pull/336"
+    },
+    {
+      "label": "Pages CMS releases",
+      "href": "https://github.com/pages-cms/pages-cms/releases"
     }
   ]
 }

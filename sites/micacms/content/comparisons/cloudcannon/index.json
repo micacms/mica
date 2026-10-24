@@ -3,46 +3,40 @@
   "slug": "cloudcannon",
   "title": "Mica vs. CloudCannon",
   "website": "https://cloudcannon.com/",
-  "checkedOn": "2026-10-18",
-  "summary": "CloudCannon is a hosted service with visual on-page editing, roles, deploy previews and support. Mica is free, runs on your own machine or server, and has an MCP server for AI agents.",
+  "checkedOn": "2026-10-21",
+  "summary": "CloudCannon is a commercial managed CMS with visual editing, roles, support and DAM integrations. Mica is a free, experimental tool that you run yourself. The trade-off is control and simplicity against managed workflows; CloudCannon suits teams that want a supported service for their editors.",
   "chooseMica": [
-    {
-      "text": "You want AI agents to edit your content: Mica has an MCP server built in. CloudCannon has agent skills, a CLI and an API, but no MCP server."
-    },
-    {
-      "text": "Your entries link to data that lives elsewhere: product data, place names, regions or codes. Mica has typed relations to thousands of items from a JSON or CSV file of your website, and never edits them. CloudCannon feeds select inputs from data files, but has no typed relation field."
-    },
     {
       "text": "You want open source under the MIT licence, with no vendor service and no per-user price."
     },
     {
-      "text": "You want to run the editor yourself, behind any OpenID Connect provider."
+      "text": "You want to run the editor yourself, on your machine or as a container behind any OpenID Connect provider."
     },
     {
-      "text": "You need a map to pick places, and the page should show the same view: Mica stores the zoom with the place."
+      "text": "You want the content model in TypeScript, with types in Astro Content Collections."
+    },
+    {
+      "text": "You want the real Astro page beside the form, with one integration, `micaPreview()`, and no `data-editable` attributes in your templates."
+    },
+    {
+      "text": "You want an MCP server built in, so agents save drafts under the same checks as an editor."
     }
   ],
   "chooseOther": [
     {
-      "text": "Editors should edit on the page itself, with visual editing."
+      "text": "Editors should edit text and images on the page itself, and see components re-render as they edit."
     },
     {
       "text": "You want a hosted service with support."
     },
     {
-      "text": "Your editors need roles, with permission groups."
+      "text": "Your editors need roles with permission groups, and approval through a pull request."
     },
     {
-      "text": "You need SAML sign-in (Enterprise plan)."
+      "text": "You need SAML sign-in, or media in a DAM such as S3, Cloudinary or Bynder."
     },
     {
-      "text": "You want deploy previews of pull requests (Team plan and up)."
-    },
-    {
-      "text": "Editors should publish a branch with a pull request for approval."
-    },
-    {
-      "text": "You want to keep media in a DAM, such as S3, Cloudinary or Bynder."
+      "text": "You want deploy previews of pull requests."
     }
   ],
   "facts": [
@@ -52,15 +46,15 @@
     },
     {
       "key": "service",
-      "value": "No. It is a SaaS product. Self-hosting is not documented."
+      "value": "Yes. It is a hosted SaaS product. Self-hosting is not documented."
     },
     {
       "key": "database",
-      "value": "None for the customer."
+      "value": "None for the customer. CloudCannon runs the infrastructure."
     },
     {
       "key": "licence",
-      "value": "Proprietary. No free tier, but a 21-day trial. Standard $55 a month (3 users). Team $350 a month (15 users). Enterprise on request. Extra users $10."
+      "value": "Proprietary. On 21 October 2026: 21-day trial, no free plan listed. Standard $55 a month (3 users), Team $350 a month (15 users), Enterprise on request. Extra users $10 a month."
     },
     {
       "key": "model",
@@ -72,7 +66,7 @@
     },
     {
       "key": "signin",
-      "value": "Email and password, or GitHub, GitLab or Bitbucket. MFA on Team. SAML SSO on Enterprise only."
+      "value": "Email and password, or GitHub, GitLab or Bitbucket. On 21 October 2026, the pricing page lists SAML SSO on Enterprise only."
     },
     {
       "key": "publish",
@@ -80,23 +74,23 @@
     },
     {
       "key": "preview",
-      "value": "Yes. Visual on-page editing. It needs a build on CloudCannon. Pull request deploy previews on Team and up."
+      "value": "Yes. A Visual Editor with inline editing of text and images, and in-browser re-rendering of components. The site needs data-editable attributes or @cloudcannon/editable-regions. Pull request deploy previews are listed; their plan limits are not confirmed."
     },
     {
       "key": "lfs",
-      "value": "Yes, on Standard and up (Git LFS keeps large files out of the normal history)."
+      "value": "Yes. The documentation lists Git LFS on Standard, Team and Enterprise."
     },
     {
       "key": "submodule",
       "value": "Not documented. Site Mounting is an alternative."
     },
     {
-      "key": "map",
-      "value": "No map field."
+      "key": "refdata",
+      "value": "Select inputs can use collections or data files. A typed relation field is not documented."
     },
     {
-      "key": "refdata",
-      "value": "Select inputs can use collections or data files. There is no typed relation field."
+      "key": "map",
+      "value": "Not documented."
     },
     {
       "key": "i18n",
@@ -104,11 +98,11 @@
     },
     {
       "key": "roles",
-      "value": "Permission groups. Custom groups on Team (10) and Enterprise. Approval through pull request publishing."
+      "value": "Permission groups. On 21 October 2026: custom groups on Team (10) and Enterprise (unlimited). Approval through pull request publishing."
     },
     {
       "key": "agents",
-      "value": "Agent skills for coding agents, a CLI and an API. No MCP server."
+      "value": "Yes, by another route: agent skills for coding agents, a CLI and an API. An MCP server is not documented."
     }
   ],
   "sources": [
@@ -127,6 +121,10 @@
     {
       "label": "cloudcannon.com: visual editing",
       "href": "https://cloudcannon.com/documentation/articles/what-is-visual-editing/"
+    },
+    {
+      "label": "cloudcannon.com: set up visual editing",
+      "href": "https://cloudcannon.com/documentation/developer-guides/set-up-visual-editing/"
     },
     {
       "label": "cloudcannon.com: permission groups",

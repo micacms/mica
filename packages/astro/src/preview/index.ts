@@ -19,12 +19,13 @@ import { readFile } from "node:fs/promises";
 
 import type { AstroIntegration } from "astro";
 
+import { devServerListening } from "../dev-server.js";
 import { annotateFields, type ParseAstro } from "./fields.js";
 import { previewMarkersEnabled } from "./mark.js";
 
 export type { FieldMarker } from "./markers.js";
 
-/** Adds the preview script to each page, in `astro dev` with `MICA_PREVIEW` only. */
+/** Adds the preview script to each page, in `astro dev` with `MICA_PREVIEW` only. In each `astro dev`, it gives the editor the port that the server listens on. */
 export function micaPreview(): AstroIntegration {
   return {
     name: "@micacms/astro/preview",
@@ -40,6 +41,14 @@ export function micaPreview(): AstroIntegration {
           .filter(Boolean);
         injectScript("page", `import { startPreview } from "@micacms/astro/preview/client";\nstartPreview(${JSON.stringify(editors)});`);
         logger.info("Live preview: text fields are marked, and each page gets the preview script.");
+      },
+      // Also without MICA_PREVIEW: the editor's Preview must find the port that Astro took.
+      "astro:server:start": ({ address, logger }) => {
+        try {
+          devServerListening(address.port);
+        } catch (error) {
+          logger.warn(`The local editor cannot find the dev server: ${error instanceof Error ? error.message : String(error)}`);
+        }
       },
     },
   };

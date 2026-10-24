@@ -2,10 +2,11 @@
  * Tells the local editor that `astro dev` runs for a content root, so that it
  * can offer "Preview": the dev server reads the saved drafts. A file in the
  * system's temp folder, never in the repository; the process deletes it when
- * it stops, and the editor ignores a file of a process that is gone.
+ * it stops, also on Ctrl+C, and the editor ignores a file of a process that is
+ * gone.
  */
 
-import { mkdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { devServerMarkerPath, type DevServerMarker } from "@micacms/core/node";
@@ -17,28 +18,81 @@ export interface DevServerConfig {
 }
 
 /**
- * The address from the config. If Astro must take another port because this
- * one is busy, the editor's check of the address finds the wrong server or
- * none; `server.port` then makes it exact.
+ * The state of this process. The loader and `micaPreview()` can load as two
+ * copies of this module, in Astro's two module graphs, so it is on `globalThis`.
  */
-export function devServerAddress(config: DevServerConfig | undefined): string {
+interface DevServerState {
+  /** The port that the server listens on, once `astro:server:start` said it. */
+  port?: number;
+  /** The marker of each content root, with the config that gives its address. */
+  markers: Map<string, DevServerConfig | undefined>;
+  stopHooked: boolean;
+}
+
+const STATE = Symbol.for("@micacms/astro/dev-server");
+
+function state(): DevServerState {
+  const holder = globalThis as { [STATE]?: DevServerState };
+  return (holder[STATE] ??= { markers: new Map(), stopHooked: false });
+}
+
+/**
+ * The address from the config, or with the port that the server listens on.
+ * Astro takes another port when the config's port is busy; only an
+ * integration learns it, so without `micaPreview()` the config's port stays.
+ */
+export function devServerAddress(config: DevServerConfig | undefined, port = config?.server?.port ?? 4321): string {
   const base = (config?.base ?? "/").replace(/\/+$/, "");
-  return `http://localhost:${config?.server?.port ?? 4321}${base}`;
+  return `http://localhost:${port}${base}`;
+}
+
+function write(path: string, config: DevServerConfig | undefined, port: number | undefined): void {
+  const marker: DevServerMarker = { pid: process.pid, address: devServerAddress(config, port) };
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, `${JSON.stringify(marker)}\n`, "utf8");
+}
+
+/** Deletes the marker if it is still this process's: another dev server of the same content root can have written it since. */
+function remove(path: string): void {
+  try {
+    if ((JSON.parse(readFileSync(path, "utf8")) as DevServerMarker).pid === process.pid) unlinkSync(path);
+  } catch {
+    // Gone already.
+  }
+}
+
+/** Neither Astro nor Vite handles SIGINT, so Ctrl+C ends the process without its `exit` event. */
+function hookStop(current: DevServerState): void {
+  if (current.stopHooked) return;
+  current.stopHooked = true;
+  const removeAll = () => current.markers.forEach((_, path) => remove(path));
+  process.once("exit", removeAll);
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
+    // First and once: a listener after it, such as signal-exit in a terminal, then decides as if this one were not there.
+    process.prependOnceListener(signal, () => {
+      removeAll();
+      // A listener stops the default exit; give it back when nobody else handles the signal.
+      if (process.listenerCount(signal) === 0) process.kill(process.pid, signal);
+    });
+  }
 }
 
 /** Writes the marker of this process. Returns a function that deletes it. */
 export function announceDevServer(contentRoot: string, config: DevServerConfig | undefined): () => void {
   const path = devServerMarkerPath(contentRoot);
-  const marker: DevServerMarker = { pid: process.pid, address: devServerAddress(config) };
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, `${JSON.stringify(marker)}\n`, "utf8");
-  const remove = () => {
-    try {
-      unlinkSync(path);
-    } catch {
-      // Gone already, or another dev server wrote it since.
-    }
+  const current = state();
+  write(path, config, current.port);
+  current.markers.set(path, config);
+  hookStop(current);
+  return () => {
+    current.markers.delete(path);
+    remove(path);
   };
-  process.once("exit", remove);
-  return remove;
+}
+
+/** From `astro:server:start`: writes the markers again with the port that the server listens on. */
+export function devServerListening(port: number): void {
+  const current = state();
+  current.port = port;
+  current.markers.forEach((config, path) => write(path, config, port));
 }

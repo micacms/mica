@@ -15,9 +15,9 @@ The link opens the published page. After a Publish, the host needs a few minutes
 
 ## Preview with the local editor
 
-Run `astro dev` beside the local editor. The dev server reads the saved drafts, so it shows a change about one second after you stop typing, before Publish. With a `url` in the model, the editor shows the page beside the form while the dev server runs, also for a new entry. The divider between them changes the width, and its button folds the page away. On a small screen, **Preview** opens the page in a new tab.
+Start the local editor with `npx mica start --preview`. It also starts the website's `astro dev`, and stops it when the editor stops. You can also run `astro dev` in another terminal. The dev server reads the saved drafts, so it shows a change about one second after you stop typing, before Publish. With a `url` in the model, the editor shows the page beside the form while the dev server runs, also for a new entry. The divider between them changes the width, and its button folds the page away. On a small screen, **Preview** opens the page in a new tab.
 
-The local editor finds the dev server at the port and the base path of the Astro config, `http://localhost:4321` by default. If Astro takes another port because that one is busy, set `server.port` in `astro.config`.
+The local editor finds the dev server at the base path of the Astro config, on the port that the dev server listens on. When the port of the config is busy, Astro takes another one: with `micaPreview()` in `astro.config`, the editor finds that port too. Without it, the editor uses the port of the config, `4321` by default, so set `server.port` in `astro.config`.
 
 ## Preview in the self-hosted Mica
 
@@ -29,7 +29,9 @@ A change of a template shows in the preview after Mica's next sync of the branch
 
 ## Click a text to edit it
 
-Add `micaPreview()` from `@micacms/astro/preview` to `astro.config`, and start the dev server with `MICA_PREVIEW=1 astro dev`. Then the preview marks the fields of the page:
+Add `micaPreview()` from `@micacms/astro/preview` to `astro.config`. Then start the editor with `npx mica start --preview`, or start the dev server with `MICA_PREVIEW=1 astro dev`. The preview then marks the fields of the page:
+
+![The form of the Services page beside its live preview. The heading of the page has an outline and the label Title. The introduction, which has a change that is not published, has a dashed yellow outline.](/media/live-preview.webp)
 
 - In **Edit** mode, a click on a text opens its field. A text of another entry with a page opens that entry. A text without a page of its own, such as the navigation, opens its form over the current one. Alt-click follows a link.
 - When you point at a field, it gets an outline, the rest of the page dims, and a label names the field.
@@ -41,6 +43,8 @@ Add `micaPreview()` from `@micacms/astro/preview` to `astro.config`, and start t
 - In **Browse** mode, the page acts as the website does. Back in Edit mode, the form of the page that the preview shows opens.
 - A field with changes that are not published has a yellow outline. In a rich text, each changed or new paragraph, heading, list or table has it. When the change has no such part, for example when you only deleted a paragraph, the whole text has it.
 - When you click in a field of the form, the preview scrolls to it, and the rest of the page dims. For a field that links to other entries, it shows the linked entry.
+
+![A click on the company name in the page header: the form of the General settings opens over the form of the page, with "Back to page Services" at the top. In the preview, the name has an outline and the label Company name.](/media/live-preview-overlay.webp)
 
 Texts, rich text and images with alt text carry invisible marks. Dates, numbers, options, tags, maps and other values do not: the preview finds them in the templates of the website instead, and gives each one to the entry around it. The templates do not change for this. See [@micacms/astro](/docs/reference-astro/) for the setup.
 

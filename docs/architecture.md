@@ -323,7 +323,8 @@ statement of fact rather than a bypass.
 The editor shows the page beside the form ([37](adr/0037-live-preview.md),
 [38](adr/0038-self-hosted-live-preview.md)). In both apps it is the website's
 `MICA_PREVIEW=1 astro dev`, which reads the drafts from the files: on the
-developer's checkout for the local editor, and in a container of its own on the
+developer's checkout for the local editor, which `mica start --preview` starts
+beside it, and in a container of its own on the
 content of Mica's clone, read-only, for the self-hosted app: Mica's preview
 image copies the website from the clone and follows each sync. Mica never renders
 a page, and the website never calls Mica. In the self-hosted app, a gate in the

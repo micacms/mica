@@ -1,23 +1,24 @@
 ---
-import { ArrowRight, Check, Database, Eye, Files, GitBranch, Images, Map, Minus } from "@lucide/astro";
+import { ArrowRight, Check, Database, Eye, Files, FolderGit2, GitBranch, Images, Map, Minus, Waypoints } from "@lucide/astro";
+import { Image } from "astro:assets";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import CodeBlock from "@/components/CodeBlock.astro";
-import EditorMock from "@/components/EditorMock.astro";
+import FlowDiagram from "@/components/FlowDiagram.astro";
 import Rocket from "@/components/Rocket.astro";
 import StartPaths from "@/components/StartPaths.astro";
 import Strata from "@/components/Strata.astro";
 import { renderRichText } from "@micacms/astro";
 import { getHome, getSite } from "@/lib/content";
 const [home, site] = await Promise.all([getHome(), getSite()]);
-const { hero, how, capabilities, audiences, agents, scale, run, fit, start } = home;
-const icons = { images: Images, map: Map, files: Files, database: Database, eye: Eye, git: GitBranch };
+const { hero, architecture, benefits, start, preview, run, agents, capabilities, fit, cta } = home;
+const icons = { images: Images, map: Map, files: Files, database: Database, eye: Eye, git: GitBranch, relations: Waypoints, repository: FolderGit2 };
 const lead = await renderRichText(hero.lead, home);
 ---
 
 <BaseLayout>
   <section class="relative flex min-h-[calc(100svh-9rem)] flex-col overflow-hidden md:min-h-[calc(100svh-6.5rem)]">
     <div class="wrap relative flex flex-1 flex-col justify-center pt-14 pb-44 md:pt-20 md:pb-60">
-      <a class="mb-8 inline-flex items-center gap-2 rounded-full border border-line bg-surface py-1 pr-3 pl-2.5 text-[14px] text-ink-muted transition hover:border-line-strong hover:text-ink" href={site.announcement.href}>
+      <a class="mb-8 inline-flex self-start items-center gap-2 rounded-full border border-line bg-surface py-1 pr-3 pl-2.5 text-[14px] text-ink-muted transition hover:border-line-strong hover:text-ink" href={site.announcement.href}>
         <span class="h-2 w-2 rounded-full bg-glint ring-1 ring-on-glint ring-inset" aria-hidden="true"></span>
         {site.announcement.text}
         <ArrowRight size={14} aria-hidden="true" />
@@ -34,124 +35,86 @@ const lead = await renderRichText(hero.lead, home);
     <Strata class="absolute inset-x-0 bottom-0 h-40 md:h-56" sparkles={false} rise />
   </section>
 
-  <section id="how-it-works" class="section scroll-mt-20 border-b border-line bg-surface">
+  <section id="how-it-works" class="section scroll-mt-20 border-b border-line">
     <div class="wrap">
       <div class="max-w-2xl">
-        <p class="eyebrow">{how.eyebrow}</p>
-        <h2 class="title-1 m-0">{how.title}</h2>
-        <p class="lead mt-5">{how.lead}</p>
+        <p class="eyebrow">{architecture.eyebrow}</p>
+        <h2 class="title-1 m-0">{architecture.title}</h2>
+        <p class="lead mt-5 mb-0">{architecture.lead}</p>
       </div>
-      <ol class="m-0 mt-14 flex list-none flex-col gap-16 p-0 md:mt-20 md:gap-24">
-        {how.steps.map((step, index) => (
-          <li class="grid items-center gap-8 md:grid-cols-[5fr_7fr] md:gap-14">
-            <div class="max-w-md">
-              <span class="font-display text-[44px] leading-none font-extrabold text-primary" aria-hidden="true">{index + 1}</span>
-              <h3 class="title-3 mt-4 mb-0">{step.title}</h3>
-              <p class="mt-3 mb-0 text-ink-muted">{step.text}</p>
+      <div class="mt-12 md:mt-14">
+        <FlowDiagram steps={architecture.flow} />
+      </div>
+      {architecture.examples.length > 0 && (
+        <div class="mt-12 grid gap-8 md:mt-14 md:grid-cols-2 md:gap-6">
+          {architecture.examples.map((example) => (
+            <div class="flex min-w-0 flex-col gap-3">
+              <h3 class="m-0 text-[15px] font-semibold text-ink">{example.caption}</h3>
+              <CodeBlock class="min-w-0 flex-1" file={example.file} code={example.code} kind={example.kind === "change" ? "change" : "code"} />
             </div>
-            <div class="min-w-0">
-              {step.visual === "editor" ? (
-                <EditorMock />
-              ) : (
-                <CodeBlock file={step.file} code={step.code ?? ""} kind={step.visual === "change" ? "change" : "code"} />
-              )}
-            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  </section>
+
+  <section class="section border-b border-line bg-surface">
+    <div class="wrap">
+      <div class="max-w-2xl">
+        <p class="eyebrow">{benefits.eyebrow}</p>
+        <h2 class="title-1 m-0">{benefits.title}</h2>
+      </div>
+      <ul class="m-0 mt-12 grid list-none gap-x-6 gap-y-10 p-0 sm:grid-cols-2 lg:grid-cols-4">
+        {benefits.items.map((item) => (
+          <li class="flex min-w-0 flex-col gap-3 border-t-2 border-primary pt-5">
+            <h3 class="title-3 m-0">{item.title}</h3>
+            <p class="m-0 text-ink-muted">{item.text}</p>
           </li>
         ))}
-      </ol>
+      </ul>
     </div>
   </section>
 
-  <section class="section">
+  <section id="get-started" class="section scroll-mt-20 border-b border-line">
     <div class="wrap">
       <div class="max-w-2xl">
-        <p class="eyebrow">{audiences.eyebrow}</p>
-        <h2 class="title-1 m-0">{audiences.title}</h2>
+        <p class="eyebrow">{start.eyebrow}</p>
+        <h2 class="title-1 m-0" id="start-title">{start.title}</h2>
+        <p class="lead mt-5">{start.text}</p>
       </div>
-      <div class="mt-12 grid gap-6 md:grid-cols-2">
-        {audiences.groups.map((group) => (
-          <article class="card flex min-w-0 flex-col gap-4 p-6 md:p-8">
-            <h3 class="title-3 m-0">{group.title}</h3>
-            <p class="m-0 text-ink-muted">{group.text}</p>
-            <ul class="m-0 flex list-none flex-col gap-2.5 p-0">
-              {group.points.map((point) => (
-                <li class="flex gap-2.5"><Check size={20} class="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{point.text}</li>
-              ))}
-            </ul>
-          </article>
-        ))}
+      <div class="mt-10 max-w-4xl">
+        <StartPaths paths={start.paths} labelledBy="start-title" />
       </div>
+      <a class="link mt-8 inline-flex items-center gap-1.5" href={start.link.href}>{start.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
     </div>
   </section>
 
-  <section class="section border-t border-line bg-surface">
+  <section id="live-preview" class="section scroll-mt-20 border-b border-line bg-surface">
     <div class="wrap">
-      <div class="max-w-2xl">
-        <p class="eyebrow">{capabilities.eyebrow}</p>
-        <h2 class="title-1 m-0">{capabilities.title}</h2>
-        <p class="lead mt-5">{capabilities.lead}</p>
+      <div class="grid gap-8 lg:grid-cols-[7fr_5fr] lg:items-end lg:gap-14">
+        <div class="max-w-2xl">
+          <p class="eyebrow">{preview.eyebrow}</p>
+          <h2 class="title-1 m-0">{preview.title}</h2>
+          <p class="lead mt-5 mb-0">{preview.lead}</p>
+        </div>
+        <div>
+          <ul class="m-0 flex list-none flex-col gap-2.5 p-0">
+            {preview.points.map((point) => (
+              <li class="flex gap-2.5"><Check size={20} class="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{point.text}</li>
+            ))}
+          </ul>
+          <a class="mt-6 inline-flex items-center gap-1.5 font-medium text-primary hover:text-primary-hover" href={preview.link.href}>
+            {preview.link.label}
+            <ArrowRight size={16} aria-hidden="true" />
+          </a>
+        </div>
       </div>
-      <div class="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {capabilities.items.map((item) => {
-          const Icon = icons[item.icon as keyof typeof icons];
-          return (
-            <article class="card flex min-w-0 flex-col gap-4 bg-ground! p-6">
-              <span class="grid h-10 w-10 place-items-center rounded-md bg-primary-soft text-primary" aria-hidden="true">
-                {Icon && <Icon size={20} stroke-width={1.75} />}
-              </span>
-              <h3 class="title-3 m-0">{item.title}</h3>
-              <p class="m-0 text-ink-muted">{item.text}</p>
-              {item.code && (
-                <div class="min-w-0">
-                  {item.file && <span class="mb-1.5 block font-mono text-[13px] text-ink-subtle">{item.file}</span>}
-                  <code class="block overflow-x-auto rounded-sm bg-strata-soft px-3 py-2 font-mono text-[14px] whitespace-nowrap text-ink" tabindex="0">{item.code}</code>
-                </div>
-              )}
-              <a class="link mt-auto inline-flex w-fit items-center gap-1.5 pt-2" href={item.link.href}>{item.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
-            </article>
-          );
-        })}
-      </div>
+      <!-- The brand's rule for screenshots: radius-l, a line border, no frame, tilt or shadow. -->
+      <Image {...preview.image} widths={[720, 1440, 2160, 2880]} sizes="(min-width: 1280px) 1200px, 92vw" class="mt-12 h-auto w-full rounded-lg border border-line md:mt-16" />
     </div>
   </section>
 
-  <section class="section border-t border-line">
-    <div class="wrap grid items-center gap-10 md:grid-cols-[7fr_5fr] md:gap-14">
-      <div class="max-w-xl">
-        <p class="eyebrow">{agents.eyebrow}</p>
-        <h2 class="title-1 m-0">{agents.title}</h2>
-        <p class="lead mt-5">{agents.lead}</p>
-        <ul class="m-0 mt-6 flex list-none flex-col gap-2.5 p-0">
-          {agents.points.map((point) => (
-            <li class="flex gap-2.5"><Check size={20} class="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{point.text}</li>
-          ))}
-        </ul>
-        <a class="link mt-8 inline-flex items-center gap-1.5" href={agents.link.href}>{agents.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
-      </div>
-      <CodeBlock class="min-w-0" file={agents.file} code={agents.code ?? ""} />
-    </div>
-  </section>
-
-  <section class="section border-t border-line bg-surface">
-    <div class="wrap">
-      <div class="max-w-2xl">
-        <p class="eyebrow">{scale.eyebrow}</p>
-        <h2 class="title-1 m-0">{scale.title}</h2>
-        <p class="lead mt-5">{scale.lead}</p>
-      </div>
-      <dl class="m-0 mt-12 grid grid-cols-2 gap-6 lg:grid-cols-4">
-        {scale.facts.map((fact) => (
-          <div class="card bg-ground! p-6">
-            <dt class="font-display text-[44px] leading-none font-extrabold text-primary">{fact.value}</dt>
-            <dd class="m-0 mt-3 text-ink-muted">{fact.label}</dd>
-          </div>
-        ))}
-      </dl>
-      <a class="link mt-10 inline-flex items-center gap-1.5" href={scale.link.href}>{scale.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
-    </div>
-  </section>
-
-  <section class="section border-y border-line bg-sandstone">
+  <section class="section border-b border-line bg-sandstone">
     <div class="wrap">
       <div class="max-w-2xl">
         <p class="eyebrow">{run.eyebrow}</p>
@@ -174,6 +137,59 @@ const lead = await renderRichText(hero.lead, home);
             <a class="link mt-auto inline-flex w-fit items-center gap-1.5 pt-2" href={option.link.href}>{option.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
           </article>
         ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section border-b border-line">
+    <div class="wrap grid items-center gap-10 md:grid-cols-[7fr_5fr] md:gap-14">
+      <div class="max-w-xl">
+        <p class="eyebrow">{agents.eyebrow}</p>
+        <h2 class="title-1 m-0">{agents.title}</h2>
+        <p class="lead mt-5">{agents.lead}</p>
+        <ul class="m-0 mt-6 flex list-none flex-col gap-2.5 p-0">
+          {agents.points.map((point) => (
+            <li class="flex gap-2.5"><Check size={20} class="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{point.text}</li>
+          ))}
+        </ul>
+        <a class="link mt-8 inline-flex items-center gap-1.5" href={agents.link.href}>{agents.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
+      </div>
+      <CodeBlock class="min-w-0" file={agents.file} code={agents.code ?? ""} />
+    </div>
+  </section>
+
+  <section class="section border-b border-line bg-surface">
+    <div class="wrap">
+      <div class="max-w-2xl">
+        <p class="eyebrow">{capabilities.eyebrow}</p>
+        <h2 class="title-1 m-0">{capabilities.title}</h2>
+        <p class="lead mt-5">{capabilities.lead}</p>
+      </div>
+      <div class="mt-12 grid gap-6 md:grid-cols-2">
+        {capabilities.items.map((item, index) => {
+          const Icon = icons[item.icon as keyof typeof icons];
+          // With three, the first one leads across the full width, and its chips go beside the text.
+          const leads = index === 0 && capabilities.items.length % 2 === 1;
+          const chips = (item.tags ?? []).length > 0 && (
+            <ul class="m-0 flex list-none flex-wrap content-start gap-2 p-0">
+              {item.tags!.map((tag) => <li class="rounded-full bg-strata-soft px-3 py-1 text-[14px] leading-5 font-medium text-ink">{tag}</li>)}
+            </ul>
+          );
+          return (
+            <article class:list={["card flex min-w-0 flex-col gap-6 bg-ground! p-6", leads && "md:col-span-2 md:p-8 lg:flex-row lg:gap-12"]}>
+              <div class:list={["flex min-w-0 flex-1 flex-col gap-4", leads && "lg:max-w-xl"]}>
+                <span class="grid h-10 w-10 place-items-center rounded-md bg-primary-soft text-primary" aria-hidden="true">
+                  {Icon && <Icon size={20} stroke-width={1.75} />}
+                </span>
+                <h3 class="title-3 m-0">{item.title}</h3>
+                <p class="m-0 text-ink-muted">{item.text}</p>
+                {!leads && chips}
+                <a class="link mt-auto inline-flex w-fit items-center gap-1.5 pt-2" href={item.link.href}>{item.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
+              </div>
+              {leads && chips && <div class="min-w-0 flex-1 lg:pt-14">{chips}</div>}
+            </article>
+          );
+        })}
       </div>
     </div>
   </section>
@@ -203,6 +219,19 @@ const lead = await renderRichText(hero.lead, home);
           </ul>
         </div>
       </div>
+      {fit.facts.length > 0 && (
+        <div class="mt-12 rounded-lg bg-sandstone p-6 md:p-8">
+          <dl class="m-0 grid grid-cols-1 gap-6 sm:grid-cols-3">
+            {fit.facts.map((fact) => (
+              <div>
+                <dt class="font-display text-[36px] leading-none font-extrabold text-primary">{fact.value}</dt>
+                <dd class="m-0 mt-2 text-ink-muted">{fact.label}</dd>
+              </div>
+            ))}
+          </dl>
+          {fit.factsNote && <p class="m-0 mt-6 text-[15px] text-ink-muted">{fit.factsNote}</p>}
+        </div>
+      )}
       <div class="mt-10 flex flex-wrap gap-x-8 gap-y-3">
         <a class="link inline-flex items-center gap-1.5" href={fit.link.href}>{fit.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
         <a class="link inline-flex items-center gap-1.5" href={fit.compareLink.href}>{fit.compareLink.label}<ArrowRight size={16} aria-hidden="true" /></a>
@@ -213,13 +242,13 @@ const lead = await renderRichText(hero.lead, home);
   <section class="section border-t border-line bg-surface">
     <div class="wrap">
       <div class="max-w-2xl">
-        <h2 class="title-1 m-0" id="start-title">{start.title}</h2>
-        <p class="lead mt-5">{start.text}</p>
+        <h2 class="title-1 m-0">{cta.title}</h2>
+        <p class="lead mt-5">{cta.text}</p>
       </div>
-      <div class="mt-10 max-w-4xl">
-        <StartPaths paths={start.paths} labelledBy="start-title" />
+      <div class="mt-9 flex flex-wrap gap-3">
+        <a class="btn-primary" href={cta.primary.href}>{cta.primary.label}<ArrowRight size={16} aria-hidden="true" /></a>
+        <a class="btn-secondary" href={cta.secondary.href}>{cta.secondary.label}</a>
       </div>
-      <a class="btn-primary mt-10" href={start.link.href}>{start.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
     </div>
   </section>
 </BaseLayout>

@@ -34,7 +34,7 @@ export default defineConfig({
    * for Mica to read and reloading on an editor's save are all in
    * `src/content.config.ts` — which is also what lets that file define ordinary
    * Astro collections beside Mica's. The integration here only adds the live
-   * preview's script, and only with `MICA_PREVIEW=1 astro dev` (`npm run dev:preview`).
+   * preview's script, and only with `MICA_PREVIEW=1 astro dev` (`npm run mica` starts it).
    */
   integrations: [micaPreview()],
 

@@ -37,7 +37,10 @@ test("an editor sees the drafts beside the form, behind the preview's gate", asy
   await expect(heading).toBeVisible({ timeout: 60_000 });
 
   // The website's page never gets the editor's cookies: they are for another host.
-  expect(await preview.locator("body").evaluate(() => document.cookie)).not.toMatch(/mica_/);
+  // Asked again while Vite reloads the page once, on the first visit, after it optimized the dependencies.
+  await expect
+    .poll(() => preview.locator("body").evaluate(() => document.cookie).catch(() => "reloading"), { timeout: 15_000 })
+    .not.toMatch(/mica_|reloading/);
 
   // Click to edit, as in the local editor.
   await expect(heading).toHaveAttribute("data-mica-field", /"title"/);
