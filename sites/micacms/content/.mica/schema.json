@@ -943,6 +943,13 @@
                     }
                   ]
                 },
+                "instruction": {
+                  "kind": "text",
+                  "label": "Where it goes",
+                  "required": true,
+                  "maxLength": 80,
+                  "description": "Shown above the prompt or the commands, such as: Paste this into your coding agent."
+                },
                 "content": {
                   "kind": "textarea",
                   "label": "Prompt, commands or text",
@@ -1253,6 +1260,14 @@
                     {
                       "label": "Git branch",
                       "value": "git"
+                    },
+                    {
+                      "label": "Relations",
+                      "value": "relations"
+                    },
+                    {
+                      "label": "Repository",
+                      "value": "repository"
                     }
                   ]
                 },
@@ -1262,15 +1277,10 @@
                   "required": true,
                   "rows": 3
                 },
-                "file": {
-                  "kind": "text",
-                  "label": "File path",
-                  "description": "Shown above the code."
-                },
-                "code": {
-                  "kind": "textarea",
-                  "label": "Code",
-                  "rows": 3
+                "tags": {
+                  "kind": "tags",
+                  "label": "Chips",
+                  "description": "Short words under the text, such as the field kinds."
                 },
                 "link": {
                   "kind": "object",

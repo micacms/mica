@@ -1,8 +1,8 @@
 ---
-/** The ways to start, as tabs: a prompt for a coding agent or commands, each with a copy button. */
-import { Check, Copy } from "@lucide/astro";
+/** The ways to start, as tabs: a prompt for a coding agent or commands, each with where it goes and a copy button. */
+import { Bot, Check, Copy, SquareTerminal } from "@lucide/astro";
 
-interface Path { label: string; kind: string; content: string; }
+interface Path { label: string; kind: string; instruction: string; content: string; }
 interface Props { paths: Path[]; labelledBy: string; }
 const { paths, labelledBy } = Astro.props;
 const columns = paths.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4";
@@ -25,7 +25,12 @@ const columns = paths.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-
   </div>
   {paths.map((path, index) => (
     <div class="mt-4" role="tabpanel" id={`start-panel-${index}`} aria-labelledby={`start-tab-${index}`} hidden={index !== 0}>
-      <div class="flex items-start gap-3 rounded-md border border-line bg-ground p-4 sm:p-5">
+      <div class="overflow-hidden rounded-md border border-line bg-ground">
+      <p class="m-0 flex items-center gap-2 border-b border-line bg-strata-soft px-4 py-2 text-[14px] leading-5 font-medium text-ink-muted sm:px-5">
+        {path.kind === "commands" ? <SquareTerminal size={16} stroke-width={1.75} aria-hidden="true" /> : <Bot size={16} stroke-width={1.75} aria-hidden="true" />}
+        {path.instruction}
+      </p>
+      <div class="flex items-start gap-3 p-4 sm:p-5">
         {path.kind === "commands" ? (
           <pre class="m-0 min-w-0 flex-1 overflow-x-auto font-mono text-[14px] leading-[1.7] text-ink" tabindex="0"><code>{path.content.split("\n").map((line) => <span class:list={["block", line.startsWith("#") && "text-ink-subtle"]}>{line || " "}</span>)}</code></pre>
         ) : (
@@ -35,6 +40,7 @@ const columns = paths.length === 3 ? "sm:grid-cols-3" : "sm:grid-cols-2 lg:grid-
           <Copy size={16} class="group-[.copied]:hidden" aria-hidden="true" />
           <Check size={16} class="hidden text-primary group-[.copied]:block" aria-hidden="true" />
         </button>
+      </div>
       </div>
     </div>
   ))}

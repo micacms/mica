@@ -1,6 +1,6 @@
 {
   "hero": {
-    "eyebrow": "A Git-backed CMS for Astro",
+    "eyebrow": "Git-backed and open source",
     "title": "A small CMS layer for static Astro websites.",
     "primary": {
       "label": "Get started",
@@ -69,29 +69,32 @@
         "text": "Content has a history that you can read and review. Publish makes a commit, and your build and your hosting stay as they are."
       },
       {
-        "title": "Add it to the site you have",
-        "text": "Start a new Astro site with Mica, or add Mica to an existing one. Move the collections that people edit, and keep the others in Astro."
+        "title": "One collection at a time",
+        "text": "Start a new Astro site with Mica, or add it to an existing one. Move the collections that people edit, and keep the others in Astro."
       }
     ]
   },
   "start": {
     "eyebrow": "Get started",
-    "title": "Use Mica with the Astro project you have.",
-    "text": "You keep your framework, your repository and your hosting. A coding agent can do the setup for you: it reads the setup guide, asks about your content, and shows you a plan before it changes anything. Or install Mica by hand.",
+    "title": "Start with your coding agent, or by hand.",
+    "text": "Set up a new Astro site with Mica, or add Mica to a site that you have. A coding agent reads the setup guide, asks about your content and shows you a plan before it changes anything. Or install Mica by hand.",
     "paths": [
       {
         "label": "Add Mica to your existing Astro site",
         "kind": "prompt",
+        "instruction": "Paste this prompt into your coding agent, such as Claude Code or Cursor.",
         "content": "Read https://micacms.com/setup.md and extend this existing Astro project to work with Mica."
       },
       {
         "label": "Create a new website with Astro and Mica",
         "kind": "prompt",
+        "instruction": "Paste this prompt into your coding agent, such as Claude Code or Cursor.",
         "content": "Read https://micacms.com/setup.md and create a new website with Astro and Mica in this folder."
       },
       {
         "label": "Install by hand",
         "kind": "commands",
+        "instruction": "Run these commands in a terminal, in your Astro project.",
         "content": "# 1) Install the Mica packages\nnpm install @micacms/astro @micacms/core\n\n# 2) Describe your content model; see https://micacms.com/docs/content-model/\n\n# 3) Start the local Mica editor\nnpx @micacms/editor start"
       }
     ],
@@ -198,7 +201,7 @@
         "text": "Sends the revision it read, so it never overwrites a newer save"
       },
       {
-        "text": "Local: the local editor serves the tools. Self-hosted: you opt in, and each person allows each agent"
+        "text": "Works with the local and the self-hosted editor"
       }
     ],
     "file": ".mcp.json",
@@ -211,36 +214,43 @@
   "capabilities": {
     "eyebrow": "What it handles",
     "title": "Enough for real content.",
-    "lead": "Every model has text, rich text, lists, relations and media. When a site grows, these help too.",
+    "lead": "The parts that are hard to keep in order without a CMS: links between entries, many media files, and content apart from the code.",
     "items": [
       {
-        "title": "Photos and files in Git LFS",
+        "title": "Fields for structured content, with relations",
+        "icon": "relations",
+        "text": "Each field has a label and rules, and Mica checks every value. Relations link entries across collections, such as an article to its author or a project to its team, and also to the items of a JSON or CSV file. When an entry gets a new URL, Mica offers to update the links to it.",
+        "tags": [
+          "Text",
+          "Rich text",
+          "Numbers and dates",
+          "Choices and tags",
+          "Lists and groups",
+          "Images and files",
+          "Places on a map",
+          "Relations",
+          "Reference data"
+        ],
+        "link": {
+          "label": "The content model",
+          "href": "/docs/content-model/"
+        }
+      },
+      {
+        "title": "Images and files, also in Git LFS",
         "icon": "images",
-        "text": "Keep large media out of your normal Git history. Editors drop a whole set of photos on a field, and GPX, KML, PDF or CSV files go in next to them.",
-        "file": ".gitattributes",
-        "code": "content/**/media/** filter=lfs diff=lfs merge=lfs -text",
+        "text": "An image can require alt text. Editors drop a whole set of photos on a field, and GPX, PDF or CSV files go next to them. Git LFS keeps large files out of your normal Git history.",
+        "tags": [],
         "link": {
           "label": "Large files with Git LFS",
           "href": "/docs/git-lfs/"
         }
       },
       {
-        "title": "Places and reference data",
-        "icon": "map",
-        "text": "Editors select a place on a map, and Mica saves the zoom with it. Entries can link to thousands of items of a JSON or CSV file that Mica never edits.",
-        "file": "src/mica.ts",
-        "code": "summit: relation({ collection: \"places\" }),",
-        "link": {
-          "label": "Reference data",
-          "href": "/docs/reference-data/"
-        }
-      },
-      {
-        "title": "Content in its own repository",
-        "icon": "git",
-        "text": "Mount the content as a Git submodule. Mica works in that repository and never commits in the website repository.",
-        "file": "terminal",
-        "code": "git submodule add <url> content",
+        "title": "Content apart from the code",
+        "icon": "repository",
+        "text": "Put the content in a repository of its own, as a Git submodule, so that content and presentation stay apart. Editors publish there, and Mica never commits in the website's repository.",
+        "tags": [],
         "link": {
           "label": "Content in its own repository",
           "href": "/docs/content-in-its-own-repository/"

@@ -1,5 +1,5 @@
 ---
-import { ArrowRight, Check, Database, Eye, Files, GitBranch, Images, Map, Minus } from "@lucide/astro";
+import { ArrowRight, Check, Database, Eye, Files, FolderGit2, GitBranch, Images, Map, Minus, Waypoints } from "@lucide/astro";
 import { Image } from "astro:assets";
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import CodeBlock from "@/components/CodeBlock.astro";
@@ -11,7 +11,7 @@ import { renderRichText } from "@micacms/astro";
 import { getHome, getSite } from "@/lib/content";
 const [home, site] = await Promise.all([getHome(), getSite()]);
 const { hero, architecture, benefits, start, preview, run, agents, capabilities, fit, cta } = home;
-const icons = { images: Images, map: Map, files: Files, database: Database, eye: Eye, git: GitBranch };
+const icons = { images: Images, map: Map, files: Files, database: Database, eye: Eye, git: GitBranch, relations: Waypoints, repository: FolderGit2 };
 const lead = await renderRichText(hero.lead, home);
 ---
 
@@ -165,23 +165,28 @@ const lead = await renderRichText(hero.lead, home);
         <h2 class="title-1 m-0">{capabilities.title}</h2>
         <p class="lead mt-5">{capabilities.lead}</p>
       </div>
-      <div class="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {capabilities.items.map((item) => {
+      <div class="mt-12 grid gap-6 md:grid-cols-2">
+        {capabilities.items.map((item, index) => {
           const Icon = icons[item.icon as keyof typeof icons];
+          // With three, the first one leads across the full width, and its chips go beside the text.
+          const leads = index === 0 && capabilities.items.length % 2 === 1;
+          const chips = (item.tags ?? []).length > 0 && (
+            <ul class="m-0 flex list-none flex-wrap content-start gap-2 p-0">
+              {item.tags!.map((tag) => <li class="rounded-full bg-strata-soft px-3 py-1 text-[14px] leading-5 font-medium text-ink">{tag}</li>)}
+            </ul>
+          );
           return (
-            <article class="card flex min-w-0 flex-col gap-4 bg-ground! p-6">
-              <span class="grid h-10 w-10 place-items-center rounded-md bg-primary-soft text-primary" aria-hidden="true">
-                {Icon && <Icon size={20} stroke-width={1.75} />}
-              </span>
-              <h3 class="title-3 m-0">{item.title}</h3>
-              <p class="m-0 text-ink-muted">{item.text}</p>
-              {item.code && (
-                <div class="min-w-0">
-                  {item.file && <span class="mb-1.5 block font-mono text-[13px] text-ink-subtle">{item.file}</span>}
-                  <code class="block overflow-x-auto rounded-sm bg-strata-soft px-3 py-2 font-mono text-[14px] whitespace-nowrap text-ink" tabindex="0">{item.code}</code>
-                </div>
-              )}
-              <a class="link mt-auto inline-flex w-fit items-center gap-1.5 pt-2" href={item.link.href}>{item.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
+            <article class:list={["card flex min-w-0 flex-col gap-6 bg-ground! p-6", leads && "md:col-span-2 md:p-8 lg:flex-row lg:gap-12"]}>
+              <div class:list={["flex min-w-0 flex-1 flex-col gap-4", leads && "lg:max-w-xl"]}>
+                <span class="grid h-10 w-10 place-items-center rounded-md bg-primary-soft text-primary" aria-hidden="true">
+                  {Icon && <Icon size={20} stroke-width={1.75} />}
+                </span>
+                <h3 class="title-3 m-0">{item.title}</h3>
+                <p class="m-0 text-ink-muted">{item.text}</p>
+                {!leads && chips}
+                <a class="link mt-auto inline-flex w-fit items-center gap-1.5 pt-2" href={item.link.href}>{item.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
+              </div>
+              {leads && chips && <div class="min-w-0 flex-1 lg:pt-14">{chips}</div>}
             </article>
           );
         })}
