@@ -23,6 +23,37 @@ export interface Logger {
   child(bindings: Record<string, unknown>): Logger;
 }
 
+/** A warning or an error that this process wrote, for the System page (ADR 40). */
+export interface ProblemLine {
+  time: string;
+  level: "warn" | "error";
+  message: string;
+  /** Each field as text, with email addresses hidden and long values cut. */
+  fields: Record<string, string>;
+}
+
+/** The System page shows the last ones; a restart empties them, so Mica keeps no state. */
+const PROBLEMS_KEPT = 100;
+const problems: ProblemLine[] = [];
+
+/** The last warnings and errors that this process wrote, the newest first. In memory only. */
+export function recentProblems(): ProblemLine[] {
+  return [...problems].reverse();
+}
+
+/** Every editor sees the System page, so a line names nobody. `git@host` is an address, not a person. */
+export function hideEmails(text: string): string {
+  return text.replace(/(?<![\w.+-])(?!git@)[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, "(email)");
+}
+
+const cut = (text: string, max: number) => (text.length > max ? `${text.slice(0, max - 1)}…` : text);
+
+function keep(level: "warn" | "error", message: string, payload: Record<string, unknown>): void {
+  const fields = Object.fromEntries(Object.entries(payload).map(([key, value]) => [key, cut(hideEmails(format(value)), 300)]));
+  problems.push({ time: new Date().toISOString(), level, message: cut(hideEmails(message), 500), fields });
+  if (problems.length > PROBLEMS_KEPT) problems.shift();
+}
+
 const COLORS: Record<Exclude<LogLevel, "silent">, string> = {
   debug: "[90m",
   info: "[36m",
@@ -44,6 +75,7 @@ export function createLogger(options: {
     if (ORDER[level] < threshold) return;
 
     const payload = { ...bindings, ...fields };
+    if (level === "warn" || level === "error") keep(level, message, payload);
     const stream = options.stderrOnly || level === "error" || level === "warn" ? process.stderr : process.stdout;
 
     if (options.pretty) {
