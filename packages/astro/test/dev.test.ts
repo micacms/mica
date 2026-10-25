@@ -10,7 +10,7 @@
  */
 
 import assert from "node:assert/strict";
-import { execFileSync, spawn } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { EventEmitter } from "node:events";
 import { mkdtemp, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -33,7 +33,7 @@ import {
 
 import { devServerMarkerPath } from "@micacms/core/node";
 
-import { announceDevServer, devServerAddress } from "../src/dev-server.js";
+import { announceDevServer, devServerAddress, MARKER_CHECK_MS } from "../src/dev-server.js";
 import { micaPreview } from "../src/preview/index.js";
 import { micaCollections, type LoaderContext } from "../src/index.js";
 
@@ -520,6 +520,41 @@ describe("the dev server's marker, for the local editor's Preview", () => {
       serverStart(4323);
       announceDevServer(join(dir, "content"), config);
       assert.deepEqual(JSON.parse(await readFile(marker, "utf8")), { pid: process.pid, address: "http://localhost:4323/blog" });
+    } finally {
+      resetState();
+      await rm(marker, { force: true });
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("is written again when another dev server deleted it or ended, and stays when the other one runs", async (t) => {
+    t.mock.timers.enable({ apis: ["setInterval"] });
+    const dir = await project();
+    const marker = devServerMarkerPath(join(dir, "content"));
+    const owner = async () => (JSON.parse(await readFile(marker, "utf8")) as { pid: number }).pid;
+    try {
+      resetState();
+      const remove = announceDevServer(join(dir, "content"), undefined);
+
+      // The other dev server of this content root stopped, and deleted the marker that it had written.
+      await rm(marker);
+      t.mock.timers.tick(MARKER_CHECK_MS);
+      assert.equal(await owner(), process.pid);
+
+      // Another dev server that runs keeps its marker: no taking turns.
+      await writeFile(marker, JSON.stringify({ pid: process.ppid, address: "http://localhost:4322" }));
+      t.mock.timers.tick(MARKER_CHECK_MS);
+      assert.equal(await owner(), process.ppid);
+
+      const ended = spawnSync(process.execPath, ["-e", ""]).pid!;
+      await writeFile(marker, JSON.stringify({ pid: ended, address: "http://localhost:4322" }));
+      t.mock.timers.tick(MARKER_CHECK_MS);
+      assert.equal(await owner(), process.pid);
+
+      // After its own stop, nothing writes it again.
+      remove();
+      t.mock.timers.tick(MARKER_CHECK_MS);
+      await assert.rejects(stat(marker));
     } finally {
       resetState();
       await rm(marker, { force: true });

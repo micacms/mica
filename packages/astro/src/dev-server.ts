@@ -3,7 +3,8 @@
  * can offer "Preview": the dev server reads the saved drafts. A file in the
  * system's temp folder, never in the repository; the process deletes it when
  * it stops, also on Ctrl+C, and the editor ignores a file of a process that is
- * gone.
+ * gone. Two dev servers of one content root share the file: when the other one
+ * stops and deletes it, this one writes it again.
  */
 
 import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
@@ -27,13 +28,19 @@ interface DevServerState {
   /** The marker of each content root, with the config that gives its address. */
   markers: Map<string, DevServerConfig | undefined>;
   stopHooked: boolean;
+  watching: boolean;
+  /** Set when the process stops: its markers go, and nothing writes them again. */
+  stopping: boolean;
 }
+
+/** How often a dev server looks whether its marker is still there. */
+export const MARKER_CHECK_MS = 2000;
 
 const STATE = Symbol.for("@micacms/astro/dev-server");
 
 function state(): DevServerState {
   const holder = globalThis as { [STATE]?: DevServerState };
-  return (holder[STATE] ??= { markers: new Map(), stopHooked: false });
+  return (holder[STATE] ??= { markers: new Map(), stopHooked: false, watching: false, stopping: false });
 }
 
 /**
@@ -61,11 +68,53 @@ function remove(path: string): void {
   }
 }
 
+/** Whether a process runs. `EPERM` means it runs, under another user. */
+function runs(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === "EPERM";
+  }
+}
+
+/** The marker's file names no dev server that runs: it is gone, cannot be read, or its process ended. */
+function free(path: string): boolean {
+  try {
+    const marker = JSON.parse(readFileSync(path, "utf8")) as Partial<DevServerMarker>;
+    return !Number.isInteger(marker.pid) || !runs(marker.pid!);
+  } catch {
+    return true;
+  }
+}
+
+/**
+ * Writes a marker again when it is free. A marker of another dev server that
+ * runs stays: two dev servers never take it from each other in turns.
+ */
+function watch(current: DevServerState): void {
+  if (current.watching) return;
+  current.watching = true;
+  setInterval(() => {
+    if (current.stopping) return;
+    current.markers.forEach((config, path) => {
+      try {
+        if (free(path)) write(path, config, current.port);
+      } catch {
+        // The temp folder can be away for a moment: the next check tries again.
+      }
+    });
+  }, MARKER_CHECK_MS).unref();
+}
+
 /** Neither Astro nor Vite handles SIGINT, so Ctrl+C ends the process without its `exit` event. */
 function hookStop(current: DevServerState): void {
   if (current.stopHooked) return;
   current.stopHooked = true;
-  const removeAll = () => current.markers.forEach((_, path) => remove(path));
+  const removeAll = () => {
+    current.stopping = true;
+    current.markers.forEach((_, path) => remove(path));
+  };
   process.once("exit", removeAll);
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"] as const) {
     // First and once: a listener after it, such as signal-exit in a terminal, then decides as if this one were not there.
@@ -84,6 +133,7 @@ export function announceDevServer(contentRoot: string, config: DevServerConfig |
   write(path, config, current.port);
   current.markers.set(path, config);
   hookStop(current);
+  watch(current);
   return () => {
     current.markers.delete(path);
     remove(path);
