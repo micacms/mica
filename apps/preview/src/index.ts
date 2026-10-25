@@ -8,7 +8,8 @@
  * site's lock file, and starts the dev server on port 4321. When the clone's
  * commit changes, after a sync or a publication, it copies again; it installs
  * again only when the lock file changed, and starts the dev server again only
- * when a file changed. After a failure, it tries again a little later.
+ * when a file changed. After a failure, it tries again a little later. At its
+ * start, it waits a short time for Mica's first sync (ADR 39).
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
@@ -16,6 +17,7 @@ import { accessSync, constants, existsSync, lstatSync, mkdirSync, readFileSync, 
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 
+import { FIRST_SYNC_WAIT_MS, micaSynced } from "./first-sync.js";
 import { contentRootIn, headOf, installCommand, installKey, lockFileOf, siteIn } from "./layout.js";
 import { mirror } from "./mirror.js";
 
@@ -115,6 +117,26 @@ async function stopServer(): Promise<void> {
   if (child.exitCode === null) child.kill("SIGKILL");
 }
 
+/** Waits until a Mica on the volume ended its first sync, at most FIRST_SYNC_WAIT_MS. */
+async function waitForFirstSync(): Promise<void> {
+  const lease = join(dirname(CLONE), "lease.json");
+  const read = () => {
+    try {
+      return readFileSync(lease, "utf8");
+    } catch {
+      return null;
+    }
+  };
+  if (micaSynced(read())) return;
+  log("Waiting for Mica's first sync, so that the copy has the newest website.");
+  const deadline = Date.now() + FIRST_SYNC_WAIT_MS;
+  while (Date.now() < deadline) {
+    await sleep(1_000);
+    if (micaSynced(read())) return;
+  }
+  log("Mica did not sync in time: the preview starts with the clone as it is, and follows the next sync.");
+}
+
 /** The key of the last install that succeeded, so that only a change of the lock file installs again. */
 let installed = "";
 let copiedFiles = new Set<string>();
@@ -166,6 +188,7 @@ async function main(): Promise<void> {
   let root: string | null = null;
   while (!(root = contentRootIn(CLONE, env["MICA_CONTENT_PATH"]))) await sleep(2_000);
   log(`Content root: ${root}`);
+  await waitForFirstSync();
 
   let head = headOf(CLONE);
   let busy = false;

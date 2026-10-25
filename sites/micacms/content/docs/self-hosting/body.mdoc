@@ -187,7 +187,7 @@ What Mica does with the repository:
 - **It syncs** at once and then at each interval: it fetches the branch and fast-forwards. It never merges, rebases, or stashes. Developers can push to the branch at any time. If a sync is still running at the next interval, Mica skips that interval.
 - **It holds a version that it cannot use.** If the download of the Git LFS files of the new version fails (`prefetch_incomplete`), Mica keeps the old version: editors can save, and Publish waits. If the new version has a content model that this Mica cannot read (`model_unreadable`), Mica keeps the old version and refuses every save and says why, so that a save never leaves out the new fields. Push a fix, or upgrade Mica.
 - **It finds conflicts.** If somebody changes an entry on the website while an editor has a draft of that entry, this is a conflict. The editor sees it on the Overview, on the Publish page, and on the entry, and chooses **Keep my version** or **Use the website's version**. While a conflict exists, Mica does not fast-forward and Publish waits.
-- **It tries again.** If the branch moved during a publication, Mica removes its commit, catches up, makes the commit again with the same author and message, and pushes. It tries three times. If the host cannot be reached, the publication stays committed in Mica, and the Publish page shows "Published in Mica, not on the website yet". Mica sends it later.
+- **It tries again.** If the branch moved during a publication, Mica removes its commit, catches up, makes the commit again with the same author and message, and pushes. It tries three times. If the host cannot be reached, the publication stays committed in Mica, and the Publish page shows "Published in Mica, not on the website yet". Mica sends it later. When Mica stops, it tries once more to send it, so that a stop does not hold it back until the next start.
 - **A refused push turns the publication back into drafts.** If the host refuses the push, for example because of a protected branch, a server hook, or a token that cannot write, the changes are saved drafts again. The Publish page and the System page show the reason of the host. Nothing is lost.
 - **It uses a new model at once.** See "Upgrades and model changes" below.
 
@@ -284,12 +284,13 @@ volumes:
 ### What the image does
 
 1. It waits for the clone of Mica, and finds the content root as Mica does. Set `MICA_CONTENT_PATH` when the repository has more than one.
-2. It finds the website: the nearest folder with an `astro.config` above the content root. Set `MICA_PREVIEW_SITE_PATH` to the folder of the website when there is none.
-3. It copies the repository, without `.git` and the content root, and links the content root of the clone in its place. Each draft is there at once.
-4. It installs the packages with the lock file at or above the website: `npm ci`, `pnpm install --frozen-lockfile` or `yarn install`. The caches are in `/cache`.
-5. It starts `astro dev` on port 4321.
-6. When a sync or a publication changes the commit of the clone, it copies again. It installs again only if the lock file changed, and starts the dev server again only if a file changed. Thus a Publish of content does not restart the preview.
-7. After a failure, such as an install while the npm registry is away, it tries again after 30 seconds, then after longer waits, up to ten minutes. It also tries again at once at the next change of the website.
+2. It waits up to 30 seconds for the first sync of Mica after Mica's start. Thus, when both start together, it copies the newest version of the website once.
+3. It finds the website: the nearest folder with an `astro.config` above the content root. Set `MICA_PREVIEW_SITE_PATH` to the folder of the website when there is none.
+4. It copies the repository, without `.git` and the content root, and links the content root of the clone in its place. Each draft is there at once.
+5. It installs the packages with the lock file at or above the website: `npm ci`, `pnpm install --frozen-lockfile` or `yarn install`. The caches are in `/cache`.
+6. It starts `astro dev` on port 4321.
+7. When a sync or a publication changes the commit of the clone, it copies again. It installs again only if the lock file changed, and starts the dev server again only if a file changed. Thus a Publish of content does not restart the preview.
+8. After a failure, such as an install while the npm registry is away, it tries again after 30 seconds, then after longer waits, up to ten minutes. It also tries again at once at the next change of the website.
 
 It removes only the files that it copied itself. Files that an install makes outside `node_modules` stay.
 

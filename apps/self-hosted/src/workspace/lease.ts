@@ -22,6 +22,8 @@ interface LeaseFile {
   pid: number;
   /** The last heartbeat, in milliseconds since the epoch. */
   at: number;
+  /** When this process ended its first sync: the preview waits for it after a start (ADR 39). */
+  syncedAt?: number;
 }
 
 export interface LeaseTimings {
@@ -36,6 +38,8 @@ export interface LeaseTimings {
 const TIMINGS: LeaseTimings = { expiresMs: 30_000, heartbeatMs: 10_000, waitMs: 45_000, pollMs: 2_000 };
 
 export interface Lease {
+  /** Writes that this process ended its first sync. */
+  synced(): Promise<void>;
   /** Stops the heartbeat and deletes the lease, if it is still this process's. */
   release(): Promise<void>;
 }
@@ -94,6 +98,15 @@ export async function takeLease(
   timer.unref();
 
   return {
+    synced() {
+      mine.syncedAt = Date.now();
+      beat = beat
+        .then(async () => {
+          if (!released && (await read(file))?.id === mine.id) await writeMarker(file, { ...mine, at: Date.now() });
+        })
+        .catch((error: unknown) => logger.error("The lease could not record the first sync", { error: String(error) }));
+      return beat;
+    },
     async release() {
       released = true;
       clearInterval(timer);

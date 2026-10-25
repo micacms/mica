@@ -771,4 +771,36 @@ describe("publishing", () => {
     assert.equal(state.pendingPush, null);
     assert.equal(devGit(bare, "rev-parse", "main"), revision);
   });
+
+  it("sends a publication that waits once more before a stop (ADR 39)", async () => {
+    const s = await setup();
+    writeIn(s.repo, "content/posts/a/index.json", '{"title":"Mine"}\n');
+    const revision = await commitPaths(tree(s), ["posts/a/index.json"], "Edit A", editor);
+
+    const bare = host.bare(s.name);
+    const moved = `${bare}.away`;
+    renameSync(bare, moved);
+    assert.equal((await s.workspace.policy.push(tree(s), revision)).state, "committed-pending-push");
+    // Still away: the try before the stop fails, and the publication keeps waiting.
+    await s.workspace.flush(5_000);
+    assert.notEqual(s.workspace.state().pendingPush, null);
+    renameSync(moved, bare);
+
+    await s.workspace.flush(5_000);
+    assert.equal(s.workspace.state().pendingPush, null);
+    assert.equal(devGit(bare, "rev-parse", "main"), revision);
+  });
+});
+
+describe("the sync loop", () => {
+  it("says once when its first sync ended, for the preview (ADR 39)", async () => {
+    const s = await setup();
+    let calls = 0;
+    await new Promise<void>((resolve) => s.workspace.start(() => {
+      calls++;
+      resolve();
+    }));
+    s.workspace.stop();
+    assert.equal(calls, 1);
+  });
 });

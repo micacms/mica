@@ -42,6 +42,20 @@ describe("the lease of a data volume", () => {
     await lease.release();
   });
 
+  it("records the first sync for the preview, and the heartbeat keeps it (ADR 39)", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "mica-lease-"));
+    const file = join(dir, "lease.json");
+    const lease = await takeLease(dir, logger, never, timings);
+    assert.equal(JSON.parse(readFileSync(file, "utf8")).syncedAt, undefined);
+
+    await lease.synced();
+    const { syncedAt } = JSON.parse(readFileSync(file, "utf8")) as { syncedAt: number };
+    assert.equal(typeof syncedAt, "number");
+    await new Promise((resolve) => setTimeout(resolve, 3 * timings.heartbeatMs));
+    assert.equal(JSON.parse(readFileSync(file, "utf8")).syncedAt, syncedAt);
+    await lease.release();
+  });
+
   it("says so when another process took the lease over", async () => {
     const dir = mkdtempSync(join(tmpdir(), "mica-lease-"));
     const lost = new Promise<string>((resolve) => {
