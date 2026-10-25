@@ -7,6 +7,7 @@
 import type { AnyField } from "@micacms/core/internal";
 
 import type { OperationalFact } from "../context.js";
+import type { ProblemLine } from "../lib/logger.js";
 import type { CollectionStats, SchemaStats } from "../lib/schema-stats.js";
 import type { RepositoryInfo, StagingStatus } from "../services/changes.js";
 
@@ -177,4 +178,6 @@ export interface SystemInfo {
     adminOrigins: string[];
     memoryBytes: number;
   };
+  /** The last warnings and errors of this process, the newest first (ADR 40). */
+  problems: ProblemLine[];
 }

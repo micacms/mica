@@ -51,7 +51,7 @@ export {
   type ApiErrorBody,
   type ErrorCode,
 } from "./lib/errors.js";
-export { createLogger, type Logger } from "./lib/logger.js";
+export { createLogger, recentProblems, type Logger, type ProblemLine } from "./lib/logger.js";
 export { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
 export { randomToken } from "./lib/id.js";
 export { DEFAULT_PORT } from "./lib/ports.js";

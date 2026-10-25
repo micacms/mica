@@ -8,7 +8,7 @@
 import { computed, onMounted, ref } from "vue";
 import { ArrowRight } from "@lucide/vue";
 
-import { api, messageOf, type SystemInfo } from "@/api";
+import { api, messageOf, type ProblemLine, type SystemInfo } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
 import StatusNotice from "@/components/StatusNotice.vue";
 import { absoluteTime, formatBytes, formatDuration } from "@/lib/format";
@@ -63,6 +63,15 @@ function collectionLabel(name: string): string {
   return labels.value.get(`collection:${name}`) ?? name;
 }
 
+/** The fields of a log line as `key=value`, as the log writes them. */
+const fieldsOf = (line: ProblemLine): string =>
+  Object.entries(line.fields)
+    .map(([key, value]) => `${key}=${value}`)
+    .join(" ");
+
+/** The report carries the newest ones; the page shows all that Mica keeps. */
+const REPORTED_PROBLEMS = 20;
+
 /** The report a support request should carry, as plain text. */
 function report(): string {
   const data = info.value;
@@ -92,6 +101,9 @@ function report(): string {
     `Content root ${data.deployment.contentRoot}`,
     `Authentication ${data.deployment.auth}`,
     `Admission ${data.deployment.admission ?? "none"}`,
+    "",
+    data.problems.length ? `Last warnings and errors, the newest first:` : "No warnings or errors since Mica started.",
+    ...data.problems.slice(0, REPORTED_PROBLEMS).map((line) => `${line.time} ${line.level} ${line.message}${Object.keys(line.fields).length ? ` ${fieldsOf(line)}` : ""}`),
   ];
 
   return lines.join("\n");
@@ -170,6 +182,28 @@ async function copyReport(): Promise<void> {
             </dd>
           </div>
         </dl>
+      </section>
+
+      <!-- ------------------------------------------------ warnings and errors -->
+
+      <section class="card p-4" aria-labelledby="problems-heading">
+        <h2 id="problems-heading" class="text-sm font-semibold">Warnings and errors</h2>
+        <p class="mt-1 text-xs text-muted">
+          The last ones of this Mica since it started, the newest first. They stay in memory only, and email addresses are hidden.
+        </p>
+        <p v-if="info.problems.length === 0" class="mt-3 text-sm text-muted">No warnings or errors since Mica started.</p>
+        <ol v-else class="mt-3 max-h-96 divide-y divide-line overflow-y-auto" tabindex="0" aria-label="Warnings and errors, the newest first">
+          <li v-for="(line, index) in info.problems" :key="index" class="py-2.5 text-sm">
+            <div class="flex flex-wrap items-center gap-2">
+              <span :class="['status', line.level === 'error' && 'status-stopped']">{{ line.level === "error" ? "Error" : "Warning" }}</span>
+              <time :datetime="line.time" class="text-xs text-muted tabular-nums">{{ absoluteTime(line.time) }}</time>
+            </div>
+            <p class="mt-1">{{ line.message }}</p>
+            <p v-if="Object.keys(line.fields).length" class="mt-0.5 font-mono text-xs text-muted [overflow-wrap:anywhere]">
+              {{ fieldsOf(line) }}
+            </p>
+          </li>
+        </ol>
       </section>
 
       <!-- --------------------------------------------------- content model -->

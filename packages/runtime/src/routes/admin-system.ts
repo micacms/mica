@@ -11,6 +11,7 @@ import type { Env } from "../http.js";
 import { ApiError } from "../lib/errors.js";
 import { schemaStats } from "../lib/schema-stats.js";
 import { schemaOrigin } from "../schema.js";
+import { recentProblems } from "../lib/logger.js";
 import { VERSION } from "../lib/version.js";
 import { formatBytes } from "../services/media.js";
 import type { Overview, Schema, SystemInfo } from "./responses.js";
@@ -175,6 +176,7 @@ export function adminSystemRoutes(): Hono<Env> {
         adminOrigins: config.adminOrigins,
         memoryBytes: process.memoryUsage().rss,
       },
+      problems: recentProblems(),
     } satisfies SystemInfo);
   });
 
