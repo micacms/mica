@@ -1,7 +1,7 @@
 {
   "private": true,
   "name": "@micacms/editor-ui",
-  "version": "0.13.0",
+  "version": "0.14.0",
   "type": "module",
   "description": "The Mica editor SPA — identity-neutral Vue administration UI, shipped as built assets and mounted by a composing app.",
   "license": "MIT",

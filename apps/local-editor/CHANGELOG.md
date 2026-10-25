@@ -1,6 +1,15 @@
 # Change Log - @micacms/editor
 
-This log was last generated on Sat, 24 Oct 2026 13:39:21 GMT and should not be manually modified.
+This log was last generated on Sun, 25 Oct 2026 18:05:04 GMT and should not be manually modified.
+
+## 0.14.0
+Sun, 25 Oct 2026 18:05:04 GMT
+
+### Minor changes
+
+- The System page has a Preview section with its state, the reason and its last lines; "Copy report" adds them. The local editor keeps the last 50 lines of the astro dev that --preview started, and still writes them to the terminal.
+- The System page lists the last warnings and errors since Mica started, with email addresses hidden, and "Copy report" adds the newest 20 of them.
+- The top of the menu shows the website's name from `label`, with its address from `MICA_SITE_URL`, and the state of the preview: live, starting, stopped or off. A click on the name opens the Overview. While a form waits for the preview, the place of the page says why. The local editor now reads `MICA_SITE_URL`, as the docs say.
 
 ## 0.13.0
 Sat, 24 Oct 2026 13:39:21 GMT

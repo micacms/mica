@@ -2,6 +2,18 @@
   "name": "@micacms/astro",
   "entries": [
     {
+      "version": "0.14.0",
+      "tag": "@micacms/astro_v0.14.0",
+      "date": "Sun, 25 Oct 2026 18:05:04 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "When two dev servers of one content root run and one of them stops, the other one writes its note for the local editor again within two seconds, so that the editor keeps its preview."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.13.0",
       "tag": "@micacms/astro_v0.13.0",
       "date": "Sat, 24 Oct 2026 13:39:21 GMT",

@@ -2,6 +2,18 @@
   "name": "@micacms/core",
   "entries": [
     {
+      "version": "0.14.0",
+      "tag": "@micacms/core_v0.14.0",
+      "date": "Sun, 25 Oct 2026 18:05:04 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "`defineSite({ label })` names the website for its editors, with 60 characters at most. The model file `schema.json` keeps the label; an older Mica ignores it."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.13.0",
       "tag": "@micacms/core_v0.13.0",
       "date": "Sat, 24 Oct 2026 13:39:21 GMT",

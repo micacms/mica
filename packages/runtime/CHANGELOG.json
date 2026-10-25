@@ -2,6 +2,27 @@
   "name": "@micacms/runtime",
   "entries": [
     {
+      "version": "0.14.0",
+      "tag": "@micacms/runtime_v0.14.0",
+      "date": "Sun, 25 Oct 2026 18:05:04 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "The preview image tells Mica its state and its last 50 lines of output on port 4380 inside the network, without credentials and tokens. The self-hosted editor shows the exact state in its menu, the reason when the preview failed, and the lines on the System page. Without that port, as with an image of one's own, Mica guesses as before."
+          },
+          {
+            "comment": "The System page of the self-hosted editor lists the last warnings and errors since Mica started, kept in memory only, with email addresses hidden; \"Copy report\" adds the newest 20 of them."
+          },
+          {
+            "comment": "The self-hosted Mica can run on demand: before it stops, it tries once more to push a publication that waits, and after a start, the preview image waits up to 30 seconds for Mica's first sync, so that it copies the newest website once."
+          },
+          {
+            "comment": "The self-hosted editor shows the state of its preview: live while the preview container answers, starting for five minutes without an answer, then stopped, and off without `MICA_PREVIEW_UPSTREAM`."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.13.0",
       "tag": "@micacms/runtime_v0.13.0",
       "date": "Sat, 24 Oct 2026 13:39:21 GMT",

@@ -10,6 +10,41 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.14.0] — 2026-10-25
+
+This version names the website in the editor, says how its preview is, and
+shows what went wrong, without a shell on the server.
+
+### Added
+
+- **The website's name.** `defineSite({ label })` names the website for its
+  editors, with 60 characters at most. The top of the editor's menu shows it,
+  with the address of the published website from `MICA_SITE_URL`, and a click
+  on it opens the Overview. An older Mica ignores the label.
+- **The state of the preview** at the top of the menu: Preview live, starting,
+  stopped or off. While it is live, a click opens it. A form with a page says
+  why the page is not there yet.
+- **Recent problems on the System page.** It lists the last warnings and
+  errors since Mica started, kept in memory only, with email addresses hidden,
+  and a Preview section with the state of the preview and its last lines.
+  "Copy report" adds them.
+- **The preview image reports its state** on port 4380 inside the network, so
+  that the self-hosted editor knows when the preview copies, installs, starts
+  or failed, and why. An image of your own does not need it.
+- **Ready to run on demand.** Before the self-hosted Mica stops, it tries once
+  more to push a publication that waits, and after a start of both, the
+  preview waits for Mica's first sync (ADR 39).
+
+### Changed
+
+- The whole first cell of an entry list opens the entry.
+
+### Fixed
+
+- The local editor reads `MICA_SITE_URL`, as the docs say.
+- The local editor keeps its preview when a second dev server of the same
+  content root stops.
+
 ## [0.13.0] — 2026-10-24
 
 This version adds the live preview: the real page of the website beside the

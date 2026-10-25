@@ -1,6 +1,13 @@
 # Change Log - @micacms/core
 
-This log was last generated on Sat, 24 Oct 2026 13:39:21 GMT and should not be manually modified.
+This log was last generated on Sun, 25 Oct 2026 18:05:04 GMT and should not be manually modified.
+
+## 0.14.0
+Sun, 25 Oct 2026 18:05:04 GMT
+
+### Minor changes
+
+- `defineSite({ label })` names the website for its editors, with 60 characters at most. The model file `schema.json` keeps the label; an older Mica ignores it.
 
 ## 0.13.0
 Sat, 24 Oct 2026 13:39:21 GMT

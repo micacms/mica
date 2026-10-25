@@ -1,6 +1,16 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Sat, 24 Oct 2026 13:39:21 GMT and should not be manually modified.
+This log was last generated on Sun, 25 Oct 2026 18:05:04 GMT and should not be manually modified.
+
+## 0.14.0
+Sun, 25 Oct 2026 18:05:04 GMT
+
+### Minor changes
+
+- The preview image tells Mica its state and its last 50 lines of output on port 4380 inside the network, without credentials and tokens. The self-hosted editor shows the exact state in its menu, the reason when the preview failed, and the lines on the System page. Without that port, as with an image of one's own, Mica guesses as before.
+- The System page of the self-hosted editor lists the last warnings and errors since Mica started, kept in memory only, with email addresses hidden; "Copy report" adds the newest 20 of them.
+- The self-hosted Mica can run on demand: before it stops, it tries once more to push a publication that waits, and after a start, the preview image waits up to 30 seconds for Mica's first sync, so that it copies the newest website once.
+- The self-hosted editor shows the state of its preview: live while the preview container answers, starting for five minutes without an answer, then stopped, and off without `MICA_PREVIEW_UPSTREAM`.
 
 ## 0.13.0
 Sat, 24 Oct 2026 13:39:21 GMT

@@ -1,6 +1,13 @@
 # Change Log - @micacms/astro
 
-This log was last generated on Sat, 24 Oct 2026 13:39:21 GMT and should not be manually modified.
+This log was last generated on Sun, 25 Oct 2026 18:05:04 GMT and should not be manually modified.
+
+## 0.14.0
+Sun, 25 Oct 2026 18:05:04 GMT
+
+### Patches
+
+- When two dev servers of one content root run and one of them stops, the other one writes its note for the local editor again within two seconds, so that the editor keeps its preview.
 
 ## 0.13.0
 Sat, 24 Oct 2026 13:39:21 GMT
