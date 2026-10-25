@@ -8,6 +8,8 @@ import { collection, date, defineSite, media, richText, singleton, slug, tags, t
 
 export const site = defineSite({
   root: "./content",
+  // The website's name at the top of the editor's menu.
+  label: "My site",
   collections: {
     posts: collection({
       label: "Posts",
