@@ -291,6 +291,7 @@ volumes:
 6. It starts `astro dev` on port 4321.
 7. When a sync or a publication changes the commit of the clone, it copies again. It installs again only if the lock file changed, and starts the dev server again only if a file changed. Thus a Publish of content does not restart the preview.
 8. After a failure, such as an install while the npm registry is away, it tries again after 30 seconds, then after longer waits, up to ten minutes. It also tries again at once at the next change of the website.
+9. It tells Mica its state, such as installing or failed, with a reason and its last 50 lines of output, on port 4380 inside the network. It takes credentials and tokens out of the lines first. The editor's menu and the System page show them. Do not publish this port.
 
 It removes only the files that it copied itself. Files that an install makes outside `node_modules` stay.
 
@@ -337,6 +338,8 @@ Use an image of your own for another Node version, a private registry or Bun. It
 - `MICA_PREVIEW_EDITOR`, the address of the editor, which is the value of `MICA_PUBLIC_URL`;
 - `astro dev --host 0.0.0.0 --port 4321`, so that the Mica container reaches the dev server;
 - the content folder of the website linked to `/mica/repository/<content root>`.
+
+The report on port 4380 is optional. Without it, Mica sees only whether the preview answers: the menu shows **Preview starting** for five minutes, then **Preview stopped**.
 
 This example is for an Astro project with npm:
 

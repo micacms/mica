@@ -37,9 +37,30 @@ export interface StartedDevServer {
   running: boolean;
   /** How it ended: its exit code, or the signal that ended it. */
   exit: number | string | null;
+  /** Its last lines of output, without colours, the oldest first (ADR 40). */
+  lines: string[];
 }
 
 let started: StartedDevServer | null = null;
+
+const LINES_KEPT = 50;
+// ESC and CSI sequences: the colours of astro dev.
+const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b[@-_]/g;
+
+/** Keeps the last lines of a stream of chunks, which can cut a line in two. */
+function keepLines(lines: string[]): (chunk: string) => void {
+  let partial = "";
+  return (chunk) => {
+    const parts = (partial + chunk).split(/\r?\n/);
+    partial = parts.pop() ?? "";
+    for (const part of parts) {
+      const line = part.replace(ANSI, "").trimEnd();
+      if (!line) continue;
+      lines.push(line);
+      if (lines.length > LINES_KEPT) lines.shift();
+    }
+  };
+}
 
 export const startedDevServer = (): StartedDevServer | null => started;
 
@@ -52,14 +73,28 @@ export function startAstroDev(options: { projectRoot: string; command: string; e
   // Mica owns the dev server's lifetime: without the lock, Astro never moves it to the background, as it does for a coding agent.
   const child = spawn(process.execPath, [options.command, "dev", "--ignore-lock"], {
     cwd: options.projectRoot,
-    env: { ...options.env, MICA_PREVIEW: "1" },
-    // Ctrl+C reaches both processes from the terminal; stdin stays Mica's.
-    stdio: ["ignore", "inherit", "inherit"],
+    // Through a pipe, Astro sees no terminal: it keeps its colours only when Mica's terminal shows them.
+    env: { ...options.env, MICA_PREVIEW: "1", ...(process.stdout.isTTY && !options.env["NO_COLOR"] ? { FORCE_COLOR: "1" } : {}) },
+    // Ctrl+C reaches both processes from the terminal; stdin stays Mica's. The output goes on to the
+    // terminal, and its last lines to the System page.
+    stdio: ["ignore", "pipe", "pipe"],
   });
-  started = { running: true, exit: null };
+  const run: StartedDevServer = { running: true, exit: null, lines: [] };
+  started = run;
+  const out = keepLines(run.lines);
+  const err = keepLines(run.lines);
+  child.stdout?.on("data", (chunk: Buffer) => {
+    process.stdout.write(chunk);
+    out(chunk.toString("utf8"));
+  });
+  child.stderr?.on("data", (chunk: Buffer) => {
+    process.stderr.write(chunk);
+    err(chunk.toString("utf8"));
+  });
   child.on("error", () => options.onFail(1));
   child.on("exit", (code, signal) => {
-    started = { running: false, exit: code ?? signal };
+    run.running = false;
+    run.exit = code ?? signal;
     if (code !== null && code !== 0) options.onFail(code);
   });
   // A `kill` of Mica and a failed start reach only Mica.

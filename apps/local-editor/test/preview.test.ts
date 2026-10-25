@@ -55,7 +55,7 @@ describe("devServerPreview", () => {
     assert.equal(await state(), "starting");
 
     rmSync(devServerMarkerPath(root), { force: true });
-    assert.equal(await state({ started: () => ({ running: true, exit: null }) }), "starting");
+    assert.equal(await state({ started: () => ({ running: true, exit: null, lines: [] }) }), "starting");
   });
 
   it("is stopped when the marker's process is gone, or the dev server of --preview ended, with how it ended", async () => {
@@ -64,9 +64,10 @@ describe("devServerPreview", () => {
     assert.equal(await state(), "stopped");
 
     rmSync(devServerMarkerPath(root), { force: true });
-    const ended = await devServerPreview(root, { started: () => ({ running: false, exit: "SIGTERM" }) })();
+    const ended = await devServerPreview(root, { started: () => ({ running: false, exit: "SIGTERM", lines: ["astro  v7.3.8 ready", "[200] / 12ms"] }) })();
     assert.equal(ended.state, "stopped");
     assert.match(ended.detail ?? "", /It ended with SIGTERM/);
+    assert.deepEqual(ended.lines, ["astro  v7.3.8 ready", "[200] / 12ms"], "the last lines of --preview's dev server, for the System page");
   });
 
   it("takes no marker with an address that is not on this machine", async () => {

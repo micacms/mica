@@ -61,13 +61,19 @@ export function devServerPreview(contentRoot: string, options: DevServerPreviewO
   };
 
   const look = async (): Promise<PreviewStatus> => {
+    const run = options.started?.() ?? null;
+    // The last lines of the dev server that --preview started, for the System page (ADR 40).
+    const lines = run ? { lines: [...run.lines] } : {};
+    return { ...(await state(run)), ...lines };
+  };
+
+  const state = async (run: StartedDevServer | null): Promise<PreviewStatus> => {
     const found = await marker();
     if (found && runs(found.pid)) {
       return (await answers(found.address, fetcher))
         ? status("live", null, found.address)
         : status("starting", "The website's dev server is starting.");
     }
-    const run = options.started?.() ?? null;
     if (run?.running) return status("starting", "The website's dev server is starting.");
     if (run || found) {
       const how = run?.exit !== null && run?.exit !== undefined ? ` It ended with ${typeof run.exit === "number" ? `exit code ${run.exit}` : run.exit}.` : "";

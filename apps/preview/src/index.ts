@@ -9,7 +9,8 @@
  * commit changes, after a sync or a publication, it copies again; it installs
  * again only when the lock file changed, and starts the dev server again only
  * when a file changed. After a failure, it tries again a little later. At its
- * start, it waits a short time for Mica's first sync (ADR 39).
+ * start, it waits a short time for Mica's first sync (ADR 39). It tells Mica its
+ * state and its last lines of output on port 4380 (ADR 40).
  */
 
 import { spawn, type ChildProcess } from "node:child_process";
@@ -20,6 +21,7 @@ import { dirname, join } from "node:path";
 import { FIRST_SYNC_WAIT_MS, micaSynced } from "./first-sync.js";
 import { contentRootIn, headOf, installCommand, installKey, lockFileOf, siteIn } from "./layout.js";
 import { mirror } from "./mirror.js";
+import { createStatusBoard, serveStatus } from "./status.js";
 
 const env = process.env;
 const CLONE = env["MICA_PREVIEW_CLONE"] ?? "/mica/repository";
@@ -31,7 +33,24 @@ const POLL_MS = 5_000;
 /** A dev server that ran this long is no crash loop: the next start waits from the beginning again. */
 const STABLE_MS = 60_000;
 
-const log = (message: string): void => console.log(`[mica-preview] ${message}`);
+const board = createStatusBoard();
+
+const log = (message: string): void => {
+  console.log(`[mica-preview] ${message}`);
+  board.line(`[mica-preview] ${message}`);
+};
+
+/** The output of a process goes to the container's log, as before, and into the last lines for Mica. */
+function capture(child: ChildProcess, name: string): void {
+  child.stdout?.on("data", (chunk: Buffer) => {
+    process.stdout.write(chunk);
+    board.output(`${name}:out`, chunk.toString("utf8"));
+  });
+  child.stderr?.on("data", (chunk: Buffer) => {
+    process.stderr.write(chunk);
+    board.output(`${name}:err`, chunk.toString("utf8"));
+  });
+}
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const describe = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
@@ -48,7 +67,8 @@ function editorOrigin(): string | null {
 function run(command: string, args: string[], cwd: string, extra: Record<string, string>): Promise<boolean> {
   log(`${command} ${args.join(" ")} (in ${cwd})`);
   return new Promise((resolve) => {
-    const child = spawn(command, args, { cwd, stdio: "inherit", env: { ...env, ...extra } });
+    const child = spawn(command, args, { cwd, stdio: ["ignore", "pipe", "pipe"], env: { ...env, ...extra } });
+    capture(child, command);
     child.on("error", (error) => {
       log(`${command} did not start: ${describe(error)}`);
       resolve(false);
@@ -89,10 +109,13 @@ function startServer(site: string): void {
   log(`Starting astro dev in ${site}`);
   const child = spawn(process.execPath, [astroOf(site), "dev", "--host", "0.0.0.0", "--port", "4321", "--ignore-lock"], {
     cwd: site,
-    stdio: "inherit",
+    stdio: ["ignore", "pipe", "pipe"],
     env: { ...env, MICA_PREVIEW: "1", ...(origin ? { MICA_PREVIEW_EDITOR: origin } : {}) },
   });
+  capture(child, "astro");
   server = child;
+  board.set("starting");
+  void untilAnswers(child);
   child.on("exit", (code, signal) => {
     if (server !== child || stopping) return;
     server = null;
@@ -100,10 +123,24 @@ function startServer(site: string): void {
     crashes = Date.now() - started > STABLE_MS ? 1 : crashes + 1;
     const wait = Math.min(2 ** crashes * 1_000, 60_000);
     log(`astro dev stopped (${signal ?? code}). It starts again in ${wait / 1000} s.`);
+    board.set("failed", `astro dev stopped (${signal ?? code}). It starts again in ${wait / 1000} s.`);
     setTimeout(() => {
       if (!server && !stopping) startServer(site);
     }, wait);
   });
+}
+
+/** Running once the dev server answers on its port, while it is still the one that runs. */
+async function untilAnswers(child: ChildProcess): Promise<void> {
+  while (server === child && child.exitCode === null) {
+    try {
+      await fetch("http://127.0.0.1:4321/", { method: "HEAD", redirect: "manual", signal: AbortSignal.timeout(1_000) });
+      if (server === child) board.set("running");
+      return;
+    } catch {
+      await sleep(1_000);
+    }
+  }
 }
 
 async function stopServer(): Promise<void> {
@@ -129,6 +166,7 @@ async function waitForFirstSync(): Promise<void> {
   };
   if (micaSynced(read())) return;
   log("Waiting for Mica's first sync, so that the copy has the newest website.");
+  board.set("waiting", "The preview waits for Mica's first sync.");
   const deadline = Date.now() + FIRST_SYNC_WAIT_MS;
   while (Date.now() < deadline) {
     await sleep(1_000);
@@ -149,7 +187,9 @@ try {
 /** Copies the website, links the drafts, installs when needed, and starts the dev server when something changed. */
 async function update(root: string): Promise<void> {
   const site = siteIn(CLONE, root, env["MICA_PREVIEW_SITE_PATH"]);
+  if (!server) board.set("copying");
   const copy = mirror(CLONE, WORK, new Set([root]), copiedFiles);
+  board.commit(headOf(CLONE));
   copiedFiles = copy.files;
   writeFileSync(COPIED, JSON.stringify([...copiedFiles]));
   linkContent(root);
@@ -162,6 +202,7 @@ async function update(root: string): Promise<void> {
   if (key !== installed) {
     // A failed install can leave no packages: until one succeeds, each try installs.
     installed = "";
+    board.set("installing");
     const install = installCommand(lock, CACHE);
     if (!(await run(install.command, install.args, join(WORK, lock.folder), install.env))) throw new Error("The install failed.");
     if (existsSync(join(WORK, lock.folder, ".pnp.cjs"))) {
@@ -173,6 +214,7 @@ async function update(root: string): Promise<void> {
 }
 
 async function main(): Promise<void> {
+  serveStatus(board);
   // The site's code runs here: it must not be able to write Mica's drafts.
   let writable = false;
   try {
@@ -185,6 +227,7 @@ async function main(): Promise<void> {
   if (!editorOrigin()) log("MICA_PUBLIC_URL is not set: the page answers only an editor on this machine.");
 
   log(`Waiting for Mica's clone in ${CLONE}`);
+  board.set("waiting", "The preview waits for Mica's copy of the website.");
   let root: string | null = null;
   while (!(root = contentRootIn(CLONE, env["MICA_CONTENT_PATH"]))) await sleep(2_000);
   log(`Content root: ${root}`);
@@ -205,6 +248,7 @@ async function main(): Promise<void> {
       failures++;
       const wait = Math.min(2 ** failures * 15_000, 600_000);
       log(`${describe(error)} The preview tries again in ${wait / 1000} s, or at the next change of the website.`);
+      board.set("failed", `${describe(error)} The preview tries again in ${wait / 1000} s, or at the next change of the website.`);
       retry = setTimeout(() => void cycle(), wait);
     } finally {
       busy = false;
