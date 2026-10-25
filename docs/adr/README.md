@@ -54,6 +54,7 @@ Each record states a decision that is still true: its context, the decision and 
 - [37. A live preview beside the form; a link to the published page](0037-live-preview.md)
 - [38. A live preview for the self-hosted Mica, on an origin of its own](0038-self-hosted-live-preview.md)
 - [39. The self-hosted editor and its preview can run on demand](0039-self-hosted-editor-and-preview-run-on-demand.md)
+- [40. The System page shows recent problems of Mica and of its preview](0040-recent-problems-on-the-system-page.md)
 
 ## Agents
 
