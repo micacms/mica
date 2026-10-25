@@ -41,6 +41,28 @@ describe("readManifest", () => {
     assert.deepEqual(site, original);
   });
 
+  it("keeps the site's label, and leaves out one that it cannot use, with a warning", () => {
+    const named = defineSite({
+      label: "Harbor Lane Consulting",
+      collections: { pages: collection({ label: "Pages", fields: { title: text(), slug: slug({ from: "title" }) } }) },
+    });
+    const manifest = JSON.parse(JSON.stringify(createManifest(named, "test")));
+    assert.equal(manifest.label, "Harbor Lane Consulting");
+    assert.equal(checkSchema(manifest).label, "Harbor Lane Consulting");
+
+    for (const label of ["", "   ", 7, "x".repeat(61)]) {
+      const read = readManifest({ ...validSite(), label });
+      assert.equal(read.site.label, undefined);
+      assert.match(read.warnings.join("\n"), /The site's label/);
+    }
+    assert.equal("label" in createManifest(defineSite({ collections: {} }), "test"), false);
+  });
+
+  it("refuses a site label in the model that the editor cannot show", () => {
+    assert.throws(() => defineSite({ label: " ", collections: {} }), /The site's label must be a text that is not empty/);
+    assert.throws(() => defineSite({ label: "x".repeat(61), collections: {} }), /60 characters at most/);
+  });
+
   it("injects collection names from the keys, as defineSite does", () => {
     const raw = validSite();
     // A hand-edited or hand-written schema may carry no name at all.

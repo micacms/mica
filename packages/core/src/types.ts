@@ -394,6 +394,8 @@ export interface SiteOptions {
    * a Mica deployment is told where content lives by its own configuration.
    */
   root?: string;
+  /** The website's name for its editors, such as "Harbor Lane Consulting": the editor shows it at the top of its menu. */
+  label?: string;
   collections: Record<string, Collection>;
   singletons?: Record<string, Singleton>;
   references?: Record<string, ReferenceSet>;
@@ -405,6 +407,8 @@ export interface Site<
 > {
   /** See `SiteOptions.root`. Absent in a model read back from a manifest. */
   root?: string;
+  /** See `SiteOptions.label`. */
+  label?: string;
   collections: C;
   singletons: S;
   /** The reference sets, when the model has any. */

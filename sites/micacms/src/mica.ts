@@ -27,6 +27,7 @@ const linkFields = {
 
 export const site = defineSite({
   root: "./content",
+  label: "micacms.com",
   collections: {
     docs: collection({
       label: "Documentation",

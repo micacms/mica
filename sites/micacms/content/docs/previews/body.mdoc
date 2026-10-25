@@ -19,6 +19,8 @@ Start the local editor with `npx mica start --preview`. It also starts the websi
 
 The local editor finds the dev server at the base path of the Astro config, on the port that the dev server listens on. When the port of the config is busy, Astro takes another one: with `micaPreview()` in `astro.config`, the editor finds that port too. Without it, the editor uses the port of the config, `4321` by default, so set `server.port` in `astro.config`.
 
+The top of the editor's menu shows the state of the preview: **Preview live**, **Preview starting**, **Preview stopped** or **Preview off**. While it is live, a click opens the preview in a new tab. When a form has a page and the preview starts or stopped, the place of the page says so, and why.
+
 ## Preview in the self-hosted Mica
 
 The self-hosted Mica shows the same preview beside the form. The page comes from a preview container: the dev server of the website, which reads the drafts of Mica's data volume. The preview shows a draft about two seconds after you stop typing. Click to edit and the outline of changes that are not published work as in the local editor.
@@ -26,6 +28,8 @@ The self-hosted Mica shows the same preview beside the form. The page comes from
 The preview has a host name of its own, such as `preview.cms.example.com` beside `cms.example.com`. When an editor opens an entry, Mica gives the editor's browser a pass for that address. The pass ends after ten minutes. The editor renews it when the person types or clicks, at most every five minutes. A tab that nobody uses does not renew it. The website never sees the cookies of Mica, and only the editor can frame the preview.
 
 A change of a template shows in the preview after Mica's next sync of the branch, by default within a minute. Mica does not start, stop or build the preview. The setup is in [Add the live preview](/docs/self-hosting/).
+
+Mica sees only whether the preview container answers. While it does not, the menu shows **Preview starting** for five minutes, as after a start or during an install, and then **Preview stopped**. Without `MICA_PREVIEW_UPSTREAM`, it shows **Preview off**.
 
 ## Click a text to edit it
 

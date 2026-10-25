@@ -10,6 +10,7 @@ import type { Context } from "hono";
 
 import type { RuntimeConfig } from "./config.js";
 import type { Env } from "./http.js";
+import type { PreviewStatus } from "./routes/responses.js";
 import { createLogger, type Logger } from "./lib/logger.js";
 import { createRateLimiter, type RateLimiter } from "./lib/rate-limit.js";
 import { loadSchema, SchemaError } from "./schema.js";
@@ -86,8 +87,8 @@ export interface RuntimeContext {
    * unless `force`.
    */
   refreshModel(options?: { force?: boolean }): Promise<void>;
-  /** The address of the website's dev server that shows the drafts, or null: the local `astro dev`, or the self-hosted preview's gate. */
-  preview(): Promise<string | null>;
+  /** The website's dev server that shows the drafts: the local `astro dev`, or the self-hosted preview behind its gate. */
+  preview(): Promise<PreviewStatus>;
   /** The origins that the editor may show in a frame for the live preview. Empty without a preview. */
   previewFrames: readonly string[];
   /**
@@ -117,8 +118,8 @@ export interface CreateRuntimeContextOptions {
   tree?: GitTree;
   /** Called after a new model is in use, for what the app keeps beside the runtime. */
   onModel?: (model: Site) => void;
-  /** See `RuntimeContext.preview`. Without it, there is no preview. */
-  preview?: () => Promise<string | null>;
+  /** See `RuntimeContext.preview`. Without it, the preview is off. */
+  preview?: () => Promise<PreviewStatus>;
   /** See `RuntimeContext.previewFrames`. */
   previewFrames?: readonly string[];
   /** See `RuntimeContext.previewHandover`. */
@@ -224,7 +225,7 @@ export function createRuntimeContext(options: CreateRuntimeContextOptions): Runt
       (() => ({ auth: "unspecified" })),
     health: options.health ?? {},
     refreshModel,
-    preview: options.preview ?? (async () => null),
+    preview: options.preview ?? (async () => ({ state: "off", address: null, detail: null })),
     previewFrames: options.previewFrames ?? [],
     previewHandover: options.previewHandover,
 

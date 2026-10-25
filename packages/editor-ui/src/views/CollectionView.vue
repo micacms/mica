@@ -271,10 +271,11 @@ const reorder = useReorder<EntrySummary>({
                   v-bind="reorder.handle(entry)"
                 />
               </td>
-              <td class="px-4 py-2.5">
+              <!-- The whole cell opens the entry: the link's ::after covers it, and the link stays one stop for the keyboard. -->
+              <td class="group relative px-4 py-2.5">
                 <RouterLink
                   :to="{ name: 'entry', params: { collection, slug: entry.slug } }"
-                  class="font-medium hover:underline"
+                  class="font-medium group-hover:underline after:absolute after:inset-0 after:content-['']"
                 >
                   {{ entry.title }}
                 </RouterLink>

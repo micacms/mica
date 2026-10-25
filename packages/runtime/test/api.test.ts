@@ -338,20 +338,46 @@ describe("content", () => {
   });
 
   it("gives no preview without a dev server", async () => {
-    assert.deepEqual(await (await harness.request("/api/admin/preview")).json(), { address: null, handover: null });
+    assert.deepEqual(await (await harness.request("/api/admin/preview")).json(), { state: "off", address: null, detail: null, handover: null });
     assert.equal(((await (await harness.request("/api/admin/schema")).json()) as { collections: Array<{ url: unknown }> }).collections[0]?.url, null);
   });
 
   it("gives the address of a preview on an origin of its own with a token for the browser", async () => {
     const other = await createHarness(
       {},
-      { preview: { preview: async () => "https://preview.example.com", previewFrames: ["https://preview.example.com"], previewHandover: () => "token" } },
+      { preview: { preview: async () => ({ state: "live", address: "https://preview.example.com", detail: null }), previewFrames: ["https://preview.example.com"], previewHandover: () => "token" } },
     );
     try {
-      assert.deepEqual(await (await other.request("/api/admin/preview")).json(), { address: "https://preview.example.com", handover: "token" });
+      assert.deepEqual(await (await other.request("/api/admin/preview")).json(), { state: "live", address: "https://preview.example.com", detail: null, handover: "token" });
     } finally {
       other.close();
     }
+  });
+
+  it("gives no address and no token for a preview that is not live, only its state and why", async () => {
+    const other = await createHarness(
+      {},
+      { preview: { preview: async () => ({ state: "starting", address: "https://preview.example.com", detail: "The preview is starting." }), previewHandover: () => "token" } },
+    );
+    try {
+      assert.deepEqual(await (await other.request("/api/admin/preview")).json(), { state: "starting", address: null, detail: "The preview is starting.", handover: null });
+    } finally {
+      other.close();
+    }
+  });
+
+  it("names the site with the model's label and MICA_SITE_URL, and with null without them", async () => {
+    const schema = async (config: Record<string, string>, label?: string) => {
+      const site = label === undefined ? testSite : defineSite({ label, collections: testSite.collections, singletons: testSite.singletons });
+      const other = await createHarness(config, { site });
+      try {
+        return ((await (await other.request("/api/admin/schema")).json()) as { site: unknown }).site;
+      } finally {
+        other.close();
+      }
+    };
+    assert.deepEqual(await schema({ MICA_SITE_URL: "https://harborlane.example" }, "Harbor Lane"), { label: "Harbor Lane", url: "https://harborlane.example" });
+    assert.deepEqual(await schema({}), { label: null, url: null });
   });
 
   it("gives the page address of a collection only with a url in the model and MICA_SITE_URL", async () => {

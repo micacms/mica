@@ -46,4 +46,9 @@ describe("the local editor's containment", () => {
     assert.equal(loadConfig({ ...base }).MICA_LOCAL_PUBLISH, true);
     assert.equal(loadConfig({ ...base, MICA_LOCAL_PUBLISH: "false" }).MICA_LOCAL_PUBLISH, false);
   });
+
+  it("reads the published website's address, as the docs say", () => {
+    assert.equal(loadConfig({ ...base, MICA_SITE_URL: "https://harborlane.example/" }).MICA_SITE_URL, "https://harborlane.example");
+    assert.equal(loadConfig({ ...base }).MICA_SITE_URL, undefined);
+  });
 });

@@ -27,6 +27,7 @@ const {
   MICA_CONTENT_ROOT,
   MICA_MAX_UPLOAD_BYTES,
   MICA_MCP_PUBLISH,
+  MICA_SITE_URL,
 } = runtimeEnv;
 
 const schema = z
@@ -40,6 +41,8 @@ const schema = z
     MICA_LOCAL_PUBLISH: bool(true),
     MICA_MAX_UPLOAD_BYTES,
     MICA_MCP_PUBLISH,
+    /** The published website: its name in the menu, and "Open on website". */
+    MICA_SITE_URL,
     /** Development of the editor itself: the Vite server's origin, allowed to call the API. */
     MICA_ADMIN_ORIGINS: z.string().optional(),
     /** Development of the editor itself: a built editor to serve instead of the packaged one. */

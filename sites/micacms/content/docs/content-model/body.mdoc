@@ -9,6 +9,7 @@ A collection contains many entries. Each collection has one slug field that iden
 ```ts
 export const site = defineSite({
   root: "./content",
+  label: "Harbor Lane Consulting",
   collections: {
     projects: collection({
       label: "Projects",
@@ -26,6 +27,8 @@ export const site = defineSite({
 ```
 
 `root` is where the content is. It is relative to the Astro project root, like Astro's own `glob({ base })`, and not relative to `src/mica.ts` or to the directory where the build starts. The default is `./content`. Mica uses an absolute path as it is: use one when the content is in a separate repository that CI checks out in a different location. For content in a Git submodule, see [Content in its own repository](/docs/content-in-its-own-repository/).
+
+`label` is the website's name for its editors, with 60 characters at most. The editor shows it at the top of its menu, and a click on it opens the Overview. Without a label, the menu shows the host name of `MICA_SITE_URL`, else "Mica".
 
 A collection has one `slug()` field. Mica reads the slug from the name of the entry's folder or file, so the slug is never empty. [Field reference](/docs/reference-fields/) lists the options of `collection()` and `singleton()`, such as `labelSingular`, `defaultSort`, `sortable` and `url`. With `url` and the address of the website, an entry shows "Open on website": see [Preview changes](/docs/previews/).
 

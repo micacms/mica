@@ -38,8 +38,9 @@ export function adminSystemRoutes(): Hono<Env> {
   /** The dev server that shows the drafts, for "Preview", and the token that lets the browser into it when it is on another origin. */
   app.get("/preview", async (c) => {
     const ctx = c.get("ctx");
-    const address = await ctx.preview();
-    return c.json({ address, handover: address && ctx.previewHandover ? ctx.previewHandover(c) : null });
+    const status = await ctx.preview();
+    const address = status.state === "live" ? status.address : null;
+    return c.json({ ...status, address, handover: address && ctx.previewHandover ? ctx.previewHandover(c) : null });
   });
 
   app.get("/schema", (c) => {
@@ -48,6 +49,7 @@ export function adminSystemRoutes(): Hono<Env> {
     const page = (url: string | undefined) => (url && config.MICA_SITE_URL ? `${config.MICA_SITE_URL}${url}` : null);
 
     return c.json({
+      site: { label: site.model.label ?? null, url: config.MICA_SITE_URL ?? null },
       collections: Object.values(site.model.collections).map((def) => ({
         name: def.name,
         label: def.label,

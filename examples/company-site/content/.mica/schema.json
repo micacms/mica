@@ -1,6 +1,7 @@
 {
   "protocolVersion": 1,
   "generatedBy": "@micacms/astro",
+  "label": "Harbor Lane",
   "collections": {
     "pages": {
       "type": "collection",
