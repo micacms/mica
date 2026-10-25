@@ -58,6 +58,9 @@ function refuse(message: string): never {
 /** How long a stop waits for a running sync or publication, within the server's 15 seconds. */
 const SHUTDOWN_WAIT_MS = 10_000;
 
+/** The time limit of each Git call of the last push before a stop. Git removes its locks when the limit ends it. */
+const FLUSH_PUSH_MS = 8_000;
+
 /** The content files, with every write refused while the clone is read-only (`SyncState.readOnly`). */
 function refuseWritesWhile(files: ContentFiles, readOnly: () => string | null): ContentFiles {
   return {
@@ -163,8 +166,12 @@ async function serve(): Promise<void> {
     shutdown: async () => {
       managed?.stop();
       // A sync or a publication that runs now finishes, so that it leaves no Git lock behind (#229).
+      // Then a publication that waits gets one more try, so that the stop does not hold it back (ADR 39).
       if (locks) {
-        const idle = Promise.all([locks.remote.run(async () => {}), locks.tree.write(async () => {})]);
+        const remote = managed
+          ? managed.flush(FLUSH_PUSH_MS).catch((error: unknown) => logger.error("The last push before the stop failed", { error: String(error) }))
+          : locks.remote.run(async () => {});
+        const idle = Promise.all([remote, locks.tree.write(async () => {})]);
         await Promise.race([idle, new Promise((resolve) => setTimeout(resolve, SHUTDOWN_WAIT_MS).unref())]);
       }
       await ctx?.shutdown();
@@ -296,7 +303,8 @@ async function serve(): Promise<void> {
       routes: agentRoutes(config, ctx, auth, logger),
     }),
   );
-  workspace.start();
+  // The preview waits for this after a start, so that it copies the newest website once (ADR 39).
+  workspace.start(() => void lease?.synced());
   void checkWrite(workspace, logger, clean);
 
   logger.info("Mica CMS started", {

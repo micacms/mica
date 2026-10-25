@@ -1,6 +1,6 @@
 # 39. The self-hosted editor and its preview can run on demand
 
-**Status:** Proposed
+**Status:** Accepted
 
 ## Context
 

@@ -109,7 +109,14 @@ export interface ManagedWorkspace {
    * rights, not branch rules.
    */
   checkWrite(): Promise<PushOutcome>;
-  start(): void;
+  /**
+   * Before a stop: one more try to push a publication that waits, with
+   * `timeoutMs` for each Git call, so that the stop does not hold it back until
+   * the next start (ADR 39).
+   */
+  flush(timeoutMs: number): Promise<void>;
+  /** Syncs at once and then at each interval. `onFirstSync` runs once, when the first sync ended. */
+  start(onFirstSync?: () => void): void;
   stop(): void;
 }
 
@@ -123,6 +130,12 @@ class RemoteFailure extends Error {
 }
 
 const MAX_PUSH_TRIES = 3;
+
+/** How often and how long a publication tries to reach the host. */
+interface PushLimits {
+  tries: number;
+  timeoutMs: number;
+}
 
 /** Failures that keep the clone from the website's version: Publish waits for them. */
 const HOLDS = new Set<SyncProblem["code"]>(["diverged", "model_unreadable"]);
@@ -414,9 +427,9 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
    * The caller holds the remote lock. Throws an `ApiError` when the publication
    * turned back into drafts.
    */
-  const push = async (): Promise<PublishResult> => {
+  const push = async (limits?: PushLimits): Promise<PublishResult> => {
     try {
-      return await pushHeld();
+      return await pushHeld(limits);
     } catch (error) {
       if (error instanceof ApiError) throw error;
       // After an undo, a failure leaves the publication as drafts again.
@@ -429,13 +442,13 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     }
   };
 
-  const pushHeld = async (): Promise<PublishResult> => {
+  const pushHeld = async (limits: PushLimits = { tries: MAX_PUSH_TRIES, timeoutMs: NETWORK_CALL_MS }): Promise<PublishResult> => {
     for (let attempt = 1; ; attempt += 1) {
       const revision = await git.run(["rev-parse", "HEAD"]);
-      const lfsFailure = await pushLfs();
+      const lfsFailure = await pushLfs(limits.timeoutMs);
       const outcome: PushOutcome = lfsFailure
         ? { kind: "failed", failure: lfsFailure.failure }
-        : await pushOnce(["push", "--porcelain", "origin", `HEAD:refs/heads/${branch}`]);
+        : await pushOnce(["push", "--porcelain", "origin", `HEAD:refs/heads/${branch}`], limits.timeoutMs);
       const failed = (failure: FailureClass) => {
         if (!lfsFailure) return describeFailure(failure);
         return `Git LFS could not send the files. ${failure === "unknown" ? lfsFailure.detail : describeFailure(failure)}`;
@@ -460,7 +473,7 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
         );
       }
 
-      if (outcome.kind === "failed" || attempt >= MAX_PUSH_TRIES) {
+      if (outcome.kind === "failed" || attempt >= limits.tries) {
         const reason = outcome.kind === "failed" ? failed(outcome.failure) : "The remote kept moving.";
         if (state.pendingPush?.reason !== reason) {
           logger.warn("A publication is committed but not pushed yet", { revision, reason });
@@ -517,10 +530,10 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
    * Sends the LFS objects of the publication before the commit, as the LFS
    * pre-push hook would; hooks are off. A failure, or null.
    */
-  const pushLfs = async (): Promise<{ failure: FailureClass; detail: string } | null> => {
+  const pushLfs = async (timeoutMs: number): Promise<{ failure: FailureClass; detail: string } | null> => {
     if (!(await lfsUnderRoot(git, "HEAD", root))) return null;
     try {
-      await pushLfsObjects(git, "origin", "HEAD", NETWORK_CALL_MS);
+      await pushLfsObjects(git, "origin", "HEAD", timeoutMs);
       return null;
     } catch (error) {
       if (!(error instanceof GitError)) throw error;
@@ -533,9 +546,9 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
     }
   };
 
-  const pushOnce = async (args: string[]): Promise<PushOutcome> => {
+  const pushOnce = async (args: string[], timeoutMs = NETWORK_CALL_MS): Promise<PushOutcome> => {
     try {
-      await git.run(args, { timeoutMs: NETWORK_CALL_MS });
+      await git.run(args, { timeoutMs });
       return { kind: "pushed" };
     } catch (error) {
       if (!(error instanceof GitError)) throw error;
@@ -679,15 +692,29 @@ export function createManagedWorkspace(options: ManagedWorkspaceOptions): Manage
         pushOnce(["push", "--dry-run", "--porcelain", "origin", `refs/remotes/${upstreamRef}:refs/heads/${branch}`]),
       ),
 
-    /** Syncs at once, and then every `syncSeconds`. */
-    start() {
+    flush: (timeoutMs) =>
+      locks.remote.run(async () => {
+        if (!state.pendingPush) return;
+        logger.info("Sending a publication that waits, before the stop", { revision: state.pendingPush.revision });
+        // A refusal or a failure is in the state and the log: the next start tries again.
+        await push({ tries: 1, timeoutMs }).catch((error: unknown) => {
+          if (!(error instanceof ApiError)) throw error;
+        });
+      }),
+
+    start(onFirstSync) {
       if (timer) return;
+      let first = true;
       const tick = () => {
         if (syncing) return;
         syncing = true;
         sync()
           .catch((error: unknown) => logger.error("Sync crashed", { error: String(error) }))
-          .finally(() => (syncing = false));
+          .finally(() => {
+            syncing = false;
+            if (first) onFirstSync?.();
+            first = false;
+          });
       };
       tick();
       timer = setInterval(tick, options.syncSeconds * 1000);

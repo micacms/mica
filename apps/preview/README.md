@@ -11,19 +11,22 @@ repository's `Dockerfile`.
 
 1. It waits for Mica's clone in `/mica/repository` (Mica's volume, mounted
    read-only), and finds the content root as Mica does.
-2. It finds the website: the nearest folder with an `astro.config.*` above the
+2. It waits up to 30 s for Mica's first sync after Mica's start: Mica writes
+   `syncedAt` into its `lease.json` on the volume. Thus, when both start
+   together, it copies the newest website once.
+3. It finds the website: the nearest folder with an `astro.config.*` above the
    content root.
-3. It copies the repository into `/work`, without `.git` and the content root,
+4. It copies the repository into `/work`, without `.git` and the content root,
    and links the clone's content root in its place, so that each draft is there
    at once.
-4. It installs with the lock file at or above the website: `npm ci`,
+5. It installs with the lock file at or above the website: `npm ci`,
    `pnpm install --frozen-lockfile` or `yarn install`. The caches are in `/cache`.
-5. It starts `astro dev` on port 4321, with `MICA_PREVIEW=1` and
+6. It starts `astro dev` on port 4321, with `MICA_PREVIEW=1` and
    `MICA_PREVIEW_EDITOR` from `MICA_PUBLIC_URL`.
-6. Every five seconds it reads the clone's commit. When a sync or a publication
+7. Every five seconds it reads the clone's commit. When a sync or a publication
    changes it, it copies again. It installs again only when the lock file
    changed, and starts the dev server again only when a file changed.
-7. After a failure, such as an install while the registry is away, it tries
+8. After a failure, such as an install while the registry is away, it tries
    again after 30 s, then after longer waits up to ten minutes, or at once at
    the next change of the website.
 
