@@ -365,6 +365,14 @@ img.ProseMirror-separator {
   @apply bg-info-soft before:bg-info;
 }
 
+@utility status-starting {
+  @apply before:motion-safe:animate-pulse;
+}
+
+@utility status-stopped {
+  @apply bg-danger-soft before:bg-danger;
+}
+
 .rich-text .ProseMirror {
   @apply min-h-40 px-3 py-2.5 text-sm leading-relaxed outline-none;
 }

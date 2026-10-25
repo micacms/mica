@@ -32,6 +32,17 @@ export function astroCommand(projectRoot: string): string | null {
   }
 }
 
+/** The dev server that `--preview` started, for the editor's preview status: null when it started none. */
+export interface StartedDevServer {
+  running: boolean;
+  /** How it ended: its exit code, or the signal that ended it. */
+  exit: number | string | null;
+}
+
+let started: StartedDevServer | null = null;
+
+export const startedDevServer = (): StartedDevServer | null => started;
+
 /**
  * Starts `astro dev` in the project. It stops when Mica exits. When it fails,
  * `onFail` gets its exit code; a dev server that stops cleanly, as on Ctrl+C,
@@ -45,8 +56,10 @@ export function startAstroDev(options: { projectRoot: string; command: string; e
     // Ctrl+C reaches both processes from the terminal; stdin stays Mica's.
     stdio: ["ignore", "inherit", "inherit"],
   });
+  started = { running: true, exit: null };
   child.on("error", () => options.onFail(1));
-  child.on("exit", (code) => {
+  child.on("exit", (code, signal) => {
+    started = { running: false, exit: code ?? signal };
     if (code !== null && code !== 0) options.onFail(code);
   });
   // A `kill` of Mica and a failed start reach only Mica.

@@ -26,6 +26,7 @@ import { mcpRoutes } from "@micacms/mcp";
 
 import { editorUiDist } from "./admin-dir.js";
 import { developerPolicy } from "./developer.js";
+import { startedDevServer } from "./astro-dev.js";
 import { devServerPreview } from "./preview.js";
 import { portInUse, startupBanner, supportsColor } from "./banner.js";
 import { loadConfig } from "./config.js";
@@ -84,7 +85,7 @@ async function main(): Promise<void> {
       auth: "none — the local editor has no accounts and no sign-in",
     }),
     policy: developerPolicy({ publishEnabled: config.MICA_LOCAL_PUBLISH, logger }),
-    preview: devServerPreview(config.contentRoot),
+    preview: devServerPreview(config.contentRoot, { started: startedDevServer }),
     // The dev server's port can change on each start; the marker accepts only localhost.
     previewFrames: ["http://localhost:*"],
   });

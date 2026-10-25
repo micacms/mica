@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The top of the menu shows the website's name from `label`, with its address from `MICA_SITE_URL`, and the state of the preview: live, starting, stopped or off. A click on the name opens the Overview. While a form waits for the preview, the place of the page says why. The local editor now reads `MICA_SITE_URL`, as the docs say.",
+      "type": "minor",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

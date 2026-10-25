@@ -36,7 +36,7 @@ import { useSession } from "@/stores/session";
 import { useStaging } from "@/stores/staging";
 import DocumentOverlay from "./DocumentOverlay.vue";
 import PreviewPane from "./PreviewPane.vue";
-import Wordmark from "./Wordmark.vue";
+import SiteHeader from "./SiteHeader.vue";
 import { useColorScheme, type ColorScheme } from "@/composables/useColorScheme";
 import { usePreviewPane } from "@/composables/usePreviewPane";
 
@@ -53,7 +53,7 @@ const router = useRouter();
 const session = useSession();
 const pane = usePreviewPane();
 const staging = useStaging();
-const { collections, singletons, schema } = useSchema();
+const { collections, singletons, schema, siteName } = useSchema();
 
 function reloadPage(): void {
   // The unsaved-changes guard asks first when a form has edits.
@@ -183,9 +183,7 @@ async function signOut(): Promise<void> {
       ]"
       @keydown="onDrawerKeydown"
     >
-      <div class="flex h-14 items-center border-b border-line px-3">
-        <Wordmark class="h-5" />
-      </div>
+      <SiteHeader />
 
       <nav class="flex-1 space-y-5 overflow-y-auto px-2 py-3" aria-label="Main">
         <div>
@@ -312,7 +310,7 @@ async function signOut(): Promise<void> {
           <Menu :size="20" aria-hidden="true" />
           <span class="sr-only">Toggle navigation</span>
         </button>
-        <Wordmark class="h-5" />
+        <span class="min-w-0 truncate text-sm font-semibold">{{ siteName }}</span>
       </header>
 
       <!-- Below the overlay form, the main form keeps its state, and takes no input. -->

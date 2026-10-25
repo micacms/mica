@@ -9,6 +9,7 @@
 import { computed, ref } from "vue";
 
 import { api, type Schema, type SchemaCollection, type SchemaReferenceSet, type SchemaSingleton } from "@/api";
+import { siteHost, siteName } from "@/lib/site";
 
 const schema = ref<Schema | null>(null);
 let inFlight: Promise<Schema> | null = null;
@@ -16,6 +17,12 @@ let inFlight: Promise<Schema> | null = null;
 export function useSchema() {
   return {
     schema: computed(() => schema.value),
+    /** The website's name and address, for the top of the menu. */
+    site: computed(() => schema.value?.site ?? null),
+    /** The published website's host name, without "www.": null without MICA_SITE_URL. */
+    siteHost: computed(() => siteHost(schema.value?.site.url ?? null)),
+    /** The model's label, else the website's host name, else Mica. */
+    siteName: computed(() => siteName(schema.value?.site ?? null)),
     collections: computed<SchemaCollection[]>(() => schema.value?.collections ?? []),
     singletons: computed<SchemaSingleton[]>(() => schema.value?.singletons ?? []),
     loaded: computed(() => schema.value !== null),

@@ -19,7 +19,7 @@
 
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
-import { ChevronLeft, ChevronRight, ExternalLink, RotateCw } from "@lucide/vue";
+import { ChevronLeft, ChevronRight, ExternalLink, LoaderCircle, RotateCw, TriangleAlert } from "@lucide/vue";
 
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPane, type PreviewMode } from "@/composables/usePreviewPane";
@@ -338,12 +338,16 @@ const sameAddress = (a: string | null, b: string | null) => !!a && !!b && a.repl
 
 /**
  * The frame loads the form's page, unless it shows that page already: after
- * the form followed the preview, loading it again would only flash.
+ * the form followed the preview, loading it again would only flash. A new
+ * frame, after the pane waited for the preview, loads it always.
  */
+let loadedIn: HTMLIFrameElement | null = null;
 watch(
   [() => pane.frame.value, iframe],
   ([url, element]) => {
-    if (url && element && !sameAddress(url, shown.value)) element.src = url;
+    if (!url || !element || (element === loadedIn && sameAddress(url, shown.value))) return;
+    element.src = url;
+    loadedIn = element;
   },
   { immediate: true, flush: "post" },
 );
@@ -447,6 +451,7 @@ function onHandleKey(event: KeyboardEvent): void {
     <div v-show="pane.open.value" id="preview-content" class="flex min-w-0 flex-1 flex-col">
       <div class="flex h-14 shrink-0 items-center gap-1 border-b border-line px-3">
         <p class="min-w-0 flex-1 truncate text-sm font-semibold">Preview</p>
+        <template v-if="!pane.waiting.value">
         <div role="group" aria-label="What a click does" class="mr-1 flex rounded-full border border-line bg-surface p-0.5">
           <button
             v-for="option in modes"
@@ -468,11 +473,20 @@ function onHandleKey(event: KeyboardEvent): void {
           <ExternalLink :size="15" aria-hidden="true" />
           <span class="sr-only">Open in a new tab</span>
         </a>
+        </template>
+      </div>
+
+      <!-- A form with a page waits for a preview that starts, or that stopped: say so in place of the page. -->
+      <div v-if="pane.waiting.value" role="status" class="flex flex-1 flex-col items-center justify-center gap-2 p-8 text-center">
+        <LoaderCircle v-if="devServer.status.value.state === 'starting'" :size="20" class="text-muted motion-safe:animate-spin" aria-hidden="true" />
+        <TriangleAlert v-else :size="20" class="text-danger" aria-hidden="true" />
+        <p class="text-sm font-semibold">{{ devServer.status.value.state === "starting" ? "The preview is starting" : "The preview stopped" }}</p>
+        <p v-if="devServer.status.value.detail" class="max-w-xs text-sm text-muted">{{ devServer.status.value.detail }}</p>
       </div>
 
       <!-- While the handle moves, the page must not take the pointer. -->
       <iframe
-        v-if="pane.frame.value"
+        v-if="pane.frame.value && !pane.waiting.value"
         ref="iframe"
         title="Preview of the page"
         class="min-h-0 w-full flex-1 bg-ground"

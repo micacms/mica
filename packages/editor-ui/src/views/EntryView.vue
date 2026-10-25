@@ -145,7 +145,7 @@ const preview = computed(() =>
   props.slug && devServer.address.value && definition.value?.url ? `${devServer.address.value}${pageHref(definition.value.url, props.slug)}` : null,
 );
 // The overlay form shows a document of the main form's page: that page stays in the preview.
-if (!props.embedded) usePreviewPage(preview);
+if (!props.embedded) usePreviewPage(preview, computed(() => !!props.slug && !!definition.value?.url));
 
 /** Its page on the website: not for an entry that was never published, because that page does not exist yet. */
 const page = computed(() => (props.slug && pending.value?.state !== "new" ? pageHref(definition.value?.page, props.slug) : null));

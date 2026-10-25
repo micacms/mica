@@ -50,7 +50,27 @@ export interface SchemaReferenceSet {
 }
 
 /** `/schema`: the content model, plus the derived values that the editor would otherwise compute again. */
+/** The website, as the editor names it at the top of its menu. */
+export interface SchemaSite {
+  /** From `defineSite({ label })`; null without one. */
+  label: string | null;
+  /** `MICA_SITE_URL`, the published website; null without it. */
+  url: string | null;
+}
+
+/** Where the live preview stands: off, starting, live, or stopped after it ran or failed. */
+export type PreviewState = "off" | "starting" | "live" | "stopped";
+
+export interface PreviewStatus {
+  state: PreviewState;
+  /** The preview's address, while it is live. */
+  address: string | null;
+  /** Why it is not live and what to do, in the words of the deployment's readers; null while live. */
+  detail: string | null;
+}
+
 export interface Schema {
+  site: SchemaSite;
   collections: SchemaCollection[];
   singletons: SchemaSingleton[];
   references: SchemaReferenceSet[];

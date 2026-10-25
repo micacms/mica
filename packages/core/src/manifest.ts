@@ -5,7 +5,7 @@
  * and `mica check`.
  */
 
-import { defineSite } from "./define.js";
+import { defineSite, labelProblem } from "./define.js";
 import { COMMON_OPTIONS, FIELD_OPTIONS, isFieldKind } from "./fields.js";
 import { isMediaFileType } from "./media-types.js";
 import { pageUrlProblem } from "./page-url.js";
@@ -80,10 +80,18 @@ export function readManifest(raw: unknown, origin = "the manifest"): ReadManifes
     }
   }
 
+  // Left out, not refused: only the name at the top of the editor's menu depends on it.
+  let label: string | undefined;
+  if (raw.label !== undefined) {
+    const problem = labelProblem(raw.label);
+    if (problem) warnings.push(`The site's label ${problem}. The editor shows no name for the site.`);
+    else label = raw.label;
+  }
+
   let site: Site;
   try {
     const references = raw.references !== null && typeof raw.references === "object" ? raw.references : undefined;
-    site = defineSite({ collections, singletons, ...(references ? { references } : {}) });
+    site = defineSite({ ...(label !== undefined ? { label } : {}), collections, singletons, ...(references ? { references } : {}) });
   } catch (error) {
     throw new ManifestError(`${origin} is not a valid content model.\n  ${(error as Error).message}`);
   }

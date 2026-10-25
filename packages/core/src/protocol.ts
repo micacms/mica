@@ -38,6 +38,8 @@ export interface ProtocolManifest {
   protocolVersion: number;
   /** The package that wrote the manifest, without its version: `@micacms/astro`. */
   generatedBy: string;
+  /** Only when the model names the site. */
+  label?: string;
   collections: Record<string, Collection>;
   singletons: Record<string, Singleton>;
   /** Only when the model has reference sets. */
@@ -48,6 +50,7 @@ export function createManifest(site: Site, generatedBy: string): ProtocolManifes
   return {
     protocolVersion: PROTOCOL_VERSION,
     generatedBy,
+    ...(site.label !== undefined ? { label: site.label } : {}),
     collections: site.collections,
     singletons: site.singletons,
     ...(site.references ? { references: site.references } : {}),

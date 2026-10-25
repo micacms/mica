@@ -155,10 +155,13 @@ export type {
   MediaUsage,
   ModelState,
   Overview,
+  PreviewState,
+  PreviewStatus,
   Schema,
   SchemaCollection,
   SchemaReferenceSet,
   SchemaSingleton,
+  SchemaSite,
   SingletonDetail,
   SystemInfo,
 } from "./routes/responses.js";

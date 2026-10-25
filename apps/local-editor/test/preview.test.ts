@@ -36,26 +36,41 @@ describe("devServerPreview", () => {
     rmSync(root, { recursive: true, force: true });
   });
 
-  it("gives nothing without a marker", async () => {
-    assert.equal(await devServerPreview(root)(), null);
+  const state = async (options?: Parameters<typeof devServerPreview>[1]) => (await devServerPreview(root, options)()).state;
+
+  it("is off without a marker and without a dev server that --preview started", async () => {
+    rmSync(devServerMarkerPath(root), { force: true });
+    const off = await devServerPreview(root)();
+    assert.equal(off.state, "off");
+    assert.match(off.detail ?? "", /mica start --preview/);
   });
 
-  it("gives the address of a running dev server that answers", async () => {
+  it("is live with the address of a running dev server that answers", async () => {
     mark(process.pid, address);
-    assert.equal(await devServerPreview(root)(), address);
+    assert.deepEqual(await devServerPreview(root)(), { state: "live", address, detail: null });
   });
 
-  it("gives nothing for a process that stopped, or an address that does not answer", async () => {
-    const stopped = spawnSync(process.execPath, ["-e", "process.pid"]).pid!;
-    mark(stopped, address);
-    assert.equal(await devServerPreview(root)(), null);
-
+  it("is starting while the dev server runs but does not answer yet, or before --preview's one wrote its marker", async () => {
     mark(process.pid, "http://localhost:1");
-    assert.equal(await devServerPreview(root)(), null);
+    assert.equal(await state(), "starting");
+
+    rmSync(devServerMarkerPath(root), { force: true });
+    assert.equal(await state({ started: () => ({ running: true, exit: null }) }), "starting");
   });
 
-  it("refuses an address that is not on this machine", async () => {
+  it("is stopped when the marker's process is gone, or the dev server of --preview ended, with how it ended", async () => {
+    const gone = spawnSync(process.execPath, ["-e", "process.pid"]).pid!;
+    mark(gone, address);
+    assert.equal(await state(), "stopped");
+
+    rmSync(devServerMarkerPath(root), { force: true });
+    const ended = await devServerPreview(root, { started: () => ({ running: false, exit: "SIGTERM" }) })();
+    assert.equal(ended.state, "stopped");
+    assert.match(ended.detail ?? "", /It ended with SIGTERM/);
+  });
+
+  it("takes no marker with an address that is not on this machine", async () => {
     mark(process.pid, "https://example.com");
-    assert.equal(await devServerPreview(root)(), null);
+    assert.equal(await state(), "off");
   });
 });

@@ -51,7 +51,7 @@ export function referenceSet<O extends ReferenceSetOptions>(options: O): Referen
 export function defineSite<
   C extends Record<string, Collection>,
   S extends Record<string, Singleton>,
->(options: { root?: string; collections: C; singletons?: S; references?: Record<string, ReferenceSet> }): Site<C, S> {
+>(options: { root?: string; label?: string; collections: C; singletons?: S; references?: Record<string, ReferenceSet> }): Site<C, S> {
   const collections = {} as C;
   for (const [name, def] of Object.entries(options.collections)) {
     (collections as Record<string, Collection>)[name] = { ...def, name };
@@ -67,6 +67,7 @@ export function defineSite<
   const site: Site<C, S> = options.root === undefined
     ? { collections, singletons }
     : { root: options.root, collections, singletons };
+  if (options.label !== undefined) site.label = options.label;
   if (options.references && Object.keys(options.references).length > 0) {
     site.references = Object.fromEntries(Object.entries(options.references).map(([name, def]) => [name, { ...def, type: "reference", name }]));
   }
@@ -97,6 +98,7 @@ const RESERVED_NAMES = new Set([
 ]);
 
 function assertValidSite(site: Site): void {
+  if (site.label !== undefined && labelProblem(site.label)) throw new ModelError(`The site's label ${labelProblem(site.label)}.`);
   const collectionNames = new Set(Object.keys(site.collections));
   const references = site.references ?? {};
   // A relation points to a collection or to a reference set.
@@ -393,4 +395,14 @@ export function listedFields(def: Collection): string[] {
   return Object.entries(def.fields)
     .filter(([, f]) => f.listed)
     .map(([key]) => key);
+}
+
+/** The longest site label: it must fit the top of the editor's menu. */
+export const SITE_LABEL_MAX = 60;
+
+/** Why a site label cannot be used, as the end of a sentence; null when it can. */
+export function labelProblem(label: unknown): string | null {
+  if (typeof label !== "string" || label.trim() === "") return "must be a text that is not empty";
+  if (label.length > SITE_LABEL_MAX) return `must have ${SITE_LABEL_MAX} characters at most`;
+  return null;
 }

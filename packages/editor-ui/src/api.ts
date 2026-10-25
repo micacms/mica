@@ -16,12 +16,14 @@ import type {
   EntrySummary,
   MediaFile,
   Overview,
+  PreviewStatus,
   Referrer,
   SavedEntry,
   Schema,
   SchemaCollection,
   SchemaReferenceSet,
   SchemaSingleton,
+  SchemaSite,
   SingletonDetail,
   StagingProblem,
   SyncConflict,
@@ -37,12 +39,14 @@ export type {
   EntryDetail,
   EntrySummary,
   Overview,
+  PreviewStatus,
   Referrer,
   SavedEntry,
   Schema,
   SchemaCollection,
   SchemaReferenceSet,
   SchemaSingleton,
+  SchemaSite,
   SingletonDetail,
   StagingProblem,
   SyncConflict,
@@ -260,7 +264,7 @@ export const api = {
   /** The id and title of each item of a reference set. */
   references: (name: string) => request<{ items: Array<{ id: string; title: string }> }>(`/admin/references/${encodeURIComponent(name)}`),
   /** The dev server that shows the drafts, or null: only the local editor, while `astro dev` runs. */
-  preview: () => request<{ address: string | null; handover: string | null }>("/admin/preview"),
+  preview: () => request<PreviewStatus & { handover: string | null }>("/admin/preview"),
 
   entries: {
     list: (collection: string) =>

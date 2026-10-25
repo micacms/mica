@@ -36,6 +36,7 @@ import { runCheck } from "./check.js";
 import { runCompact } from "./compact.js";
 import { operationalInfo } from "./operational.js";
 import { createPreviewGate } from "./preview-gate.js";
+import { previewOff, upstreamPreview } from "./preview-status.js";
 import { readiness } from "./readiness.js";
 import { currentToken, loadConfig, previewOrigin, type SelfHostedConfig } from "./config.js";
 import { cloneLayout, CloneRefusal, openClone } from "./workspace/clone.js";
@@ -282,13 +283,13 @@ async function serve(): Promise<void> {
 
     health: { ready: () => readiness(workspace.state()) },
 
-    ...(gate && preview
+    ...(gate && preview && config.MICA_PREVIEW_UPSTREAM
       ? {
-          preview: async () => preview,
+          preview: upstreamPreview({ upstream: config.MICA_PREVIEW_UPSTREAM, address: preview }),
           previewFrames: [preview],
           previewHandover: (c) => gate.handover(sessionOf(c).identity.subject),
         }
-      : {}),
+      : { preview: previewOff }),
 
     onShutdown: () => {
       auth.loginLimiter.stop();

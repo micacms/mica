@@ -183,6 +183,7 @@ export type DateOptions = Omit<DateField, "kind">;
 // @public (undocumented)
 export function defineSite<C extends Record<string, Collection>, S extends Record<string, Singleton>>(options: {
     root?: string;
+    label?: string;
     collections: C;
     singletons?: S;
     references?: Record<string, ReferenceSet>;
@@ -407,6 +408,7 @@ export interface ProtocolManifest {
     // (undocumented)
     collections: Record<string, Collection>;
     generatedBy: string;
+    label?: string;
     // (undocumented)
     protocolVersion: number;
     references?: Record<string, ReferenceSet>;
@@ -579,6 +581,7 @@ export interface SingletonOptions {
 export interface Site<C extends Record<string, Collection> = Record<string, Collection>, S extends Record<string, Singleton> = Record<string, Singleton>> {
     // (undocumented)
     collections: C;
+    label?: string;
     references?: Record<string, ReferenceSet>;
     root?: string;
     // (undocumented)
@@ -589,6 +592,7 @@ export interface Site<C extends Record<string, Collection> = Record<string, Coll
 export interface SiteOptions {
     // (undocumented)
     collections: Record<string, Collection>;
+    label?: string;
     // (undocumented)
     references?: Record<string, ReferenceSet>;
     root?: string;

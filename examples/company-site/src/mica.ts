@@ -91,6 +91,9 @@ export const site = defineSite({
    */
   root: "./content",
 
+  // The website's name at the top of the editor's menu.
+  label: "Harbor Lane",
+
   collections: {
     pages: collection({
       label: "Pages",
@@ -690,7 +693,10 @@ export const site = defineSite({
           "Page not found",
           "For an address that does not exist.",
           {
-            pageTitle: label("Title of the browser tab", "Search engines also show it."),
+            pageTitle: label(
+              "Title of the browser tab",
+              "Search engines also show it.",
+            ),
             eyebrow: label("Eyebrow"),
             title: label("Title"),
             text: textarea({ label: "Text", rows: 2 }),

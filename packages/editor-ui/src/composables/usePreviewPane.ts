@@ -7,6 +7,7 @@
 
 import { computed, onBeforeUnmount, ref, watch, type Ref } from "vue";
 
+import { previewStatus } from "@/composables/usePreview";
 import { PROMPT } from "@/composables/useUnsavedChanges";
 
 const OPEN_KEY = "mica:preview-open";
@@ -52,6 +53,10 @@ const width = ref(Number(stored(WIDTH_KEY)) || 560);
 const mode = ref<PreviewMode>(stored(MODE_KEY) === "browse" ? "browse" : "edit");
 /** The page of the form's document in the dev server, with its owner: the form that named it. */
 const page = ref<{ url: string; owner: symbol } | null>(null);
+/** The form whose document has a page, also while the preview is not live. */
+const wanting = ref<symbol | null>(null);
+/** A form with a page waits for a preview that starts or stopped: the pane says so. */
+const waiting = computed(() => page.value === null && wanting.value !== null && ["starting", "stopped"].includes(previewStatus.value.state));
 /** The address in the frame. */
 const frame = ref<string | null>(null);
 const overlay = ref<OverlayTarget | null>(null);
@@ -74,8 +79,9 @@ export function usePreviewPane() {
     width,
     mode,
     frame: computed(() => frame.value),
-    /** Shown while a form names a page: open, or folded away to its divider. */
-    visible: computed(() => page.value !== null && frame.value !== null),
+    /** Shown while a form names a page, or waits for one: open, or folded away to its divider. */
+    visible: computed(() => (page.value !== null && frame.value !== null) || waiting.value),
+    waiting,
     toggle: () => (open.value = !open.value),
     overlay: computed(() => overlay.value),
     /** Opens a document in the overlay. False when the editor kept the unsaved changes of the one there. */
@@ -99,12 +105,17 @@ export function usePreviewPane() {
   };
 }
 
-/** Names the page of the form's document while the form is open. */
-export function usePreviewPage(url: Ref<string | null>): void {
+/**
+ * Names the page of the form's document while the form is open. `hasPage`
+ * says that the document has a page, also while the preview is not live.
+ */
+export function usePreviewPage(url: Ref<string | null>, hasPage?: Ref<boolean>): void {
   const owner = Symbol("preview page");
   watch(url, (value) => (page.value = value ? { url: value, owner } : null), { immediate: true });
+  if (hasPage) watch(hasPage, (value) => (wanting.value = value ? owner : wanting.value === owner ? null : wanting.value), { immediate: true });
   // The next form can name its page before this one closes.
   onBeforeUnmount(() => {
     if (page.value?.owner === owner) page.value = null;
+    if (wanting.value === owner) wanting.value = null;
   });
 }

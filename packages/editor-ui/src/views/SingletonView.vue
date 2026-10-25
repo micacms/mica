@@ -50,7 +50,7 @@ const page = computed(() => pageHref(definition.value?.page));
 const devServer = usePreview();
 const preview = computed(() => (devServer.address.value && definition.value?.url ? `${devServer.address.value}${definition.value.url}` : null));
 // The overlay form shows a document of the main form's page: that page stays in the preview.
-if (!props.embedded) usePreviewPage(preview);
+if (!props.embedded) usePreviewPage(preview, computed(() => !!definition.value?.url));
 
 const doc = useDocumentEditor<SingletonDetail, { revision: string }>({
   noun: "these settings",
