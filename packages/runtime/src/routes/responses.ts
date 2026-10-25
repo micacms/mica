@@ -68,6 +68,8 @@ export interface PreviewStatus {
   address: string | null;
   /** Why it is not live and what to do, in the words of the deployment's readers; null while live. */
   detail: string | null;
+  /** The last lines of the preview's output, the oldest first, where Mica can read them (ADR 40). */
+  lines?: string[];
 }
 
 export interface Schema {
@@ -180,4 +182,6 @@ export interface SystemInfo {
   };
   /** The last warnings and errors of this process, the newest first (ADR 40). */
   problems: ProblemLine[];
+  /** The live preview, with its last lines where Mica can read them (ADR 40). */
+  preview: PreviewStatus;
 }

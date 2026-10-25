@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 
-import { astroCommand, astroProjectRoot, startAstroDev } from "../src/astro-dev.js";
+import { astroCommand, astroProjectRoot, startAstroDev, startedDevServer } from "../src/astro-dev.js";
 
 function project(): string {
   const root = mkdtempSync(path.join(tmpdir(), "mica-astro-dev-"));
@@ -63,6 +63,29 @@ process.exit(3);`,
     assert.deepEqual(seen.args, ["dev", "--ignore-lock"]);
     assert.equal(seen.preview, "1");
     assert.equal(realpathSync(seen.cwd), realpathSync(root));
+  });
+
+  it("keeps the last lines of its output without colours, and still writes them to the terminal (ADR 40)", async () => {
+    const root = project();
+    const command = installAstro(
+      root,
+      `for (let i = 0; i < 60; i++) console.log("\\u001b[32mline " + i + "\\u001b[39m"); process.stderr.write("an err"); process.stderr.write("or\\n"); process.exit(0);`,
+    );
+    const written: string[] = [];
+    const write = process.stdout.write.bind(process.stdout);
+    process.stdout.write = ((chunk: string | Uint8Array) => (written.push(String(chunk)), true)) as typeof process.stdout.write;
+    try {
+      startAstroDev({ projectRoot: root, command, env: {}, onFail: () => assert.fail("it ended cleanly") });
+      for (let i = 0; i < 50 && startedDevServer()?.running !== false; i++) await new Promise((resolve) => setTimeout(resolve, 100));
+    } finally {
+      process.stdout.write = write;
+    }
+    const run = startedDevServer();
+    assert.equal(run?.running, false);
+    assert.equal(run?.lines.length, 50);
+    assert.equal(run?.lines.includes("an error"), true);
+    assert.equal(run?.lines.includes("line 59"), true);
+    assert.match(written.join(""), /line 0/);
   });
 
   it("takes only the preview away when it stops cleanly", async () => {

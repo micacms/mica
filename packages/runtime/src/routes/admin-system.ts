@@ -39,7 +39,8 @@ export function adminSystemRoutes(): Hono<Env> {
   /** The dev server that shows the drafts, for "Preview", and the token that lets the browser into it when it is on another origin. */
   app.get("/preview", async (c) => {
     const ctx = c.get("ctx");
-    const status = await ctx.preview();
+    // The lines are for the System page: the editor asks here again while the preview starts.
+    const { lines: _lines, ...status } = await ctx.preview();
     const address = status.state === "live" ? status.address : null;
     return c.json({ ...status, address, handover: address && ctx.previewHandover ? ctx.previewHandover(c) : null });
   });
@@ -177,6 +178,7 @@ export function adminSystemRoutes(): Hono<Env> {
         memoryBytes: process.memoryUsage().rss,
       },
       problems: recentProblems(),
+      preview: await ctx.preview(),
     } satisfies SystemInfo);
   });
 

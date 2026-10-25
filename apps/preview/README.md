@@ -30,6 +30,12 @@ repository's `Dockerfile`.
    again after 30 s, then after longer waits up to ten minutes, or at once at
    the next change of the website.
 
+It reports its state and its last 50 lines of output on port 4380 inside the
+network: `GET /status` answers `waiting`, `copying`, `installing`, `starting`,
+`running` or `failed`, with a reason and the lines, without credentials and
+tokens. The self-hosted Mica reads it for the state in the editor's menu and the
+System page (ADR 40). Do not publish the port.
+
 Mica's volume must be read-only: the image refuses to start when it can write it.
 It removes only the files that it copied itself, so files that an install
 generates outside `node_modules` stay.

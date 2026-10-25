@@ -71,6 +71,15 @@ const fieldsOf = (line: ProblemLine): string =>
 
 /** The report carries the newest ones; the page shows all that Mica keeps. */
 const REPORTED_PROBLEMS = 20;
+const REPORTED_PREVIEW_LINES = 10;
+
+/** The word carries the state; the dot of the status pill only repeats it (brand guide). */
+const PREVIEW = {
+  live: { word: "Live", variant: "status-published" },
+  starting: { word: "Starting", variant: "status-starting" },
+  stopped: { word: "Stopped", variant: "status-stopped" },
+  off: { word: "Off", variant: "" },
+} as const;
 
 /** The report a support request should carry, as plain text. */
 function report(): string {
@@ -101,6 +110,8 @@ function report(): string {
     `Content root ${data.deployment.contentRoot}`,
     `Authentication ${data.deployment.auth}`,
     `Admission ${data.deployment.admission ?? "none"}`,
+    `Preview ${data.preview.state}${data.preview.detail ? `: ${data.preview.detail}` : ""}`,
+    ...(data.preview.lines ?? []).slice(-REPORTED_PREVIEW_LINES).map((line) => `  ${line}`),
     "",
     data.problems.length ? `Last warnings and errors, the newest first:` : "No warnings or errors since Mica started.",
     ...data.problems.slice(0, REPORTED_PROBLEMS).map((line) => `${line.time} ${line.level} ${line.message}${Object.keys(line.fields).length ? ` ${fieldsOf(line)}` : ""}`),
@@ -204,6 +215,20 @@ async function copyReport(): Promise<void> {
             </p>
           </li>
         </ol>
+      </section>
+
+      <!-- ----------------------------------------------------------- preview -->
+
+      <section class="card p-4" aria-labelledby="preview-heading">
+        <div class="flex flex-wrap items-center gap-2">
+          <h2 id="preview-heading" class="text-sm font-semibold">Preview</h2>
+          <span :class="['status', PREVIEW[info.preview.state].variant]">{{ PREVIEW[info.preview.state].word }}</span>
+        </div>
+        <p v-if="info.preview.detail" class="mt-2 text-sm">{{ info.preview.detail }}</p>
+        <template v-if="info.preview.lines?.length">
+          <p class="mt-3 text-xs text-muted">Its last lines, the newest at the end:</p>
+          <pre class="mt-1 max-h-72 overflow-auto rounded-sm bg-subtle p-3 font-mono text-xs leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]" tabindex="0">{{ info.preview.lines.join("\n") }}</pre>
+        </template>
       </section>
 
       <!-- --------------------------------------------------- content model -->
