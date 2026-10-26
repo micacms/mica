@@ -8,9 +8,9 @@
  * same code over different sources.
  */
 
-import { resolveSlugField } from "./define.js";
+import { resolveIdField } from "./define.js";
 import { DOCUMENT_EXTENSION, FormatError, INDEX_FILE, entryDataPath, entryFolder } from "./layout.js";
-import { isValidSlug } from "./slugify.js";
+import { isValidId } from "./to-id.js";
 import { parseEntry } from "./parse.js";
 import { readReferenceIndex, referenceIndexPath } from "./references.js";
 import { documentLinks, type DocumentLink } from "./links.js";
@@ -20,7 +20,7 @@ import type { ContentSource } from "./source.js";
 import { isRecord, mapFields } from "./walk.js";
 
 /**
- * Optional manual ordering for a collection, listing slugs in the order an
+ * Optional manual ordering for a collection, listing IDs in the order an
  * editor arranged them.
  *
  * A separate file rather than a field on each entry, because order is a
@@ -31,7 +31,7 @@ import { isRecord, mapFields } from "./walk.js";
 export const ORDER_FILE = "_order.json";
 
 export interface ContentEntry {
-  slug: string;
+  id: string;
   /** Index in the collection's order — manual when `_order.json` says so. */
   position: number;
   data: Record<string, unknown>;
@@ -58,19 +58,19 @@ export async function readCollection(
   def: Collection,
   name: string,
 ): Promise<ContentEntry[]> {
-  const ordered = await applyOrder(source, name, await collectionSlugs(source, name));
+  const ordered = await applyOrder(source, name, await collectionIds(source, name));
 
   // Eight at a time: a disk or a Git object store answers in parallel, and a
   // limit keeps a large collection from opening every file at once.
-  const read = await mapLimit(ordered, 8, (slug) =>
-    readEntry(source, def.fields, entryFolder(name, slug)),
+  const read = await mapLimit(ordered, 8, (id) =>
+    readEntry(source, def.fields, entryFolder(name, id)),
   );
   return entriesOf(def, ordered, read);
 }
 
-/** An entry whose files Mica cannot read: its slug, the file, and the reason. */
+/** An entry whose files Mica cannot read: its ID, the file, and the reason. */
 export interface UnreadableEntry {
-  slug: string;
+  id: string;
   path: string;
   message: string;
 }
@@ -85,26 +85,26 @@ export async function readReadableCollection(
   def: Collection,
   name: string,
 ): Promise<{ entries: ContentEntry[]; unreadable: UnreadableEntry[] }> {
-  const ordered = await applyOrder(source, name, await collectionSlugs(source, name));
+  const ordered = await applyOrder(source, name, await collectionIds(source, name));
   const unreadable: UnreadableEntry[] = [];
 
-  const read = await mapLimit(ordered, 8, async (slug) => {
+  const read = await mapLimit(ordered, 8, async (id) => {
     try {
-      return await readEntry(source, def.fields, entryFolder(name, slug));
+      return await readEntry(source, def.fields, entryFolder(name, id));
     } catch (error) {
       if (!(error instanceof ContentReadError)) throw error;
-      unreadable.push({ slug, path: error.path, message: error.message });
+      unreadable.push({ id, path: error.path, message: error.message });
       return null;
     }
   });
-  return { entries: entriesOf(def, ordered, read), unreadable: unreadable.sort((a, b) => byCodeUnits(a.slug, b.slug)) };
+  return { entries: entriesOf(def, ordered, read), unreadable: unreadable.sort((a, b) => byCodeUnits(a.id, b.id)) };
 }
 
 function entriesOf(def: Collection, ordered: string[], read: Array<Record<string, unknown> | null>): ContentEntry[] {
   const entries: ContentEntry[] = [];
-  ordered.forEach((slug, position) => {
+  ordered.forEach((id, position) => {
     const data = read[position];
-    if (data) entries.push({ slug, position, data: withSlug(def, data, slug) });
+    if (data) entries.push({ id, position, data: withId(def, data, id) });
   });
   return entries;
 }
@@ -124,7 +124,7 @@ export async function readOrder(source: ContentSource, name: string): Promise<un
   } catch (error) {
     throw new ContentReadError(`${path} is not valid JSON.`, path, { cause: error });
   }
-  if (!Array.isArray(listed)) throw new ContentReadError(`${path} must be an array of slugs.`, path);
+  if (!Array.isArray(listed)) throw new ContentReadError(`${path} must be an array of IDs.`, path);
   return listed;
 }
 
@@ -152,10 +152,10 @@ async function mapLimit<T, R>(items: T[], limit: number, fn: (item: T) => Promis
   return results;
 }
 
-/** The entry's URL is its file name: the slug field says the same, whatever the file holds. */
-function withSlug(def: Collection, data: Record<string, unknown>, slug: string): Record<string, unknown> {
-  const key = resolveSlugField(def);
-  return key ? { ...data, [key]: slug } : data;
+/** The entry's ID is its folder name: the ID field says the same, whatever the file holds. */
+function withId(def: Collection, data: Record<string, unknown>, id: string): Record<string, unknown> {
+  const key = resolveIdField(def);
+  return key ? { ...data, [key]: id } : data;
 }
 
 /**
@@ -169,29 +169,29 @@ export async function readCollectionEntry(
   source: ContentSource,
   def: Collection,
   name: string,
-  slug: string,
+  id: string,
 ): Promise<Record<string, unknown> | null> {
-  const data = await readEntry(source, def.fields, entryFolder(name, slug));
-  return data && withSlug(def, data, slug);
+  const data = await readEntry(source, def.fields, entryFolder(name, id));
+  return data && withId(def, data, id);
 }
 
 /**
- * The slugs of a collection: its folders, from one listing, without reading
+ * The IDs of a collection: its folders, from one listing, without reading
  * any entry. A folder without an `index.json` (an upload for an entry that is
  * not saved yet, or one that a discard left empty) is listed too: check the
  * data file before counting it. Files, such as the order file or a README, are
  * skipped, because a content repository belongs to its owner and may hold
  * things Mica did not put there.
  */
-export async function collectionSlugs(source: ContentSource, name: string): Promise<string[]> {
+export async function collectionIds(source: ContentSource, name: string): Promise<string[]> {
   return (await source.list(name))
-    .filter((item) => item.type === "directory" && isValidSlug(item.name))
+    .filter((item) => item.type === "directory" && isValidId(item.name))
     .map((item) => item.name)
     .sort(byCodeUnits);
 }
 
 /**
- * The order of slugs without `_order.json`: by UTF-16 code unit, as Git lists
+ * The order of IDs without `_order.json`: by UTF-16 code unit, as Git lists
  * files, the same on every machine and in every source.
  */
 export function byCodeUnits(a: string, b: string): number {
@@ -199,28 +199,28 @@ export function byCodeUnits(a: string, b: string): number {
 }
 
 /**
- * Reorders slugs to match `_order.json`.
+ * Reorders IDs to match `_order.json`.
  *
- * Tolerant in both directions: a slug the file does not mention goes after the
- * ones it does, and a slug the file mentions but which no longer exists is
+ * Tolerant in both directions: an ID the file does not mention goes after the
+ * ones it does, and an ID the file mentions but which no longer exists is
  * dropped. Either happens routinely when someone adds or deletes an entry in
  * Git without touching the order file.
  */
 async function applyOrder(
   source: ContentSource,
   name: string,
-  slugs: string[],
+  ids: string[],
 ): Promise<string[]> {
   const listed = await readOrder(source, name);
-  if (listed === null) return slugs;
+  if (listed === null) return ids;
 
-  const available = new Set(slugs);
+  const available = new Set(ids);
   const ordered = listed.filter(
-    (slug): slug is string => typeof slug === "string" && available.delete(slug),
+    (id): id is string => typeof id === "string" && available.delete(id),
   );
 
   // Whatever the order file did not mention keeps its place in code-unit order.
-  return [...ordered, ...slugs.filter((slug) => available.has(slug))];
+  return [...ordered, ...ids.filter((id) => available.has(id))];
 }
 
 /* ------------------------------------------------------------------ *
@@ -361,24 +361,24 @@ async function readDocuments(
 /**
  * Finds the relations and media paths of a document that point at nothing in
  * `source`. Caches what it reads, so one check per build or per publication
- * reads each target once. `knownSlugs` gives the slugs of a collection that the
+ * reads each target once. `knownIds` gives the IDs of a collection that the
  * caller has already read.
  */
 export function createReferenceCheck(
   site: Site,
   source: ContentSource,
-  knownSlugs: (collection: string) => ReadonlySet<string> | undefined = () => undefined,
+  knownIds: (collection: string) => ReadonlySet<string> | undefined = () => undefined,
 ) {
   const entries = new Map<string, Promise<boolean>>();
   const directories = new Map<string, Promise<Set<string>>>();
 
-  const entryExists = (collection: string, slug: string): Promise<boolean> => {
-    const known = knownSlugs(collection);
-    if (known) return Promise.resolve(known.has(slug));
-    const key = `${collection}/${slug}`;
+  const entryExists = (collection: string, id: string): Promise<boolean> => {
+    const known = knownIds(collection);
+    if (known) return Promise.resolve(known.has(id));
+    const key = `${collection}/${id}`;
     if (!entries.has(key)) {
       // The data file is enough: an entry exists when it does.
-      entries.set(key, source.read(entryDataPath(collection, slug)).then((data) => data !== null, () => false));
+      entries.set(key, source.read(entryDataPath(collection, id)).then((data) => data !== null, () => false));
     }
     return entries.get(key)!;
   };
@@ -412,13 +412,13 @@ export function createReferenceCheck(
   const relationIssue = async (link: Extract<DocumentLink, { kind: "relation" }>): Promise<FieldIssue | null> => {
     const target = site.collections[link.collection];
     const set = site.references?.[link.collection];
-    if (target && !(await entryExists(link.collection, link.slug))) {
-      return { path: link.field, message: `Links to "${link.slug}" in ${target.label}, which does not exist.` };
+    if (target && !(await entryExists(link.collection, link.id))) {
+      return { path: link.field, message: `Links to "${link.id}" in ${target.label}, which does not exist.` };
     }
     if (!set) return null;
     const ids = await idsOf(set.name);
     if (!ids) return { path: link.field, message: `${set.label} has no index in ${referenceIndexPath(set.name)}. Build the website, and commit the file.` };
-    return ids.has(link.slug) ? null : { path: link.field, message: `Links to "${link.slug}" in ${set.label}, which does not exist.` };
+    return ids.has(link.id) ? null : { path: link.field, message: `Links to "${link.id}" in ${set.label}, which does not exist.` };
   };
 
   return {

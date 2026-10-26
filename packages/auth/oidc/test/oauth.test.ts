@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, defineSite, slug, text } from "@micacms/core/internal";
+import { collection, defineSite, id, text } from "@micacms/core/internal";
 import { contentFiles, createApp, createLogger, createRuntimeContext, type Env, type OwnerPolicy } from "@micacms/runtime";
 import { Hono } from "hono";
 
@@ -79,7 +79,7 @@ interface Setup {
 
 function setup(options: { publish?: boolean; sessions?: SessionService; resource?: URL } = {}): Setup {
   const root = mkdtempSync(join(tmpdir(), "mica-oauth-test-"));
-  const site = defineSite({ collections: { posts: collection({ label: "Posts", fields: { title: text(), slug: slug({ from: "title" }) } }) } });
+  const site = defineSite({ collections: { posts: collection({ label: "Posts", fields: { title: text(), id: id({ from: "title" }) } }) } });
   const ctx = createRuntimeContext({
     config: {
       MICA_LOG_LEVEL: "silent",

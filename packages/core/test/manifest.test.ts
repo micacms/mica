@@ -3,9 +3,9 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { collection, coordinates, createManifest, defineSite, ManifestError, readManifest, slug, text } from "../src/index.js";
+import { collection, coordinates, createManifest, defineSite, ManifestError, readManifest, id, text } from "../src/index.js";
 
-/** The smallest manifest that satisfies `defineSite`: every collection needs a slug. */
+/** The smallest manifest that satisfies `defineSite`: every collection needs an ID. */
 const validSite = () => ({
   protocolVersion: 1,
   generatedBy: "test",
@@ -16,7 +16,7 @@ const validSite = () => ({
       label: "Pages",
       fields: {
         title: { kind: "text", label: "Title", required: true },
-        slug: { kind: "slug", from: "title" },
+        id: { kind: "id", from: "title" },
       },
     } as Record<string, unknown> & { fields: Record<string, unknown> },
   },
@@ -32,7 +32,7 @@ describe("readManifest", () => {
       collections: {
         pages: collection({
           label: "Pages",
-          fields: { title: text({ required: true }), slug: slug({ from: "title" }) },
+          fields: { title: text({ required: true }), id: id({ from: "title" }) },
         }),
       },
     });
@@ -44,7 +44,7 @@ describe("readManifest", () => {
   it("keeps the site's label, and leaves out one that it cannot use, with a warning", () => {
     const named = defineSite({
       label: "Harbor Lane Consulting",
-      collections: { pages: collection({ label: "Pages", fields: { title: text(), slug: slug({ from: "title" }) } }) },
+      collections: { pages: collection({ label: "Pages", fields: { title: text(), id: id({ from: "title" }) } }) },
     });
     const manifest = JSON.parse(JSON.stringify(createManifest(named, "test")));
     assert.equal(manifest.label, "Harbor Lane Consulting");
@@ -99,7 +99,7 @@ describe("readManifest", () => {
     (raw.collections as Record<string, unknown>)["news"] = {
       type: "collection",
       label: "News",
-      fields: { title: { kind: "text" }, slug: { kind: "slug" } },
+      fields: { title: { kind: "text" }, id: { kind: "id" } },
     };
     (raw.collections.pages.fields as Record<string, unknown>)["mystery"] = { kind: "quantum" };
 
@@ -107,7 +107,7 @@ describe("readManifest", () => {
 
     assert.deepEqual([...readOnly.keys()], ["collections.pages"]);
     assert.match(readOnly.get("collections.pages")!, /"mystery" \(quantum\)/);
-    assert.match(readOnly.get("collections.pages")!, /Upgrade Mica/);
+    assert.match(readOnly.get("collections.pages")!, /does not know: a newer or an older version of Mica wrote the model/);
   });
 
   it("finds an unknown kind nested inside a repeater, and in a singleton", () => {
@@ -178,18 +178,18 @@ describe("readManifest", () => {
 
   it("leaves out a page address that this version cannot read, rather than refusing the model", () => {
     const raw = validSite();
-    (raw.collections.pages as Record<string, unknown>)["url"] = "/pages/{year}/{slug}";
+    (raw.collections.pages as Record<string, unknown>)["url"] = "/pages/{year}/{id}";
     const read = readManifest(raw);
     assert.equal(read.site.collections["pages"]?.url, undefined);
     assert.match(read.warnings.join("\n"), /cannot read\. The editor shows no link/);
   });
 
-  it("keeps a page address that names a select field beside {slug}", () => {
+  it("keeps a page address that names a select field beside {id}", () => {
     const raw = validSite();
     raw.collections.pages.fields["section"] = { kind: "select", options: [{ label: "About", value: "about" }] };
-    (raw.collections.pages as Record<string, unknown>)["url"] = "/{section}/{slug}";
+    (raw.collections.pages as Record<string, unknown>)["url"] = "/{section}/{id}";
     const read = readManifest(raw);
-    assert.equal(read.site.collections["pages"]?.url, "/{section}/{slug}");
+    assert.equal(read.site.collections["pages"]?.url, "/{section}/{id}");
     assert.deepEqual(read.warnings, []);
   });
 
@@ -232,7 +232,7 @@ describe("options that this build does not know", () => {
       collections: {
         pages: collection({
           label: "Pages",
-          fields: { title: text({ required: true, maxLength: 80 }), slug: slug({ from: "title" }), where: coordinates({ map: "liberty" }) },
+          fields: { title: text({ required: true, maxLength: 80 }), id: id({ from: "title" }), where: coordinates({ map: "liberty" }) },
         }),
       },
     });

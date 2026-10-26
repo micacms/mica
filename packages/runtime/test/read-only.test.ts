@@ -18,13 +18,13 @@ const site = checkSchema({
     news: {
       type: "collection",
       label: "News",
-      fields: { title: { kind: "text", required: true }, slug: { kind: "slug", from: "title" } },
+      fields: { title: { kind: "text", required: true }, id: { kind: "id", from: "title" } },
     },
     gallery: {
       type: "collection",
       label: "Gallery",
       sortable: true,
-      fields: { title: { kind: "text" }, slug: { kind: "slug", from: "title" }, photos: { kind: "photoGrid" } },
+      fields: { title: { kind: "text" }, id: { kind: "id", from: "title" }, photos: { kind: "photoGrid" } },
     },
   },
   singletons: {
@@ -46,7 +46,7 @@ describe("a field kind this build does not know", () => {
     mkdirSync(join(harness.contentRoot, "gallery/summer"), { recursive: true });
     writeFileSync(
       join(harness.contentRoot, "gallery/summer/index.json"),
-      JSON.stringify({ title: "Summer", slug: "summer", photos: { grid: [1, 2] } }),
+      JSON.stringify({ title: "Summer", id: "summer", photos: { grid: [1, 2] } }),
     );
   });
 
@@ -61,15 +61,15 @@ describe("a field kind this build does not know", () => {
       [...body.collections, ...body.singletons].map((part) => [part.name, part.readOnly]),
     );
     assert.equal(readOnly["news"], null);
-    assert.match(readOnly["gallery"]!, /"photos" \(photoGrid\).*Upgrade Mica/);
+    assert.match(readOnly["gallery"]!, /"photos" \(photoGrid\).*does not know: a newer or an older version of Mica/);
     assert.match(readOnly["settings"]!, /"logo" \(vector\)/);
   });
 
   it("lists and opens the entries of a read-only collection, with the unknown value as it is", async () => {
     const list = (await (await harness.request("/api/admin/collections/gallery/entries")).json()) as {
-      items: Array<{ slug: string }>;
+      items: Array<{ id: string }>;
     };
-    assert.deepEqual(list.items.map((item) => item.slug), ["summer"]);
+    assert.deepEqual(list.items.map((item) => item.id), ["summer"]);
 
     const entry = (await (await harness.request("/api/admin/collections/gallery/entries/summer")).json()) as {
       data: Record<string, unknown>;
@@ -82,13 +82,13 @@ describe("a field kind this build does not know", () => {
       ["/api/admin/collections/gallery/entries", json("POST", { data: { title: "Winter" } })],
       ["/api/admin/collections/gallery/entries/summer", json("PUT", { data: { title: "Summer" } })],
       ["/api/admin/collections/gallery/entries/summer?revision=x", { method: "DELETE" }],
-      ["/api/admin/collections/gallery/reorder", json("POST", { slugs: ["summer"], revision: null })],
+      ["/api/admin/collections/gallery/reorder", json("POST", { ids: ["summer"], revision: null })],
       ["/api/admin/singletons/settings", json("PUT", { data: {} })],
     ];
     for (const [path, init] of writes) {
       const response = await harness.request(path, init);
       assert.equal(response.status, 409, `${init.method} ${path}`);
-      assert.match(((await response.json()) as { error: { message: string } }).error.message, /Upgrade Mica/);
+      assert.match(((await response.json()) as { error: { message: string } }).error.message, /a newer or an older version of Mica/);
     }
   });
 
@@ -111,7 +111,7 @@ describe("a collection whose new field kind keeps files beside the entry", () =>
       albums: {
         type: "collection",
         label: "Albums",
-        fields: { title: { kind: "text" }, slug: { kind: "slug", from: "title" }, pictures: { kind: "photoGrid" } },
+        fields: { title: { kind: "text" }, id: { kind: "id", from: "title" }, pictures: { kind: "photoGrid" } },
       },
     },
     singletons: {},
@@ -121,16 +121,16 @@ describe("a collection whose new field kind keeps files beside the entry", () =>
   before(async () => {
     harness = await createHarness({}, { site: folders });
     mkdirSync(join(harness.contentRoot, "albums/summer"), { recursive: true });
-    writeFileSync(join(harness.contentRoot, "albums/summer/index.json"), JSON.stringify({ title: "Summer", slug: "summer" }));
+    writeFileSync(join(harness.contentRoot, "albums/summer/index.json"), JSON.stringify({ title: "Summer", id: "summer" }));
   });
 
   after(() => harness.close());
 
   it("reads the entries from their folders", async () => {
     const list = (await (await harness.request("/api/admin/collections/albums/entries")).json()) as {
-      items: Array<{ slug: string }>;
+      items: Array<{ id: string }>;
     };
-    assert.deepEqual(list.items.map((item) => item.slug), ["summer"]);
+    assert.deepEqual(list.items.map((item) => item.id), ["summer"]);
   });
 
   it("refuses an upload with a leading slash into a read-only collection", async () => {

@@ -22,7 +22,7 @@ import { rowLabel, rowLabelRelation } from "@/lib/row-label";
 import { useSchema } from "@/stores/schema";
 
 const props = defineProps<
-  FieldProps & { modelValue: unknown; collection?: string; entrySlug?: string }
+  FieldProps & { modelValue: unknown; collection?: string; entryId?: string }
 >();
 const emit = defineEmits<{ "update:modelValue": [Record<string, unknown>[]] }>();
 
@@ -77,16 +77,16 @@ onMounted(async () => {
   const target = rowLabelRelation(field.value);
   if (!target) return;
   try {
-    const options = await entryOptions(target, schema.reference(target) !== undefined);
-    titles.value = new Map(options.map((option) => [option.slug, option.title]));
+    const options = await entryOptions(target, schema.reference(target) !== undefined, schema.collection(target)?.url);
+    titles.value = new Map(options.map((option) => [option.id, option.title]));
   } catch {
-    // The rows show the slugs; the relation field in the row says that the list did not load.
+    // The rows show the IDs; the relation field in the row says that the list did not load.
   }
 });
 
 /** Row summary: the declared `itemLabel` child, else a positional fallback. */
 function summaryFor(row: Record<string, unknown>, index: number): string {
-  return rowLabel(field.value, row, index, (slug) => titles.value.get(slug));
+  return rowLabel(field.value, row, index, (id) => titles.value.get(id));
 }
 
 function rowHasIssue(index: number): boolean {
@@ -247,7 +247,7 @@ const reorder = useReorder<Record<string, unknown>>({
             :issues="issues"
             :disabled="disabled || field.readonly"
             :collection="collection"
-            :entry-slug="entrySlug"
+            :entry-id="entryId"
             @update:model-value="updateRow(index, $event)"
           />
         </div>

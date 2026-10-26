@@ -274,39 +274,39 @@ export const api = {
       request<{ items: EntrySummary[]; total: number; unreadable: UnreadableEntry[]; orderRevision: string | null }>(
         `/admin/collections/${collection}/entries`,
       ),
-    get: (collection: string, slug: string) =>
-      request<EntryDetail>(`/admin/collections/${collection}/entries/${slug}`),
+    get: (collection: string, id: string) =>
+      request<EntryDetail>(`/admin/collections/${collection}/entries/${id}`),
     create: (collection: string, body: { data: unknown; revision?: string | null }) =>
       request<SavedEntry>(`/admin/collections/${collection}/entries`, { method: "POST", body }),
     /** `keepMine`: the editor saw a newer save and chose to save over it. */
     update: (
       collection: string,
-      slug: string,
+      id: string,
       body: { data: unknown; revision?: string | null; keepMine?: boolean; updateLinks?: boolean },
     ) =>
-      request<SavedEntry>(`/admin/collections/${collection}/entries/${slug}`, {
+      request<SavedEntry>(`/admin/collections/${collection}/entries/${id}`, {
         method: "PUT",
         body,
       }),
     /** `revision`: the entry as the editor saw it. A later save by a colleague is a conflict. */
-    remove: (collection: string, slug: string, revision: string) =>
-      request<{ ok: true }>(`/admin/collections/${collection}/entries/${slug}`, {
+    remove: (collection: string, id: string, revision: string) =>
+      request<{ ok: true }>(`/admin/collections/${collection}/entries/${id}`, {
         method: "DELETE",
         query: { revision },
       }),
     /** `revision`: the order the editor saw, null without an order file. */
-    reorder: (collection: string, slugs: string[], revision: string | null) =>
+    reorder: (collection: string, ids: string[], revision: string | null) =>
       request<{ ok: true; revision: string }>(`/admin/collections/${collection}/reorder`, {
         method: "POST",
-        body: { slugs, revision },
+        body: { ids, revision },
       }),
-    suggestSlug: (collection: string, source: string, except?: string) =>
-      request<{ slug: string }>(`/admin/collections/${collection}/slug`, {
+    suggestId: (collection: string, source: string, except?: string) =>
+      request<{ id: string }>(`/admin/collections/${collection}/id`, {
         query: { source, except },
       }),
-    references: (collection: string, slug: string) =>
+    references: (collection: string, id: string) =>
       request<{ references: Referrer[] }>(
-        `/admin/collections/${collection}/entries/${slug}/references`,
+        `/admin/collections/${collection}/entries/${id}/references`,
       ),
   },
 

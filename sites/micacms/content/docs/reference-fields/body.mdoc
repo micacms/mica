@@ -27,11 +27,11 @@ The build stops on an option that is not in these tables, for example a typo. A 
 | `date()` | `"2026-10-13"`, or with `includeTime` a date and time with its offset. | `includeTime`, `min`, `max`, `default`. |
 | `email()` | An email address. | `placeholder`, `default`. |
 | `url()` | A web address. | `placeholder`, `default`. |
-| `slug()` | Lower-case letters, digits and hyphens. | `from`: the key of the field that gives the slug while the editor types. `maxLength`. |
+| `id()` | Lower-case letters, digits and hyphens. | `from`: the key of the field that gives the ID while the editor types. `maxLength`. |
 | `select({ options })` | The `value` of the choice, or a list with `multiple`. | `options`: a list of `{ label, value }`. `multiple`, `default`. |
 | `object({ fields })` | An object with the given fields. | `fields`, `collapsible`, `collapsed`. |
 | `repeater({ fields })` | A list of objects. | `fields`, `min`, `max`, `itemLabel` (the key of the field that names a row: a text, or a single relation, which shows the title of its entry), `addLabel`. |
-| `relation({ collection })` | The slug of an entry, or a list with `multiple`. For a reference set, the id of an item. | `collection`: a collection of the model, or a reference set. `multiple`. |
+| `relation({ collection })` | The ID of an entry, or a list with `multiple`. For a reference set, the id of an item. | `collection`: a collection of the model, or a reference set. `multiple`. |
 | `media()` | The path of a file, or `{ path, alt }` with `alt`. A list with `multiple`. | `accept`: `"image"` (JPEG, PNG, GIF, WebP, AVIF), `"document"` (PDF), `"any"` (every type that Mica knows), or a list of `image`, `pdf`, `gpx`, `kml`, `geojson`, `zip` and `csv`. `multiple`, `max`, `alt`: `"required"` or `"optional"`. |
 | `color()` | A hex colour, for example `"#0f766e"`. | `presets`: colours to choose from. `default`. |
 | `coordinates()` | `{ lat, lng }`. With a map also `zoom`, from 0 to 22. | `map`: `"liberty"`, `"bright"` or `"positron"` (OpenFreeMap), or `{ style, hosts }` for a style of your own, with `https` only. The editor's browser loads the tiles from that host. |
@@ -45,25 +45,25 @@ A `default` fills the field of a new entry, and of a singleton that has no file 
 
 A save keeps a key in `index.json` and a `.mdoc` file that the model does not declare, for example content for a field that a newer model adds. Your templates do not get them, and `npx mica check` warns about them. To delete them, see [Change the model](/docs/model-changes/). A key in a list row without `_key` is not kept, because such a row has no identity when the order changes.
 
-## The slug of a collection
+## The ID of a collection
 
-The first `slug()` among the fields of a collection is the entry's slug. It is also the name of the entry's folder, so it is never empty. A second `slug()` among the same fields stops the build. A `slug()` in an object or in a singleton is an ordinary value, for example one URL for each language.
+The first `id()` among the fields of a collection is the entry's ID. It is also the name of the entry's folder, so it is never empty. A second `id()` among the same fields stops the build. An `id()` in an object or in a singleton is an ordinary value, for example one page name for each language.
 
 ## Where an entry is stored
 
-Each entry is a folder `<slug>/` with `index.json`, the `.mdoc` files and the entry's media, and each singleton is a folder `<name>/` with the same files. See [Content model](/docs/content-model/).
+Each entry is a folder `<id>/` with `index.json`, the `.mdoc` files and the entry's media, and each singleton is a folder `<name>/` with the same files. See [Content model](/docs/content-model/).
 
 Each rich-text field has its own `.mdoc` file, named by the field's path: `body.mdoc`, `seo.intro.mdoc`. In a `repeater()`, each row with rich text has a key, `_key`, in `index.json`, and the file names the row by its key: `sections.k3f9a2.body.mdoc`. Then a new order of the rows changes only `index.json`. Mica writes the key; do not change it. Your templates do not get it.
 
 ## Collections and singletons
 
 ```ts
-import { collection, defineSite, singleton, slug, text } from "@micacms/core";
+import { collection, defineSite, singleton, id, text } from "@micacms/core";
 
 export const site = defineSite({
   root: "./content",
   collections: {
-    news: collection({ label: "News", url: "/news/{slug}", fields: { title: text({ required: true }), slug: slug({ from: "title" }) } }),
+    news: collection({ label: "News", url: "/news/{id}", fields: { title: text({ required: true }), id: id({ from: "title" }) } }),
   },
   singletons: {
     settings: singleton({ label: "Website", fields: { tagline: text() } }),
@@ -76,13 +76,13 @@ export const site = defineSite({
 | `label`, `labelSingular` | The names in the editor, for example "News" and "Article". |
 | `description` | Text below the title of the list. |
 | `fields` | The fields. |
-| `titleField` | The key that names an entry in lists. Default: `title`, else the first `text()`, else the slug. |
-| `slugField` | The key of the slug. Default: the first `slug()`. |
+| `titleField` | The key that names an entry in lists. Default: `title`, else the first `text()`, else the ID. |
+| `idField` | The key of the ID. Default: the first `id()`. |
 | `defaultSort` | `{ field, direction }` for the list in the editor. `field` is a field of the collection or `"position"`. Text sorts alphabetically in English, and a date with a time by its instant. `_mica.position` on the website follows it too: sort your pages with `inEditorOrder` from `@micacms/astro`. |
 | `sortable` | Editors can put the entries in an order. Mica keeps it in `_order.json`. |
-| `url` | The page of an entry on the website, with `{slug}` once, such as `/news/{slug}`. It can also name other fields of the collection with one value, each as a whole part of the path between two `/`: a `select()` or `relation()` without `multiple`, or a `date()` without a time, such as `/{activity}/{slug}`. A relation gives the slug of its entry. The address has the saved value, percent-encoded. While one of the fields is empty, the entry has no page. With `MICA_SITE_URL`, an entry shows "Open on website". See [Preview changes](/docs/previews/). |
+| `url` | The page of an entry on the website, with `{id}` once, such as `/news/{id}`. It can also name other fields of the collection with one value, each as a whole part of the path between two `/`: a `select()` or `relation()` without `multiple`, or a `date()` without a time, such as `/{activity}/{id}`. A relation gives the ID of its entry. The address has the saved value, percent-encoded. While one of the fields is empty, the entry has no page. With `MICA_SITE_URL`, an entry shows "Open on website". See [Preview changes](/docs/previews/). |
 
-`singleton()` takes `label`, `description`, `fields` and `url` (its page, such as `/about`, without `{slug}`). `defineSite()` takes `root`, `collections`, `singletons` and `references`.
+`singleton()` takes `label`, `description`, `fields` and `url` (its page, such as `/about`, without `{id}`). `defineSite()` takes `root`, `collections`, `singletons` and `references`.
 
 ## Reference sets
 

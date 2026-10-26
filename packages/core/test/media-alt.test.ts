@@ -13,7 +13,7 @@ import {
   readCollection,
   relativizeMedia,
   serializeEntry,
-  slug,
+  id,
   text,
   validateFields,
   type InferFields,
@@ -22,7 +22,7 @@ import {
 
 const fields = {
   title: text(),
-  slug: slug({ from: "title" }),
+  id: id({ from: "title" }),
   cover: media({ alt: "required" }),
   gallery: media({ alt: "optional", multiple: true }),
   file: media(),
@@ -76,7 +76,7 @@ describe("media with alt text", () => {
     const source = memorySource({
       "projects/haus/index.json": JSON.stringify({
         title: "Haus",
-        slug: "haus",
+        id: "haus",
         cover: { path: "media/a.jpg", alt: "A house" },
         gallery: [{ path: "/shared/b.jpg", alt: null }],
         file: "media/plan.pdf",

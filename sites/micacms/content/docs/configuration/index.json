@@ -1,6 +1,6 @@
 {
   "title": "Configuration",
-  "slug": "configuration",
+  "id": "configuration",
   "section": "operate",
   "summary": "Every environment variable of the self-hosted image and the local editor, with its default.",
   "readTime": 5

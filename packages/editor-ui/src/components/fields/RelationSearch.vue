@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Finds an entry by its title or URL as the editor types: the ARIA combobox
+ * Finds an entry by its title or ID as the editor types: the ARIA combobox
  * pattern. A relation field shows it below its chosen entries, and in its
  * Change dialog with the list `inline`, so that the list makes the dialog taller.
  */
@@ -14,7 +14,7 @@ const props = withDefaults(
   defineProps<{
     inputId: string;
     options: RelationOption[];
-    /** The chosen slugs, which the list leaves out. */
+    /** The chosen IDs, which the list leaves out. */
     exclude: string[];
     placeholder: string;
     /** The name of the list, such as the collection's label. */
@@ -133,7 +133,7 @@ function onInput(event: Event): void {
       <li
         v-for="(entry, index) in results"
         :id="optionId(index)"
-        :key="entry.slug"
+        :key="entry.id"
         role="option"
         :aria-selected="index === active"
         :class="[
@@ -143,7 +143,7 @@ function onInput(event: Event): void {
         @mousedown.prevent="choose(entry)"
       >
         <span class="min-w-0 flex-1 truncate">{{ entry.title }}</span>
-        <span class="shrink-0 font-mono text-[11px] text-muted">{{ entry.slug }}</span>
+        <span class="min-w-0 shrink truncate font-mono text-[11px] text-muted" :title="entry.url ?? entry.id">{{ entry.url ?? entry.id }}</span>
       </li>
     </ul>
     <p class="sr-only" role="status">

@@ -16,11 +16,11 @@ const { heroImage } = page.data;
 {heroImage && <Image {...heroImage} widths={[800, 1200, 1800]} sizes="92vw" />}
 ```
 
-From `src/mica.ts` and `src/pages/[...slug].astro` of the example. With `alt: "required"`, an editor cannot publish an image without alt text. Use `"optional"` for an image that is only decoration: an empty alt text is `""`.
+From `src/mica.ts` and `src/pages/[...id].astro` of the example. With `alt: "required"`, an editor cannot publish an image without alt text. Use `"optional"` for an image that is only decoration: an empty alt text is `""`.
 
 ## Show related entries
 
-A relation stores the slug of the other entry. `@micacms/astro/relations` gets the entries.
+A relation stores the ID of the other entry. `@micacms/astro/relations` gets the entries.
 
 ```astro
 ---
@@ -31,7 +31,7 @@ const members = await relatedAll("team", project.data.team);
 {writer && <a href={`/team/${writer.id}/`}>{writer.data.name}</a>}
 ```
 
-From `src/pages/news/[slug].astro` and `src/pages/projects/[slug].astro` of the example. To show a relation from the other side, for example the projects of one person, filter the other collection:
+From `src/pages/news/[id].astro` and `src/pages/projects/[id].astro` of the example. To show a relation from the other side, for example the projects of one person, filter the other collection:
 
 ```ts
 const projects = (await getCollection("projects")).filter((project) => project.data.team.includes(member.id));
@@ -57,7 +57,7 @@ const html = await renderRichText(text, from);
 <div set:html={html} />
 ```
 
-Shortened from `src/pages/[...slug].astro` and `src/components/RichText.astro` of the example. Astro's image service makes each image smaller: a `srcset` in 480, 800, 1200 and 1600 px as WebP, up to the width of the original. The site needs `sharp`, as for `<Image>`. `{ optimize: false }` as the third argument writes the original. Style `table` and `img` in your rich-text styles.
+Shortened from `src/pages/[...id].astro` and `src/components/RichText.astro` of the example. Astro's image service makes each image smaller: a `srcset` in 480, 800, 1200 and 1600 px as WebP, up to the width of the original. The site needs `sharp`, as for `<Image>`. `{ optimize: false }` as the third argument writes the original. Style `table` and `img` in your rich-text styles.
 
 ## Use the order of the editor
 
@@ -103,7 +103,7 @@ import { LocationMap } from "@micacms/astro/components";
 />
 ```
 
-From `src/pages/events/[slug].astro` of the example. Add `maplibre-gl` to the dependencies of the website. The map loads when it comes near the screen. Until then, and without JavaScript, the element holds a link to the place on OpenStreetMap. The zoom is the one that the editor saved. `mapView()` from `@micacms/astro` gives the same view for a map that you draw yourself.
+From `src/pages/events/[id].astro` of the example. Add `maplibre-gl` to the dependencies of the website. The map loads when it comes near the screen. Until then, and without JavaScript, the element holds a link to the place on OpenStreetMap. The zoom is the one that the editor saved. `mapView()` from `@micacms/astro` gives the same view for a map that you draw yourself.
 
 ## Read a file at build time
 
@@ -163,9 +163,9 @@ The test `packages/astro/test/richtext.test.ts` renders this configuration. The 
 
 From `.github/workflows/check.yml` of the starter, which runs in each new site. `mica check` stops the job at an error. The build stops at a model change without its `schema.json`: the editor would show the old model. The build does the same for the index of a [reference set](/docs/reference-data/).
 
-## Change the URL of an entry
+## Change the ID of an entry
 
-The slug is the URL. When an editor changes it, Mica offers to update the links in other entries (on by default), and it tells the editor that old links from outside need a redirect. Add the redirect in `astro.config.mjs`:
+The ID is part of the page's URL. When an editor selects **Change ID**, Mica offers to update the links in other entries (on by default), and it tells the editor that old links from outside need a redirect. Add the redirect in `astro.config.mjs`:
 
 ```js
 export default defineConfig({

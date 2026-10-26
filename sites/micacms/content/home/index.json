@@ -42,13 +42,13 @@
         "caption": "What you write: the fields, labels and rules, in one file",
         "kind": "code",
         "file": "src/mica.ts",
-        "code": "export const site = defineSite({\n  root: \"./content\",\n  collections: {\n    news: collection({\n      label: \"News\",\n      fields: {\n        title: text({ label: \"Title\", required: true }),\n        slug: slug({ from: \"title\" }),\n        image: media({ label: \"Image\", alt: \"required\" }),\n        body: richText({ label: \"Text\" }),\n      },\n    }),\n  },\n});"
+        "code": "export const site = defineSite({\n  root: \"./content\",\n  collections: {\n    news: collection({\n      label: \"News\",\n      fields: {\n        title: text({ label: \"Title\", required: true }),\n        id: id({ from: \"title\" }),\n        image: media({ label: \"Image\", alt: \"required\" }),\n        body: richText({ label: \"Text\" }),\n      },\n    }),\n  },\n});"
       },
       {
         "caption": "What a publish adds: one commit with the changes the editor chose",
         "kind": "change",
         "file": "content/news/opening-hours/index.json",
-        "code": "-  \"title\": \"Opening hours\",\n+  \"title\": \"New opening hours\",\n   \"slug\": \"opening-hours\",\n\ncommit 3f07610\n    New opening hours\n\n    Published-with: Mica"
+        "code": "-  \"title\": \"Opening hours\",\n+  \"title\": \"New opening hours\",\n   \"id\": \"opening-hours\",\n\ncommit 3f07610\n    New opening hours\n\n    Published-with: Mica"
       }
     ]
   },
@@ -219,7 +219,7 @@
       {
         "title": "Fields for structured content, with relations",
         "icon": "relations",
-        "text": "Each field has a label and rules, and Mica checks every value. Relations link entries across collections, such as an article to its author or a project to its team, and also to the items of a JSON or CSV file. When an entry gets a new URL, Mica offers to update the links to it.",
+        "text": "Each field has a label and rules, and Mica checks every value. Relations link entries across collections, such as an article to its author or a project to its team, and also to the items of a JSON or CSV file. When an entry gets a new ID, Mica offers to update the links to it.",
         "tags": [
           "Text",
           "Rich text",

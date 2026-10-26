@@ -24,7 +24,7 @@ export function contentGroups(model: Site): (path: string) => ContentGroup {
     const key = groupOf(owner, path);
     switch (owner.kind) {
       case "entry":
-        return { key, label: owner.label, target: { kind: "entry", collection: owner.collection, slug: owner.slug } };
+        return { key, label: owner.label, target: { kind: "entry", collection: owner.collection, id: owner.id } };
       case "singleton":
         return { key, label: owner.label, target: { kind: "singleton", name: owner.name } };
       case "order":

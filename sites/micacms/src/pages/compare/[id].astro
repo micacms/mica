@@ -6,7 +6,7 @@ import PageHeader from "@/components/PageHeader.astro";
 import CompareTable from "@/components/CompareTable.astro";
 import RichText from "@/components/RichText.astro";
 import { factValue, formatDate, getCompare } from "@/lib/content";
-export async function getStaticPaths() { return (await getCollection("comparisons")).map((entry) => ({ params: { slug: entry.id }, props: { entry } })); }
+export async function getStaticPaths() { return (await getCollection("comparisons")).map((entry) => ({ params: { id: entry.id }, props: { entry } })); }
 const { entry } = Astro.props;
 const compare = await getCompare();
 const { data } = entry;

@@ -11,7 +11,7 @@ import { formatDateTime, formatLabel, getLabels } from "@/lib/content";
 export async function getStaticPaths() {
   const events = await getCollection("events");
   return events.map((event) => ({
-    params: { slug: event.id },
+    params: { id: event.id },
     props: { event },
   }));
 }

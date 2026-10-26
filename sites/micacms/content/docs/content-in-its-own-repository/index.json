@@ -1,6 +1,6 @@
 {
   "title": "Content in its own repository",
-  "slug": "content-in-its-own-repository",
+  "id": "content-in-its-own-repository",
   "section": "build",
   "summary": "Keep the content in a Git submodule of the website: the setup, the detached HEAD, the website build, and the self-hosted editor.",
   "readTime": 4

@@ -1,6 +1,6 @@
 {
   "title": "Projects",
-  "slug": "projects",
+  "id": "projects",
   "template": "projects",
   "eyebrow": "Portfolio",
   "intro": "A selection of our completed work.",

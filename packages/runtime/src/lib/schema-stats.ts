@@ -13,7 +13,7 @@
 
 import {
   listedFields,
-  resolveSlugField,
+  resolveIdField,
   resolveTitleField,
   type AnyField,
   type FieldKind,
@@ -50,7 +50,7 @@ export interface CollectionStats {
   label: string;
   fields: FieldCounts;
   titleField: string | null;
-  slugField: string | null;
+  idField: string | null;
   listed: number;
   sortable: boolean;
   /** Deepest level of nesting; 1 means no objects or repeaters. */
@@ -152,7 +152,7 @@ export function schemaStats(site: Site): SchemaStats {
       // The same resolution the editor sees, not the raw declaration: both keys
       // are optional in the model and fall back to a convention.
       titleField: resolveTitleField(def) ?? null,
-      slugField: resolveSlugField(def) ?? null,
+      idField: resolveIdField(def) ?? null,
       listed: listedFields(def).length,
       sortable: def.sortable ?? false,
       depth,

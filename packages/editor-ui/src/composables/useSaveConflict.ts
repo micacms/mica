@@ -6,7 +6,7 @@
  * - `loading`: their saved version is on its way.
  * - `loaded`: both versions are shown. "Keep mine" saves over theirs, at
  *   their revision; "Use theirs" opens their version.
- * - `missing`: their version is gone, deleted or moved to another URL.
+ * - `missing`: their version is gone, deleted or moved to another ID.
  *
  * Nothing is merged: which version stays is the editor's decision.
  */

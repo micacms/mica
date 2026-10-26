@@ -1,6 +1,6 @@
 /**
- * URL changes in a pending change set. An entry has no identity but its slug,
- * so a URL change is a deleted and a created entry with the same content, as
+ * ID changes in a pending change set. An entry has no identity but its ID,
+ * so an ID change is a deleted and a created entry with the same content, as
  * in Git's rename detection.
  */
 
@@ -14,7 +14,7 @@ import {
   ORDER_FILE,
   ownerOfPath,
   readCollectionEntry,
-  resolveSlugField,
+  resolveIdField,
   type Site,
 } from "@micacms/core/internal";
 
@@ -27,8 +27,8 @@ const RENAME_SIMILARITY = 0.5;
 
 /**
  * Marks renamed entries in place in `owners`. Deleted and created entries are
- * paired by content. An order file whose only change is the renamed slug joins
- * the entry, so a discard cannot leave the order naming a slug that does not exist.
+ * paired by content. An order file whose only change is the renamed ID joins
+ * the entry, so a discard cannot leave the order naming an ID that does not exist.
  */
 export async function detectRenames(
   model: Site,
@@ -42,28 +42,28 @@ export async function detectRenames(
   const kinds = new Map<string, Map<string, Set<ContentChange["kind"]>>>();
   owners.forEach((owner, index) => {
     if (owner.kind !== "entry") return;
-    const bySlug = kinds.get(owner.collection) ?? new Map<string, Set<ContentChange["kind"]>>();
-    kinds.set(owner.collection, bySlug);
-    const set = bySlug.get(owner.slug) ?? new Set<ContentChange["kind"]>();
-    bySlug.set(owner.slug, set);
+    const byId = kinds.get(owner.collection) ?? new Map<string, Set<ContentChange["kind"]>>();
+    kinds.set(owner.collection, byId);
+    const set = byId.get(owner.id) ?? new Set<ContentChange["kind"]>();
+    byId.set(owner.id, set);
     set.add(changes[index]!.kind);
   });
 
-  for (const [name, bySlug] of kinds) {
+  for (const [name, byId] of kinds) {
     const after = staged.get(name);
     if (!after) continue;
 
     const only = (kind: ContentChange["kind"]) =>
-      [...bySlug].filter(([, set]) => set.size === 1 && set.has(kind)).map(([slug]) => slug);
-    const deleted = only("delete").filter((slug) => !after.get(slug));
-    const created = only("create").filter((slug) => after.get(slug));
+      [...byId].filter(([, set]) => set.size === 1 && set.has(kind)).map(([id]) => id);
+    const deleted = only("delete").filter((id) => !after.get(id));
+    const created = only("create").filter((id) => after.get(id));
     if (deleted.length === 0 || created.length === 0) continue;
 
     // Only the candidates are read on the published side, not the collection.
     const def = model.collections[name]!;
-    const publishedEntry = (slug: string) => readCollectionEntry(published, def, name, slug).catch(() => null);
+    const publishedEntry = (id: string) => readCollectionEntry(published, def, name, id).catch(() => null);
     const before = new Map<string, Record<string, unknown> | null>();
-    await Promise.all([...deleted, ...created].map(async (slug) => before.set(slug, await publishedEntry(slug))));
+    await Promise.all([...deleted, ...created].map(async (id) => before.set(id, await publishedEntry(id))));
 
     const candidates: Array<{ from: string; to: string; score: number }> = [];
     for (const from of deleted) {
@@ -87,33 +87,33 @@ export async function detectRenames(
     if (renamedTo.size === 0) continue;
 
     const renamedFrom = new Map([...renamedTo].map(([from, to]) => [to, from]));
-    const orderMovesOnlySlugs = await onlyRenamedInOrder(published, source, name, renamedTo);
+    const orderMovesOnlyIds = await onlyRenamedInOrder(published, source, name, renamedTo);
     const [firstFrom, firstTo] = [...renamedTo][0]!;
 
     owners.forEach((owner, index) => {
-      if (owner.kind === "order" && owner.collection === name && orderMovesOnlySlugs) {
+      if (owner.kind === "order" && owner.collection === name && orderMovesOnlyIds) {
         owners[index] = {
           kind: "entry",
           collection: name,
-          slug: firstTo,
+          id: firstTo,
           label: firstTo,
           renamedFrom: firstFrom,
         };
       }
       if (owner.kind !== "entry" || owner.collection !== name) return;
-      const to = renamedTo.get(owner.slug);
-      if (to) owners[index] = { ...owner, slug: to, label: to, renamedFrom: owner.slug };
-      const from = renamedFrom.get(owner.slug);
+      const to = renamedTo.get(owner.id);
+      if (to) owners[index] = { ...owner, id: to, label: to, renamedFrom: owner.id };
+      const from = renamedFrom.get(owner.id);
       if (from) owners[index] = { ...owner, renamedFrom: from };
     });
   }
 }
 
 /**
- * A URL change and the links that follow it are published together, both ways.
- * A document follows when the website's version of it links to the old URL; a
- * new draft that links to the new URL only needs the change, and does not hold
- * it back. Adds the documents to the needs of the URL change, in place.
+ * An ID change and the links that follow it are published together, both ways.
+ * A document follows when the website's version of it links to the old ID; a
+ * new draft that links to the new ID only needs the change, and does not hold
+ * it back. Adds the documents to the needs of the ID change, in place.
  */
 export async function followRenamedLinks(
   model: Site,
@@ -125,7 +125,7 @@ export async function followRenamedLinks(
   const renamed = new Map(
     owners.flatMap((owner) =>
       owner.kind === "entry" && owner.renamedFrom
-        ? [[entryDataPath(owner.collection, owner.slug), owner] as const]
+        ? [[entryDataPath(owner.collection, owner.id), owner] as const]
         : [],
     ),
   );
@@ -139,7 +139,7 @@ export async function followRenamedLinks(
         before &&
         fields &&
         documentLinks(fields, before, folderOf(document)).some(
-          (link) => link.kind === "relation" && link.collection === target.collection && link.slug === target.renamedFrom,
+          (link) => link.kind === "relation" && link.collection === target.collection && link.id === target.renamedFrom,
         );
       if (linkedBefore) needsByPath.set(path, [...new Set([...(needsByPath.get(path) ?? []), document])]);
     }
@@ -154,7 +154,7 @@ function fieldsOfDocument(model: Site, path: string): FieldMap | null {
   return null;
 }
 
-/** True when a collection's staged order is the published one with the renamed slugs replaced. */
+/** True when a collection's staged order is the published one with the renamed IDs replaced. */
 async function onlyRenamedInOrder(
   published: ContentSource,
   staged: ContentSource,
@@ -174,19 +174,19 @@ async function onlyRenamedInOrder(
   const after = parse(await staged.read(path));
   if (!Array.isArray(before) || !Array.isArray(after)) return false;
 
-  const expected = before.map((slug: unknown) =>
-    typeof slug === "string" ? (renamedTo.get(slug) ?? slug) : slug,
+  const expected = before.map((id: unknown) =>
+    typeof id === "string" ? (renamedTo.get(id) ?? id) : id,
   );
   return canonical(expected) === canonical(after);
 }
 
-/** The share of non-empty fields, the slug aside, that two versions of an entry agree on. */
+/** The share of non-empty fields, the ID aside, that two versions of an entry agree on. */
 function similarity(def: Collection, a: Record<string, unknown>, b: Record<string, unknown>): number {
-  const slugKey = resolveSlugField(def);
+  const idKey = resolveIdField(def);
   let compared = 0;
   let equal = 0;
   for (const key of Object.keys(def.fields)) {
-    if (key === slugKey || (isEmpty(a[key]) && isEmpty(b[key]))) continue;
+    if (key === idKey || (isEmpty(a[key]) && isEmpty(b[key]))) continue;
     compared += 1;
     if (canonical(a[key]) === canonical(b[key])) equal += 1;
   }

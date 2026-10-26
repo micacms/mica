@@ -61,8 +61,9 @@ function lastSegment(path: string): string {
   return path.split(".").at(-1) ?? path;
 }
 
-/** `metaTitle` → `Meta title`, used when a field declares no label. */
+/** `metaTitle` → `Meta title`, used when a field declares no label. The key `id` is "ID". */
 export function humanise(key: string): string {
+  if (key === "id") return "ID";
   const spaced = key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ");
   return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
 }

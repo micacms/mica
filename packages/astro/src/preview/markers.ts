@@ -18,7 +18,7 @@ const SEPARATOR = "\u001f";
 export interface FieldMarker {
   /** The collection or the singleton. */
   document: string;
-  /** The entry's slug, or the singleton's name. */
+  /** The entry's ID, or the singleton's name. */
   id: string;
   /** The field's path as the editor names it: `title`, `seo.title`, `facts.2.label`. */
   path: string;

@@ -8,7 +8,7 @@ import { formatDateTime, getEventsOf, getLabels, getProjectsOf, projectPath } fr
 export async function getStaticPaths() {
   const team = await getCollection("team");
   return team.map((member) => ({
-    params: { slug: member.id },
+    params: { id: member.id },
     props: { member },
   }));
 }

@@ -38,7 +38,7 @@ function valueAt(data: Record<string, unknown> | null, path: string): unknown {
 }
 
 function matches(target: CompareTarget | null, marker: PreviewMarker): boolean {
-  if (target?.kind === "entry") return target.collection === marker.document && target.slug === marker.id;
+  if (target?.kind === "entry") return target.collection === marker.document && target.id === marker.id;
   if (target?.kind === "singleton") return target.name === marker.document;
   return false;
 }

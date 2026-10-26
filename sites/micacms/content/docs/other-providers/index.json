@@ -1,6 +1,6 @@
 {
   "title": "Other sign-in providers",
-  "slug": "other-providers",
+  "id": "other-providers",
   "section": "operate",
   "summary": "Use Dex, Microsoft Entra, Keycloak, Authentik, or ZITADEL with a self-hosted Mica, and set the groups claim.",
   "readTime": 8

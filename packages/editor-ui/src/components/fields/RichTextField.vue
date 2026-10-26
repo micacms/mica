@@ -70,7 +70,7 @@ function textboxAttributes(): Record<string, string> {
   return attributes;
 }
 
-/** The folder of the entry, such as `news/hello`, where its `media/` folder is. Null for a new entry without a URL. */
+/** The folder of the entry, such as `news/hello`, where its `media/` folder is. Null for a new entry without an ID. */
 const mediaFolder = inject(MEDIA_FOLDER, undefined);
 const pickerFolder = computed(() => mediaFolder?.value ?? null);
 const entryFolder = computed(() => pickerFolder.value?.path.replace(/\/media$/, "") ?? null);
@@ -266,7 +266,7 @@ function chooseImage(): void {
 function onImageChosen(items: MediaItem[]): void {
   const item = items[0];
   if (!item) return;
-  // The entry's own files are stored from its folder, so the path stays right when its URL changes.
+  // The entry's own files are stored from its folder, so the path stays right when its ID changes.
   const folder = entryFolder.value;
   const src = folder && item.path.startsWith(`${folder}/`) ? item.path.slice(folder.length + 1) : `/${item.path}`;
   imageDialog.value = { open: true, src, alt: "", error: null, editing: false };

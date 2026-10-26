@@ -4,7 +4,7 @@ The model is a plain TypeScript module, `src/mica.ts` by convention. It imports 
 
 ## Collections and singletons
 
-A collection contains many entries. Each collection has one slug field that identifies an entry in the repository and on the website. A singleton is one settings document, such as navigation or site metadata. It has no slug and no list.
+A collection contains many entries. Each collection has one ID field that identifies an entry in the repository and on the website. A singleton is one settings document, such as navigation or site metadata. It has no ID and no list.
 
 ```ts
 export const site = defineSite({
@@ -13,11 +13,11 @@ export const site = defineSite({
   collections: {
     projects: collection({
       label: "Projects",
-      url: "/projects/{slug}",
+      url: "/projects/{id}",
       sortable: true,
       fields: {
         title: text({ required: true, listed: true }),
-        slug: slug({ from: "title" }),
+        id: id({ from: "title" }),
         summary: richText(),
         gallery: media({ multiple: true, accept: "image", alt: "required" }),
       },
@@ -30,7 +30,7 @@ export const site = defineSite({
 
 `label` is the website's name for its editors, with 60 characters at most. The editor shows it at the top of its menu, and a click on it opens the Overview. Without a label, the menu shows the host name of `MICA_SITE_URL`, else "Mica".
 
-A collection has one `slug()` field. Mica reads the slug from the name of the entry's folder or file, so the slug is never empty. [Field reference](/docs/reference-fields/) lists the options of `collection()` and `singleton()`, such as `labelSingular`, `defaultSort`, `sortable` and `url`. With `url` and the address of the website, an entry shows "Open on website": see [Preview changes](/docs/previews/).
+A collection has one `id()` field. Mica reads the ID from the name of the entry's folder or file, so the ID is never empty. [Field reference](/docs/reference-fields/) lists the options of `collection()` and `singleton()`, such as `labelSingular`, `defaultSort`, `sortable` and `url`. With `url` and the address of the website, an entry shows "Open on website": see [Preview changes](/docs/previews/).
 
 ## Becoming Astro collections
 
@@ -67,7 +67,7 @@ When an entry must point to an item of such data, declare the data as a referenc
 
 ## Field types
 
-Mica includes text, textarea, rich text, number, boolean, date, email, URL, slug, select, object, repeater, relation, media, color, coordinates, and tags fields. [Field reference](/docs/reference-fields/) gives the options of each type. A tags field is a free list of short words, such as keywords, stored as a list of strings; `suggestions` offers words while the editor types.
+Mica includes text, textarea, rich text, number, boolean, date, email, URL, ID, select, object, repeater, relation, media, color, coordinates, and tags fields. [Field reference](/docs/reference-fields/) gives the options of each type. A tags field is a free list of short words, such as keywords, stored as a list of strings; `suggestions` offers words while the editor types.
 
 Each field can include an editor label, help text, group, width, list column, and required state. A field can also be read-only, or hidden from the editor. Specific fields add rules such as length, number range, accepted media, or select options.
 
@@ -81,9 +81,9 @@ A media field with `alt: "required"` or `alt: "optional"` stores `{ path, alt }`
 
 The `accept` option of a media field also takes a list of file types: `media({ accept: ["gpx", "kml"] })`. Mica knows images, PDF, GPX, KML, GeoJSON, ZIP and CSV, and it checks the type of each upload from its bytes. A file that is not an image reaches Astro as a path. Read it at build time with `mediaFile`: see [Recipes](/docs/recipes/).
 
-A file uploaded in an entry's form goes into that entry's own `media/` folder, so the entry keeps its files when its URL changes, and loses them when it is deleted. A file uploaded in the Media view goes into the shared `media/` folder, for a logo or another file that many entries use. The picker in a form offers the entry's own files and the shared ones. Mica does not keep videos: put them on a video service and link to them. The Media view deletes a file only when no field and no rich text uses it, and the delete waits on the Publish page like any other change. A site with thousands of photos keeps them in Git LFS: see [Large files with Git LFS](/docs/git-lfs/).
+A file uploaded in an entry's form goes into that entry's own `media/` folder, so the entry keeps its files when its ID changes, and loses them when it is deleted. A file uploaded in the Media view goes into the shared `media/` folder, for a logo or another file that many entries use. The picker in a form offers the entry's own files and the shared ones. Mica does not keep videos: put them on a video service and link to them. The Media view deletes a file only when no field and no rich text uses it, and the delete waits on the Publish page like any other change. A site with thousands of photos keeps them in Git LFS: see [Large files with Git LFS](/docs/git-lfs/).
 
-A relation field stores the slug of the target entry. `defineSite` refuses a relation to a collection that does not exist, so the error shows before a page renders. A relation to a reference set stores the id of an item.
+A relation field stores the ID of the target entry. `defineSite` refuses a relation to a collection that does not exist, so the error shows before a page renders. A relation to a reference set stores the id of an item.
 
 A coordinates field stores `{ lat, lng }`. With the option `map`, the editor shows a map to click on, and the value also holds the `zoom` of the map. The website draws the same place with `LocationMap` from `@micacms/astro/components`. The map tiles come from OpenFreeMap or from a style that you name. See [Field reference](/docs/reference-fields/) and [Recipes](/docs/recipes/).
 

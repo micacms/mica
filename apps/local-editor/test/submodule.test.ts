@@ -7,7 +7,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, createManifest, defineSite, MANIFEST_PATH, slug, text } from "@micacms/core/internal";
+import { collection, createManifest, defineSite, MANIFEST_PATH, id, text } from "@micacms/core/internal";
 
 import { checkContent } from "../src/check.js";
 import { contentRoot } from "../src/cli.js";
@@ -16,8 +16,8 @@ import { initProject } from "../src/init.js";
 
 const site = defineSite({
   collections: {
-    team: collection({ label: "Team", fields: { name: text(), slug: slug({ from: "name" }) } }),
-    news: collection({ label: "News", fields: { title: text(), slug: slug({ from: "title" }) } }),
+    team: collection({ label: "Team", fields: { name: text(), id: id({ from: "name" }) } }),
+    news: collection({ label: "News", fields: { title: text(), id: id({ from: "title" }) } }),
   },
 });
 
@@ -59,7 +59,7 @@ before(() => {
   const seed = make("mica-content-seed-");
   git(seed, "init", "-q", "-b", "main");
   write(path.join(seed, MANIFEST_PATH), JSON.stringify(createManifest(site, "test")));
-  write(path.join(seed, "team/anna/index.json"), JSON.stringify({ name: "Anna", slug: "anna" }));
+  write(path.join(seed, "team/anna/index.json"), JSON.stringify({ name: "Anna", id: "anna" }));
   git(seed, "add", "-A");
   git(seed, "-c", "user.email=test@example.com", "-c", "user.name=Test", "commit", "-q", "-m", "init");
   git(seed, "push", "-q", bare, "main");

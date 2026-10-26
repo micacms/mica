@@ -126,8 +126,8 @@ function dropped(): void {
   void router.replace({ query: withoutOverlay(route.query) });
 }
 
-function renamed(slug: string): void {
-  if (target.value) pane.openOverlay({ ...target.value, id: slug });
+function renamed(id: string): void {
+  if (target.value) pane.openOverlay({ ...target.value, id });
 }
 
 // The main form changes: the overlay belongs to the page that it was opened on.
@@ -177,7 +177,7 @@ function onKeydown(event: KeyboardEvent): void {
             ref="view"
             embedded
             :collection="target.document"
-            :slug="target.id"
+            :id="target.id"
             :focus="target.field"
             @renamed="renamed"
             @close="dropped"

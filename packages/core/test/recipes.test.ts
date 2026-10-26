@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, describe, it } from "node:test";
 
-import { collection, createManifest, defineSite, MANIFEST_PATH, object, richText, serializeEntry, slug, text } from "../src/index.js";
+import { collection, createManifest, defineSite, MANIFEST_PATH, object, richText, serializeEntry, id, text } from "../src/index.js";
 
 const RECIPES = join(import.meta.dirname, "../recipes");
 // A recipe imports the published package, so it runs on the build output; CI builds before it tests.
@@ -26,8 +26,8 @@ function content(files: Record<string, unknown>): string {
   roots.push(root);
   const site = defineSite({
     collections: {
-      people: collection({ label: "People", fields: { name: text(), slug: slug(), role: text() } }),
-      notes: collection({ label: "Notes", fields: { title: text(), slug: slug(), body: richText() } }),
+      people: collection({ label: "People", fields: { name: text(), id: id(), role: text() } }),
+      notes: collection({ label: "Notes", fields: { title: text(), id: id(), body: richText() } }),
     },
   });
   const all = { [MANIFEST_PATH]: createManifest(site, "test"), ...files };
@@ -47,9 +47,9 @@ const json = (root: string, path: string) => JSON.parse(readFileSync(join(root, 
 
 describe("the migration recipes", () => {
   it("rename a field and keep its place in the file", { skip: UNBUILT }, () => {
-    const root = content({ "people/ana/index.json": { name: "Ana", title: "Lead", slug: "ana" }, "people/ben/index.json": { name: "Ben" } });
+    const root = content({ "people/ana/index.json": { name: "Ana", title: "Lead", id: "ana" }, "people/ben/index.json": { name: "Ben" } });
     run("rename-field.mjs", root, "people", "title", "role");
-    assert.deepEqual(Object.entries(json(root, "people/ana/index.json")), [["name", "Ana"], ["role", "Lead"], ["slug", "ana"]]);
+    assert.deepEqual(Object.entries(json(root, "people/ana/index.json")), [["name", "Ana"], ["role", "Lead"], ["id", "ana"]]);
     assert.deepEqual(json(root, "people/ben/index.json"), { name: "Ben" });
   });
 
@@ -115,11 +115,11 @@ describe("the migration recipes", () => {
 describe("the multilingual pattern on the website", () => {
   it("stores one Markdoc file for each language, as a later `localized` option will", () => {
     const fields = {
-      slug: slug(),
+      id: id(),
       title: object({ fields: { de: text(), en: text() } }),
       body: object({ fields: { de: richText(), en: richText() } }),
     };
-    const stored = serializeEntry(fields, { slug: "about", title: { de: "Über uns", en: "About us" }, body: { de: "Text.", en: "Text." } });
+    const stored = serializeEntry(fields, { id: "about", title: { de: "Über uns", en: "About us" }, body: { de: "Text.", en: "Text." } });
     assert.deepEqual(Object.keys(stored.documents).sort(), ["body.de.mdoc", "body.en.mdoc"]);
     assert.deepEqual(JSON.parse(stored.data).title, { de: "Über uns", en: "About us" });
   });

@@ -1,5 +1,5 @@
 /**
- * Relations for the website's pages. A relation field stores the target's slug,
+ * Relations for the website's pages. A relation field stores the target's ID,
  * which is also its id in Astro, so these are `getEntry` with the types and the
  * checks that a page wants: a missing target warns in `astro dev`, and is left
  * out rather than rendered as nothing.
@@ -13,28 +13,28 @@
 
 import { getEntry, type CollectionEntry, type CollectionKey } from "astro:content";
 
-function warnMissing(collection: string, slug: string): void {
+function warnMissing(collection: string, id: string): void {
   if (import.meta.env.DEV) {
-    console.warn(`[mica] A relation names "${collection}/${slug}", which does not exist. Run \`npx mica check\`.`);
+    console.warn(`[mica] A relation names "${collection}/${id}", which does not exist. Run \`npx mica check\`.`);
   }
 }
 
 /** The entry that a single relation field names, or `undefined` when it is empty or names a missing entry. */
 export async function related<C extends CollectionKey>(
   collection: C,
-  slug: string | null | undefined,
+  id: string | null | undefined,
 ): Promise<CollectionEntry<C> | undefined> {
-  if (!slug) return undefined;
-  const entry = (await getEntry(collection, slug)) as CollectionEntry<C> | undefined;
-  if (!entry) warnMissing(String(collection), slug);
+  if (!id) return undefined;
+  const entry = (await getEntry(collection, id)) as CollectionEntry<C> | undefined;
+  if (!entry) warnMissing(String(collection), id);
   return entry;
 }
 
 /** The entries that a multiple relation field names, in the editor's order, without missing ones. */
 export async function relatedAll<C extends CollectionKey>(
   collection: C,
-  slugs: readonly string[] | null | undefined,
+  ids: readonly string[] | null | undefined,
 ): Promise<Array<CollectionEntry<C>>> {
-  const entries = await Promise.all((slugs ?? []).map((slug) => related(collection, slug)));
+  const entries = await Promise.all((ids ?? []).map((id) => related(collection, id)));
   return entries.filter((entry): entry is CollectionEntry<C> => entry !== undefined);
 }

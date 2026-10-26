@@ -114,7 +114,7 @@ async function onDrop(event: DragEvent): Promise<void> {
   const files = Array.from(event.dataTransfer?.files ?? []);
   if (files.length === 0 || !canDrop.value) return;
   if (mediaFolder?.value === null) {
-    dropNote.value = "Give it a title or a valid URL first. Its files then get their own folder, and you can upload here.";
+    dropNote.value = "Give it a title or a valid ID first. Its files then get their own folder, and you can upload here.";
     return;
   }
   const room = field.value.multiple ? roomFor(paths.value.length, field.value.max) : 1;

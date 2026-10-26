@@ -1,6 +1,6 @@
 {
   "title": "Security",
-  "slug": "security",
+  "id": "security",
   "section": "operate",
   "summary": "What Mica protects, who it trusts, the risks it accepts, and how to harden a self-hosted deployment. How to report a vulnerability.",
   "readTime": 8

@@ -7,13 +7,13 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, describe, it } from "node:test";
 
-import { collection, defineSite, slug, text } from "@micacms/core/internal";
+import { collection, defineSite, id, text } from "@micacms/core/internal";
 
 import { contentFiles, groupOf, listTreeChanges, locateTree, validateSelection, type GitTree } from "../src/index.js";
 
 const model = defineSite({
   collections: {
-    projects: collection({ label: "Projects", fields: { title: text({ label: "Title", required: true }), slug: slug({ from: "title" }) } }),
+    projects: collection({ label: "Projects", fields: { title: text({ label: "Title", required: true }), id: id({ from: "title" }) } }),
   },
 });
 
@@ -29,12 +29,12 @@ const write = (path: string, data: unknown) => {
 git("init", "-q", "-b", "main");
 git("config", "user.email", "test@example.com");
 git("config", "user.name", "Test");
-write("projects/haus-a/index.json", { title: "Haus A", slug: "haus-a" });
+write("projects/haus-a/index.json", { title: "Haus A", id: "haus-a" });
 git("add", "-A");
 git("commit", "-q", "-m", "init");
 // A draft that Publish refuses, and one that it takes.
-write("projects/haus-b/index.json", { slug: "haus-b" });
-write("projects/haus-c/index.json", { title: "Haus C", slug: "haus-c" });
+write("projects/haus-b/index.json", { id: "haus-b" });
+write("projects/haus-c/index.json", { title: "Haus C", id: "haus-c" });
 
 const contentRoot = join(root, "content");
 const files = contentFiles({ root: contentRoot });
@@ -59,7 +59,7 @@ describe("validateSelection", () => {
 
 describe("groupOf", () => {
   it("keeps an entry's files together, and gives every other file its own key", () => {
-    assert.equal(groupOf({ kind: "entry", collection: "projects", slug: "a", label: "a" }, "projects/a/media/x.png"), "entry:projects/a");
+    assert.equal(groupOf({ kind: "entry", collection: "projects", id: "a", label: "a" }, "projects/a/media/x.png"), "entry:projects/a");
     assert.equal(groupOf({ kind: "singleton", name: "site", label: "Site" }, "site/index.json"), "singleton:site");
     assert.equal(groupOf({ kind: "order", collection: "projects", label: "Projects: order" }, "projects/_order.json"), "order:projects");
     assert.equal(groupOf({ kind: "media", label: "Shared media" }, "media/a.png"), "file:media/a.png");

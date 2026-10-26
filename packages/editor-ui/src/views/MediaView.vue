@@ -100,7 +100,7 @@ const deleting = ref(false);
 
 function linkTo(item: Referrer) {
   return item.kind === "entry"
-    ? { name: "entry", params: { collection: item.collection, slug: item.slug } }
+    ? { name: "entry", params: { collection: item.collection, id: item.id } }
     : { name: "singleton", params: { name: item.name } };
 }
 

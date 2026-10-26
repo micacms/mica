@@ -1,10 +1,10 @@
 <script setup lang="ts">
 /**
  * Entry editor: the shared form (`useDocumentEditor`) and what an entry has
- * that settings do not. The slug is the address: changing it moves the entry,
- * the route follows, and the links to it can follow too. A new entry has no
- * slug yet, and an entry can be deleted. A new entry has a Create button; after
- * that it saves by itself, except a new URL, which waits for "Change URL".
+ * that settings do not. The ID names the entry's folder: changing it moves the
+ * entry, the route follows, and the links to it can follow too. A new entry has
+ * no ID yet, and an entry can be deleted. A new entry has a Create button; after
+ * that it saves by itself, except a new ID, which waits for "Change ID".
  *
  * `embedded`: in the overlay form beside the live preview. It then changes no
  * address: a rename and a discard go to the overlay, and there is no delete.
@@ -13,7 +13,7 @@
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
-import { defaultValues, isValidSlug, pagePlaceholders } from "@micacms/core/internal";
+import { defaultValues, isValidId, pagePlaceholders } from "@micacms/core/internal";
 
 import { api, messageOf, type EntryDetail, type Referrer, type SavedEntry } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
@@ -33,13 +33,13 @@ import { usePreviewPage } from "@/composables/usePreviewPane";
 import type { Edit } from "@/lib/edits";
 import { formRootOf } from "@/lib/focus";
 import { MEDIA_FOLDER } from "@/lib/media-folder";
-import { pageHref } from "@/lib/pages";
+import { movedPage as movedPageOf, pageHref } from "@/lib/pages";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
 
-const props = defineProps<{ collection: string; slug?: string; embedded?: boolean; focus?: string }>();
-const emit = defineEmits<{ renamed: [slug: string]; close: [] }>();
+const props = defineProps<{ collection: string; id?: string; embedded?: boolean; focus?: string }>();
+const emit = defineEmits<{ renamed: [id: string]; close: [] }>();
 
 const router = useRouter();
 const schema = useSchema();
@@ -52,12 +52,12 @@ const formElement = ref<HTMLFormElement | null>(null);
 
 const doc = useDocumentEditor<EntryDetail, SavedEntry>({
   noun: "this entry",
-  // ":new" is no valid URL, so it never names a saved entry.
-  key: () => `${props.collection}/${props.slug ?? ":new"}`,
-  editKey: () => (props.slug ? `entry:${props.collection}/${props.slug}` : null),
+  // ":new" is no valid ID, so it never names a saved entry.
+  key: () => `${props.collection}/${props.id ?? ":new"}`,
+  editKey: () => (props.id ? `entry:${props.collection}/${props.id}` : null),
   fields: () => definition.value?.fields,
   readOnly: () => !!definition.value?.readOnly,
-  read: props.slug ? () => api.entries.get(props.collection, props.slug!) : null,
+  read: props.id ? () => api.entries.get(props.collection, props.id!) : null,
   values: (data) => data ?? defaultValues(definition.value?.fields ?? {}),
   write: (data, basis): Promise<SavedEntry> => {
     const payload = {
@@ -65,28 +65,28 @@ const doc = useDocumentEditor<EntryDetail, SavedEntry>({
       revision: basis.revision,
       ...(basis.keepMine ? { keepMine: true } : {}),
       // Also before the list has loaded, or when it failed: the server finds the links itself.
-      ...(urlChanging.value && updateLinks.value ? { updateLinks: true } : {}),
+      ...(idChanging.value && updateLinks.value ? { updateLinks: true } : {}),
     };
-    return props.slug ? api.entries.update(props.collection, props.slug, payload) : api.entries.create(props.collection, payload);
+    return props.id ? api.entries.update(props.collection, props.id, payload) : api.entries.create(props.collection, payload);
   },
   saved: async (saved, auto) => {
     if (auto) return true;
     toast.success(
-      saved.renamed ? `Saved as “${saved.slug}”.` : "Saved.",
+      saved.renamed ? `Saved as “${saved.id}”.` : "Saved.",
       saved.relinked > 0 ? `Updated the links in ${saved.relinked} other entr${saved.relinked === 1 ? "y or page" : "ies or pages"}.` : undefined,
     );
-    // The server derives and de-duplicates the slug and can move the entry: open it at what it decided.
-    if (saved.slug === props.slug) return true;
+    // The server derives and de-duplicates the ID and can move the entry: open it at what it decided.
+    if (saved.id === props.id) return true;
     if (props.embedded) {
-      emit("renamed", saved.slug);
+      emit("renamed", saved.id);
       return false;
     }
-    await router.replace({ name: "entry", params: { collection: props.collection, slug: saved.slug } });
+    await router.replace({ name: "entry", params: { collection: props.collection, id: saved.id } });
     return false;
   },
-  duplicate: "An entry with this URL exists already. Change the URL, then try again.",
-  // A new URL moves the entry and can change links in other entries: it waits for "Change URL".
-  heldField: (): string | null => (urlChanging.value ? (definition.value?.slugField ?? null) : null),
+  duplicate: "An entry with this ID exists already. Change the ID, then try again.",
+  // A new ID moves the entry and can change links in other entries: it waits for "Change ID".
+  heldField: (): string | null => (idChanging.value ? (definition.value?.idField ?? null) : null),
   root: () => formRootOf(formElement.value),
 });
 const { values, revision, loading, saving, busy, isNew, issues, failed, kept, pending, state } = doc;
@@ -96,7 +96,7 @@ const { state: conflict, theirs } = doc.conflict;
 const websiteConflict = computed(() =>
   (staging.status.value?.sync?.conflicts ?? []).some(
     (item) =>
-      item.target?.kind === "entry" && item.target.collection === props.collection && item.target.slug === props.slug,
+      item.target?.kind === "entry" && item.target.collection === props.collection && item.target.id === props.id,
   ),
 );
 
@@ -105,21 +105,25 @@ function describeReferrer(item: Referrer): string {
   return item.kind === "entry" ? `${item.title} (${schema.collection(item.collection)?.label ?? item.collection})` : item.title;
 }
 
-/** The URL in the form, when it differs from the saved one: the links to this entry must follow. */
-const newSlug = computed<string>(() => {
-  const value = values.value[definition.value?.slugField ?? ""];
+/** The ID in the form, when it differs from the saved one: the links to this entry must follow. */
+const newId = computed<string>(() => {
+  const value = values.value[definition.value?.idField ?? ""];
   return typeof value === "string" ? value.trim() : "";
 });
-/** Also an empty URL: the server would make a new one from the title, so it waits for "Change URL" too. */
-const urlChanging = computed<boolean>(() => !!props.slug && newSlug.value !== props.slug);
+/** Also an empty ID: the server would make a new one from the title, so it waits for "Change ID" too. */
+const idChanging = computed<boolean>(() => !!props.id && newId.value !== props.id);
 const linkers = ref<Referrer[] | null>(null);
+/** Where the page moves with the new ID, for a collection with a `url`: the old and the new address. */
+const movedPage = computed(() =>
+  movedPageOf(definition.value?.url, { id: props.id ?? "", data: saved.value }, { id: newId.value, data: values.value }),
+);
 
-// Uploads go into the entry's folder: the saved URL's, or for a new entry a valid URL in the form.
+// Uploads go into the entry's folder: the saved ID's, or for a new entry a valid ID in the form.
 provide(
   MEDIA_FOLDER,
   computed(() => {
-    if (props.slug) return { path: `${props.collection}/${props.slug}/media`, isNew: false };
-    return isValidSlug(newSlug.value) ? { path: `${props.collection}/${newSlug.value}/media`, isNew: true } : null;
+    if (props.id) return { path: `${props.collection}/${props.id}/media`, isNew: false };
+    return isValidId(newId.value) ? { path: `${props.collection}/${newId.value}/media`, isNew: true } : null;
   }),
 );
 
@@ -129,10 +133,10 @@ watch(doc.version, () => {
   updateLinks.value = true;
 });
 
-watch(urlChanging, async (changing) => {
-  if (!changing || linkers.value !== null || !props.slug) return;
+watch(idChanging, async (changing) => {
+  if (!changing || linkers.value !== null || !props.id) return;
   try {
-    linkers.value = (await api.entries.references(props.collection, props.slug)).references;
+    linkers.value = (await api.entries.references(props.collection, props.id)).references;
   } catch {
     // The notice is a courtesy; Publish refuses a broken link in any case.
     linkers.value = [];
@@ -144,22 +148,22 @@ const devServer = usePreview();
 const withAddress = (address: string, path: string | null): string | null => (path ? `${address}${path}` : null);
 /** The saved data: the dev server shows it, not what the form holds before the next save. */
 const saved = computed(() => doc.version.value?.data);
-/** An address with other names than {slug}, such as /{activity}/{slug}: a draft of such a field moves the page. */
-const addressNamesFields = computed(() => pagePlaceholders(definition.value?.url ?? "").some((name) => name !== "slug"));
+/** An address with other names than {id}, such as /{activity}/{id}: a draft of such a field moves the page. */
+const addressNamesFields = computed(() => pagePlaceholders(definition.value?.url ?? "").some((name) => name !== "id"));
 /** Its page in the dev server, which reads the saved drafts: also for one that was never published. */
 const preview = computed(() =>
-  props.slug && devServer.address.value && definition.value?.url ? withAddress(devServer.address.value, pageHref(definition.value.url, props.slug, saved.value)) : null,
+  props.id && devServer.address.value && definition.value?.url ? withAddress(devServer.address.value, pageHref(definition.value.url, props.id, saved.value)) : null,
 );
 // The overlay form shows a document of the main form's page: that page stays in the preview.
-if (!props.embedded) usePreviewPage(preview, computed(() => !!props.slug && !!definition.value?.url));
+if (!props.embedded) usePreviewPage(preview, computed(() => !!props.id && !!definition.value?.url));
 
 /**
  * Its page on the website: not for an entry that was never published, because
  * that page does not exist yet, and not while a draft can have moved it.
  */
 const page = computed(() =>
-  props.slug && !(pending.value && (pending.value.state === "new" || addressNamesFields.value))
-    ? pageHref(definition.value?.page, props.slug, saved.value)
+  props.id && !(pending.value && (pending.value.state === "new" || addressNamesFields.value))
+    ? pageHref(definition.value?.page, props.id, saved.value)
     : null,
 );
 
@@ -185,7 +189,7 @@ onMounted(async () => {
   await router.replace({ name: "collection", params: { collection: props.collection } });
 });
 
-/** After a discard, a new entry is gone, and a URL change goes back to the old URL. */
+/** After a discard, a new entry is gone, and an ID change goes back to the old ID. */
 async function discarded(edit: Edit): Promise<void> {
   if (props.embedded && edit.state === "new") {
     kept.forget();
@@ -198,7 +202,7 @@ async function discarded(edit: Edit): Promise<void> {
     await router.replace({ name: "collection", params: { collection: props.collection } });
   } else if (edit.target?.kind === "entry" && edit.target.from) {
     kept.forget();
-    await router.replace({ name: "entry", params: { collection: props.collection, slug: edit.target.from } });
+    await router.replace({ name: "entry", params: { collection: props.collection, id: edit.target.from } });
   } else {
     await doc.reopen();
   }
@@ -209,9 +213,9 @@ const references = ref<string[]>([]);
 
 async function askDelete(): Promise<void> {
   references.value = [];
-  if (props.slug) {
+  if (props.id) {
     try {
-      const { references: found } = await api.entries.references(props.collection, props.slug);
+      const { references: found } = await api.entries.references(props.collection, props.id);
       references.value = found.map(describeReferrer);
     } catch {
       // The warning is a courtesy; a failure to fetch it must not block deletion.
@@ -221,12 +225,12 @@ async function askDelete(): Promise<void> {
 }
 
 async function remove(): Promise<void> {
-  const slug = props.slug;
+  const id = props.id;
   const opened = revision.value;
-  if (!slug || !opened) return;
+  if (!id || !opened) return;
   try {
     // A colleague saved since: show their version, as for a save.
-    const outcome = await doc.conflict.run(opened, () => api.entries.remove(props.collection, slug, opened));
+    const outcome = await doc.conflict.run(opened, () => api.entries.remove(props.collection, id, opened));
     if (outcome.kind === "refused") toast.error(outcome.message);
     if (outcome.kind !== "done") return;
     doc.unsaved.release();
@@ -240,10 +244,10 @@ async function remove(): Promise<void> {
   }
 }
 
-/** "Keep the old URL": the URL field goes back to the saved one. */
-function keepUrl(): void {
-  const field = definition.value?.slugField;
-  if (field && props.slug) values.value = { ...values.value, [field]: props.slug };
+/** "Keep the old ID": the ID field goes back to the saved one. */
+function keepId(): void {
+  const field = definition.value?.idField;
+  if (field && props.id) values.value = { ...values.value, [field]: props.id };
 }
 
 defineExpose({ atRisk: doc.atRisk });
@@ -305,9 +309,10 @@ defineExpose({ atRisk: doc.atRisk });
         <KeptChangesNotice v-if="kept.offered.value" :at="kept.offered.value.at" @restore="kept.restore()" @forget="kept.forget()" />
         <IssueSummary :issues="issues" />
 
-        <div v-if="urlChanging" role="status" class="mb-5 rounded-md border border-line bg-subtle p-4">
-          <p v-if="newSlug" class="text-sm font-medium">The URL changes from “{{ slug }}” to “{{ newSlug }}” when you choose Change URL</p>
-          <p v-else class="text-sm font-medium">The URL is empty. Change URL makes a new one from the title</p>
+        <div v-if="idChanging" role="status" class="mb-5 rounded-md border border-line bg-subtle p-4">
+          <p v-if="newId" class="text-sm font-medium">The ID changes from “{{ id }}” to “{{ newId }}” when you choose Change ID</p>
+          <p v-else class="text-sm font-medium">The ID is empty. Change ID makes a new one from the title</p>
+          <p v-if="movedPage" class="mt-1 text-xs text-muted">The page moves from {{ movedPage.from }} to {{ movedPage.to }}.</p>
           <p class="mt-1 text-xs text-muted">Your other changes save as usual.</p>
           <template v-if="linkers?.length">
             <p class="mt-1 text-xs text-muted">
@@ -317,25 +322,25 @@ defineExpose({ atRisk: doc.atRisk });
             <p v-if="linkers.some((item) => item.readOnly)" class="mt-1 text-xs font-medium text-warning">
               This version of Mica cannot change
               {{ linkers.filter((item) => item.readOnly).map(describeReferrer).join(", ") }}. Their links keep the old
-              URL until a developer changes them.
+              ID until a developer changes them.
             </p>
             <label class="mt-2 flex items-center gap-2 text-xs">
               <input v-model="updateLinks" type="checkbox" class="h-4 w-4" />
-              Update their links when the URL changes
+              Update their links when the ID changes
             </label>
             <p v-if="!updateLinks" class="mt-1 text-xs font-medium text-warning">
-              Their links then point to a URL that does not exist, and Publish waits until they are changed.
+              Their links then point to an ID that does not exist, and Publish waits until they are changed.
             </p>
           </template>
-          <p class="mt-1 text-xs text-muted">
+          <p v-if="definition.url" class="mt-1 text-xs text-muted">
             Visitors who use the old URL, from a bookmark or a search engine, need a redirect. Ask the developer of
             the website for one.
           </p>
           <div class="mt-3 flex flex-wrap gap-2">
             <button type="button" class="btn-primary" :disabled="saving" @click="doc.save()">
-              {{ saving ? "Saving…" : "Change URL" }}
+              {{ saving ? "Saving…" : "Change ID" }}
             </button>
-            <button type="button" class="btn-secondary" :disabled="saving" @click="keepUrl">Keep the old URL</button>
+            <button type="button" class="btn-secondary" :disabled="saving" @click="keepId">Keep the old ID</button>
           </div>
         </div>
 
@@ -346,7 +351,7 @@ defineExpose({ atRisk: doc.atRisk });
             :issues="issues"
             :disabled="busy || !!definition.readOnly"
             :collection="collection"
-            :entry-slug="slug"
+            :entry-id="id"
           />
 
           <!-- Enter in a text input should save, not do nothing. -->

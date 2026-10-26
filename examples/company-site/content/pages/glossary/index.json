@@ -1,6 +1,6 @@
 {
   "title": "Glossary",
-  "slug": "glossary",
+  "id": "glossary",
   "template": "glossary",
   "eyebrow": "Reference",
   "intro": "The words we use, and what we mean by them.",

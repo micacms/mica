@@ -57,7 +57,7 @@ Create `src/mica.ts`. The model is plain TypeScript and imports nothing from Ast
  * writes `content/.mica/schema.json` for Mica to read: commit that file too.
  */
 
-import { collection, date, defineSite, media, richText, singleton, slug, tags, text, textarea } from "@micacms/core";
+import { collection, date, defineSite, id, media, richText, singleton, tags, text, textarea } from "@micacms/core";
 
 export const site = defineSite({
   root: "./content",
@@ -68,7 +68,7 @@ export const site = defineSite({
       defaultSort: { field: "publishDate", direction: "desc" },
       fields: {
         title: text({ label: "Title", required: true, maxLength: 120, listed: true }),
-        slug: slug({ label: "URL", from: "title" }),
+        id: id({ label: "ID", from: "title" }),
         publishDate: date({ label: "Date", required: true, listed: true, width: "half" }),
         tags: tags({ label: "Tags", width: "half" }),
         cover: media({ label: "Cover image", accept: "image", alt: "required" }),
@@ -173,7 +173,7 @@ import { site } from "../mica";
 const settings = await getSingleton(site, "site");
 ```
 
-A relation field holds the target's slug. `related` and `relatedAll` from `@micacms/astro/relations` return the entries, typed, and leave out a missing one with a warning in `astro dev`:
+A relation field holds the target's ID. `related` and `relatedAll` from `@micacms/astro/relations` return the entries, typed, and leave out a missing one with a warning in `astro dev`:
 
 ```astro
 ---

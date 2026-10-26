@@ -15,13 +15,13 @@ export interface RelationLink {
   label: string;
 }
 
-/** The key of a linked entry: its collection and its slug. */
-export const linkKey = (collection: string, slug: string): string => `${collection}\u0000${slug}`;
+/** The key of a linked entry: its collection and its ID. */
+export const linkKey = (collection: string, id: string): string => `${collection}\u0000${id}`;
 
-/** The collection and the slug of a key. */
-export const linkTarget = (key: string): { collection: string; slug: string } => {
-  const [collection = "", slug = ""] = key.split("\u0000");
-  return { collection, slug };
+/** The collection and the ID of a key. */
+export const linkTarget = (key: string): { collection: string; id: string } => {
+  const [collection = "", id = ""] = key.split("\u0000");
+  return { collection, id };
 };
 
 /** Each entry that `data` links to, with the first relation field that names it. */
@@ -31,11 +31,11 @@ export function relationLinks(fields: FieldMap, data: Record<string, unknown>): 
     if (field.kind !== "relation") return;
     const path = at.join(".");
     const label = fieldLabel(fields, path) ?? path;
-    const add = (slug: unknown, block?: number) => {
-      const key = typeof slug === "string" && slug !== "" ? linkKey(field.collection, slug) : null;
+    const add = (id: unknown, block?: number) => {
+      const key = typeof id === "string" && id !== "" ? linkKey(field.collection, id) : null;
       if (key && !links.has(key)) links.set(key, { path, label, ...(block === undefined ? {} : { block }) });
     };
-    if (Array.isArray(value)) value.forEach((slug, block) => add(slug, block));
+    if (Array.isArray(value)) value.forEach((id, block) => add(id, block));
     else add(value);
   });
   return links;

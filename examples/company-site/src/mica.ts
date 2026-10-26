@@ -38,7 +38,7 @@ import {
   richText,
   select,
   singleton,
-  slug,
+  id,
   tags,
   text,
   textarea,
@@ -100,7 +100,7 @@ export const site = defineSite({
       labelSingular: "Page",
       description: "Standalone pages such as About us, Services or Contact.",
       // The page of an entry: with MICA_SITE_URL the editor links to it, and the local editor shows Preview.
-      url: "/{slug}/",
+      url: "/{id}/",
       defaultSort: { field: "position", direction: "asc" },
       sortable: true,
       fields: {
@@ -110,15 +110,15 @@ export const site = defineSite({
           maxLength: 120,
           listed: true,
         }),
-        slug: slug({
-          label: "URL",
+        id: id({
+          label: "ID",
           from: "title",
-          description: "The address of the page, e.g. /about-us.",
+          description: "One part of lower-case letters, digits and hyphens, such as about-us: the page's URL is then /about-us/.",
         }),
         template: select({
           label: "Template",
           description:
-            "A list page shows its collection below the content. Its URL must be the collection's: news for News, projects for Projects.",
+            "A list page shows its collection below the content. Its ID must be the collection's: news for News, projects for Projects.",
           width: "half",
           default: "standard",
           options: [
@@ -194,7 +194,7 @@ export const site = defineSite({
       labelSingular: "Project",
       description: "Client projects shown in the portfolio.",
       // The category is a part of the address: Mica fills it in from the entry, for its links and the preview.
-      url: "/projects/{category}/{slug}/",
+      url: "/projects/{category}/{id}/",
       defaultSort: { field: "year", direction: "desc" },
       fields: {
         title: text({
@@ -203,7 +203,7 @@ export const site = defineSite({
           maxLength: 120,
           listed: true,
         }),
-        slug: slug({ label: "URL", from: "title" }),
+        id: id({ label: "ID", from: "title" }),
         year: number({
           label: "Year",
           integer: true,
@@ -321,7 +321,7 @@ export const site = defineSite({
     news: collection({
       label: "News",
       labelSingular: "Article",
-      url: "/news/{slug}/",
+      url: "/news/{id}/",
       defaultSort: { field: "publishDate", direction: "desc" },
       fields: {
         title: text({
@@ -330,7 +330,7 @@ export const site = defineSite({
           maxLength: 140,
           listed: true,
         }),
-        slug: slug({ label: "URL", from: "title" }),
+        id: id({ label: "ID", from: "title" }),
         publishDate: date({ label: "Date", listed: true, width: "half" }),
         author: relation({
           label: "Author",
@@ -362,7 +362,7 @@ export const site = defineSite({
       label: "Events",
       labelSingular: "Event",
       description: "Workshops and talks, in person or online.",
-      url: "/events/{slug}/",
+      url: "/events/{id}/",
       defaultSort: { field: "startsAt", direction: "desc" },
       fields: {
         title: text({
@@ -371,7 +371,7 @@ export const site = defineSite({
           maxLength: 120,
           listed: true,
         }),
-        slug: slug({ label: "URL", from: "title" }),
+        id: id({ label: "ID", from: "title" }),
         startsAt: date({
           label: "Starts",
           includeTime: true,
@@ -431,12 +431,12 @@ export const site = defineSite({
     team: collection({
       label: "Team",
       labelSingular: "Team member",
-      url: "/team/{slug}/",
+      url: "/team/{id}/",
       defaultSort: { field: "position", direction: "asc" },
       sortable: true,
       fields: {
         name: text({ label: "Name", required: true, listed: true }),
-        slug: slug({ label: "URL", from: "name" }),
+        id: id({ label: "ID", from: "name" }),
         role: text({ label: "Role", listed: true, width: "half" }),
         email: email({ label: "Email", width: "half" }),
         phone: text({

@@ -6,7 +6,7 @@ import Layout from "../../components/Layout.astro";
 import RichText from "../../components/RichText.astro";
 
 export async function getStaticPaths() {
-  return (await getCollection("posts")).map((post) => ({ params: { slug: post.data.slug }, props: { post } }));
+  return (await getCollection("posts")).map((post) => ({ params: { id: post.data.id }, props: { post } }));
 }
 
 const { post } = Astro.props as { post: CollectionEntry<"posts"> };

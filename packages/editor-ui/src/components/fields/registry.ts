@@ -24,7 +24,7 @@ import MediaField from "./MediaField.vue";
 import NumberField from "./NumberField.vue";
 import RelationField from "./RelationField.vue";
 import SelectField from "./SelectField.vue";
-import SlugField from "./SlugField.vue";
+import IdField from "./IdField.vue";
 import TextField from "./TextField.vue";
 import TextareaField from "./TextareaField.vue";
 
@@ -38,7 +38,7 @@ export const fieldComponents: Record<FieldKind, Component> = {
   // Same control as text, distinguished by input type.
   email: TextField,
   url: TextField,
-  slug: SlugField,
+  id: IdField,
   select: SelectField,
   object: defineAsyncComponent(() => import("./ObjectField.vue")),
   repeater: defineAsyncComponent(() => import("./RepeaterField.vue")),

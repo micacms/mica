@@ -35,7 +35,7 @@ import {
   richText,
   serializeEntry,
   singleton,
-  slug,
+  id,
   text,
   url,
   withEmptyValues,
@@ -84,7 +84,7 @@ describe("layout", () => {
 
 const fields: FieldMap = {
   title: text({ required: true }),
-  slug: slug({ from: "title" }),
+  id: id({ from: "title" }),
   year: number(),
   featured: boolean(),
   accent: color(),
@@ -96,7 +96,7 @@ const fields: FieldMap = {
 
 const payload = {
   title: "Buchholzstrasse",
-  slug: "buchholzstrasse",
+  id: "buchholzstrasse",
   year: 2024,
   featured: true,
   accent: "#1a2b3c",
@@ -137,12 +137,12 @@ describe("serializeEntry", () => {
   });
 
   it("orders keys by the model, not by the payload", () => {
-    const shuffled = { cover: "media/a.jpg", year: 2024, title: "A", slug: "a" };
+    const shuffled = { cover: "media/a.jpg", year: 2024, title: "A", id: "a" };
     const { data } = serializeEntry(fields, shuffled);
 
     assert.deepEqual(Object.keys(JSON.parse(data) as object), [
       "title",
-      "slug",
+      "id",
       "year",
       "featured",
       "accent",
@@ -354,7 +354,7 @@ describe("defaults (#221)", () => {
 describe("protocol manifest", () => {
   const site = defineSite({
     collections: {
-      projects: collection({ label: "Projects", fields: { title: text(), slug: slug() } }),
+      projects: collection({ label: "Projects", fields: { title: text(), id: id() } }),
     },
     singletons: {
       site: singleton({ label: "Site", fields: { homepage: url() } }),

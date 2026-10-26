@@ -15,7 +15,7 @@ export type FieldKind =
   | "date"
   | "email"
   | "url"
-  | "slug"
+  | "id"
   | "select"
   | "object"
   | "repeater"
@@ -168,9 +168,9 @@ export interface UrlField extends BaseField {
   default?: string;
 }
 
-export interface SlugField extends BaseField {
-  kind: "slug";
-  /** The field that a new entry's URL follows while the editor types, until the editor changes the URL. */
+export interface IdField extends BaseField {
+  kind: "id";
+  /** The field that a new entry's ID follows while the editor types, until the editor changes the ID. */
   from?: string;
   /** The most characters. Defaults to 96. */
   maxLength?: number;
@@ -217,7 +217,7 @@ export interface RepeaterField extends BaseField {
 
 export interface RelationField extends BaseField {
   kind: "relation";
-  /** The collection the links point into. The stored value is the target's URL (slug). */
+  /** The collection the links point into. The stored value is the ID of the target entry. */
   collection: string;
   /** Several links, stored as a list in the editor's order. */
   multiple?: true;
@@ -297,7 +297,7 @@ export type AnyField =
   | DateField
   | EmailField
   | UrlField
-  | SlugField
+  | IdField
   | SelectField
   | ObjectField
   | RepeaterField
@@ -320,14 +320,14 @@ export interface CollectionOptions {
   description?: string;
   /** Field key rendered as the entry title in lists. Defaults to `title`. */
   titleField?: string;
-  /** Field key holding the URL slug. Defaults to the first `slug` field. */
-  slugField?: string;
+  /** The key of the field that holds the entry's ID. Defaults to the first `id()` field. */
+  idField?: string;
   fields: FieldMap;
   defaultSort?: { field: SortField; direction: "asc" | "desc" };
   /** Ordering the editor can rearrange by hand. */
   sortable?: boolean;
   /**
-   * The page of an entry on the website, such as `/news/{slug}`, or `/{activity}/{slug}` with the value of a
+   * The page of an entry on the website, such as `/news/{id}`, or `/{activity}/{id}` with the value of a
    * select, relation or date field as a whole part of the path. With `MICA_SITE_URL`, the editor links to it.
    */
   url?: string;
@@ -464,7 +464,7 @@ export type FieldValue<F extends AnyField, Img = never> =
   F extends DateField ? string :
   F extends EmailField ? string :
   F extends UrlField ? string :
-  F extends SlugField ? string :
+  F extends IdField ? string :
   F extends SelectField ? Multiple<F, string> :
   F extends ColorField ? string :
   F extends CoordinatesField ? Coordinates :
@@ -478,29 +478,29 @@ export type FieldValue<F extends AnyField, Img = never> =
 
 /**
  * Booleans, objects, repeaters and multi-value fields always have a concrete
- * empty representation, so they are never null. A collection's own slug field is the
- * entry's file name (`Url`), so it is never null either; a slug elsewhere, such
+ * empty representation, so they are never null. A collection's own ID field is the
+ * entry's folder name (`Own`), so it is never null either; an ID elsewhere, such
  * as one per language in an object, can be. Everything else is nullable unless
  * declared `required: true`.
  */
 // prettier-ignore
-type NeverNull<F extends AnyField, Url extends boolean> =
+type NeverNull<F extends AnyField, Own extends boolean> =
   F extends BooleanField ? true :
   F extends RepeaterField ? true :
   F extends ObjectField ? true :
   F extends TagsField ? true :
   F extends { multiple: true } ? true :
   F extends { required: true } ? true :
-  F extends SlugField ? Url :
+  F extends IdField ? Own :
   false;
 
-/** `Url`: the field is among a collection's own fields, where a slug is the entry's URL. */
-export type InferField<F extends AnyField, Img = never, Url extends boolean = false> = NeverNull<F, Url> extends true
+/** `Own`: the field is among a collection's own fields, where an ID is the entry's folder name. */
+export type InferField<F extends AnyField, Img = never, Own extends boolean = false> = NeverNull<F, Own> extends true
   ? FieldValue<F, Img>
   : FieldValue<F, Img> | null;
 
-export type InferFields<M extends FieldMap, Img = never, Url extends boolean = false> = {
-  [K in keyof M]: InferField<M[K], Img, Url>;
+export type InferFields<M extends FieldMap, Img = never, Own extends boolean = false> = {
+  [K in keyof M]: InferField<M[K], Img, Own>;
 };
 
 export type InferCollection<C extends Collection, Img = never> = InferFields<C["fields"], Img, true>;

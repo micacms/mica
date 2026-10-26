@@ -1,6 +1,6 @@
 {
   "title": "Team",
-  "slug": "team",
+  "id": "team",
   "template": "team",
   "eyebrow": "People",
   "intro": "The people behind the work.",

@@ -96,7 +96,7 @@ function hello(): void {
 
 /** The document of the form on the page, from the address. */
 const mainDocument = computed(() => {
-  if (route.name === "entry") return { document: String(route.params["collection"]), id: String(route.params["slug"]) };
+  if (route.name === "entry") return { document: String(route.params["collection"]), id: String(route.params["id"]) };
   if (route.name === "singleton") return { document: String(route.params["name"]), id: String(route.params["name"]) };
   return null;
 });
@@ -219,8 +219,8 @@ function sendFocus(): void {
       ([, link]) => link.path === current.marker.path && (current.block === undefined || link.block === undefined || link.block === current.block),
     );
     if (linked) {
-      const { collection, slug } = linkTarget(linked[0]);
-      post({ type: "focus", marker: { document: collection, id: slug, path: "" } });
+      const { collection, id } = linkTarget(linked[0]);
+      post({ type: "focus", marker: { document: collection, id, path: "" } });
       return;
     }
   }
@@ -253,7 +253,7 @@ async function select(marker: PreviewMarker, block?: number): Promise<void> {
   }
   // A document with a page of its own opens its form, and the preview its page.
   if (collection?.url || singleton?.url) {
-    const params: Record<string, string> = collection ? { collection: marker.document, slug: marker.id } : { name: marker.document };
+    const params: Record<string, string> = collection ? { collection: marker.document, id: marker.id } : { name: marker.document };
     await openForm({ name: collection ? "entry" : "singleton", params, query: { field: marker.path } });
     return;
   }
@@ -281,7 +281,7 @@ async function follow(): Promise<void> {
   // Only a document that the page shows: an address such as /news/unknown/ matches a pattern, but has no entry.
   const target = documentsAtPath(sitePath(new URL(shown.value).pathname), schema.schema.value).find((candidate) => {
     const document = candidate.params["collection"] ?? candidate.params["name"];
-    const id = candidate.params["slug"] ?? candidate.params["name"];
+    const id = candidate.params["id"] ?? candidate.params["name"];
     return markers.value.some((marker) => marker.document === document && marker.id === id);
   });
   if (!target || router.resolve(target).path === route.path) return;

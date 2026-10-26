@@ -32,7 +32,7 @@ Install the packages and run `npx mica init`, as in [Getting started](/docs/gett
 | `z.array(z.object({...}))` | `repeater({ fields })` |
 | `.optional()` | the field without `required: true` |
 | the Markdown body | `richText()`, usually named `body` |
-| the entry id | a `slug()` field |
+| the entry id | an `id()` field |
 
 All options are on [Fields](/docs/reference-fields/). Data that Mica must not edit, such as a long list of places, can stay an Astro collection that a relation points to: see [Reference data](/docs/reference-data/).
 
@@ -59,20 +59,20 @@ Remove the old definitions of the collections that Mica now has. Use different n
 npx mica import --from ../data-store-before.json --map blog.cover.alt=coverAlt --order team=order
 ```
 
-Each field of the model takes the value with the same name. The command converts the value: a date to `"2026-01-15"`, a reference to a slug, an image to a copy in the entry's `media/` folder, and the Markdown body to the rich-text field `body`. It makes each slug from the entry id.
+Each field of the model takes the value with the same name. The command converts the value: a date to `"2026-01-15"`, a reference to an ID, an image to a copy in the entry's `media/` folder, and the Markdown body to the rich-text field `body`. It makes each ID from the Astro entry id.
 
 - `--map <collection>.<field>=<key>` takes a field from another key: a renamed field, the alt text of an image (`blog.cover.alt=coverAlt`), or the body for a rich-text field with another name (`blog.content=@body`). It does not reach into the rows of a repeater.
 - `--order <collection>=<field>` makes the order of a `sortable` collection from a number field. Then the pages sort with `inEditorOrder`, and the number field can go.
 - Names after the options import only those collections.
 
-The command lists each key that it did not import, each id that gives the same slug as another, and each image that it did not find. Fix the model or add a `--map`, delete the collection's folder in `content/`, and run it again.
+The command lists each key that it did not import, each Astro id that gives the same ID as another, each Astro id that gives no ID, and each image that it did not find. Fix the model or add a `--map`, delete the collection's folder in `content/`, and run it again.
 
 ## 5. What does not move as it is
 
 - **MDX components in a body.** Markdoc does not run them. Use a [Markdoc tag](/docs/recipes/), a field, or keep that collection in Astro.
 - **Raw HTML in a body.** Markdoc does not render it. Use Markdown, a Markdoc tag, or remove it.
 - **Footnotes, images and tables in a body.** Markdoc shows a footnote as text: use a paragraph and a link. The editor edits an image on a line of its own and a table without aligned columns. Move each image file into the entry's `media/` folder and write its path as `media/photo.jpg`. An image inside a line of text, or a table with aligned columns, makes the field read-only in the editor.
-- **Ids with folders** (`2024/hello`). They become flat slugs, so the URL can change. Keep the old URL with Astro `redirects`.
+- **Ids with folders** (`2024/hello`). They become flat IDs, so the page's URL can change. Keep the old URL with Astro `redirects`.
 - **Heading ids and code highlighting.** Markdoc does not add them. Add them in your rich-text component if your pages use them.
 
 ## 6. Change the pages, then compare

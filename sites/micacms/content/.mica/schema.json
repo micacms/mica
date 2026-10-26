@@ -8,7 +8,7 @@
       "name": "docs",
       "label": "Documentation",
       "labelSingular": "Document",
-      "url": "/docs/{slug}/",
+      "url": "/docs/{id}/",
       "description": "Public guides for setup, modelling, and deployment.",
       "defaultSort": {
         "field": "position",
@@ -22,9 +22,9 @@
           "required": true,
           "listed": true
         },
-        "slug": {
-          "kind": "slug",
-          "label": "URL",
+        "id": {
+          "kind": "id",
+          "label": "ID",
           "from": "title"
         },
         "section": {
@@ -82,7 +82,7 @@
       "name": "comparisons",
       "label": "Comparisons",
       "labelSingular": "Comparison",
-      "url": "/compare/{slug}/",
+      "url": "/compare/{id}/",
       "description": "Mica next to one other Git-backed editor. One page for each product, and one column in the overview table.",
       "sortable": true,
       "fields": {
@@ -93,9 +93,9 @@
           "listed": true,
           "width": "half"
         },
-        "slug": {
-          "kind": "slug",
-          "label": "URL",
+        "id": {
+          "kind": "id",
+          "label": "ID",
           "from": "name"
         },
         "title": {
@@ -214,9 +214,9 @@
           "required": true,
           "listed": true
         },
-        "slug": {
-          "kind": "slug",
-          "label": "URL",
+        "id": {
+          "kind": "id",
+          "label": "ID",
           "from": "title"
         },
         "version": {

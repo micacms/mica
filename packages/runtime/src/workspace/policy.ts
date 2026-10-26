@@ -21,7 +21,7 @@ export interface SyncConflict {
   paths: string[];
   upstream: "changed" | "deleted" | "added";
   /** What the comparison shows, when the group is one document. */
-  target?: { kind: "entry"; collection: string; slug: string } | { kind: "singleton"; name: string } | { kind: "order"; collection: string };
+  target?: { kind: "entry"; collection: string; id: string } | { kind: "singleton"; name: string } | { kind: "order"; collection: string };
 }
 
 /** Where a clone that Mica keeps stands against its remote. Managed owners only. */

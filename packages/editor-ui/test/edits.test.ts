@@ -10,7 +10,7 @@ import { blockedEdits, problemsByEdit, publishSummary, reviewedPaths, shownRevis
 
 /** The group of each file, as the server sends it with the change list. */
 function groupOf({ owner, path }: Omit<FileChange, "group">): string {
-  if (owner.kind === "entry") return `entry:${owner.collection}/${owner.slug}`;
+  if (owner.kind === "entry") return `entry:${owner.collection}/${owner.id}`;
   if (owner.kind === "singleton") return `singleton:${owner.name}`;
   if (owner.kind === "order") return `order:${owner.collection}`;
   return `file:${path}`;
@@ -21,7 +21,7 @@ const toEdits = (changes: Array<Omit<FileChange, "group">>) => groupedEdits(chan
 const renamed = {
   kind: "entry",
   collection: "pages",
-  slug: "leistungen",
+  id: "leistungen",
   label: "Page: Leistungen",
   renamedFrom: "services",
 } as const;
@@ -42,18 +42,18 @@ describe("toEdits", () => {
     assert.equal(edits[0]!.fileChanges.length, 5);
     assert.deepEqual(edits[0]!.link, {
       name: "entry",
-      params: { collection: "pages", slug: "leistungen" },
+      params: { collection: "pages", id: "leistungen" },
     });
     assert.deepEqual(edits[0]!.target, {
       kind: "entry",
       collection: "pages",
-      slug: "leistungen",
+      id: "leistungen",
       from: "services",
     });
   });
 
   it("keeps entries, singletons, orders and media apart", () => {
-    const about = { kind: "entry", collection: "pages", slug: "about", label: "Page: About" } as const;
+    const about = { kind: "entry", collection: "pages", id: "about", label: "Page: About" } as const;
     const settings = { kind: "singleton", name: "settings", label: "Settings" } as const;
     const order = { kind: "order", collection: "pages", label: "Pages: order" } as const;
     const media = { kind: "media", label: "Shared media" } as const;
@@ -80,7 +80,7 @@ describe("toEdits", () => {
   });
 
   it("says whether an edit is new, changed or removed, and when it was last saved", () => {
-    const page = (slug: string) => ({ kind: "entry", collection: "pages", slug, label: slug }) as const;
+    const page = (id: string) => ({ kind: "entry", collection: "pages", id, label: id }) as const;
     const edits = toEdits([
       { path: "pages/new/index.json", kind: "create", owner: page("new"), savedAt: "2026-10-13T08:00:00.000Z" },
       { path: "pages/new/body.mdoc", kind: "create", owner: page("new"), savedAt: "2026-10-13T09:00:00.000Z" },
@@ -108,13 +108,13 @@ describe("toEdits", () => {
   });
 
   it("a deleted entry has no link to open", () => {
-    const old = { kind: "entry", collection: "pages", slug: "old", label: "Page: old" } as const;
+    const old = { kind: "entry", collection: "pages", id: "old", label: "Page: old" } as const;
     const [edit] = toEdits([{ path: "pages/old.json", kind: "delete", owner: old }]);
     assert.equal(edit!.link, null);
   });
 
   it("finds the problems of each edit by their file", () => {
-    const about = { kind: "entry", collection: "pages", slug: "about", label: "About" } as const;
+    const about = { kind: "entry", collection: "pages", id: "about", label: "About" } as const;
     const edits = toEdits([
       { path: "pages/about/index.json", kind: "update", owner: about },
       { path: "settings.json", kind: "update", owner: { kind: "singleton", name: "settings", label: "Settings" } },
@@ -124,15 +124,15 @@ describe("toEdits", () => {
   });
 
   it("gives an entry the problem on its unchanged data file", () => {
-    const hello = { kind: "entry", collection: "news", slug: "hello", label: "Hello" } as const;
+    const hello = { kind: "entry", collection: "news", id: "hello", label: "Hello" } as const;
     const edits = toEdits([{ path: "news/hello/body.mdoc", kind: "delete", owner: hello }]);
     const problems = [{ path: "news/hello/index.json", label: "Hello", issues: [{ path: "body", message: "Body is required." }] }];
     assert.deepEqual([...problemsByEdit(edits, problems).keys()], ["entry:news/hello"]);
   });
 
   it("summarises a publication in words the editor can keep", () => {
-    const entry = (slug: string, kind: FileChange["kind"]) =>
-      toEdits([{ path: `pages/${slug}.json`, kind, owner: { kind: "entry", collection: "pages", slug, label: slug } }])[0]!;
+    const entry = (id: string, kind: FileChange["kind"]) =>
+      toEdits([{ path: `pages/${id}.json`, kind, owner: { kind: "entry", collection: "pages", id, label: id } }])[0]!;
     assert.equal(publishSummary([]), "");
     assert.equal(publishSummary([entry("about", "update")]), "Update about");
     assert.equal(publishSummary([entry("a", "create"), entry("b", "create")]), "Add a and b");
@@ -141,7 +141,7 @@ describe("toEdits", () => {
   });
 
   it("sends every file of the chosen edits with the revision the editor saw", () => {
-    const owner = { kind: "entry", collection: "pages", slug: "a", label: "a" } as const;
+    const owner = { kind: "entry", collection: "pages", id: "a", label: "a" } as const;
     const edits = toEdits([
       { path: "pages/a/index.json", kind: "update", owner, revision: "r1" },
       { path: "pages/a/old.png", kind: "delete", owner, revision: null },
@@ -150,7 +150,7 @@ describe("toEdits", () => {
   });
 
   it("takes the revisions of the comparison on the page, and sends a file it did not show as unseen", () => {
-    const owner = { kind: "entry", collection: "pages", slug: "a", label: "a" } as const;
+    const owner = { kind: "entry", collection: "pages", id: "a", label: "a" } as const;
     const edits = toEdits([
       { path: "pages/a/index.json", kind: "update", owner, revision: "r2" },
       { path: "pages/a/body.mdoc", kind: "create", owner, revision: "r9" },
@@ -160,7 +160,7 @@ describe("toEdits", () => {
   });
 
   it("takes the list's revisions while a comparison has not loaded, and refuses after a failed one (#353)", () => {
-    const owner = { kind: "entry", collection: "pages", slug: "a", label: "a" } as const;
+    const owner = { kind: "entry", collection: "pages", id: "a", label: "a" } as const;
     const edits = toEdits([{ path: "pages/a/index.json", kind: "update", owner, revision: "r2" }]);
     const send = (item: Parameters<typeof shownRevisions>[0]) => reviewedPaths(edits, () => shownRevisions(item));
 
@@ -171,7 +171,7 @@ describe("toEdits", () => {
   });
 
   it("keeps an edit with the new edits it needs, both ways", () => {
-    const page = (slug: string) => ({ kind: "entry", collection: "pages", slug, label: slug }) as const;
+    const page = (id: string) => ({ kind: "entry", collection: "pages", id, label: id }) as const;
     const edits = toEdits([
       { path: "pages/a.json", kind: "update", owner: page("a"), needs: ["pages/b.json", "media/x.png"] },
       { path: "pages/b.json", kind: "create", owner: page("b"), needs: ["pages/c.json"] },

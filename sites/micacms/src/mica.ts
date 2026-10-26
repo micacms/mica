@@ -13,7 +13,7 @@ import {
   richText,
   select,
   singleton,
-  slug,
+  id,
   tags,
   text,
   textarea,
@@ -32,13 +32,13 @@ export const site = defineSite({
     docs: collection({
       label: "Documentation",
       labelSingular: "Document",
-      url: "/docs/{slug}/",
+      url: "/docs/{id}/",
       description: "Public guides for setup, modelling, and deployment.",
       defaultSort: { field: "position", direction: "asc" },
       sortable: true,
       fields: {
         title: text({ label: "Title", required: true, listed: true }),
-        slug: slug({ label: "URL", from: "title" }),
+        id: id({ label: "ID", from: "title" }),
         section: select({
           label: "Section",
           required: true,
@@ -62,12 +62,12 @@ export const site = defineSite({
     comparisons: collection({
       label: "Comparisons",
       labelSingular: "Comparison",
-      url: "/compare/{slug}/",
+      url: "/compare/{id}/",
       description: "Mica next to one other Git-backed editor. One page for each product, and one column in the overview table.",
       sortable: true,
       fields: {
         name: text({ label: "Product", required: true, listed: true, width: "half" }),
-        slug: slug({ label: "URL", from: "name" }),
+        id: id({ label: "ID", from: "name" }),
         title: text({ label: "Page title", required: true, description: "Such as Mica vs. Keystatic.", width: "half" }),
         website: url({ label: "Website", required: true, width: "half" }),
         checkedOn: date({ label: "Checked on", required: true, listed: true, width: "half" }),
@@ -111,7 +111,7 @@ export const site = defineSite({
       defaultSort: { field: "publishDate", direction: "desc" },
       fields: {
         title: text({ label: "Title", required: true, listed: true }),
-        slug: slug({ label: "URL", from: "title" }),
+        id: id({ label: "ID", from: "title" }),
         version: text({ label: "Version", required: true, listed: true, width: "half" }),
         publishDate: date({ label: "Date", required: true, listed: true, width: "half" }),
         summary: textarea({ label: "Summary", required: true, rows: 2, maxLength: 240 }),

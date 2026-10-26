@@ -3,7 +3,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { collectionSlugs, documentName, entryFolder, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
+import { collectionIds, documentName, entryFolder, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
 import { fileSystemSource } from "@micacms/core/node";
 
 const [root, collection, key] = process.argv.slice(2);
@@ -18,8 +18,8 @@ const escape = (line) =>
     .replace(/^([-+])/, "\\$1")
     .replace(/^(\d+)([.)])/, "$1\\$2");
 
-for (const slug of await collectionSlugs(fileSystemSource(root), collection)) {
-  const base = join(root, entryFolder(collection, slug));
+for (const id of await collectionIds(fileSystemSource(root), collection)) {
+  const base = join(root, entryFolder(collection, id));
   const file = join(base, INDEX_FILE);
   const data = JSON.parse(await readFile(file, "utf8"));
   const value = data[key];

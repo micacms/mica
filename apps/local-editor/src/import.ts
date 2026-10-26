@@ -16,7 +16,7 @@ import {
   entryFiles,
   entryFolder,
   serializeEntry,
-  slugify,
+  toId,
   validateFields,
   type AnyField,
   type FieldMap,
@@ -94,8 +94,8 @@ async function importAll(options: ImportOptions): Promise<ImportResult> {
       throw new ImportError(`${target} exists in the content root. Delete it to import "${name}" again.`);
     }
     if (!site.singletons[name]) {
-      const empty = astro.get(name)!.find((entry) => slugify(entry.id.replace(/\//g, "-")) === "");
-      if (empty) throw new ImportError(`${name}: the id "${empty.id}" gives no slug. Rename the entry first.`);
+      const empty = astro.get(name)!.find((entry) => toId(entry.id.replace(/\//g, "-")) === "");
+      if (empty) throw new ImportError(`${name}: the Astro id "${empty.id}" gives no ID. Rename the entry first.`);
     }
   }
 
@@ -110,25 +110,25 @@ async function importAll(options: ImportOptions): Promise<ImportResult> {
 
     const used = new Set<string>();
     let bodyTaken = false;
-    const slugs = new Map<string, string>();
-    const written: Array<{ slug: string; source: StoredEntry }> = [];
+    const ids = new Map<string, string>();
+    const written: Array<{ id: string; source: StoredEntry }> = [];
 
     for (const entry of entries) {
-      const slug = slugify(entry.id.replace(/\//g, "-"));
-      if (!singleton && slugs.has(slug)) {
-        result.problems.push(`${name}: "${entry.id}" and "${slugs.get(slug)}" both become "${slug}". Not imported: "${entry.id}".`);
+      const id = toId(entry.id.replace(/\//g, "-"));
+      if (!singleton && ids.has(id)) {
+        result.problems.push(`${name}: "${entry.id}" and "${ids.get(id)}" both become "${id}". Not imported: "${entry.id}".`);
         continue;
       }
-      slugs.set(slug, entry.id);
+      ids.set(id, entry.id);
 
-      const base = entryFolder(name, singleton ? undefined : slug);
-      const context: Context = { options, map, name, entry, base, slug, used, problems: result.problems, copies: [], body: false };
-      const data = convertFields(fields, entry.data, "", context, singleton ? undefined : slug);
+      const base = entryFolder(name, singleton ? undefined : id);
+      const context: Context = { options, map, name, entry, base, id, used, problems: result.problems, copies: [], body: false };
+      const data = convertFields(fields, entry.data, "", context, singleton ? undefined : id);
       bodyTaken ||= context.body;
 
       const check = validateFields(fields, data);
       if (!check.ok) {
-        for (const issue of check.issues) result.problems.push(`${name}/${slug}: ${issue.path}: ${issue.message}`);
+        for (const issue of check.issues) result.problems.push(`${name}/${id}: ${issue.path}: ${issue.message}`);
       }
       for (const [file, contents] of Object.entries(entryFiles(base, serializeEntry(fields, data)))) {
         await mkdir(path.dirname(within(options.root, file)), { recursive: true });
@@ -138,7 +138,7 @@ async function importAll(options: ImportOptions): Promise<ImportResult> {
         await mkdir(path.dirname(within(options.root, to)), { recursive: true });
         await copyFile(from, within(options.root, to));
       }
-      written.push({ slug, source: entry });
+      written.push({ id, source: entry });
     }
 
     const orderField = options.order?.[name];
@@ -150,7 +150,7 @@ async function importAll(options: ImportOptions): Promise<ImportResult> {
           const value = Number(item.source.data[orderField]);
           return Number.isFinite(value) ? value : Number.POSITIVE_INFINITY;
         };
-        const order = [...written].sort((a, b) => position(a) - position(b)).map((item) => item.slug);
+        const order = [...written].sort((a, b) => position(a) - position(b)).map((item) => item.id);
         await writeFile(within(options.root, `${name}/_order.json`), `${JSON.stringify(order, null, 2)}\n`);
         used.add(orderField);
       }
@@ -173,7 +173,7 @@ interface Context {
   name: string;
   entry: StoredEntry;
   base: string;
-  slug: string;
+  id: string;
   /** Top-level source keys that some field took. */
   used: Set<string>;
   problems: string[];
@@ -187,13 +187,13 @@ function convertFields(
   source: Record<string, unknown>,
   prefix: string,
   context: Context,
-  slug?: string,
+  id?: string,
 ): Record<string, unknown> {
   const data: Record<string, unknown> = {};
   for (const [key, field] of Object.entries(fields)) {
     const at = prefix ? `${prefix}.${key}` : key;
-    if (field.kind === "slug" && prefix === "" && slug !== undefined) {
-      data[key] = slug;
+    if (field.kind === "id" && prefix === "" && id !== undefined) {
+      data[key] = id;
       continue;
     }
     data[key] = convert(field, read(source, at, key, context), at, context);
@@ -217,7 +217,7 @@ function read(source: Record<string, unknown>, at: string, key: string, context:
 }
 
 function convert(field: AnyField, value: unknown, at: string, context: Context): unknown {
-  const where = `${context.name}/${context.slug}: ${at}`;
+  const where = `${context.name}/${context.id}: ${at}`;
   switch (field.kind) {
     case "richText":
       // The body goes to the rich-text field named `body`, unless a map says otherwise.
@@ -229,7 +229,7 @@ function convert(field: AnyField, value: unknown, at: string, context: Context):
     case "date":
       return toDate(value, where, context, field.includeTime === true);
     case "relation": {
-      const one = (item: unknown) => (isRecord(item) ? slugify(String(item["id"] ?? "")) : typeof item === "string" ? slugify(item) : null);
+      const one = (item: unknown) => (isRecord(item) ? toId(String(item["id"] ?? "")) : typeof item === "string" ? toId(item) : null);
       return field.multiple ? (Array.isArray(value) ? value.map(one).filter(Boolean) : []) : one(value);
     }
     case "media": {

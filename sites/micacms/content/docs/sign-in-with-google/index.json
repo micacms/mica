@@ -1,6 +1,6 @@
 {
   "title": "Sign in with Google",
-  "slug": "sign-in-with-google",
+  "id": "sign-in-with-google",
   "section": "operate",
   "summary": "Let editors sign in to a self-hosted Mica with a Google account: the Google Cloud setup, the .env values, and the first sign-in.",
   "readTime": 12

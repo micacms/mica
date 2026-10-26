@@ -18,7 +18,7 @@ import {
   richText,
   select,
   singleton,
-  slug,
+  id,
   text,
   type Site,
 } from "@micacms/core/internal";
@@ -37,7 +37,7 @@ export const testSite = defineSite({
       sortable: true,
       fields: {
         title: text({ label: "Title", required: true, maxLength: 50, listed: true }),
-        slug: slug({ from: "title" }),
+        id: id({ from: "title" }),
         year: number({ integer: true, min: 1900 }),
         summary: richText(),
         category: select({
@@ -55,7 +55,7 @@ export const testSite = defineSite({
       label: "Team",
       fields: {
         name: text({ label: "Name", required: true }),
-        slug: slug({ from: "name" }),
+        id: id({ from: "name" }),
       },
     }),
   },

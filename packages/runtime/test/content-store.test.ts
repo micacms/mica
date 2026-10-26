@@ -18,7 +18,7 @@ import {
   repeater,
   richText,
   singleton,
-  slug,
+  id,
   text,
 } from "@micacms/core/internal";
 
@@ -38,7 +38,7 @@ const site = defineSite({
       sortable: true,
       fields: {
         title: text({ required: true }),
-        slug: slug({ from: "title" }),
+        id: id({ from: "title" }),
         year: number(),
         cover: media(),
         description: richText(),
@@ -47,7 +47,7 @@ const site = defineSite({
     }),
     team: collection({
       label: "Team",
-      fields: { name: text({ required: true }), slug: slug({ from: "name" }) },
+      fields: { name: text({ required: true }), id: id({ from: "name" }) },
     }),
   },
   singletons: {
@@ -78,7 +78,7 @@ describe("saving an entry", () => {
       data: { title: "Haus A", description: "# Overview" },
     });
 
-    assert.equal(saved.slug, "haus-a");
+    assert.equal(saved.id, "haus-a");
     assert.equal(saved.title, "Haus A");
     assert.deepEqual(await files("projects/haus-a"), ["description.mdoc", "index.json"]);
     assert.equal(await read("projects/haus-a/description.mdoc"), "# Overview\n");
@@ -91,12 +91,12 @@ describe("saving an entry", () => {
     assert.deepEqual(await files("team/anna-vogt"), ["index.json"]);
   });
 
-  it("derives a slug from the title and keeps it unique", async () => {
+  it("derives an ID from the title and keeps it unique", async () => {
     const first = await store.save("projects", { data: { title: "Haus A" } });
     const second = await store.save("projects", { data: { title: "Haus A" } });
 
-    assert.equal(first.slug, "haus-a");
-    assert.equal(second.slug, "haus-a-2");
+    assert.equal(first.id, "haus-a");
+    assert.equal(second.id, "haus-a-2");
   });
 
   it("reads back exactly what was saved", async () => {
@@ -134,7 +134,7 @@ describe("saving an entry", () => {
     // Saving what `get` returned must not bury the media path one directory deeper each time.
     for (let round = 0; round < 3; round += 1) {
       const current = await store.get("projects", "haus-a");
-      await store.save("projects", { data: { ...current!.data }, slug: "haus-a" });
+      await store.save("projects", { data: { ...current!.data }, id: "haus-a" });
     }
 
     const entry = await store.get("projects", "haus-a");
@@ -146,7 +146,7 @@ describe("saving an entry", () => {
       collections: {
         projects: collection({
           label: "Projects",
-          fields: { title: text(), slug: slug({ from: "title" }), cover: media({ alt: "required" }) },
+          fields: { title: text(), id: id({ from: "title" }), cover: media({ alt: "required" }) },
         }),
       },
     });
@@ -181,12 +181,12 @@ describe("saving an entry", () => {
   });
 
   it("saves an entry that misses a required value, which Publish then refuses", async () => {
-    const saved = await store.save("projects", { data: { slug: "draft", year: 2024 } });
-    assert.equal(saved.slug, "draft");
+    const saved = await store.save("projects", { data: { id: "draft", year: 2024 } });
+    assert.equal(saved.id, "draft");
   });
 
-  it("refuses an entry with neither a title nor a URL", async () => {
-    await assert.rejects(store.save("projects", { data: { year: 2024 } }), /needs a title or a URL/);
+  it("refuses an entry with neither a title nor an ID", async () => {
+    await assert.rejects(store.save("projects", { data: { year: 2024 } }), /needs a title or an ID/);
     assert.deepEqual(await readdir(root), []);
   });
 
@@ -196,8 +196,8 @@ describe("saving an entry", () => {
 
     const revision = await store.revisionOf("projects", "haus-a");
     await store.save("projects", {
-      slug: "haus-a",
-      data: { title: "Haus A", slug: "haus-a", description: "" },
+      id: "haus-a",
+      data: { title: "Haus A", id: "haus-a", description: "" },
       expectedRevision: revision,
     });
 
@@ -218,17 +218,17 @@ describe("renaming an entry", () => {
 
     const revision = await store.revisionOf("projects", "haus-a");
     const saved = await store.save("projects", {
-      slug: "haus-a",
+      id: "haus-a",
       data: {
         title: "Haus B",
-        slug: "haus-b",
+        id: "haus-b",
         description: "Body.",
         cover: "projects/haus-a/media/photo.jpg",
       },
       expectedRevision: revision,
     });
 
-    assert.equal(saved.slug, "haus-b");
+    assert.equal(saved.id, "haus-b");
     assert.equal(saved.renamed, true);
     assert.deepEqual(await files("projects"), ["haus-b"]);
     assert.equal(await read("projects/haus-b/media/photo.jpg"), "bytes");
@@ -244,16 +244,16 @@ describe("concurrency", () => {
     const stale = await store.revisionOf("projects", "haus-a");
 
     await store.save("projects", {
-      slug: "haus-a",
-      data: { title: "Haus A", slug: "haus-a", year: 2024 },
+      id: "haus-a",
+      data: { title: "Haus A", id: "haus-a", year: 2024 },
       expectedRevision: stale,
     });
 
     await assert.rejects(
       () =>
         store.save("projects", {
-          slug: "haus-a",
-          data: { title: "Haus A", slug: "haus-a", year: 1999 },
+          id: "haus-a",
+          data: { title: "Haus A", id: "haus-a", year: 1999 },
           expectedRevision: stale,
         }),
       ConflictError,
@@ -274,8 +274,8 @@ describe("concurrency", () => {
     await assert.rejects(
       () =>
         store.save("projects", {
-          slug: "haus-a",
-          data: { title: "Haus A", slug: "haus-a", description: "Old body" },
+          id: "haus-a",
+          data: { title: "Haus A", id: "haus-a", description: "Old body" },
           expectedRevision: opened,
         }),
       ConflictError,
@@ -289,8 +289,8 @@ describe("concurrency", () => {
     await assert.rejects(
       () =>
         store.save("projects", {
-          slug: "haus-a",
-          data: { title: "Haus A", slug: "haus-a" },
+          id: "haus-a",
+          data: { title: "Haus A", id: "haus-a" },
           expectedRevision: null,
         }),
       ConflictError,
@@ -307,8 +307,8 @@ describe("concurrency", () => {
     );
 
     const second = await store.save("projects", {
-      slug: "haus-a",
-      data: { title: "Haus A", slug: "haus-a", year: 2024 },
+      id: "haus-a",
+      data: { title: "Haus A", id: "haus-a", year: 2024 },
       expectedRevision: first.revision,
     });
 
@@ -320,17 +320,17 @@ describe("concurrency", () => {
 
     // The rename writes a different path, so the revision must name the new one.
     const renamed = await store.save("projects", {
-      slug: "haus-a",
-      data: { title: "Haus B", slug: "haus-b" },
+      id: "haus-a",
+      data: { title: "Haus B", id: "haus-b" },
       expectedRevision: first.revision,
     });
 
-    assert.equal(renamed.slug, "haus-b");
+    assert.equal(renamed.id, "haus-b");
     assert.equal(renamed.revision, await store.revisionOf("projects", "haus-b"));
 
     await store.save("projects", {
-      slug: "haus-b",
-      data: { title: "Haus B", slug: "haus-b", year: 2024 },
+      id: "haus-b",
+      data: { title: "Haus B", id: "haus-b", year: 2024 },
       expectedRevision: renamed.revision,
     });
   });
@@ -353,20 +353,20 @@ describe("concurrency", () => {
 
 // The content arrived before the model that reads it (#217).
 describe("a model that is older than the content", () => {
-  it("keeps the keys and the rich text that it does not declare, also on a URL change", async () => {
+  it("keeps the keys and the rich text that it does not declare, also on an ID change", async () => {
     await store.save("projects", { data: { title: "Haus A", description: "Body." } });
     const stored = JSON.parse(await read("projects/haus-a/index.json"));
     await writeFile(join(root, "projects/haus-a/index.json"), JSON.stringify({ ...stored, client: "Stadt Zürich" }));
     await writeFile(join(root, "projects/haus-a/summary.mdoc"), "From a newer model.\n");
 
     const revision = await store.revisionOf("projects", "haus-a");
-    await store.save("projects", { slug: "haus-a", data: { title: "Haus A", description: "" }, expectedRevision: revision });
+    await store.save("projects", { id: "haus-a", data: { title: "Haus A", description: "" }, expectedRevision: revision });
     assert.equal(JSON.parse(await read("projects/haus-a/index.json")).client, "Stadt Zürich");
     // The declared rich text that was cleared goes; the undeclared file stays.
     assert.deepEqual(await files("projects/haus-a"), ["index.json", "summary.mdoc"]);
 
     const before = await store.revisionOf("projects", "haus-a");
-    await store.save("projects", { slug: "haus-a", data: { title: "Haus A", slug: "haus-b" }, expectedRevision: before });
+    await store.save("projects", { id: "haus-a", data: { title: "Haus A", id: "haus-b" }, expectedRevision: before });
     assert.equal(JSON.parse(await read("projects/haus-b/index.json")).client, "Stadt Zürich");
     assert.equal(await read("projects/haus-b/summary.mdoc"), "From a newer model.\n");
   });
@@ -399,7 +399,7 @@ describe("deleting an entry", () => {
     await store.save("projects", { data: { title: "Haus A", lead: "anna-vogt" } });
 
     const references = await store.findReferences("team", "anna-vogt");
-    assert.deepEqual(references, [{ kind: "entry", collection: "projects", slug: "haus-a", title: "Haus A" }]);
+    assert.deepEqual(references, [{ kind: "entry", collection: "projects", id: "haus-a", title: "Haus A" }]);
   });
 });
 
@@ -411,7 +411,7 @@ describe("ordering", () => {
     const revision = await store.reorder("projects", ["haus-b", "haus-a"], null);
 
     assert.equal(await read("projects/_order.json"), '[\n  "haus-b",\n  "haus-a"\n]\n');
-    const listed = (await store.list("projects")).map((entry) => entry.slug);
+    const listed = (await store.list("projects")).map((entry) => entry.id);
     assert.deepEqual(listed, ["haus-b", "haus-a"]);
     assert.equal(revision, await store.orderRevision("projects"));
   });
@@ -432,8 +432,8 @@ describe("ordering", () => {
     const revision = await store.revisionOf("projects", "haus-b");
 
     await store.save("projects", {
-      slug: "haus-b",
-      data: { title: "Haus B", slug: "haus-c", year: 2024 },
+      id: "haus-b",
+      data: { title: "Haus B", id: "haus-c", year: 2024 },
       expectedRevision: revision,
     });
 
@@ -469,12 +469,12 @@ describe("findReferences", () => {
   it("finds an entry that links from a nested field", async () => {
     const nested = defineSite({
       collections: {
-        team: collection({ label: "Team", fields: { name: text(), slug: slug({ from: "name" }) } }),
+        team: collection({ label: "Team", fields: { name: text(), id: id({ from: "name" }) } }),
         events: collection({
           label: "Events",
           fields: {
             title: text(),
-            slug: slug({ from: "title" }),
+            id: id({ from: "title" }),
             talks: repeater({ fields: { speaker: relation({ collection: "team" }) } }),
           },
         }),
@@ -485,12 +485,12 @@ describe("findReferences", () => {
     await nestedStore.save("events", { data: { title: "Meetup", talks: [{ speaker: "anna" }] } });
 
     assert.deepEqual(await nestedStore.findReferences("team", "anna"), [
-      { kind: "entry", collection: "events", slug: "meetup", title: "Meetup" },
+      { kind: "entry", collection: "events", id: "meetup", title: "Meetup" },
     ]);
   });
 });
 
-describe("a URL change with its links", () => {
+describe("an ID change with its links", () => {
   const setUp = async () => {
     await store.save("team", { data: { name: "Anna" } });
     await store.save("projects", { data: { title: "Haus A", lead: "anna", description: "Body." } });
@@ -498,13 +498,13 @@ describe("a URL change with its links", () => {
     return store.revisionOf("team", "anna");
   };
 
-  it("points the links in other entries and settings at the new URL, and leaves their other files alone", async () => {
+  it("points the links in other entries and settings at the new ID, and leaves their other files alone", async () => {
     const revision = await setUp();
     const body = await read("projects/haus-a/description.mdoc");
 
     const saved = await store.save("team", {
-      slug: "anna",
-      data: { name: "Anna", slug: "anna-meier" },
+      id: "anna",
+      data: { name: "Anna", id: "anna-meier" },
       expectedRevision: revision,
       updateLinks: true,
     });
@@ -517,12 +517,12 @@ describe("a URL change with its links", () => {
 
   it("leaves the links as they are without the option", async () => {
     const revision = await setUp();
-    const saved = await store.save("team", { slug: "anna", data: { name: "Anna", slug: "anna-meier" }, expectedRevision: revision });
+    const saved = await store.save("team", { id: "anna", data: { name: "Anna", id: "anna-meier" }, expectedRevision: revision });
 
     assert.equal(saved.relinked, 0);
     assert.equal(JSON.parse(await read("projects/haus-a/index.json")).lead, "anna");
     assert.deepEqual(await store.findReferences("team", "anna"), [
-      { kind: "entry", collection: "projects", slug: "haus-a", title: "Haus A" },
+      { kind: "entry", collection: "projects", id: "haus-a", title: "Haus A" },
       { kind: "singleton", name: "home", title: "Home" },
     ]);
   });
@@ -533,9 +533,9 @@ describe("a URL change with its links", () => {
     const guarded = createContentStore(site, contentFiles({ root }), readOnly);
 
     const references = await guarded.findReferences("team", "anna");
-    assert.deepEqual(references[0], { kind: "entry", collection: "projects", slug: "haus-a", title: "Haus A", readOnly: true });
+    assert.deepEqual(references[0], { kind: "entry", collection: "projects", id: "haus-a", title: "Haus A", readOnly: true });
 
-    const saved = await guarded.save("team", { slug: "anna", data: { name: "Anna", slug: "anna-meier" }, expectedRevision: revision, updateLinks: true });
+    const saved = await guarded.save("team", { id: "anna", data: { name: "Anna", id: "anna-meier" }, expectedRevision: revision, updateLinks: true });
     assert.equal(saved.relinked, 1);
     assert.equal(JSON.parse(await read("projects/haus-a/index.json")).lead, "anna");
   });
@@ -554,10 +554,10 @@ describe("a URL change with its links", () => {
     const raced = createContentStore(site, racing);
 
     await assert.rejects(
-      raced.save("team", { slug: "anna", data: { name: "Anna", slug: "anna-meier" }, expectedRevision: revision, updateLinks: true }),
+      raced.save("team", { id: "anna", data: { name: "Anna", id: "anna-meier" }, expectedRevision: revision, updateLinks: true }),
       /An entry or page that links here changed while you saved/,
     );
-    assert.equal(JSON.parse(await read("team/anna/index.json")).slug, "anna");
+    assert.equal(JSON.parse(await read("team/anna/index.json")).id, "anna");
     assert.equal(JSON.parse(await read("home/index.json")).note, "colleague");
   });
 });

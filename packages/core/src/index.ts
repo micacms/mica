@@ -24,7 +24,7 @@ export {
   repeater,
   richText,
   select,
-  slug,
+  id,
   tags,
   text,
   textarea,
@@ -42,7 +42,7 @@ export {
   type RepeaterOptions,
   type RichTextOptions,
   type SelectOptions,
-  type SlugOptions,
+  type IdOptions,
   type TagsOptions,
   type TextareaOptions,
   type TextOptions,
@@ -52,7 +52,7 @@ export { collection, defineSite, ModelError, referenceSet, singleton, type Sorta
 
 /* Validation. */
 export { fieldsSchema, validateFields, type FieldIssue, type SchemaOptions, type ValidationResult } from "./validation.js";
-export { isValidSlug, slugify } from "./slugify.js";
+export { isValidId, toId } from "./to-id.js";
 
 /* The content format: docs/content-format.md. */
 export {
@@ -81,7 +81,7 @@ export {
   type DirectoryEntry,
 } from "./source.js";
 export {
-  collectionSlugs,
+  collectionIds,
   ContentReadError,
   ORDER_FILE,
   readCollection,

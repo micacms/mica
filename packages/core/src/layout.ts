@@ -73,14 +73,14 @@ export function declaresDocument(fields: FieldMap, path: readonly string[]): boo
   return false;
 }
 
-/** The folder of a collection entry, or of a singleton without `slug`: `team/anna-vogt`, `site`. */
-export function entryFolder(name: string, slug?: string): string {
-  return slug === undefined ? name : `${name}/${slug}`;
+/** The folder of a collection entry, or of a singleton without `id`: `team/anna-vogt`, `site`. */
+export function entryFolder(name: string, id?: string): string {
+  return id === undefined ? name : `${name}/${id}`;
 }
 
 /** The file with the structured fields of a collection entry or a singleton. */
-export function entryDataPath(name: string, slug?: string): string {
-  return `${entryFolder(name, slug)}/${INDEX_FILE}`;
+export function entryDataPath(name: string, id?: string): string {
+  return `${entryFolder(name, id)}/${INDEX_FILE}`;
 }
 
 /**

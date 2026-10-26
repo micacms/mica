@@ -1,6 +1,6 @@
 {
   "title": "News",
-  "slug": "news",
+  "id": "news",
   "template": "news",
   "eyebrow": "Journal",
   "intro": "Updates from our practice.",

@@ -19,7 +19,7 @@ import {
   object,
   richText,
   singleton,
-  slug,
+  id,
   text,
 } from "@micacms/core/internal";
 
@@ -31,7 +31,7 @@ const site = defineSite({
       label: "Projects",
       fields: {
         title: text({ required: true }),
-        slug: slug({ from: "title" }),
+        id: id({ from: "title" }),
         year: number(),
         cover: media(),
         description: richText(),
@@ -40,7 +40,7 @@ const site = defineSite({
     team: collection({
       label: "Team",
       // No rich text and no media, so this collection has file layout.
-      fields: { name: text({ required: true }), slug: slug({ from: "name" }) },
+      fields: { name: text({ required: true }), id: id({ from: "name" }) },
     }),
   },
   singletons: {
@@ -51,19 +51,19 @@ const site = defineSite({
 const files: Record<string, string> = {
   "projects/haus-a/index.json": JSON.stringify({
     title: "Haus A",
-    slug: "haus-a",
+    id: "haus-a",
     year: 2024,
     cover: "media/exterior.jpg",
   }),
   "projects/haus-a/description.mdoc": "# Haus A\n\nA housing project.\n",
   "projects/haus-b/index.json": JSON.stringify({
     title: "Haus B",
-    slug: "haus-b",
+    id: "haus-b",
     year: null,
     cover: null,
   }),
-  "team/anna-vogt/index.json": JSON.stringify({ name: "Anna Vogt", slug: "anna-vogt" }),
-  "team/bea-frei/index.json": JSON.stringify({ name: "Bea Frei", slug: "bea-frei" }),
+  "team/anna-vogt/index.json": JSON.stringify({ name: "Anna Vogt", id: "anna-vogt" }),
+  "team/bea-frei/index.json": JSON.stringify({ name: "Bea Frei", id: "bea-frei" }),
   "theme/index.json": JSON.stringify({ primaryColor: "#123456" }),
 };
 
@@ -140,7 +140,7 @@ describe("micaCollections", () => {
   it("refuses a field kind it does not know, such as a typo", () => {
     const site = defineSite({
       collections: {
-        notes: collection({ label: "Notes", fields: { title: text(), slug: slug(), body: { kind: "txet" } as never } }),
+        notes: collection({ label: "Notes", fields: { title: text(), id: id(), body: { kind: "txet" } as never } }),
       },
     });
     assert.throws(() => micaCollections(site), /collections\.notes: "body" \(txet\)/);
@@ -149,21 +149,21 @@ describe("micaCollections", () => {
   it("refuses an option it does not know, such as a typo", () => {
     const site = defineSite({
       collections: {
-        notes: collection({ label: "Notes", fields: { title: text({ help: "A typo for description." } as never), slug: slug() } }),
+        notes: collection({ label: "Notes", fields: { title: text({ help: "A typo for description." } as never), id: id() } }),
       },
     });
     assert.throws(() => micaCollections(site), /collections\.notes: "title" \(option help\)/);
   });
 
-  it("refuses a second slug field in a collection's own fields, and accepts one per language in an object", () => {
+  it("refuses a second id field in a collection's own fields, and accepts one per language in an object", () => {
     const twice = defineSite({
-      collections: { pages: collection({ label: "Pages", fields: { title: text(), slug: slug(), other: slug() } }) },
+      collections: { pages: collection({ label: "Pages", fields: { title: text(), id: id(), other: id() } }) },
     });
-    assert.throws(() => micaCollections(twice), /slug fields that are not its URL \(other\); its URL is "slug"/);
+    assert.throws(() => micaCollections(twice), /id\(\) fields that are not its ID \(other\); its ID is "id"/);
 
     const languages = defineSite({
       collections: {
-        pages: collection({ label: "Pages", fields: { title: text(), slug: slug(), urls: object({ fields: { de: slug(), fr: slug() } }) } }),
+        pages: collection({ label: "Pages", fields: { title: text(), id: id(), urls: object({ fields: { de: id(), fr: id() } }) } }),
       },
     });
     assert.doesNotThrow(() => micaCollections(languages));
@@ -251,7 +251,7 @@ describe("collections", () => {
     const collections = build({
       "projects/haus-a/index.json": JSON.stringify({
         title: "Haus A",
-        slug: "haus-a",
+        id: "haus-a",
         cover: "/shared/logo.svg",
       }),
     });
@@ -273,14 +273,14 @@ describe("collections", () => {
     const sorted = defineSite({
       collections: { projects: collection({ ...site.collections.projects, defaultSort: { field: "year", direction: "asc" } }) },
     });
-    const haus = JSON.stringify({ title: "Haus B", slug: "haus-b", year: 2020, cover: null });
+    const haus = JSON.stringify({ title: "Haus B", id: "haus-b", year: 2020, cover: null });
     const collections = micaCollections(sorted, {
       source: memorySource({ ...files, "projects/haus-b/index.json": haus, "projects/_order.json": '["haus-a", "haus-b"]' }),
     });
     const context = createContext(collections.projects.schema);
     await collections.projects.loader.load(context);
 
-    const position = (slug: string) => (context.entries.get(slug)?._mica as { position: number }).position;
+    const position = (id: string) => (context.entries.get(id)?._mica as { position: number }).position;
     assert.equal(position("haus-b"), 0, "the earlier year first, whatever the manual order says");
     assert.equal(position("haus-a"), 1);
   });
@@ -397,7 +397,7 @@ describe("collections", () => {
   });
 
   it("fails the build when an entry does not satisfy the model", async () => {
-    const collections = build({ "projects/haus-a/index.json": JSON.stringify({ slug: "haus-a" }) });
+    const collections = build({ "projects/haus-a/index.json": JSON.stringify({ id: "haus-a" }) });
     const context = createContext(collections.projects.schema);
 
     // `title` is required, so this must not quietly load a titleless project.

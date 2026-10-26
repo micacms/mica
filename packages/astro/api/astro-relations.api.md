@@ -8,10 +8,10 @@ import { CollectionEntry } from 'astro:content';
 import { CollectionKey } from 'astro:content';
 
 // @public
-export function related<C extends CollectionKey>(collection: C, slug: string | null | undefined): Promise<CollectionEntry<C> | undefined>;
+export function related<C extends CollectionKey>(collection: C, id: string | null | undefined): Promise<CollectionEntry<C> | undefined>;
 
 // @public
-export function relatedAll<C extends CollectionKey>(collection: C, slugs: readonly string[] | null | undefined): Promise<Array<CollectionEntry<C>>>;
+export function relatedAll<C extends CollectionKey>(collection: C, ids: readonly string[] | null | undefined): Promise<Array<CollectionEntry<C>>>;
 
 // (No @packageDocumentation comment for this package)
 

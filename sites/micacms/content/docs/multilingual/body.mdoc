@@ -10,17 +10,17 @@ The model of Mica has no language setting. A site in several languages uses one 
 Put the languages in an `object()`. The translations of a page stay in one entry, so they do not drift apart.
 
 ```ts
-import { collection, object, richText, slug, text } from "@micacms/core";
+import { collection, object, richText, id, text } from "@micacms/core";
 
 pages: collection({
   label: "Pages",
   fields: {
-    // The slug of the entry: the same for each language.
-    slug: slug(),
+    // The ID of the entry: the same for each language.
+    id: id(),
     title: object({ label: "Title", fields: { de: text({ label: "Deutsch", required: true }), en: text({ label: "English" }) } }),
     body: object({ label: "Text", fields: { de: richText({ label: "Deutsch" }), en: richText({ label: "English" }) } }),
-    // A URL for each language, when the URLs must differ.
-    url: object({ label: "URL", fields: { de: slug({ label: "Deutsch" }), en: slug({ label: "English" }) } }),
+    // A page name for each language, when the names must differ.
+    url: object({ label: "URL", fields: { de: id({ label: "Deutsch" }), en: id({ label: "English" }) } }),
   },
 }),
 ```
@@ -33,7 +33,7 @@ content/pages/about/body.de.mdoc
 content/pages/about/body.en.mdoc
 ```
 
-The slug of an entry is unique, because it is the name of its folder. A URL in the `url` object is not checked: neither `npx mica check` nor Astro finds two pages with the same English URL, and Astro then builds only one of them. Keep these URLs unique.
+The ID of an entry is unique, because it is the name of its folder. A URL in the `url` object is not checked: neither `npx mica check` nor Astro finds two pages with the same English URL, and Astro then builds only one of them. Keep these URLs unique.
 
 ### Alt text in several languages
 
@@ -54,7 +54,7 @@ export default defineConfig({
 });
 ```
 
-Make one page for each entry and language, for example in `src/pages/[lang]/[slug].astro`:
+Make one page for each entry and language, for example in `src/pages/[lang]/[id].astro`:
 
 ```astro
 ---
@@ -64,7 +64,7 @@ import { renderRichText } from "@micacms/astro";
 export async function getStaticPaths() {
   const pages = await getCollection("pages");
   return (["de", "en"] as const).flatMap((lang) =>
-    pages.map((page) => ({ params: { lang, slug: page.data.url?.[lang] ?? page.id }, props: { page, lang } })),
+    pages.map((page) => ({ params: { lang, id: page.data.url?.[lang] ?? page.id }, props: { page, lang } })),
   );
 }
 
@@ -82,8 +82,8 @@ A missing translation shows the default language here. Choose what your site doe
 Give each language its own collection:
 
 ```ts
-newsDe: collection({ label: "News (Deutsch)", fields: { title: text({ required: true }), slug: slug({ from: "title" }), body: richText() } }),
-newsEn: collection({ label: "News (English)", fields: { title: text({ required: true }), slug: slug({ from: "title" }), body: richText() } }),
+newsDe: collection({ label: "News (Deutsch)", fields: { title: text({ required: true }), id: id({ from: "title" }), body: richText() } }),
+newsEn: collection({ label: "News (English)", fields: { title: text({ required: true }), id: id({ from: "title" }), body: richText() } }),
 ```
 
 Each collection is a list of its own in the editor, with its own folder, URLs and order. When a text has a translation, a `relation()` field can name it.

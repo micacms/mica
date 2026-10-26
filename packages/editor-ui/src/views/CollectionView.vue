@@ -18,6 +18,7 @@ import ReorderHandle from "@/components/ReorderHandle.vue";
 import StatusNotice from "@/components/StatusNotice.vue";
 import { useReorder } from "@/composables/useReorder";
 import { previewValue } from "@/lib/format";
+import { entryAddress } from "@/lib/pages";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
@@ -28,14 +29,14 @@ const schema = useSchema();
 const staging = useStaging();
 const toast = useToast();
 
-/** Each entry's pending state, by slug, and the entries that publishing removes. */
+/** Each entry's pending state, by ID, and the entries that publishing removes. */
 const pendingStates = computed(() => {
   const states = new Map<string, "new" | "changed">();
   let removed = 0;
   for (const edit of staging.edits.value) {
     if (edit.target?.kind !== "entry" || edit.target.collection !== props.collection) continue;
     if (edit.state === "removed") removed += 1;
-    else states.set(edit.target.slug, edit.state);
+    else states.set(edit.target.id, edit.state);
   }
   return { states, removed };
 });
@@ -50,6 +51,8 @@ const search = ref("");
 const reordering = ref(false);
 
 const definition = computed(() => schema.collection(props.collection));
+/** Under each title: the page's URL for a collection with a `url`, else the entry's ID, which is one part without a "/". */
+const addressOf = (entry: EntrySummary): string => entryAddress(definition.value?.url, entry.id, entry.data);
 const columns = computed(() => {
   const def = definition.value;
   if (!def) return [];
@@ -66,7 +69,7 @@ const matching = computed(() => {
   return entries.value.filter(
     (entry) =>
       entry.title.toLowerCase().includes(term) ||
-      entry.slug.includes(term) ||
+      entry.id.includes(term) ||
       searchableText(entry.data).includes(term),
   );
 });
@@ -106,23 +109,23 @@ onMounted(load);
 /**
  * Manual ordering.
  *
- * The order is a `_order.json` file listing slugs, so moving one entry is a
+ * The order is a `_order.json` file listing IDs, so moving one entry is a
  * one-line diff rather than a rewrite of every entry in the collection. Each
  * move saves once, however far the entry goes: by drag or by the keyboard on
  * the handle, or one step with an arrow.
  */
 async function saveOrder(next: EntrySummary[], moved: EntrySummary): Promise<void> {
   entries.value = next;
-  if (next.map((entry) => entry.slug).join("/") === savedOrder) return;
+  if (next.map((entry) => entry.id).join("/") === savedOrder) return;
 
   reordering.value = true;
   try {
     ({ revision: orderRevision } = await api.entries.reorder(
       props.collection,
-      next.map((entry) => entry.slug),
+      next.map((entry) => entry.id),
       orderRevision,
     ));
-    savedOrder = next.map((entry) => entry.slug).join("/");
+    savedOrder = next.map((entry) => entry.id).join("/");
     void staging.refresh();
   } catch (error) {
     toast.error(messageOf(error, "Could not save the new order."));
@@ -137,7 +140,7 @@ let savedOrder = "";
 /** The revision of the order the editor sees: a colleague's move in between is a conflict, not an overwrite. */
 let orderRevision: string | null = null;
 watch(loading, (isLoading) => {
-  if (!isLoading) savedOrder = entries.value.map((entry) => entry.slug).join("/");
+  if (!isLoading) savedOrder = entries.value.map((entry) => entry.id).join("/");
 });
 
 // Reordering a filtered list would move the wrong neighbours.
@@ -150,7 +153,7 @@ const reorder = useReorder<EntrySummary>({
   items: () => entries.value,
   show: (next) => (entries.value = next),
   commit: saveOrder,
-  id: (entry) => entry.slug,
+  id: (entry) => entry.id,
   label: (entry) => entry.title,
   disabled: () => reordering.value,
 });
@@ -187,7 +190,7 @@ const reorder = useReorder<EntrySummary>({
           <template v-if="sortable">You can change the order again after that.</template>
         </p>
         <ul class="mt-2 space-y-1 text-xs">
-          <li v-for="entry in unreadable" :key="entry.slug">
+          <li v-for="entry in unreadable" :key="entry.id">
             <!-- The message names the file. -->
             <span class="font-mono">{{ entry.message }}</span>
           </li>
@@ -259,7 +262,7 @@ const reorder = useReorder<EntrySummary>({
           <tbody class="divide-y divide-line">
             <tr
               v-for="(entry, index) in matching"
-              :key="entry.slug"
+              :key="entry.id"
               :class="['transition hover:bg-canvas', canReorder && reorder.isMoving(entry) && 'bg-accent-soft']"
               v-bind="canReorder ? reorder.row(entry) : {}"
             >
@@ -274,15 +277,15 @@ const reorder = useReorder<EntrySummary>({
               <!-- The whole cell opens the entry: the link's ::after covers it, and the link stays one stop for the keyboard. -->
               <td class="group relative px-4 py-2.5">
                 <RouterLink
-                  :to="{ name: 'entry', params: { collection, slug: entry.slug } }"
+                  :to="{ name: 'entry', params: { collection, id: entry.id } }"
                   class="font-medium group-hover:underline after:absolute after:inset-0 after:content-['']"
                 >
                   {{ entry.title }}
                 </RouterLink>
-                <span v-if="pendingStates.states.has(entry.slug)" class="status status-draft ml-2">
-                  {{ pendingStates.states.get(entry.slug) === "new" ? "New" : "Changed" }} · not published
+                <span v-if="pendingStates.states.has(entry.id)" class="status status-draft ml-2">
+                  {{ pendingStates.states.get(entry.id) === "new" ? "New" : "Changed" }} · not published
                 </span>
-                <span class="block font-mono text-xs text-muted">/{{ entry.slug }}</span>
+                <span class="block font-mono text-xs text-muted">{{ addressOf(entry) }}</span>
               </td>
 
               <td

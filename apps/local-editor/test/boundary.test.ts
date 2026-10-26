@@ -9,7 +9,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, defineSite, slug, text } from "@micacms/core/internal";
+import { collection, defineSite, id, text } from "@micacms/core/internal";
 import { contentFiles, createApp, createLogger, createRuntimeContext } from "@micacms/runtime";
 
 import { loadConfig } from "../src/config.js";
@@ -96,7 +96,7 @@ const model = defineSite({
   collections: {
     notes: collection({
       label: "Notes",
-      fields: { title: text({ label: "Title", required: true }), slug: slug({ from: "title" }) },
+      fields: { title: text({ label: "Title", required: true }), id: id({ from: "title" }) },
     }),
   },
 });

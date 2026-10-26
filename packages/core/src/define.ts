@@ -137,16 +137,16 @@ function assertValidSite(site: Site): void {
     }
     checkFields(def.fields, `collections.${name}`, relationTargets);
 
-    const slugKey = resolveSlugField(def);
-    if (!slugKey) {
+    const idKey = resolveIdField(def);
+    if (!idKey) {
       throw new ModelError(
-        `Collection "${name}" has no slug field. Add one with \`slug({ from: "title" })\`, ` +
-          `or point \`slugField\` at an existing field.`,
+        `Collection "${name}" has no ID field. Add one with \`id({ from: "title" })\`, ` +
+          `or point \`idField\` at an existing field.`,
       );
     }
-    if (def.slugField && def.fields[def.slugField]?.kind !== "slug") {
+    if (def.idField && def.fields[def.idField]?.kind !== "id") {
       throw new ModelError(
-        `Collection "${name}" declares slugField "${def.slugField}", which is not a slug() field.`,
+        `Collection "${name}" declares idField "${def.idField}", which is not an id() field.`,
       );
     }
 
@@ -208,9 +208,9 @@ function checkFields(fields: FieldMap, path: string, collectionNames: Set<string
       );
     }
 
-    if (field.kind === "slug" && field.from && !fields[field.from]) {
+    if (field.kind === "id" && field.from && !fields[field.from]) {
       throw new ModelError(
-        `Slug field "${here}" derives from "${field.from}", which is not a sibling field.`,
+        `ID field "${here}" derives from "${field.from}", which is not a sibling field.`,
       );
     }
 
@@ -302,21 +302,21 @@ function checkRange(field: AnyField, here: string): void {
  * Model queries — used by the server, the admin SPA and the loaders
  * ------------------------------------------------------------------ */
 
-/** The field key holding the slug: the declared one, else the first `slug` field. */
-export function resolveSlugField(def: Collection): string | undefined {
-  if (def.slugField) return def.slugField;
-  return Object.entries(def.fields).find(([, f]) => f.kind === "slug")?.[0];
+/** The field key holding the ID: the declared one, else the first `id` field. */
+export function resolveIdField(def: Collection): string | undefined {
+  if (def.idField) return def.idField;
+  return Object.entries(def.fields).find(([, f]) => f.kind === "id")?.[0];
 }
 
 /**
  * The field key used as the entry title in list views: the declared one, else
- * `title`, else the first plain text field, else the slug.
+ * `title`, else the first plain text field, else the ID.
  */
 export function resolveTitleField(def: Collection): string | undefined {
   if (def.titleField) return def.titleField;
   if (def.fields["title"]) return "title";
   const firstText = Object.entries(def.fields).find(([, f]) => f.kind === "text")?.[0];
-  return firstText ?? resolveSlugField(def);
+  return firstText ?? resolveIdField(def);
 }
 
 /** Best-effort human label for an entry, for list views and revision summaries. */
@@ -325,9 +325,9 @@ export function entryTitle(def: Collection, data: Record<string, unknown>): stri
   const value = key ? data[key] : undefined;
   if (typeof value === "string" && value.trim()) return value.trim();
 
-  const slugKey = resolveSlugField(def);
-  const slugValue = slugKey ? data[slugKey] : undefined;
-  if (typeof slugValue === "string" && slugValue.trim()) return slugValue.trim();
+  const idKey = resolveIdField(def);
+  const idValue = idKey ? data[idKey] : undefined;
+  if (typeof idValue === "string" && idValue.trim()) return idValue.trim();
 
   return "Untitled";
 }

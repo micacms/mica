@@ -12,13 +12,13 @@ export function rowLabelRelation(field: RepeaterField): string | undefined {
 
 /**
  * The value of the `itemLabel` field: text as it is, a relation by the title of
- * its entry (`titleOf`, else the slug). Without a value, "<Item> <number>".
+ * its entry (`titleOf`, else the ID). Without a value, "<Item> <number>".
  */
 export function rowLabel(
   field: RepeaterField,
   row: Record<string, unknown>,
   index: number,
-  titleOf: (slug: string) => string | undefined = () => undefined,
+  titleOf: (id: string) => string | undefined = () => undefined,
 ): string {
   const key = field.itemLabel;
   const value = key ? row[key] : undefined;

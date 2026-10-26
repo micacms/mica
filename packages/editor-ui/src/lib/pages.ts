@@ -4,21 +4,21 @@
  * never calls the website.
  */
 
-import { pageUrl, slugAtPath } from "@micacms/core/internal";
+import { pageUrl, idAtPath } from "@micacms/core/internal";
 
 import type { ChangeOwner, Schema } from "@/api";
 
 /**
  * The page of an entry, with the values of `data` for the other names of its
- * address, such as `{activity}`; of a singleton without `slug`. Null without a
+ * address, such as `{activity}`; of a singleton without `id`. Null without a
  * page in the model, or while a value of the address is empty.
  */
-export const pageHref = (page: string | null | undefined, slug?: string, data?: Record<string, unknown>): string | null =>
-  page ? pageUrl(page, slug, data) : null;
+export const pageHref = (page: string | null | undefined, id?: string, data?: Record<string, unknown>): string | null =>
+  page ? pageUrl(page, id, data) : null;
 
-/** The page that a published change shows on, if the model has one. An address with other names than `{slug}` needs the entry's `data`. */
+/** The page that a published change shows on, if the model has one. An address with other names than `{id}` needs the entry's `data`. */
 export function pageOfOwner(owner: ChangeOwner, schema: Schema | null, data?: Record<string, unknown> | null): string | null {
-  if (owner.kind === "entry") return pageHref(schema?.collections.find((item) => item.name === owner.collection)?.page, owner.slug, data ?? undefined);
+  if (owner.kind === "entry") return pageHref(schema?.collections.find((item) => item.name === owner.collection)?.page, owner.id, data ?? undefined);
   if (owner.kind === "singleton") return pageHref(schema?.singletons.find((item) => item.name === owner.name)?.page);
   return null;
 }
@@ -28,7 +28,7 @@ type DocumentAtPath = { name: string; params: Record<string, string> };
 /**
  * The forms of the documents whose page `path` can be, from the model's `url`
  * options, the most specific address first: /news/hello is an article before
- * a page "news/hello". Addresses such as /{activity}/{slug} and /{year}/{slug}
+ * a page "news/hello". Addresses such as /{activity}/{id} and /{year}/{id}
  * fit the same paths, so the preview takes the first one that the page shows.
  */
 export function documentsAtPath(path: string, schema: Schema | null): DocumentAtPath[] {
@@ -38,8 +38,8 @@ export function documentsAtPath(path: string, schema: Schema | null): DocumentAt
   for (const item of schema?.collections ?? []) {
     if (!item.url) continue;
     // Each other name of the address, such as {activity}, matches one part of the path.
-    const match = slugAtPath(trim(item.url), wanted);
-    if (match) found.push({ name: "entry", params: { collection: item.name, slug: match.slug }, literal: match.literal });
+    const match = idAtPath(trim(item.url), wanted);
+    if (match) found.push({ name: "entry", params: { collection: item.name, id: match.id }, literal: match.literal });
   }
   for (const item of schema?.singletons ?? []) {
     if (item.url && trim(item.url) === wanted) found.push({ name: "singleton", params: { name: item.name }, literal: wanted.length + 1 });
@@ -53,8 +53,8 @@ export function documentAtPath(path: string, schema: Schema | null): DocumentAtP
   return documentsAtPath(path, schema)[0] ?? null;
 }
 
-/** The address around a slug field: the parts of a collection's `url` before and after `{slug}`. */
-export interface SlugAddress {
+/** The address around an ID field: the parts of a collection's `url` before and after `{id}`. */
+export interface PageAddress {
   before: string;
   after: string;
   /** The labels of the fields of the address that are empty: the page has no address until they have a value. */
@@ -62,11 +62,11 @@ export interface SlugAddress {
 }
 
 /**
- * The address around a slug field, from the collection's `url`, with the other
+ * The address around an ID field, from the collection's `url`, with the other
  * names filled in from the form, as the editor types. An empty one shows the
  * label of its field, such as ‹Activity›: the page has no address without it.
  */
-export function slugAddress(url: string, values: Record<string, unknown>, labelOf: (name: string) => string): SlugAddress {
+export function pageAddress(url: string, values: Record<string, unknown>, labelOf: (name: string) => string): PageAddress {
   const missing: string[] = [];
   const fill = (part: string) =>
     part.replace(/\{([^}]*)\}/g, (_match, name: string) => {
@@ -75,6 +75,24 @@ export function slugAddress(url: string, values: Record<string, unknown>, labelO
       missing.push(labelOf(name));
       return `‹${labelOf(name)}›`;
     });
-  const [before = "", after = ""] = url.split("{slug}");
+  const [before = "", after = ""] = url.split("{id}");
   return { before: fill(before), after: fill(after), missing };
 }
+
+/** What a list shows for an entry: the page's URL when the collection has a `url` and the address is complete, else the ID. */
+export function entryAddress(url: string | null | undefined, id: string, data: Record<string, unknown>): string {
+  return (url ? pageHref(url, id, data) : null) ?? id;
+}
+
+/** Where a page moves when its entry gets a new ID: the old address with the saved data, the new one with the form's. */
+export function movedPage(
+  url: string | null | undefined,
+  from: { id: string; data: Record<string, unknown> | undefined },
+  to: { id: string; data: Record<string, unknown> },
+): { from: string; to: string } | null {
+  if (!url || !from.id || !to.id) return null;
+  const old = pageHref(url, from.id, from.data);
+  const next = pageHref(url, to.id, to.data);
+  return old && next ? { from: old, to: next } : null;
+}
+

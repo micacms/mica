@@ -12,7 +12,7 @@ import {
   repeater,
   richText,
   select,
-  slug,
+  id,
   tags,
   text,
   textarea,
@@ -31,7 +31,7 @@ describe("validation messages", () => {
       title: text({ label: "Title", minLength: 3, maxLength: 5 }),
       intro: textarea({ label: "Intro", maxLength: 2 }),
       body: richText({ label: "Body", maxLength: 1 }),
-      url: slug({ label: "URL", maxLength: 3 }),
+      url: id({ label: "URL", maxLength: 3 }),
     };
     assert.deepEqual(messages(fields, { title: "ab", intro: "abc", body: "ab", url: "abcd" }), [
       "Title needs at least 3 characters (now 2).",

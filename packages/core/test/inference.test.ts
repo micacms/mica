@@ -18,7 +18,7 @@ import {
   relation,
   repeater,
   singleton,
-  slug,
+  id,
   tags,
   text,
   defaultValues,
@@ -36,13 +36,13 @@ const projects = collection({
   fields: {
     title: text({ required: true }),
     subtitle: text({ required: false }),
-    slug: slug({ from: "title" }),
+    id: id({ from: "title" }),
     year: number(),
     featured: boolean(),
     cover: media({ accept: "image", alt: "required" }),
     gallery: media({ multiple: true }),
     lead: relation({ collection: "team" }),
-    meta: object({ fields: { note: text(), slugDe: slug() } }),
+    meta: object({ fields: { note: text(), idDe: id() } }),
     steps: repeater({ fields: { label: text({ required: true }) } }),
     keywords: tags({ suggestions: ["web"] }),
   },
@@ -54,13 +54,13 @@ describe("inferred entry types", () => {
   it("are what the fields store", () => {
     expectType<Equal<Project["title"], string>>();
     expectType<Equal<Project["subtitle"], string | null>>();
-    expectType<Equal<Project["slug"], string>>();
+    expectType<Equal<Project["id"], string>>();
     expectType<Equal<Project["year"], number | null>>();
     expectType<Equal<Project["featured"], boolean>>();
     expectType<Equal<Project["cover"], { path: string; alt: string } | null>>();
     expectType<Equal<Project["gallery"], string[]>>();
     expectType<Equal<Project["lead"], string | null>>();
-    expectType<Equal<Project["meta"], { note: string | null; slugDe: string | null }>>();
+    expectType<Equal<Project["meta"], { note: string | null; idDe: string | null }>>();
     expectType<Equal<Project["steps"], Array<{ label: string }>>>();
     expectType<Equal<Project["keywords"], string[]>>();
     assert.deepEqual(defaultValues(projects.fields)["keywords"], []);
@@ -68,24 +68,24 @@ describe("inferred entry types", () => {
   });
 
   it("sort only by a field of the collection, or by position", () => {
-    collection({ label: "A", defaultSort: { field: "position", direction: "asc" }, fields: { slug: slug() } });
+    collection({ label: "A", defaultSort: { field: "position", direction: "asc" }, fields: { id: id() } });
     // @ts-expect-error -- "date" is not a field of this collection.
-    collection({ label: "B", defaultSort: { field: "date", direction: "asc" }, fields: { slug: slug() } });
+    collection({ label: "B", defaultSort: { field: "date", direction: "asc" }, fields: { id: id() } });
   });
 
-  it("keep a slug outside a collection's own fields nullable", () => {
-    const home = singleton({ label: "Home", fields: { slug: slug() } });
-    expectType<Equal<InferSingleton<typeof home>["slug"], string | null>>();
+  it("keep an ID outside a collection's own fields nullable", () => {
+    const home = singleton({ label: "Home", fields: { id: id() } });
+    expectType<Equal<InferSingleton<typeof home>["id"], string | null>>();
     assert.ok(defineSite({ collections: {}, singletons: { home } }));
   });
 
   it("take an entry's URL from its file name, whatever the file holds", async () => {
-    const site = defineSite({ collections: { team: collection({ label: "Team", fields: { name: text(), slug: slug() } }) } });
+    const site = defineSite({ collections: { team: collection({ label: "Team", fields: { name: text(), id: id() } }) } });
     const source = memorySource({
-      "team/anna/index.json": JSON.stringify({ name: "Anna", slug: "anna-vogt" }),
-      "team/ben/index.json": JSON.stringify({ name: "Ben", slug: null }),
+      "team/anna/index.json": JSON.stringify({ name: "Anna", id: "anna-vogt" }),
+      "team/ben/index.json": JSON.stringify({ name: "Ben", id: null }),
     });
     const entries = await readCollection(source, site.collections.team, "team");
-    assert.deepEqual(entries.map((entry) => entry.data["slug"]), ["anna", "ben"]);
+    assert.deepEqual(entries.map((entry) => entry.data["id"]), ["anna", "ben"]);
   });
 });

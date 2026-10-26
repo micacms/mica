@@ -39,7 +39,7 @@ export interface OverlayTarget {
   kind: "entry" | "singleton";
   /** The collection or the singleton. */
   document: string;
-  /** The entry's slug, or the singleton's name. */
+  /** The entry's ID, or the singleton's name. */
   id: string;
   field: string;
   /** New for each request, so that a second click on a field of the same document goes there again. */

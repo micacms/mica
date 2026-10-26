@@ -159,7 +159,7 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
     {
       title: "List entries",
       description:
-        "The entries of a collection, in the website's order: slug and title. `search` finds a text in any field. `orderRevision` is for reorder_entries.",
+        "The entries of a collection, in the website's order: ID and title. `search` finds a text in any field. `orderRevision` is for reorder_entries.",
       inputSchema: z.object({
         collection: z.string().describe("The collection's name, from describe_model."),
         search: z.string().optional().describe("Only entries that contain this text."),
@@ -173,9 +173,9 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
       const needle = search?.trim().toLowerCase();
       const entries = (await content().list(collection))
         .filter((entry) => !needle || JSON.stringify(entry.data).toLowerCase().includes(needle))
-        .map((entry) => ({ slug: entry.slug, position: entry.position, title: entryTitle(def, entry.data), data: entry.data }))
+        .map((entry) => ({ id: entry.id, position: entry.position, title: entryTitle(def, entry.data), data: entry.data }))
         .sort(compareEntries(def));
-      return { entries: entries.map(({ slug, title }) => ({ slug, title })), orderRevision };
+      return { entries: entries.map(({ id, title }) => ({ id, title })), orderRevision };
     }),
   );
 
@@ -184,20 +184,20 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
     {
       title: "Read an entry",
       description: "All data of one entry, and its revision for the next save.",
-      inputSchema: z.object({ collection: z.string(), slug: z.string() }),
+      inputSchema: z.object({ collection: z.string(), id: z.string() }),
       ...read,
     },
-    run(async ({ collection, slug }: { collection: string; slug: string }) => {
+    run(async ({ collection, id }: { collection: string; id: string }) => {
       const def = content().requireCollection(collection);
       // Before the data: a save in between then fails the next save's check, instead of being overwritten.
-      const revision = await content().revisionOf(collection, slug);
-      const entry = await content().get(collection, slug);
-      if (!entry) throw new ApiError("not_found", `There is no entry "${slug}" in "${collection}".`);
+      const revision = await content().revisionOf(collection, id);
+      const entry = await content().get(collection, id);
+      if (!entry) throw new ApiError("not_found", `There is no entry "${id}" in "${collection}".`);
       return {
         collection,
-        slug: entry.slug,
+        id: entry.id,
         title: entryTitle(def, entry.data),
-        path: entryFolder(collection, entry.slug),
+        path: entryFolder(collection, entry.id),
         revision,
         data: entry.data,
       };
@@ -225,11 +225,11 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
     {
       title: "Find references",
       description: "The entries and singletons that link to an entry. Read them before you delete or rename the entry.",
-      inputSchema: z.object({ collection: z.string(), slug: z.string() }),
+      inputSchema: z.object({ collection: z.string(), id: z.string() }),
       ...read,
     },
-    run(async ({ collection, slug }: { collection: string; slug: string }) => ({
-      references: await content().findReferences(collection, slug),
+    run(async ({ collection, id }: { collection: string; id: string }) => ({
+      references: await content().findReferences(collection, id),
     })),
   );
 
@@ -284,25 +284,25 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
     {
       title: "Save an entry",
       description:
-        "Creates an entry, or replaces the data of one. Without `slug`, it creates a new entry, and the slug comes from the data. With `slug`, send the `revision` from get_entry. The result is a draft until it is published.",
+        "Creates an entry, or replaces the data of one. Without `id`, it creates a new entry, and the ID comes from the data. With `id`, send the `revision` from get_entry. The result is a draft until it is published.",
       inputSchema: z.object({
         collection: z.string(),
         data: z.record(z.string(), z.unknown()).describe("All fields of the entry, in the formats of describe_model."),
-        slug: z.string().optional().describe("The entry to replace. Absent: create a new entry."),
-        revision: z.string().optional().describe("The revision from get_entry. Required with `slug`."),
-        updateLinks: z.boolean().optional().describe("When the slug changes: change the links in other entries to the new slug."),
+        id: z.string().optional().describe("The entry to replace. Absent: create a new entry."),
+        revision: z.string().optional().describe("The revision from get_entry. Required with `id`."),
+        updateLinks: z.boolean().optional().describe("When the ID changes: change the links in other entries to the new ID."),
       }),
       ...write,
     },
-    runWrite(async (input: { collection: string; data: Record<string, unknown>; slug?: string | undefined; revision?: string | undefined; updateLinks?: boolean | undefined }) => {
-      if (input.slug !== undefined && input.revision === undefined) {
+    runWrite(async (input: { collection: string; data: Record<string, unknown>; id?: string | undefined; revision?: string | undefined; updateLinks?: boolean | undefined }) => {
+      if (input.id !== undefined && input.revision === undefined) {
         throw new ApiError("bad_request", "Send the revision from get_entry, so that the save cannot overwrite a newer one.");
       }
       return content().save(input.collection, {
         data: input.data,
         // `null` on a create asserts that the entry does not exist yet.
-        expectedRevision: input.slug === undefined ? null : input.revision!,
-        ...(input.slug !== undefined ? { slug: input.slug } : {}),
+        expectedRevision: input.id === undefined ? null : input.revision!,
+        ...(input.id !== undefined ? { id: input.id } : {}),
         ...(input.updateLinks ? { updateLinks: true } : {}),
       });
     }),
@@ -330,13 +330,13 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
     {
       title: "Delete an entry",
       description: "Deletes an entry with its rich text and media, as a draft. Publish refuses a deletion that would break a link: see find_references.",
-      inputSchema: z.object({ collection: z.string(), slug: z.string(), revision: z.string().describe("The revision from get_entry.") }),
+      inputSchema: z.object({ collection: z.string(), id: z.string(), revision: z.string().describe("The revision from get_entry.") }),
       ...write,
       annotations: { destructiveHint: true },
     },
-    runWrite(async ({ collection, slug, revision }: { collection: string; slug: string; revision: string }) => {
-      await content().remove(collection, slug, { expectedRevision: revision });
-      return { deleted: `${collection}/${slug}` };
+    runWrite(async ({ collection, id, revision }: { collection: string; id: string; revision: string }) => {
+      await content().remove(collection, id, { expectedRevision: revision });
+      return { deleted: `${collection}/${id}` };
     }),
   );
 
@@ -344,16 +344,16 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
     "reorder_entries",
     {
       title: "Reorder entries",
-      description: "Sets the order of a sortable collection. Send every slug in the new order, and the `orderRevision` from list_entries.",
+      description: "Sets the order of a sortable collection. Send every ID in the new order, and the `orderRevision` from list_entries.",
       inputSchema: z.object({
         collection: z.string(),
-        slugs: z.array(z.string()).max(2000),
+        ids: z.array(z.string()).max(2000),
         revision: z.string().nullable().describe("The orderRevision from list_entries."),
       }),
       ...write,
     },
-    runWrite(async ({ collection, slugs, revision }: { collection: string; slugs: string[]; revision: string | null }) => ({
-      orderRevision: await content().reorder(collection, slugs, revision),
+    runWrite(async ({ collection, ids, revision }: { collection: string; ids: string[]; revision: string | null }) => ({
+      orderRevision: await content().reorder(collection, ids, revision),
     })),
   );
 

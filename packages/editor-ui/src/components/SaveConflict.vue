@@ -9,7 +9,7 @@ import type { FieldMap } from "@micacms/core/internal";
 import ChangeComparison from "@/components/ChangeComparison.vue";
 
 defineProps<{
-  /** `missing`: the saved version is gone, deleted or moved to another URL. */
+  /** `missing`: the saved version is gone, deleted or moved to another ID. */
   state: "loading" | "loaded" | "missing";
   theirs: Record<string, unknown> | null;
   mine: Record<string, unknown>;
@@ -38,7 +38,7 @@ const emit = defineEmits<{ keep: []; take: [] }>();
       <p class="mt-2 text-xs text-muted">"Keep mine" saves your version over theirs. Mica notes who chose it.</p>
     </template>
     <p v-else class="mt-1 text-xs text-muted">
-      It was deleted or moved to another URL. Your changes are still in the form and not saved. Copy what you
+      It was deleted, or its ID changed. Your changes are still in the form and not saved. Copy what you
       need.
     </p>
   </div>

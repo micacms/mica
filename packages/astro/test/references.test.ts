@@ -15,11 +15,11 @@ const set = (file: string, keys: { id?: string; title?: string } = {}) => ({ ...
 
 describe("parseCsv", () => {
   it("reads a header row, quotes, a semicolon, a BOM and CRLF", () => {
-    assert.deepEqual(parseCsv('﻿slug,name\r\ntoedi,"Tödi, Glarus"\r\n"piz-""x""",Piz\r\n'), [
-      { slug: "toedi", name: "Tödi, Glarus" },
-      { slug: 'piz-"x"', name: "Piz" },
+    assert.deepEqual(parseCsv('﻿id,name\r\ntoedi,"Tödi, Glarus"\r\n"piz-""x""",Piz\r\n'), [
+      { id: "toedi", name: "Tödi, Glarus" },
+      { id: 'piz-"x"', name: "Piz" },
     ]);
-    assert.deepEqual(parseCsv("slug;name\neiger;Eiger\n\n"), [{ slug: "eiger", name: "Eiger" }]);
+    assert.deepEqual(parseCsv("id;name\neiger;Eiger\n\n"), [{ id: "eiger", name: "Eiger" }]);
   });
 });
 
@@ -29,10 +29,10 @@ describe("readReferenceItems", () => {
     try {
       await writeFile(join(dir, "list.json"), JSON.stringify([{ id: "a", title: "A" }, { id: 7 }]));
       await writeFile(join(dir, "map.json"), JSON.stringify({ toedi: { name: "Tödi" } }));
-      await writeFile(join(dir, "peaks.csv"), "slug,name\neiger,Eiger\n");
+      await writeFile(join(dir, "peaks.csv"), "id,name\neiger,Eiger\n");
       assert.deepEqual(await readReferenceItems(set("list.json"), dir), [{ id: "a", title: "A" }, { id: "7", title: "7" }]);
       assert.deepEqual(await readReferenceItems(set("map.json", { title: "name" }), dir), [{ id: "toedi", title: "Tödi" }]);
-      assert.deepEqual(await readReferenceItems(set("peaks.csv", { id: "slug", title: "name" }), dir), [{ id: "eiger", title: "Eiger" }]);
+      assert.deepEqual(await readReferenceItems(set("peaks.csv", { id: "id", title: "name" }), dir), [{ id: "eiger", title: "Eiger" }]);
 
       await writeFile(join(dir, "twice.json"), JSON.stringify([{ id: "a" }, { id: "a" }]));
       await assert.rejects(readReferenceItems(set("twice.json"), dir), /"a" is there twice/);
@@ -81,9 +81,9 @@ describe("publishReferences", () => {
     const dir = await mkdtemp(join(tmpdir(), "mica-references-"));
     try {
       const rows = Array.from({ length: 10_000 }, (_, index) => `peak-${index},Peak ${index}`);
-      await writeFile(join(dir, "peaks.csv"), `slug,name\n${rows.join("\n")}\n`);
+      await writeFile(join(dir, "peaks.csv"), `id,name\n${rows.join("\n")}\n`);
       const started = performance.now();
-      const items = await readReferenceItems(set("peaks.csv", { id: "slug", title: "name" }), dir);
+      const items = await readReferenceItems(set("peaks.csv", { id: "id", title: "name" }), dir);
       assert.equal(items.length, 10_000);
       assert.ok(performance.now() - started < 1000);
     } finally {

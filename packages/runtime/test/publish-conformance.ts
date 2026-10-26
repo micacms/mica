@@ -10,14 +10,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { collection, defineSite, slug, text } from "@micacms/core/internal";
+import { collection, defineSite, id, text } from "@micacms/core/internal";
 
 /** The model of the suite: the subject builds its staging service with it. */
 export const conformanceModel = defineSite({
   collections: {
     posts: collection({
       label: "Posts",
-      fields: { title: text({ label: "Title", required: true }), slug: slug({ from: "title" }) },
+      fields: { title: text({ label: "Title", required: true }), id: id({ from: "title" }) },
     }),
   },
 });
@@ -25,8 +25,8 @@ export const conformanceModel = defineSite({
 /** The files of the repository before each test, relative to its top. The content root is `content`. */
 export const conformanceSeed: Record<string, string> = {
   "content/.mica/schema.json": '{"protocolVersion":1}\n',
-  "content/posts/a/index.json": '{"title":"A","slug":"a"}\n',
-  "content/posts/b/index.json": '{"title":"B","slug":"b"}\n',
+  "content/posts/a/index.json": '{"title":"A","id":"a"}\n',
+  "content/posts/b/index.json": '{"title":"B","id":"b"}\n',
   "src/pages/index.astro": "---\n---\n",
 };
 
@@ -69,9 +69,9 @@ export function describePublishConformance(owner: string, makeSubject: () => Pro
     it("makes one commit of exactly the reviewed paths, and sends it", async () => {
       const subject = await makeSubject();
       const before = subject.lastCommit().count;
-      subject.write("posts/a/index.json", '{"title":"A, reviewed","slug":"a"}\n');
+      subject.write("posts/a/index.json", '{"title":"A, reviewed","id":"a"}\n');
       const paths = await review(subject.service, "posts/a/");
-      subject.write("posts/b/index.json", '{"title":"B, saved later","slug":"b"}\n');
+      subject.write("posts/b/index.json", '{"title":"B, saved later","id":"b"}\n');
 
       const result = await subject.service.publish({ message: "Edit A", paths, author: editor });
 
@@ -85,7 +85,7 @@ export function describePublishConformance(owner: string, makeSubject: () => Pro
 
     it("writes the author that the policy names for the editor", async () => {
       const subject = await makeSubject();
-      subject.write("posts/a/index.json", '{"title":"A, by Erika","slug":"a"}\n');
+      subject.write("posts/a/index.json", '{"title":"A, by Erika","id":"a"}\n');
 
       await subject.service.publish({ message: "Edit A", paths: await review(subject.service, "posts/"), author: editor });
 
@@ -95,7 +95,7 @@ export function describePublishConformance(owner: string, makeSubject: () => Pro
     it("keeps the commit when the push fails, and a retry sends it without a second commit", async () => {
       const subject = await makeSubject();
       const before = subject.lastCommit().count;
-      subject.write("posts/a/index.json", '{"title":"A, offline","slug":"a"}\n');
+      subject.write("posts/a/index.json", '{"title":"A, offline","id":"a"}\n');
       const restore = subject.cutRemote();
 
       let pending: Result;
@@ -128,9 +128,9 @@ export function describePublishConformance(owner: string, makeSubject: () => Pro
     it("refuses a draft that was saved again after the review, and commits nothing", async () => {
       const subject = await makeSubject();
       const before = subject.lastCommit().count;
-      subject.write("posts/a/index.json", '{"title":"A, reviewed","slug":"a"}\n');
+      subject.write("posts/a/index.json", '{"title":"A, reviewed","id":"a"}\n');
       const paths = await review(subject.service, "posts/");
-      subject.write("posts/a/index.json", '{"title":"A, saved again","slug":"a"}\n');
+      subject.write("posts/a/index.json", '{"title":"A, saved again","id":"a"}\n');
 
       await assert.rejects(subject.service.publish({ message: "Edit A", paths, author: editor }));
 

@@ -1,6 +1,6 @@
 {
   "title": "Second post",
-  "slug": "second-post",
+  "id": "second-post",
   "publishDate": null,
   "cover": null,
   "tags": []

@@ -9,7 +9,7 @@
       "label": "Pages",
       "labelSingular": "Page",
       "description": "Standalone pages such as About us, Services or Contact.",
-      "url": "/{slug}/",
+      "url": "/{id}/",
       "defaultSort": {
         "field": "position",
         "direction": "asc"
@@ -23,16 +23,16 @@
           "maxLength": 120,
           "listed": true
         },
-        "slug": {
-          "kind": "slug",
-          "label": "URL",
+        "id": {
+          "kind": "id",
+          "label": "ID",
           "from": "title",
-          "description": "The address of the page, e.g. /about-us."
+          "description": "One part of lower-case letters, digits and hyphens, such as about-us: the page's URL is then /about-us/."
         },
         "template": {
           "kind": "select",
           "label": "Template",
-          "description": "A list page shows its collection below the content. Its URL must be the collection's: news for News, projects for Projects.",
+          "description": "A list page shows its collection below the content. Its ID must be the collection's: news for News, projects for Projects.",
           "width": "half",
           "default": "standard",
           "options": [
@@ -166,7 +166,7 @@
       "label": "Projects",
       "labelSingular": "Project",
       "description": "Client projects shown in the portfolio.",
-      "url": "/projects/{category}/{slug}/",
+      "url": "/projects/{category}/{id}/",
       "defaultSort": {
         "field": "year",
         "direction": "desc"
@@ -179,9 +179,9 @@
           "maxLength": 120,
           "listed": true
         },
-        "slug": {
-          "kind": "slug",
-          "label": "URL",
+        "id": {
+          "kind": "id",
+          "label": "ID",
           "from": "title"
         },
         "year": {
@@ -345,7 +345,7 @@
       "name": "news",
       "label": "News",
       "labelSingular": "Article",
-      "url": "/news/{slug}/",
+      "url": "/news/{id}/",
       "defaultSort": {
         "field": "publishDate",
         "direction": "desc"
@@ -358,9 +358,9 @@
           "maxLength": 140,
           "listed": true
         },
-        "slug": {
-          "kind": "slug",
-          "label": "URL",
+        "id": {
+          "kind": "id",
+          "label": "ID",
           "from": "title"
         },
         "publishDate": {
@@ -417,7 +417,7 @@
       "label": "Events",
       "labelSingular": "Event",
       "description": "Workshops and talks, in person or online.",
-      "url": "/events/{slug}/",
+      "url": "/events/{id}/",
       "defaultSort": {
         "field": "startsAt",
         "direction": "desc"
@@ -430,9 +430,9 @@
           "maxLength": 120,
           "listed": true
         },
-        "slug": {
-          "kind": "slug",
-          "label": "URL",
+        "id": {
+          "kind": "id",
+          "label": "ID",
           "from": "title"
         },
         "startsAt": {
@@ -538,7 +538,7 @@
       "name": "team",
       "label": "Team",
       "labelSingular": "Team member",
-      "url": "/team/{slug}/",
+      "url": "/team/{id}/",
       "defaultSort": {
         "field": "position",
         "direction": "asc"
@@ -551,9 +551,9 @@
           "required": true,
           "listed": true
         },
-        "slug": {
-          "kind": "slug",
-          "label": "URL",
+        "id": {
+          "kind": "id",
+          "label": "ID",
           "from": "name"
         },
         "role": {

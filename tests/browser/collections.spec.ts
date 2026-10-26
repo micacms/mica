@@ -1,6 +1,6 @@
 /**
  * A collection entry from start to end, through the editor UI (#138): create it
- * with an image, change its URL, discard another edit, publish, and delete it.
+ * with an image, change its ID, discard another edit, publish, and delete it.
  *
  * Runs against the OIDC test stack — see README.md. The order of entries is in
  * editor.spec.ts.
@@ -47,11 +47,11 @@ async function publish(page: Page, message: string): Promise<void> {
   await expect(page.getByText("Your website is being rebuilt now.")).toBeVisible();
 }
 
-test("an editor creates an entry with an image, changes its URL, discards another edit, publishes, and deletes it", async ({ page, request }) => {
+test("an editor creates an entry with an image, changes its ID, discards another edit, publishes, and deletes it", async ({ page, request }) => {
   const stamp = Date.now().toString(36);
   const name = `Browser Tester ${stamp}`;
-  const slug = `moved-${stamp}`;
-  const folder = `content/team/${slug}`;
+  const id = `moved-${stamp}`;
+  const folder = `content/team/${id}`;
   const taglineBefore = (JSON.parse(await publishedFile(request, "content/general/index.json")) as { tagline: string }).tagline;
 
   await signIn(page);
@@ -68,10 +68,10 @@ test("an editor creates an entry with an image, changes its URL, discards anothe
   await page.getByRole("button", { name: "Create" }).click();
   await expect(page.getByText("Saved · not published")).toBeVisible();
 
-  // Change the URL: it waits for its button, and the entry and its image move together.
-  await page.getByLabel("URL", { exact: true }).fill(slug);
-  await page.getByRole("button", { name: "Change URL" }).click();
-  await expect(page).toHaveURL(new RegExp(`/admin/collections/team/${slug}$`));
+  // Change the ID: it waits for its button, and the entry and its image move together.
+  await page.getByLabel("ID", { exact: true }).fill(id);
+  await page.getByRole("button", { name: "Change ID" }).click();
+  await expect(page).toHaveURL(new RegExp(`/admin/collections/team/${id}$`));
   await expect(page.getByText("Saved · not published")).toBeVisible();
 
   // Another edit, which the editor then discards on the Publish page.
@@ -100,7 +100,7 @@ test("an editor creates an entry with an image, changes its URL, discards anothe
   expect((JSON.parse(await publishedFile(request, "content/general/index.json")) as { tagline: string }).tagline).toBe(taglineBefore);
 
   // Delete it, with its image, and publish the deletion.
-  await page.goto(`/admin/collections/team/${slug}`);
+  await page.goto(`/admin/collections/team/${id}`);
   await page.getByRole("button", { name: "Delete this team member" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Delete", exact: true }).click();
   await expect(page).toHaveURL(/\/admin\/collections\/team$/);

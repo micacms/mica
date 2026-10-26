@@ -13,7 +13,7 @@ import type { AnyField, FieldIssue, FieldMap } from "@micacms/core/internal";
 
 import FieldRenderer from "./FieldRenderer.vue";
 import { humanise, widthClass } from "@/composables/useField";
-import { slugAddress, type SlugAddress } from "@/lib/pages";
+import { pageAddress, type PageAddress } from "@/lib/pages";
 import { useSchema } from "@/stores/schema";
 
 const props = defineProps<{
@@ -24,7 +24,7 @@ const props = defineProps<{
   issues?: FieldIssue[];
   disabled?: boolean;
   collection?: string;
-  entrySlug?: string;
+  entryId?: string;
 }>();
 
 const emit = defineEmits<{ "update:modelValue": [Record<string, unknown>] }>();
@@ -63,24 +63,24 @@ function update(key: string, value: unknown): void {
   emit("update:modelValue", { ...props.modelValue, [key]: value });
 }
 
-/** A slug field's hint names the sibling it follows by its label. */
+/** An ID field's hint names the sibling it follows by its label. */
 function sourceLabelFor(field: AnyField): string | undefined {
-  if (field.kind !== "slug" || !field.from) return undefined;
+  if (field.kind !== "id" || !field.from) return undefined;
   return props.fields[field.from]?.label ?? humanise(field.from);
 }
 
 const schema = useSchema();
 
-/** The entry's slug field shows the page's address around it, from the collection's `url`. Not a slug in an object or a row. */
-function addressFor(field: AnyField): SlugAddress | null {
-  if (field.kind !== "slug" || props.path || !props.collection) return null;
+/** The entry's ID field shows the page's address around it, from the collection's `url`. Not an ID in an object or a row. */
+function addressFor(field: AnyField): PageAddress | null {
+  if (field.kind !== "id" || props.path || !props.collection) return null;
   const url = schema.collection(props.collection)?.url;
-  return url ? slugAddress(url, props.modelValue, (name) => props.fields[name]?.label ?? humanise(name)) : null;
+  return url ? pageAddress(url, props.modelValue, (name) => props.fields[name]?.label ?? humanise(name)) : null;
 }
 
-/** Slug fields follow a sibling; hand them its current value. */
+/** ID fields follow a sibling; hand them its current value. */
 function sourceFor(field: AnyField): string | null {
-  if (field.kind !== "slug" || !field.from) return null;
+  if (field.kind !== "id" || !field.from) return null;
   const value = props.modelValue[field.from];
   return typeof value === "string" ? value : null;
 }
@@ -103,7 +103,7 @@ function sourceFor(field: AnyField): string | null {
               :issues="issues"
               :disabled="disabled"
               :collection="collection"
-              :entry-slug="entrySlug"
+              :entry-id="entryId"
               :source="sourceFor(entry.field)"
               :source-label="sourceLabelFor(entry.field)"
               :address="addressFor(entry.field)"
@@ -122,7 +122,7 @@ function sourceFor(field: AnyField): string | null {
             :issues="issues"
             :disabled="disabled"
             :collection="collection"
-            :entry-slug="entrySlug"
+            :entry-id="entryId"
             :source="sourceFor(entry.field)"
               :source-label="sourceLabelFor(entry.field)"
               :address="addressFor(entry.field)"

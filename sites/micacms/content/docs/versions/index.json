@@ -1,6 +1,6 @@
 {
   "title": "Versions and support",
-  "slug": "versions",
+  "id": "versions",
   "section": "operate",
   "summary": "What semantic versioning covers from 1.0, how a part goes away, which versions get fixes, how the image and @micacms/astro work together, and what Mica supports.",
   "readTime": 5

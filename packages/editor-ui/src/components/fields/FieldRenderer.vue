@@ -7,7 +7,7 @@ import { computed } from "vue";
 
 import type { AnyField, FieldIssue } from "@micacms/core/internal";
 
-import type { SlugAddress } from "@/lib/pages";
+import type { PageAddress } from "@/lib/pages";
 
 import { fieldComponents } from "./registry";
 
@@ -17,25 +17,25 @@ const props = defineProps<{
   modelValue: unknown;
   issues?: FieldIssue[];
   disabled?: boolean;
-  /** Collection name and current slug, needed by slug generation. */
+  /** Collection name and current ID, needed by ID generation. */
   collection?: string;
-  entrySlug?: string;
-  /** Value of the sibling a slug field derives from. */
+  entryId?: string;
+  /** Value of the sibling an ID field derives from. */
   source?: string | null;
   sourceLabel?: string;
-  /** The page's address around a slug field. */
-  address?: SlugAddress | null;
+  /** The page's address around an ID field. */
+  address?: PageAddress | null;
 }>();
 
 const emit = defineEmits<{ "update:modelValue": [unknown] }>();
 
 const component = computed(() => fieldComponents[props.field.kind]);
 
-// Only the slug control takes these; passing them everywhere would land them
+// Only the ID control takes these; passing them everywhere would land them
 // in the DOM as stray attributes.
 const extra = computed(() =>
-  props.field.kind === "slug"
-    ? { source: props.source, sourceLabel: props.sourceLabel, collection: props.collection, exceptSlug: props.entrySlug, address: props.address }
+  props.field.kind === "id"
+    ? { source: props.source, sourceLabel: props.sourceLabel, collection: props.collection, exceptId: props.entryId, address: props.address }
     : {},
 );
 </script>

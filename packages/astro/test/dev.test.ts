@@ -27,7 +27,7 @@ import {
   referenceIndexPath,
   referenceSet,
   singleton,
-  slug,
+  id,
   text,
 } from "@micacms/core/internal";
 
@@ -43,8 +43,8 @@ delete process.env["CI"];
 const site = defineSite({
   root: "./content",
   collections: {
-    projects: collection({ label: "Projects", fields: { title: text(), slug: slug() } }),
-    team: collection({ label: "Team", fields: { name: text(), slug: slug({ from: "name" }) } }),
+    projects: collection({ label: "Projects", fields: { title: text(), id: id() } }),
+    team: collection({ label: "Team", fields: { name: text(), id: id({ from: "name" }) } }),
   },
   singletons: {
     theme: singleton({ label: "Theme", fields: { primaryColor: text() } }),
@@ -103,8 +103,8 @@ function createContext(projectRoot: string, watcher?: ReturnType<typeof createWa
 /** A project directory with one entry per collection. */
 async function project(): Promise<string> {
   const dir = await mkdtemp(join(tmpdir(), "mica-dev-"));
-  await writeEntry(dir, "projects/haus-a/index.json", { title: "Haus A", slug: "haus-a" });
-  await writeEntry(dir, "team/anna/index.json", { name: "Anna", slug: "anna" });
+  await writeEntry(dir, "projects/haus-a/index.json", { title: "Haus A", id: "haus-a" });
+  await writeEntry(dir, "team/anna/index.json", { name: "Anna", id: "anna" });
   return dir;
 }
 
@@ -254,7 +254,7 @@ describe("a draft that is not valid yet", () => {
 
   it("is left out with a warning in dev, and the rest of the collection loads", async () => {
     const dir = await project();
-    await writeEntry(dir, "projects/haus-b/index.json", { slug: "haus-b" });
+    await writeEntry(dir, "projects/haus-b/index.json", { id: "haus-b" });
     try {
       const context = createContext(dir, createWatcher());
       refuseHausB(context);
@@ -269,7 +269,7 @@ describe("a draft that is not valid yet", () => {
 
   it("fails a build", async () => {
     const dir = await project();
-    await writeEntry(dir, "projects/haus-b/index.json", { slug: "haus-b" });
+    await writeEntry(dir, "projects/haus-b/index.json", { id: "haus-b" });
     try {
       const context = createContext(dir);
       refuseHausB(context);
@@ -292,7 +292,7 @@ describe("reloading in dev", () => {
 
       assert.deepEqual(watcher.added, [join(dir, "content")]);
 
-      await writeEntry(dir, "projects/haus-b/index.json", { title: "Haus B", slug: "haus-b" });
+      await writeEntry(dir, "projects/haus-b/index.json", { title: "Haus B", id: "haus-b" });
       watcher.emit("add", join(dir, "content", "projects", "haus-b", "index.json"));
 
       await waitFor(() => context.entries.size === 2, "the reload");
@@ -324,7 +324,7 @@ describe("reloading in dev", () => {
       // The developer commits the model in the content repository.
       assert.match(git(join(dir, "content"), "status", "--porcelain", "-uall"), /\?\? \.mica\/schema\.json/);
 
-      await writeEntry(dir, "projects/haus-b/index.json", { title: "Haus B", slug: "haus-b" });
+      await writeEntry(dir, "projects/haus-b/index.json", { title: "Haus B", id: "haus-b" });
       watcher.emit("add", join(dir, "content", "projects", "haus-b", "index.json"));
       await waitFor(() => context.entries.size === 2, "the reload");
     } finally {
@@ -638,8 +638,8 @@ describe("reference sets in a load (#280)", () => {
   it("write their index beside the model when the collections load", async () => {
     const dir = await project();
     try {
-      await writeFile(join(dir, "places.csv"), "slug,name\ntoedi,Tödi\n");
-      const withPlaces = defineSite({ ...site, references: { places: referenceSet({ label: "Places", file: "places.csv", id: "slug", title: "name" }) } });
+      await writeFile(join(dir, "places.csv"), "id,name\ntoedi,Tödi\n");
+      const withPlaces = defineSite({ ...site, references: { places: referenceSet({ label: "Places", file: "places.csv", id: "id", title: "name" }) } });
       await micaCollections(withPlaces).projects.loader.load(createContext(dir));
       assert.deepEqual(parseReferenceIndex(await readFile(join(dir, "content", referenceIndexPath("places")), "utf8")), [{ id: "toedi", title: "Tödi" }]);
     } finally {
