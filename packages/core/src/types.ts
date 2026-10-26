@@ -326,7 +326,10 @@ export interface CollectionOptions {
   defaultSort?: { field: SortField; direction: "asc" | "desc" };
   /** Ordering the editor can rearrange by hand. */
   sortable?: boolean;
-  /** The page of an entry on the website, such as `/news/{slug}`. With `MICA_SITE_URL`, the editor links to it. */
+  /**
+   * The page of an entry on the website, such as `/news/{slug}`, or `/{activity}/{slug}` with the value of a
+   * select, relation or date field as a whole part of the path. With `MICA_SITE_URL`, the editor links to it.
+   */
   url?: string;
 }
 

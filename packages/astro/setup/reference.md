@@ -54,7 +54,9 @@ Collection options: `label` (required), `labelSingular`, `description`,
 `title`, else the first `text()` field), `slugField`, `sortable` (editors can
 order the entries by hand), `defaultSort: { field, direction }` (a field
 name or `"position"`) and `url` (the page of an entry on the website, such as
-`/news/{slug}`; with `MICA_SITE_URL`, the editor links to it). Without `defaultSort`, the editor lists the entries by
+`/news/{slug}`, or `/{activity}/{slug}` with the value of a select, relation
+or date field of the entry as a whole part of the path; with `MICA_SITE_URL`,
+the editor links to it). Without `defaultSort`, the editor lists the entries by
 position: the manual order, or the slugs in alphabetical order before anybody
 ordered them. Singleton options: `label`, `description`, `fields`, `url`
 (such as `/about`).

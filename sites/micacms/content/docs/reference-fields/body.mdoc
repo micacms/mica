@@ -80,7 +80,7 @@ export const site = defineSite({
 | `slugField` | The key of the slug. Default: the first `slug()`. |
 | `defaultSort` | `{ field, direction }` for the list in the editor. `field` is a field of the collection or `"position"`. Text sorts alphabetically in English, and a date with a time by its instant. `_mica.position` on the website follows it too: sort your pages with `inEditorOrder` from `@micacms/astro`. |
 | `sortable` | Editors can put the entries in an order. Mica keeps it in `_order.json`. |
-| `url` | The page of an entry on the website, with `{slug}` once, such as `/news/{slug}`. With `MICA_SITE_URL`, an entry shows "Open on website". See [Preview changes](/docs/previews/). |
+| `url` | The page of an entry on the website, with `{slug}` once, such as `/news/{slug}`. It can also name other fields of the collection with one value, each as a whole part of the path between two `/`: a `select()` or `relation()` without `multiple`, or a `date()` without a time, such as `/{activity}/{slug}`. A relation gives the slug of its entry. The address has the saved value, percent-encoded. While one of the fields is empty, the entry has no page. With `MICA_SITE_URL`, an entry shows "Open on website". See [Preview changes](/docs/previews/). |
 
 `singleton()` takes `label`, `description`, `fields` and `url` (its page, such as `/about`, without `{slug}`). `defineSite()` takes `root`, `collections`, `singletons` and `references`.
 

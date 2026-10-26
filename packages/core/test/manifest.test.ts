@@ -184,6 +184,15 @@ describe("readManifest", () => {
     assert.match(read.warnings.join("\n"), /cannot read\. The editor shows no link/);
   });
 
+  it("keeps a page address that names a select field beside {slug}", () => {
+    const raw = validSite();
+    raw.collections.pages.fields["section"] = { kind: "select", options: [{ label: "About", value: "about" }] };
+    (raw.collections.pages as Record<string, unknown>)["url"] = "/{section}/{slug}";
+    const read = readManifest(raw);
+    assert.equal(read.site.collections["pages"]?.url, "/{section}/{slug}");
+    assert.deepEqual(read.warnings, []);
+  });
+
   it("keeps a default sort that names a real field", () => {
     const raw = validSite();
     (raw.collections.pages as Record<string, unknown>)["defaultSort"] = {
