@@ -1,6 +1,13 @@
 # Change Log - @micacms/mcp
 
-This log was last generated on Sun, 25 Oct 2026 18:05:04 GMT and should not be manually modified.
+This log was last generated on Mon, 26 Oct 2026 14:15:44 GMT and should not be manually modified.
+
+## 0.15.0
+Mon, 26 Oct 2026 14:15:44 GMT
+
+### Minor changes
+
+- Breaking: the tools take and give id in place of slug: get_entry({ collection, id }), save_entry, delete_entry, find_references, reorder_entries({ ids }), and the id of each entry in list_entries and get_entry.
 
 ## 0.14.0
 Sun, 25 Oct 2026 18:05:04 GMT

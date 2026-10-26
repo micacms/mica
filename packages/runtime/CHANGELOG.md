@@ -1,6 +1,17 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Sun, 25 Oct 2026 18:05:04 GMT and should not be manually modified.
+This log was last generated on Mon, 26 Oct 2026 14:15:44 GMT and should not be manually modified.
+
+## 0.15.0
+Mon, 26 Oct 2026 14:15:44 GMT
+
+### Minor changes
+
+- Breaking: the admin HTTP API names the entry's identity id: routes /collections/:collection/entries/:id, the fields id and idField, ids in the body of a reorder, id in the query of a comparison, and /collections/:collection/id for a new ID.
+
+### Patches
+
+- GET /api/admin/changes/compare with targets compares up to 25 documents in one request, with one status of the pending files, so that a large change set does not run git status for each document. A document that cannot be read fails alone.
 
 ## 0.14.0
 Sun, 25 Oct 2026 18:05:04 GMT

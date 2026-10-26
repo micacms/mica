@@ -1,6 +1,22 @@
 # Change Log - @micacms/core
 
-This log was last generated on Sun, 25 Oct 2026 18:05:04 GMT and should not be manually modified.
+This log was last generated on Mon, 26 Oct 2026 14:15:44 GMT and should not be manually modified.
+
+## 0.15.0
+Mon, 26 Oct 2026 14:15:44 GMT
+
+### Minor changes
+
+- The url of a collection can name other fields beside {id}, such as /{activity}/{id}: a select or relation without multiple, or a date without a time, each as a whole part of the path. A relation gives the ID of its entry.
+- Breaking: an entry's identity is its ID. slug() is now id() (field kind "id", types IdField and IdOptions), slugField is idField, {slug} in a url is {id}, and slugify, isValidSlug, resolveSlugField and collectionSlugs are toId, isValidId, resolveIdField and collectionIds. ContentEntry, DocumentLink, PathOwner and UnreadableEntry have id in place of slug. Change slug() to id() in the model; the content files stay as they are unless you rename the field's key.
+
+### Patches
+
+- DevServerMarker has confirmed: whether the port in its address is the one that the dev server listens on.
+
+### Updates
+
+- The description of itemLabel says that a single relation can name a row.
 
 ## 0.14.0
 Sun, 25 Oct 2026 18:05:04 GMT

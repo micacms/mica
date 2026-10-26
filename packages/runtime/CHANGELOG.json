@@ -2,6 +2,23 @@
   "name": "@micacms/runtime",
   "entries": [
     {
+      "version": "0.15.0",
+      "tag": "@micacms/runtime_v0.15.0",
+      "date": "Mon, 26 Oct 2026 14:15:44 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "GET /api/admin/changes/compare with targets compares up to 25 documents in one request, with one status of the pending files, so that a large change set does not run git status for each document. A document that cannot be read fails alone."
+          }
+        ],
+        "minor": [
+          {
+            "comment": "Breaking: the admin HTTP API names the entry's identity id: routes /collections/:collection/entries/:id, the fields id and idField, ids in the body of a reorder, id in the query of a comparison, and /collections/:collection/id for a new ID."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.14.0",
       "tag": "@micacms/runtime_v0.14.0",
       "date": "Sun, 25 Oct 2026 18:05:04 GMT",

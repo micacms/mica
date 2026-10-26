@@ -1,6 +1,6 @@
 {
   "name": "@micacms/runtime",
-  "version": "0.14.0",
+  "version": "0.15.0",
   "type": "module",
   "description": "The Mica single-site runtime: the Hono API, application services and staging orchestration, authentication-neutral. Composed by @micacms/editor locally and @micacms/self-hosted behind OIDC.",
   "license": "MIT",

@@ -1,6 +1,17 @@
 # Change Log - @micacms/astro
 
-This log was last generated on Sun, 25 Oct 2026 18:05:04 GMT and should not be manually modified.
+This log was last generated on Mon, 26 Oct 2026 14:15:44 GMT and should not be manually modified.
+
+## 0.15.0
+Mon, 26 Oct 2026 14:15:44 GMT
+
+### Minor changes
+
+- Breaking: the model uses id() and {id} in place of slug() and {slug}; related() and relatedAll() take IDs.
+
+### Patches
+
+- The live preview takes the parser that the site's Astro brings, and checks at the start that it places the fields right: @astrojs/compiler-rs is no longer a peer dependency. With the parser of Astro 7.0 to 7.2, dates, numbers and options cannot be clicked, and the dev server says so. The marker of the dev server says whether its port is confirmed.
 
 ## 0.14.0
 Sun, 25 Oct 2026 18:05:04 GMT

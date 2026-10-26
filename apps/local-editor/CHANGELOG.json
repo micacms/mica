@@ -2,6 +2,32 @@
   "name": "@micacms/editor",
   "entries": [
     {
+      "version": "0.15.0",
+      "tag": "@micacms/editor_v0.15.0",
+      "date": "Mon, 26 Oct 2026 14:15:44 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "mica start --preview reads the address that its astro dev prints, so the preview no longer shows another website or waits for ever when the port of the config is busy. A preview whose address Mica cannot confirm (a dev server without micaPreview()) shows Preview not confirmed, with the reason above the page. The preview no longer stays \"starting\" when the home page takes more than a second to render."
+          },
+          {
+            "comment": "The Publish page loads a comparison when its row comes near the screen, in batches, so that a change set of thousands of entries no longer gets \"Too many requests\". A change whose comparison did not load yet is published with the revisions of the list."
+          }
+        ],
+        "minor": [
+          {
+            "comment": "The editor links to a page such as /{activity}/{id} with the entry's saved values, in Open on website, the preview and after Publish, and finds the entry of such a page in the preview."
+          },
+          {
+            "comment": "A relation to one entry shows only the chosen entry, with Edit, Change and Remove; Change opens a dialog to find another entry (#351). The list of a relation field is no longer cut off in a list row or a group (#350). A row of a list can take its title from a relation: it shows the title of the entry, not its ID."
+          },
+          {
+            "comment": "The editor calls an entry's identity its ID: the ID field, Change ID and Keep the old ID. For a collection with a url, the editor shows the page's URL under the ID field, in the list of the collection and in the relation pickers, and Change ID names the page's old and new URL. mica init writes id() with the label ID."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.14.0",
       "tag": "@micacms/editor_v0.14.0",
       "date": "Sun, 25 Oct 2026 18:05:04 GMT",

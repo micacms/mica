@@ -10,6 +10,58 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.15.0] — 2026-10-26
+
+This version calls an entry's identity its ID, and the address of its page its
+URL. A URL can have more parts, such as `/{activity}/{id}`. It also fixes an issue with thousands of changes on the Publish page, a busy port for
+the preview, and relations to one entry.
+
+### Breaking
+
+- **`slug()` is now `id()`.** An entry's identity is its ID: one part, the name
+  of its folder, and what a relation stores. In the model, change `slug()` to
+  `id()`, and `{slug}` in a `url` to `{id}`. The content files stay as they are,
+  unless you also rename the key of the field. `related()` and `relatedAll()`
+  take IDs. The names in `@micacms/core` follow: `idField`, `toId`,
+  `isValidId`, `IdField`, and `id` in `ContentEntry` and the other types
+  (ADR 41).
+- **The admin HTTP API and the MCP tools say `id`** in place of `slug`, such as
+  `get_entry({ collection, id })` and `reorder_entries({ ids })`.
+
+### Added
+
+- **A URL with more parts.** A collection's `url` can name other fields beside
+  `{id}`, such as `/{activity}/{id}`: a select or a relation to one entry, or a
+  date without a time, each as a whole part of the path. The editor links to
+  such a page with the entry's saved values, and the preview finds the entry of
+  the page.
+- **The page's URL in the editor**, under the ID field, in the list of a
+  collection and in the relation pickers. Change ID names the old and the new
+  URL of the page.
+- **Change for a relation to one entry.** The field shows the chosen entry with
+  Edit, Change and Remove. Change opens a dialog to find another entry. A row of
+  a list can take its title from a relation.
+
+### Changed
+
+- `@micacms/astro` no longer has the peer dependency `@astrojs/compiler-rs`.
+  The preview takes the parser that the site's Astro brings, and checks at the
+  start that it places the fields right. With Astro 7.0 to 7.2, dates, numbers
+  and options in the preview cannot be clicked, and the dev server says so.
+
+### Fixed
+
+- **The Publish page with thousands of changes** no longer gets "Too many
+  requests". It loads a comparison when its row comes near the screen, in
+  batches.
+- **`mica start --preview` with a busy port** reads the address that
+  `astro dev` prints, so the preview no longer shows another website or waits
+  for ever. A preview whose address Mica cannot confirm shows "Preview not
+  confirmed", with the reason.
+- The preview no longer stays "starting" when the home page takes more than a
+  second to render.
+- The list of a relation field is no longer cut off in a list row or a group.
+
 ## [0.14.0] — 2026-10-25
 
 This version names the website in the editor, says how its preview is, and
