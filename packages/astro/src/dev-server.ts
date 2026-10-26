@@ -54,7 +54,8 @@ export function devServerAddress(config: DevServerConfig | undefined, port = con
 }
 
 function write(path: string, config: DevServerConfig | undefined, port: number | undefined): void {
-  const marker: DevServerMarker = { pid: process.pid, address: devServerAddress(config, port) };
+  // Only `astro:server:start` knows the port that Astro took: before it, or without `micaPreview()`, the address is the config's.
+  const marker: DevServerMarker = { pid: process.pid, address: devServerAddress(config, port), confirmed: port !== undefined };
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, `${JSON.stringify(marker)}\n`, "utf8");
 }

@@ -329,6 +329,19 @@ function walk(node: unknown, scope: Scope, source: string, found: Found): void {
   for (const child of children(node)) walk(child, scope, source, found);
 }
 
+/** A template with an attribute and a letter beyond ASCII before the element: an older parser misses that element or places its fields wrong. */
+const PROBE = "---\nconst { entry } = Astro.props;\n---\n<p>Grüezi</p>\n<a href={`mailto:${entry.data.email}`} class=\"link\">{entry.data.email}</a>\n";
+
+/**
+ * Whether a parser places the fields where they belong. Checked by what it
+ * does, not by its version: any version of `@astrojs/compiler-rs` that passes
+ * works, and one that does not would break the templates in the preview.
+ */
+export function placesFields(parse: ParseAstro): boolean {
+  const annotated = annotateFields(PROBE, parse);
+  return /<a data-mica-fields=\{[^\n]*"email"[^\n]*\} href=\{`mailto:/.test(annotated);
+}
+
 /** The source of a `.astro` file with `data-mica-fields` on each element that shows a field; the same source when none does. */
 export function annotateFields(source: string, parse: ParseAstro): string {
   try {

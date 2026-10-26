@@ -94,6 +94,12 @@ export interface DevServerMarker {
   pid: number;
   /** The dev server's address with the site's base path, without a trailing slash: `http://localhost:4321`. */
   address: string;
+  /**
+   * True when `micaPreview()` wrote the port that the server listens on. False
+   * while the port is the config's: Astro takes another one when it is busy.
+   * Absent in a marker of an older `@micacms/astro`.
+   */
+  confirmed?: boolean;
 }
 
 /**

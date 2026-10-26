@@ -7,6 +7,7 @@
 // @public
 export interface DevServerMarker {
     address: string;
+    confirmed?: boolean;
     // (undocumented)
     pid: number;
 }

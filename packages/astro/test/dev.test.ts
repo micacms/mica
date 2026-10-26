@@ -485,7 +485,7 @@ describe("the dev server's marker, for the local editor's Preview", () => {
       const context = createContext(dir, createWatcher());
       context.config = { ...context.config!, server: { port: 4400 }, base: "/blog/" };
       await micaCollections(site).projects.loader.load(context);
-      assert.deepEqual(JSON.parse(await readFile(marker, "utf8")), { pid: process.pid, address: "http://localhost:4400/blog" });
+      assert.deepEqual(JSON.parse(await readFile(marker, "utf8")), { pid: process.pid, address: "http://localhost:4400/blog", confirmed: false });
       assert.equal(marker.startsWith(join(dir, "content")), false);
     } finally {
       await rm(marker, { force: true });
@@ -506,20 +506,21 @@ describe("the dev server's marker, for the local editor's Preview", () => {
     hook({ address: { port }, logger: { warn: () => {} } });
   };
 
-  it("gets the port that the server listens on from micaPreview(), before or after the loader", async () => {
+  it("gets the port that the server listens on from micaPreview(), before or after the loader, and only then is confirmed", async () => {
     const dir = await project();
     const marker = devServerMarkerPath(join(dir, "content"));
     const config = { server: { port: 4321 }, base: "/blog/" };
     try {
       resetState();
       announceDevServer(join(dir, "content"), config);
+      assert.deepEqual(JSON.parse(await readFile(marker, "utf8")), { pid: process.pid, address: "http://localhost:4321/blog", confirmed: false });
       serverStart(4322);
-      assert.deepEqual(JSON.parse(await readFile(marker, "utf8")), { pid: process.pid, address: "http://localhost:4322/blog" });
+      assert.deepEqual(JSON.parse(await readFile(marker, "utf8")), { pid: process.pid, address: "http://localhost:4322/blog", confirmed: true });
 
       resetState();
       serverStart(4323);
       announceDevServer(join(dir, "content"), config);
-      assert.deepEqual(JSON.parse(await readFile(marker, "utf8")), { pid: process.pid, address: "http://localhost:4323/blog" });
+      assert.deepEqual(JSON.parse(await readFile(marker, "utf8")), { pid: process.pid, address: "http://localhost:4323/blog", confirmed: true });
     } finally {
       resetState();
       await rm(marker, { force: true });
