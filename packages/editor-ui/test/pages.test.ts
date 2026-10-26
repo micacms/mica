@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { Schema } from "../src/api.js";
-import { documentAtPath, documentsAtPath, pageHref, pageOfOwner } from "../src/lib/pages.js";
+import { documentAtPath, documentsAtPath, pageHref, pageOfOwner, slugAddress } from "../src/lib/pages.js";
 
 const schema = {
   collections: [{ name: "news", page: "https://example.com/news/{slug}" }, { name: "team", page: null }],
@@ -72,5 +72,23 @@ describe("the document of a preview page", () => {
   it("gives null for a page without a document of its own", () => {
     assert.equal(documentAtPath("/news/2026/hello/", schema), null);
     assert.equal(documentAtPath("/sitemap.xml/x/", schema), null);
+  });
+});
+
+describe("the address around a slug field", () => {
+  const labels: Record<string, string> = { activity: "Activity", region: "Region" };
+  const labelOf = (name: string) => labels[name] ?? name;
+
+  it("is the text of the url before and after {slug}, with the other fields of the form", () => {
+    assert.deepEqual(slugAddress("/news/{slug}/", {}, labelOf), { before: "/news/", after: "/", missing: [] });
+    assert.deepEqual(slugAddress("/{activity}/{slug}", { activity: "hochtouren" }, labelOf), { before: "/hochtouren/", after: "", missing: [] });
+  });
+
+  it("names an empty field by its label, because the page has no address without it", () => {
+    assert.deepEqual(slugAddress("/{region}/{activity}/{slug}", { activity: "" }, labelOf), {
+      before: "/‹Region›/‹Activity›/",
+      after: "",
+      missing: ["Region", "Activity"],
+    });
   });
 });

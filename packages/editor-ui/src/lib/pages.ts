@@ -52,3 +52,29 @@ export function documentsAtPath(path: string, schema: Schema | null): DocumentAt
 export function documentAtPath(path: string, schema: Schema | null): DocumentAtPath | null {
   return documentsAtPath(path, schema)[0] ?? null;
 }
+
+/** The address around a slug field: the parts of a collection's `url` before and after `{slug}`. */
+export interface SlugAddress {
+  before: string;
+  after: string;
+  /** The labels of the fields of the address that are empty: the page has no address until they have a value. */
+  missing: string[];
+}
+
+/**
+ * The address around a slug field, from the collection's `url`, with the other
+ * names filled in from the form, as the editor types. An empty one shows the
+ * label of its field, such as ‹Activity›: the page has no address without it.
+ */
+export function slugAddress(url: string, values: Record<string, unknown>, labelOf: (name: string) => string): SlugAddress {
+  const missing: string[] = [];
+  const fill = (part: string) =>
+    part.replace(/\{([^}]*)\}/g, (_match, name: string) => {
+      const value = values[name];
+      if (typeof value === "string" && value !== "") return value;
+      missing.push(labelOf(name));
+      return `‹${labelOf(name)}›`;
+    });
+  const [before = "", after = ""] = url.split("{slug}");
+  return { before: fill(before), after: fill(after), missing };
+}
