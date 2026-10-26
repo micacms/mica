@@ -102,7 +102,7 @@ function unlock(): void {
     <!-- The address of the page: only the slug is typed here; the parts around it come from the url and from other fields. -->
     <div class="flex items-stretch">
       <span
-        class="inline-flex max-w-[55%] select-none items-center rounded-l-sm border border-r-0 border-line bg-canvas px-3 font-mono text-sm text-muted"
+        class="inline-flex max-w-[55%] select-none items-center rounded-l-sm border border-r-0 border-line bg-canvas px-3 font-mono text-[13px] text-muted"
         :title="before"
         aria-hidden="true"
       >
@@ -123,7 +123,7 @@ function unlock(): void {
       />
       <span
         v-if="after"
-        class="inline-flex select-none items-center rounded-r-sm border border-l-0 border-line bg-canvas px-3 font-mono text-sm text-muted"
+        class="inline-flex select-none items-center rounded-r-sm border border-l-0 border-line bg-canvas px-3 font-mono text-[13px] text-muted"
         aria-hidden="true"
       >
         {{ after }}
