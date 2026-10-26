@@ -140,6 +140,18 @@ export function publishSummary(edits: Edit[]): string {
  * a file that the comparison did not show goes as unseen, and the server
  * refuses it. Without `shown`, the change list's revisions go.
  */
+/**
+ * The revisions that the comparison of an edit gives `reviewedPaths`: its own
+ * when it loaded; none yet (undefined), so that the list's revisions count;
+ * an empty set after a failure, so that its files are refused as not seen.
+ */
+export function shownRevisions(
+  item: { loading: boolean; comparison: { revisions: Record<string, string | null> } | null } | undefined,
+): Record<string, string | null> | undefined {
+  if (!item || item.loading) return undefined;
+  return item.comparison?.revisions ?? {};
+}
+
 export function reviewedPaths(
   edits: Edit[],
   shown: (edit: Edit) => Record<string, string | null> | undefined = () => undefined,

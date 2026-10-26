@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { FileChange } from "../src/api.js";
-import { blockedEdits, problemsByEdit, publishSummary, reviewedPaths, toEdits as groupedEdits, withNeeds, withoutDependents } from "../src/lib/edits.js";
+import { blockedEdits, problemsByEdit, publishSummary, reviewedPaths, shownRevisions, toEdits as groupedEdits, withNeeds, withoutDependents } from "../src/lib/edits.js";
 
 /** The group of each file, as the server sends it with the change list. */
 function groupOf({ owner, path }: Omit<FileChange, "group">): string {
@@ -157,6 +157,17 @@ describe("toEdits", () => {
     ]);
     const shown = () => ({ "pages/a/index.json": "r1" });
     assert.deepEqual(reviewedPaths(edits, shown), { "pages/a/index.json": "r1", "pages/a/body.mdoc": "" });
+  });
+
+  it("takes the list's revisions while a comparison has not loaded, and refuses after a failed one (#353)", () => {
+    const owner = { kind: "entry", collection: "pages", slug: "a", label: "a" } as const;
+    const edits = toEdits([{ path: "pages/a/index.json", kind: "update", owner, revision: "r2" }]);
+    const send = (item: Parameters<typeof shownRevisions>[0]) => reviewedPaths(edits, () => shownRevisions(item));
+
+    assert.deepEqual(send(undefined), { "pages/a/index.json": "r2" });
+    assert.deepEqual(send({ loading: true, comparison: null }), { "pages/a/index.json": "r2" });
+    assert.deepEqual(send({ loading: false, comparison: { revisions: { "pages/a/index.json": "r1" } } }), { "pages/a/index.json": "r1" });
+    assert.deepEqual(send({ loading: false, comparison: null }), { "pages/a/index.json": "" });
   });
 
   it("keeps an edit with the new edits it needs, both ways", () => {
