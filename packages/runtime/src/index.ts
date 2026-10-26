@@ -150,6 +150,7 @@ export {
 } from "./workspace/tree.js";
 export type {
   ChangesResponse,
+  CompareManyResponse,
   EntryDetail,
   EntrySummary,
   MediaUsage,

@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "GET /api/admin/changes/compare with targets compares up to 25 documents in one request, with one status of the pending files, so that a large change set does not run git status for each document. A document that cannot be read fails alone.",
+      "type": "patch",
+      "packageName": "@micacms/runtime"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}
