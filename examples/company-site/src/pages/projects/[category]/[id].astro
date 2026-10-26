@@ -10,12 +10,12 @@ import { categoryLabel, getLabels, toPlainText } from "@/lib/content";
 
 /**
  * One page per published project, under its category. `entry.id` is the CMS
- * slug, so the URL the editor sees in the admin is exactly the URL that gets built.
+ * ID, so the URL the editor sees in the admin is exactly the URL that gets built.
  */
 export async function getStaticPaths() {
   const projects = await getCollection("projects");
   return projects.map((project) => ({
-    params: { category: project.data.category, slug: project.id },
+    params: { category: project.data.category, id: project.id },
     props: { project },
   }));
 }
@@ -28,7 +28,7 @@ const { project } = Astro.props;
 const { title, year, category, code, duration, tags, description, location, facts, gallery, team, sector, downloads } =
   project.data;
 
-// Relations are stored as slugs. `relatedAll` resolves them in the editor's
+// Relations are stored as IDs. `relatedAll` resolves them in the editor's
 // order, and a member that was deleted drops out instead of breaking the build.
 const members = await relatedAll("team", team);
 // A sector is reference data: an Astro collection from a file, which Mica does not edit.

@@ -18,14 +18,14 @@ export interface SchemaCollection {
   description: string | null;
   sortable: boolean;
   defaultSort: { field: string; direction: "asc" | "desc" } | null;
-  /** Null when no field of the collection can be its title or its URL. */
+  /** Null when no field of the collection can be its title or its ID. */
   titleField: string | null;
-  slugField: string | null;
+  idField: string | null;
   listedFields: string[];
   fields: Record<string, AnyField>;
-  /** The model's `url`, such as `/news/{slug}`, or null. */
+  /** The model's `url`, such as `/news/{id}`, or null. */
   url: string | null;
-  /** The page of an entry on the website, with the names of `url`, such as `{slug}`; null without `url` in the model or `MICA_SITE_URL`. */
+  /** The page of an entry on the website, with the names of `url`, such as `{id}`; null without `url` in the model or `MICA_SITE_URL`. */
   page: string | null;
   /** Why this build of Mica cannot edit it, or null. Set when the model uses a newer field kind. */
   readOnly: string | null;
@@ -83,8 +83,8 @@ export interface Schema {
 
 /** One entry in a collection's list. */
 export interface EntrySummary {
-  /** The entry's identity. There is no id: the slug is the path. */
-  slug: string;
+  /** The entry's identity: its ID, which is also the name of its folder. */
+  id: string;
   position: number;
   title: string;
   data: Record<string, unknown>;
@@ -92,14 +92,14 @@ export interface EntrySummary {
 
 export interface EntryDetail {
   collection: string;
-  slug: string;
+  id: string;
   title: string;
   data: Record<string, unknown>;
   /** The entry's folder, relative to the content root. */
   path: string;
   /**
    * The version the form was opened against, sent back with the save. `null` means a new entry,
-   * so two people who create the same slug get a conflict, not a silent loss.
+   * so two people who create the same ID get a conflict, not a silent loss.
    */
   revision: string | null;
 }

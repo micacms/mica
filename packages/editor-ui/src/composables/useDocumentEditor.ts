@@ -2,7 +2,7 @@
  * The form of an entry or of settings: load, edit, check, save. Saved is not
  * Published: a save joins the pending changes. The revision goes back with the
  * save, so a concurrent save gets a 409 instead of an overwrite
- * (`useSaveConflict`). The views keep only what differs, such as the URL of an
+ * (`useSaveConflict`). The views keep only what differs, such as the ID of an
  * entry and its delete.
  *
  * A saved document saves by itself: after a pause in typing, when the editor

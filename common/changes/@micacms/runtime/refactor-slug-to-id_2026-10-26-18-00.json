@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Breaking: the admin HTTP API names the entry's identity id: routes /collections/:collection/entries/:id, the fields id and idField, ids in the body of a reorder, id in the query of a comparison, and /collections/:collection/id for a new ID.",
+      "type": "minor",
+      "packageName": "@micacms/runtime"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

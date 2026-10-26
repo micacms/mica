@@ -32,7 +32,7 @@ const compareSchema = z.discriminatedUnion("kind", [
   z.object({
     kind: z.literal("entry"),
     collection: z.string().min(1),
-    slug: z.string().min(1),
+    id: z.string().min(1),
     from: z.string().min(1).optional(),
   }),
   z.object({ kind: z.literal("singleton"), name: z.string().min(1) }),
@@ -94,7 +94,7 @@ export function adminStagingRoutes(): Hono<Env> {
     const parsed = compareSchema.safeParse({
       kind: c.req.query("kind"),
       collection: c.req.query("collection"),
-      slug: c.req.query("slug"),
+      id: c.req.query("id"),
       from: c.req.query("from"),
       name: c.req.query("name"),
     });

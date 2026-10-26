@@ -1,13 +1,14 @@
 /**
  * Media uploads. Every upload is checked here for size and for its real content
  * type, read from the bytes. An upload is a file in the content repository; its
- * name is slugified and unique in its own directory. No whole file is held in
- * memory: an upload streams to disk, and a read is a stream or the file's head.
+ * name has lower-case letters, digits and hyphens, and is unique in its own
+ * directory. No whole file is held in memory: an upload streams to disk, and a
+ * read is a stream or the file's head.
  */
 
 import path from "node:path";
 
-import { acceptLabel, contentPath, ContentPathError, MEDIA_DIR, MEDIA_FILE_TYPES, mediaFileTypeOf, slugify, type MediaAccept } from "@micacms/core/internal";
+import { acceptLabel, contentPath, ContentPathError, MEDIA_DIR, MEDIA_FILE_TYPES, mediaFileTypeOf, toId, type MediaAccept } from "@micacms/core/internal";
 import { HEAD_BYTES, TooLargeError, type ContentFiles, type FileChange } from "../workspace/files.js";
 import { imageSize } from "image-size";
 
@@ -220,9 +221,9 @@ function uploadDirectory(directory: string): string {
   return clean;
 }
 
-/** A slugified filename: safe as a path segment and as part of a URL. */
+/** A file name of lower-case letters, digits and hyphens: safe as a path segment and as part of a URL. */
 function safeName(original: string, extension: string): string {
-  const stem = slugify(path.basename(original).replace(/\.[^.]*$/, "")).slice(0, 80);
+  const stem = toId(path.basename(original).replace(/\.[^.]*$/, "")).slice(0, 80);
   return `${stem || "upload"}.${extension}`;
 }
 

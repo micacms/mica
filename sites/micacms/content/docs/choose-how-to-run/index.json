@@ -1,6 +1,6 @@
 {
   "title": "Choose how to run Mica",
-  "slug": "choose-how-to-run",
+  "id": "choose-how-to-run",
   "section": "start",
   "summary": "Pick the local editor or the self-hosted editor in one minute, and see how they work together on one repository.",
   "readTime": 3

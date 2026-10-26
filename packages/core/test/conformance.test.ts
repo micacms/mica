@@ -60,7 +60,7 @@ describe("the content format fixtures", () => {
 
       for (const [name, def] of Object.entries(site.collections)) {
         for (const entry of await readCollection(source, def, name)) {
-          assertRoundTrip(content, def.fields, entryFolder(name, entry.slug), entry.data);
+          assertRoundTrip(content, def.fields, entryFolder(name, entry.id), entry.data);
         }
       }
       for (const [name, def] of Object.entries(site.singletons)) {
@@ -74,7 +74,7 @@ describe("the content format fixtures", () => {
     const content = join(FIXTURES, "basic/content");
     const { site } = readManifest(JSON.parse(readFileSync(join(FIXTURES, "basic/model.json"), "utf8")));
     const entries = await readCollection(fileSystemSource(content), site.collections["posts"]!, "posts");
-    assert.deepEqual(entries.map((entry) => entry.slug), ["second-post", "hello-world"]);
+    assert.deepEqual(entries.map((entry) => entry.id), ["second-post", "hello-world"]);
   });
 
   it("are in the specification as they are here", () => {

@@ -19,7 +19,7 @@ import {
   richText,
   serializeReferenceIndex,
   singleton,
-  slug,
+  id,
   text,
 } from "@micacms/core/internal";
 
@@ -30,13 +30,13 @@ const site = defineSite({
   collections: {
     team: collection({
       label: "Team",
-      fields: { name: text({ required: true }), slug: slug({ from: "name" }) },
+      fields: { name: text({ required: true }), id: id({ from: "name" }) },
     }),
     news: collection({
       label: "News",
       fields: {
         title: text({ required: true }),
-        slug: slug({ from: "title" }),
+        id: id({ from: "title" }),
         author: relation({ collection: "team" }),
         cover: media({ accept: "image" }),
         body: richText(),
@@ -63,8 +63,8 @@ const problems = (report: CheckReport, level: "error" | "warning") =>
 beforeEach(() => {
   root = mkdtempSync(path.join(tmpdir(), "mica-check-"));
   write(MANIFEST_PATH, createManifest(site, "test"));
-  write("team/anna/index.json", { name: "Anna", slug: "anna" });
-  write("news/hello/index.json", { title: "Hello", slug: "hello", author: "anna", cover: "media/cover.jpg" });
+  write("team/anna/index.json", { name: "Anna", id: "anna" });
+  write("news/hello/index.json", { title: "Hello", id: "hello", author: "anna", cover: "media/cover.jpg" });
   write("news/hello/media/cover.jpg", "jpeg");
   write("news/hello/body.mdoc", "Hello, **world**.\n");
   write("settings/index.json", { siteName: "Example" });
@@ -91,7 +91,7 @@ describe("mica check", () => {
   });
 
   it("reports invalid fields, missing media and dangling relations", async () => {
-    write("news/hello/index.json", { slug: "hello", author: "nobody", cover: "media/gone.jpg" });
+    write("news/hello/index.json", { id: "hello", author: "nobody", cover: "media/gone.jpg" });
     const errors = problems(await checkContent(root), "error");
     assert.ok(errors.some((line) => line.startsWith("news/hello/index.json: title")), errors.join("\n"));
     assert.ok(errors.some((line) => line.includes('there is no "nobody" in "team"')), errors.join("\n"));
@@ -100,14 +100,14 @@ describe("mica check", () => {
 
   it("checks a relation to a reference set against its index, and names a missing index (#280)", async () => {
     const withPlaces = defineSite({
-      collections: { tours: collection({ label: "Tours", fields: { title: text(), slug: slug(), summit: relation({ collection: "places" }) } }) },
+      collections: { tours: collection({ label: "Tours", fields: { title: text(), id: id(), summit: relation({ collection: "places" }) } }) },
       references: { places: referenceSet({ label: "Places", file: "src/data/places.json" }) },
     });
     rmSync(path.join(root, "news"), { recursive: true });
     rmSync(path.join(root, "team"), { recursive: true });
     rmSync(path.join(root, "settings"), { recursive: true });
     write(MANIFEST_PATH, createManifest(withPlaces, "test"));
-    write("tours/ridge/index.json", { title: "Ridge", slug: "ridge", summit: "eiger" });
+    write("tours/ridge/index.json", { title: "Ridge", id: "ridge", summit: "eiger" });
 
     assert.deepEqual(problems(await checkContent(root), "error"), [`${referenceIndexPath("places")}: Places has no index. Build the website, and commit the file.`]);
 
@@ -135,7 +135,7 @@ describe("mica check", () => {
       collections: {
         news: collection({
           label: "News",
-          fields: { title: text(), slug: slug({ from: "title" }), cover: media({ alt: "required" }) },
+          fields: { title: text(), id: id({ from: "title" }), cover: media({ alt: "required" }) },
         }),
       },
     });
@@ -143,19 +143,19 @@ describe("mica check", () => {
     rmSync(path.join(root, "team"), { recursive: true });
     rmSync(path.join(root, "settings"), { recursive: true });
     rmSync(path.join(root, "news/hello/body.mdoc"));
-    write("news/hello/index.json", { title: "Hello", slug: "hello", cover: { path: "media/cover.jpg", alt: "A cover" } });
+    write("news/hello/index.json", { title: "Hello", id: "hello", cover: { path: "media/cover.jpg", alt: "A cover" } });
     assert.deepEqual((await checkContent(root)).problems, []);
 
-    write("news/hello/index.json", { title: "Hello", slug: "hello", cover: { path: "media/gone.jpg", alt: null } });
+    write("news/hello/index.json", { title: "Hello", id: "hello", cover: { path: "media/gone.jpg", alt: null } });
     const errors = problems(await checkContent(root), "error");
     assert.ok(errors.some((line) => line.includes("cover.alt: cover needs alt text.")), errors.join("\n"));
     assert.ok(errors.some((line) => line.includes('"news/hello/media/gone.jpg" does not exist')), errors.join("\n"));
   });
 
-  it("warns about a slug field that does not match the entry's name, and accepts an empty one", async () => {
-    write("team/anna/index.json", { name: "Anna", slug: "anna-vogt" });
+  it("warns about an ID field that does not match the entry's name, and accepts an empty one", async () => {
+    write("team/anna/index.json", { name: "Anna", id: "anna-vogt" });
     assert.ok(problems(await checkContent(root), "warning").some((line) => line.includes('"anna-vogt", but the entry is named "anna"')));
-    write("team/anna/index.json", { name: "Anna", slug: null });
+    write("team/anna/index.json", { name: "Anna", id: null });
     assert.deepEqual((await checkContent(root)).problems, []);
   });
 
@@ -180,7 +180,7 @@ describe("mica check", () => {
   // A conversion from Markdown collections gets these wrong, and Mica skips them without a word.
   it("reports files that Mica would not read as entries", async () => {
     write("team/bob.md", "---\nname: Bob\n---\n");
-    write("news/Bad_Name/index.json", { title: "Bad", slug: "Bad_Name" });
+    write("news/Bad_Name/index.json", { title: "Bad", id: "Bad_Name" });
     write("news/empty/body.mdoc", "No index.\n");
     const report = await checkContent(root);
     assert.ok(problems(report, "warning").some((line) => line.startsWith("team/bob.md: Not read")));
@@ -191,7 +191,7 @@ describe("mica check", () => {
   it("warns about fields the model does not have and rich text in the JSON", async () => {
     write("news/hello/index.json", {
       title: "Hello",
-      slug: "hello",
+      id: "hello",
       tags: ["a"],
       body: "Text in the wrong place.",
       sections: [{ heading: "One", extra: true }],
@@ -203,7 +203,7 @@ describe("mica check", () => {
   });
 
   it("warns about a Markdoc file that no rich-text field reads, and accepts a nested one", async () => {
-    write("news/hello/index.json", { title: "Hello", slug: "hello", sections: [{ _key: "kone", heading: "One" }] });
+    write("news/hello/index.json", { title: "Hello", id: "hello", sections: [{ _key: "kone", heading: "One" }] });
     write("news/hello/content.mdoc", "Wrong name.\n");
     write("news/hello/sections.kone.text.mdoc", "Nested.\n");
     const warnings = problems(await checkContent(root), "warning");
@@ -211,7 +211,7 @@ describe("mica check", () => {
   });
 
   it("warns about a Markdoc file whose row key no row has (#220)", async () => {
-    write("news/hello/index.json", { title: "Hello", slug: "hello", sections: [{ _key: "kone", heading: "One" }] });
+    write("news/hello/index.json", { title: "Hello", id: "hello", sections: [{ _key: "kone", heading: "One" }] });
     write("news/hello/sections.kgone.text.mdoc", "Orphan.\n");
     const warnings = problems(await checkContent(root), "warning");
     assert.deepEqual(warnings, ["news/hello/sections.kgone.text.mdoc: Not read: the list has no such row. The next save in Mica deletes the file."]);
@@ -242,7 +242,7 @@ describe("mica check", () => {
     const manifest = createManifest(site, "test") as unknown as { collections: Record<string, { fields: Record<string, unknown> }> };
     manifest.collections["team"]!.fields["badge"] = { kind: "hologram" };
     write(MANIFEST_PATH, manifest);
-    write("news/hello/index.json", { slug: "hello" });
+    write("news/hello/index.json", { id: "hello" });
 
     const errors = problems(await checkContent(root), "error");
     assert.ok(errors.some((line) => line.startsWith(`${MANIFEST_PATH}: Not checked. "Team" uses "badge" (hologram)`)), errors.join("\n"));

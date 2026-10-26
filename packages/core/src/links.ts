@@ -14,7 +14,7 @@ import { isRecord, mapFields, walkFields } from "./walk.js";
  * content root; a `link` in rich text is one only when it names a content path.
  */
 export type DocumentLink =
-  | { kind: "relation"; field: string; collection: string; slug: string }
+  | { kind: "relation"; field: string; collection: string; id: string }
   | { kind: "media"; field: string; path: string }
   | { kind: "image"; field: string; target: string; path: string | null }
   | { kind: "link"; field: string; target: string; path: string };
@@ -31,7 +31,7 @@ export function documentLinks(fields: FieldMap, data: Record<string, unknown>, f
         // `media({ alt })` stores `{ path, alt }`.
         const target = field.kind === "media" && isRecord(item) ? item["path"] : item;
         if (typeof target !== "string" || target === "") return;
-        found.push(field.kind === "relation" ? { kind: "relation", field: name, collection: field.collection, slug: target } : { kind: "media", field: name, path: target });
+        found.push(field.kind === "relation" ? { kind: "relation", field: name, collection: field.collection, id: target } : { kind: "media", field: name, path: target });
       });
     } else if (field.kind === "richText" && typeof value === "string") {
       found.push(...richTextLinks(value, folder, here));
@@ -69,7 +69,7 @@ export function relinkReferences(
   to: string,
 ): Record<string, unknown> | null {
   let changed = false;
-  const swap = (slug: unknown) => (slug === from ? ((changed = true), to) : slug);
+  const swap = (id: unknown) => (id === from ? ((changed = true), to) : id);
   const result = mapFields(fields, data, (field, value) => {
     if (field.kind !== "relation" || field.collection !== collection) return value;
     return Array.isArray(value) ? value.map(swap) : swap(value);

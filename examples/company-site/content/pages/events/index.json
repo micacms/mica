@@ -1,6 +1,6 @@
 {
   "title": "Events",
-  "slug": "events",
+  "id": "events",
   "template": "events",
   "eyebrow": "Meet us",
   "intro": "Workshops and talks, in person and online.",

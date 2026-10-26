@@ -1,6 +1,6 @@
 {
   "title": "Preview changes",
-  "slug": "previews",
+  "id": "previews",
   "section": "edit",
   "summary": "How to see a change on the website: a link to its page, the live preview beside the editor, or a staging site.",
   "readTime": 3

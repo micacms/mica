@@ -1,7 +1,7 @@
 /**
  * Where an upload from a form goes: the entry's or the settings page's own
  * `media/` folder. Not provided outside a form, so the Media view uploads into
- * the shared `media/` folder. Null while a new entry has no URL yet.
+ * the shared `media/` folder. Null while a new entry has no ID yet.
  */
 
 import type { ComputedRef, InjectionKey } from "vue";

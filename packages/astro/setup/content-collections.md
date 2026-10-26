@@ -126,7 +126,7 @@ What cannot move as it is, with the options to propose:
   data to `renderRichText`, which finds the images and lets Astro optimize them.
 - Tables with aligned columns (`| :--- |`). The editor keeps them read-only.
   Remove the alignment, or keep the field read-only.
-- Ids with folders, or ids that are not slugs. They become flat slugs, so the
+- Ids with folders, or ids that are not valid IDs. They become flat IDs, so the
   URL can change. Options: keep the URL with Astro `redirects`, or accept the
   new URL.
 - Headings lose their `id` and code blocks lose their highlighting, unless the
@@ -156,7 +156,7 @@ Wait for the answer. Change the proposal until the user agrees.
 | `z.array(z.object({...}))` | `repeater({ fields })` |
 | `.optional()` | the field without `required: true` |
 | the Markdown body | `richText()`, usually named `body` |
-| the entry id | a `slug()` field |
+| the entry id | an `id()` field |
 
 Give the Mica collection the same name as the Astro collection, so that
 `getCollection("blog")` in the pages keeps working. The names must be
@@ -178,9 +178,9 @@ lowerCamelCase.
 `mica import` reads the copy of the data store from step 1, where Astro keeps
 every entry after its own loader and schema. Each field of the Mica model takes
 the value with the same name. The command converts it to the stored form: a
-date to `"YYYY-MM-DD"` in UTC, a reference to a slug, an `image()` path to a
+date to `"YYYY-MM-DD"` in UTC, a reference to an ID, an `image()` path to a
 copy in the entry's `media/` folder, and the Markdown body to the rich-text
-field `body`. It makes each slug from the entry id, and writes the files the
+field `body`. It makes each ID from the entry id, and writes the files the
 way the editor does.
 
 ```bash
@@ -197,7 +197,7 @@ npx mica import --from <temporary directory>/data-store-before.json \
 - Names after the options import only those collections.
 
 The command lists every key it did not import, every id that gives the same
-slug as another, and every image it did not find. Fix the model or add a
+ID as another, and every image it did not find. Fix the model or add a
 `--map`, delete the collection's directory in `content/`, and run it again.
 Then make the changes to the bodies that the user decided in step 3 directly
 in the `.mdoc` files, and run:
@@ -238,9 +238,9 @@ components, stylesheets and endpoints such as `rss.xml.js`. See
   `entry.data.cover.alt` in place of the old alt-text field, or spread it:
   `<Image {...entry.data.cover} />`. See
   [reference.md](./reference.md#images).
-- A reference was `{ collection, id }` and is now a slug:
+- A reference was `{ collection, id }` and is now an ID:
   `related("authors", entry.data.author)` from `@micacms/astro/relations`.
-- `entry.id` is the slug. If ids had folders, update the links, and add
+- `entry.id` is the ID. If ids had folders, update the links, and add
   `redirects` in `astro.config` if the user wants the old URLs to keep working.
 - A spread such as `{...post.data}` now also passes `_mica` and the new types.
   Pass the fields one by one.

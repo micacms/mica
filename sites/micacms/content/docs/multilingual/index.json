@@ -1,6 +1,6 @@
 {
   "title": "Several languages",
-  "slug": "multilingual",
+  "id": "multilingual",
   "section": "build",
   "summary": "Mica has no language setting. Two patterns give a site in several languages: one field per language, or one collection per language.",
   "readTime": 5

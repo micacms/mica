@@ -1,6 +1,6 @@
 {
   "title": "Content model",
-  "slug": "content-model",
+  "id": "content-model",
   "section": "build",
   "summary": "Define typed collections, singletons, validation, and the layout on disk.",
   "readTime": 10

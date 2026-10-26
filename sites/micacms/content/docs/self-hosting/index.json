@@ -1,6 +1,6 @@
 {
   "title": "Self-hosting",
-  "slug": "self-hosting",
+  "id": "self-hosting",
   "section": "operate",
   "summary": "Run one Mica container for editors: repository token, sign-in, who may edit, drafts, the site build, backups, upgrades, and troubleshooting.",
   "readTime": 20

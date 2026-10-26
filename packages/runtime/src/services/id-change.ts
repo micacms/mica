@@ -1,7 +1,7 @@
 /**
- * What a save does when an entry's URL changes: its files move to the new
+ * What a save does when an entry's ID changes: its files move to the new
  * folder, the order keeps its place, and on request the relations in other
- * documents follow the new URL. A new entry's uploads move in the same way.
+ * documents follow the new ID. A new entry's uploads move in the same way.
  */
 
 import {
@@ -35,13 +35,13 @@ export interface LinkingDocument {
   read: () => Promise<Record<string, unknown> | null>;
 }
 
-/** Entries and settings pages whose relations point at `collection`/`slug`. `readOnly` marks the ones this build cannot write. */
+/** Entries and settings pages whose relations point at `collection`/`id`. `readOnly` marks the ones this build cannot write. */
 export async function linkingDocuments(
   site: Site,
   files: ContentFiles,
   readOnly: ReadonlyMap<string, string>,
   collection: string,
-  slug: string,
+  id: string,
 ): Promise<LinkingDocument[]> {
   const found: LinkingDocument[] = [];
   await scanSite(
@@ -49,7 +49,7 @@ export async function linkingDocuments(
     files,
     ({ referrer, def, data, folder }) => {
       const points = documentLinks(def.fields, data, folder).some(
-        (link) => link.kind === "relation" && link.collection === collection && link.slug === slug,
+        (link) => link.kind === "relation" && link.collection === collection && link.id === id,
       );
       if (!points) return;
       const key = referrer.kind === "entry" ? `collections.${referrer.collection}` : `singletons.${referrer.name}`;
@@ -59,7 +59,7 @@ export async function linkingDocuments(
         folder,
         read: () =>
           referrer.kind === "entry"
-            ? readCollectionEntry(files, def as Collection, referrer.collection, referrer.slug)
+            ? readCollectionEntry(files, def as Collection, referrer.collection, referrer.id)
             : readSingleton(files, def as Singleton, referrer.name),
       });
     },
@@ -118,7 +118,7 @@ function linksTo(fields: FieldMap, collection: string): boolean {
 }
 
 /**
- * The order file with a renamed slug in its old place, so the entry does not
+ * The order file with a renamed ID in its old place, so the entry does not
  * drop to the end of the list.
  */
 export async function renameInOrder(files: ContentFiles, name: string, from: string, to: string): Promise<FileChange | null> {
@@ -135,7 +135,7 @@ export async function renameInOrder(files: ContentFiles, name: string, from: str
   }
   if (!Array.isArray(listed) || !listed.includes(from)) return null;
 
-  const order = listed.map((slug: unknown) => (slug === from ? to : slug));
+  const order = listed.map((id: unknown) => (id === from ? to : id));
   return { type: "write", path, contents: `${JSON.stringify(order, null, 2)}\n` };
 }
 
@@ -167,10 +167,10 @@ export async function moveFiles(
 }
 
 /**
- * Files that a new entry uses from `<collection>/<other slug>/media/`:
- * uploads made before the URL was final. Each gets a free name in the
+ * Files that a new entry uses from `<collection>/<other ID>/media/`:
+ * uploads made before the ID was final. Each gets a free name in the
  * entry's own `media/` folder. From a folder where no entry lives they move;
- * from another entry's folder (a colleague saved that URL first) they are
+ * from another entry's folder (a colleague saved that ID first) they are
  * copied, because that entry may use them too.
  */
 export async function stagedUploads(

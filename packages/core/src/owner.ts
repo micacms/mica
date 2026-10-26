@@ -2,12 +2,12 @@
 
 import { MEDIA_DIR } from "./layout.js";
 import { ORDER_FILE } from "./read.js";
-import { isValidSlug } from "./slugify.js";
+import { isValidId } from "./to-id.js";
 import type { Site } from "./types.js";
 
 /** The owner of a file, with a label in words an editor recognises. */
 export type PathOwner =
-  | { kind: "entry"; collection: string; slug: string; label: string }
+  | { kind: "entry"; collection: string; id: string; label: string }
   | { kind: "singleton"; name: string; label: string }
   | { kind: "order"; collection: string; label: string }
   | { kind: "media"; label: string }
@@ -24,8 +24,8 @@ export function ownerOfPath(model: Site, path: string): PathOwner {
       return { kind: "order", collection: head, label: `${collection.label}: order` };
     }
 
-    const slug = segments[1]!;
-    if (segments.length >= 3 && isValidSlug(slug)) return { kind: "entry", collection: head, slug, label: slug };
+    const id = segments[1]!;
+    if (segments.length >= 3 && isValidId(id)) return { kind: "entry", collection: head, id, label: id };
   }
 
   const singleton = Object.hasOwn(model.singletons, head) ? model.singletons[head] : undefined;

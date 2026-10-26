@@ -27,8 +27,8 @@ import { detectRenames, followRenamedLinks } from "./renames.js";
 
 /**
  * Where the change happened, in words an editor recognises: core's
- * `ownerOfPath`, and on an entry the slug before a pending rename, set on the
- * files of both slugs.
+ * `ownerOfPath`, and on an entry the ID before a pending rename, set on the
+ * files of both IDs.
  */
 export type ChangeOwner =
   | (Extract<PathOwner, { kind: "entry" }> & { renamedFrom?: string })
@@ -140,8 +140,8 @@ export interface ContentStagingService {
 
 /** What to compare on the Publish page. */
 export type CompareTarget =
-  /** `from` names the published slug of a renamed entry. */
-  | { kind: "entry"; collection: string; slug: string; from?: string }
+  /** `from` names the published ID of a renamed entry. */
+  | { kind: "entry"; collection: string; id: string; from?: string }
   | { kind: "singleton"; name: string }
   | { kind: "order"; collection: string };
 
@@ -200,28 +200,28 @@ export async function analyseChanges(
     }),
   );
 
-  const slugsToRead = new Map<string, Set<string>>();
+  const idsToRead = new Map<string, Set<string>>();
   for (const owner of owners) {
     if (owner.kind !== "entry") continue;
-    const slugs = slugsToRead.get(owner.collection) ?? new Set<string>();
-    slugsToRead.set(owner.collection, slugs);
-    slugs.add(owner.slug);
+    const ids = idsToRead.get(owner.collection) ?? new Set<string>();
+    idsToRead.set(owner.collection, ids);
+    ids.add(owner.id);
   }
   await Promise.all(
-    [...slugsToRead].flatMap(([name, slugs]) => {
+    [...idsToRead].flatMap(([name, ids]) => {
       const def = model.collections[name]!;
       const read = new Map<string, Record<string, unknown> | null>();
       entriesByCollection.set(name, read);
-      return [...slugs].map(async (slug) => {
+      return [...ids].map(async (id) => {
         try {
-          const data = await readCollectionEntry(source, def, name, slug);
-          read.set(slug, data);
-          if (data) titles.set(`${name}/${slug}`, entryTitle(def, data));
+          const data = await readCollectionEntry(source, def, name, id);
+          read.set(id, data);
+          if (data) titles.set(`${name}/${id}`, entryTitle(def, data));
         } catch (error) {
           // An unreadable entry is a problem at the path it names.
-          read.set(slug, null);
+          read.set(id, null);
           problems.push({
-            path: (error as { path?: string }).path ?? entryDataPath(name, slug),
+            path: (error as { path?: string }).path ?? entryDataPath(name, id),
             label: def.label,
             issues: [{ path: "", message: (error as Error).message }],
           });
@@ -249,7 +249,7 @@ export async function analyseChanges(
         return {
           ...change,
           ...extra,
-          owner: { ...owner, label: labelEntry(def, owner.slug, titles.get(`${owner.collection}/${owner.slug}`)) },
+          owner: { ...owner, label: labelEntry(def, owner.id, titles.get(`${owner.collection}/${owner.id}`)) },
           group,
         };
       }
@@ -270,27 +270,27 @@ export async function analyseChanges(
 
   for (const owner of owners) {
     if (owner.kind === "entry") {
-      const key = `${owner.collection}/${owner.slug}`;
+      const key = `${owner.collection}/${owner.id}`;
       if (validated.has(key)) continue;
       validated.add(key);
 
       const def = model.collections[owner.collection]!;
       // Absent means the change set deletes this entry.
-      const data = entriesByCollection.get(owner.collection)?.get(owner.slug);
+      const data = entriesByCollection.get(owner.collection)?.get(owner.id);
       if (!data) continue;
 
-      const entryData = entryDataPath(owner.collection, owner.slug);
+      const entryData = entryDataPath(owner.collection, owner.id);
       addNeeds(entryData, def.fields, data);
       if (published) {
-        const { collection, slug } = owner;
-        publishedOf.set(entryData, () => readCollectionEntry(published, def, collection, slug).catch(() => null));
+        const { collection, id } = owner;
+        publishedOf.set(entryData, () => readCollectionEntry(published, def, collection, id).catch(() => null));
       }
       const result = validateFields(def.fields, data);
       const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data, folderOf(entryData)))];
       if (issues.length > 0) {
         problems.push({
           path: entryData,
-          label: labelEntry(def, owner.slug, titles.get(key)),
+          label: labelEntry(def, owner.id, titles.get(key)),
           issues,
         });
       }
@@ -335,12 +335,12 @@ export async function analyseChanges(
 
 /**
  * Whether a file of `owner` can be part of the document that `target` compares.
- * A URL change can take its collection's order file along (`detectRenames`).
+ * An ID change can take its collection's order file along (`detectRenames`).
  */
 export function ownedByTarget(owner: ChangeOwner, target: CompareTarget): boolean {
   if (target.kind === "entry") {
     if (owner.kind === "order") return target.from !== undefined && owner.collection === target.collection;
-    return owner.kind === "entry" && owner.collection === target.collection && (owner.slug === target.slug || owner.slug === target.from);
+    return owner.kind === "entry" && owner.collection === target.collection && (owner.id === target.id || owner.id === target.from);
   }
   if (target.kind === "singleton") return owner.kind === "singleton" && owner.name === target.name;
   return owner.kind === "order" && owner.collection === target.collection;
@@ -352,7 +352,7 @@ export function ownedByTarget(owner: ChangeOwner, target: CompareTarget): boolea
  * sync conflict use the same keys.
  */
 export function groupOf(owner: ChangeOwner, path: string): string {
-  if (owner.kind === "entry") return `entry:${owner.collection}/${owner.slug}`;
+  if (owner.kind === "entry") return `entry:${owner.collection}/${owner.id}`;
   if (owner.kind === "singleton") return `singleton:${owner.name}`;
   if (owner.kind === "order") return `order:${owner.collection}`;
   return `file:${path}`;

@@ -3,20 +3,20 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { collection, defineSite, media, memorySource, relation, repeater, richText, singleton, slug, text, type ContentChange } from "@micacms/core/internal";
+import { collection, defineSite, media, memorySource, relation, repeater, richText, singleton, id, text, type ContentChange } from "@micacms/core/internal";
 
 import { analyseChanges } from "../src/services/changes.js";
 import { overlaySource } from "../src/workspace/tree.js";
 
 const model = defineSite({
   collections: {
-    team: collection({ label: "Team", labelSingular: "Person", fields: { name: text(), slug: slug({ from: "name" }) } }),
+    team: collection({ label: "Team", labelSingular: "Person", fields: { name: text(), id: id({ from: "name" }) } }),
     news: collection({
       label: "News",
       labelSingular: "Article",
       fields: {
         title: text(),
-        slug: slug({ from: "title" }),
+        id: id({ from: "title" }),
         author: relation({ collection: "team" }),
         cover: media(),
         body: richText(),
@@ -27,8 +27,8 @@ const model = defineSite({
 });
 
 const files = {
-  "team/anna/index.json": JSON.stringify({ name: "Anna", slug: "anna" }),
-  "news/hello/index.json": JSON.stringify({ title: "Hello", slug: "hello", author: "anna", cover: "/media/logo.png", sections: [] }),
+  "team/anna/index.json": JSON.stringify({ name: "Anna", id: "anna" }),
+  "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", author: "anna", cover: "/media/logo.png", sections: [] }),
   "media/logo.png": "png",
 };
 
@@ -44,9 +44,9 @@ describe("references at Publish", () => {
   it("names the new pending files that a changed entry needs, so that they publish together", async () => {
     const source = memorySource({
       ...files,
-      "team/ben/index.json": JSON.stringify({ name: "Ben", slug: "ben" }),
+      "team/ben/index.json": JSON.stringify({ name: "Ben", id: "ben" }),
       "media/new.png": "png",
-      "news/hello/index.json": JSON.stringify({ title: "Hello", slug: "hello", author: "ben", cover: "/media/new.png", sections: [{ contact: "anna" }] }),
+      "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", author: "ben", cover: "/media/new.png", sections: [{ contact: "anna" }] }),
     });
     const result = await analyseChanges(model, source, [
       update("news/hello/index.json"),
@@ -70,12 +70,12 @@ describe("references at Publish", () => {
     assert.deepEqual(messages(result), ['Article: Hello: body: The image "media/gone.jpg" does not exist.']);
   });
 
-  it("publishes a URL change together with the links that follow it, both ways", async () => {
+  it("publishes an ID change together with the links that follow it, both ways", async () => {
     const { "team/anna/index.json": _old, ...rest } = files;
     const source = memorySource({
       ...rest,
-      "team/anna-meier/index.json": JSON.stringify({ name: "Anna", slug: "anna-meier" }),
-      "news/hello/index.json": JSON.stringify({ title: "Hello", slug: "hello", author: "anna-meier", cover: "/media/logo.png", sections: [] }),
+      "team/anna-meier/index.json": JSON.stringify({ name: "Anna", id: "anna-meier" }),
+      "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", author: "anna-meier", cover: "/media/logo.png", sections: [] }),
     });
     const result = await analyseChanges(
       model,
@@ -88,12 +88,12 @@ describe("references at Publish", () => {
     assert.deepEqual(byPath.get("team/anna-meier/index.json"), ["news/hello/index.json"]);
   });
 
-  it("does not hold a URL change back for a new draft that links to the new URL", async () => {
+  it("does not hold an ID change back for a new draft that links to the new ID", async () => {
     const { "team/anna/index.json": _old, ...rest } = files;
     const source = memorySource({
       ...rest,
-      "team/anna-meier/index.json": JSON.stringify({ name: "Anna", slug: "anna-meier" }),
-      "news/draft/index.json": JSON.stringify({ title: "Draft", slug: "draft", author: "anna-meier", sections: [] }),
+      "team/anna-meier/index.json": JSON.stringify({ name: "Anna", id: "anna-meier" }),
+      "news/draft/index.json": JSON.stringify({ title: "Draft", id: "draft", author: "anna-meier", sections: [] }),
     });
     const result = await analyseChanges(
       model,
@@ -116,7 +116,7 @@ describe("references at Publish", () => {
       ...files,
       "news/hello/index.json": JSON.stringify({
         title: "Hello",
-        slug: "hello",
+        id: "hello",
         author: "nobody",
         cover: "media/gone.jpg",
         sections: [{ contact: "carla" }],
@@ -164,7 +164,7 @@ describe("references at Publish", () => {
     const { "media/logo.png": _logo, ...rest } = files;
     const source = memorySource({
       ...rest,
-      "news/hello/index.json": JSON.stringify({ title: "Hello", slug: "hello", author: "anna", sections: [] }),
+      "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", author: "anna", sections: [] }),
       "news/hello/body.mdoc": "Download the [price list](../../media/prices.pdf).\n",
     });
     const result = await analyseChanges(model, source, [remove("media/prices.pdf")]);
@@ -175,8 +175,8 @@ describe("references at Publish", () => {
 
   it("refuses to delete an entry whose media another entry still shows (#224)", async () => {
     const source = memorySource({
-      "team/anna/index.json": JSON.stringify({ name: "Anna", slug: "anna" }),
-      "news/hello/index.json": JSON.stringify({ title: "Hello", slug: "hello", cover: "/team/gone/media/photo.jpg", sections: [] }),
+      "team/anna/index.json": JSON.stringify({ name: "Anna", id: "anna" }),
+      "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", cover: "/team/gone/media/photo.jpg", sections: [] }),
     });
     const result = await analyseChanges(model, source, [remove("team/gone/index.json"), remove("team/gone/media/photo.jpg")]);
     assert.deepEqual(messages(result), [
@@ -197,8 +197,8 @@ describe("references in a selection", () => {
     const head = memorySource(files);
     const tree = memorySource({
       ...files,
-      "team/bob/index.json": JSON.stringify({ name: "Bob", slug: "bob" }),
-      "news/hello/index.json": JSON.stringify({ title: "Hello", slug: "hello", author: "bob", sections: [] }),
+      "team/bob/index.json": JSON.stringify({ name: "Bob", id: "bob" }),
+      "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", author: "bob", sections: [] }),
     });
     const selected = ["news/hello/index.json"];
     const result = await analyseChanges(model, overlaySource(head, tree, selected), [update(selected[0]!)]);
@@ -209,10 +209,10 @@ describe("references in a selection", () => {
     assert.deepEqual(messages(together), []);
   });
 
-  it("refuses a URL change while other entries link to the old URL", async () => {
+  it("refuses an ID change while other entries link to the old ID", async () => {
     const published = memorySource(files);
     const { "team/anna/index.json": _old, ...rest } = files;
-    const staged = memorySource({ ...rest, "team/anna-vogt/index.json": JSON.stringify({ name: "Anna", slug: "anna-vogt" }) });
+    const staged = memorySource({ ...rest, "team/anna-vogt/index.json": JSON.stringify({ name: "Anna", id: "anna-vogt" }) });
     const result = await analyseChanges(
       model,
       staged,
@@ -220,7 +220,7 @@ describe("references in a selection", () => {
       published,
     );
     assert.deepEqual(messages(result), [
-      'Person: anna: The URL changes from "anna" to "anna-vogt", and Article: Hello still link to "anna". Change those links first, or publish them together.',
+      'Person: anna: The ID changes from "anna" to "anna-vogt", and Article: Hello still link to "anna". Change those links first, or publish them together.',
     ]);
   });
 });
@@ -240,7 +240,7 @@ describe("overlaySource", () => {
 });
 
 describe("a settings page in a folder", () => {
-  it("is tied to the URL change that its links follow, by its data file", async () => {
+  it("is tied to the ID change that its links follow, by its data file", async () => {
     const site = defineSite({
       collections: model.collections,
       singletons: { about: singleton({ label: "About", fields: { intro: richText(), owner: relation({ collection: "team" }) } }) },
@@ -249,7 +249,7 @@ describe("a settings page in a folder", () => {
     const { "team/anna/index.json": _old, ...rest } = files;
     const source = memorySource({
       ...rest,
-      "team/anna-meier/index.json": JSON.stringify({ name: "Anna", slug: "anna-meier" }),
+      "team/anna-meier/index.json": JSON.stringify({ name: "Anna", id: "anna-meier" }),
       "about/index.json": JSON.stringify({ owner: "anna-meier" }),
     });
     const result = await analyseChanges(

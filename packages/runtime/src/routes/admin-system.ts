@@ -5,7 +5,7 @@
 
 import { Hono } from "hono";
 
-import { listedFields, readReferenceIndex, resolveSlugField, resolveTitleField } from "@micacms/core/internal";
+import { listedFields, readReferenceIndex, resolveIdField, resolveTitleField } from "@micacms/core/internal";
 
 import type { Env } from "../http.js";
 import { ApiError } from "../lib/errors.js";
@@ -47,7 +47,7 @@ export function adminSystemRoutes(): Hono<Env> {
 
   app.get("/schema", (c) => {
     const { site, config } = c.get("ctx");
-    /** The full address of a page, with the names of a collection's `url`, such as `{slug}`; null without both parts. */
+    /** The full address of a page, with the names of a collection's `url`, such as `{id}`; null without both parts. */
     const page = (url: string | undefined) => (url && config.MICA_SITE_URL ? `${config.MICA_SITE_URL}${url}` : null);
 
     return c.json({
@@ -60,7 +60,7 @@ export function adminSystemRoutes(): Hono<Env> {
         sortable: def.sortable ?? false,
         defaultSort: def.defaultSort ?? null,
         titleField: resolveTitleField(def) ?? null,
-        slugField: resolveSlugField(def) ?? null,
+        idField: resolveIdField(def) ?? null,
         listedFields: listedFields(def),
         fields: def.fields,
         url: def.url ?? null,

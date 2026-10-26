@@ -20,7 +20,7 @@ change to `src/mica.ts`, run `npx astro sync` before `npx mica check`.
 `src/mica.ts` exports one `defineSite(...)`:
 
 ```ts
-import { collection, defineSite, singleton, slug, text } from "@micacms/core";
+import { collection, defineSite, singleton, id, text } from "@micacms/core";
 
 export const site = defineSite({
   root: "./content",
@@ -28,7 +28,7 @@ export const site = defineSite({
     news: collection({
       label: "News",
       labelSingular: "Article",
-      fields: { title: text({ required: true }), slug: slug({ from: "title" }) },
+      fields: { title: text({ required: true }), id: id({ label: "ID", from: "title" }) },
     }),
   },
   singletons: {
@@ -42,22 +42,22 @@ Rules that `defineSite` enforces:
 - Collection, singleton and field names are lowerCamelCase and start with a
   letter: `news`, `teamMembers`, `publishedOn`. Not `team-members`.
 - A name is a collection or a singleton, not both.
-- Every collection has one `slug()` field among its own fields. Its value is
-  the name of the entry's file or folder, and the entry's address on the
-  website. A second one there stops the build; a slug in an object (such as one
+- Every collection has one `id()` field among its own fields. Its value is
+  the entry's ID: the name of its folder, and `{id}` in the collection's
+  `url`. A second one there stops the build; an ID in an object (such as one
   per language) is fine and can be empty.
 - A `relation()` names a collection of the same model.
 - A `select()` has at least one option.
 
 Collection options: `label` (required), `labelSingular`, `description`,
 `titleField` (the field the editor shows as the entry's title; default
-`title`, else the first `text()` field), `slugField`, `sortable` (editors can
+`title`, else the first `text()` field), `idField`, `sortable` (editors can
 order the entries by hand), `defaultSort: { field, direction }` (a field
 name or `"position"`) and `url` (the page of an entry on the website, such as
-`/news/{slug}`, or `/{activity}/{slug}` with the value of a select, relation
+`/news/{id}`, or `/{activity}/{id}` with the value of a select, relation
 or date field of the entry as a whole part of the path; with `MICA_SITE_URL`,
 the editor links to it). Without `defaultSort`, the editor lists the entries by
-position: the manual order, or the slugs in alphabetical order before anybody
+position: the manual order, or the IDs in alphabetical order before anybody
 ordered them. Singleton options: `label`, `description`, `fields`, `url`
 (such as `/about`).
 
@@ -86,11 +86,11 @@ in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
 | `date()` | `"YYYY-MM-DD"`, or an ISO timestamp with `includeTime: true` | `includeTime`, `min`, `max`, `default` |
 | `email()` | string | `placeholder`, `default` |
 | `url()` | string | `placeholder`, `default` |
-| `slug()` | string | `from` (the field to make it from), `maxLength` |
+| `id()` | string | `from` (the field to make it from), `maxLength` |
 | `select()` | string, or string[] with `multiple` | `options: [{ label, value }]` (required), `multiple`, `default` |
 | `object()` | object | `fields` (required), `collapsible`, `collapsed` |
 | `repeater()` | array of objects | `fields` (required), `min`, `max`, `itemLabel`, `addLabel` |
-| `relation()` | the slug of an entry | `collection` (required), `multiple` |
+| `relation()` | the ID of an entry | `collection` (required), `multiple` |
 | `media()` | a file path, or `{ path, alt }` with `alt` | `accept: "image" \| "document" \| "any"`, `multiple`, `max`, `alt: "required" \| "optional"` |
 | `color()` | `"#rrggbb"` | `presets`, `default` |
 | `coordinates()` | `{ "lat": 47.37, "lng": 8.54 }` | `map`: a map in the editor to pick the place. `"liberty"`, `"bright"` or `"positron"` (OpenFreeMap styles), or `{ style, hosts }` with `https` addresses. Without `map`, there is no map |
@@ -108,7 +108,7 @@ content/
 ├── .mica/schema.json            the model; written by `astro sync`, commit it
 ├── news/                        a collection: a folder per entry
 │   ├── _order.json              optional: the manual order of a sortable collection
-│   └── hello-world/             the folder name is the slug
+│   └── hello-world/             the folder name is the ID
 │       ├── index.json           all fields except rich text
 │       ├── body.mdoc            one file per rich-text field, named after it
 │       └── media/cover.jpg      the entry's own files
@@ -117,8 +117,8 @@ content/
 └── media/                       shared media, such as a logo
 ```
 
-- A slug has lowercase letters, digits and single hyphens: `hello-world`. The
-  slug field in the JSON has the same value as the folder or file name. Where
+- An ID has lowercase letters, digits and single hyphens: `hello-world`. The
+  ID field in the JSON has the same value as the folder or file name. Where
   they differ, Mica uses the name.
 - A media path in the JSON is relative to the entry's folder (`media/cover.jpg`),
   or starts with `/` and is relative to the content root (`/shared/logo.png`).
@@ -155,9 +155,9 @@ async function write(folder, fields, data) {
   }
 }
 
-// An entry: `content/<collection>/<slug>/index.json`, and a `.mdoc` file for each rich-text field.
-export async function writeEntry(collection, slug, data) {
-  await write(entryFolder(collection, slug), model.collections[collection].fields, data);
+// An entry: `content/<collection>/<id>/index.json`, and a `.mdoc` file for each rich-text field.
+export async function writeEntry(collection, id, data) {
+  await write(entryFolder(collection, id), model.collections[collection].fields, data);
 }
 
 // A singleton: `content/<name>/index.json`.
@@ -165,16 +165,16 @@ export async function writeSingleton(name, data) {
   await write(entryFolder(name), model.singletons[name].fields, data);
 }
 
-// The manual order of a sortable collection. Slugs that it does not name come after.
-export async function writeOrder(collection, slugs) {
-  await writeFile(join(ROOT, collection, "_order.json"), `${JSON.stringify(slugs, null, 2)}\n`);
+// The manual order of a sortable collection. IDs that it does not name come after.
+export async function writeOrder(collection, ids) {
+  await writeFile(join(ROOT, collection, "_order.json"), `${JSON.stringify(ids, null, 2)}\n`);
 }
 
 // Example: `data` has every field, rich text as a Markdoc string, and media as
 // `media/<file>`, or `{ path, alt }` for a `media({ alt })` field.
 // await writeEntry("news", "hello-world", {
 //   title: "Hello, world",
-//   slug: "hello-world",
+//   id: "hello-world",
 //   publishedOn: "2026-01-15",
 //   cover: { path: "media/cover.jpg", alt: "The team at the opening" },
 //   body: "The first article.",
@@ -187,7 +187,7 @@ has none. If the script writes an entry a second time, keep the keys: read the
 Otherwise the old `.mdoc` files of those rows stay behind.
 
 The script does not copy media files. Copy each file to
-`content/<collection>/<slug>/media/<file>` yourself. Delete the script when the
+`content/<collection>/<id>/media/<file>` yourself. Delete the script when the
 content is written, unless the user wants to keep it.
 
 ## Render the content in Astro
@@ -197,14 +197,14 @@ singleton. Pages use the normal Astro API.
 
 ```astro
 ---
-// src/pages/news/[slug].astro
+// src/pages/news/[id].astro
 import { getCollection } from "astro:content";
 import { getSingleton, renderRichText } from "@micacms/astro";
 import { site } from "../../mica";
 
 export async function getStaticPaths() {
   const news = await getCollection("news");
-  return news.map((article) => ({ params: { slug: article.id }, props: { article } }));
+  return news.map((article) => ({ params: { id: article.id }, props: { article } }));
 }
 
 const { article } = Astro.props;
@@ -216,7 +216,7 @@ const body = await renderRichText(article.data.body, article.data);
 <footer>{settings.siteName}</footer>
 ```
 
-- `entry.id` is the slug.
+- `entry.id` is the ID.
 - A singleton is a collection with one entry. Its id is the singleton's name.
   `getSingleton(site, "settings")` returns its data with its type, and fails the
   build while it has no content.
@@ -226,7 +226,7 @@ const body = await renderRichText(article.data.body, article.data);
 - A date is a `"YYYY-MM-DD"` string. `new Date()` reads it as UTC midnight,
   so format it in UTC, or it shows the day before west of UTC:
   `new Date(value).toLocaleDateString("en-GB", { timeZone: "UTC" })`.
-- A relation is a slug. `related` from `@micacms/astro/relations` returns the
+- A relation is an ID. `related` from `@micacms/astro/relations` returns the
   entry, typed, and leaves out a missing one with a warning in `astro dev`:
   `await related("team", article.data.author)`. `relatedAll` does the same for
   a list.

@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, describe, it } from "node:test";
 
-import { collection, defineSite, singleton, slug, text } from "@micacms/core/internal";
+import { collection, defineSite, singleton, id, text } from "@micacms/core/internal";
 import {
   ApiError,
   contentFiles,
@@ -39,7 +39,7 @@ const model = defineSite({
       label: "Projects",
       fields: {
         title: text({ label: "Title", required: true }),
-        slug: slug({ from: "title" }),
+        id: id({ from: "title" }),
       },
     }),
   },
@@ -85,7 +85,7 @@ function makeRepo(
   mkdirSync(join(contentRoot, "projects"), { recursive: true });
   writeFileSync(
     join(contentRoot, "projects/haus-a/index.json"),
-    JSON.stringify({ title: "Haus A", slug: "haus-a" }, null, 2),
+    JSON.stringify({ title: "Haus A", id: "haus-a" }, null, 2),
   );
   git(root, "add", "-A");
   git(root, "commit", "-q", "-m", "init");
@@ -107,7 +107,7 @@ describe("a read-only collection", () => {
   // Mica never publishes what this build cannot interpret, even a change made outside the editor.
   it("turns its pending changes into problems that block Publish", async () => {
     const { contentRoot, service } = makeRepo({ readOnly: new Map([["collections.projects", "Upgrade Mica to edit it."]]) });
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), JSON.stringify({ title: "Haus A, changed", slug: "haus-a" }));
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), JSON.stringify({ title: "Haus A, changed", id: "haus-a" }));
 
     const status = await service.status();
     assert.equal(status.validation.ok, false);
@@ -149,11 +149,11 @@ describe("status", () => {
 
     writeFileSync(
       join(contentRoot, "projects/haus-a/index.json"),
-      JSON.stringify({ title: "Haus A, renovated", slug: "haus-a" }),
+      JSON.stringify({ title: "Haus A, renovated", id: "haus-a" }),
     );
     writeFileSync(
       join(contentRoot, "projects/haus-b/index.json"),
-      JSON.stringify({ title: "Haus B", slug: "haus-b" }),
+      JSON.stringify({ title: "Haus B", id: "haus-b" }),
     );
     // Build output is not the editor's.
     mkdirSync(join(contentRoot, ".mica"), { recursive: true });
@@ -185,12 +185,12 @@ describe("status", () => {
     assert.equal(byPath.get("projects/haus-a/index.json"), "delete");
   });
 
-  it("a URL change reads as one renamed entry", async () => {
+  it("an ID change reads as one renamed entry", async () => {
     const { contentRoot, service } = makeRepo();
     unlinkSync(join(contentRoot, "projects/haus-a/index.json"));
     writeFileSync(
       join(contentRoot, "projects/haus-z/index.json"),
-      JSON.stringify({ title: "Haus A", slug: "haus-z" }, null, 2),
+      JSON.stringify({ title: "Haus A", id: "haus-z" }, null, 2),
     );
 
     const status = await service.status();
@@ -198,7 +198,7 @@ describe("status", () => {
       assert.deepEqual(change.owner, {
         kind: "entry",
         collection: "projects",
-        slug: "haus-z",
+        id: "haus-z",
         label: "Projects: Haus A",
         renamedFrom: "haus-a",
       });
@@ -207,16 +207,16 @@ describe("status", () => {
     const { before, after } = await service.compare({
       kind: "entry",
       collection: "projects",
-      slug: "haus-z",
+      id: "haus-z",
       from: "haus-a",
     });
-    assert.deepEqual(before, { title: "Haus A", slug: "haus-a" });
-    assert.deepEqual(after, { title: "Haus A", slug: "haus-z" });
+    assert.deepEqual(before, { title: "Haus A", id: "haus-a" });
+    assert.deepEqual(after, { title: "Haus A", id: "haus-z" });
   });
 
   it("an order file changed only by the rename belongs to the renamed entry", async () => {
     const { root, contentRoot, service } = makeRepo();
-    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), JSON.stringify({ title: "Haus B", slug: "haus-b" }));
+    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), JSON.stringify({ title: "Haus B", id: "haus-b" }));
     writeFileSync(join(contentRoot, "projects/_order.json"), JSON.stringify(["haus-b", "haus-a"]));
     git(root, "add", "-A");
     git(root, "commit", "-q", "-m", "order");
@@ -224,7 +224,7 @@ describe("status", () => {
     unlinkSync(join(contentRoot, "projects/haus-a/index.json"));
     writeFileSync(
       join(contentRoot, "projects/haus-z/index.json"),
-      JSON.stringify({ title: "Haus A", slug: "haus-z" }, null, 2),
+      JSON.stringify({ title: "Haus A", id: "haus-z" }, null, 2),
     );
     writeFileSync(join(contentRoot, "projects/_order.json"), JSON.stringify(["haus-b", "haus-z"]));
 
@@ -233,7 +233,7 @@ describe("status", () => {
     assert.deepEqual(order?.owner, {
       kind: "entry",
       collection: "projects",
-      slug: "haus-z",
+      id: "haus-z",
       label: "Projects: Haus A",
       renamedFrom: "haus-a",
     });
@@ -244,14 +244,14 @@ describe("status", () => {
     unlinkSync(join(contentRoot, "projects/haus-a/index.json"));
     writeFileSync(
       join(contentRoot, "projects/haus-b/index.json"),
-      JSON.stringify({ title: "Haus B", slug: "haus-b" }, null, 2),
+      JSON.stringify({ title: "Haus B", id: "haus-b" }, null, 2),
     );
 
     const status = await service.status();
-    const bySlug = new Map(status.changes.map((change) => [change.path, change.owner]));
+    const byId = new Map(status.changes.map((change) => [change.path, change.owner]));
     assert.deepEqual(
-      [bySlug.get("projects/haus-a/index.json"), bySlug.get("projects/haus-b/index.json")].map(
-        (owner) => owner?.kind === "entry" && [owner.slug, owner.renamedFrom],
+      [byId.get("projects/haus-a/index.json"), byId.get("projects/haus-b/index.json")].map(
+        (owner) => owner?.kind === "entry" && [owner.id, owner.renamedFrom],
       ),
       [
         ["haus-a", undefined],
@@ -262,7 +262,7 @@ describe("status", () => {
 
   it("says when each change was saved; a deletion has no time", async () => {
     const { contentRoot, service } = makeRepo();
-    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), '{"title":"Haus B","slug":"haus-b"}');
+    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), '{"title":"Haus B","id":"haus-b"}');
     unlinkSync(join(contentRoot, "projects/haus-a/index.json"));
 
     const byPath = new Map((await service.status()).changes.map((change) => [change.path, change]));
@@ -282,7 +282,7 @@ describe("status", () => {
     const { contentRoot, service } = makeRepo();
     writeFileSync(
       join(contentRoot, "projects/haus-b/index.json"),
-      JSON.stringify({ title: "", slug: "haus-b" }),
+      JSON.stringify({ title: "", id: "haus-b" }),
     );
 
     const status = await service.status();
@@ -300,9 +300,9 @@ async function reviewed(service: ContentStagingService): Promise<Record<string, 
 describe("publish", () => {
   it("refuses a file that was saved again after the review", async () => {
     const { contentRoot, service } = makeRepo();
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Reviewed","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Reviewed","id":"haus-a"}');
     const paths = await reviewed(service);
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Saved again","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Saved again","id":"haus-a"}');
 
     await assert.rejects(
       service.publish({ message: "Publish", paths }),
@@ -312,10 +312,10 @@ describe("publish", () => {
 
   it("publishes the reviewed entry and leaves another entry's later draft alone", async () => {
     const { root, contentRoot, service } = makeRepo();
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Reviewed","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Reviewed","id":"haus-a"}');
     const paths = await reviewed(service);
     // Another editor's save after the review.
-    writeFileSync(join(contentRoot, "projects/haus-c/index.json"), '{"title":"Haus C","slug":"haus-c"}');
+    writeFileSync(join(contentRoot, "projects/haus-c/index.json"), '{"title":"Haus C","id":"haus-c"}');
 
     await service.publish({ message: "Publish A", paths });
 
@@ -331,7 +331,7 @@ describe("publish", () => {
 
     writeFileSync(
       join(contentRoot, "projects/haus-a/index.json"),
-      JSON.stringify({ title: "Haus A, renovated", slug: "haus-a" }),
+      JSON.stringify({ title: "Haus A, renovated", id: "haus-a" }),
     );
 
     // Unrelated developer work, some of it staged, must stay out of the commit.
@@ -357,12 +357,12 @@ describe("publish", () => {
     assert.deepEqual(status.changes, []);
   });
 
-  it("a published URL change is a rename in Git, so the history follows the file", async () => {
+  it("a published ID change is a rename in Git, so the history follows the file", async () => {
     const { root, contentRoot, service } = makeRepo();
     unlinkSync(join(contentRoot, "projects/haus-a/index.json"));
     writeFileSync(
       join(contentRoot, "projects/haus-z/index.json"),
-      JSON.stringify({ title: "Haus A", slug: "haus-z" }, null, 2),
+      JSON.stringify({ title: "Haus A", id: "haus-z" }, null, 2),
     );
 
     await service.publish({ message: "Move Haus A", paths: await reviewed(service) });
@@ -376,7 +376,7 @@ describe("publish", () => {
 
   it("push retries the push and never creates a second commit", async () => {
     const { root, contentRoot, service } = makeRepo();
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Once","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Once","id":"haus-a"}');
 
     const first = await service.publish({ message: "Once", paths: await reviewed(service) });
     assert.equal(first.state, "committed-pending-push");
@@ -404,7 +404,7 @@ describe("publish", () => {
     git(root, "remote", "add", "origin", bare);
     git(root, "push", "-q", "-u", "origin", "main");
 
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Live","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Live","id":"haus-a"}');
 
     const result = await service.publish({ message: "Go live", paths: await reviewed(service) });
     assert.equal(result.state, "published");
@@ -419,7 +419,7 @@ describe("publish", () => {
     git(root, "push", "-q", "-u", "origin", "main");
     git(root, "switch", "-q", "-c", "feature/mica");
 
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"New","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"New","id":"haus-a"}');
     const result = await service.publish({ message: "On a branch", paths: await reviewed(service) });
 
     assert.equal(result.state, "published");
@@ -429,7 +429,7 @@ describe("publish", () => {
 
   it("names the command when a branch has no upstream and there is no origin", async () => {
     const { contentRoot, service } = makeRepo();
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"New","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"New","id":"haus-a"}');
     const result = await service.publish({ message: "No remote", paths: await reviewed(service) });
 
     assert.equal(result.state, "committed-pending-push");
@@ -442,7 +442,7 @@ describe("publish", () => {
     git(bare, "init", "-q", "--bare", "-b", "main");
     git(root, "remote", "add", "upstream", bare);
     git(root, "push", "-q", "upstream", "main");
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"New","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"New","id":"haus-a"}');
     const result = await service.publish({ message: "Other remote", paths: await reviewed(service) });
 
     assert.equal(result.state, "committed-pending-push");
@@ -455,7 +455,7 @@ describe("publish", () => {
     const bare = temp("mica-bare-");
     git(bare, "init", "-q", "--bare", "-b", "main");
     git(root, "remote", "add", "origin", bare);
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"First","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"First","id":"haus-a"}');
 
     await assert.rejects(
       service.publish({ message: "First", paths: await reviewed(service) }),
@@ -470,7 +470,7 @@ describe("publish", () => {
 
   it("marks its commit with Mica's trailer, under the editor's summary", async () => {
     const { root, contentRoot, service } = makeRepo();
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Marked","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Marked","id":"haus-a"}');
     await service.publish({ message: "Update Haus A", paths: await reviewed(service) });
 
     assert.equal(git(root, "log", "-1", "--format=%s"), "Update Haus A");
@@ -489,7 +489,7 @@ describe("publish", () => {
     git(root, "commit", "-q", "-m", "Developer work");
     const before = git(root, "rev-parse", "HEAD");
 
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Blocked","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Blocked","id":"haus-a"}');
     assert.deepEqual((await service.status()).unpushed, { mica: 0, other: 1 });
 
     await assert.rejects(
@@ -511,7 +511,7 @@ describe("publish", () => {
     const hook = join(bare, "hooks/pre-receive");
     writeFileSync(hook, "#!/bin/sh\nexit 1\n", { mode: 0o755 });
 
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Waiting","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Waiting","id":"haus-a"}');
     const first = await service.publish({ message: "Waiting", paths: await reviewed(service) });
     assert.equal(first.state, "committed-pending-push");
     assert.deepEqual((await service.status()).unpushed, { mica: 1, other: 0 });
@@ -543,7 +543,7 @@ describe("publish", () => {
     git(root, "switch", "-q", "main");
     git(root, "merge", "-q", "--ff-only", "feature/x");
 
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Blocked","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Blocked","id":"haus-a"}');
     assert.deepEqual((await service.status()).unpushed, { mica: 0, other: 1 });
     await assert.rejects(
       service.publish({ message: "Blocked", paths: await reviewed(service) }),
@@ -562,9 +562,9 @@ describe("publish", () => {
     };
     const { contentRoot, service } = makeRepo({ logger });
 
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Secret words","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Secret words","id":"haus-a"}');
     await service.publish({ message: "Publish", paths: await reviewed(service), editor: "anna@example.com" });
-    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), '{"title":"Draft","slug":"haus-b"}');
+    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), '{"title":"Draft","id":"haus-b"}');
     await service.discard({ "projects/haus-b/index.json": (await reviewed(service))["projects/haus-b/index.json"]! }, "ben@example.com");
 
     const published = lines.find((line) => line.message === "Published");
@@ -578,7 +578,7 @@ describe("publish", () => {
 
   it("is refused when disabled by configuration", async () => {
     const { contentRoot, service } = makeRepo({ publishEnabled: false });
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"No","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"No","id":"haus-a"}');
 
     const status = await service.status();
     assert.equal(status.publish.enabled, false);
@@ -592,7 +592,7 @@ describe("publish", () => {
 
   it("refuses across model drift, and asks for a new review", async () => {
     const { contentRoot, service } = makeRepo({ schemaRevision: "the-startup-revision" });
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Drift","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Drift","id":"haus-a"}');
 
     await assert.rejects(
       service.publish({ message: "Publish", paths: await reviewed(service) }),
@@ -606,8 +606,8 @@ describe("discard", () => {
   it("restores a tracked file and removes an untracked one", async () => {
     const { contentRoot, service } = makeRepo();
 
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Edited","slug":"haus-a"}');
-    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), '{"title":"New","slug":"haus-b"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Edited","id":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), '{"title":"New","id":"haus-b"}');
 
     const { discarded } = await service.discard(await reviewed(service));
 
@@ -631,9 +631,9 @@ describe("discard", () => {
   // Two editors: the second saves after the first opened the Publish page.
   it("refuses a draft that was saved again after the review, and keeps it", async () => {
     const { contentRoot, service } = makeRepo();
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"First","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"First","id":"haus-a"}');
     const seen = await reviewed(service);
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Second","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Second","id":"haus-a"}');
 
     await assert.rejects(service.discard(seen), (error: unknown) => error instanceof ApiError && error.code === "conflict");
     assert.match(readFileSync(join(contentRoot, "projects/haus-a/index.json"), "utf8"), /Second/);
@@ -641,7 +641,7 @@ describe("discard", () => {
 
   it("refuses part of an entry, and a path that is not pending", async () => {
     const { contentRoot, service } = makeRepo();
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Edited","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Edited","id":"haus-a"}');
     writeFileSync(join(contentRoot, "projects/haus-a/notes.mdoc"), "A colleague's new file.\n");
     const seen = await reviewed(service);
 
@@ -654,13 +654,13 @@ describe("discard", () => {
 describe("the comparison's revisions", () => {
   it("are the revisions of the compared document's files, which Publish takes back", async () => {
     const { contentRoot, service } = makeRepo();
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Seen","slug":"haus-a"}');
-    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), '{"title":"Other","slug":"haus-b"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Seen","id":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), '{"title":"Other","id":"haus-b"}');
 
-    const comparison = await service.compare({ kind: "entry", collection: "projects", slug: "haus-a" });
+    const comparison = await service.compare({ kind: "entry", collection: "projects", id: "haus-a" });
     assert.deepEqual(Object.keys(comparison.revisions), ["projects/haus-a/index.json"]);
 
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Not seen","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Not seen","id":"haus-a"}');
     await assert.rejects(service.publish({ message: "Publish", paths: comparison.revisions }), ApiError);
   });
 });
@@ -670,13 +670,13 @@ describe("before/after comparison", () => {
     const { contentRoot, service } = makeRepo();
     writeFileSync(
       join(contentRoot, "projects/haus-a/index.json"),
-      JSON.stringify({ title: "Haus A, renovated", slug: "haus-a" }, null, 2),
+      JSON.stringify({ title: "Haus A, renovated", id: "haus-a" }, null, 2),
     );
 
     const { before, after } = await service.compare({
       kind: "entry",
       collection: "projects",
-      slug: "haus-a",
+      id: "haus-a",
     });
     assert.equal(before?.["title"], "Haus A");
     assert.equal(after?.["title"], "Haus A, renovated");
@@ -686,15 +686,15 @@ describe("before/after comparison", () => {
     const { contentRoot, service } = makeRepo();
     writeFileSync(
       join(contentRoot, "projects/haus-b/index.json"),
-      JSON.stringify({ title: "Haus B", slug: "haus-b" }, null, 2),
+      JSON.stringify({ title: "Haus B", id: "haus-b" }, null, 2),
     );
     unlinkSync(join(contentRoot, "projects/haus-a/index.json"));
 
-    const created = await service.compare({ kind: "entry", collection: "projects", slug: "haus-b" });
+    const created = await service.compare({ kind: "entry", collection: "projects", id: "haus-b" });
     assert.equal(created.before, null);
     assert.equal(created.after?.["title"], "Haus B");
 
-    const removed = await service.compare({ kind: "entry", collection: "projects", slug: "haus-a" });
+    const removed = await service.compare({ kind: "entry", collection: "projects", id: "haus-a" });
     assert.equal(removed.before?.["title"], "Haus A");
     assert.equal(removed.after, null);
   });
@@ -704,7 +704,7 @@ describe("before/after comparison", () => {
     mkdirSync(join(contentRoot, "projects"), { recursive: true });
     writeFileSync(
       join(contentRoot, "projects/haus-a/index.json"),
-      JSON.stringify({ title: "Haus A", slug: "haus-a" }, null, 2),
+      JSON.stringify({ title: "Haus A", id: "haus-a" }, null, 2),
     );
 
     const service = createWorkingTreeStagingService({
@@ -719,7 +719,7 @@ describe("before/after comparison", () => {
     const { before, after } = await service.compare({
       kind: "entry",
       collection: "projects",
-      slug: "haus-a",
+      id: "haus-a",
     });
     assert.equal(before, null);
     assert.equal(after?.["title"], "Haus A");
@@ -727,11 +727,11 @@ describe("before/after comparison", () => {
 
   it("compares many documents at once, in their order, each with its own revisions", async () => {
     const { contentRoot, service } = makeRepo();
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), JSON.stringify({ title: "Haus A, renovated", slug: "haus-a" }));
-    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), JSON.stringify({ title: "Haus B", slug: "haus-b" }));
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), JSON.stringify({ title: "Haus A, renovated", id: "haus-a" }));
+    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), JSON.stringify({ title: "Haus B", id: "haus-b" }));
     const targets = [
-      { kind: "entry", collection: "projects", slug: "haus-b" },
-      { kind: "entry", collection: "projects", slug: "haus-a" },
+      { kind: "entry", collection: "projects", id: "haus-b" },
+      { kind: "entry", collection: "projects", id: "haus-a" },
     ] as const;
 
     const [b, a] = (await service.compareMany([...targets])).map((result) => (result.status === "fulfilled" ? result.value : null));
@@ -745,11 +745,11 @@ describe("before/after comparison", () => {
   it("a document that cannot be read fails alone, not its batch", async () => {
     const { contentRoot, service } = makeRepo();
     writeFileSync(join(contentRoot, "projects/haus-a/index.json"), "{ not json");
-    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), JSON.stringify({ title: "Haus B", slug: "haus-b" }));
+    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), JSON.stringify({ title: "Haus B", id: "haus-b" }));
 
     const [a, b] = await service.compareMany([
-      { kind: "entry", collection: "projects", slug: "haus-a" },
-      { kind: "entry", collection: "projects", slug: "haus-b" },
+      { kind: "entry", collection: "projects", id: "haus-a" },
+      { kind: "entry", collection: "projects", id: "haus-b" },
     ]);
     assert.equal(a?.status, "rejected");
     assert.equal(b?.status === "fulfilled" ? b.value.after?.["title"] : null, "Haus B");
@@ -758,7 +758,7 @@ describe("before/after comparison", () => {
   it("an unknown collection is refused", async () => {
     const { service } = makeRepo();
     await assert.rejects(
-      service.compare({ kind: "entry", collection: "nope", slug: "haus-a" }),
+      service.compare({ kind: "entry", collection: "nope", id: "haus-a" }),
       (error: unknown) => error instanceof ApiError,
     );
   });
@@ -779,7 +779,7 @@ function makeWebsite(): { website: string; contentBare: string } {
   const seed = temp("mica-content-seed-");
   git(seed, "init", "-q", "-b", "main");
   identify(seed);
-  writeFileSync(join(seed, "projects/haus-a/index.json"), JSON.stringify({ title: "Haus A", slug: "haus-a" }, null, 2));
+  writeFileSync(join(seed, "projects/haus-a/index.json"), JSON.stringify({ title: "Haus A", id: "haus-a" }, null, 2));
   git(seed, "add", "-A");
   git(seed, "commit", "-q", "-m", "init");
   git(seed, "push", "-q", contentBare, "main");
@@ -813,7 +813,7 @@ describe("a content root in a Git submodule", () => {
     const service = serviceFor(contentRoot);
     const websiteHead = git(website, "rev-parse", "HEAD");
 
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Saved","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Saved","id":"haus-a"}');
     const status = await service.status();
     assert.equal(status.detached, null);
     assert.equal(status.branch, "main");
@@ -837,7 +837,7 @@ describe("a content root in a Git submodule", () => {
     const service = serviceFor(contentRoot);
     const head = git(contentRoot, "rev-parse", "HEAD");
 
-    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Saved","slug":"haus-a"}');
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), '{"title":"Saved","id":"haus-a"}');
     const status = await service.status();
     assert.ok(status.detached);
     assert.notEqual(status.detached.superproject, null);

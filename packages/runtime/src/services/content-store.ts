@@ -1,6 +1,6 @@
 /**
- * Collections and singletons over the working tree's files: validation, slugs,
- * entry files and `_order.json`. An entry is its slug and path, Git keeps the
+ * Collections and singletons over the working tree's files: validation, IDs,
+ * entry files and `_order.json`. An entry is its ID and path, Git keeps the
  * history, a save is a draft, and only Publish makes a commit.
  */
 
@@ -8,7 +8,7 @@ import { createHash } from "node:crypto";
 
 import {
   type Collection,
-  collectionSlugs,
+  collectionIds,
   type ContentEntry,
   ContentPathError,
   declaresDocument,
@@ -22,7 +22,7 @@ import {
   type FieldIssue,
   type FieldMap,
   INDEX_FILE,
-  isValidSlug,
+  isValidId,
   mapMedia,
   ORDER_FILE,
   readCollection,
@@ -31,19 +31,19 @@ import {
   readSingleton,
   relativizeMedia,
   relinkReferences,
-  resolveSlugField,
+  resolveIdField,
   resolveTitleField,
   serializeEntry,
   type Singleton,
   type Site,
   type UnreadableEntry,
-  slugify,
+  toId,
   validateFields,
 } from "@micacms/core/internal";
 
 import { ConflictError, FilesError, type ContentFiles, type FileChange } from "../workspace/files.js";
 import { fileUses, type Referrer } from "./links.js";
-import { linkingDocuments, moveFiles, relinkedFiles, renameInOrder, stagedUploads, storedData } from "./url-change.js";
+import { linkingDocuments, moveFiles, relinkedFiles, renameInOrder, stagedUploads, storedData } from "./id-change.js";
 
 class ContentError extends FilesError {
   override name = "ContentError";
@@ -72,23 +72,23 @@ export class ValidationError extends ContentError {
 export interface SaveEntryInput {
   data: Record<string, unknown>;
   /** The entry being replaced. Absent when creating. */
-  slug?: string;
-  /** The revision `slug` had when the editor opened it. Absent writes unconditionally. */
+  id?: string;
+  /** The revision `id` had when the editor opened it. Absent writes unconditionally. */
   expectedRevision?: string | null;
-  /** On a URL change: point the relations in other entries and settings at the new URL, in the same write. */
+  /** On an ID change: point the relations in other entries and settings at the new ID, in the same write. */
   updateLinks?: boolean;
 }
 
 export type { Referrer } from "./links.js";
 
 export interface SavedEntry {
-  slug: string;
+  id: string;
   title: string;
   /** The entry's revision after this save, for the next save. A file revision, not a commit. */
   revision: string;
   /** True when the save moved the entry's files. */
   renamed: boolean;
-  /** How many other entries and settings pages now link to the new URL. */
+  /** How many other entries and settings pages now link to the new ID. */
   relinked: number;
 }
 
@@ -107,10 +107,10 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     return def;
   };
 
-  /** An existing entry's URL: one folder name. `a%2Fb` from a route parameter would name two. */
-  const existingSlug = (collectionName: string, slug: string): string => {
-    if (!isValidSlug(slug)) throw new ContentPathError(`"${slug}" is not an entry of "${collectionName}".`);
-    return slug;
+  /** An existing entry's ID: one folder name. `a%2Fb` from a route parameter would name two. */
+  const existingId = (collectionName: string, id: string): string => {
+    if (!isValidId(id)) throw new ContentPathError(`"${id}" is not an entry of "${collectionName}".`);
+    return id;
   };
 
   const writable = <T>(def: T, key: string): T => {
@@ -213,12 +213,12 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     return files === null ? { [dataFile]: null } : Object.fromEntries(files);
   };
 
-  /** Whether an entry has this URL: its data file exists. A folder with only uploads is not one. */
-  const entryExists = async (name: string, slug: string): Promise<boolean> =>
-    (await workspace.stat(entryDataPath(name, slug))) !== null;
+  /** Whether an entry has this ID: its data file exists. A folder with only uploads is not one. */
+  const entryExists = async (name: string, id: string): Promise<boolean> =>
+    (await workspace.stat(entryDataPath(name, id))) !== null;
 
-  /** The first free URL from `base` (`base`, `base-2`, …), checking candidates rather than reading the collection. */
-  const freeSlug = async (name: string, base: string, except?: string): Promise<string> => {
+  /** The first free ID from `base` (`base`, `base-2`, …), checking candidates rather than reading the collection. */
+  const freeId = async (name: string, base: string, except?: string): Promise<string> => {
     for (let suffix = 1; ; suffix++) {
       const candidate = suffix === 1 ? base : `${base}-${suffix}`;
       if (candidate === except || !(await entryExists(name, candidate))) return candidate;
@@ -238,24 +238,24 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     /** How many entries a collection has, from one directory listing: for counts, not for lists. */
     async count(collectionName: string): Promise<number> {
       requireCollection(collectionName);
-      const names = await collectionSlugs(workspace, collectionName);
-      const exists = await Promise.all(names.map((slug) => entryExists(collectionName, slug)));
+      const names = await collectionIds(workspace, collectionName);
+      const exists = await Promise.all(names.map((id) => entryExists(collectionName, id)));
       return exists.filter(Boolean).length;
     },
 
     /** One entry, without opening the rest of its collection. */
-    async get(collectionName: string, slug: string): Promise<Omit<ContentEntry, "position"> | null> {
+    async get(collectionName: string, id: string): Promise<Omit<ContentEntry, "position"> | null> {
       const def = requireCollection(collectionName);
       // A file system that ignores case would otherwise open `News-42` as `news-42`.
-      if (!isValidSlug(slug)) return null;
-      const data = await readCollectionEntry(workspace, def, collectionName, slug);
-      return data ? { slug, data } : null;
+      if (!isValidId(id)) return null;
+      const data = await readCollectionEntry(workspace, def, collectionName, id);
+      return data ? { id, data } : null;
     },
 
     /** The revision an editor must send back with a save of this entry. */
-    async revisionOf(collectionName: string, slug: string): Promise<string | null> {
+    async revisionOf(collectionName: string, id: string): Promise<string | null> {
       requireCollection(collectionName);
-      return documentRevision(entryFolder(collectionName, slug));
+      return documentRevision(entryFolder(collectionName, id));
     },
 
     /** The revision an editor must send back with a save of this singleton. */
@@ -273,29 +273,29 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
 
     async save(collectionName: string, input: SaveEntryInput): Promise<SavedEntry> {
       const def = writable(requireCollection(collectionName), `collections.${collectionName}`);
-      if (input.slug !== undefined) existingSlug(collectionName, input.slug);
+      if (input.id !== undefined) existingId(collectionName, input.id);
       const data = validate(def, input.data, "This entry");
 
-      const slugKey = resolveSlugField(def)!;
-      const requested = pickSlug(def, data, input.slug);
-      const slug =
-        requested === input.slug
+      const idKey = resolveIdField(def)!;
+      const requested = pickId(def, data, input.id);
+      const id =
+        requested === input.id
           ? requested
-          : await freeSlug(collectionName, requested, input.slug);
+          : await freeId(collectionName, requested, input.id);
 
-      data[slugKey] = slug;
-      const base = entryFolder(collectionName, slug);
-      // A new entry's uploads went into the folder of the URL it had then.
-      const staged = input.slug === undefined ? await stagedUploads(workspace, def, collectionName, data, base) : [];
+      data[idKey] = id;
+      const base = entryFolder(collectionName, id);
+      // A new entry's uploads went into the folder of the ID it had then.
+      const staged = input.id === undefined ? await stagedUploads(workspace, def, collectionName, data, base) : [];
       if (staged.length > 0) {
         const moved = new Map(staged.map((item) => [item.from, item.to]));
         Object.assign(data, mapMedia(def.fields, data, (value) => (typeof value === "string" ? (moved.get(value) ?? value) : value)));
       }
-      // An entry that links to itself follows its own new URL.
-      const own = previousLinks(input, slug) ? relinkReferences(def.fields, data, collectionName, input.slug!, slug) : null;
+      // An entry that links to itself follows its own new ID.
+      const own = previousLinks(input, id) ? relinkReferences(def.fields, data, collectionName, input.id!, id) : null;
       if (own) Object.assign(data, own);
 
-      const previousBase = input.slug && input.slug !== slug ? entryFolder(collectionName, input.slug) : null;
+      const previousBase = input.id && input.id !== id ? entryFolder(collectionName, input.id) : null;
 
       // The editor uses root-relative media paths; store them relative to the
       // entry (the old directory on a rename).
@@ -320,7 +320,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
         // The copies first: they read from the old folder.
         await moveFiles(workspace, def.fields, previousBase, base, changes);
         changes.push({ type: "deleteTree", path: previousBase });
-        const order = await renameInOrder(workspace, collectionName, input.slug!, slug);
+        const order = await renameInOrder(workspace, collectionName, input.id!, id);
         if (order) changes.push(order);
       } else {
         changes.push(...(await staleDocuments(def.fields, base, new Set(Object.keys(serialized.documents)))));
@@ -328,11 +328,11 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
 
       // The other documents that link here follow too; the entry itself followed above.
       const referrerRevisions: Record<string, string | null> = {};
-      if (previousLinks(input, slug)) {
-        const linking = (await linkingDocuments(site, workspace, readOnly, collectionName, input.slug!)).filter(
-          ({ referrer }) => !(referrer.kind === "entry" && referrer.collection === collectionName && referrer.slug === input.slug),
+      if (previousLinks(input, id)) {
+        const linking = (await linkingDocuments(site, workspace, readOnly, collectionName, input.id!)).filter(
+          ({ referrer }) => !(referrer.kind === "entry" && referrer.collection === collectionName && referrer.id === input.id),
         );
-        const relinks = await relinkedFiles(workspace, linking, collectionName, input.slug!, slug);
+        const relinks = await relinkedFiles(workspace, linking, collectionName, input.id!, id);
         changes.push(...relinks.changes);
         Object.assign(referrerRevisions, relinks.revisions);
       }
@@ -353,18 +353,18 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
         throw error;
       }
 
-      return { slug, title, revision, renamed: previousBase !== null, relinked };
+      return { id, title, revision, renamed: previousBase !== null, relinked };
     },
 
     async remove(
       collectionName: string,
-      slug: string,
+      id: string,
       options: { expectedRevision?: string | null } = {},
     ): Promise<void> {
       writable(requireCollection(collectionName), `collections.${collectionName}`);
-      // One path segment: an empty slug or `a/b` would delete more than one entry.
-      existingSlug(collectionName, slug);
-      const base = entryFolder(collectionName, slug);
+      // One path segment: an empty ID or `a/b` would delete more than one entry.
+      existingId(collectionName, id);
+      const base = entryFolder(collectionName, id);
 
       await workspace.apply({
         changes: [{ type: "deleteTree", path: base }],
@@ -399,7 +399,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     },
 
     /** Writes the order. `expectedRevision` is the order the editor saw: a colleague's move in between is a conflict. */
-    async reorder(collectionName: string, slugs: string[], expectedRevision: string | null): Promise<string> {
+    async reorder(collectionName: string, ids: string[], expectedRevision: string | null): Promise<string> {
       const def = writable(requireCollection(collectionName), `collections.${collectionName}`);
       if (!def.sortable) {
         throw new ContentError(`The "${def.label}" collection is not manually sortable.`);
@@ -409,7 +409,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       try {
         const written = await workspace.apply(
           {
-            changes: [{ type: "write", path, contents: `${JSON.stringify(slugs, null, 2)}\n` }],
+            changes: [{ type: "write", path, contents: `${JSON.stringify(ids, null, 2)}\n` }],
             expect: { [path]: expectedRevision },
           },
           (files) => files.revision(path),
@@ -426,10 +426,10 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     requireCollection,
     requireSingleton,
 
-    /** Slug the server would assign, so the editor's URL preview matches it. */
-    async suggestSlug(collectionName: string, source: string, except?: string): Promise<string> {
+    /** The ID the server would assign, so that the ID in the editor's form matches it. */
+    async suggestId(collectionName: string, source: string, except?: string): Promise<string> {
       requireCollection(collectionName);
-      return freeSlug(collectionName, slugify(source), except);
+      return freeId(collectionName, toId(source), except);
     },
 
     /**
@@ -440,44 +440,44 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
       return fileUses(site, workspace, paths);
     },
 
-    /** Entries and settings pages that link to `slug`: the warning before a delete or a URL change. */
-    async findReferences(collectionName: string, slug: string): Promise<Referrer[]> {
+    /** Entries and settings pages that link to `id`: the warning before a delete or an ID change. */
+    async findReferences(collectionName: string, id: string): Promise<Referrer[]> {
       requireCollection(collectionName);
-      existingSlug(collectionName, slug);
-      return (await linkingDocuments(site, workspace, readOnly, collectionName, slug)).map((found) => found.referrer);
+      existingId(collectionName, id);
+      return (await linkingDocuments(site, workspace, readOnly, collectionName, id)).map((found) => found.referrer);
     },
   };
 }
 
 export type ContentStore = ReturnType<typeof createContentStore>;
 
-/** Whether a save is a URL change whose links should follow. */
-function previousLinks(input: SaveEntryInput, slug: string): boolean {
-  return input.updateLinks === true && input.slug !== undefined && input.slug !== slug;
+/** Whether a save is an ID change whose links should follow. */
+function previousLinks(input: SaveEntryInput, id: string): boolean {
+  return input.updateLinks === true && input.id !== undefined && input.id !== id;
 }
 
-/** The slug from the payload's slug field, or one derived from the title. */
-function pickSlug(
+/** The ID from the payload's ID field, or one derived from the title. */
+function pickId(
   def: Collection,
   data: Record<string, unknown>,
   current: string | undefined,
 ): string {
-  const slugKey = resolveSlugField(def)!;
-  const fromData = data[slugKey];
+  const idKey = resolveIdField(def)!;
+  const fromData = data[idKey];
 
-  // Not `entryTitle`, whose "Untitled" would give every entry without a title the same URL.
+  // Not `entryTitle`, whose "Untitled" would give every entry without a title the same ID.
   const titleKey = resolveTitleField(def);
   const title = titleKey ? data[titleKey] : undefined;
   const candidate =
-    (typeof fromData === "string" && fromData.trim()) || (typeof title === "string" ? slugify(title.trim()) : "");
+    (typeof fromData === "string" && fromData.trim()) || (typeof title === "string" ? toId(title.trim()) : "");
 
   if (!candidate) {
-    throw new ContentError("An entry needs a title or a URL before it can be saved.");
+    throw new ContentError("An entry needs a title or an ID before it can be saved.");
   }
 
-  const normalised = isValidSlug(candidate) ? candidate : slugify(candidate);
+  const normalised = isValidId(candidate) ? candidate : toId(candidate);
   if (!normalised) {
-    throw new ContentError(`"${candidate}" cannot be turned into a URL. Use letters and numbers.`);
+    throw new ContentError(`"${candidate}" cannot be turned into an ID. Use letters and numbers.`);
   }
 
   return normalised === current ? current : normalised;

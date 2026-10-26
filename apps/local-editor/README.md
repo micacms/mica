@@ -63,7 +63,7 @@ npx mica mcp      # serve the tools to a coding agent, over stdio
 overwrites a file. It also names the `mica` and `check` scripts that
 `package.json` does not have yet. `check` reads every entry the way Mica and the
 website read it, and reports what they would skip or refuse: fields that do
-not validate, missing media, relations to entries that do not exist, slug
+not validate, missing media, relations to entries that do not exist, ID
 values in a file that differ from its name (Mica uses the name), and files
 that are not read at all. It
 exits with 1 on an error and with 78 without a readable model, so it fits in

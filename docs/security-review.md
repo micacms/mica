@@ -58,7 +58,7 @@ The level 2 table of V10 has two Accepted rows.
 | N5, N9 | Left-most `X-Forwarded-For`; no limit on the OIDC callback | #159 |
 | N6, N7, N10 | Email in the URL; unchecked `x-request-id`; text media without a charset | #160 |
 | N8, #79 | `/health` showed details and called the provider | #156 |
-| #85, N11, N12, N15 | Paths out of the content root: `../`, a symbolic link, a save slug, a media value | #153, #256 |
+| #85, N11, N12, N15 | Paths out of the content root: `../`, a symbolic link, a save ID, a media value | #153, #256 |
 | #86, #88 | Media served without a sandbox, SVG accepted; no Content-Security-Policy | #154, #146 |
 | #87 | `safeReturnTo` accepted `/\evil.example` | #155 |
 | N14 | Unsaved form values stayed after sign-out | #256 |
@@ -92,7 +92,7 @@ The level 2 table of V10 has two Accepted rows.
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
 | 2.1.1 | Validation rules documented | Pass | `sites/micacms/content/docs/reference-fields/body.mdoc`; `docs/adr/0018-media-files.md`; `sites/micacms/content/docs/configuration/body.mdoc` | The field rules, the media types, `MICA_MAX_UPLOAD_BYTES` and the request limits (2 MB for JSON, 64 kB for `/oauth/*`, the upload limit for `/mcp`) are documented. |
-| 2.2.1 | Positive input validation | Pass | `packages/runtime/src/services/content-store.ts` (`existingSlug`, `requireCollection`); `packages/mcp/src/server.ts`; `packages/auth/oidc/src/oauth/routes.ts` | Every slug of an existing entry is one segment. The tools have Zod inputs. The authorization server checks `response_type`, PKCE, `resource` and the redirect URI. |
+| 2.2.1 | Positive input validation | Pass | `packages/runtime/src/services/content-store.ts` (`existingId`, `requireCollection`); `packages/mcp/src/server.ts`; `packages/auth/oidc/src/oauth/routes.ts` | Every ID of an existing entry is one segment. The tools have Zod inputs. The authorization server checks `response_type`, PKCE, `resource` and the redirect URI. |
 | 2.2.2 | Validation on the server | Pass | `packages/runtime/src/services/content-store.ts` (`validate`); `packages/auth/oidc/src/config.ts` | The editor and an agent use the same services. |
 | 2.3.1 | Business flow in the expected order | Pass | `packages/runtime/src/services/staging.ts`; `packages/mcp/src/server.ts`; `packages/auth/oidc/src/oauth/tokens.ts` (`open`) | A write carries the revision that the editor or the agent read. Each sealed token has a kind, so a consent request, a code, an access token and a refresh token cannot replace each other. |
 

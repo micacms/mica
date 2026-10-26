@@ -17,7 +17,7 @@ import {
   relation,
   richText,
   singleton,
-  slug,
+  id,
   tags,
   text,
 } from "@micacms/core/internal";
@@ -46,13 +46,13 @@ function flatten(root: unknown): unknown[] {
 
 const site = defineSite({
   collections: {
-    team: collection({ label: "Team", fields: { name: text(), slug: slug({ from: "name" }) } }),
+    team: collection({ label: "Team", fields: { name: text(), id: id({ from: "name" }) } }),
     blog: collection({
       label: "Blog",
       sortable: true,
       fields: {
         title: text({ required: true }),
-        slug: slug({ from: "title" }),
+        id: id({ from: "title" }),
         published: date(),
         updated: date({ includeTime: true }),
         seo: object({ fields: { title: text() } }),
@@ -129,7 +129,7 @@ describe("mica import", () => {
     const second = JSON.parse(readFileSync(path.join(root, "blog/2026-second-post/index.json"), "utf8"));
     assert.deepEqual(second, {
       title: "Second",
-      slug: "2026-second-post",
+      id: "2026-second-post",
       published: "2026-02-01",
       updated: null,
       seo: { title: null },
@@ -145,7 +145,7 @@ describe("mica import", () => {
     assert.deepEqual((await checkContent(root)).problems.filter((problem) => problem.level === "error"), []);
   });
 
-  it("names keys that it did not import, two ids that give one slug, and a missing image", async () => {
+  it("names keys that it did not import, two ids that give one id, and a missing image", async () => {
     const from = store({
       blog: [
         { id: "Hello", data: { title: "A", tags: ["x"], image: "__ASTRO_IMAGE_./gone.jpg" }, filePath: "src/content/blog/a.md" },
@@ -179,19 +179,19 @@ describe("mica import, edge cases", () => {
   });
 
   it("names a body that no field took", async () => {
-    const plain = defineSite({ collections: { notes: collection({ label: "Notes", fields: { title: text(), slug: slug({ from: "title" }) } }) } });
+    const plain = defineSite({ collections: { notes: collection({ label: "Notes", fields: { title: text(), id: id({ from: "title" }) } }) } });
     write(`content/${MANIFEST_PATH}`, createManifest(plain, "test"));
     const from = store({ notes: [{ id: "a", data: { title: "A" }, body: "Lost?", filePath: "src/content/notes/a.md" }] });
     const result = await importCollections({ root, project, store: from });
     assert.ok(result.problems.some((line) => line.includes("not imported: the Markdown body")), result.problems.join("\n"));
   });
 
-  it("refuses an id that gives no slug, before it writes anything", async () => {
+  it("refuses an Astro id that gives no ID, before it writes anything", async () => {
     const from = store({
       team: [{ id: "anna", data: { name: "Anna" } }],
       blog: [{ id: "---", data: { title: "A" } }],
     });
-    await assert.rejects(importCollections({ root, project, store: from }), /the id "---" gives no slug/);
+    await assert.rejects(importCollections({ root, project, store: from }), /the Astro id "---" gives no ID/);
     assert.ok(!existsSync(path.join(root, "team")));
   });
 });

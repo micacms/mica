@@ -13,7 +13,7 @@ export const MODEL = `/**
  * writes \`content/.mica/schema.json\` for Mica to read: commit that file too.
  */
 
-import { collection, date, defineSite, media, richText, singleton, slug, tags, text, textarea } from "@micacms/core";
+import { collection, date, defineSite, id, media, richText, singleton, tags, text, textarea } from "@micacms/core";
 
 export const site = defineSite({
   root: "./content",
@@ -24,7 +24,7 @@ export const site = defineSite({
       defaultSort: { field: "publishDate", direction: "desc" },
       fields: {
         title: text({ label: "Title", required: true, maxLength: 120, listed: true }),
-        slug: slug({ label: "URL", from: "title" }),
+        id: id({ label: "ID", from: "title" }),
         publishDate: date({ label: "Date", required: true, listed: true, width: "half" }),
         tags: tags({ label: "Tags", width: "half" }),
         cover: media({ label: "Cover image", accept: "image", alt: "required" }),

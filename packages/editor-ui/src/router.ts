@@ -32,9 +32,9 @@ const routes: RouteRecordRaw[] = [
     props: true,
   },
   {
-    // The slug, not an id: the address in the admin is the path in the
-    // repository, so a URL here can be read straight off a diff.
-    path: "/collections/:collection/:slug",
+    // The entry's ID: the address in the admin is the path in the repository,
+    // so it can be read straight off a diff.
+    path: "/collections/:collection/:id",
     name: "entry",
     component: () => import("@/views/EntryView.vue"),
     props: true,

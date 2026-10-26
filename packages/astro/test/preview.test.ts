@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { media, object, repeater, richText, slug, text, textarea } from "@micacms/core/internal";
+import { media, object, repeater, richText, id, text, textarea } from "@micacms/core/internal";
 
 import { markFields, previewMarkersEnabled } from "../src/preview/mark.js";
 import { decodeMarkers, encodeMarker, markerKey, markerOfKey, modelPath, splitMarkers } from "../src/preview/markers.js";
@@ -34,15 +34,15 @@ describe("field markers", () => {
   it("marks text and textarea values, also in objects and rows, and nothing else", () => {
     const fields = {
       title: text(),
-      slug: slug(),
+      id: id(),
       summary: textarea(),
       seo: object({ fields: { title: text() } }),
       facts: repeater({ fields: { label: text() } }),
     };
-    const data = { title: "Haus A", slug: "haus-a", summary: "", seo: { title: "SEO" }, facts: [{ label: "One" }, { label: "Two" }] };
+    const data = { title: "Haus A", id: "haus-a", summary: "", seo: { title: "SEO" }, facts: [{ label: "One" }, { label: "Two" }] };
     const marked = markFields(fields, data, "projects", "haus-a") as typeof data;
 
-    assert.equal(marked.slug, "haus-a");
+    assert.equal(marked.id, "haus-a");
     assert.equal(marked.summary, "");
     assert.deepEqual(decodeMarkers(marked.title), [{ document: "projects", id: "haus-a", path: "title" }]);
     assert.deepEqual(decodeMarkers(marked.seo.title), [{ document: "projects", id: "haus-a", path: "seo.title" }]);

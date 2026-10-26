@@ -8,7 +8,7 @@ import { boolean, relation, repeater, text } from "@micacms/core/internal";
 import { rowLabel, rowLabelRelation } from "../src/lib/row-label.js";
 
 const titles = new Map([["taetsch", "Tätsch"]]);
-const titleOf = (slug: string) => titles.get(slug);
+const titleOf = (id: string) => titles.get(id);
 
 describe("rowLabel", () => {
   it("shows the text of the itemLabel field", () => {
@@ -16,7 +16,7 @@ describe("rowLabel", () => {
     assert.equal(rowLabel(field, { heading: "  Opening hours " }, 0), "Opening hours");
   });
 
-  it("shows a single relation by the title of its entry, else by its slug", () => {
+  it("shows a single relation by the title of its entry, else by its id", () => {
     const field = repeater({
       itemLabel: "waypoint",
       addLabel: "Add waypoint",

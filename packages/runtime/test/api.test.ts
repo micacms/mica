@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, coordinates, createManifest, defineSite, MANIFEST_PATH, number, object, PROTOCOL_VERSION, referenceIndexPath, referenceSet, repeater, serializeReferenceIndex, slug, text, type FieldMap } from "@micacms/core/internal";
+import { collection, coordinates, createManifest, defineSite, MANIFEST_PATH, number, object, PROTOCOL_VERSION, referenceIndexPath, referenceSet, repeater, serializeReferenceIndex, id, text, type FieldMap } from "@micacms/core/internal";
 import { Hono } from "hono";
 
 import { clientIp, type Env } from "../src/http.js";
@@ -112,7 +112,7 @@ describe("security headers", () => {
   });
 
   const withMap = (fields: FieldMap) =>
-    defineSite({ collections: { places: collection({ label: "Places", fields: { title: text(), slug: slug({ from: "title" }), ...fields } }) } });
+    defineSite({ collections: { places: collection({ label: "Places", fields: { title: text(), id: id({ from: "title" }), ...fields } }) } });
 
   it("allows the OpenFreeMap host and blob workers only for a model with a map", () => {
     const policy = contentSecurityPolicy(withMap({ office: object({ fields: { at: coordinates({ map: "liberty" }) } }) }));
@@ -259,11 +259,11 @@ describe("keeping my version at a save conflict", () => {
         body: JSON.stringify({ data: { title: "Haus" } }),
       });
       const opened = (await (await harness.request("/api/admin/collections/projects/entries/haus")).json()) as { revision: string };
-      assert.equal((await put({ title: "Haus", slug: "haus", year: 2001 }, opened.revision)).status, 200);
-      assert.equal((await put({ title: "Haus", slug: "haus", year: 1999 }, opened.revision)).status, 409);
+      assert.equal((await put({ title: "Haus", id: "haus", year: 2001 }, opened.revision)).status, 200);
+      assert.equal((await put({ title: "Haus", id: "haus", year: 1999 }, opened.revision)).status, 409);
 
       const current = (await (await harness.request("/api/admin/collections/projects/entries/haus")).json()) as { revision: string };
-      assert.equal((await put({ title: "Haus", slug: "haus", year: 1999 }, current.revision, true)).status, 200);
+      assert.equal((await put({ title: "Haus", id: "haus", year: 1999 }, current.revision, true)).status, 200);
       assert.deepEqual(lines.find((line) => line.message === "Kept own version over a newer save")?.fields, {
         entry: "projects/haus",
         editor: undefined,
@@ -284,15 +284,15 @@ describe("content", () => {
       body: JSON.stringify({ data }),
     });
 
-  const get = async (slug: string) => {
+  const get = async (id: string) => {
     const response = await harness.request(
-      `/api/admin/collections/projects/entries/${slug}`,
+      `/api/admin/collections/projects/entries/${id}`,
     );
     return { response, body: (await response.json()) as Record<string, any> };
   };
 
-  const update = (slug: string, data: Record<string, unknown>, revision?: string | null) =>
-    harness.request(`/api/admin/collections/projects/entries/${slug}`, {
+  const update = (id: string, data: Record<string, unknown>, revision?: string | null) =>
+    harness.request(`/api/admin/collections/projects/entries/${id}`, {
       method: "PUT",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ data, revision }),
@@ -308,12 +308,12 @@ describe("content", () => {
   it("exposes the model so the admin can render forms it does not know about", async () => {
     const response = await harness.request("/api/admin/schema");
     const body = (await response.json()) as {
-      collections: Array<{ name: string; titleField: string; slugField: string; fields: object }>;
+      collections: Array<{ name: string; titleField: string; idField: string; fields: object }>;
     };
 
     const projects = body.collections.find((item) => item.name === "projects")!;
     assert.equal(projects.titleField, "title");
-    assert.equal(projects.slugField, "slug");
+    assert.equal(projects.idField, "id");
     assert.ok("gallery" in projects.fields);
   });
 
@@ -383,7 +383,7 @@ describe("content", () => {
 
   it("gives the page address of a collection only with a url in the model and MICA_SITE_URL", async () => {
     const site = defineSite({
-      collections: { ...testSite.collections, projects: collection({ ...testSite.collections["projects"]!, url: "/work/{slug}" }) },
+      collections: { ...testSite.collections, projects: collection({ ...testSite.collections["projects"]!, url: "/work/{id}" }) },
       singletons: testSite.singletons,
     });
     const page = async (config: Record<string, string>) => {
@@ -396,7 +396,7 @@ describe("content", () => {
       }
     };
     assert.deepEqual(await page({ MICA_SITE_URL: "https://example.com/blog" }), [
-      ["projects", "https://example.com/blog/work/{slug}"],
+      ["projects", "https://example.com/blog/work/{id}"],
       ...Object.keys(testSite.collections).filter((name) => name !== "projects").map((name) => [name, null]),
     ]);
     assert.deepEqual(new Set((await page({})).map(([, address]) => address)), new Set([null]));
@@ -406,19 +406,19 @@ describe("content", () => {
     const response = await create({ title: "Haus am Zürichsee", year: 2024, summary: "# Hello" });
     assert.equal(response.status, 201);
 
-    const { slug } = (await response.json()) as { slug: string };
-    assert.equal(slug, "haus-am-zuerichsee");
+    const { id } = (await response.json()) as { id: string };
+    assert.equal(id, "haus-am-zuerichsee");
 
-    assert.match(file(`projects/${slug}/index.json`), /"title": "Haus am Zürichsee"/);
-    assert.equal(file(`projects/${slug}/summary.mdoc`), "# Hello\n");
+    assert.match(file(`projects/${id}/index.json`), /"title": "Haus am Zürichsee"/);
+    assert.equal(file(`projects/${id}/summary.mdoc`), "# Hello\n");
   });
 
-  it("disambiguates a duplicate slug", async () => {
+  it("disambiguates a duplicate id", async () => {
     await create({ title: "Doppelt" });
     const second = await create({ title: "Doppelt" });
 
-    const entry = (await second.json()) as { slug: string };
-    assert.equal(entry.slug, "doppelt-2");
+    const entry = (await second.json()) as { id: string };
+    assert.equal(entry.id, "doppelt-2");
   });
 
   it("refuses an entry the model rejects, and names the fields", async () => {
@@ -449,13 +449,13 @@ describe("content", () => {
     await create({ title: "Before" });
     const { body } = await get("before");
 
-    const response = await update("before", { ...body.data, slug: "after" }, body.revision);
+    const response = await update("before", { ...body.data, id: "after" }, body.revision);
     assert.equal(response.status, 200);
 
-    const saved = (await response.json()) as { slug: string; renamed: boolean };
-    assert.equal(saved.slug, "after");
+    const saved = (await response.json()) as { id: string; renamed: boolean };
+    assert.equal(saved.id, "after");
     assert.equal(saved.renamed, true);
-    assert.match(file("projects/after/index.json"), /"slug": "after"/);
+    assert.match(file("projects/after/index.json"), /"id": "after"/);
     assert.throws(() => file("projects/before/index.json"));
   });
 
@@ -472,16 +472,16 @@ describe("content", () => {
     assert.throws(() => file("projects/doomed/summary.mdoc"));
   });
 
-  it("refuses a delete whose slug is not one entry", async () => {
+  it("refuses a delete whose id is not one entry", async () => {
     await create({ title: "Kept", summary: "Text." });
     const tree = () => readdirSync(harness.contentRoot, { recursive: true }).map(String).sort();
     const before = tree();
 
-    for (const slug of ["..%2Fteam", "kept%2Fsummary.mdoc", "%2E%2E"]) {
-      const response = await harness.request(`/api/admin/collections/projects/entries/${slug}`, {
+    for (const id of ["..%2Fteam", "kept%2Fsummary.mdoc", "%2E%2E"]) {
+      const response = await harness.request(`/api/admin/collections/projects/entries/${id}`, {
         method: "DELETE",
       });
-      assert.ok(response.status === 400 || response.status === 404, `${slug}: ${response.status}`);
+      assert.ok(response.status === 400 || response.status === 404, `${id}: ${response.status}`);
     }
     assert.deepEqual(tree(), before);
   });
@@ -498,16 +498,16 @@ describe("content", () => {
       "/api/admin/collections/team/entries/anna-vogt/references",
     );
 
-    const body = (await response.json()) as { references: Array<{ slug: string }> };
-    assert.deepEqual(body.references.map((item) => item.slug), ["led-project"]);
+    const body = (await response.json()) as { references: Array<{ id: string }> };
+    assert.deepEqual(body.references.map((item) => item.id), ["led-project"]);
   });
 
   it("records a manual order as one file", async () => {
-    const reorder = (slugs: string[], revision: string | null) =>
+    const reorder = (ids: string[], revision: string | null) =>
       harness.request("/api/admin/collections/projects/reorder", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ slugs, revision }),
+        body: JSON.stringify({ ids, revision }),
       });
     const { orderRevision } = (await (await harness.request("/api/admin/collections/projects/entries")).json()) as {
       orderRevision: string | null;
@@ -523,12 +523,12 @@ describe("content", () => {
   });
 
   // A route parameter is one folder name (#213, N12, N16).
-  it("refuses a slug that names two folders, and a name that is not a collection", async () => {
+  it("refuses an ID that names two folders, and a name that is not a collection", async () => {
     await create({ title: "Victim", summary: "Text." });
     const response = await harness.request("/api/admin/collections/projects/entries/victim%2Fmedia", {
       method: "PUT",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ data: { title: "Moved", slug: "moved" }, revision: null }),
+      body: JSON.stringify({ data: { title: "Moved", id: "moved" }, revision: null }),
     });
     assert.ok(response.status >= 400 && response.status < 500, String(response.status));
     assert.match(file("projects/victim/index.json"), /Victim/);
@@ -564,7 +564,7 @@ describe("content", () => {
               defaultSort: { field: "year", direction: "desc" },
               fields: {
                 title: text({ required: true }),
-                slug: slug({ from: "title" }),
+                id: id({ from: "title" }),
                 year: number({ integer: true }),
               },
             }),
@@ -919,14 +919,14 @@ describe("media in an entry's folder, and media delete", () => {
   it("keeps a new entry's URL when its uploads went into the folder of that URL", async () => {
     const staged = await uploadTo("projects/same-title/media", "front.png");
     const created = await json("/api/admin/collections/projects/entries", "POST", { data: { title: "Same title", cover: staged } });
-    assert.equal(((await created.json()) as { slug: string }).slug, "same-title");
+    assert.equal(((await created.json()) as { id: string }).id, "same-title");
   });
 
   it("does not count a folder that a discard left empty, nor treat its URL as taken", async () => {
     mkdirSync(join(harness.contentRoot, "projects/left-behind/media"), { recursive: true });
     const before = (await (await harness.request("/api/admin/overview")).json()) as { collections: Array<{ name: string; total: number }> };
     const created = await json("/api/admin/collections/projects/entries", "POST", { data: { title: "Left behind" } });
-    assert.equal(((await created.json()) as { slug: string }).slug, "left-behind");
+    assert.equal(((await created.json()) as { id: string }).id, "left-behind");
     const after = (await (await harness.request("/api/admin/overview")).json()) as { collections: Array<{ name: string; total: number }> };
     const total = (body: typeof before) => body.collections.find((item) => item.name === "projects")!.total;
     assert.equal(total(after), total(before) + 1);
@@ -1061,7 +1061,7 @@ describe("a forced model check", () => {
     try {
       mkdirSync(join(harness.contentRoot, ".mica"), { recursive: true });
       const first = harness.ctx.refreshModel();
-      const next = defineSite({ collections: { ...testSite.collections, late: collection({ label: "Late", fields: { title: text(), slug: slug() } }) }, singletons: testSite.singletons });
+      const next = defineSite({ collections: { ...testSite.collections, late: collection({ label: "Late", fields: { title: text(), id: id() } }) }, singletons: testSite.singletons });
       writeFileSync(join(harness.contentRoot, MANIFEST_PATH), JSON.stringify(createManifest(next, "test")));
       await Promise.all([first, harness.ctx.refreshModel({ force: true })]);
       assert.ok(harness.ctx.site.model.collections["late"]);
@@ -1077,9 +1077,9 @@ describe("comparing many documents", () => {
     try {
       const compare = (targets: unknown) =>
         harness.request(`/api/admin/changes/compare?${new URLSearchParams({ targets: JSON.stringify(targets) })}`);
-      const target = { kind: "entry", collection: "projects", slug: "haus-a" };
+      const target = { kind: "entry", collection: "projects", id: "haus-a" };
 
-      const ok = await compare([target, { kind: "singleton", name: "settings" }, { kind: "entry", collection: "nope", slug: "x" }]);
+      const ok = await compare([target, { kind: "singleton", name: "settings" }, { kind: "entry", collection: "nope", id: "x" }]);
       assert.equal(ok.status, 200);
       const { comparisons } = (await ok.json()) as { comparisons: Array<{ comparison?: unknown; error?: string }> };
       assert.deepEqual(
@@ -1105,7 +1105,7 @@ describe("a new content model", () => {
         writeFileSync(join(harness.contentRoot, MANIFEST_PATH), contents);
       };
       const next = defineSite({
-        collections: { ...testSite.collections, events: collection({ label: "Events", fields: { title: text(), slug: slug() } }) },
+        collections: { ...testSite.collections, events: collection({ label: "Events", fields: { title: text(), id: id() } }) },
         singletons: testSite.singletons,
       });
       write(JSON.stringify(createManifest(next, "test")));
@@ -1162,7 +1162,7 @@ describe("while a newer content model cannot be read", () => {
         ["/api/admin/collections/projects/entries", json("POST", { data: { title: "Haus B" } })],
         ["/api/admin/collections/projects/entries/haus-a", json("PUT", { data: { title: "Haus A, new" }, revision })],
         [`/api/admin/collections/projects/entries/haus-a?revision=${revision}`, { method: "DELETE" }],
-        ["/api/admin/collections/projects/reorder", json("POST", { slugs: ["haus-a"], revision: null })],
+        ["/api/admin/collections/projects/reorder", json("POST", { ids: ["haus-a"], revision: null })],
         ["/api/admin/singletons/settings", json("PUT", { data: { siteName: "Mica" }, revision: null })],
         [uploadPath("photo.png"), { method: "POST", body: pngBytes() }],
         ["/api/admin/media/delete", json("POST", { paths: ["media/photo.png"] })],
@@ -1227,9 +1227,9 @@ describe("the error mapping", () => {
     try {
       const response = await harness.request("/api/admin/collections/projects/entries");
       assert.equal(response.status, 200);
-      const body = (await response.json()) as { items: Array<{ slug: string }>; unreadable: Array<{ slug: string; path: string; message: string }> };
-      assert.ok(!body.items.some((item) => item.slug === "broken"));
-      assert.deepEqual(body.unreadable.map(({ slug, path }) => ({ slug, path })), [{ slug: "broken", path: "projects/broken/index.json" }]);
+      const body = (await response.json()) as { items: Array<{ id: string }>; unreadable: Array<{ id: string; path: string; message: string }> };
+      assert.ok(!body.items.some((item) => item.id === "broken"));
+      assert.deepEqual(body.unreadable.map(({ id, path }) => ({ id, path })), [{ id: "broken", path: "projects/broken/index.json" }]);
       assert.match(body.unreadable[0]!.message, /^projects\/broken\/index\.json: /);
     } finally {
       rmSync(join(harness.contentRoot, "projects/broken"), { recursive: true, force: true });
@@ -1251,11 +1251,11 @@ describe("the error mapping", () => {
     assert.equal(apiErrorOf(new Error("boom")), null);
   });
 
-  it("another content error is 400: an order for a collection that cannot sort, an entry without a title or a URL", async () => {
+  it("another content error is 400: an order for a collection that cannot sort, an entry without a title or an ID", async () => {
     const reorder = await harness.request("/api/admin/collections/team/reorder", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ slugs: [], revision: null }),
+      body: JSON.stringify({ ids: [], revision: null }),
     });
     assert.equal(reorder.status, 400);
     assert.match((await errorOf(reorder)).message, /not manually sortable/);

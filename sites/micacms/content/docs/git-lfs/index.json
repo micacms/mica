@@ -1,6 +1,6 @@
 {
   "title": "Large files with Git LFS",
-  "slug": "git-lfs",
+  "id": "git-lfs",
   "section": "operate",
   "summary": "Keep photos and other large media in Git LFS: the setup, the local editor, the self-hosted editor, the website build, the volume and the quotas of your host.",
   "readTime": 5

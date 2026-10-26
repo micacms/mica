@@ -144,7 +144,7 @@ export function usePublishReview() {
     for (const edit of chosenEdits) {
       if (edit.state === "removed") continue;
       const owner = edit.fileChanges[0]?.owner;
-      // An address such as /{activity}/{slug} needs the entry's data: the comparison has it once it loaded.
+      // An address such as /{activity}/{id} needs the entry's data: the comparison has it once it loaded.
       const href = owner ? pageOfOwner(owner, schema.schema.value, comparisons.items.value[edit.key]?.comparison?.after) : null;
       if (href) pages.set(href, edit.label);
     }

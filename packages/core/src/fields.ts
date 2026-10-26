@@ -25,7 +25,7 @@ import type {
   RepeaterField,
   RichTextField,
   SelectField,
-  SlugField,
+  IdField,
   TagsField,
   TextareaField,
   TextField,
@@ -50,7 +50,7 @@ const FIELD_KINDS = [
   "date",
   "email",
   "url",
-  "slug",
+  "id",
   "select",
   "object",
   "repeater",
@@ -80,7 +80,7 @@ export const FIELD_OPTIONS = {
   date: ["includeTime", "min", "max", "default"],
   email: ["placeholder", "default"],
   url: ["placeholder", "default"],
-  slug: ["from", "maxLength"],
+  id: ["from", "maxLength"],
   select: ["options", "multiple", "default"],
   object: ["fields", "collapsible", "collapsed"],
   repeater: ["fields", "min", "max", "itemLabel", "addLabel"],
@@ -166,15 +166,16 @@ export function url<O extends UrlOptions>(options?: O): UrlField & O {
   return make("url", options) as UrlField & O;
 }
 
-export type SlugOptions = Omit<SlugField, "kind">;
+export type IdOptions = Omit<IdField, "kind">;
 
 /**
- * An entry's URL: lower-case letters, digits and hyphens. Among a collection's
- * own fields, it is the entry's file name, so it is never null. Elsewhere, such
+ * An entry's ID: lower-case letters, digits and hyphens. Among a collection's
+ * own fields, it is the name of the entry's folder, so it is never null; the
+ * collection's `url` puts it into the page's address as `{id}`. Elsewhere, such
  * as one per language in an object, it is an ordinary value.
  */
-export function slug<O extends SlugOptions>(options?: O): SlugField & O {
-  return make("slug", options) as SlugField & O;
+export function id<O extends IdOptions>(options?: O): IdField & O {
+  return make("id", options) as IdField & O;
 }
 
 export type SelectOptions = Omit<SelectField, "kind">;

@@ -40,7 +40,7 @@ const SEED = {
   "src/pages/index.astro": "---\n---\n",
 };
 
-/** The test model's groups: an entry is `collection/slug`, a file at the top is itself. */
+/** The test model's groups: an entry is `collection/ID`, a file at the top is itself. */
 function groupOf(path: string): ContentGroup {
   const [first, second] = path.split("/");
   if (second === undefined) return { key: first!.replace(/\.json$/, ""), label: first! };

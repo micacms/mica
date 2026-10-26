@@ -19,9 +19,9 @@
           "maxLength": 120,
           "listed": true
         },
-        "slug": {
-          "kind": "slug",
-          "label": "URL",
+        "id": {
+          "kind": "id",
+          "label": "ID",
           "from": "title"
         },
         "publishDate": {

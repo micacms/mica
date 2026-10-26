@@ -13,7 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, defineSite, media, relation, richText, slug, text, type Site } from "@micacms/core/internal";
+import { collection, defineSite, media, relation, richText, id, text, type Site } from "@micacms/core/internal";
 
 import { createApp } from "../src/app.js";
 import { createRuntimeContext, type RuntimeContext } from "../src/context.js";
@@ -28,7 +28,7 @@ const SHARED_IMAGES = 1_100;
 
 const fields = {
   title: text({ required: true }),
-  slug: slug({ from: "title" }),
+  id: id({ from: "title" }),
   body: richText(),
   cover: media({ accept: "image" }),
 };
@@ -100,10 +100,10 @@ before(() => {
 
   for (const name of Object.keys(site.collections)) {
     for (let index = 0; index < ENTRIES[name]!; index++) {
-      const slugValue = `${name}-${index}`;
-      write(`${name}/${slugValue}/index.json`, JSON.stringify({ title: `${name} ${index}`, slug: slugValue, cover: "media/cover.png" }));
-      write(`${name}/${slugValue}/body.mdoc`, `Text of ${name} ${index}.\n`);
-      write(`${name}/${slugValue}/media/cover.png`, png);
+      const idValue = `${name}-${index}`;
+      write(`${name}/${idValue}/index.json`, JSON.stringify({ title: `${name} ${index}`, id: idValue, cover: "media/cover.png" }));
+      write(`${name}/${idValue}/body.mdoc`, `Text of ${name} ${index}.\n`);
+      write(`${name}/${idValue}/media/cover.png`, png);
     }
   }
   for (let index = 0; index < SHARED_IMAGES; index++) write(`media/image-${index}.png`, png);
@@ -145,7 +145,7 @@ describe("read budgets at the 1.0 target", () => {
   });
 
   it("the free-URL check asks for the candidate's data file only", async () => {
-    const { ms } = await measure(() => ctx.services.content.suggestSlug("news", "A new article"));
+    const { ms } = await measure(() => ctx.services.content.suggestId("news", "A new article"));
     assert.deepEqual(log.list, []);
     assert.deepEqual(log.read, []);
     assert.ok(log.stat.length <= 2, log.stat.join(", "));
@@ -174,7 +174,7 @@ describe("read budgets at the 1.0 target", () => {
   });
 
   it("the change list reads only the changed entries", async () => {
-    writeFileSync(join(root, "content/news/news-7/index.json"), JSON.stringify({ title: "Changed", slug: "news-7" }));
+    writeFileSync(join(root, "content/news/news-7/index.json"), JSON.stringify({ title: "Changed", id: "news-7" }));
     writeFileSync(join(root, "content/team/team-3/body.mdoc"), "Changed text.\n");
     try {
       const { ms } = await measure(async () => assert.equal((await request("/api/admin/changes")).status, 200));
@@ -221,10 +221,10 @@ describe("write budgets at the 1.0 target", () => {
     assert.equal(git("status", "--porcelain"), "");
   });
 
-  it("shows a URL change and checks a media deletion within budget", async () => {
+  it("shows an ID change and checks a media deletion within budget", async () => {
     const entry = await ctx.services.content.get("news", "news-11");
     // The media of the entry is copied on disk, not read.
-    await measure(() => ctx.services.content.save("news", { slug: "news-11", data: { ...entry!.data, slug: "news-11-moved" } }));
+    await measure(() => ctx.services.content.save("news", { id: "news-11", data: { ...entry!.data, id: "news-11-moved" } }));
     assert.deepEqual(log.readBinary, []);
     const status = await measure(pending);
     assert.ok(status.ms < 5_000, `status: ${status.ms} ms`);
@@ -238,10 +238,10 @@ describe("write budgets at the 1.0 target", () => {
   it("lets five editors save and publish at the same time", async () => {
     const editor = async (index: number) => {
       for (let round = 0; round < 3; round++) {
-        const slug = `news-${100 + index}`;
-        const entry = await ctx.services.content.get("news", slug);
-        await ctx.services.content.save("news", { slug, data: { ...entry!.data, title: `Editor ${index}, round ${round}` } });
-        const mine = (await pending()).filter((change) => change.path.startsWith(`news/${slug}/`));
+        const id = `news-${100 + index}`;
+        const entry = await ctx.services.content.get("news", id);
+        await ctx.services.content.save("news", { id, data: { ...entry!.data, title: `Editor ${index}, round ${round}` } });
+        const mine = (await pending()).filter((change) => change.path.startsWith(`news/${id}/`));
         const paths = Object.fromEntries(mine.map((change) => [change.path, change.revision ?? null]));
         await ctx.services.staging.publish({ message: `Editor ${index}, round ${round}`, paths });
       }

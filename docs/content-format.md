@@ -21,7 +21,7 @@ content root holds:
 | `.mica/schema.json` | The model, written by the Astro build (section 9). |
 | `.mica/references/<name>.json` | The index of a reference set, written by the Astro build (section 9.1). |
 | `<collection>/` | One folder for each collection. |
-| `<collection>/<slug>/` | One folder for each entry of a collection. |
+| `<collection>/<id>/` | One folder for each entry of a collection. |
 | `<collection>/_order.json` | The manual order of a collection (section 7). Optional. |
 | `<singleton>/` | One folder for each singleton. |
 | `media/` | Shared media (section 6). |
@@ -45,12 +45,12 @@ A path in the content is relative to the content root and uses `/`. A path
 MUST NOT contain an empty segment, `.`, `..` or `.git` (in any case), a `\`,
 a control character, or a drive letter. A reader MUST refuse such a path.
 
-### 1.3 Slugs
+### 1.3 IDs
 
-An entry's slug is the name of its folder. It MUST match
+An entry's ID is the name of its folder. It MUST match
 `^[a-z0-9]+(?:-[a-z0-9]+)*$`, and SHOULD be at most 96 characters. A folder
-whose name is not a slug is not an entry, and a reader MUST ignore it. The
-first `slug()` field among a collection's own fields holds the same value; on
+whose name is not an ID is not an entry, and a reader MUST ignore it. The
+first `id()` field among a collection's own fields holds the same value; on
 read, the folder name wins.
 
 ## 2. An entry
@@ -89,7 +89,7 @@ site/
 ```json
 {
   "title": "Hello, world",
-  "slug": "hello-world",
+  "id": "hello-world",
   "publishDate": "2026-10-14",
   "cover": {
     "path": "media/cover.jpg",
@@ -106,7 +106,7 @@ site/
 ```json
 {
   "title": "Second post",
-  "slug": "second-post",
+  "id": "second-post",
   "publishDate": null,
   "cover": null,
   "tags": []
@@ -178,11 +178,11 @@ A path that leads above the content root MUST NOT be resolved.
 | `date({ includeTime: true })` | ISO 8601 with its offset | `null` | `"2026-10-14T09:30:00+02:00"` |
 | `email()` | string, lower case | `null` | `"hello@example.com"` |
 | `url()` | `http://` or `https://` URL | `null` | `"https://example.com"` |
-| `slug()` | slug (section 1.3) | `null`; never in a collection's own fields | `"hello-world"` |
+| `id()` | ID (section 1.3) | `null`; never in a collection's own fields | `"hello-world"` |
 | `select()` | one `value` of the options | `null` | `"page"` |
 | `select({ multiple: true })` | list of `value`s | `[]` | `["buyers", "press"]` |
-| `relation()` | slug of an entry | `null` | `"contact"` |
-| `relation({ multiple: true })` | list of slugs | `[]` | `["contact"]` |
+| `relation()` | ID of an entry | `null` | `"contact"` |
+| `relation({ multiple: true })` | list of IDs | `[]` | `["contact"]` |
 | `media()` | path (section 6) | `null` | `"media/cover.jpg"` |
 | `media({ multiple: true })` | list of paths | `[]` | |
 | `media({ alt })` | `{ "path": …, "alt": … }`, keys in this order | `null` | section 2.1 |
@@ -216,7 +216,7 @@ does not get the key.
 ```json
 {
   "title": "About us",
-  "slug": "about",
+  "id": "about",
   "seo": {
     "description": "Who we are."
   },
@@ -283,7 +283,7 @@ A team of twelve.
 ```json
 {
   "title": "Contact",
-  "slug": "contact",
+  "id": "contact",
   "seo": {
     "description": null
   },
@@ -318,8 +318,8 @@ A team of twelve.
 
 ## 7. The order of a collection
 
-Without `_order.json`, the entries are in the order of their slugs, by UTF-16
-code unit, as Git lists files. `_order.json` MUST be a JSON array of slugs:
+Without `_order.json`, the entries are in the order of their IDs, by UTF-16
+code unit, as Git lists files. `_order.json` MUST be a JSON array of IDs:
 
 `posts/_order.json`:
 
@@ -330,8 +330,8 @@ code unit, as Git lists files. `_order.json` MUST be a JSON array of slugs:
 ]
 ```
 
-A reader MUST put the listed slugs first, in their order, and MUST then put
-the other entries in the order of their slugs. A listed slug without an entry
+A reader MUST put the listed IDs first, in their order, and MUST then put
+the other entries in the order of their IDs. A listed ID without an entry
 MUST be ignored. A file that is not a JSON array is an error.
 
 ## 8. What the model does not declare
@@ -345,14 +345,14 @@ A writer MUST keep, and a reader MUST NOT give to a website:
 A writer MAY drop a key in a row without a key, because such a row has no
 identity when the order changes. A writer MUST delete a `.mdoc` file that the
 model declares when the field is empty or its row is gone. When an entry gets
-a new slug, a writer MUST move every file of its folder.
+a new ID, a writer MUST move every file of its folder.
 
 `team/anna-vogt/index.json`, where the model has no `phone`:
 
 ```json
 {
   "name": "Anna Vogt",
-  "slug": "anna-vogt",
+  "id": "anna-vogt",
   "role": "Lead",
   "phone": "+41 44 000 00 00"
 }

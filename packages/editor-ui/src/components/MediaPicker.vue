@@ -37,7 +37,7 @@ const props = withDefaults(
     /**
      * The form's own `media/` folder: uploads go there, and the picker offers its
      * files and the shared ones, never another entry's. Null while a new entry has
-     * no URL. Undefined outside a form.
+     * no ID. Undefined outside a form.
      */
     folder?: MediaFolder | null;
   }>(),
@@ -243,7 +243,7 @@ const folderOf = (path: string): string => {
           @drop.prevent="onDrop"
         >
           <p v-if="folder === null" class="mb-4 rounded-md border border-line bg-subtle px-4 py-3 text-sm text-muted">
-            Give it a title or a valid URL first. Its files then get their own folder, and you can upload here.
+            Give it a title or a valid ID first. Its files then get their own folder, and you can upload here.
           </p>
           <label
             v-else

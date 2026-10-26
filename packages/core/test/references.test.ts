@@ -29,7 +29,7 @@ import {
   repeater,
   resolveMarkdocTarget,
   richText,
-  slug,
+  id,
   text,
 } from "../src/internal.js";
 
@@ -54,11 +54,11 @@ describe("documentLinks", () => {
     }, "news/hello");
 
     assert.deepEqual(found, [
-      { kind: "relation", field: "author", collection: "team", slug: "anna" },
-      { kind: "relation", field: "reviewers.0", collection: "team", slug: "bob" },
+      { kind: "relation", field: "author", collection: "team", id: "anna" },
+      { kind: "relation", field: "reviewers.0", collection: "team", id: "bob" },
       { kind: "media", field: "cover", path: "news/hello/media/a.jpg" },
       { kind: "media", field: "seo.image", path: "media/og.png" },
-      { kind: "relation", field: "sections.0.contact", collection: "team", slug: "carla" },
+      { kind: "relation", field: "sections.0.contact", collection: "team", id: "carla" },
       { kind: "media", field: "sections.0.photos.0", path: "news/hello/media/b.jpg" },
     ]);
   });
@@ -97,12 +97,12 @@ describe("walkFields and mapFields", () => {
 
 describe("ownerOfPath", () => {
   const site = defineSite({
-    collections: { projects: collection({ label: "Projects", fields: { slug: slug() } }) },
+    collections: { projects: collection({ label: "Projects", fields: { id: id() } }) },
     singletons: { site: { type: "singleton", name: "", label: "Website", fields: { title: text() } } },
   });
 
   it("names the entry, singleton, order or shared media of a file", () => {
-    const entry = { kind: "entry", collection: "projects", slug: "haus-a", label: "haus-a" };
+    const entry = { kind: "entry", collection: "projects", id: "haus-a", label: "haus-a" };
     assert.deepEqual(ownerOfPath(site, "projects/haus-a/index.json"), entry);
     assert.deepEqual(ownerOfPath(site, "projects/haus-a/media/a.jpg"), entry);
     assert.deepEqual(ownerOfPath(site, "site/index.json"), { kind: "singleton", name: "site", label: "Website" });
@@ -122,7 +122,7 @@ describe("relinkReferences", () => {
     steps: repeater({ fields: { contact: relation({ collection: "team" }) } }),
   };
 
-  it("points every relation to the old slug at the new one, nested fields included", () => {
+  it("points every relation to the old id at the new one, nested fields included", () => {
     const data = { author: "anna", others: ["ben", "anna"], place: "anna", meta: { editor: "anna" }, steps: [{ contact: "anna" }, { contact: "ben" }] };
     assert.deepEqual(relinkReferences(fields, data, "team", "anna", "anna-meier"), {
       author: "anna-meier",
@@ -133,7 +133,7 @@ describe("relinkReferences", () => {
     });
   });
 
-  it("returns null when nothing pointed at the old slug", () => {
+  it("returns null when nothing pointed at the old id", () => {
     assert.equal(relinkReferences(fields, { author: "ben", others: [], steps: [] }, "team", "anna", "x"), null);
   });
 });
@@ -179,7 +179,7 @@ describe("images in rich text, by the shared rule", () => {
   });
 
   it("finds the images that exist, and reports a missing relative one but not a missing /path", async () => {
-    const site = defineSite({ collections: { news: collection({ label: "News", fields: { slug: slug(), body: richText() } }) } });
+    const site = defineSite({ collections: { news: collection({ label: "News", fields: { id: id(), body: richText() } }) } });
     const source = memorySource({ "news/x/index.json": "{}", "news/x/media/a.jpg": "jpg", "media/logo.png": "png" });
     const body = "![A](media/a.jpg) ![L](/media/logo.png) ![P](/photo.jpg) ![G](media/gone.jpg) ![U](../../../up.jpg) ![W](https://example.com/w.png)";
     const check = createReferenceCheck(site, source);
@@ -195,16 +195,16 @@ describe("images in rich text, by the shared rule", () => {
 });
 
 describe("reference sets (#280)", () => {
-  const places = referenceSet({ label: "Places", file: "src/data/places.csv", id: "slug", title: "name" });
+  const places = referenceSet({ label: "Places", file: "src/data/places.csv", id: "id", title: "name" });
   const site = defineSite({
-    collections: { tours: collection({ label: "Tours", fields: { title: text(), slug: slug(), summit: relation({ collection: "places" }) } }) },
+    collections: { tours: collection({ label: "Tours", fields: { title: text(), id: id(), summit: relation({ collection: "places" }) } }) },
     references: { places },
   });
 
   it("are a target for relations, with a name of their own", () => {
     assert.equal(site.references?.["places"]?.name, "places");
     assert.throws(
-      () => defineSite({ collections: { places: collection({ label: "P", fields: { slug: slug() } }) }, references: { places } }),
+      () => defineSite({ collections: { places: collection({ label: "P", fields: { id: id() } }) }, references: { places } }),
       (error: unknown) => error instanceof ModelError && /unique across all three/.test(error.message),
     );
     assert.throws(() => defineSite({ collections: {}, references: { places: referenceSet({ label: "Places", file: "" }) } }), ModelError);

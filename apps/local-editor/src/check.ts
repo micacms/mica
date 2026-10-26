@@ -18,7 +18,7 @@ import {
   type FieldMap,
   INDEX_FILE,
   isRecord,
-  isValidSlug,
+  isValidId,
   MANIFEST_PATH,
   needsRowKey,
   ORDER_FILE,
@@ -30,7 +30,7 @@ import {
   readCollectionEntry,
   ROW_KEY,
   readSingleton,
-  resolveSlugField,
+  resolveIdField,
   richTextLinks,
   type Site,
   validateFields,
@@ -81,40 +81,40 @@ export async function checkContent(root: string): Promise<CheckReport> {
   // A model from a newer @micacms/astro: this check cannot judge those entries.
   for (const reason of readOnly.values()) error(MANIFEST_PATH, `Not checked. ${reason}`);
 
-  const slugs = new Map<string, Set<string>>();
+  const ids = new Map<string, Set<string>>();
   for (const name of Object.keys(site.collections)) {
-    slugs.set(name, new Set(await entrySlugs(files, name, error, warning)));
+    ids.set(name, new Set(await entryIds(files, name, error, warning)));
   }
 
   // A reference set's ids come from its index; without one, its relations are not checked, and the index is named once.
   for (const def of Object.values(site.references ?? {})) {
     try {
       const items = await readReferenceIndex(files, def.name);
-      if (items) slugs.set(def.name, new Set(items.map((item) => item.id)));
+      if (items) ids.set(def.name, new Set(items.map((item) => item.id)));
       else error(referenceIndexPath(def.name), `${def.label} has no index. Build the website, and commit the file.`);
     } catch (cause) {
       error(referenceIndexPath(def.name), `Not a reference index: ${(cause as Error).message}`);
     }
   }
 
-  const context: EntryContext = { root, files, site, slugs, error, warning };
+  const context: EntryContext = { root, files, site, ids, error, warning };
 
   for (const [name, def] of Object.entries(site.collections)) {
     report.collections++;
     if (readOnly.has(`collections.${name}`)) continue;
-    const slugField = resolveSlugField(def);
-    for (const slug of slugs.get(name)!) {
+    const idField = resolveIdField(def);
+    for (const id of ids.get(name)!) {
       report.entries++;
-      const dataPath = entryDataPath(name, slug);
+      const dataPath = entryDataPath(name, id);
 
-      const data = await readOrReport(() => readCollectionEntry(files, def, name, slug), dataPath, error);
+      const data = await readOrReport(() => readCollectionEntry(files, def, name, id), dataPath, error);
       if (!data) continue;
-      // The reader puts the name into the slug field, so the file itself shows a mismatch.
-      const stored = slugField ? rawField(await files.read(dataPath), slugField) : undefined;
-      if (typeof stored === "string" && stored !== "" && stored !== slug) {
-        warning(dataPath, `${slugField} is "${stored}", but the entry is named "${slug}". Mica uses the name; the next save writes it into the file.`);
+      // The reader puts the name into the ID field, so the file itself shows a mismatch.
+      const stored = idField ? rawField(await files.read(dataPath), idField) : undefined;
+      if (typeof stored === "string" && stored !== "" && stored !== id) {
+        warning(dataPath, `${idField} is "${stored}", but the entry is named "${id}". Mica uses the name; the next save writes it into the file.`);
       }
-      await checkEntry(context, def.fields, data, entryFolder(name, slug));
+      await checkEntry(context, def.fields, data, entryFolder(name, id));
     }
   }
 
@@ -138,13 +138,13 @@ interface EntryContext {
   root: string;
   files: ContentSource;
   site: Site;
-  slugs: Map<string, Set<string>>;
+  ids: Map<string, Set<string>>;
   error(path: string, message: string): void;
   warning(path: string, message: string): void;
 }
 
-/** The slugs Mica reads in a collection, reporting what it would skip. */
-async function entrySlugs(
+/** The IDs Mica reads in a collection, reporting what it would skip. */
+async function entryIds(
   files: ContentSource,
   name: string,
   error: (path: string, message: string) => void,
@@ -162,8 +162,8 @@ async function entrySlugs(
       warning(path, `Not read. Each entry of "${name}" is a folder with ${INDEX_FILE}.`);
       continue;
     }
-    if (!isValidSlug(item.name)) {
-      error(path, `Not read: "${item.name}" is not a slug. Use lowercase letters, digits and single hyphens.`);
+    if (!isValidId(item.name)) {
+      error(path, `Not read: "${item.name}" is not an ID. Use lowercase letters, digits and single hyphens.`);
       continue;
     }
     const index = await readText(files, `${path}/${INDEX_FILE}`);
@@ -195,7 +195,7 @@ function checkOrder(text: string | null | Error, path: string, error: (path: str
     return error(path, "Not valid JSON. The build fails on it.");
   }
   if (!Array.isArray(order)) {
-    error(path, 'Must be a JSON array of slugs, such as ["second", "first"]. The build fails on it.');
+    error(path, 'Must be a JSON array of IDs, such as ["second", "first"]. The build fails on it.');
   }
 }
 
@@ -218,7 +218,7 @@ async function checkEntry(
   data: Record<string, unknown>,
   folder: string,
 ): Promise<void> {
-  const { root, files, slugs, error, warning } = context;
+  const { root, files, ids, error, warning } = context;
   const dataPath = `${folder}/${INDEX_FILE}`;
 
   const result = validateFields(fields, data);
@@ -234,8 +234,8 @@ async function checkEntry(
     if (link.kind === "media" && !existsUnder(root, link.path)) {
       error(dataPath, `${link.field}: the file "${link.path}" does not exist under the content root.`);
     }
-    if (link.kind === "relation" && slugs.get(link.collection)?.has(link.slug) === false) {
-      error(dataPath, `${link.field}: there is no "${link.slug}" in "${link.collection}".`);
+    if (link.kind === "relation" && ids.get(link.collection)?.has(link.id) === false) {
+      error(dataPath, `${link.field}: there is no "${link.id}" in "${link.collection}".`);
     }
   }
 

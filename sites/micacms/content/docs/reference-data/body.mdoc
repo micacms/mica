@@ -21,13 +21,13 @@ The model names it with the same name, and a relation points to it:
 
 ```ts
 // src/mica.ts
-import { collection, defineSite, referenceSet, relation, slug, text } from "@micacms/core";
+import { collection, defineSite, referenceSet, relation, id, text } from "@micacms/core";
 
 export const site = defineSite({
   collections: {
     tours: collection({
       label: "Tours",
-      fields: { title: text(), slug: slug({ from: "title" }), summit: relation({ collection: "places" }) },
+      fields: { title: text(), id: id({ from: "title" }), summit: relation({ collection: "places" }) },
     }),
   },
   references: {

@@ -7,7 +7,7 @@
 import { z } from 'zod';
 
 // @public (undocumented)
-export type AnyField = TextField | TextareaField | RichTextField | NumberField | BooleanField | DateField | EmailField | UrlField | SlugField | SelectField | ObjectField | RepeaterField | RelationField | MediaField | ColorField | CoordinatesField | TagsField;
+export type AnyField = TextField | TextareaField | RichTextField | NumberField | BooleanField | DateField | EmailField | UrlField | IdField | SelectField | ObjectField | RepeaterField | RelationField | MediaField | ColorField | CoordinatesField | TagsField;
 
 // @public (undocumented)
 export interface BaseField extends BaseFieldOptions {
@@ -55,6 +55,9 @@ export function collection<O extends CollectionOptions>(options: O & {
     };
 }): Collection & O;
 
+// @public
+export function collectionIds(source: ContentSource, name: string): Promise<string[]>;
+
 // @public (undocumented)
 export interface CollectionOptions {
     // (undocumented)
@@ -66,17 +69,14 @@ export interface CollectionOptions {
     description?: string;
     // (undocumented)
     fields: FieldMap;
+    idField?: string;
     // (undocumented)
     label: string;
     labelSingular?: string;
-    slugField?: string;
     sortable?: boolean;
     titleField?: string;
     url?: string;
 }
-
-// @public
-export function collectionSlugs(source: ContentSource, name: string): Promise<string[]>;
 
 // @public
 export function color<O extends ColorOptions>(options?: O): ColorField & O;
@@ -99,9 +99,9 @@ export type CommonOptions = BaseFieldOptions;
 export interface ContentEntry {
     // (undocumented)
     data: Record<string, unknown>;
-    position: number;
     // (undocumented)
-    slug: string;
+    id: string;
+    position: number;
 }
 
 // @public
@@ -221,7 +221,7 @@ export interface EmailField extends BaseField {
 export type EmailOptions = Omit<EmailField, "kind">;
 
 // @public
-export function entryDataPath(name: string, slug?: string): string;
+export function entryDataPath(name: string, id?: string): string;
 
 // @public (undocumented)
 export interface EntryFiles {
@@ -236,7 +236,7 @@ export function entryFiles(folder: string, serialized: {
 }): Record<string, string>;
 
 // @public
-export function entryFolder(name: string, slug?: string): string;
+export function entryFolder(name: string, id?: string): string;
 
 // @public (undocumented)
 export interface FieldIssue {
@@ -246,7 +246,7 @@ export interface FieldIssue {
 }
 
 // @public
-export type FieldKind = "text" | "textarea" | "richText" | "number" | "boolean" | "date" | "email" | "url" | "slug" | "select" | "object" | "repeater" | "relation" | "media" | "color" | "coordinates" | "tags";
+export type FieldKind = "text" | "textarea" | "richText" | "number" | "boolean" | "date" | "email" | "url" | "id" | "select" | "object" | "repeater" | "relation" | "media" | "color" | "coordinates" | "tags";
 
 // @public (undocumented)
 export type FieldMap = Record<string, AnyField>;
@@ -258,13 +258,27 @@ export function fieldsSchema(fields: FieldMap, options?: SchemaOptions): z.ZodOb
 // Warning: (ae-forgotten-export) The symbol "MediaValue" needs to be exported by the entry point index.d.ts
 //
 // @public
-export type FieldValue<F extends AnyField, Img = never> = F extends TextField ? string : F extends TextareaField ? string : F extends RichTextField ? string : F extends NumberField ? number : F extends BooleanField ? boolean : F extends DateField ? string : F extends EmailField ? string : F extends UrlField ? string : F extends SlugField ? string : F extends SelectField ? Multiple<F, string> : F extends ColorField ? string : F extends CoordinatesField ? Coordinates : F extends TagsField ? string[] : F extends MediaField ? Multiple<F, MediaValue<F, Img>> : F extends RelationField ? Multiple<F, string> : F extends ObjectField ? InferFields<F["fields"], Img> : F extends RepeaterField ? Array<InferFields<F["fields"], Img>> : never;
+export type FieldValue<F extends AnyField, Img = never> = F extends TextField ? string : F extends TextareaField ? string : F extends RichTextField ? string : F extends NumberField ? number : F extends BooleanField ? boolean : F extends DateField ? string : F extends EmailField ? string : F extends UrlField ? string : F extends IdField ? string : F extends SelectField ? Multiple<F, string> : F extends ColorField ? string : F extends CoordinatesField ? Coordinates : F extends TagsField ? string[] : F extends MediaField ? Multiple<F, MediaValue<F, Img>> : F extends RelationField ? Multiple<F, string> : F extends ObjectField ? InferFields<F["fields"], Img> : F extends RepeaterField ? Array<InferFields<F["fields"], Img>> : never;
 
 // @public (undocumented)
 export class FormatError extends Error {
     // (undocumented)
     name: string;
 }
+
+// @public
+export function id<O extends IdOptions>(options?: O): IdField & O;
+
+// @public (undocumented)
+export interface IdField extends BaseField {
+    from?: string;
+    // (undocumented)
+    kind: "id";
+    maxLength?: number;
+}
+
+// @public (undocumented)
+export type IdOptions = Omit<IdField, "kind">;
 
 // @public
 export const INDEX_FILE = "index.json";
@@ -275,11 +289,11 @@ export type InferCollection<C extends Collection, Img = never> = InferFields<C["
 // Warning: (ae-forgotten-export) The symbol "NeverNull" needs to be exported by the entry point index.d.ts
 //
 // @public
-export type InferField<F extends AnyField, Img = never, Url extends boolean = false> = NeverNull<F, Url> extends true ? FieldValue<F, Img> : FieldValue<F, Img> | null;
+export type InferField<F extends AnyField, Img = never, Own extends boolean = false> = NeverNull<F, Own> extends true ? FieldValue<F, Img> : FieldValue<F, Img> | null;
 
 // @public (undocumented)
-export type InferFields<M extends FieldMap, Img = never, Url extends boolean = false> = {
-    [K in keyof M]: InferField<M[K], Img, Url>;
+export type InferFields<M extends FieldMap, Img = never, Own extends boolean = false> = {
+    [K in keyof M]: InferField<M[K], Img, Own>;
 };
 
 // @public (undocumented)
@@ -296,7 +310,7 @@ export type InferSiteSingletons<S extends Site> = {
 };
 
 // @public
-export function isValidSlug(value: string): boolean;
+export function isValidId(value: string): boolean;
 
 // @public
 export const MANIFEST_PATH = ".mica/schema.json";
@@ -420,7 +434,7 @@ export interface ProtocolManifest {
 export function readCollection(source: ContentSource, def: Collection, name: string): Promise<ContentEntry[]>;
 
 // @public
-export function readCollectionEntry(source: ContentSource, def: Collection, name: string, slug: string): Promise<Record<string, unknown> | null>;
+export function readCollectionEntry(source: ContentSource, def: Collection, name: string, id: string): Promise<Record<string, unknown> | null>;
 
 // @public (undocumented)
 export interface ReadManifest {
@@ -601,23 +615,6 @@ export interface SiteOptions {
 }
 
 // @public
-export function slug<O extends SlugOptions>(options?: O): SlugField & O;
-
-// @public (undocumented)
-export interface SlugField extends BaseField {
-    from?: string;
-    // (undocumented)
-    kind: "slug";
-    maxLength?: number;
-}
-
-// @public
-export function slugify(input: string, maxLength?: number): string;
-
-// @public (undocumented)
-export type SlugOptions = Omit<SlugField, "kind">;
-
-// @public
 export type SortableBy<O extends CollectionOptions> = "position" | Extract<keyof O["fields"], string>;
 
 // @public
@@ -673,6 +670,9 @@ export interface TextField extends BaseField {
 
 // @public (undocumented)
 export type TextOptions = Omit<TextField, "kind">;
+
+// @public
+export function toId(input: string, maxLength?: number): string;
 
 // @public
 export function url<O extends UrlOptions>(options?: O): UrlField & O;

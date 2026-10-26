@@ -4,7 +4,7 @@ import { existsSync } from "node:fs";
 import { readFile, rm, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 
-import { collectionSlugs, documentName, entryFolder, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
+import { collectionIds, documentName, entryFolder, INDEX_FILE, MANIFEST_PATH } from "@micacms/core";
 import { fileSystemSource } from "@micacms/core/node";
 
 const [root, collection, key] = process.argv.slice(2);
@@ -13,8 +13,8 @@ const def = manifest.collections[collection];
 if (!def) throw new Error(`The model has no collection "${collection}".`);
 if (def.fields[key]) throw new Error(`"${key}" is still in the model. Remove it there, and run \`npx astro sync\` first.`);
 
-for (const slug of await collectionSlugs(fileSystemSource(root), collection)) {
-  const base = join(root, entryFolder(collection, slug));
+for (const id of await collectionIds(fileSystemSource(root), collection)) {
+  const base = join(root, entryFolder(collection, id));
   const file = join(base, INDEX_FILE);
   if (!existsSync(file)) continue;
   const data = JSON.parse(await readFile(file, "utf8"));

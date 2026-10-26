@@ -10,8 +10,8 @@
           "kind": "text",
           "required": true
         },
-        "slug": {
-          "kind": "slug",
+        "id": {
+          "kind": "id",
           "from": "title"
         },
         "seo": {

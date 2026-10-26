@@ -23,7 +23,7 @@ import type { ChangeOwner, StagingProblem } from "./changes.js";
 
 /** An entry or settings page that links to an entry or a file. `readOnly`: this build cannot change its links. */
 export type Referrer =
-  | { kind: "entry"; collection: string; slug: string; title: string; readOnly?: true }
+  | { kind: "entry"; collection: string; id: string; title: string; readOnly?: true }
   | { kind: "singleton"; name: string; title: string; readOnly?: true };
 
 /** A collection entry or a singleton, as a scan over the whole site reads it. */
@@ -62,8 +62,8 @@ export async function scanSite(
   for (const [name, def] of Object.entries(model.collections)) {
     if (options.where && !options.where(def.fields)) continue;
     const entries = await readable(def, () => readCollection(source, def, name));
-    for (const { slug, data } of entries ?? []) {
-      visit({ referrer: { kind: "entry", collection: name, slug, title: entryTitle(def, data) }, def, data, folder: entryFolder(name, slug) });
+    for (const { id, data } of entries ?? []) {
+      visit({ referrer: { kind: "entry", collection: name, id, title: entryTitle(def, data) }, def, data, folder: entryFolder(name, id) });
     }
   }
   for (const [name, def] of Object.entries(model.singletons)) {
@@ -118,7 +118,7 @@ export function linkNeeds(
 ): string[] {
   const needed = new Set<string>();
   for (const link of documentLinks(fields, data, folderOf(dataPath))) {
-    const path = link.kind === "relation" ? entryDataPath(link.collection, link.slug) : link.path;
+    const path = link.kind === "relation" ? entryDataPath(link.collection, link.id) : link.path;
     if (path !== null && path !== dataPath && created.has(path)) needed.add(path);
   }
   return [...needed];
@@ -137,17 +137,17 @@ export async function brokenByRemoval(
   entriesByCollection: Map<string, Map<string, Record<string, unknown> | null>>,
   titles: Map<string, string>,
 ): Promise<StagingProblem[]> {
-  const removedEntries = new Map<string, { collection: string; slug: string; renamedTo?: string }>();
+  const removedEntries = new Map<string, { collection: string; id: string; renamedTo?: string }>();
   const removedFiles = new Set<string>();
   changes.forEach((change, index) => {
     const owner = owners[index]!;
     if (change.kind !== "delete") return;
     if (owner.kind === "entry") {
-      // A URL change removes the old slug: links to it break as with a delete.
-      const gone = owner.renamedFrom ?? owner.slug;
+      // An ID change removes the old ID: links to it break as with a delete.
+      const gone = owner.renamedFrom ?? owner.id;
       if (!entriesByCollection.get(owner.collection)?.get(gone)) {
-        const renamedTo = owner.renamedFrom ? owner.slug : undefined;
-        removedEntries.set(`${owner.collection}/${gone}`, { collection: owner.collection, slug: gone, ...(renamedTo ? { renamedTo } : {}) });
+        const renamedTo = owner.renamedFrom ? owner.id : undefined;
+        removedEntries.set(`${owner.collection}/${gone}`, { collection: owner.collection, id: gone, ...(renamedTo ? { renamedTo } : {}) });
       }
     }
     // A file can be a target, also the media of a removed entry; a cleared rich-text file or an order file cannot.
@@ -164,10 +164,10 @@ export async function brokenByRemoval(
     model,
     source,
     ({ referrer, def, data, folder }) => {
-      const label = referrer.kind === "entry" ? labelEntry(def as Collection, referrer.slug, referrer.title) : def.label;
+      const label = referrer.kind === "entry" ? labelEntry(def as Collection, referrer.id, referrer.title) : def.label;
       for (const link of documentLinks(def.fields, data, folder)) {
         if (link.kind === "relation") {
-          const target = `${link.collection}/${link.slug}`;
+          const target = `${link.collection}/${link.id}`;
           if (removedEntries.has(target)) note(target, label);
         } else if (link.path !== null && removedFiles.has(link.path)) {
           note(link.path, label);
@@ -182,11 +182,11 @@ export async function brokenByRemoval(
     const entry = removedEntries.get(target);
     const def = entry ? model.collections[entry.collection]! : null;
     const message = entry?.renamedTo
-      ? `The URL changes from "${entry.slug}" to "${entry.renamedTo}", and ${from.join(", ")} still link to "${entry.slug}". Change those links first, or publish them together.`
+      ? `The ID changes from "${entry.id}" to "${entry.renamedTo}", and ${from.join(", ")} still link to "${entry.id}". Change those links first, or publish them together.`
       : `Still linked from ${from.join(", ")}. Remove those links first, or publish them together.`;
     problems.push({
-      path: entry ? entryDataPath(entry.collection, entry.slug) : target,
-      label: entry && def ? labelEntry(def, entry.slug, titles.get(target)) : target,
+      path: entry ? entryDataPath(entry.collection, entry.id) : target,
+      label: entry && def ? labelEntry(def, entry.id, titles.get(target)) : target,
       issues: [{ path: "", message }],
     });
   }
@@ -194,6 +194,6 @@ export async function brokenByRemoval(
 }
 
 /** An entry in words: "Project: House A". */
-export function labelEntry(def: Collection, slug: string, title: string | undefined): string {
-  return `${def.labelSingular ?? def.label}: ${title ?? slug}`;
+export function labelEntry(def: Collection, id: string, title: string | undefined): string {
+  return `${def.labelSingular ?? def.label}: ${title ?? id}`;
 }

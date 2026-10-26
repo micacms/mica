@@ -27,7 +27,7 @@ import {
   entryFolder,
   fieldsSchema,
   unknownFieldParts,
-  resolveSlugField,
+  resolveIdField,
   MANIFEST_PATH,
   readCollection,
   readSingleton,
@@ -185,7 +185,7 @@ export function micaCollections<S extends Site>(
   options: MicaCollectionsOptions = {},
 ): MicaCollections<S> {
   assertKnownFields(site);
-  assertOneUrl(site);
+  assertOneId(site);
 
   /**
    * Everything below is resolved on first load rather than here, because the
@@ -231,8 +231,8 @@ export function micaCollections<S extends Site>(
           ));
 
   /** An entry's data file, from the content root and, outside tests, from the project root. */
-  const entryFile = (context: LoaderContext, name: string, slug?: string) => {
-    const inContent = entryDataPath(name, slug);
+  const entryFile = (context: LoaderContext, name: string, id?: string) => {
+    const inContent = entryDataPath(name, id);
     const project = context.config?.root;
     const inProject =
       project && !options.source
@@ -355,21 +355,21 @@ export function micaCollections<S extends Site>(
             context.store.clear();
 
             for (const entry of entries) {
-              const file = entryFile(context, name, entry.slug);
+              const file = entryFile(context, name, entry.id);
               // `images` holds paths here; the schema's `image()` makes them images.
               const meta = { position: entry.position, images: await imagesOf(check, def.fields, entry.data, file.inContent) };
 
-              const data = await draftTolerant(context, `${name}/${entry.slug}`, () =>
+              const data = await draftTolerant(context, `${name}/${entry.id}`, () =>
                 context.parseData({
-                  id: entry.slug,
+                  id: entry.id,
                   data: { ...imagePathsFromEntry(def.fields, entry.data, file.inContent), _mica: meta },
                   ...(file.inProject ? { filePath: file.inProject } : {}),
                 }),
               );
               if (data === undefined) continue;
-              const shown = markers(context) ? markFields(def.fields, data, name, entry.slug) : data;
+              const shown = markers(context) ? markFields(def.fields, data, name, entry.id) : data;
               context.store.set({
-                id: entry.slug,
+                id: entry.id,
                 data: shown,
                 digest: context.generateDigest(shown),
                 ...(file.inProject ? { filePath: file.inProject } : {}),
@@ -380,10 +380,10 @@ export function micaCollections<S extends Site>(
               context,
               check,
               entries.map((entry) => ({
-                label: `${name}/${entry.slug}`,
+                label: `${name}/${entry.id}`,
                 fields: def.fields,
                 data: entry.data,
-                folder: entryFolder(name, entry.slug),
+                folder: entryFolder(name, entry.id),
               })),
             );
             context.logger.info(`Loaded ${entries.length} ${entries.length === 1 ? "entry" : "entries"} of "${def.label}"`);
@@ -491,20 +491,20 @@ function assertKnownFields(site: Site): void {
 }
 
 /**
- * A collection's own slug fields are typed as never null, because Mica fills
- * the URL field from the file name. A second one would be typed the same and
- * could still be null, so the site's model refuses it. (A slug in an object,
+ * A collection's own ID fields are typed as never null, because Mica fills
+ * the ID field from the folder name. A second one would be typed the same and
+ * could still be null, so the site's model refuses it. (An ID in an object,
  * such as one per language, is nullable and fine.) Mica itself still reads a
  * manifest with two, so an older site keeps working with a newer Mica.
  */
-function assertOneUrl(site: Site): void {
+function assertOneId(site: Site): void {
   for (const [name, def] of Object.entries(site.collections)) {
-    const url = resolveSlugField(def);
-    const others = Object.entries(def.fields).filter(([key, field]) => field.kind === "slug" && key !== url).map(([key]) => key);
+    const own = resolveIdField(def);
+    const others = Object.entries(def.fields).filter(([key, field]) => field.kind === "id" && key !== own).map(([key]) => key);
     if (others.length > 0) {
       throw new Error(
-        `Collection "${name}" has slug fields that are not its URL (${others.join(", ")}); its URL is "${url}". ` +
-          "An entry has one URL: use text() for the others, or put them in an object, such as one per language.",
+        `Collection "${name}" has id() fields that are not its ID (${others.join(", ")}); its ID is "${own}". ` +
+          "An entry has one ID: use text() for the others, or put them in an object, such as one per language.",
       );
     }
   }

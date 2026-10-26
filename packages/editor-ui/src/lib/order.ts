@@ -9,8 +9,8 @@ export function moveItem<T>(items: readonly T[], from: number, to: number): T[] 
   return next;
 }
 
-/** Entries whose title or slug contains `term`, those that start with it first, without `exclude`. */
-export function matchEntries<T extends { slug: string; title: string }>(
+/** Entries whose title or ID contains `term`, those that start with it first, without `exclude`. */
+export function matchEntries<T extends { id: string; title: string }>(
   entries: readonly T[],
   term: string,
   exclude: readonly string[] = [],
@@ -20,11 +20,11 @@ export function matchEntries<T extends { slug: string; title: string }>(
   const rank = (entry: T): number => {
     if (needle === "") return 1;
     const title = entry.title.toLowerCase();
-    if (title.startsWith(needle) || entry.slug.startsWith(needle)) return 0;
-    return title.includes(needle) || entry.slug.includes(needle) ? 1 : -1;
+    if (title.startsWith(needle) || entry.id.startsWith(needle)) return 0;
+    return title.includes(needle) || entry.id.includes(needle) ? 1 : -1;
   };
   return entries
-    .filter((entry) => !exclude.includes(entry.slug))
+    .filter((entry) => !exclude.includes(entry.id))
     .map((entry, index) => ({ entry, index, rank: rank(entry) }))
     .filter((item) => item.rank >= 0)
     .sort((a, b) => a.rank - b.rank || a.index - b.index)

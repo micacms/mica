@@ -1,6 +1,6 @@
 {
   "title": "About us",
-  "slug": "about",
+  "id": "about",
   "seo": {
     "description": "Who we are."
   },

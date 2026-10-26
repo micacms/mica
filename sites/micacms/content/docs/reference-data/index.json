@@ -1,6 +1,6 @@
 {
   "title": "Reference data",
-  "slug": "reference-data",
+  "id": "reference-data",
   "section": "build",
   "summary": "Link entries to data of the website that Mica does not edit, such as thousands of place names from a file.",
   "readTime": 3

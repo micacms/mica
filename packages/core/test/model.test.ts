@@ -30,9 +30,9 @@ import {
   richTextFeatures,
   select,
   singleton,
-  slug,
-  slugAtPath,
-  slugify,
+  id,
+  idAtPath,
+  toId,
   text,
   type FieldMap,
   type InferFields,
@@ -74,19 +74,19 @@ type _Nested = Expect<Equal<Inferred["seo"], { metaTitle: string | null }>>;
 type _Coordinates = Expect<Equal<Inferred["where"], { lat: number; lng: number; zoom?: number } | null>>;
 /* eslint-enable @typescript-eslint/no-unused-vars */
 
-describe("slugify", () => {
+describe("toId", () => {
   it("transliterates German umlauts rather than stripping them", () => {
-    assert.equal(slugify("Zürich Grünstrasse"), "zuerich-gruenstrasse");
-    assert.equal(slugify("Weißenbach"), "weissenbach");
+    assert.equal(toId("Zürich Grünstrasse"), "zuerich-gruenstrasse");
+    assert.equal(toId("Weißenbach"), "weissenbach");
   });
 
   it("strips accents and collapses separators", () => {
-    assert.equal(slugify("Café  de   Flore!"), "cafe-de-flore");
-    assert.equal(slugify("--Hello--World--"), "hello-world");
+    assert.equal(toId("Café  de   Flore!"), "cafe-de-flore");
+    assert.equal(toId("--Hello--World--"), "hello-world");
   });
 
   it("truncates on a word boundary", () => {
-    assert.equal(slugify("alpha beta gamma delta", 14), "alpha-beta");
+    assert.equal(toId("alpha beta gamma delta", 14), "alpha-beta");
   });
 
 });
@@ -111,7 +111,7 @@ describe("validation", () => {
     site: url(),
     tint: color(),
     where: coordinates(),
-    handle: slug(),
+    handle: id(),
     gallery: media({ multiple: true }),
     rows: repeater({ fields: { label: text({ required: true }) } }),
   };
@@ -160,7 +160,7 @@ describe("validation", () => {
       contact: "nope",
       site: "ftp://example.com",
       tint: "red",
-      handle: "Not A Slug",
+      handle: "Not A Id",
       where: { lat: 200, lng: 0 },
     });
     assert.ok(!result.ok);
@@ -232,7 +232,7 @@ describe("defineSite", () => {
   it("injects collection and global names from the map keys", () => {
     const model = defineSite({
       collections: {
-        projects: collection({ label: "Projects", fields: { title: text(), slug: slug() } }),
+        projects: collection({ label: "Projects", fields: { title: text(), id: id() } }),
       },
       singletons: { theme: singleton({ label: "Theme", fields: { primary: color() } }) },
     });
@@ -247,7 +247,7 @@ describe("defineSite", () => {
           collections: {
             news: collection({
               label: "News",
-              fields: { slug: slug(), author: relation({ collection: "tema" }) },
+              fields: { id: id(), author: relation({ collection: "tema" }) },
             }),
           },
         }),
@@ -258,7 +258,7 @@ describe("defineSite", () => {
 
   // The shared media folder sits beside the folders of the collections and singletons.
   it("rejects a collection or a singleton named media", () => {
-    const fields = { title: text(), slug: slug() };
+    const fields = { title: text(), id: id() };
     assert.throws(() => defineSite({ collections: { media: collection({ label: "Media", fields }) } }), /"media" is reserved/);
     assert.throws(
       () => defineSite({ collections: {}, singletons: { media: singleton({ label: "Media", fields: { title: text() } }) } }),
@@ -266,7 +266,7 @@ describe("defineSite", () => {
     );
   });
 
-  it("rejects a collection without a slug field", () => {
+  it("rejects a collection without an ID field", () => {
     assert.throws(
       () =>
         defineSite({
@@ -279,7 +279,7 @@ describe("defineSite", () => {
   it("rejects an invalid text pattern when the model loads", () => {
     const site = (pattern: string) => () =>
       defineSite({
-        collections: { news: collection({ label: "News", fields: { slug: slug(), code: text({ pattern }) } }) },
+        collections: { news: collection({ label: "News", fields: { id: id(), code: text({ pattern }) } }) },
       });
     assert.throws(site("[A-Z"), /Text field "collections\.news\.code" has an invalid pattern/);
     // The `u` flag refuses an escape that a plain regular expression accepts.
@@ -289,7 +289,7 @@ describe("defineSite", () => {
   it("rejects a text pattern that repeats a group that repeats inside", () => {
     const site = (pattern: string) => () =>
       defineSite({
-        collections: { news: collection({ label: "News", fields: { slug: slug(), code: text({ pattern }) } }) },
+        collections: { news: collection({ label: "News", fields: { id: id(), code: text({ pattern }) } }) },
       });
     for (const slow of ["(a+)+", "(a*)*", "(\\w+\\s?)+", "((ab)+c)*", "(?:a{2,})+", "(?<word>x+){2,}", "(a?)+"]) {
       assert.throws(site(slow), /has a pattern that can be very slow/, slow);
@@ -300,12 +300,12 @@ describe("defineSite", () => {
     assert.throws(site("x(a+){3}"), /\(a\+\)\{3\} repeats a group/);
   });
 
-  it("rejects a slug deriving from a non-existent sibling", () => {
+  it("rejects an ID deriving from a non-existent sibling", () => {
     assert.throws(
       () =>
         defineSite({
           collections: {
-            news: collection({ label: "News", fields: { slug: slug({ from: "titel" }) } }),
+            news: collection({ label: "News", fields: { id: id({ from: "titel" }) } }),
           },
         }),
       ModelError,
@@ -326,7 +326,7 @@ describe("defineSite", () => {
               label: "News",
               // @ts-expect-error -- the types refuse it too; a model read from a manifest has no types.
               defaultSort: { field: "publishedAt", direction: "desc" },
-              fields: { title: text(), slug: slug(), publishDate: date() },
+              fields: { title: text(), id: id(), publishDate: date() },
             }),
           },
         }),
@@ -338,7 +338,7 @@ describe("defineSite", () => {
   });
 
   it("accepts a default sort by a declared field, or by hand-arranged position", () => {
-    const fields = { title: text(), slug: slug(), publishDate: date() };
+    const fields = { title: text(), id: id(), publishDate: date() };
 
     for (const field of ["publishDate", "title", "position"] as const) {
       assert.doesNotThrow(() =>
@@ -363,15 +363,15 @@ describe("media paths (#213, N15)", () => {
 });
 
 describe("model checks (#222)", () => {
-  const fields = { title: text(), slug: slug() };
+  const fields = { title: text(), id: id() };
   const throws = (build: () => unknown, pattern: RegExp) => assert.throws(build, (error: unknown) => error instanceof ModelError && pattern.test(error.message));
 
   it("refuse two names that differ only in case", () => {
     throws(() => defineSite({ collections: { teamMembers: collection({ label: "A", fields }), teammembers: collection({ label: "B", fields }) } }), /differ only in case/);
   });
 
-  it("refuse a slugField that is not a slug", () => {
-    throws(() => defineSite({ collections: { news: collection({ label: "News", slugField: "title", fields }) } }), /not a slug\(\) field/);
+  it("refuse an idField that is not an id", () => {
+    throws(() => defineSite({ collections: { news: collection({ label: "News", idField: "title", fields }) } }), /not an id\(\) field/);
   });
 
   it("refuse a lower bound above the upper bound", () => {
@@ -387,8 +387,8 @@ describe("model checks (#222)", () => {
   });
 });
 
-describe("the order of slugs and dates", () => {
-  it("sorts slugs by code unit, the same on every machine", () => {
+describe("the order of ids and dates", () => {
+  it("sorts ids by code unit, the same on every machine", () => {
     assert.deepEqual(["b", "a-2", "a", "a10", "a1"].sort(byCodeUnits), ["a", "a-2", "a1", "a10", "b"]);
   });
 
@@ -403,7 +403,7 @@ describe("listing order", () => {
   const news = collection({
     label: "News",
     defaultSort: { field: "publishDate", direction: "desc" },
-    fields: { title: text(), slug: slug(), publishDate: date() },
+    fields: { title: text(), id: id(), publishDate: date() },
   });
 
   const entry = (position: number, publishDate: string | null) => ({
@@ -449,7 +449,7 @@ describe("listing order", () => {
   });
 
   it("falls back to that order when the collection asks for nothing", () => {
-    const plain = collection({ label: "Pages", fields: { title: text(), slug: slug() } });
+    const plain = collection({ label: "Pages", fields: { title: text(), id: id() } });
     const entries = [entry(2, null), entry(0, null), entry(1, null)];
 
     assert.deepEqual(
@@ -462,7 +462,7 @@ describe("listing order", () => {
     const projects = collection({
       label: "Projects",
       defaultSort: { field: "year", direction: "desc" },
-      fields: { title: text(), slug: slug(), year: number() },
+      fields: { title: text(), id: id(), year: number() },
     });
 
     const entries = [
@@ -484,7 +484,7 @@ describe("model queries", () => {
     label: "Projects",
     fields: {
       title: text(),
-      slug: slug(),
+      id: id(),
       cover: media(),
       gallery: media({ multiple: true }),
       blocks: repeater({ fields: { image: media() } }),
@@ -492,9 +492,9 @@ describe("model queries", () => {
     },
   });
 
-  it("falls back through title, slug, then a placeholder", () => {
+  it("falls back through title, id, then a placeholder", () => {
     assert.equal(entryTitle(projects, { title: "Haus A" }), "Haus A");
-    assert.equal(entryTitle(projects, { title: "   ", slug: "haus-a" }), "haus-a");
+    assert.equal(entryTitle(projects, { title: "   ", id: "haus-a" }), "haus-a");
     assert.equal(entryTitle(projects, {}), "Untitled");
   });
 });
@@ -502,37 +502,37 @@ describe("model queries", () => {
 describe("page addresses", () => {
   const withUrl = (url: unknown, kind: "collection" | "singleton") => () =>
     kind === "collection"
-      ? defineSite({ collections: { news: collection({ label: "News", url: url as string, fields: { title: text(), slug: slug({ from: "title" }) } }) } })
+      ? defineSite({ collections: { news: collection({ label: "News", url: url as string, fields: { title: text(), id: id({ from: "title" }) } }) } })
       : defineSite({ collections: {}, singletons: { about: singleton({ label: "About", url: url as string, fields: { title: text() } }) } });
 
-  it("takes a path with {slug} for a collection, and a path without one for a singleton", () => {
-    assert.doesNotThrow(withUrl("/news/{slug}", "collection"));
-    assert.doesNotThrow(withUrl("/{slug}/", "collection"));
+  it("takes a path with {id} for a collection, and a path without one for a singleton", () => {
+    assert.doesNotThrow(withUrl("/news/{id}", "collection"));
+    assert.doesNotThrow(withUrl("/{id}/", "collection"));
     assert.doesNotThrow(withUrl("/about", "singleton"));
   });
 
-  it("refuses an address that is not a path, or names the slug wrongly", () => {
-    for (const url of ["news/{slug}", "//evil.example/{slug}", "/news", "/news/{slug}/{slug}", "/news/{year}/{slug}", "/news/{slug}?x=1"]) {
+  it("refuses an address that is not a path, or names the id wrongly", () => {
+    for (const url of ["news/{id}", "//evil.example/{id}", "/news", "/news/{id}/{id}", "/news/{year}/{id}", "/news/{id}?x=1"]) {
       assert.throws(withUrl(url, "collection"), (error: unknown) => error instanceof ModelError && /has the url/.test(error.message), url);
     }
-    assert.throws(withUrl("/team/{slug}", "singleton"), ModelError);
+    assert.throws(withUrl("/team/{id}", "singleton"), ModelError);
   });
 
-  it("fills in the slug, encoded", () => {
-    assert.equal(pageUrl("/news/{slug}", "zürich"), "/news/z%C3%BCrich");
+  it("fills in the id, encoded", () => {
+    assert.equal(pageUrl("/news/{id}", "zürich"), "/news/z%C3%BCrich");
     assert.equal(pageUrl("/about"), "/about");
   });
 
   const tours = (url: string) => () =>
     defineSite({
       collections: {
-        activities: collection({ label: "Activities", fields: { name: text(), slug: slug({ from: "name" }) } }),
+        activities: collection({ label: "Activities", fields: { name: text(), id: id({ from: "name" }) } }),
         tours: collection({
           label: "Tours",
           url,
           fields: {
             title: text(),
-            slug: slug({ from: "title" }),
+            id: id({ from: "title" }),
             activity: relation({ collection: "activities" }),
             region: select({ options: [{ label: "Valais", value: "valais" }] }),
             startDate: date(),
@@ -544,37 +544,37 @@ describe("page addresses", () => {
       },
     });
 
-  it("takes a select, relation or date field beside {slug}, each as a whole part of the path", () => {
-    for (const url of ["/{activity}/{slug}", "/{region}/{startDate}/{slug}/", "/{activity}/x/tour-{slug}"]) assert.doesNotThrow(tours(url), url);
+  it("takes a select, relation or date field beside {id}, each as a whole part of the path", () => {
+    for (const url of ["/{activity}/{id}", "/{region}/{startDate}/{id}/", "/{activity}/x/tour-{id}"]) assert.doesNotThrow(tours(url), url);
   });
 
   it("refuses free text, a list, a time, a name that is no field, and a name that shares a part of the path", () => {
-    const shared = ["/{activity}{slug}", "/{startDate}-{slug}", "/x-{activity}/{slug}", "/{activity}"];
-    for (const url of ["/{title}/{slug}", "/{regions}/{slug}", "/{notes}/{slug}", "/{seen}/{slug}", "/{nope}/{slug}", ...shared]) {
+    const shared = ["/{activity}{id}", "/{startDate}-{id}", "/x-{activity}/{id}", "/{activity}"];
+    for (const url of ["/{title}/{id}", "/{regions}/{id}", "/{notes}/{id}", "/{seen}/{id}", "/{nope}/{id}", ...shared]) {
       assert.throws(tours(url), (error: unknown) => error instanceof ModelError && /has the url/.test(error.message), url);
     }
   });
 
   it("fills in each field, and gives no page while one is empty", () => {
-    assert.equal(pageUrl("/{activity}/{slug}", "breithorn", { activity: "hochtouren" }), "/hochtouren/breithorn");
-    assert.equal(pageUrl("/{activity}/{slug}", "breithorn", { activity: null }), null);
-    assert.equal(pageUrl("/{activity}/{slug}", "breithorn"), null);
+    assert.equal(pageUrl("/{activity}/{id}", "breithorn", { activity: "hochtouren" }), "/hochtouren/breithorn");
+    assert.equal(pageUrl("/{activity}/{id}", "breithorn", { activity: null }), null);
+    assert.equal(pageUrl("/{activity}/{id}", "breithorn"), null);
   });
 
-  it("finds the slug of a page, and how specific the address is", () => {
-    assert.deepEqual(slugAtPath("/{activity}/{slug}", "/hochtouren/breithorn"), { slug: "breithorn", literal: 2 });
-    assert.deepEqual(slugAtPath("/news/{slug}", "/news/z%C3%BCrich"), { slug: "zürich", literal: 6 });
-    assert.equal(slugAtPath("/{activity}/{slug}", "/hochtouren"), null);
-    assert.equal(slugAtPath("/{activity}/{slug}", "/a/b/c"), null);
-    assert.equal(slugAtPath("/news.{slug}", "/newsXhello"), null, "the address's own text is literal");
-    assert.deepEqual(slugAtPath("/{activity}/tour-{slug}", "/hochtouren/tour-piz-palue"), { slug: "piz-palue", literal: 7 });
-    assert.equal(slugAtPath("/news/{slug}", "/news/100%"), null, "a stray % is no slug");
+  it("finds the id of a page, and how specific the address is", () => {
+    assert.deepEqual(idAtPath("/{activity}/{id}", "/hochtouren/breithorn"), { id: "breithorn", literal: 2 });
+    assert.deepEqual(idAtPath("/news/{id}", "/news/z%C3%BCrich"), { id: "zürich", literal: 6 });
+    assert.equal(idAtPath("/{activity}/{id}", "/hochtouren"), null);
+    assert.equal(idAtPath("/{activity}/{id}", "/a/b/c"), null);
+    assert.equal(idAtPath("/news.{id}", "/newsXhello"), null, "the address's own text is literal");
+    assert.deepEqual(idAtPath("/{activity}/tour-{id}", "/hochtouren/tour-piz-palue"), { id: "piz-palue", literal: 7 });
+    assert.equal(idAtPath("/news/{id}", "/news/100%"), null, "a stray % is no id");
   });
 });
 
 describe("media file types", () => {
   const withAccept = (accept: unknown) => () =>
-    defineSite({ collections: { tours: collection({ label: "Tours", fields: { title: text(), slug: slug({ from: "title" }), track: media({ accept: accept as never }) } }) } });
+    defineSite({ collections: { tours: collection({ label: "Tours", fields: { title: text(), id: id({ from: "title" }), track: media({ accept: accept as never }) } }) } });
 
   it("takes a group or a list of known types", () => {
     for (const accept of ["image", "document", "any", ["gpx"], ["gpx", "kml", "image"]]) assert.doesNotThrow(withAccept(accept));
@@ -616,7 +616,7 @@ describe("rich-text toolbars", () => {
 
 describe("coordinates maps", () => {
   const siteWith = (fields: FieldMap) =>
-    defineSite({ collections: { places: collection({ label: "Places", fields: { title: text(), slug: slug({ from: "title" }), ...fields } }) } });
+    defineSite({ collections: { places: collection({ label: "Places", fields: { title: text(), id: id({ from: "title" }), ...fields } }) } });
 
   it("loads a preset from OpenFreeMap, and a style of its own from its origin and its hosts", () => {
     assert.deepEqual(resolveMap("positron"), {

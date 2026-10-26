@@ -1,6 +1,6 @@
 {
   "name": "Sveltia CMS",
-  "slug": "sveltia-cms",
+  "id": "sveltia-cms",
   "title": "Mica vs. Sveltia CMS",
   "website": "https://sveltiacms.app/",
   "checkedOn": "2026-10-21",

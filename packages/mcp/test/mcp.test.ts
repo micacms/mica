@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, createManifest, defineSite, MANIFEST_PATH, media, PROTOCOL_VERSION, referenceIndexPath, referenceSet, richText, serializeReferenceIndex, singleton, slug, text } from "@micacms/core/internal";
+import { collection, createManifest, defineSite, MANIFEST_PATH, media, PROTOCOL_VERSION, referenceIndexPath, referenceSet, richText, serializeReferenceIndex, singleton, id, text } from "@micacms/core/internal";
 import { contentFiles, createApp, createLogger, createRuntimeContext, MODEL_UNREADABLE, type Env, type OwnerPolicy, type RuntimeContext } from "@micacms/runtime";
 import type { MiddlewareHandler } from "hono";
 
@@ -23,7 +23,7 @@ const site = defineSite({
       label: "Posts",
       fields: {
         title: text({ label: "Title", required: true, maxLength: 20 }),
-        slug: slug({ from: "title" }),
+        id: id({ from: "title" }),
         body: richText(),
         cover: media({ accept: "image" }),
       },
@@ -158,32 +158,32 @@ describe("the MCP tools", () => {
   it("creates, reads and replaces an entry with its revision", async () => {
     const created = await h.call("save_entry", { collection: "posts", data: { title: "Hello", body: "Some *text*." } });
     assert.equal(created.error, false);
-    assert.equal(created.value.slug, "hello");
+    assert.equal(created.value.id, "hello");
 
-    const read = await h.call("get_entry", { collection: "posts", slug: "hello" });
+    const read = await h.call("get_entry", { collection: "posts", id: "hello" });
     assert.equal(read.value.data.body.trim(), "Some *text*.");
     assert.equal(read.value.revision, created.value.revision);
 
     const saved = await h.call("save_entry", {
       collection: "posts",
-      slug: "hello",
+      id: "hello",
       revision: read.value.revision,
       data: { ...read.value.data, title: "Hello again" },
     });
     assert.equal(saved.error, false);
 
     const listed = await h.call("list_entries", { collection: "posts" });
-    assert.deepEqual(listed.value.entries, [{ slug: "hello", title: "Hello again" }]);
+    assert.deepEqual(listed.value.entries, [{ id: "hello", title: "Hello again" }]);
   });
 
   it("refuses a save over a newer revision, and says what to do", async () => {
-    const stale = await h.call("save_entry", { collection: "posts", slug: "hello", revision: "0000", data: { title: "Late" } });
+    const stale = await h.call("save_entry", { collection: "posts", id: "hello", revision: "0000", data: { title: "Late" } });
     assert.equal(stale.error, true);
     assert.match(stale.value, /Read it again/);
   });
 
   it("refuses an update without a revision", async () => {
-    const result = await h.call("save_entry", { collection: "posts", slug: "hello", data: { title: "Blind" } });
+    const result = await h.call("save_entry", { collection: "posts", id: "hello", data: { title: "Blind" } });
     assert.equal(result.error, true);
     assert.match(result.value, /revision/);
   });
@@ -296,9 +296,9 @@ describe("while a newer content model cannot be read", () => {
       await h.ctx.refreshModel({ force: true });
 
       const writes: Array<[string, Record<string, unknown>]> = [
-        ["save_entry", { collection: "posts", slug: "first", revision: saved.value.revision, data: { title: "First, new" } }],
+        ["save_entry", { collection: "posts", id: "first", revision: saved.value.revision, data: { title: "First, new" } }],
         ["save_singleton", { name: "settings", data: { siteName: "Mica" }, revision: null }],
-        ["delete_entry", { collection: "posts", slug: "first", revision: saved.value.revision }],
+        ["delete_entry", { collection: "posts", id: "first", revision: saved.value.revision }],
         ["upload_media", { name: "photo.png", content: PNG }],
         ["discard_changes", { paths: { "posts/first/index.json": saved.value.revision } }],
         ["publish", { message: "Try", paths: { "posts/first/index.json": saved.value.revision } }],
@@ -309,7 +309,7 @@ describe("while a newer content model cannot be read", () => {
         assert.equal(result.value, MODEL_UNREADABLE, name);
       }
 
-      const read = await h.call("get_entry", { collection: "posts", slug: "first" });
+      const read = await h.call("get_entry", { collection: "posts", id: "first" });
       assert.equal(read.error, false, read.value);
       assert.equal(read.value.data.title, "First");
     } finally {

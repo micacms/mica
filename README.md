@@ -54,8 +54,8 @@ import {
   collection,
   defineSite,
   media,
+  id,
   richText,
-  slug,
   text,
 } from "@micacms/core";
 
@@ -66,7 +66,7 @@ export const site = defineSite({
       label: "Projects",
       fields: {
         title: text({ label: "Title", required: true, maxLength: 120 }),
-        slug: slug({ from: "title" }),
+        id: id({ label: "ID", from: "title" }),
         summary: richText(),
         gallery: media({ multiple: true, accept: "image" }),
       },
@@ -133,7 +133,7 @@ content/projects/haus-am-zuerichsee/
 
 Each entry and each singleton is a folder with `index.json`, its `.mdoc`
 files and its media. Keys are written in model order, so a diff shows only what
-changed. Collection order is a `_order.json` listing slugs, so dragging one
+changed. Collection order is a `_order.json` listing IDs, so dragging one
 entry is a one-line diff rather than a rewrite of every entry.
 
 Rich text is [Markdoc](https://markdoc.dev), not HTML: readable in a diff, and

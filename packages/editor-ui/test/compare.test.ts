@@ -17,7 +17,7 @@ import {
   repeater,
   richText,
   select,
-  slug,
+  id,
   text,
 } from "@micacms/core/internal";
 
@@ -29,7 +29,7 @@ const site = defineSite({
       label: "Pages",
       fields: {
         title: text({ label: "Title", required: true }),
-        slug: slug({ from: "title" }),
+        id: id({ from: "title" }),
         body: richText(),
         published: boolean({ label: "Published" }),
         category: select({

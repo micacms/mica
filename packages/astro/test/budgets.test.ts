@@ -10,7 +10,7 @@ import { join, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { after, before, describe, it } from "node:test";
 
-import { collection, defineSite, richText, slug, text } from "@micacms/core/internal";
+import { collection, defineSite, richText, id, text } from "@micacms/core/internal";
 
 import { micaCollections } from "../src/index.js";
 
@@ -19,7 +19,7 @@ const ENTRIES = 1_000;
 const site = defineSite({
   root: "./content",
   collections: {
-    news: collection({ label: "News", fields: { title: text(), slug: slug({ from: "title" }), body: richText() } }),
+    news: collection({ label: "News", fields: { title: text(), id: id({ from: "title" }), body: richText() } }),
   },
 });
 
@@ -29,7 +29,7 @@ before(async () => {
   for (let index = 0; index < ENTRIES; index++) {
     const folder = join(dir, "content", "news", `news-${index}`);
     await mkdir(folder, { recursive: true });
-    await writeFile(join(folder, "index.json"), JSON.stringify({ title: `News ${index}`, slug: `news-${index}` }));
+    await writeFile(join(folder, "index.json"), JSON.stringify({ title: `News ${index}`, id: `news-${index}` }));
     await writeFile(join(folder, "body.mdoc"), `Text of news ${index}, with a [link](/news/).\n`);
   }
 });

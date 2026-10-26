@@ -40,7 +40,7 @@ import {
  * Models
  * ------------------------------------------------------------------ */
 
-const fieldName = fc.stringMatching(/^[a-z][a-zA-Z0-9]{0,7}$/).filter((name) => name !== "slug");
+const fieldName = fc.stringMatching(/^[a-z][a-zA-Z0-9]{0,7}$/).filter((name) => name !== "id");
 
 const options = [
   { label: "A", value: "a" },

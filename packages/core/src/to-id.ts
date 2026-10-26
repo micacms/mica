@@ -1,5 +1,5 @@
 /**
- * Slug generation.
+ * ID generation.
  *
  * Uses Unicode normalisation to strip diacritics, with an explicit map for the
  * German-speaking market where "ü" must become "ue" rather than "u".
@@ -24,12 +24,12 @@ const TRANSLITERATE: Record<string, string> = {
   ð: "d",
 };
 
-export function slugify(input: string, maxLength = 96): string {
+export function toId(input: string, maxLength = 96): string {
   const transliterated = Array.from(input)
     .map((char) => TRANSLITERATE[char] ?? char)
     .join("");
 
-  const slug = transliterated
+  const id = transliterated
     // Decompose accents into base char + combining mark, then drop the marks.
     .normalize("NFKD")
     .replace(/[̀-ͯ]/g, "")
@@ -37,12 +37,12 @@ export function slugify(input: string, maxLength = 96): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
-  if (slug.length <= maxLength) return slug;
-  // Trim at a separator so the slug never ends mid-word.
-  return slug.slice(0, maxLength).replace(/-+[^-]*$/, "").replace(/-+$/, "");
+  if (id.length <= maxLength) return id;
+  // Trim at a separator so the ID never ends mid-word.
+  return id.slice(0, maxLength).replace(/-+[^-]*$/, "").replace(/-+$/, "");
 }
 
-/** `true` when the string is already a well-formed slug. */
-export function isValidSlug(value: string): boolean {
+/** `true` when the string is already a well-formed ID. */
+export function isValidId(value: string): boolean {
   return /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 }

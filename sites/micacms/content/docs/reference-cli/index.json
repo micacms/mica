@@ -1,6 +1,6 @@
 {
   "title": "Command line",
-  "slug": "reference-cli",
+  "id": "reference-cli",
   "section": "reference",
   "summary": "Every command and option of the local editor and of the self-hosted image, with the exit codes.",
   "readTime": 5

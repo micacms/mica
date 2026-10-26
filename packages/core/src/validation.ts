@@ -4,14 +4,14 @@
  * Zod is an implementation detail: the DSL is the public API because a field
  * descriptor carries editorial semantics (labels, groups, widths, presets) that
  * a validator cannot express. This module projects descriptors onto Zod for the
- * stored shape: media and relations are paths and slugs.
+ * stored shape: media and relations are paths and IDs.
  */
 
 import { z } from "zod";
 
 import type { AnyField, FieldMap } from "./types.js";
 import { textPattern } from "./pattern.js";
-import { isValidSlug } from "./slugify.js";
+import { isValidId } from "./to-id.js";
 import { needsRowKey, ROW_KEY } from "./row-key.js";
 import { contentPath } from "./source.js";
 
@@ -66,7 +66,7 @@ function blankIsEmpty(field: AnyField): boolean {
     case "richText":
     case "email":
     case "url":
-    case "slug":
+    case "id":
     case "color":
     case "date":
     case "select":
@@ -199,13 +199,13 @@ function innerSchema(
           `${name} must start with http:// or https://.`,
         );
 
-    case "slug":
+    case "id":
       return z
         .string()
         .trim()
         .toLowerCase()
         .max(field.maxLength ?? 96, { error: lengthLimit(name, "most", field.maxLength ?? 96) })
-        .refine(isValidSlug, `${name} may only contain lowercase letters, numbers and hyphens.`);
+        .refine(isValidId, `${name} may only contain lowercase letters, numbers and hyphens.`);
 
     case "select": {
       const values = field.options.map((option) => option.value);

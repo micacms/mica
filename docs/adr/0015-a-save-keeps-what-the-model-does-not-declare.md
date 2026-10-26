@@ -9,7 +9,7 @@ The model and the content can come in different commits. A save with an older mo
 ## Decision
 
 - A save keeps the keys of `index.json` and the `.mdoc` files that the model does not declare: at the top, in objects, and in list rows with a `_key`. They come after the declared keys, in their stored order.
-- A save deletes a `.mdoc` file only when the model declares it and the field is empty or its row is gone. A URL change moves all files of the folder.
+- A save deletes a `.mdoc` file only when the model declares it and the field is empty or its row is gone. An ID change moves all files of the folder.
 - A `default` fills a field of a new entry, and of a singleton without a file. A read fills a missing value with the empty value (`null`, `false`, `[]`), never with the default.
 - `mica check` warns about keys and files that the model does not declare. The recipes `remove-field.mjs` and `rename-field.mjs` remove or rename a field's content in one commit.
 

@@ -8,14 +8,14 @@ import {
   MANIFEST_PATH,
   memorySource,
   readManifest,
-  slug,
+  id,
   text,
   type ContentSource,
 } from "@micacms/core/internal";
 
 import { loadSchema, schemaFingerprint, SchemaError } from "../src/schema.js";
 
-/** The smallest manifest that satisfies `defineSite`: every collection needs a slug. */
+/** The smallest manifest that satisfies `defineSite`: every collection needs an ID. */
 
 const checkSchema = (raw: unknown) => readManifest(raw).site;
 const validSite = () => ({
@@ -28,7 +28,7 @@ const validSite = () => ({
       label: "Pages",
       fields: {
         title: { kind: "text", label: "Title", required: true },
-        slug: { kind: "slug", from: "title" },
+        id: { kind: "id", from: "title" },
       },
     },
   },

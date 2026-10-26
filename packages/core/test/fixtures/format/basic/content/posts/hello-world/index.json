@@ -1,6 +1,6 @@
 {
   "title": "Hello, world",
-  "slug": "hello-world",
+  "id": "hello-world",
   "publishDate": "2026-10-14",
   "cover": {
     "path": "media/cover.jpg",

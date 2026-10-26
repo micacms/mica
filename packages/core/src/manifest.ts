@@ -76,7 +76,7 @@ export function readManifest(raw: unknown, origin = "the manifest"): ReadManifes
     for (const [name, def] of Object.entries(defs)) {
       const found = knownAccepts(def.fields, []);
       if (found.length === 0) continue;
-      unknownTypes.set(`${kind}.${name}`, `"${def.label}" uses ${found.join(", ")}, which this version of Mica does not know. Upgrade Mica to edit it.`);
+      unknownTypes.set(`${kind}.${name}`, `"${def.label}" uses ${found.join(", ")}, which this version of Mica does not know: a newer or an older version of Mica wrote the model. Build the site with this version's @micacms/astro, or use the version of Mica that wrote it.`);
     }
   }
 
@@ -125,7 +125,7 @@ export function readOnlyParts(site: Site): Map<string, string> {
     if (unknown.length > 0) {
       parts.set(
         key,
-        `"${def.label}" uses ${unknown.join(", ")}, which this version of Mica does not know. Upgrade Mica to edit it.`,
+        `"${def.label}" uses ${unknown.join(", ")}, which this version of Mica does not know: a newer or an older version of Mica wrote the model. Build the site with this version's @micacms/astro, or use the version of Mica that wrote it.`,
       );
     }
   };

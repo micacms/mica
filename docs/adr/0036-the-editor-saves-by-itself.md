@@ -13,9 +13,9 @@ A form with a Save button has unsaved changes as a normal state. The editor then
 - A value that breaks a rule of the model stays in the form, and the field shows the problem. A save still does not check `required`.
 - A conflict with a colleague's save stops the autosave and shows both versions, as before.
 - Two steps keep a button, because they have effects beyond the form:
-  - A new entry has a "Create" button. Its URL comes from its title, and an autosave while the editor types the title would create and rename it again and again.
-  - A new URL waits for "Change URL", with the choice to update the links in other entries. Autosave writes the saved URL until then.
-- Leaving a form asks first only for changes that autosave cannot write: a held URL, a field with a problem, a failed save, a conflict. The tab keeps them, as before ([4](0004-sealed-sessions-and-no-state-about-people.md)).
+  - A new entry has a "Create" button. Its ID comes from its title, and an autosave while the editor types the title would create and rename it again and again.
+  - A new ID waits for "Change ID", with the choice to update the links in other entries. Autosave writes the saved ID until then.
+- Leaving a form asks first only for changes that autosave cannot write: a held ID, a field with a problem, a failed save, a conflict. The tab keeps them, as before ([4](0004-sealed-sessions-and-no-state-about-people.md)).
 
 ## Consequences
 

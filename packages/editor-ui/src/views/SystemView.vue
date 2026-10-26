@@ -38,7 +38,7 @@ onMounted(load);
  * `richText` → "Rich text". Derived, so a new field kind needs no edit here;
  * only initialisms need a table.
  */
-const INITIALISMS: Record<string, string> = { url: "URL" };
+const INITIALISMS: Record<string, string> = { url: "URL", id: "ID" };
 
 function kindLabel(kind: string): string {
   if (INITIALISMS[kind]) return INITIALISMS[kind];
@@ -289,7 +289,7 @@ async function copyReport(): Promise<void> {
                 <th scope="col" class="px-4 py-2 font-medium">Collection</th>
                 <th scope="col" class="px-4 py-2 text-right font-medium">Entries</th>
                 <th scope="col" class="px-4 py-2 text-right font-medium">Fields</th>
-                <th scope="col" class="hidden px-4 py-2 font-medium sm:table-cell">Title / slug</th>
+                <th scope="col" class="hidden px-4 py-2 font-medium sm:table-cell">Title / ID</th>
                 <th scope="col" class="hidden px-4 py-2 font-medium sm:table-cell">Ordering</th>
               </tr>
             </thead>
@@ -316,7 +316,7 @@ async function copyReport(): Promise<void> {
                 </td>
 
                 <td class="mono hidden px-4 py-2.5 text-muted sm:table-cell">
-                  {{ item.titleField ?? "—" }} / {{ item.slugField ?? "—" }}
+                  {{ item.titleField ?? "—" }} / {{ item.idField ?? "—" }}
                 </td>
 
                 <td class="hidden px-4 py-2.5 text-xs text-muted sm:table-cell">

@@ -29,14 +29,14 @@ For a reference set of the model, the loader also writes its index to `<content 
 
 ## The data of an entry
 
-`entry.id` is the slug, which is also the folder or file name in the repository. Each entry of a collection has `data._mica`. It holds two keys:
+`entry.id` is the ID, which is also the folder or file name in the repository. Each entry of a collection has `data._mica`. It holds two keys:
 
 | Key | Meaning |
 | --- | --- |
-| `position` | The place in the collection's order, the order that the editor shows: the `defaultSort` of the collection, else the order in `_order.json` when there is one, then the other slugs in the order of their characters (UTF-16 code units), the same on every computer. |
+| `position` | The place in the collection's order, the order that the editor shows: the `defaultSort` of the collection, else the order in `_order.json` when there is one, then the other IDs in the order of their characters (UTF-16 code units), the same on every computer. |
 | `images` | The images of the entry's rich text whose files are in the content, as `{ path, src }`: the path as the text writes it, and the image that Astro made. A singleton has `data._mica.images` too. `renderRichText` reads them, so you rarely use them yourself. |
 
-`_mica` has no `id`, `slug` or `collection`. Use `entry.id` and the name of the collection. There are no dates in `_mica`, because in Git a date is commit data. Add a `date()` field when editors must see or set a date.
+`_mica` has no `id` or `collection`. Use `entry.id` and the name of the collection. There are no dates in `_mica`, because in Git a date is commit data. Add a `date()` field when editors must see or set a date.
 
 ## Helpers for pages
 
@@ -59,7 +59,7 @@ See [Recipes](/docs/recipes/) for each one in use.
 
 ## Relations
 
-A relation stores the slug of the target entry, which is also its id in Astro. `@micacms/astro/relations` gives two functions for your pages.
+A relation stores the ID of the target entry, which is also its `id` in Astro. `@micacms/astro/relations` gives two functions for your pages.
 
 ```ts
 import { related, relatedAll } from "@micacms/astro/relations";
@@ -68,8 +68,8 @@ const author = await related("team", article.data.author);
 const people = await relatedAll("team", project.data.team);
 ```
 
-- `related(collection, slug)` gives the entry, or `undefined` when the field is empty or the entry does not exist.
-- `relatedAll(collection, slugs)` gives the entries in the order that the editor chose, and leaves out the entries that do not exist.
+- `related(collection, id)` gives the entry, or `undefined` when the field is empty or the entry does not exist.
+- `relatedAll(collection, ids)` gives the entries in the order that the editor chose, and leaves out the entries that do not exist.
 
 In `astro dev`, a missing entry shows a warning. Use them only in pages and components: they import `astro:content`. They also read the items of a reference set, because it is an Astro collection.
 

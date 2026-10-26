@@ -1,12 +1,12 @@
 <script setup lang="ts">
 /**
- * Relation field. Stores entry slugs, so a reference is readable both in the
+ * Relation field. Stores entry IDs, so a reference is readable both in the
  * JSON payload and in the diff a reviewer reads.
  *
  * The chosen entries come first, in their stored order. They change their order
  * as every list does (`useReorder`): a handle to drag or to move with the
  * keyboard, and arrows. Below them, `RelationSearch` finds an entry by its title
- * or URL as the editor types.
+ * or ID as the editor types.
  *
  * A single relation with a value shows only the chosen entry. Its Change action
  * opens a dialog with the search, so a form with many relations stays short (#351).
@@ -50,7 +50,7 @@ const aSingular = computed(() => `${/^[aeiou]/.test(singular.value) ? "an" : "a"
 
 onMounted(async () => {
   try {
-    options.value = await entryOptions(field.value.collection, reference.value !== undefined);
+    options.value = await entryOptions(field.value.collection, reference.value !== undefined, target.value?.url);
   } catch {
     failed.value = true;
   } finally {
@@ -71,16 +71,18 @@ const selected = computed<string[]>(() =>
 const pane = usePreviewPane();
 
 /** "Edit": the chosen entry in the overlay form, over this one. A reference set is data of the code: it has none. */
-function edit(slug: string): void {
-  pane.openOverlay({ kind: "entry", document: field.value.collection, id: slug, field: "" });
+function edit(id: string): void {
+  pane.openOverlay({ kind: "entry", document: field.value.collection, id, field: "" });
 }
 
-const titleFor = (slug: string): string => options.value.find((item) => item.slug === slug)?.title ?? slug;
+const titleFor = (id: string): string => options.value.find((item) => item.id === id)?.title ?? id;
+/** Beside a chosen entry: its page's URL when the collection has one, else its ID. */
+const addressFor = (id: string): string => options.value.find((item) => item.id === id)?.url ?? id;
 
-const isMissing = (slug: string): boolean => !loading.value && !failed.value && !options.value.some((item) => item.slug === slug);
+const isMissing = (id: string): boolean => !loading.value && !failed.value && !options.value.some((item) => item.id === id);
 
-function store(slugs: string[]): void {
-  emit("update:modelValue", field.value.multiple ? slugs : (slugs[0] ?? null));
+function store(ids: string[]): void {
+  emit("update:modelValue", field.value.multiple ? ids : (ids[0] ?? null));
 }
 
 const search = ref<InstanceType<typeof RelationSearch> | null>(null);
@@ -91,15 +93,15 @@ const reorder = useReorder<string>({
   show: store,
   // The form keeps the order: the next save writes it.
   commit: () => {},
-  id: (slug) => slug,
+  id: (id) => id,
   label: titleFor,
   disabled: () => locked.value,
 });
 
-async function remove(slug: string): Promise<void> {
+async function remove(id: string): Promise<void> {
   if (locked.value) return;
-  store(selected.value.filter((item) => item !== slug));
-  announce(`Removed "${titleFor(slug)}".`);
+  store(selected.value.filter((item) => item !== id));
+  announce(`Removed "${titleFor(id)}".`);
   await nextTick();
   search.value?.input?.focus();
 }
@@ -124,10 +126,10 @@ const setChangeButton = (element: unknown) => {
 
 async function choose(entry: RelationOption): Promise<void> {
   if (field.value.multiple) {
-    store([...selected.value, entry.slug]);
+    store([...selected.value, entry.id]);
     return;
   }
-  store([entry.slug]);
+  store([entry.id]);
   announce(`Chose "${entry.title}".`);
   await nextTick();
   changeButton.value?.focus();
@@ -148,7 +150,7 @@ function change(): void {
 
 function changeTo(entry: RelationOption): void {
   if (locked.value) return;
-  store([entry.slug]);
+  store([entry.id]);
   changing.value = false;
   announce(`Changed to "${entry.title}".`);
 }
@@ -188,23 +190,23 @@ function onDialogKeydown(event: KeyboardEvent): void {
         :aria-label="`Chosen ${targetLabel.toLowerCase()}`"
       >
         <li
-          v-for="(slug, index) in selected"
-          :key="field.multiple ? slug : 'chosen'"
-          :class="['flex items-center gap-2 py-1.5 pr-1.5 text-sm', field.multiple ? 'pl-1' : 'pl-3', reorder.isMoving(slug) && 'bg-accent-soft']"
-          v-bind="field.multiple ? reorder.row(slug) : {}"
+          v-for="(id, index) in selected"
+          :key="field.multiple ? id : 'chosen'"
+          :class="['flex items-center gap-2 py-1.5 pr-1.5 text-sm', field.multiple ? 'pl-1' : 'pl-3', reorder.isMoving(id) && 'bg-accent-soft']"
+          v-bind="field.multiple ? reorder.row(id) : {}"
           @focusin="field.multiple && reportListItem($event, index)"
         >
           <ReorderHandle
             v-if="field.multiple"
-            :label="titleFor(slug)"
+            :label="titleFor(id)"
             :described-by="`${inputId}-order-help`"
             :disabled="locked"
-            v-bind="reorder.handle(slug)"
+            v-bind="reorder.handle(id)"
           />
-          <span class="min-w-0 flex-1 truncate">{{ titleFor(slug) }}</span>
-          <span class="shrink-0 font-mono text-[11px] text-muted">{{ slug }}</span>
-          <button v-if="target && !isMissing(slug)" type="button" class="btn-ghost px-1.5 py-0.5 text-xs" @click="edit(slug)">
-            Edit<span class="sr-only"> "{{ titleFor(slug) }}"</span>
+          <span class="min-w-0 flex-1 truncate">{{ titleFor(id) }}</span>
+          <span class="min-w-0 shrink truncate font-mono text-[11px] text-muted" :title="addressFor(id)">{{ addressFor(id) }}</span>
+          <button v-if="target && !isMissing(id)" type="button" class="btn-ghost px-1.5 py-0.5 text-xs" @click="edit(id)">
+            Edit<span class="sr-only"> "{{ titleFor(id) }}"</span>
           </button>
           <button
             v-if="!field.multiple"
@@ -215,24 +217,24 @@ function onDialogKeydown(event: KeyboardEvent): void {
             aria-haspopup="dialog"
             @click="change"
           >
-            Change<span class="sr-only"> "{{ titleFor(slug) }}"</span>
+            Change<span class="sr-only"> "{{ titleFor(id) }}"</span>
           </button>
           <button
             type="button"
             class="btn-ghost px-1.5 py-0.5 text-xs aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
             :aria-disabled="locked || undefined"
-            @click="remove(slug)"
+            @click="remove(id)"
           >
-            Remove<span class="sr-only"> "{{ titleFor(slug) }}"</span>
+            Remove<span class="sr-only"> "{{ titleFor(id) }}"</span>
           </button>
           <ReorderArrows
             v-if="field.multiple"
-            :label="titleFor(slug)"
-            :target="reorder.target(slug)"
+            :label="titleFor(id)"
+            :target="reorder.target(id)"
             :first="index === 0"
             :last="index === selected.length - 1"
             :disabled="locked"
-            @move="reorder.step(slug, $event)"
+            @move="reorder.step(id, $event)"
           />
         </li>
       </ol>
@@ -270,7 +272,7 @@ function onDialogKeydown(event: KeyboardEvent): void {
             <p class="mt-3 flex items-center gap-2 text-sm">
               <span class="text-muted">Now:</span>
               <span class="min-w-0 flex-1 truncate">{{ titleFor(selected[0] ?? "") }}</span>
-              <span class="shrink-0 font-mono text-[11px] text-muted">{{ selected[0] }}</span>
+              <span class="min-w-0 shrink truncate font-mono text-[11px] text-muted">{{ addressFor(selected[0] ?? "") }}</span>
             </p>
 
             <label :for="`${dialogId}-search`" class="field-label mt-4">Find another {{ singular }}</label>
@@ -299,8 +301,8 @@ function onDialogKeydown(event: KeyboardEvent): void {
 
     <!-- A reference whose target was deleted or renamed would silently vanish
          from the frontend; say so instead. -->
-    <p v-for="slug in selected.filter(isMissing)" :key="slug" class="field-error">
-      "{{ titleFor(slug) }}" is no longer in {{ targetLabel }}.
+    <p v-for="id in selected.filter(isMissing)" :key="id" class="field-error">
+      "{{ titleFor(id) }}" is no longer in {{ targetLabel }}.
     </p>
   </FieldShell>
 </template>

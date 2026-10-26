@@ -54,7 +54,7 @@ describe("changed preview fields", () => {
       { document: "news", id: "other", path: "title" },
       { document: "navigation", id: "navigation", path: "items.0.label" },
     ];
-    const changed = await changedMarkers(markers, [edit({ kind: "entry", collection: "news", slug: "hello" }, "new")]);
+    const changed = await changedMarkers(markers, [edit({ kind: "entry", collection: "news", id: "hello" }, "new")]);
     assert.deepEqual(changed, [markers[0]]);
   });
 });

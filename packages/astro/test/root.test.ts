@@ -14,7 +14,7 @@ import { join, resolve, sep } from "node:path";
 import { pathToFileURL } from "node:url";
 import { describe, it } from "node:test";
 
-import { collection, createManifest, defineSite, slug, text } from "@micacms/core/internal";
+import { collection, createManifest, defineSite, id, text } from "@micacms/core/internal";
 
 import { DEFAULT_CONTENT_ROOT, micaCollections, resolveContentRoot } from "../src/index.js";
 
@@ -59,7 +59,7 @@ describe("resolveContentRoot", () => {
 const site = defineSite({
   root: "./content",
   collections: {
-    news: collection({ label: "News", fields: { title: text(), slug: slug({ from: "title" }) } }),
+    news: collection({ label: "News", fields: { title: text(), id: id({ from: "title" }) } }),
   },
 });
 
@@ -71,7 +71,7 @@ describe("the root comes from the model", () => {
       await mkdir(join(dir, "content", "news", "hello"), { recursive: true });
       await writeFile(
         join(dir, "content", "news", "hello", "index.json"),
-        JSON.stringify({ title: "Hello", slug: "hello" }),
+        JSON.stringify({ title: "Hello", id: "hello" }),
       );
 
       const collections = micaCollections(site, { publishModel: false });

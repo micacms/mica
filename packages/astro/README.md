@@ -12,14 +12,14 @@ being down, slow, or mid-deploy.
 
 ```ts
 // src/mica.ts
-import { collection, defineSite, slug, text } from "@micacms/core";
+import { collection, defineSite, id, text } from "@micacms/core";
 
 export const site = defineSite({
   root: "./content",
   collections: {
     news: collection({
       label: "News",
-      fields: { title: text({ required: true }), slug: slug({ from: "title" }) },
+      fields: { title: text({ required: true }), id: id({ label: "ID", from: "title" }) },
     }),
   },
 });
@@ -111,7 +111,7 @@ build, as with Astro's own `image()`.
 
 ## Relations
 
-A relation field stores the target's slug, which is also its id in Astro.
+A relation field stores the target's ID, which is also its `entry.id` in Astro.
 `@micacms/astro/relations` resolves it, typed by the site's collections:
 
 ```astro

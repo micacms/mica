@@ -5,7 +5,7 @@ import {
   type ContentSource,
   entryFolder,
   entryTitle,
-  isValidSlug,
+  isValidId,
   readCollection,
   readCollectionEntry,
   readSingleton,
@@ -18,7 +18,7 @@ import type { CompareTarget, Comparison } from "./changes.js";
 
 /**
  * Reads one document from `published` and from `staged`. An order target
- * becomes `{ order: [{ slug, title }] }` on each side, in position order.
+ * becomes `{ order: [{ id, title }] }` on each side, in position order.
  */
 export async function compareSources(
   model: Site,
@@ -39,19 +39,19 @@ export async function compareSources(
   if (!def) throw notFound(`There is no collection called "${target.collection}".`);
 
   if (target.kind === "entry") {
-    const from = target.from ?? target.slug;
-    for (const slug of [target.slug, from]) {
-      if (!isValidSlug(slug)) throw badRequest(`"${slug}" is not a slug.`);
+    const from = target.from ?? target.id;
+    for (const id of [target.id, from]) {
+      if (!isValidId(id)) throw badRequest(`"${id}" is not an ID.`);
     }
     const old = await readCollectionEntry(published, def, target.collection, from);
-    const after = await readCollectionEntry(staged, def, target.collection, target.slug);
-    if (from === target.slug) return { before: old, after };
+    const after = await readCollectionEntry(staged, def, target.collection, target.id);
+    if (from === target.id) return { before: old, after };
 
     // A rename: compare the on-disk form, where colocated media paths do not
     // name the entry's folder.
     return {
       before: old && onDisk(def, target.collection, from, old),
-      after: after && onDisk(def, target.collection, target.slug, after),
+      after: after && onDisk(def, target.collection, target.id, after),
     };
   }
 
@@ -59,7 +59,7 @@ export async function compareSources(
     const entries = await readCollection(source, def, target.collection);
     if (entries.length === 0) return null;
     return {
-      order: entries.map((entry) => ({ slug: entry.slug, title: entryTitle(def, entry.data) })),
+      order: entries.map((entry) => ({ id: entry.id, title: entryTitle(def, entry.data) })),
     };
   };
 
@@ -70,8 +70,8 @@ export async function compareSources(
 export function onDisk(
   def: Collection,
   collection: string,
-  slug: string,
+  id: string,
   data: Record<string, unknown>,
 ): Record<string, unknown> {
-  return relativizeMedia(def.fields, data, entryFolder(collection, slug));
+  return relativizeMedia(def.fields, data, entryFolder(collection, id));
 }

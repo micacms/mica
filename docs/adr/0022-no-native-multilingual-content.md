@@ -14,5 +14,5 @@ Two patterns work with the current model and need no code. A later native option
 ## Consequences
 
 - The editor has no locale switcher, and the object pattern gives long forms.
-- A localized URL needs a slug field for each locale, or the collection pattern.
+- A localized URL needs an ID field for each locale, or the collection pattern.
 - Change this decision when: the forms become too long, or translators must see only their language.

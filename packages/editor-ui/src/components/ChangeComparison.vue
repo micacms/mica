@@ -40,7 +40,7 @@ const rows = computed(() =>
 
 /** An order comparison — the collection's sequence on both sides. */
 interface OrderItem {
-  slug: string;
+  id: string;
   title: string;
 }
 
@@ -51,14 +51,14 @@ const order = computed(() => {
   return { before: side(props.comparison.before), after: side(props.comparison.after) };
 });
 
-/** Slugs whose position changed, which is what an order change *is*. */
+/** IDs whose position changed, which is what an order change *is*. */
 const moved = computed(() => {
   if (!order.value) return new Set<string>();
-  const positions = new Map(order.value.before.map((item, index) => [item.slug, index]));
+  const positions = new Map(order.value.before.map((item, index) => [item.id, index]));
   return new Set(
     order.value.after
-      .filter((item, index) => positions.get(item.slug) !== index)
-      .map((item) => item.slug),
+      .filter((item, index) => positions.get(item.id) !== index)
+      .map((item) => item.id),
   );
 });
 </script>
@@ -79,8 +79,8 @@ const moved = computed(() => {
         <ol class="list-decimal space-y-0.5 pl-5">
           <li
             v-for="item in order.before"
-            :key="item.slug"
-            :class="moved.has(item.slug) && 'font-medium text-ink'"
+            :key="item.id"
+            :class="moved.has(item.id) && 'font-medium text-ink'"
           >
             {{ item.title }}
           </li>
@@ -91,8 +91,8 @@ const moved = computed(() => {
         <ol class="list-decimal space-y-0.5 pl-5">
           <li
             v-for="item in order.after"
-            :key="item.slug"
-            :class="moved.has(item.slug) && 'font-medium text-success'"
+            :key="item.id"
+            :class="moved.has(item.id) && 'font-medium text-success'"
           >
             {{ item.title }}
           </li>

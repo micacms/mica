@@ -5,7 +5,7 @@
  * lists and what Publish and Discard act on. An *edit* is one thing an editor
  * recognises: an entry, a singleton, a collection's order, one shared media file.
  * One edit is often several file changes (an entry is `index.json` plus its
- * documents and media; a URL change deletes one folder and creates another).
+ * documents and media; an ID change deletes one folder and creates another).
  *
  * Everything an editor reads counts edits — never file changes.
  */
@@ -20,7 +20,7 @@ export interface Edit {
   fileChanges: FileChange[];
   /** What a before/after comparison would compare — null where none applies. */
   target: CompareTarget | null;
-  /** New, changed, or removed when it is published. A URL change is a change. */
+  /** New, changed, or removed when it is published. An ID change is a change. */
   state: "new" | "changed" | "removed";
   /** The latest save of any of its files, null when every file is a deletion. */
   savedAt: string | null;
@@ -42,10 +42,10 @@ export function toEdits(fileChanges: FileChange[]): Edit[] {
         key,
         // A shared media file is its own edit, so that it can be published or discarded alone.
         label: owner.kind === "media" ? `${owner.label}: ${change.path.split("/").at(-1)}` : owner.label,
-        // A rename's edit can start with a deleted file of the old slug.
+        // A rename's edit can start with a deleted file of the old ID.
         link:
           owner.kind === "entry" && (change.kind !== "delete" || owner.renamedFrom)
-            ? { name: "entry", params: { collection: owner.collection, slug: owner.slug } }
+            ? { name: "entry", params: { collection: owner.collection, id: owner.id } }
             : owner.kind === "singleton"
               ? { name: "singleton", params: { name: owner.name } }
               : owner.kind === "media"
@@ -57,7 +57,7 @@ export function toEdits(fileChanges: FileChange[]): Edit[] {
             ? {
                 kind: "entry",
                 collection: owner.collection,
-                slug: owner.slug,
+                id: owner.id,
                 ...(owner.renamedFrom ? { from: owner.renamedFrom } : {}),
               }
             : owner.kind === "singleton"
@@ -104,7 +104,7 @@ export function problemsByEdit(edits: Edit[], problems: StagingProblem[]): Map<s
     if (edit.fileChanges.some((change) => change.path === path)) return true;
     const base =
       edit.target?.kind === "entry"
-        ? `${edit.target.collection}/${edit.target.slug}`
+        ? `${edit.target.collection}/${edit.target.id}`
         : edit.target?.kind === "singleton"
           ? edit.target.name
           : null;

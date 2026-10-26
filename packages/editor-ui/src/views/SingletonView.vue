@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Singleton editor: the shared form (`useDocumentEditor`) without the parts
- * that need a slug (no rename, no delete, no list). Settings save by
+ * that need an ID (no rename, no delete, no list). Settings save by
  * themselves (`useDocumentEditor`). `embedded`: in the overlay
  * form beside the live preview.
  */

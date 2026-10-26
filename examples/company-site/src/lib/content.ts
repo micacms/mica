@@ -43,7 +43,7 @@ export async function getNews() {
   );
 }
 
-/** The page of a project: its category and its slug, as the model's `url` says. */
+/** The page of a project: its category and its ID, as the model's `url` says. */
 export const projectPath = (project: { id: string; data: { category: string } }): string => `/projects/${project.data.category}/${project.id}/`;
 
 /** Projects in the order the repository records, newest year first. */
@@ -82,16 +82,16 @@ export async function getEvents(now = new Date()) {
  * A relation seen from the other side. A project names its team, and the team
  * member does not name the project, so the page asks the collection and filters.
  */
-export async function getProjectsOf(memberSlug: string) {
+export async function getProjectsOf(memberId: string) {
   const items = await getProjects();
-  return items.filter((item) => item.data.team.includes(memberSlug));
+  return items.filter((item) => item.data.team.includes(memberId));
 }
 
 /** The events in which a team member speaks, soonest first. */
-export async function getEventsOf(memberSlug: string) {
+export async function getEventsOf(memberId: string) {
   const items = await getCollection("events");
   return items
-    .filter((item) => item.data.speakers.includes(memberSlug))
+    .filter((item) => item.data.speakers.includes(memberId))
     .sort((a, b) => (a.data.startsAt ?? "").localeCompare(b.data.startsAt ?? ""));
 }
 
@@ -109,12 +109,12 @@ export const LIST_PAGES = { projects: "projects", news: "news", events: "events"
 /** What is wrong with the list pages: a wrong URL, a template on two pages, or a list without a page. */
 export function listPageProblems(pages: ReadonlyArray<CollectionEntry<"pages">>): string[] {
   const problems: string[] = [];
-  for (const [template, slug] of Object.entries(LIST_PAGES)) {
+  for (const [template, id] of Object.entries(LIST_PAGES)) {
     const found = pages.filter((page) => page.data.template === template);
-    if (found.length === 0) problems.push(`No page has the template "${template}", so /${slug}/ does not exist.`);
+    if (found.length === 0) problems.push(`No page has the template "${template}", so /${id}/ does not exist.`);
     if (found.length > 1) problems.push(`The pages ${found.map((page) => page.id).join(", ")} all have the template "${template}". Give it to one page.`);
     for (const page of found) {
-      if (page.id !== slug) problems.push(`The page "${page.id}" has the template "${template}", so its URL must be "${slug}".`);
+      if (page.id !== id) problems.push(`The page "${page.id}" has the template "${template}", so its ID must be "${id}".`);
     }
   }
   return problems;

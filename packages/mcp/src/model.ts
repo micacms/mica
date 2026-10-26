@@ -15,12 +15,12 @@ export const VALUE_FORMATS: Record<FieldKind, string> = {
   date: "A date as YYYY-MM-DD. With `includeTime`, an ISO 8601 timestamp with an offset.",
   email: "An email address.",
   url: "An address that starts with http:// or https://.",
-  slug: "Lower-case letters, digits and hyphens. The slug field of a collection is the entry's URL and folder name.",
+  id: "Lower-case letters, digits and hyphens. The id field of a collection is the entry's ID: the name of its folder, and the {id} of the collection's url.",
   select: "The `value` of one of the `options`. With `multiple`, a list of values.",
   object: "An object with the group's `fields`.",
   repeater: "A list of objects with the row's `fields`. Keep the `_key` of a row that exists; a new row gets one.",
   relation:
-    "The slug of an entry in `collection`, or the id of an item when `collection` names a reference set (`find_reference_items`). With `multiple`, a list.",
+    "The ID of an entry in `collection`, or the id of an item when `collection` names a reference set (`find_reference_items`). With `multiple`, a list.",
   media:
     "The path of a file, relative to the content root, from `list_media` or `upload_media`. With `alt`, an object `{ path, alt }`. With `multiple`, a list.",
   color: "A hex colour such as #1a2b3c.",
