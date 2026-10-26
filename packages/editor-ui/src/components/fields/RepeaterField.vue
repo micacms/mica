@@ -7,7 +7,7 @@
  * row gets one, and a copy gets a new one.
  */
 
-import { computed, ref, toRaw } from "vue";
+import { computed, onMounted, ref, toRaw } from "vue";
 import { ChevronDown, Copy, Plus, Trash2 } from "@lucide/vue";
 
 import { defaultValues, needsRowKey, newRowKey, ROW_KEY, type RepeaterField } from "@micacms/core/internal";
@@ -15,8 +15,11 @@ import { defaultValues, needsRowKey, newRowKey, ROW_KEY, type RepeaterField } fr
 import FieldList from "./FieldList.vue";
 import ReorderArrows from "@/components/ReorderArrows.vue";
 import ReorderHandle from "@/components/ReorderHandle.vue";
-import { humanise, useField, type FieldProps } from "@/composables/useField";
+import { useField, type FieldProps } from "@/composables/useField";
 import { useReorder } from "@/composables/useReorder";
+import { entryOptions } from "@/lib/entry-options";
+import { rowLabel, rowLabelRelation } from "@/lib/row-label";
+import { useSchema } from "@/stores/schema";
 
 const props = defineProps<
   FieldProps & { modelValue: unknown; collection?: string; entrySlug?: string }
@@ -66,12 +69,24 @@ function withKey(row: Record<string, unknown>): Record<string, unknown> {
 const atMax = computed(() => field.value.max !== undefined && rows.value.length >= field.value.max);
 const atMin = computed(() => field.value.min !== undefined && rows.value.length <= field.value.min);
 
+/** The titles of the entries that an `itemLabel` relation names, so that a row shows "Tätsch", not "taetsch". */
+const titles = ref(new Map<string, string>());
+const schema = useSchema();
+
+onMounted(async () => {
+  const target = rowLabelRelation(field.value);
+  if (!target) return;
+  try {
+    const options = await entryOptions(target, schema.reference(target) !== undefined);
+    titles.value = new Map(options.map((option) => [option.slug, option.title]));
+  } catch {
+    // The rows show the slugs; the relation field in the row says that the list did not load.
+  }
+});
+
 /** Row summary: the declared `itemLabel` child, else a positional fallback. */
 function summaryFor(row: Record<string, unknown>, index: number): string {
-  const key = field.value.itemLabel;
-  const value = key ? row[key] : undefined;
-  if (typeof value === "string" && value.trim()) return value.trim();
-  return `${humanise(field.value.addLabel?.replace(/^Add\s+/i, "") ?? "Item")} ${index + 1}`;
+  return rowLabel(field.value, row, index, (slug) => titles.value.get(slug));
 }
 
 function rowHasIssue(index: number): boolean {
@@ -152,11 +167,17 @@ const reorder = useReorder<Record<string, unknown>>({
       <li
         v-for="(row, index) in rows"
         :key="rowId(row)"
-        :class="['card overflow-hidden', reorder.isMoving(row) && 'ring-2 ring-accent']"
+        :class="['card', reorder.isMoving(row) && 'ring-2 ring-accent']"
         v-bind="reorder.row(row)"
         @reveal-field="reveal(row)"
       >
-        <div class="flex items-center gap-1 bg-canvas/60 py-2 pr-2 pl-1">
+        <!-- Rounded itself: the row does not clip, so that a list in a field can open over it (#350). -->
+        <div
+          :class="[
+            'flex items-center gap-1 rounded-t-md bg-canvas/60 py-2 pr-2 pl-1',
+            collapsed.has(rowId(row)) && 'rounded-b-md',
+          ]"
+        >
           <ReorderHandle
             :label="summaryFor(row, index)"
             :described-by="`${path}-order-help`"

@@ -63,7 +63,19 @@ for (const colorScheme of ["light", "dark"] as const) {
     await expect(page.getByRole("listbox")).toBeVisible();
     await check(page, "Relation picker");
 
+    // The Change dialog of a relation to one entry: one Escape closes it, and the focus goes back to Change (#351).
+    await page.goto("/admin/collections/news/we-are-hiring-a-junior-consultant");
+    const change = page.getByRole("button", { name: /^Change "/ }).first();
+    await change.click();
+    await expect(page.getByRole("dialog", { name: /^Change:/ })).toBeVisible();
+    await check(page, "Change dialog");
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("dialog", { name: /^Change:/ })).toHaveCount(0);
+    await expect(change).toBeFocused();
+
     // The link dialog of rich text.
+    await page.goto("/admin/collections/projects/order-to-cash-review");
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
     await page.getByRole("button", { name: "Link" }).first().click();
     await expect(page.getByRole("dialog", { name: "Link" })).toBeVisible();
     await check(page, "Link dialog");

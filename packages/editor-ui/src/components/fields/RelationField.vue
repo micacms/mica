@@ -5,24 +5,28 @@
  *
  * The chosen entries come first, in their stored order. They change their order
  * as every list does (`useReorder`): a handle to drag or to move with the
- * keyboard, and arrows. Below them, a combobox (the ARIA combobox pattern) finds
- * an entry by its title or URL as the editor types.
+ * keyboard, and arrows. Below them, `RelationSearch` finds an entry by its title
+ * or URL as the editor types.
+ *
+ * A single relation with a value shows only the chosen entry. Its Change action
+ * opens a dialog with the search, so a form with many relations stays short (#351).
  */
 
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref, useId } from "vue";
 
 import type { RelationField } from "@micacms/core/internal";
 
 import FieldShell from "./FieldShell.vue";
+import RelationSearch from "./RelationSearch.vue";
 import ReorderArrows from "@/components/ReorderArrows.vue";
 import ReorderHandle from "@/components/ReorderHandle.vue";
 import { useField, type FieldProps } from "@/composables/useField";
+import { useDialogFocus } from "@/composables/useDialogFocus";
 import { usePreviewPane } from "@/composables/usePreviewPane";
 import { useReorder } from "@/composables/useReorder";
 import { announce } from "@/lib/announce";
 import { focusListItem, reportListItem } from "@/lib/focus";
 import { entryOptions, type RelationOption } from "@/lib/entry-options";
-import { matchEntries } from "@/lib/order";
 import { useSchema } from "@/stores/schema";
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
@@ -41,6 +45,8 @@ const target = computed(() => schema.collection(field.value.collection));
 const reference = computed(() => schema.reference(field.value.collection));
 const targetLabel = computed(() => target.value?.label ?? reference.value?.label ?? field.value.collection);
 const singular = computed(() => (target.value?.labelSingular ?? (reference.value ? "item" : "entry")).toLowerCase());
+/** "a waypoint", "an entry". */
+const aSingular = computed(() => `${/^[aeiou]/.test(singular.value) ? "an" : "a"} ${singular.value}`);
 
 onMounted(async () => {
   try {
@@ -77,7 +83,7 @@ function store(slugs: string[]): void {
   emit("update:modelValue", field.value.multiple ? slugs : (slugs[0] ?? null));
 }
 
-const input = ref<HTMLInputElement | null>(null);
+const search = ref<InstanceType<typeof RelationSearch> | null>(null);
 
 const reorder = useReorder<string>({
   scope: () => `relation-${props.path}`,
@@ -95,69 +101,61 @@ async function remove(slug: string): Promise<void> {
   store(selected.value.filter((item) => item !== slug));
   announce(`Removed "${titleFor(slug)}".`);
   await nextTick();
-  input.value?.focus();
+  search.value?.input?.focus();
 }
 
-/* The combobox. */
+/** The search below the chosen entries: always for a list, and for a single relation without a value. */
+const searchInline = computed(() => field.value.multiple || selected.value.length === 0);
 
-const listboxId = `${inputId}-listbox`;
-const optionId = (index: number) => `${inputId}-option-${index}`;
-const query = ref("");
-const open = ref(false);
-const active = ref(-1);
+const placeholder = computed(() =>
+  options.value.length === 0
+    ? `There are no ${targetLabel.value.toLowerCase()} yet`
+    : locked.value
+      ? selected.value.length === 0 ? "Not set" : ""
+      : `Find ${aSingular.value} to add…`,
+);
 
-const results = computed(() => matchEntries(options.value, query.value, selected.value));
+/** The Change button of a single relation, which takes the focus when the search goes. */
+const changeButton = ref<HTMLButtonElement | null>(null);
+// A function ref: in the list of chosen entries, a plain `ref` would collect an array.
+const setChangeButton = (element: unknown) => {
+  changeButton.value = element instanceof HTMLButtonElement ? element : null;
+};
 
-function show(): void {
-  if (locked.value) return;
-  open.value = true;
-  active.value = -1;
-}
-
-function choose(entry: RelationOption): void {
-  store(field.value.multiple ? [...selected.value, entry.slug] : [entry.slug]);
-  query.value = "";
-  open.value = false;
-  active.value = -1;
-}
-
-function onKeydown(event: KeyboardEvent): void {
-  if (locked.value) return;
-  const last = results.value.length - 1;
-  switch (event.key) {
-    case "ArrowDown":
-      event.preventDefault();
-      if (!open.value) show();
-      active.value = Math.min(active.value + 1, last);
-      break;
-    case "ArrowUp":
-      event.preventDefault();
-      if (!open.value) show();
-      active.value = active.value <= 0 ? last : active.value - 1;
-      break;
-    case "Enter": {
-      const entry = open.value ? results.value[active.value] : undefined;
-      if (!entry) return;
-      event.preventDefault();
-      choose(entry);
-      break;
-    }
-    case "Escape":
-      if (open.value) {
-        event.preventDefault();
-        open.value = false;
-      } else {
-        query.value = "";
-      }
-      break;
+async function choose(entry: RelationOption): Promise<void> {
+  if (field.value.multiple) {
+    store([...selected.value, entry.slug]);
+    return;
   }
+  store([entry.slug]);
+  announce(`Chose "${entry.title}".`);
+  await nextTick();
+  changeButton.value?.focus();
 }
 
-function onInput(event: Event): void {
+/* The Change dialog of a single relation. */
+
+const dialogId = useId();
+const changing = ref(false);
+const panel = ref<HTMLElement | null>(null);
+const changeSearch = ref<InstanceType<typeof RelationSearch> | null>(null);
+const changeInput = computed(() => changeSearch.value?.input ?? null);
+const { trapTab } = useDialogFocus(() => changing.value, panel, changeInput);
+
+function change(): void {
+  if (!locked.value) changing.value = true;
+}
+
+function changeTo(entry: RelationOption): void {
   if (locked.value) return;
-  query.value = (event.target as HTMLInputElement).value;
-  open.value = true;
-  active.value = results.value.length > 0 ? 0 : -1;
+  store([entry.slug]);
+  changing.value = false;
+  announce(`Changed to "${entry.title}".`);
+}
+
+function onDialogKeydown(event: KeyboardEvent): void {
+  if (event.key === "Escape" && !event.defaultPrevented) changing.value = false;
+  trapTab(event);
 }
 </script>
 
@@ -170,6 +168,8 @@ function onInput(event: Event): void {
     :error="error"
     :hint-id="hintId"
     :error-id="errorId"
+    :as="loading || failed || searchInline ? 'label' : 'group'"
+    :described-by="describedBy"
     @focus-block="focusListItem($event, 'ol')"
   >
     <p v-if="loading" role="status" class="text-sm text-muted">Loading {{ targetLabel }}…</p>
@@ -189,7 +189,7 @@ function onInput(event: Event): void {
       >
         <li
           v-for="(slug, index) in selected"
-          :key="slug"
+          :key="field.multiple ? slug : 'chosen'"
           :class="['flex items-center gap-2 py-1.5 pr-1.5 text-sm', field.multiple ? 'pl-1' : 'pl-3', reorder.isMoving(slug) && 'bg-accent-soft']"
           v-bind="field.multiple ? reorder.row(slug) : {}"
           @focusin="field.multiple && reportListItem($event, index)"
@@ -205,6 +205,17 @@ function onInput(event: Event): void {
           <span class="shrink-0 font-mono text-[11px] text-muted">{{ slug }}</span>
           <button v-if="target && !isMissing(slug)" type="button" class="btn-ghost px-1.5 py-0.5 text-xs" @click="edit(slug)">
             Edit<span class="sr-only"> "{{ titleFor(slug) }}"</span>
+          </button>
+          <button
+            v-if="!field.multiple"
+            :ref="setChangeButton"
+            type="button"
+            class="btn-ghost px-1.5 py-0.5 text-xs aria-disabled:cursor-not-allowed aria-disabled:opacity-40"
+            :aria-disabled="locked || undefined"
+            aria-haspopup="dialog"
+            @click="change"
+          >
+            Change<span class="sr-only"> "{{ titleFor(slug) }}"</span>
           </button>
           <button
             type="button"
@@ -226,64 +237,64 @@ function onInput(event: Event): void {
         </li>
       </ol>
 
-      <div class="relative">
-        <input
-          :id="inputId"
-          ref="input"
-          type="text"
-          role="combobox"
-          autocomplete="off"
-          aria-autocomplete="list"
-          :aria-expanded="open"
-          :aria-controls="listboxId"
-          :aria-activedescendant="open && active >= 0 ? optionId(active) : undefined"
-          :aria-invalid="error ? 'true' : undefined"
-          :aria-describedby="describedBy"
-          :value="query"
-          :placeholder="
-            options.length === 0
-              ? `There are no ${targetLabel.toLowerCase()} yet`
-              : locked
-                ? selected.length === 0 ? 'Not set' : ''
-                : field.multiple || selected.length === 0
-                  ? `Find a ${singular} to add…`
-                  : `Find another ${singular}…`
-          "
-          :readonly="locked || options.length === 0"
-          :class="['input', error && 'input-invalid']"
-          @input="onInput"
-          @focus="show"
-          @blur="open = false"
-          @keydown="onKeydown"
-        />
+      <RelationSearch
+        v-if="searchInline"
+        ref="search"
+        :input-id="inputId"
+        :options="options"
+        :exclude="selected"
+        :placeholder="placeholder"
+        :list-label="targetLabel"
+        :singular="singular"
+        :readonly="locked || options.length === 0"
+        :invalid="!!error"
+        :described-by="describedBy"
+        @choose="choose"
+      />
 
-        <ul
-          v-show="open && results.length > 0"
-          :id="listboxId"
-          role="listbox"
-          :aria-label="targetLabel"
-          class="absolute inset-x-0 top-full z-20 mt-1 max-h-64 overflow-y-auto rounded-md border border-line bg-raised py-1 shadow-lg"
+      <Teleport to="body">
+        <div
+          v-if="changing"
+          class="fixed inset-0 z-50 grid place-items-center bg-scrim p-4"
+          @click.self="changing = false"
+          @keydown="onDialogKeydown"
         >
-          <li
-            v-for="(entry, index) in results"
-            :id="optionId(index)"
-            :key="entry.slug"
-            role="option"
-            :aria-selected="index === active"
-            :class="[
-              'flex cursor-pointer items-center gap-2 px-3 py-1.5 text-sm',
-              index === active ? 'bg-accent-soft' : 'hover:bg-canvas',
-            ]"
-            @mousedown.prevent="choose(entry)"
+          <div
+            ref="panel"
+            role="dialog"
+            aria-modal="true"
+            :aria-labelledby="`${dialogId}-title`"
+            class="w-full max-w-md rounded-xl border border-line bg-raised p-5 shadow-2xl"
           >
-            <span class="min-w-0 flex-1 truncate">{{ entry.title }}</span>
-            <span class="shrink-0 font-mono text-[11px] text-muted">{{ entry.slug }}</span>
-          </li>
-        </ul>
-        <p class="sr-only" role="status">
-          {{ open && query ? `${results.length === 0 ? "No" : results.length} matching ${results.length === 1 ? singular : targetLabel.toLowerCase()}` : "" }}
-        </p>
-      </div>
+            <h2 :id="`${dialogId}-title`" class="text-base font-semibold">Change: {{ label }}</h2>
+            <p class="mt-3 flex items-center gap-2 text-sm">
+              <span class="text-muted">Now:</span>
+              <span class="min-w-0 flex-1 truncate">{{ titleFor(selected[0] ?? "") }}</span>
+              <span class="shrink-0 font-mono text-[11px] text-muted">{{ selected[0] }}</span>
+            </p>
+
+            <label :for="`${dialogId}-search`" class="field-label mt-4">Find another {{ singular }}</label>
+            <div class="mt-1.5">
+              <RelationSearch
+                ref="changeSearch"
+                :input-id="`${dialogId}-search`"
+                :options="options"
+                :exclude="selected"
+                :placeholder="`Find ${aSingular}…`"
+                :readonly="locked || options.length === 0"
+                :list-label="targetLabel"
+                :singular="singular"
+                inline
+                @choose="changeTo"
+              />
+            </div>
+
+            <div class="mt-5 flex justify-end">
+              <button type="button" class="btn-secondary" @click="changing = false">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </Teleport>
     </template>
 
     <!-- A reference whose target was deleted or renamed would silently vanish

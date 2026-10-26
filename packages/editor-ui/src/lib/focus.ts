@@ -37,6 +37,7 @@ export function focusField(path: string, root: ParentNode = document, options: {
     const wrapper = root.querySelector<HTMLElement>(`[data-field-path="${CSS.escape(current)}"]`);
     if (!wrapper) continue;
     // A relation's combobox, not a button of a chosen entry: Enter there would remove or move it.
+    // A single relation with a value has no combobox: its first button, Edit or Change, changes nothing.
     const control =
       wrapper.querySelector<HTMLElement>('[role="combobox"]') ??
       wrapper.querySelector<HTMLElement>(

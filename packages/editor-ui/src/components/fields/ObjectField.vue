@@ -37,7 +37,8 @@ const expanded = computed(() => open.value || hasIssueInside.value);
 
 <template>
   <!-- A field inside that must take the focus opens the group (`focusField`). -->
-  <fieldset class="card overflow-hidden" @reveal-field="open = true">
+  <!-- No clipping, so that a list in a field can open over the edge (#350). -->
+  <fieldset class="card" @reveal-field="open = true">
     <legend class="sr-only">{{ label }}</legend>
 
     <component
@@ -45,7 +46,8 @@ const expanded = computed(() => open.value || hasIssueInside.value);
       :type="field.collapsible ? 'button' : undefined"
       :aria-expanded="field.collapsible ? expanded : undefined"
       :class="[
-        'flex w-full items-center gap-2 px-4 py-3 text-left',
+        'flex w-full items-center gap-2 rounded-t-md px-4 py-3 text-left',
+        !expanded && 'rounded-b-md',
         field.collapsible && 'hover:bg-canvas',
       ]"
       @click="field.collapsible ? (open = !expanded) : undefined"
