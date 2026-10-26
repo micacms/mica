@@ -36,7 +36,7 @@ while a form has changes, and checks that the changes come back after the next s
 
 [`collections.spec.ts`](collections.spec.ts) takes one entry of a collection
 from start to end (#138): it creates a team member, uploads a portrait with alt
-text, changes the URL, discards another edit on the Publish page, publishes, and
+text, changes the ID, discards another edit on the Publish page, publishes, and
 checks the files on the Git host. Then it deletes the entry and publishes the
 deletion, and the files are gone from the Git host.
 

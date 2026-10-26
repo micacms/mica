@@ -12,10 +12,10 @@ The editors of a site are usually its owners: a small team, often one person at 
 - Save checks types and formats, but not `required`. An entry without a required value is saved and marked "Not ready to publish".
 - The Publish page shows the pending changes in groups, and the editor selects groups. A group keeps together what must not split:
   - an entry with its own files, or a singleton;
-  - the two halves of a URL change;
+  - the two halves of an ID change;
   - one shared file.
 - Selecting a document also selects the new files and entries that it needs.
-- A collection's `_order.json` is a group of its own. The order accepts a slug that it does not list, so each half can be published first.
+- A collection's `_order.json` is a group of its own. The order accepts an ID that it does not list, so each half can be published first.
 - A deletion does not take along the edits that remove the links to it. Publish refuses such a selection and says "publish them together".
 - Publish refuses an incomplete group, and a selection that would break a link ([19](0019-links-and-reference-data.md)).
 - Publish writes directly to the branch that the website builds. Mica opens no pull request.

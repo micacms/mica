@@ -30,7 +30,7 @@ Each record states a decision that is still true: its context, the decision and 
 
 ## Content format
 
-- [14. Each entry is a folder, and its URL is the folder name](0014-each-entry-is-a-folder.md)
+- [14. Each entry is a folder, and its ID is the folder name](0014-each-entry-is-a-folder.md)
 - [15. A save keeps what the model does not declare](0015-a-save-keeps-what-the-model-does-not-declare.md)
 - [16. The manifest is committed, and changes only with the model](0016-the-manifest-is-committed.md)
 - [17. A model that Mica cannot fully read makes it read-only, not stopped](0017-an-unknown-field-makes-its-collection-read-only.md)
@@ -39,6 +39,7 @@ Each record states a decision that is still true: its context, the decision and 
 - [20. Rich text is Markdoc, and Mica never loses what it cannot show](0020-rich-text-is-markdoc.md)
 - [21. Rules of the field kinds](0021-field-rules.md)
 - [22. No native multilingual content in 1.0](0022-no-native-multilingual-content.md)
+- [41. An entry has an ID, and its page has a URL](0041-the-entry-id-is-not-its-url.md)
 
 ## Websites and setup
 

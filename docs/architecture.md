@@ -239,7 +239,7 @@ call happens while the tree is locked. A slow push never blocks a save.
 every save sends back the one it was based on. A mismatch is a 409, and the
 editor's work stays in the form. Per entry, not per repository head — two
 editors on different entries never block each other. A `null` revision asserts
-absence, which is how two people creating the same slug produce a conflict
+absence, which is how two people creating the same ID produce a conflict
 rather than a silent overwrite. On the server, a push is never forced: a
 rejected one is undone, the clone catches up, and the same commit is made
 again on top.

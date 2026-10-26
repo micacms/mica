@@ -14,7 +14,7 @@ validation, the CMS's forms, the layout on disk and the Astro collection
 schemas. Nothing is generated; everything is derived.
 
 ```ts
-import { defineSite, collection, singleton, text, slug, richText } from "@micacms/core";
+import { defineSite, collection, singleton, text, id, richText } from "@micacms/core";
 
 export const site = defineSite({
   collections: {
@@ -22,7 +22,7 @@ export const site = defineSite({
       label: "News",
       fields: {
         title: text({ label: "Title", required: true, maxLength: 120 }),
-        slug: slug({ from: "title" }),
+        id: id({ label: "ID", from: "title" }),
         body: richText({ label: "Body" }),
       },
     }),

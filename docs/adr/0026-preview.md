@@ -8,7 +8,7 @@ The drafts of a self-hosted Mica are uncommitted files in its clone, so a host's
 
 ## Decision
 
-- The model option `url` names the page of an entry (`/news/{slug}`) or of a singleton (`/about`). With `MICA_SITE_URL`, the editor shows "Open on website" for a published entry, and the Publish panel links to each page that it published.
+- The model option `url` names the page of an entry (`/news/{id}`) or of a singleton (`/about`). With `MICA_SITE_URL`, the editor shows "Open on website" for a published entry, and the Publish panel links to each page that it published.
 - The local editor shows "Preview" while `astro dev` runs, because the dev server reads the drafts. The loader writes the dev server's address and process id to a file in the system's temp folder, never in the repository.
 - The self-hosted Mica has no draft preview in 1.0. A staging branch with a second Mica gives a reviewed preview.
 
