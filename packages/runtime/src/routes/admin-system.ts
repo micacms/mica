@@ -47,7 +47,7 @@ export function adminSystemRoutes(): Hono<Env> {
 
   app.get("/schema", (c) => {
     const { site, config } = c.get("ctx");
-    /** The full address of a page, with `{slug}` for a collection's; null without both parts. */
+    /** The full address of a page, with the names of a collection's `url`, such as `{slug}`; null without both parts. */
     const page = (url: string | undefined) => (url && config.MICA_SITE_URL ? `${config.MICA_SITE_URL}${url}` : null);
 
     return c.json({

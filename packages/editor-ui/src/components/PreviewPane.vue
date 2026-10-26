@@ -26,7 +26,7 @@ import { usePreviewPane, type PreviewMode } from "@/composables/usePreviewPane";
 import { fieldAt, fieldLabel, fieldPaths } from "@/lib/field-labels";
 import { FIELD_BLOCK, focusField } from "@/lib/focus";
 import { withoutOverlay } from "@/lib/overlay-address";
-import { documentAtPath } from "@/lib/pages";
+import { documentsAtPath } from "@/lib/pages";
 import { changedMarkers, isPreviewMarker, type ChangedMarker, type PreviewMarker } from "@/lib/preview-changes";
 import { linkKey, linkTarget, relationLinks, type RelationLink } from "@/lib/preview-relations";
 import { useSchema } from "@/stores/schema";
@@ -278,12 +278,13 @@ function sitePath(path: string): string {
 /** In Edit mode, the form follows the page in the preview, when that page has a document of its own. */
 async function follow(): Promise<void> {
   if (pane.mode.value !== "edit" || !pane.visible.value || !shown.value) return;
-  const target = documentAtPath(sitePath(new URL(shown.value).pathname), schema.schema.value);
-  if (!target || router.resolve(target).path === route.path) return;
   // Only a document that the page shows: an address such as /news/unknown/ matches a pattern, but has no entry.
-  const document = target.params["collection"] ?? target.params["name"];
-  const id = target.params["slug"] ?? target.params["name"];
-  if (!markers.value.some((marker) => marker.document === document && marker.id === id)) return;
+  const target = documentsAtPath(sitePath(new URL(shown.value).pathname), schema.schema.value).find((candidate) => {
+    const document = candidate.params["collection"] ?? candidate.params["name"];
+    const id = candidate.params["slug"] ?? candidate.params["name"];
+    return markers.value.some((marker) => marker.document === document && marker.id === id);
+  });
+  if (!target || router.resolve(target).path === route.path) return;
   await openForm(target);
 }
 

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import type { Schema } from "../src/api.js";
-import { documentAtPath, pageHref, pageOfOwner } from "../src/lib/pages.js";
+import { documentAtPath, documentsAtPath, pageHref, pageOfOwner } from "../src/lib/pages.js";
 
 const schema = {
   collections: [{ name: "news", page: "https://example.com/news/{slug}" }, { name: "team", page: null }],
@@ -22,6 +22,14 @@ describe("pages on the website", () => {
     assert.equal(pageOfOwner({ kind: "entry", collection: "team", slug: "ada", label: "Ada" }, schema), null);
     assert.equal(pageOfOwner({ kind: "singleton", name: "about", label: "About" }, schema), "https://example.com/about");
     assert.equal(pageOfOwner({ kind: "media", label: "photo.jpg" }, schema), null);
+  });
+
+  it("fills in the other fields of an address from the entry's data, and gives no page without them", () => {
+    const tours = { collections: [{ name: "tours", page: "https://example.com/{activity}/{slug}" }], singletons: [] } as unknown as Schema;
+    const owner = { kind: "entry", collection: "tours", slug: "breithorn", label: "Breithorn" } as const;
+    assert.equal(pageOfOwner(owner, tours, { activity: "hochtouren" }), "https://example.com/hochtouren/breithorn");
+    assert.equal(pageOfOwner(owner, tours), null, "the Publish page before the comparison loaded");
+    assert.equal(pageHref("https://example.com/{activity}/{slug}", "breithorn", { activity: "" }), null);
   });
 });
 
@@ -43,6 +51,22 @@ describe("the document of a preview page", () => {
     assert.deepEqual(documentAtPath("/news", schema), { name: "entry", params: { collection: "pages", slug: "news" } });
     assert.deepEqual(documentAtPath("/", schema), { name: "singleton", params: { name: "homePage" } });
     assert.deepEqual(documentAtPath("/gr%C3%BCezi/", schema), { name: "entry", params: { collection: "pages", slug: "grüezi" } });
+  });
+
+  it("matches each other field of an address with one part of the path", () => {
+    const withTours = { ...schema, collections: [...schema.collections, { name: "tours", url: "/{activity}/{slug}" }] } as unknown as Schema;
+    assert.deepEqual(documentAtPath("/hochtouren/breithorn/", withTours), { name: "entry", params: { collection: "tours", slug: "breithorn" } });
+    assert.deepEqual(documentAtPath("/news/hello", withTours), { name: "entry", params: { collection: "news", slug: "hello" } }, "its own text makes /news/{slug} more specific");
+    assert.deepEqual(documentAtPath("/hochtouren", withTours), { name: "entry", params: { collection: "pages", slug: "hochtouren" } });
+  });
+
+  it("gives every document that the path can be, the most specific first, for addresses that are equally specific", () => {
+    const both = { collections: [{ name: "tours", url: "/{activity}/{slug}" }, { name: "news", url: "/{year}/{slug}" }, { name: "pages", url: "/{slug}" }], singletons: [] } as unknown as Schema;
+    assert.deepEqual(
+      documentsAtPath("/2026/launch", both).map((document) => document.params["collection"]),
+      ["tours", "news"],
+      "the preview takes the first one whose entry the page shows",
+    );
   });
 
   it("gives null for a page without a document of its own", () => {

@@ -13,7 +13,7 @@
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
-import { defaultValues, isValidSlug } from "@micacms/core/internal";
+import { defaultValues, isValidSlug, pagePlaceholders } from "@micacms/core/internal";
 
 import { api, messageOf, type EntryDetail, type Referrer, type SavedEntry } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
@@ -140,15 +140,28 @@ watch(urlChanging, async (changing) => {
 });
 
 const devServer = usePreview();
+/** The dev server's address with a page's path; none while the page has no address, such as an empty {activity}. */
+const withAddress = (address: string, path: string | null): string | null => (path ? `${address}${path}` : null);
+/** The saved data: the dev server shows it, not what the form holds before the next save. */
+const saved = computed(() => doc.version.value?.data);
+/** An address with other names than {slug}, such as /{activity}/{slug}: a draft of such a field moves the page. */
+const addressNamesFields = computed(() => pagePlaceholders(definition.value?.url ?? "").some((name) => name !== "slug"));
 /** Its page in the dev server, which reads the saved drafts: also for one that was never published. */
 const preview = computed(() =>
-  props.slug && devServer.address.value && definition.value?.url ? `${devServer.address.value}${pageHref(definition.value.url, props.slug)}` : null,
+  props.slug && devServer.address.value && definition.value?.url ? withAddress(devServer.address.value, pageHref(definition.value.url, props.slug, saved.value)) : null,
 );
 // The overlay form shows a document of the main form's page: that page stays in the preview.
 if (!props.embedded) usePreviewPage(preview, computed(() => !!props.slug && !!definition.value?.url));
 
-/** Its page on the website: not for an entry that was never published, because that page does not exist yet. */
-const page = computed(() => (props.slug && pending.value?.state !== "new" ? pageHref(definition.value?.page, props.slug) : null));
+/**
+ * Its page on the website: not for an entry that was never published, because
+ * that page does not exist yet, and not while a draft can have moved it.
+ */
+const page = computed(() =>
+  props.slug && !(pending.value && (pending.value.state === "new" || addressNamesFields.value))
+    ? pageHref(definition.value?.page, props.slug, saved.value)
+    : null,
+);
 
 const title = computed(() => {
   const def = definition.value;

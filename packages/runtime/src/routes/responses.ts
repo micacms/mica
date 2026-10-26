@@ -25,7 +25,7 @@ export interface SchemaCollection {
   fields: Record<string, AnyField>;
   /** The model's `url`, such as `/news/{slug}`, or null. */
   url: string | null;
-  /** The page of an entry on the website, with `{slug}`; null without `url` in the model or `MICA_SITE_URL`. */
+  /** The page of an entry on the website, with the names of `url`, such as `{slug}`; null without `url` in the model or `MICA_SITE_URL`. */
   page: string | null;
   /** Why this build of Mica cannot edit it, or null. Set when the model uses a newer field kind. */
   readOnly: string | null;
