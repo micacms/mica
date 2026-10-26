@@ -18,10 +18,10 @@ describe("devServerPreview", () => {
   let server: Server;
   let address: string;
 
-  const mark = (pid: number, at: string) => {
+  const mark = (pid: number, at: string, confirmed?: boolean) => {
     const path = devServerMarkerPath(root);
     mkdirSync(dirname(path), { recursive: true });
-    writeFileSync(path, JSON.stringify({ pid, address: at }));
+    writeFileSync(path, JSON.stringify({ pid, address: at, ...(confirmed === undefined ? {} : { confirmed }) }));
   };
 
   before(async () => {
@@ -68,6 +68,49 @@ describe("devServerPreview", () => {
     assert.equal(ended.state, "stopped");
     assert.match(ended.detail ?? "", /It ended with SIGTERM/);
     assert.deepEqual(ended.lines, ["astro  v7.3.8 ready", "[200] / 12ms"], "the last lines of --preview's dev server, for the System page");
+  });
+
+  it("warns when the port is the config's, which can be another website's", async () => {
+    mark(process.pid, address, false);
+    const guessed = await devServerPreview(root)();
+    assert.equal(guessed.state, "live");
+    assert.match(guessed.detail ?? "", /cannot confirm this address.*micaPreview\(\)/);
+
+    mark(process.pid, address, true);
+    assert.deepEqual(await devServerPreview(root)(), { state: "live", address, detail: null });
+  });
+
+  it("takes the address that --preview's dev server printed when the marker has only the config's, also an older marker", async () => {
+    const started = () => ({ address, running: true, exit: null, lines: [] });
+    for (const confirmed of [false, undefined]) {
+      mark(process.pid, "http://localhost:1", confirmed);
+      const live = await devServerPreview(root, { started })();
+      assert.deepEqual({ state: live.state, address: live.address, detail: live.detail }, { state: "live", address, detail: null });
+    }
+    mark(process.pid, "http://localhost:1", true);
+    assert.equal(await state({ started }), "starting", "a confirmed marker wins over the printed address");
+  });
+
+  it("says why a guessed address can stay starting", async () => {
+    mark(process.pid, "http://localhost:1", false);
+    const starting = await devServerPreview(root)();
+    assert.equal(starting.state, "starting");
+    assert.match(starting.detail ?? "", /cannot confirm this address/);
+  });
+
+  it("is live while a heavy home page still renders: the check asks for Vite's client", async () => {
+    const slow = createServer((request, response) => {
+      if (request.url === "/@vite/client") return void response.end("ok");
+      setTimeout(() => response.end("page"), 2000);
+    });
+    await new Promise<void>((done) => slow.listen(0, "127.0.0.1", done));
+    try {
+      const at = `http://localhost:${(slow.address() as AddressInfo).port}`;
+      mark(process.pid, at, true);
+      assert.deepEqual(await devServerPreview(root)(), { state: "live", address: at, detail: null });
+    } finally {
+      slow.close();
+    }
   });
 
   it("takes no marker with an address that is not on this machine", async () => {

@@ -12,15 +12,17 @@
  *
  * Values that cannot carry a marker, such as a date or an option, are found in
  * the templates instead (`fields.ts`), with Astro's own parser,
- * `@astrojs/compiler-rs`, a peer dependency.
+ * `@astrojs/compiler-rs`: the one that the site's Astro brings.
  */
 
 import { readFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 
 import type { AstroIntegration } from "astro";
 
 import { devServerListening } from "../dev-server.js";
-import { annotateFields, type ParseAstro } from "./fields.js";
+import { annotateFields, placesFields, type ParseAstro } from "./fields.js";
 import { previewMarkersEnabled } from "./mark.js";
 
 export type { FieldMarker } from "./markers.js";
@@ -32,9 +34,13 @@ export function micaPreview(): AstroIntegration {
     hooks: {
       "astro:config:setup": async ({ command, injectScript, logger, updateConfig }) => {
         if (!previewMarkersEnabled(command === "dev")) return;
-        const parse = await loadParser();
-        if (parse) updateConfig({ vite: { plugins: [fieldsPlugin(parse)] } });
-        else logger.warn("Live preview: @astrojs/compiler-rs is missing, so dates, numbers and options cannot be clicked. Install it beside astro.");
+        const parser = await loadParser();
+        if (parser === "missing") logger.warn("Live preview: Astro's parser, @astrojs/compiler-rs, is missing, so dates, numbers and options cannot be clicked.");
+        else if (parser === "wrong") {
+          logger.warn(
+            "Live preview: the parser of this Astro version places fields wrong, so dates, numbers and options cannot be clicked. Astro 7.3 or newer has a parser that works, or install @astrojs/compiler-rs@^0.5 beside astro.",
+          );
+        } else updateConfig({ vite: { plugins: [fieldsPlugin(parser)] } });
         const editors = (process.env["MICA_PREVIEW_EDITOR"] ?? "")
           .split(",")
           .map((origin) => origin.trim())
@@ -54,13 +60,29 @@ export function micaPreview(): AstroIntegration {
   };
 }
 
-/** Astro's parser, which Astro 7 installs. Null when the site's package manager does not give it to this package. */
-async function loadParser(): Promise<ParseAstro | null> {
-  try {
-    return (await import("@astrojs/compiler-rs")).parse as ParseAstro;
-  } catch {
-    return null;
+/**
+ * Astro's parser: the one that the site's Astro brings, so that its version
+ * follows Astro's; else one beside this package. The first that places the
+ * fields right; "wrong" when there are only others, "missing" when none.
+ */
+async function loadParser(): Promise<ParseAstro | "wrong" | "missing"> {
+  const require = createRequire(import.meta.url);
+  const sources = [
+    () => createRequire(require.resolve("astro/package.json")).resolve("@astrojs/compiler-rs"),
+    () => require.resolve("@astrojs/compiler-rs"),
+  ];
+  let found = false;
+  for (const source of sources) {
+    try {
+      const { parse } = (await import(pathToFileURL(source()).href)) as { parse?: ParseAstro };
+      if (typeof parse !== "function") continue;
+      found = true;
+      if (placesFields(parse)) return parse;
+    } catch {
+      // Not there: try the next one.
+    }
   }
+  return found ? "wrong" : "missing";
 }
 
 /** A template of the site, not one of a package, and not one of Astro's sub-requests (`Page.astro?astro&type=style`). */

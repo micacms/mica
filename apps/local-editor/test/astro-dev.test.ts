@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, it } from "node:test";
 
-import { astroCommand, astroProjectRoot, startAstroDev, startedDevServer } from "../src/astro-dev.js";
+import { astroCommand, astroProjectRoot, localAddress, startAstroDev, startedDevServer } from "../src/astro-dev.js";
 
 function project(): string {
   const root = mkdtempSync(path.join(tmpdir(), "mica-astro-dev-"));
@@ -60,7 +60,7 @@ process.exit(3);`,
 
     assert.equal(code, 3);
     const seen = JSON.parse(readFileSync(out, "utf8")) as { args: string[]; cwd: string; preview: string };
-    assert.deepEqual(seen.args, ["dev", "--ignore-lock"]);
+    assert.deepEqual(seen.args, ["dev", "--ignore-lock"], "no --port: the site's server.port counts");
     assert.equal(seen.preview, "1");
     assert.equal(realpathSync(seen.cwd), realpathSync(root));
   });
@@ -95,5 +95,18 @@ process.exit(3);`,
     startAstroDev({ projectRoot: root, command, env: {}, onFail: () => (failed = true) });
     await new Promise((resolve) => setTimeout(resolve, 1000));
     assert.equal(failed, false);
+  });
+});
+
+describe("the dev server's address", () => {
+  it("is the one that astro dev prints, also in its JSON log lines, when its port was busy", async () => {
+    const root = project();
+    const command = installAstro(root, `console.log(${JSON.stringify(JSON.stringify({ message: " astro  v7.4.2 ready in 2522 ms\n┃ Local    http://localhost:4322/\n┃ Network  use --host to expose", level: "info" }))}); setTimeout(() => process.exit(0), 50);`);
+    startAstroDev({ projectRoot: root, command, env: {}, onFail: () => {} });
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    assert.equal(startedDevServer()?.address, "http://localhost:4322");
+
+    assert.equal(localAddress("┃ Local    http://localhost:4321/blog/"), "http://localhost:4321/blog");
+    assert.equal(localAddress("[200] / 12ms"), null);
   });
 });

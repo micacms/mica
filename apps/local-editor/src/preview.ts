@@ -17,6 +17,9 @@ const CACHE_MS = 3000;
 
 const HOW_TO_START = "Start the editor with mica start --preview, or run astro dev beside it.";
 
+const UNCONFIRMED =
+  "Mica cannot confirm this address: Astro takes another port when its port is busy, and only micaPreview() in astro.config tells Mica which. Without it, this can be another website.";
+
 /** Whether a process runs. `EPERM` means it runs, under another user. */
 function runs(pid: number): boolean {
   try {
@@ -27,9 +30,14 @@ function runs(pid: number): boolean {
   }
 }
 
+/**
+ * Whether a server answers at the address. Vite's client script, not the home
+ * page: a page renders on each request in astro dev, a heavy one for seconds,
+ * and a check that gives up first would keep the preview "starting" for ever.
+ */
 async function answers(address: string, fetcher: typeof fetch): Promise<boolean> {
   try {
-    await fetcher(`${address}/`, { method: "HEAD", redirect: "manual", signal: AbortSignal.timeout(800) });
+    await fetcher(`${address}/@vite/client`, { method: "HEAD", redirect: "manual", signal: AbortSignal.timeout(800) });
     return true;
   } catch {
     return false;
@@ -70,9 +78,14 @@ export function devServerPreview(contentRoot: string, options: DevServerPreviewO
   const state = async (run: StartedDevServer | null): Promise<PreviewStatus> => {
     const found = await marker();
     if (found && runs(found.pid)) {
-      return (await answers(found.address, fetcher))
-        ? status("live", null, found.address)
-        : status("starting", "The website's dev server is starting.");
+      // A marker without the port that Astro took, also one of an older @micacms/astro: the address that --preview's dev server printed is sure; the marker's is a guess.
+      const printed = found.confirmed !== true && run?.running ? (run.address ?? null) : null;
+      const guess = found.confirmed === false && !printed;
+      const address = printed ?? found.address;
+      if (!(await answers(address, fetcher))) {
+        return status("starting", `The website's dev server is starting.${guess ? ` ${UNCONFIRMED}` : ""}`);
+      }
+      return status("live", guess ? UNCONFIRMED : null, address);
     }
     if (run?.running) return status("starting", "The website's dev server is starting.");
     if (run || found) {

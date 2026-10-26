@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 
 import { parse } from "@astrojs/compiler-rs";
 
-import { annotateFields } from "../src/preview/fields.js";
+import { annotateFields, placesFields } from "../src/preview/fields.js";
 
 /**
  * Each annotated element of a template, as `tag: fields`; a root element, which puts the fields it receives first, as
@@ -136,5 +136,26 @@ const navigation = await getNavigation();
 
   it("leaves a template that does not parse exactly as it is", () => {
     assert.equal(annotateFields("<p>{</p", parse), "<p>{</p");
+  });
+});
+
+describe("the check of the parser", () => {
+  it("passes with the parser that Mica is tested with, and fails with one that misses or misplaces the fields", () => {
+    assert.equal(placesFields(parse), true);
+    assert.equal(placesFields(() => ({ ast: { type: "root", body: [] } })), false);
+    // An older parser's offsets: the attribute lands inside another one.
+    const shifted = (source: string) => {
+      const result = parse(source);
+      const shift = (node: unknown): void => {
+        if (!node || typeof node !== "object") return;
+        const at = node as { start?: number; end?: number };
+        if (typeof at.start === "number") at.start += 6;
+        if (typeof at.end === "number") at.end += 6;
+        Object.values(node).forEach(shift);
+      };
+      shift(result.ast);
+      return result;
+    };
+    assert.equal(placesFields(shifted), false);
   });
 });

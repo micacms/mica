@@ -57,17 +57,18 @@ const STATES = {
 
     <!-- One status pill at the left edge: the words carry the state. Hidden until the first answer, so that it does not say "off" for a moment. -->
     <div v-if="preview.loaded.value" class="mt-2.5">
+      <!-- A live preview whose address Mica cannot confirm can be another website: the pill says so, and why. -->
       <a
         v-if="state === 'live' && preview.address.value"
         :href="preview.address.value"
         target="_blank"
         rel="noopener noreferrer"
-        class="status status-published hover:underline"
-        title="Opens the preview with the saved changes, before you publish them"
+        :class="['status hover:underline', preview.status.value.detail ? 'status-draft' : 'status-published']"
+        :title="preview.status.value.detail ?? 'Opens the preview with the saved changes, before you publish them'"
       >
-        Preview live
+        {{ preview.status.value.detail ? "Preview not confirmed" : "Preview live" }}
         <ExternalLink :size="11" aria-hidden="true" />
-        <span class="sr-only">(opens a new tab)</span>
+        <span class="sr-only">(opens a new tab)<template v-if="preview.status.value.detail">. {{ preview.status.value.detail }}</template></span>
       </a>
       <p v-else :class="['status w-fit', STATES[state].variant]" :title="preview.status.value.detail ?? undefined">
         {{ STATES[state].words }}

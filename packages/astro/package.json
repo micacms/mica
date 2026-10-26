@@ -60,7 +60,6 @@
     "@markdoc/markdoc": "^0.5.9"
   },
   "peerDependencies": {
-    "@astrojs/compiler-rs": "^0.5.1",
     "@micacms/core": "workspace:^",
     "astro": "^7.0.0",
     "maplibre-gl": "^6.11.2",

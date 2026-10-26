@@ -484,6 +484,16 @@ function onHandleKey(event: KeyboardEvent): void {
         <p v-if="devServer.status.value.detail" class="max-w-xs text-sm text-muted">{{ devServer.status.value.detail }}</p>
       </div>
 
+      <!-- A live preview whose address is not confirmed can show another website: say it above the page. -->
+      <p
+        v-if="pane.frame.value && !pane.waiting.value && devServer.status.value.state === 'live' && devServer.status.value.detail"
+        role="status"
+        class="flex items-start gap-2 border-b border-line bg-warning-soft px-3 py-2 text-xs"
+      >
+        <TriangleAlert :size="14" class="mt-px shrink-0" aria-hidden="true" />
+        {{ devServer.status.value.detail }}
+      </p>
+
       <!-- While the handle moves, the page must not take the pointer. -->
       <iframe
         v-if="pane.frame.value && !pane.waiting.value"

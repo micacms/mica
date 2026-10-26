@@ -2,7 +2,9 @@
  * `mica start --preview`: the project's `astro dev` with `MICA_PREVIEW=1`
  * beside the editor, so that one command gives the editor and its live
  * preview. The editor finds the dev server through its marker, as it finds one
- * that runs in another terminal.
+ * that runs in another terminal. Astro moves to another port when its port is
+ * busy: Mica reads the address that it prints, so it knows the port also
+ * without `micaPreview()`.
  */
 
 import { spawn } from "node:child_process";
@@ -34,6 +36,8 @@ export function astroCommand(projectRoot: string): string | null {
 
 /** The dev server that `--preview` started, for the editor's preview status: null when it started none. */
 export interface StartedDevServer {
+  /** The address that it printed when it was ready, without a trailing slash. */
+  address?: string;
   running: boolean;
   /** How it ended: its exit code, or the signal that ended it. */
   exit: number | string | null;
@@ -47,8 +51,16 @@ const LINES_KEPT = 50;
 // ESC and CSI sequences: the colours of astro dev.
 const ANSI = /\u001b\[[0-9;?]*[ -/]*[@-~]|\u001b[@-_]/g;
 
+/** Astro's "Local http://localhost:4321/" line, also inside its JSON log lines. */
+const LOCAL = /Local\s+(http:\/\/localhost:\d+[^\s"\\]*)/;
+
+/** The address in a line of astro dev's output, if the line has it. */
+export function localAddress(line: string): string | null {
+  return LOCAL.exec(line)?.[1]?.replace(/\/+$/, "") ?? null;
+}
+
 /** Keeps the last lines of a stream of chunks, which can cut a line in two. */
-function keepLines(lines: string[]): (chunk: string) => void {
+function keepLines(lines: string[], onLine: (line: string) => void = () => {}): (chunk: string) => void {
   let partial = "";
   return (chunk) => {
     const parts = (partial + chunk).split(/\r?\n/);
@@ -56,6 +68,7 @@ function keepLines(lines: string[]): (chunk: string) => void {
     for (const part of parts) {
       const line = part.replace(ANSI, "").trimEnd();
       if (!line) continue;
+      onLine(line);
       lines.push(line);
       if (lines.length > LINES_KEPT) lines.shift();
     }
@@ -81,8 +94,11 @@ export function startAstroDev(options: { projectRoot: string; command: string; e
   });
   const run: StartedDevServer = { running: true, exit: null, lines: [] };
   started = run;
-  const out = keepLines(run.lines);
-  const err = keepLines(run.lines);
+  const address = (line: string) => {
+    run.address = localAddress(line) ?? run.address;
+  };
+  const out = keepLines(run.lines, address);
+  const err = keepLines(run.lines, address);
   child.stdout?.on("data", (chunk: Buffer) => {
     process.stdout.write(chunk);
     out(chunk.toString("utf8"));
