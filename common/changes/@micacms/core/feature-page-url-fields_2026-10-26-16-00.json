@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The url of a collection can name other fields beside {slug}, such as /{activity}/{slug}: a select or relation without multiple, or a date without a time, each as a whole part of the path. A relation gives the slug of its entry.",
+      "type": "minor",
+      "packageName": "@micacms/core"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

@@ -4,41 +4,77 @@
  * never calls the website.
  */
 
-import { pageUrl } from "@micacms/core/internal";
+import { pageUrl, slugAtPath } from "@micacms/core/internal";
 
 import type { ChangeOwner, Schema } from "@/api";
 
-/** The page of an entry, or of a singleton without `slug`; null without a page in the model. */
-export const pageHref = (page: string | null | undefined, slug?: string): string | null => (page ? pageUrl(page, slug) : null);
+/**
+ * The page of an entry, with the values of `data` for the other names of its
+ * address, such as `{activity}`; of a singleton without `slug`. Null without a
+ * page in the model, or while a value of the address is empty.
+ */
+export const pageHref = (page: string | null | undefined, slug?: string, data?: Record<string, unknown>): string | null =>
+  page ? pageUrl(page, slug, data) : null;
 
-/** The page that a published change shows on, if the model has one. */
-export function pageOfOwner(owner: ChangeOwner, schema: Schema | null): string | null {
-  if (owner.kind === "entry") return pageHref(schema?.collections.find((item) => item.name === owner.collection)?.page, owner.slug);
+/** The page that a published change shows on, if the model has one. An address with other names than `{slug}` needs the entry's `data`. */
+export function pageOfOwner(owner: ChangeOwner, schema: Schema | null, data?: Record<string, unknown> | null): string | null {
+  if (owner.kind === "entry") return pageHref(schema?.collections.find((item) => item.name === owner.collection)?.page, owner.slug, data ?? undefined);
   if (owner.kind === "singleton") return pageHref(schema?.singletons.find((item) => item.name === owner.name)?.page);
   return null;
 }
 
-/** The form of the document whose page is `path`, from the model's `url` options; null for a page without a document. */
-export function documentAtPath(path: string, schema: Schema | null): { name: string; params: Record<string, string> } | null {
+type DocumentAtPath = { name: string; params: Record<string, string> };
+
+/**
+ * The forms of the documents whose page `path` can be, from the model's `url`
+ * options, the most specific address first: /news/hello is an article before
+ * a page "news/hello". Addresses such as /{activity}/{slug} and /{year}/{slug}
+ * fit the same paths, so the preview takes the first one that the page shows.
+ */
+export function documentsAtPath(path: string, schema: Schema | null): DocumentAtPath[] {
   const trim = (value: string) => value.replace(/\/+$/, "") || "/";
   const wanted = trim(path);
-  let best: { name: string; params: Record<string, string>; literal: number } | null = null;
-  const consider = (found: { name: string; params: Record<string, string> }, literal: number) => {
-    // The most specific address wins: /news/hello is an article, not a page "news/hello".
-    if (!best || literal > best.literal) best = { ...found, literal };
-  };
+  const found: Array<DocumentAtPath & { literal: number }> = [];
   for (const item of schema?.collections ?? []) {
     if (!item.url) continue;
-    const [before = "", after = ""] = trim(item.url).split("{slug}");
-    if (!wanted.startsWith(before) || !wanted.endsWith(after) || wanted.length <= before.length + after.length) continue;
-    const slug = wanted.slice(before.length, wanted.length - after.length);
-    if (slug.includes("/")) continue;
-    consider({ name: "entry", params: { collection: item.name, slug: decodeURIComponent(slug) } }, before.length + after.length);
+    // Each other name of the address, such as {activity}, matches one part of the path.
+    const match = slugAtPath(trim(item.url), wanted);
+    if (match) found.push({ name: "entry", params: { collection: item.name, slug: match.slug }, literal: match.literal });
   }
   for (const item of schema?.singletons ?? []) {
-    if (item.url && trim(item.url) === wanted) consider({ name: "singleton", params: { name: item.name } }, wanted.length + 1);
+    if (item.url && trim(item.url) === wanted) found.push({ name: "singleton", params: { name: item.name }, literal: wanted.length + 1 });
   }
-  if (!best) return null;
-  const { name, params } = best;
-  return { name, params };
+  // A stable sort keeps the model's order between addresses that are equally specific.
+  return found.sort((a, b) => b.literal - a.literal).map(({ name, params }) => ({ name, params }));
+}
+
+/** The form of the document whose page is `path`: the most specific address; null for a page without a document. */
+export function documentAtPath(path: string, schema: Schema | null): DocumentAtPath | null {
+  return documentsAtPath(path, schema)[0] ?? null;
+}
+
+/** The address around a slug field: the parts of a collection's `url` before and after `{slug}`. */
+export interface SlugAddress {
+  before: string;
+  after: string;
+  /** The labels of the fields of the address that are empty: the page has no address until they have a value. */
+  missing: string[];
+}
+
+/**
+ * The address around a slug field, from the collection's `url`, with the other
+ * names filled in from the form, as the editor types. An empty one shows the
+ * label of its field, such as ‹Activity›: the page has no address without it.
+ */
+export function slugAddress(url: string, values: Record<string, unknown>, labelOf: (name: string) => string): SlugAddress {
+  const missing: string[] = [];
+  const fill = (part: string) =>
+    part.replace(/\{([^}]*)\}/g, (_match, name: string) => {
+      const value = values[name];
+      if (typeof value === "string" && value !== "") return value;
+      missing.push(labelOf(name));
+      return `‹${labelOf(name)}›`;
+    });
+  const [before = "", after = ""] = url.split("{slug}");
+  return { before: fill(before), after: fill(after), missing };
 }

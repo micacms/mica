@@ -166,7 +166,7 @@
       "label": "Projects",
       "labelSingular": "Project",
       "description": "Client projects shown in the portfolio.",
-      "url": "/projects/{slug}/",
+      "url": "/projects/{category}/{slug}/",
       "defaultSort": {
         "field": "year",
         "direction": "desc"
@@ -196,6 +196,7 @@
         "category": {
           "kind": "select",
           "label": "Category",
+          "required": true,
           "width": "half",
           "listed": true,
           "options": [

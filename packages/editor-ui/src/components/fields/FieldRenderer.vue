@@ -7,6 +7,8 @@ import { computed } from "vue";
 
 import type { AnyField, FieldIssue } from "@micacms/core/internal";
 
+import type { SlugAddress } from "@/lib/pages";
+
 import { fieldComponents } from "./registry";
 
 const props = defineProps<{
@@ -21,6 +23,8 @@ const props = defineProps<{
   /** Value of the sibling a slug field derives from. */
   source?: string | null;
   sourceLabel?: string;
+  /** The page's address around a slug field. */
+  address?: SlugAddress | null;
 }>();
 
 const emit = defineEmits<{ "update:modelValue": [unknown] }>();
@@ -31,7 +35,7 @@ const component = computed(() => fieldComponents[props.field.kind]);
 // in the DOM as stray attributes.
 const extra = computed(() =>
   props.field.kind === "slug"
-    ? { source: props.source, sourceLabel: props.sourceLabel, collection: props.collection, exceptSlug: props.entrySlug }
+    ? { source: props.source, sourceLabel: props.sourceLabel, collection: props.collection, exceptSlug: props.entrySlug, address: props.address }
     : {},
 );
 </script>

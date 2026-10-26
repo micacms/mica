@@ -9,6 +9,8 @@
 import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
 
+import { projectPath } from "@/lib/content";
+
 export const GET: APIRoute = async ({ site }) => {
   const origin = (site ?? new URL("http://localhost:4321")).origin;
 
@@ -33,7 +35,7 @@ export const GET: APIRoute = async ({ site }) => {
     { path: "/", lastmod: null },
     // The list pages, such as /news/, are pages too.
     ...pages.map((page) => ({ path: `/${page.id}/`, lastmod: null })),
-    ...projects.map((item) => ({ path: `/projects/${item.id}/`, lastmod: null })),
+    ...projects.map((item) => ({ path: projectPath(item), lastmod: null })),
     ...events.map((item) => ({ path: `/events/${item.id}/`, lastmod: null })),
     ...team.map((item) => ({ path: `/team/${item.id}/`, lastmod: null })),
     // News is the one collection with an editorial date, so it is the one

@@ -156,7 +156,7 @@ function assertValidSite(site: Site): void {
       );
     }
 
-    const urlProblem = def.url === undefined ? null : pageUrlProblem(def.url, "collection");
+    const urlProblem = def.url === undefined ? null : pageUrlProblem(def.url, "collection", def.fields);
     if (urlProblem) throw new ModelError(`Collection "${name}" has the url "${def.url}": ${urlProblem}.`);
 
     const sortField = def.defaultSort?.field;

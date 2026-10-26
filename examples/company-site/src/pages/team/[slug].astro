@@ -3,7 +3,7 @@ import { Image } from "astro:assets";
 import { getCollection, type CollectionEntry } from "astro:content";
 
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { formatDateTime, getEventsOf, getLabels, getProjectsOf } from "@/lib/content";
+import { formatDateTime, getEventsOf, getLabels, getProjectsOf, projectPath } from "@/lib/content";
 
 export async function getStaticPaths() {
   const team = await getCollection("team");
@@ -59,7 +59,7 @@ const { team: texts } = await getLabels();
               <ul class="mt-3 divide-y divide-line border-t border-line text-sm">
                 {projects.map((project) => (
                   <li class="py-2.5">
-                    <a href={`/projects/${project.id}/`} class="font-medium hover:text-primary">
+                    <a href={projectPath(project)} class="font-medium hover:text-primary">
                       {project.data.title}
                     </a>
                     <span class="text-muted"> · {project.data.year}</span>

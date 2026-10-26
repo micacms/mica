@@ -43,6 +43,9 @@ export async function getNews() {
   );
 }
 
+/** The page of a project: its category and its slug, as the model's `url` says. */
+export const projectPath = (project: { id: string; data: { category: string } }): string => `/projects/${project.data.category}/${project.id}/`;
+
 /** Projects in the order the repository records, newest year first. */
 export async function getProjects(options: { featuredOnly?: boolean } = {}) {
   const items = await getCollection("projects");

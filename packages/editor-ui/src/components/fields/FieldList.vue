@@ -13,6 +13,8 @@ import type { AnyField, FieldIssue, FieldMap } from "@micacms/core/internal";
 
 import FieldRenderer from "./FieldRenderer.vue";
 import { humanise, widthClass } from "@/composables/useField";
+import { slugAddress, type SlugAddress } from "@/lib/pages";
+import { useSchema } from "@/stores/schema";
 
 const props = defineProps<{
   fields: FieldMap;
@@ -67,6 +69,15 @@ function sourceLabelFor(field: AnyField): string | undefined {
   return props.fields[field.from]?.label ?? humanise(field.from);
 }
 
+const schema = useSchema();
+
+/** The entry's slug field shows the page's address around it, from the collection's `url`. Not a slug in an object or a row. */
+function addressFor(field: AnyField): SlugAddress | null {
+  if (field.kind !== "slug" || props.path || !props.collection) return null;
+  const url = schema.collection(props.collection)?.url;
+  return url ? slugAddress(url, props.modelValue, (name) => props.fields[name]?.label ?? humanise(name)) : null;
+}
+
 /** Slug fields follow a sibling; hand them its current value. */
 function sourceFor(field: AnyField): string | null {
   if (field.kind !== "slug" || !field.from) return null;
@@ -95,6 +106,7 @@ function sourceFor(field: AnyField): string | null {
               :entry-slug="entrySlug"
               :source="sourceFor(entry.field)"
               :source-label="sourceLabelFor(entry.field)"
+              :address="addressFor(entry.field)"
               @update:model-value="update(entry.key, $event)"
             />
           </div>
@@ -113,6 +125,7 @@ function sourceFor(field: AnyField): string | null {
             :entry-slug="entrySlug"
             :source="sourceFor(entry.field)"
               :source-label="sourceLabelFor(entry.field)"
+              :address="addressFor(entry.field)"
             @update:model-value="update(entry.key, $event)"
           />
         </div>

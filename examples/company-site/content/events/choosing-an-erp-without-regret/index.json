@@ -9,14 +9,15 @@
   "capacity": 300,
   "venue": {
     "name": "Online",
-    "address": "Video call. The link arrives after registration."
+    "address": "Video call. The link arrives after registration.",
+    "place": null
   },
   "registrationUrl": "https://harborlane.example/register/erp-webinar",
   "speakers": [
     "priya-raman",
     "mateo-fernandez"
   ],
-  "summary": "A one-hour webinar on how to write requirements, shortlist vendors and negotiate a fair contract. Based on our [retail ERP project](/projects/erp-selection-for-a-regional-retailer/).",
+  "summary": "A one-hour webinar on how to write requirements, shortlist vendors and negotiate a fair contract. Based on our [retail ERP project](/projects/technology/erp-selection-for-a-regional-retailer/).",
   "tags": [
     "webinar",
     "technology"

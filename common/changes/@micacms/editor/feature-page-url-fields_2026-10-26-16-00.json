@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The editor links to a page such as /{activity}/{slug} with the entry's saved values, in Open on website, the preview and after Publish, and finds the entry of such a page in the preview. The URL field shows the whole address of the page; only the slug in it can be changed there.",
+      "type": "minor",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

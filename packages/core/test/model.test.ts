@@ -31,6 +31,7 @@ import {
   select,
   singleton,
   slug,
+  slugAtPath,
   slugify,
   text,
   type FieldMap,
@@ -520,6 +521,54 @@ describe("page addresses", () => {
   it("fills in the slug, encoded", () => {
     assert.equal(pageUrl("/news/{slug}", "zürich"), "/news/z%C3%BCrich");
     assert.equal(pageUrl("/about"), "/about");
+  });
+
+  const tours = (url: string) => () =>
+    defineSite({
+      collections: {
+        activities: collection({ label: "Activities", fields: { name: text(), slug: slug({ from: "name" }) } }),
+        tours: collection({
+          label: "Tours",
+          url,
+          fields: {
+            title: text(),
+            slug: slug({ from: "title" }),
+            activity: relation({ collection: "activities" }),
+            region: select({ options: [{ label: "Valais", value: "valais" }] }),
+            startDate: date(),
+            seen: date({ includeTime: true }),
+            regions: relation({ collection: "activities", multiple: true }),
+            notes: richText(),
+          },
+        }),
+      },
+    });
+
+  it("takes a select, relation or date field beside {slug}, each as a whole part of the path", () => {
+    for (const url of ["/{activity}/{slug}", "/{region}/{startDate}/{slug}/", "/{activity}/x/tour-{slug}"]) assert.doesNotThrow(tours(url), url);
+  });
+
+  it("refuses free text, a list, a time, a name that is no field, and a name that shares a part of the path", () => {
+    const shared = ["/{activity}{slug}", "/{startDate}-{slug}", "/x-{activity}/{slug}", "/{activity}"];
+    for (const url of ["/{title}/{slug}", "/{regions}/{slug}", "/{notes}/{slug}", "/{seen}/{slug}", "/{nope}/{slug}", ...shared]) {
+      assert.throws(tours(url), (error: unknown) => error instanceof ModelError && /has the url/.test(error.message), url);
+    }
+  });
+
+  it("fills in each field, and gives no page while one is empty", () => {
+    assert.equal(pageUrl("/{activity}/{slug}", "breithorn", { activity: "hochtouren" }), "/hochtouren/breithorn");
+    assert.equal(pageUrl("/{activity}/{slug}", "breithorn", { activity: null }), null);
+    assert.equal(pageUrl("/{activity}/{slug}", "breithorn"), null);
+  });
+
+  it("finds the slug of a page, and how specific the address is", () => {
+    assert.deepEqual(slugAtPath("/{activity}/{slug}", "/hochtouren/breithorn"), { slug: "breithorn", literal: 2 });
+    assert.deepEqual(slugAtPath("/news/{slug}", "/news/z%C3%BCrich"), { slug: "zürich", literal: 6 });
+    assert.equal(slugAtPath("/{activity}/{slug}", "/hochtouren"), null);
+    assert.equal(slugAtPath("/{activity}/{slug}", "/a/b/c"), null);
+    assert.equal(slugAtPath("/news.{slug}", "/newsXhello"), null, "the address's own text is literal");
+    assert.deepEqual(slugAtPath("/{activity}/tour-{slug}", "/hochtouren/tour-piz-palue"), { slug: "piz-palue", literal: 7 });
+    assert.equal(slugAtPath("/news/{slug}", "/news/100%"), null, "a stray % is no slug");
   });
 });
 

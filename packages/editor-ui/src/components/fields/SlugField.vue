@@ -15,6 +15,7 @@ import type { SlugField } from "@micacms/core/internal";
 import FieldShell from "./FieldShell.vue";
 import { api } from "@/api";
 import { useField, type FieldProps } from "@/composables/useField";
+import type { SlugAddress } from "@/lib/pages";
 
 const props = defineProps<
   FieldProps & {
@@ -26,6 +27,8 @@ const props = defineProps<
     collection?: string;
     /** Slug of the entry being edited, excluded from the uniqueness check. */
     exceptSlug?: string;
+    /** The page's address around the slug, such as /hochtouren/ before it. Only the slug can change here. */
+    address?: SlugAddress | null;
   }
 >();
 
@@ -35,6 +38,12 @@ const field = computed(() => props.field as SlugField);
 const { inputId, label, error, describedBy, hintId, errorId, locked: readOnly } = useField(props);
 
 const value = computed(() => (typeof props.modelValue === "string" ? props.modelValue : ""));
+
+const before = computed(() => props.address?.before ?? "/");
+const after = computed(() => props.address?.after ?? "");
+/** For a screen reader: the whole address, which the parts beside the input show. */
+const addressId = computed(() => `${inputId}-address`);
+const describedByAll = computed(() => [describedBy.value, props.address ? addressId.value : ""].filter(Boolean).join(" ") || undefined);
 
 // Once the editor edits the URL directly, stop following the title.
 const custom = ref(value.value !== "");
@@ -90,12 +99,14 @@ function unlock(): void {
     :hint-id="hintId"
     :error-id="errorId"
   >
+    <!-- The address of the page: only the slug is typed here; the parts around it come from the url and from other fields. -->
     <div class="flex items-stretch">
       <span
-        class="inline-flex select-none items-center rounded-l-sm border border-r-0 border-line bg-canvas px-3 font-mono text-sm text-muted"
+        class="inline-flex max-w-[55%] select-none items-center rounded-l-sm border border-r-0 border-line bg-canvas px-3 font-mono text-[13px] text-muted"
+        :title="before"
         aria-hidden="true"
       >
-        /
+        <span class="truncate">{{ before }}</span>
       </span>
       <input
         :id="inputId"
@@ -104,12 +115,19 @@ function unlock(): void {
         :maxlength="field.maxLength ?? 96"
         :readonly="readOnly"
         :aria-invalid="error ? 'true' : undefined"
-        :aria-describedby="describedBy"
-        :class="['input rounded-l-none font-mono text-[13px]', error && 'input-invalid']"
+        :aria-describedby="describedByAll"
+        :class="['input min-w-0 rounded-l-none font-mono text-[13px]', after && 'rounded-r-none', error && 'input-invalid']"
         spellcheck="false"
         autocomplete="off"
         @input="onInput"
       />
+      <span
+        v-if="after"
+        class="inline-flex select-none items-center rounded-r-sm border border-l-0 border-line bg-canvas px-3 font-mono text-[13px] text-muted"
+        aria-hidden="true"
+      >
+        {{ after }}
+      </span>
       <button
         v-if="custom && field.from"
         type="button"
@@ -121,6 +139,10 @@ function unlock(): void {
       </button>
     </div>
 
+    <p v-if="address" :id="addressId" class="sr-only">The page: {{ before }}{{ value }}{{ after }}</p>
+    <p v-if="address?.missing.length" class="field-hint">
+      The page has an address once {{ address.missing.join(" and ") }} {{ address.missing.length === 1 ? "has a value" : "have values" }}.
+    </p>
     <p v-if="!custom && field.from" class="field-hint">
       Made from the {{ (sourceLabel ?? field.from).toLowerCase() }}. Change it to set your own.
     </p>

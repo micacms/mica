@@ -11,6 +11,8 @@ about: singleton({ label: "About", url: "/about", fields: { … } }),
 
 Set `MICA_SITE_URL` to the website's address, such as `https://example.com`. Then an entry shows "Open on website" at the top, and the Publish page links to each page that it published. A new entry gets the link after its first Publish, because its page does not exist before.
 
+An address can also name other fields, such as `/{activity}/{slug}`. Then an entry with a draft shows no "Open on website", because the draft can move its page. The Publish page links to such a page when the change's comparison has loaded.
+
 The link opens the published page. After a Publish, the host needs a few minutes to build it.
 
 ## Preview with the local editor
