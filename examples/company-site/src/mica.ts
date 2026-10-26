@@ -193,7 +193,8 @@ export const site = defineSite({
       label: "Projects",
       labelSingular: "Project",
       description: "Client projects shown in the portfolio.",
-      url: "/projects/{slug}/",
+      // The category is a part of the address: Mica fills it in from the entry, for its links and the preview.
+      url: "/projects/{category}/{slug}/",
       defaultSort: { field: "year", direction: "desc" },
       fields: {
         title: text({
@@ -213,6 +214,7 @@ export const site = defineSite({
         }),
         category: select({
           label: "Category",
+          required: true,
           width: "half",
           listed: true,
           options: [

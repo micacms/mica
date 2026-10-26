@@ -9,13 +9,13 @@ import BaseLayout from "@/layouts/BaseLayout.astro";
 import { categoryLabel, getLabels, toPlainText } from "@/lib/content";
 
 /**
- * One page per published project. `entry.id` is the CMS slug, so the URL the
- * editor sees in the admin is exactly the URL that gets built.
+ * One page per published project, under its category. `entry.id` is the CMS
+ * slug, so the URL the editor sees in the admin is exactly the URL that gets built.
  */
 export async function getStaticPaths() {
   const projects = await getCollection("projects");
   return projects.map((project) => ({
-    params: { slug: project.id },
+    params: { category: project.data.category, slug: project.id },
     props: { project },
   }));
 }

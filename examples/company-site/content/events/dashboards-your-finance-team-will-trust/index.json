@@ -9,13 +9,14 @@
   "capacity": 250,
   "venue": {
     "name": "Online",
-    "address": "Video call. The link arrives after registration."
+    "address": "Video call. The link arrives after registration.",
+    "place": null
   },
   "registrationUrl": "https://harborlane.example/register/dashboards-webinar",
   "speakers": [
     "priya-raman"
   ],
-  "summary": "A lunchtime webinar on how to build reports with one clear question each. Based on our [warehouse reporting project](/projects/warehouse-reporting-dashboards/).",
+  "summary": "A lunchtime webinar on how to build reports with one clear question each. Based on our [warehouse reporting project](/projects/technology/warehouse-reporting-dashboards/).",
   "tags": [
     "webinar",
     "data"

@@ -3,7 +3,7 @@ import { Image } from "astro:assets";
 import type { CollectionEntry } from "astro:content";
 
 import TagList from "@/components/TagList.astro";
-import { categoryLabel, getLabels } from "@/lib/content";
+import { categoryLabel, getLabels, projectPath } from "@/lib/content";
 
 interface Props {
   project: CollectionEntry<"projects">;
@@ -18,7 +18,7 @@ const { projects: labels } = await getLabels();
 ---
 
 <article class="group">
-  <a href={`/projects/${project.id}/`} class="block">
+  <a href={projectPath(project)} class="block">
     <div class="media-frame aspect-4/3">
       {
         cover ? (
