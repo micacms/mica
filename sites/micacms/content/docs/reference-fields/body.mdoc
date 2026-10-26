@@ -30,7 +30,7 @@ The build stops on an option that is not in these tables, for example a typo. A 
 | `slug()` | Lower-case letters, digits and hyphens. | `from`: the key of the field that gives the slug while the editor types. `maxLength`. |
 | `select({ options })` | The `value` of the choice, or a list with `multiple`. | `options`: a list of `{ label, value }`. `multiple`, `default`. |
 | `object({ fields })` | An object with the given fields. | `fields`, `collapsible`, `collapsed`. |
-| `repeater({ fields })` | A list of objects. | `fields`, `min`, `max`, `itemLabel` (the key that names a row), `addLabel`. |
+| `repeater({ fields })` | A list of objects. | `fields`, `min`, `max`, `itemLabel` (the key of the field that names a row: a text, or a single relation, which shows the title of its entry), `addLabel`. |
 | `relation({ collection })` | The slug of an entry, or a list with `multiple`. For a reference set, the id of an item. | `collection`: a collection of the model, or a reference set. `multiple`. |
 | `media()` | The path of a file, or `{ path, alt }` with `alt`. A list with `multiple`. | `accept`: `"image"` (JPEG, PNG, GIF, WebP, AVIF), `"document"` (PDF), `"any"` (every type that Mica knows), or a list of `image`, `pdf`, `gpx`, `kml`, `geojson`, `zip` and `csv`. `multiple`, `max`, `alt`: `"required"` or `"optional"`. |
 | `color()` | A hex colour, for example `"#0f766e"`. | `presets`: colours to choose from. `default`. |

@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The description of itemLabel says that a single relation can name a row.",
+      "type": "none",
+      "packageName": "@micacms/core"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

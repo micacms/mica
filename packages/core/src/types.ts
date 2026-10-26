@@ -209,7 +209,7 @@ export interface RepeaterField extends BaseField {
   min?: number;
   /** The most rows. */
   max?: number;
-  /** The field of a row that names the row in the editor. */
+  /** The field of a row that names the row in the editor: a text, or a single relation, which shows its entry's title. */
   itemLabel?: string;
   /** The text of the button that adds a row. Defaults to "Add item". */
   addLabel?: string;
