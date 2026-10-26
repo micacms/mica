@@ -130,6 +130,8 @@ export interface ContentStagingService {
    * website's version, not the last commit.
    */
   compare(target: CompareTarget, against?: "head" | "origin"): Promise<Comparison>;
+  /** `compare` for many documents at once, in their order, with one view of the pending files. Each one succeeds or fails alone. */
+  compareMany(targets: CompareTarget[], against?: "head" | "origin"): Promise<PromiseSettledResult<Comparison>[]>;
   /** Brings a clone that Mica keeps up to date now. Refused for the developer's checkout. */
   sync(): Promise<void>;
   resolve(group: string, choice: "mine" | "website", editor?: string): Promise<void>;

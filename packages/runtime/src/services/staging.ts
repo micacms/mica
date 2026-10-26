@@ -203,6 +203,39 @@ export function createWorkingTreeStagingService(
     return action;
   };
 
+  /** `compare` for many documents, with one status of the pending files. A document that fails fails alone. */
+  const compareMany = async (
+    targets: CompareTarget[],
+    against: "head" | "origin" = "head",
+  ): Promise<PromiseSettledResult<Comparison>[]> => {
+    const tree = await locate();
+    if (against === "origin" && !policy.upstreamRef) throw badRequest("There is no website version to compare with here.");
+    // Without a repository nothing is published, so "before" is an empty source.
+    const published =
+      "reason" in tree
+        ? memorySource({}, "unpublished")
+        : headSource(tree, against === "origin" ? policy.upstreamRef : "HEAD");
+    return locks.tree.read(async () => {
+      // One status for all targets: on a large change set, a status for each one costs the square of its size.
+      const pending = !("reason" in tree) && against === "head" ? await listTreeChanges(tree) : [];
+      const results: PromiseSettledResult<Comparison>[] = [];
+      for (const target of targets) {
+        try {
+          // The revisions before the content: a revision is never newer than what the editor sees.
+          const revisions: Record<string, string | null> = {};
+          for (const change of pending) {
+            if (!ownedByTarget(ownerOfPath(model, change.path), target)) continue;
+            revisions[change.path] = change.kind === "delete" ? null : await files.revision(change.path);
+          }
+          results.push({ status: "fulfilled", value: { ...(await compareSources(model, published, files, target)), revisions } });
+        } catch (reason) {
+          results.push({ status: "rejected", reason });
+        }
+      }
+      return results;
+    });
+  };
+
   return {
     async status(): Promise<StagingStatus> {
       const tree = await locate();
@@ -341,25 +374,12 @@ export function createWorkingTreeStagingService(
     },
 
     async compare(target: CompareTarget, against: "head" | "origin" = "head"): Promise<Comparison> {
-      const tree = await locate();
-      if (against === "origin" && !policy.upstreamRef) throw badRequest("There is no website version to compare with here.");
-      // Without a repository nothing is published, so "before" is an empty source.
-      const published =
-        "reason" in tree
-          ? memorySource({}, "unpublished")
-          : headSource(tree, against === "origin" ? policy.upstreamRef : "HEAD");
-      return locks.tree.read(async () => {
-        // The revisions before the content: a revision is never newer than what the editor sees.
-        const revisions: Record<string, string | null> = {};
-        if (!("reason" in tree) && against === "head") {
-          for (const change of await listTreeChanges(tree)) {
-            if (!ownedByTarget(ownerOfPath(model, change.path), target)) continue;
-            revisions[change.path] = change.kind === "delete" ? null : await files.revision(change.path);
-          }
-        }
-        return { ...(await compareSources(model, published, files, target)), revisions };
-      });
+      const [result] = await compareMany([target], against);
+      if (result!.status === "rejected") throw result!.reason;
+      return result!.value;
     },
+
+    compareMany,
 
     async sync(): Promise<void> {
       await managedOnly(policy.sync)();

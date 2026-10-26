@@ -2,15 +2,16 @@
  * The review on the Publish page: the saved changes, which of them to publish
  * now, their comparisons, and Publish, "Try again" and Discard. The whole site
  * shares the changes; the editor chooses, and the rest stays saved. Publish
- * and Discard send the revisions of the comparisons on the page, so a file
- * saved again since is refused, not published unseen.
+ * and Discard send the revisions of the comparisons on the page, or of the list
+ * for a comparison that did not load yet, so a file saved again since is
+ * refused, not published unseen.
  */
 
 import { computed, ref, watch } from "vue";
 
 import { api, ApiError, messageOf, type PublishOutcome } from "@/api";
 import { useComparisons } from "@/composables/useComparisons";
-import { blockedEdits, problemsByEdit, publishSummary, reviewedPaths, withNeeds, withoutDependents, type Edit } from "@/lib/edits";
+import { blockedEdits, problemsByEdit, publishSummary, reviewedPaths, shownRevisions, withNeeds, withoutDependents, type Edit } from "@/lib/edits";
 import { pageOfOwner } from "@/lib/pages";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
@@ -100,20 +101,12 @@ export function usePublishReview() {
 
   /* ------------------------------------------------- before/after */
 
+  // A comparison loads when its row comes near the screen (`observeComparison`), with nothing to click.
   const comparisons = useComparisons();
-  const loadComparisons = () => comparisons.loadMissing(edits.value);
-  /** The revisions of the comparison on the page: Publish and Discard send these, not a newer list's. */
-  const shownRevisions = (edit: Edit) => comparisons.items.value[edit.key]?.comparison?.revisions ?? {};
+  /** The revisions that Publish and Discard send: those of the comparison on the page, not a newer list's. */
+  const shownRevisionsOf = (edit: Edit) => shownRevisions(comparisons.items.value[edit.key]);
 
-  // Comparisons load with the change list, with nothing to click.
-  watch(
-    edits,
-    (next) => {
-      updateSelection(next);
-      loadComparisons();
-    },
-    { immediate: true },
-  );
+  watch(edits, updateSelection, { immediate: true });
 
   /* ------------------------------------------------- state */
 
@@ -142,7 +135,6 @@ export function usePublishReview() {
     // Forget the comparisons first, so that each one loads again against the refreshed change set.
     comparisons.clear();
     await staging.refresh();
-    loadComparisons();
     loading.value = false;
   }
 
@@ -164,7 +156,7 @@ export function usePublishReview() {
     try {
       // Exactly what the editor sees here, at the revision they see it.
       const pages = pagesOf(chosen.value);
-      const outcome = await api.staging.publish(summary.value.trim(), reviewedPaths(chosen.value, shownRevisions));
+      const outcome = await api.staging.publish(summary.value.trim(), reviewedPaths(chosen.value, shownRevisionsOf));
       typed.value = null;
 
       if (outcome.state === "published") {
@@ -217,7 +209,7 @@ export function usePublishReview() {
 
     discarding.value = true;
     try {
-      await api.staging.discard(reviewedPaths([edit], shownRevisions));
+      await api.staging.discard(reviewedPaths([edit], shownRevisionsOf));
       toast.success(`Discarded the changes to ${edit.label}.`);
       discardTarget.value = null;
       await staging.refresh();
@@ -269,6 +261,7 @@ export function usePublishReview() {
     selectAll,
     summary,
     comparisons: comparisons.items,
+    observeComparison: comparisons.observe,
     fieldsFor: comparisons.fieldsFor,
     isTree,
     waitingToSend,

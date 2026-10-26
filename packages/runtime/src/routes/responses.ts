@@ -9,7 +9,7 @@ import type { AnyField } from "@micacms/core/internal";
 import type { OperationalFact } from "../context.js";
 import type { ProblemLine } from "../lib/logger.js";
 import type { CollectionStats, SchemaStats } from "../lib/schema-stats.js";
-import type { RepositoryInfo, StagingStatus } from "../services/changes.js";
+import type { Comparison, RepositoryInfo, StagingStatus } from "../services/changes.js";
 
 export interface SchemaCollection {
   name: string;
@@ -123,6 +123,11 @@ export interface ModelState {
 /** `/changes`: the pending change set, and the model the server checks it with. */
 export interface ChangesResponse extends StagingStatus {
   model: ModelState;
+}
+
+/** `/changes/compare?targets=…`: one result for each target, in its order. */
+export interface CompareManyResponse {
+  comparisons: Array<{ comparison: Comparison } | { error: string }>;
 }
 
 export interface MediaUsage {

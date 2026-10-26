@@ -14,6 +14,7 @@ import {
   MAX_JSON_BYTES,
   securityHeaders,
 } from "../src/middleware/index.js";
+import { COMPARE_BATCH } from "../src/routes/admin-staging.js";
 import { healthRoutes } from "../src/routes/health.js";
 import { MODEL_UNREADABLE } from "../src/services/model-guard.js";
 
@@ -1064,6 +1065,31 @@ describe("a forced model check", () => {
       writeFileSync(join(harness.contentRoot, MANIFEST_PATH), JSON.stringify(createManifest(next, "test")));
       await Promise.all([first, harness.ctx.refreshModel({ force: true })]);
       assert.ok(harness.ctx.site.model.collections["late"]);
+    } finally {
+      await harness.close();
+    }
+  });
+});
+
+describe("comparing many documents", () => {
+  it("answers one result for each target, an error only for the one that fails, and refuses more than a batch", async () => {
+    const harness = await createHarness();
+    try {
+      const compare = (targets: unknown) =>
+        harness.request(`/api/admin/changes/compare?${new URLSearchParams({ targets: JSON.stringify(targets) })}`);
+      const target = { kind: "entry", collection: "projects", slug: "haus-a" };
+
+      const ok = await compare([target, { kind: "singleton", name: "settings" }, { kind: "entry", collection: "nope", slug: "x" }]);
+      assert.equal(ok.status, 200);
+      const { comparisons } = (await ok.json()) as { comparisons: Array<{ comparison?: unknown; error?: string }> };
+      assert.deepEqual(
+        comparisons.map((result) => ("comparison" in result ? "comparison" : "error")),
+        ["comparison", "comparison", "error"],
+      );
+
+      assert.equal((await compare(Array.from({ length: COMPARE_BATCH + 1 }, () => target))).status, 400);
+      assert.equal((await compare([])).status, 400);
+      assert.equal((await harness.request("/api/admin/changes/compare?targets=%7Bnot")).status, 400);
     } finally {
       await harness.close();
     }

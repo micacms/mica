@@ -45,6 +45,7 @@ const {
   selectAll,
   summary,
   comparisons,
+  observeComparison,
   fieldsFor,
   isTree,
   waitingToSend,
@@ -304,8 +305,8 @@ function plural(count: number, one: string, many: string): string {
               <!-- What the change does. Edits with a document get the
                    before/after view and no file paths; media and everything
                    else have only their files to show. -->
-              <template v-if="edit.target">
-                <p v-if="comparisons[edit.key]?.loading" class="mt-2 text-xs text-muted">
+              <div v-if="edit.target" :ref="observeComparison(edit.key, edit.target)">
+                <p v-if="!comparisons[edit.key] || comparisons[edit.key]?.loading" class="mt-2 text-xs text-muted">
                   Comparing…
                 </p>
                 <p v-else-if="comparisons[edit.key]?.error" class="mt-2 text-xs text-danger">
@@ -316,7 +317,7 @@ function plural(count: number, one: string, many: string): string {
                   :comparison="comparisons[edit.key]!.comparison!"
                   :fields="fieldsFor(edit.target)"
                 />
-              </template>
+              </div>
 
               <ul v-else class="mt-1 space-y-0.5">
                 <li

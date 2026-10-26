@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The Publish page loads a comparison when its row comes near the screen, in batches, so that a change set of thousands of entries no longer gets \"Too many requests\". A change whose comparison did not load yet is published with the revisions of the list.",
+      "type": "patch",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

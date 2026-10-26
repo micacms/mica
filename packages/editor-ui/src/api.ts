@@ -10,6 +10,7 @@ import type {
   AnnotatedChange,
   ChangeOwner,
   ChangesResponse,
+  CompareManyResponse,
   CompareTarget,
   Comparison,
   EntryDetail,
@@ -349,6 +350,14 @@ export const api = {
           ...(against === "origin" ? { against } : {}),
         })}`,
       ),
+    /** `compare` for up to 25 documents in one request, in their order: each a comparison or an error. A read, so a GET. */
+    compareMany: (targets: CompareTarget[], against: "head" | "origin" = "head") =>
+      request<CompareManyResponse>(
+        `/admin/changes/compare?${new URLSearchParams({
+          targets: JSON.stringify(targets),
+          ...(against === "origin" ? { against } : {}),
+        })}`,
+      ).then((result) => result.comparisons),
   },
 
   media: {

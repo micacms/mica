@@ -10,8 +10,9 @@ import { z } from "zod";
 
 import { actorOf, editorOf, type Env } from "../http.js";
 import { badRequest } from "../lib/errors.js";
+import { apiErrorOf } from "../middleware/index.js";
 import { publishChanges } from "../services/publish.js";
-import type { ChangesResponse, ModelState } from "./responses.js";
+import type { ChangesResponse, CompareManyResponse, ModelState } from "./responses.js";
 
 const publishSchema = z.object({
   message: z.string().max(500),
@@ -38,6 +39,19 @@ const compareSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("order"), collection: z.string().min(1) }),
 ]);
 
+/** The most documents that one request compares. The Publish page sends as many (`useComparisons`). */
+export const COMPARE_BATCH = 25;
+
+const compareManySchema = z.array(compareSchema).min(1).max(COMPARE_BATCH);
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+}
+
 async function jsonBody(c: { req: { json(): Promise<unknown> } }): Promise<unknown> {
   return c.req.json().catch(() => {
     throw badRequest("The request body must be valid JSON.");
@@ -58,8 +72,25 @@ export function adminStagingRoutes(): Hono<Env> {
   });
 
   // Raw data before and after one pending change; the editor renders the comparison.
+  // With `targets`, a JSON list, many at once: the Publish page compares the rows on the screen with one status of the files.
   app.get("/changes/compare", async (c) => {
     const { staging } = c.get("ctx").services;
+    const against = c.req.query("against") === "origin" ? "origin" : "head";
+    const targets = c.req.query("targets");
+    if (targets !== undefined) {
+      const many = compareManySchema.safeParse(parseJson(targets));
+      if (!many.success) throw badRequest("The compare targets are malformed.");
+      const results = await staging.compareMany(many.data, against);
+      const logger = c.get("logger") ?? c.get("ctx").logger;
+      return c.json({
+        comparisons: results.map((result) => {
+          if (result.status === "fulfilled") return { comparison: result.value };
+          const refused = apiErrorOf(result.reason);
+          if (!refused) logger.error("Unhandled error", { error: String(result.reason) });
+          return { error: refused?.message ?? "Mica could not compare this change." };
+        }),
+      } satisfies CompareManyResponse);
+    }
     const parsed = compareSchema.safeParse({
       kind: c.req.query("kind"),
       collection: c.req.query("collection"),
@@ -68,7 +99,6 @@ export function adminStagingRoutes(): Hono<Env> {
       name: c.req.query("name"),
     });
     if (!parsed.success) throw badRequest("The compare target is malformed.");
-    const against = c.req.query("against") === "origin" ? "origin" : "head";
 
     return c.json(await staging.compare(parsed.data, against));
   });

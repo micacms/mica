@@ -725,6 +725,36 @@ describe("before/after comparison", () => {
     assert.equal(after?.["title"], "Haus A");
   });
 
+  it("compares many documents at once, in their order, each with its own revisions", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), JSON.stringify({ title: "Haus A, renovated", slug: "haus-a" }));
+    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), JSON.stringify({ title: "Haus B", slug: "haus-b" }));
+    const targets = [
+      { kind: "entry", collection: "projects", slug: "haus-b" },
+      { kind: "entry", collection: "projects", slug: "haus-a" },
+    ] as const;
+
+    const [b, a] = (await service.compareMany([...targets])).map((result) => (result.status === "fulfilled" ? result.value : null));
+    assert.equal(b?.after?.["title"], "Haus B");
+    assert.deepEqual(Object.keys(b!.revisions), ["projects/haus-b/index.json"]);
+    assert.equal(a?.before?.["title"], "Haus A");
+    assert.deepEqual(Object.keys(a!.revisions), ["projects/haus-a/index.json"]);
+    assert.deepEqual(a, await service.compare(targets[1]));
+  });
+
+  it("a document that cannot be read fails alone, not its batch", async () => {
+    const { contentRoot, service } = makeRepo();
+    writeFileSync(join(contentRoot, "projects/haus-a/index.json"), "{ not json");
+    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), JSON.stringify({ title: "Haus B", slug: "haus-b" }));
+
+    const [a, b] = await service.compareMany([
+      { kind: "entry", collection: "projects", slug: "haus-a" },
+      { kind: "entry", collection: "projects", slug: "haus-b" },
+    ]);
+    assert.equal(a?.status, "rejected");
+    assert.equal(b?.status === "fulfilled" ? b.value.after?.["title"] : null, "Haus B");
+  });
+
   it("an unknown collection is refused", async () => {
     const { service } = makeRepo();
     await assert.rejects(
