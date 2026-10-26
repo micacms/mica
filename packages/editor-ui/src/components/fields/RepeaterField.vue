@@ -152,11 +152,17 @@ const reorder = useReorder<Record<string, unknown>>({
       <li
         v-for="(row, index) in rows"
         :key="rowId(row)"
-        :class="['card overflow-hidden', reorder.isMoving(row) && 'ring-2 ring-accent']"
+        :class="['card', reorder.isMoving(row) && 'ring-2 ring-accent']"
         v-bind="reorder.row(row)"
         @reveal-field="reveal(row)"
       >
-        <div class="flex items-center gap-1 bg-canvas/60 py-2 pr-2 pl-1">
+        <!-- Rounded itself: the row does not clip, so that a list in a field can open over it (#350). -->
+        <div
+          :class="[
+            'flex items-center gap-1 rounded-t-md bg-canvas/60 py-2 pr-2 pl-1',
+            collapsed.has(rowId(row)) && 'rounded-b-md',
+          ]"
+        >
           <ReorderHandle
             :label="summaryFor(row, index)"
             :described-by="`${path}-order-help`"
