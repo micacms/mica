@@ -10,6 +10,50 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.16.0] — 2026-10-27
+
+This version adds localization (i18n). One entry holds the text of each
+language of a multilingual website, and the editor shows one language at a
+time. Editors and agents can find what still needs a translation.
+
+### Added
+
+- **Localized fields.** A site declares its `locales`, `defaultLocale` and
+  `fallback`, with the names of Astro's `i18n`. A field with `localized: true`
+  stores a value for each locale in the same entry, and rich text has one file
+  for each locale, such as `body.de.mdoc`. `required` applies to the default
+  locale, and a missing translation never stops Save or Publish (ADR 42).
+- **`localize(site, name, data, locale)`** in `@micacms/astro` gives an entry
+  or a singleton in one locale. A missing value falls back to `fallback`, then
+  to the default locale. `localized: { fallback: false }` keeps it empty.
+- **The locale in a page's URL.** A `url` can name `{locale}`, such as
+  `/{locale}/news/{id}`, with `prefixDefaultLocale` as in Astro. The preview,
+  "Open on website" and the URL under the ID field show the page of the form's
+  language, and the live preview's page changes the form's language. A
+  localized `id()` must be unique in each locale: `mica check` and Publish
+  report a duplicate (ADR 43).
+- **A language switcher** in the header of a form, with the number of missing
+  translations of each language. A button beside each localized field shows
+  its other languages, can use one of them, and marks a missing translation.
+- **Find missing translations.** The list of a collection shows the missing
+  translations of each entry, and a filter shows the entries that miss one
+  language. The Overview lists them for each language. The MCP tool
+  `list_entries` gives `missingTranslations` and takes `missing`, and
+  `mica check` lists them as information.
+- **`localesOf(site, name, data)`** in `@micacms/astro` gives the locales that
+  an entry has its own text in, for `getStaticPaths`, lists, the sitemap and
+  `hreflang` (ADR 44).
+- **Links in rich text** can get the address in the page's locale, with the
+  `link` option of `renderRichText`.
+
+### Changed
+
+- The header of a form is tidier: the status is below the title, and the
+  entry's folder is below the form.
+- A model with locales needs this version of Mica. Upgrade `@micacms/editor`
+  and the image together with `@micacms/astro`. A site without locales writes
+  the same `.mica/schema.json` as before.
+
 ## [0.15.0] — 2026-10-26
 
 This version calls an entry's identity its ID, and the address of its page its

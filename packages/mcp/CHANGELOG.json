@@ -2,6 +2,18 @@
   "name": "@micacms/mcp",
   "entries": [
     {
+      "version": "0.16.0",
+      "tag": "@micacms/mcp_v0.16.0",
+      "date": "Tue, 27 Oct 2026 16:53:31 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "On a multilingual site, list_entries gives the missing translations of each entry, and its option missing lists the entries that miss one locale."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.15.0",
       "tag": "@micacms/mcp_v0.15.0",
       "date": "Mon, 26 Oct 2026 14:15:44 GMT",

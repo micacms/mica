@@ -1,6 +1,13 @@
 # Change Log - @micacms/astro
 
-This log was last generated on Mon, 26 Oct 2026 14:15:44 GMT and should not be manually modified.
+This log was last generated on Tue, 27 Oct 2026 16:53:31 GMT and should not be manually modified.
+
+## 0.16.0
+Tue, 27 Oct 2026 16:53:31 GMT
+
+### Minor changes
+
+- localize(site, name, data, locale) gives an entry or a singleton in one locale, with the fallback of each localized field. renderRichText takes a link option that gives each link its address, for example in the page's locale. localesOf(site, name, data) gives the locales that an entry is in: the default locale, and each locale where it has its own values, for getStaticPaths, lists, the sitemap and hreflang.
 
 ## 0.15.0
 Mon, 26 Oct 2026 14:15:44 GMT

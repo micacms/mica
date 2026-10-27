@@ -1,6 +1,13 @@
 # Change Log - @micacms/core
 
-This log was last generated on Mon, 26 Oct 2026 14:15:44 GMT and should not be manually modified.
+This log was last generated on Tue, 27 Oct 2026 16:53:31 GMT and should not be manually modified.
+
+## 0.16.0
+Tue, 27 Oct 2026 16:53:31 GMT
+
+### Minor changes
+
+- A site can declare locales, defaultLocale and fallback, and a field can be localized: it stores a value for each locale, as the object pattern does. After localize(), a required localized field is never null. A url can name {locale}, with prefixDefaultLocale as in Astro, and the values of a localized id() must be unique in each locale. localesOf() gives the locales that an entry is in, from its own values, and missingTranslations() counts the translations that a locale misses.
 
 ## 0.15.0
 Mon, 26 Oct 2026 14:15:44 GMT

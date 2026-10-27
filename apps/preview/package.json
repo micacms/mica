@@ -1,6 +1,6 @@
 {
   "name": "@micacms/preview",
-  "version": "0.15.0",
+  "version": "0.16.0",
   "private": true,
   "type": "module",
   "description": "The live preview's image for the self-hosted Mica: runs the website's astro dev from Mica's clone, on its drafts.",

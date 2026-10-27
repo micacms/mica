@@ -23,7 +23,7 @@
 
 services:
   mica:
-    image: ghcr.io/micacms/mica:0.15.0
+    image: ghcr.io/micacms/mica:0.16.0
     restart: unless-stopped
 
     # Written from .env.example. Everything the deployment needs is in there.
@@ -95,7 +95,7 @@ services:
   # It needs the npm registry, and its first start installs for some minutes.
   #
   # preview:
-  #   image: ghcr.io/micacms/preview:0.15.0
+  #   image: ghcr.io/micacms/preview:0.16.0
   #   restart: unless-stopped
   #   environment:
   #     MICA_PUBLIC_URL: ${MICA_PUBLIC_URL}

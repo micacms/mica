@@ -1,6 +1,13 @@
 # Change Log - @micacms/editor
 
-This log was last generated on Mon, 26 Oct 2026 14:15:44 GMT and should not be manually modified.
+This log was last generated on Tue, 27 Oct 2026 16:53:31 GMT and should not be manually modified.
+
+## 0.16.0
+Tue, 27 Oct 2026 16:53:31 GMT
+
+### Minor changes
+
+- The editor edits localized fields in one language at a time. The language switcher is in the page header, with the number of missing translations. A button beside each localized field shows its other languages and can use one of them, and marks a missing translation. The page header is tidier: the status is below the title, and the entry's folder is below the form. The preview, Open on website and the URL under the ID field show the page of the form's language, and the live preview's page changes the form's language. mica check reports a localized ID that two entries have. The list of a collection shows the missing translations of each entry, and filters the entries that miss one language. The dashboard lists them for each language, and mica check lists them as information.
 
 ## 0.15.0
 Mon, 26 Oct 2026 14:15:44 GMT

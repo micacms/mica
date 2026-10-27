@@ -2,6 +2,18 @@
   "name": "@micacms/runtime",
   "entries": [
     {
+      "version": "0.16.0",
+      "tag": "@micacms/runtime_v0.16.0",
+      "date": "Tue, 27 Oct 2026 16:53:31 GMT",
+      "comments": {
+        "minor": [
+          {
+            "comment": "The self-hosted editor edits localized fields in one language at a time, with a language switcher. Publish refuses a localized ID that another entry has in the same locale. The schema for the editor names prefixDefaultLocale, so that the self-hosted editor's links and preview show the page of the form's language. The dashboard of the self-hosted editor lists the missing translations of each language."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.15.0",
       "tag": "@micacms/runtime_v0.15.0",
       "date": "Mon, 26 Oct 2026 14:15:44 GMT",

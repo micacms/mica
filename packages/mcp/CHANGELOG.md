@@ -1,6 +1,13 @@
 # Change Log - @micacms/mcp
 
-This log was last generated on Mon, 26 Oct 2026 14:15:44 GMT and should not be manually modified.
+This log was last generated on Tue, 27 Oct 2026 16:53:31 GMT and should not be manually modified.
+
+## 0.16.0
+Tue, 27 Oct 2026 16:53:31 GMT
+
+### Minor changes
+
+- On a multilingual site, list_entries gives the missing translations of each entry, and its option missing lists the entries that miss one locale.
 
 ## 0.15.0
 Mon, 26 Oct 2026 14:15:44 GMT

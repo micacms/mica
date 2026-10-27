@@ -1,6 +1,13 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Mon, 26 Oct 2026 14:15:44 GMT and should not be manually modified.
+This log was last generated on Tue, 27 Oct 2026 16:53:31 GMT and should not be manually modified.
+
+## 0.16.0
+Tue, 27 Oct 2026 16:53:31 GMT
+
+### Minor changes
+
+- The self-hosted editor edits localized fields in one language at a time, with a language switcher. Publish refuses a localized ID that another entry has in the same locale. The schema for the editor names prefixDefaultLocale, so that the self-hosted editor's links and preview show the page of the form's language. The dashboard of the self-hosted editor lists the missing translations of each language.
 
 ## 0.15.0
 Mon, 26 Oct 2026 14:15:44 GMT
