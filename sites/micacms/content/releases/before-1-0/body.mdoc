@@ -16,6 +16,8 @@ Mica is experimental and not ready for production. The API and the content forma
 - The editor shows a form in one language at a time. The language switcher counts the missing translations, and a button beside each translated field shows the other languages and reuses one.
 - The preview and "Open on website" show the page in the language of the form. A page in another language in the live preview changes the form to that language.
 - `mica check` and Publish report two entries with the same translated ID in one language, because they would have the same address.
+- Find what still needs a translation: the list of a collection counts the missing translations of each entry and filters by language, and the Overview lists them for each language. `list_entries` gives them to an agent, and `mica check` lists them.
+- `localesOf()` gives the languages that an entry has its own text in, so a site can make a page, a sitemap entry or an `hreflang` link only for them.
 
 ## Editing
 

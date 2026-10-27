@@ -3,5 +3,5 @@
   "id": "multilingual",
   "section": "build",
   "summary": "Give the site its locales, and mark each field that has a translation with `localized`. Content that is different in each language uses one collection for each language.",
-  "readTime": 5
+  "readTime": 6
 }

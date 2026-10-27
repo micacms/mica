@@ -68,6 +68,15 @@ The header of an entry or a singleton has a **Language** switcher, the default l
 
 With `{locale}` in the `url` of a collection or a singleton, the preview, **Open on website** and the URL under the ID field show the page of the form's language. When the page in the live preview is in another language, the form changes to that language. Lists, relation pickers and the Publish page show the page of the default locale. `{locale}` is a part of the path alone, between two `/`. Without `prefixDefaultLocale: true`, the default locale's page has no prefix: `/{locale}/{id}/` is `/about/` in the default locale and `/en/about/` in English.
 
+### Find missing translations
+
+A missing translation is a localized value that the default locale has and another language does not.
+
+- The list of a collection shows, for each entry, the languages with missing translations and how many, such as **DE 2**. The filter **Missing DE translations** shows only those entries, and an entry then opens in German.
+- The **Overview** of the editor lists, for each language, the collections and the singletons with missing translations.
+- For an agent, the MCP tool `list_entries` gives `missingTranslations` for each entry, and `missing: "de"` lists only the entries that miss German. See [Coding agents](/docs/agents/).
+- `npx mica check` lists the missing translations of each locale. They are information, not errors.
+
 ### The pages
 
 Tell Astro the same languages in `astro.config.mjs`, with the same `prefixDefaultLocale`:
@@ -102,7 +111,20 @@ const body = await renderRichText(data.body, data, { link: (href) => (href.start
 <Fragment set:html={body} />
 ```
 
-A missing translation shows the fallback here. Choose what your site does: show the fallback, or make no page.
+A missing translation shows the fallback here. To make a page only where an entry has its own text, use `localesOf`:
+
+```ts
+import { localesOf, localize } from "@micacms/astro";
+
+export async function getStaticPaths() {
+  const pages = await getCollection("pages");
+  return pages.flatMap((page) =>
+    localesOf(site, "pages", page.data).map((lang) => ({ params: { lang, id: page.id }, props: { data: localize(site, "pages", page.data, lang) } })),
+  );
+}
+```
+
+An entry is in the default locale, and in each other locale where every required localized field, and at least one localized field, has its own value. A fallback value does not count. Mark the main text, such as the title, as `required`: then a page exists only when its title has a translation. Use the same list for the links to the other languages (`hreflang`), for lists and for the sitemap. A relation still gives the entry in each locale: a page that links to it can ask `localesOf` first.
 
 - A link in rich text keeps the address that the editor wrote. The `link` option of `renderRichText` gives each link the address in the page's language.
 - The labels of a `select()` field's options are the editor's. When the website shows the name of an option, keep that name in a localized field, for example in a singleton with the texts of the templates.
@@ -121,4 +143,4 @@ Each collection is a list of its own in the editor, with its own folder, URLs an
 
 ## Limits
 
-Each entry is in all languages of the site. A page without a translation shows the text of its fallback language. A list of the languages that an entry is in is an open request: [issue #365](https://github.com/micacms/mica/issues/365). The decision records [Localized fields](https://github.com/micacms/mica/blob/main/docs/adr/0042-localized-fields.md) and [The locale in a page's address](https://github.com/micacms/mica/blob/main/docs/adr/0043-locale-in-page-addresses.md) give the reasons for the design.
+An entry is always in the default locale, because `required` applies to it. Content that exists in one language only goes in a collection for that language. Mica stores no list of the languages of an entry: they come from its values. The decision records [Localized fields](https://github.com/micacms/mica/blob/main/docs/adr/0042-localized-fields.md), [The locale in a page's address](https://github.com/micacms/mica/blob/main/docs/adr/0043-locale-in-page-addresses.md) and [The locales of an entry](https://github.com/micacms/mica/blob/main/docs/adr/0044-the-locales-of-an-entry.md) give the reasons for the design.
