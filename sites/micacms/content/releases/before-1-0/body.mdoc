@@ -7,7 +7,7 @@ Mica is experimental and not ready for production. The API and the content forma
 - A collection's URL can have more parts, such as `/{activity}/{id}`. A part can be a select, a relation to one entry, or a date without a time.
 - `@micacms/astro` turns the model into Astro collections. The build needs no server, no token and no network. Rich text is Markdoc, and images in it come out as optimised `srcset` images.
 
-## Several languages
+## Localization (i18n)
 
 - A site declares its languages with the names of Astro's i18n: `locales`, `defaultLocale`, `fallback` and `prefixDefaultLocale`.
 - A field with `localized: true` has a value for each language, in the same entry. Rich text has one file for each language, such as `body.de.mdoc`. A Git diff shows each translation on its own line.

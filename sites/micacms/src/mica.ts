@@ -377,7 +377,7 @@ export const site = defineSite({
           },
         }),
         languages: object({
-          label: "Several languages",
+          label: "Localization",
           required: true,
           fields: {
             eyebrow: text({ label: "Eyebrow", required: true }),

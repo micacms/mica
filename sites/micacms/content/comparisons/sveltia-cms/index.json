@@ -4,7 +4,7 @@
   "title": "Mica vs. Sveltia CMS",
   "website": "https://sveltiacms.app/",
   "checkedOn": "2026-10-21",
-  "summary": "Both are database-free, Git-backed editors with a preview. Sveltia CMS is a static, Decap-compatible app with first-class languages and many media providers. Mica is for Astro, with a preview of the real page. Sveltia suits sites that want machine translation, and a static app with no server of your own.",
+  "summary": "Both are database-free, Git-backed editors with a preview. Sveltia CMS is a static, Decap-compatible app with first-class languages and many media providers. Mica is for Astro, with a preview of the real page. Sveltia suits multilingual sites that want machine translation, and a static app with no server of your own.",
   "chooseMica": [
     {
       "text": "You build with Astro and want an official package, with your content as typed Content Collections."
@@ -24,7 +24,7 @@
   ],
   "chooseOther": [
     {
-      "text": "Your content has several languages, and you want machine translation with your own API key."
+      "text": "Your website is multilingual, and you want machine translation with your own API key."
     },
     {
       "text": "You want media in S3, Cloudinary or another provider, not in Git."

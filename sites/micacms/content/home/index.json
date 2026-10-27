@@ -131,7 +131,7 @@
     }
   },
   "languages": {
-    "eyebrow": "Several languages",
+    "eyebrow": "Localization",
     "title": "Every language of a page, in one entry.",
     "lead": "Mark a field as localized, and it keeps a value for each language of your site, in the same file. Editors choose the language at the top of the form and see what still needs a translation. Astro builds a page for each language, with the locales of its own i18n.",
     "points": [
@@ -154,7 +154,7 @@
     "file": "content/news/opening-hours/index.json",
     "code": "{\n  \"title\": {\n    \"en\": \"New opening hours\",\n    \"de\": \"Neue Öffnungszeiten\",\n    \"de-ch\": null\n  },\n  \"id\": \"opening-hours\",\n  \"summary\": {\n    \"en\": \"Open from 8:00.\",\n    \"de\": \"Ab 8 Uhr geöffnet.\",\n    \"de-ch\": null\n  }\n}",
     "link": {
-      "label": "Set up several languages",
+      "label": "Set up localization",
       "href": "/docs/multilingual/"
     }
   },
@@ -297,7 +297,7 @@
         "text": "A content-driven Astro website: a company site, a blog, documentation"
       },
       {
-        "text": "A website in one language, or in several"
+        "text": "A website in one language, or a multilingual one"
       },
       {
         "text": "One developer, and two to five people who write"

@@ -6,7 +6,7 @@
   "githubUrl": "https://github.com/micacms/mica",
   "npmUrl": "https://www.npmjs.com/package/@micacms/editor",
   "announcement": {
-    "text": "Mica 0.16.0: content in more than one language",
+    "text": "Mica 0.16.0: localization for multilingual websites",
     "href": "https://github.com/micacms/mica/releases/tag/v0.16.0"
   },
   "status": {

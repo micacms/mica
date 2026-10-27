@@ -46,7 +46,7 @@ A localized field is an object with a value for each locale, such as `{ de: "Üb
 | --- | --- |
 | `inEditorOrder` | A function for `sort`: it puts the entries in the order that the editor shows. `(await getCollection("team")).sort(inEditorOrder)` |
 | `getSingleton(site, name)` | The data of a singleton, typed by the model. It stops the build with a clear message when nobody saved the singleton yet. |
-| `localize(site, name, data, locale)` | The data of an entry or a singleton in one locale, such as `Astro.currentLocale`, typed by the model. Each localized field gives the value of that locale, or of the next locale in its chain: `fallback`, then `defaultLocale`. Without `locale`, the default locale. See [Several languages](/docs/multilingual/). |
+| `localize(site, name, data, locale)` | The data of an entry or a singleton in one locale, such as `Astro.currentLocale`, typed by the model. Each localized field gives the value of that locale, or of the next locale in its chain: `fallback`, then `defaultLocale`. Without `locale`, the default locale. See [Localization](/docs/multilingual/). |
 | `mediaFile(site, path)` | The file on disk for a media path, to read a GPX track or another file at build time. A `..` in the path is refused. |
 
 See [Recipes](/docs/recipes/) for each one in use.

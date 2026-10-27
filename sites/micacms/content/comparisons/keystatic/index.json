@@ -16,7 +16,7 @@
       "text": "Editors should see the real Astro page beside the form, with a click on the page that moves the cursor to the field."
     },
     {
-      "text": "Your website has several languages, and editors translate each page in one form, with a language switcher."
+      "text": "Your website is multilingual, and editors translate each page in one form, with a language switcher."
     },
     {
       "text": "You want to run the editor on your own machine or in a container that you run, with no GitHub App."
