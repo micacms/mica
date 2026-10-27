@@ -22,6 +22,7 @@ export interface BaseFieldOptions {
     hidden?: boolean;
     label?: string;
     listed?: boolean;
+    localized?: Localized;
     readonly?: boolean;
     required?: boolean;
     width?: "full" | "half" | "third";
@@ -181,12 +182,9 @@ export interface DateField extends BaseField {
 export type DateOptions = Omit<DateField, "kind">;
 
 // @public (undocumented)
-export function defineSite<C extends Record<string, Collection>, S extends Record<string, Singleton>>(options: {
-    root?: string;
-    label?: string;
+export function defineSite<C extends Record<string, Collection>, S extends Record<string, Singleton>>(options: Omit<SiteOptions, "collections" | "singletons"> & {
     collections: C;
     singletons?: S;
-    references?: Record<string, ReferenceSet>;
 }): Site<C, S>;
 
 // @public
@@ -289,7 +287,17 @@ export type InferCollection<C extends Collection, Img = never> = InferFields<C["
 // Warning: (ae-forgotten-export) The symbol "NeverNull" needs to be exported by the entry point index.d.ts
 //
 // @public
-export type InferField<F extends AnyField, Img = never, Own extends boolean = false> = NeverNull<F, Own> extends true ? FieldValue<F, Img> : FieldValue<F, Img> | null;
+export type InferField<F extends AnyField, Img = never, Own extends boolean = false> = F extends {
+    kind: "object";
+    localized: true | {
+        fallback: false;
+    };
+    fields: infer M extends FieldMap;
+} ? LocalizedValue<FieldValue<M[keyof M], Img>> : F extends {
+    localized: true | {
+        fallback: false;
+    };
+} ? LocalizedValue<FieldValue<F, Img>> : NeverNull<F, Own> extends true ? FieldValue<F, Img> : FieldValue<F, Img> | null;
 
 // @public (undocumented)
 export type InferFields<M extends FieldMap, Img = never, Own extends boolean = false> = {
@@ -311,6 +319,25 @@ export type InferSiteSingletons<S extends Site> = {
 
 // @public
 export function isValidId(value: string): boolean;
+
+// @public
+export type Localize<T> = typeof LOCALIZED extends keyof T ? (T extends {
+    readonly [LOCALIZED]?: infer V;
+} ? V | null : never) : T extends readonly (infer Item)[] ? Localize<Item>[] : T extends object ? {
+    [K in keyof T]: Localize<T[K]>;
+} : T;
+
+// @public
+export type Localized = boolean | {
+    fallback: false;
+};
+
+// @public
+export type LocalizedValue<T> = {
+    [locale: string]: T | null;
+} & {
+    readonly [LOCALIZED]?: T;
+};
 
 // @public
 export const MANIFEST_PATH = ".mica/schema.json";
@@ -421,8 +448,11 @@ export const PROTOCOL_VERSION = 1;
 export interface ProtocolManifest {
     // (undocumented)
     collections: Record<string, Collection>;
+    defaultLocale?: string;
+    fallback?: Record<string, string>;
     generatedBy: string;
     label?: string;
+    locales?: string[];
     // (undocumented)
     protocolVersion: number;
     references?: Record<string, ReferenceSet>;
@@ -593,9 +623,11 @@ export interface SingletonOptions {
 
 // @public (undocumented)
 export interface Site<C extends Record<string, Collection> = Record<string, Collection>, S extends Record<string, Singleton> = Record<string, Singleton>> {
-    // (undocumented)
     collections: C;
+    defaultLocale?: string;
+    fallback?: Record<string, string>;
     label?: string;
+    locales?: string[];
     references?: Record<string, ReferenceSet>;
     root?: string;
     // (undocumented)
@@ -606,7 +638,10 @@ export interface Site<C extends Record<string, Collection> = Record<string, Coll
 export interface SiteOptions {
     // (undocumented)
     collections: Record<string, Collection>;
+    defaultLocale?: string;
+    fallback?: Record<string, string>;
     label?: string;
+    locales?: string[];
     // (undocumented)
     references?: Record<string, ReferenceSet>;
     root?: string;

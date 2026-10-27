@@ -10,6 +10,7 @@ import { Coordinates } from '@micacms/core/internal';
 import type { ImageMetadata } from 'astro';
 import { InferCollection } from '@micacms/core/internal';
 import { InferSingleton } from '@micacms/core/internal';
+import { Localize } from '@micacms/core/internal';
 import { MapPreset } from '@micacms/core/internal';
 import { MapStyle } from '@micacms/core/internal';
 import Markdoc from '@markdoc/markdoc';
@@ -126,6 +127,9 @@ export interface LoaderContext {
         on(event: "add" | "change" | "unlink", handler: (path: string) => void): void;
     };
 }
+
+// @public
+export function localize<S extends Site, T>(site: S, name: (keyof S["collections"] | keyof S["singletons"]) & string, data: T, locale?: string): Localize<T>;
 
 // @public
 export function manifestFor(site: Site): ProtocolManifest;

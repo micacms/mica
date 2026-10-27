@@ -33,6 +33,7 @@ import {
   relinkReferences,
   resolveIdField,
   resolveTitleField,
+  singleValue,
   serializeEntry,
   type Singleton,
   type Site,
@@ -467,7 +468,7 @@ function pickId(
 
   // Not `entryTitle`, whose "Untitled" would give every entry without a title the same ID.
   const titleKey = resolveTitleField(def);
-  const title = titleKey ? data[titleKey] : undefined;
+  const title = titleKey ? singleValue(def.fields[titleKey], data[titleKey]) : undefined;
   const candidate =
     (typeof fromData === "string" && fromData.trim()) || (typeof title === "string" ? toId(title.trim()) : "");
 

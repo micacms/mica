@@ -17,8 +17,10 @@ import type {
   Singleton,
   SingletonOptions,
   Site,
+  SiteOptions,
 } from "./types.js";
 import { MEDIA_DIR } from "./layout.js";
+import { expandLocalized, isLocalizedObject, localesProblem, singleValue, siteLocales } from "./locale.js";
 import { mapProblem } from "./map.js";
 import { isMediaFileType, MEDIA_FILE_TYPE_NAMES } from "./media-types.js";
 import { pageUrlProblem } from "./page-url.js";
@@ -51,15 +53,24 @@ export function referenceSet<O extends ReferenceSetOptions>(options: O): Referen
 export function defineSite<
   C extends Record<string, Collection>,
   S extends Record<string, Singleton>,
->(options: { root?: string; label?: string; collections: C; singletons?: S; references?: Record<string, ReferenceSet> }): Site<C, S> {
+>(options: Omit<SiteOptions, "collections" | "singletons"> & { collections: C; singletons?: S }): Site<C, S> {
+  const problem = options.locales === undefined ? null : localesProblem(options.locales, options.defaultLocale, options.fallback);
+  if (problem) throw new ModelError(`The site's locales are not valid: ${problem}.`);
+  const locales = options.locales === undefined ? null : siteLocales(options);
+
   const collections = {} as C;
   for (const [name, def] of Object.entries(options.collections)) {
-    (collections as Record<string, Collection>)[name] = { ...def, name };
+    const idKey = resolveIdField(def);
+    const idField = idKey === undefined ? undefined : def.fields[idKey];
+    if (idField?.localized) {
+      throw new ModelError(`The ID field "collections.${name}.${idKey}" cannot be localized: it is the name of the entry's folder, the same in each locale.`);
+    }
+    (collections as Record<string, Collection>)[name] = { ...def, name, fields: localizedFields(def.fields, locales, `collections.${name}`) };
   }
 
   const singletons = {} as S;
   for (const [name, def] of Object.entries(options.singletons ?? {})) {
-    (singletons as Record<string, Singleton>)[name] = { ...def, name };
+    (singletons as Record<string, Singleton>)[name] = { ...def, name, fields: localizedFields(def.fields, locales, `singletons.${name}`) };
   }
 
   // Only when given: a model that came back from a manifest has no root, and
@@ -68,12 +79,25 @@ export function defineSite<
     ? { collections, singletons }
     : { root: options.root, collections, singletons };
   if (options.label !== undefined) site.label = options.label;
+  if (locales) {
+    site.locales = locales.locales;
+    site.defaultLocale = locales.defaultLocale;
+    if (Object.keys(locales.fallback).length > 0) site.fallback = locales.fallback;
+  }
   if (options.references && Object.keys(options.references).length > 0) {
     site.references = Object.fromEntries(Object.entries(options.references).map(([name, def]) => [name, { ...def, type: "reference", name }]));
   }
 
   assertValidSite(site);
   return site;
+}
+
+function localizedFields(fields: FieldMap, locales: ReturnType<typeof siteLocales>, at: string): FieldMap {
+  try {
+    return expandLocalized(fields, locales, at);
+  } catch (error) {
+    throw new ModelError((error as Error).message);
+  }
 }
 
 /* ------------------------------------------------------------------ *
@@ -193,11 +217,12 @@ function assertValidSite(site: Site): void {
   }
 }
 
-function checkFields(fields: FieldMap, path: string, collectionNames: Set<string>): void {
+/** `locales`: the fields of a localized object, whose keys are the locales that `localesProblem` checks. */
+function checkFields(fields: FieldMap, path: string, collectionNames: Set<string>, locales = false): void {
   for (const [key, field] of Object.entries(fields)) {
     const here = `${path}.${key}`;
 
-    if (!NAME_PATTERN.test(key)) {
+    if (!locales && !NAME_PATTERN.test(key)) {
       throw new ModelError(`Field key "${here}" must be lowerCamelCase and start with a letter.`);
     }
 
@@ -272,7 +297,7 @@ function checkFields(fields: FieldMap, path: string, collectionNames: Set<string
     }
 
     if (field.kind === "object" || field.kind === "repeater") {
-      checkFields(field.fields, here, collectionNames);
+      checkFields(field.fields, here, collectionNames, isLocalizedObject(field));
     }
   }
 }
@@ -315,14 +340,14 @@ export function resolveIdField(def: Collection): string | undefined {
 export function resolveTitleField(def: Collection): string | undefined {
   if (def.titleField) return def.titleField;
   if (def.fields["title"]) return "title";
-  const firstText = Object.entries(def.fields).find(([, f]) => f.kind === "text")?.[0];
+  const firstText = Object.entries(def.fields).find(([, f]) => f.kind === "text" || (f.kind === "object" && isLocalizedObject(f) && Object.values(f.fields)[0]?.kind === "text"))?.[0];
   return firstText ?? resolveIdField(def);
 }
 
 /** Best-effort human label for an entry, for list views and revision summaries. */
 export function entryTitle(def: Collection, data: Record<string, unknown>): string {
   const key = resolveTitleField(def);
-  const value = key ? data[key] : undefined;
+  const value = key ? singleValue(def.fields[key], data[key]) : undefined;
   if (typeof value === "string" && value.trim()) return value.trim();
 
   const idKey = resolveIdField(def);
@@ -361,8 +386,8 @@ export function compareEntries(def: Collection): (a: SortableEntry, b: SortableE
   const field = def.fields[sort.field];
 
   return (a, b) => {
-    const left = a.data[sort.field];
-    const right = b.data[sort.field];
+    const left = singleValue(field, a.data[sort.field]);
+    const right = singleValue(field, b.data[sort.field]);
 
     // An entry that has not been given the value yet goes last in both
     // directions. Sinking it in one and floating it in the other would put the

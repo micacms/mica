@@ -9,7 +9,7 @@
 
 import { computed } from "vue";
 
-import type { AnyField, FieldIssue, FieldMap } from "@micacms/core/internal";
+import { singleValue, type AnyField, type FieldIssue, type FieldMap } from "@micacms/core/internal";
 
 import FieldRenderer from "./FieldRenderer.vue";
 import { humanise, widthClass } from "@/composables/useField";
@@ -81,7 +81,7 @@ function addressFor(field: AnyField): PageAddress | null {
 /** ID fields follow a sibling; hand them its current value. */
 function sourceFor(field: AnyField): string | null {
   if (field.kind !== "id" || !field.from) return null;
-  const value = props.modelValue[field.from];
+  const value = singleValue(props.fields[field.from], props.modelValue[field.from]);
   return typeof value === "string" ? value : null;
 }
 </script>

@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "localize(site, name, data, locale) gives an entry or a singleton in one locale, with the fallback of each localized field.",
+      "type": "minor",
+      "packageName": "@micacms/astro"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

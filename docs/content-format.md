@@ -191,6 +191,7 @@ A path that leads above the content root MUST NOT be resolved.
 | `tags()` | list of strings | `[]` | `["news"]` |
 | `object()` | object of its fields | an object of empty values | section 5 |
 | `repeater()` | list of rows (section 5) | `[]` | section 5 |
+| a field with `localized` | object with one value for each locale (section 5.1) | an object of empty values | `{ "de": "Über uns", "en": null }` |
 
 - A reader MUST read a missing value as the empty value. It MUST NOT use the
   field's `default`: a default fills only a new entry, and a singleton that
@@ -299,6 +300,27 @@ A team of twelve.
 }
 ```
 
+### 5.1 Localized fields
+
+A field with the option `localized` has a value for each locale of the site
+(section 9). It is stored as an object with one key for each locale: the
+default locale first, then the other locales in the order of `locales`. Each value follows the rules of the field's kind. A rich-text
+field has one file for each locale, with the locale as the last segment of its
+path: `body.de.mdoc`, `sections.k7f3a9.text.en.mdoc`.
+
+```json
+{
+  "id": "about",
+  "title": { "de": "Über uns", "en": "About us", "fr": null }
+}
+```
+
+- `required` and `default` apply to the value of the default locale only.
+- A writer MUST NOT write a fallback value into a locale that has none: the
+  file holds only the values that an editor gave.
+- An `object()`, a `repeater()` and the ID field of a collection MUST NOT have
+  `localized`. Their fields can. A localized `id()` MUST NOT have `from`.
+
 ## 6. Media
 
 - An entry's own media are in its folder, in `media/`.
@@ -372,13 +394,21 @@ JSON object with:
 - `protocolVersion`: `1`.
 - `generatedBy`: the package that wrote it, without a version.
 - `collections` and `singletons`: objects of the definitions, by name.
+- `locales` and `defaultLocale`: only when the site has locales. `locales` is
+  a list of codes: 2 to 8 letters, then optional parts of a hyphen and 1 to 8
+  letters or digits, such as `de`, `en-us` or `pt-BR`. No two codes differ
+  only in case.
+- `fallback`: only when a locale falls back to another one before the default
+  locale, such as `{ "de-ch": "de" }`.
 - `references`: the reference sets, by name, only when the model has any. Each
   has `label`, `file` (the website's file, from the Astro project root), and
   optionally `id` and `title` (the keys of an item).
 
 A definition keeps every field option as the model gives it, also an option
 that changes only the editor, for example `"map": "liberty"` on a
-`coordinates` field.
+`coordinates` field. A localized field is in its stored form: an `object` with
+the option `localized` and one field for each locale, and `required` and
+`default` on the field of the default locale.
 
 A reader MUST refuse a file without these four keys, and a `protocolVersion`
 above the one it knows. `protocolVersion` changes only when an older reader

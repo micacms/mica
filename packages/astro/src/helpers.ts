@@ -3,7 +3,7 @@
  * and a collection in the editor's order.
  */
 
-import type { Site } from "@micacms/core/internal";
+import { localize as localizeFields, type Localize, type Site } from "@micacms/core/internal";
 
 import type { SingletonDocument } from "./index.js";
 
@@ -24,3 +24,19 @@ export async function getSingleton<S extends Site, K extends keyof S["singletons
 /** For `sort`: the order that the editor shows, `defaultSort` included. */
 export const inEditorOrder = (a: { data: { _mica: { position: number } } }, b: { data: { _mica: { position: number } } }): number =>
   a.data._mica.position - b.data._mica.position;
+
+/**
+ * An entry's or a singleton's data in one locale, such as `Astro.currentLocale`: each localized field gives the value
+ * of that locale, or the value that its fallback finds. Without a locale, the site's default locale.
+ */
+export function localize<S extends Site, T>(
+  site: S,
+  name: (keyof S["collections"] | keyof S["singletons"]) & string,
+  data: T,
+  locale?: string,
+): Localize<T> {
+  const def = site.collections[name] ?? site.singletons[name];
+  if (!def) throw new Error(`"${name}" is not a collection or a singleton of the site.`);
+  if (!site.defaultLocale) throw new Error("The site has no locales. Add `locales` to defineSite.");
+  return localizeFields(site, def.fields, data, locale ?? site.defaultLocale);
+}

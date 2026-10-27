@@ -74,7 +74,7 @@ lists are for.
 
 Options of every field: `label`, `description`, `required`, `listed` (a column
 in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
-`"third"`).
+`"third"`), `localized` (a value for each locale; see "Several languages").
 
 | Field | Stored as | Other options |
 | --- | --- | --- |
@@ -233,6 +233,39 @@ const body = await renderRichText(article.data.body, article.data);
 - Do not depend on the order of `getCollection()`. Sort by a date field, or
   in the editor's order: `entries.sort(inEditorOrder)` (from `@micacms/astro`).
   It follows the collection's `defaultSort`, else the manual order.
+
+### Several languages
+
+Give the site its locales, the same as Astro's `i18n`, and mark each field
+that has a translation with `localized: true`:
+
+```ts
+export const site = defineSite({
+  locales: ["de", "en"],
+  defaultLocale: "de",
+  collections: {
+    pages: collection({
+      label: "Pages",
+      fields: {
+        id: id(),
+        title: text({ required: true, localized: true }),
+        body: richText({ localized: true }),
+        image: media({ accept: "image" }),
+      },
+    }),
+  },
+});
+```
+
+- A localized field is stored as `{ "de": …, "en": … }`, and rich text as
+  `body.de.mdoc` and `body.en.mdoc`. `required` applies to the default locale.
+- `localize(site, "pages", page.data, Astro.currentLocale)` from
+  `@micacms/astro` gives the data in one locale. A missing value falls back to
+  `fallback`, then to `defaultLocale`. `localized: { fallback: false }` keeps
+  it empty.
+- An `object()`, a `repeater()` and a collection's ID field cannot be
+  localized. Localize the fields inside.
+- Content that is different in each language: one collection for each locale.
 
 ### Images
 

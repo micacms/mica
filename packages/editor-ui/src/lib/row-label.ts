@@ -1,6 +1,6 @@
 /** The title of a repeater row in the form. */
 
-import type { RepeaterField } from "@micacms/core/internal";
+import { singleValue, type RepeaterField } from "@micacms/core/internal";
 
 import { humanise } from "@/composables/useField";
 
@@ -21,7 +21,7 @@ export function rowLabel(
   titleOf: (id: string) => string | undefined = () => undefined,
 ): string {
   const key = field.itemLabel;
-  const value = key ? row[key] : undefined;
+  const value = key ? singleValue(field.fields[key], row[key]) : undefined;
   if (typeof value === "string" && value.trim()) {
     return rowLabelRelation(field) ? (titleOf(value) ?? value) : value.trim();
   }

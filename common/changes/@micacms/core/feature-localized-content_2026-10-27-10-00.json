@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "A site can declare locales, defaultLocale and fallback, and a field can be localized: it stores a value for each locale, as the object pattern does.",
+      "type": "minor",
+      "packageName": "@micacms/core"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

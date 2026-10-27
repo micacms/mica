@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The editor edits localized fields, with one input for each locale.",
+      "type": "minor",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

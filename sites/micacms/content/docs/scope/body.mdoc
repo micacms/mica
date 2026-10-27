@@ -6,6 +6,7 @@ Mica is small on purpose. This page tells you what it does, what it does not do,
 - It keeps the content as JSON, Markdoc and media files in your Git repository, or in a repository of its own. It has no database.
 - It saves changes as files that are not committed yet, and Publish makes one commit of the changes that the editor chooses.
 - It handles photos, files such as GPX tracks, places on a map, and links to data that it does not edit. Large media can be in Git LFS.
+- It keeps a value for each language in a localized field, and the website falls back to another language when a translation is missing.
 - It shows a live preview of saved changes in the local editor and in the self-hosted editor, and a link to the page on the website in both. The self-hosted editor needs a preview container of the website.
 - It lets a coding agent edit the content over MCP, as drafts.
 - It runs on your machine with `npx`, with no sign-in, or as one container behind your identity provider.
@@ -21,7 +22,7 @@ One Mica serves one site and one branch.
 | Approval workflows | Point a second Mica at a `staging` branch. Review and merge it on your Git host. |
 | Scheduled publishing | Publish to a branch, and let a scheduled CI job merge it. |
 | History and undo in the editor | Git has the history. See "Undo a publish" at the end of this page. |
-| Languages as a setting | Use one of the two patterns in [Several languages](/docs/multilingual/). |
+| A form for one language at a time, and Publish for one language | The form shows each localized field with one input for each language, and the languages of an entry publish together. Content that is different in each language uses one collection for each language. See [Several languages](/docs/multilingual/). |
 | An image inside a line of text, a table with aligned columns or with a list in a cell | Editors add images on a line of their own and tables with one line of text in each cell. A field that has the other forms already is read-only in the editor. |
 | A page builder with blocks of different kinds | A `repeater()` has one shape for each item. Use a `select()` in the item for its kind, or several repeaters. |
 | A branch switcher | Run one Mica for each branch. |

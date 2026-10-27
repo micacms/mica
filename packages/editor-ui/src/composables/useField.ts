@@ -5,7 +5,7 @@
 
 import { computed, type ComputedRef } from "vue";
 
-import type { AnyField, FieldIssue } from "@micacms/core/internal";
+import { humanise, type AnyField, type FieldIssue } from "@micacms/core/internal";
 
 let sequence = 0;
 
@@ -62,11 +62,7 @@ function lastSegment(path: string): string {
 }
 
 /** `metaTitle` → `Meta title`, used when a field declares no label. The key `id` is "ID". */
-export function humanise(key: string): string {
-  if (key === "id") return "ID";
-  const spaced = key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
-}
+export { humanise };
 
 const WIDTHS: Record<string, string> = {
   full: "col-span-12",

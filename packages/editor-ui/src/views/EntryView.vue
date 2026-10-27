@@ -13,7 +13,7 @@
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
-import { defaultValues, isValidId, pagePlaceholders } from "@micacms/core/internal";
+import { defaultValues, isValidId, pagePlaceholders, singleValue } from "@micacms/core/internal";
 
 import { api, messageOf, type EntryDetail, type Referrer, type SavedEntry } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
@@ -170,7 +170,7 @@ const page = computed(() =>
 const title = computed(() => {
   const def = definition.value;
   if (!def) return "Entry";
-  const value = def.titleField ? values.value[def.titleField] : undefined;
+  const value = def.titleField ? singleValue(def.fields[def.titleField], values.value[def.titleField]) : undefined;
   if (typeof value === "string" && value.trim()) return value.trim();
   return isNew ? `New ${def.labelSingular.toLowerCase()}` : "Untitled";
 });
