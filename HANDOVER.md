@@ -24,7 +24,7 @@ Delete this file before the merge. It is a note for the next coding agent, not d
 
 ## Open
 
-1. A browser check of the switcher: the layout, the keyboard, and a problem link to another language. The user must ask for browser tests first (AGENTS.md). Ask them.
+1. The editor's language UX was reworked after a first browser check (screenshots, with the user's permission): the switcher is in the sticky page header (`PageHeader` slot `toolbar`), the status is in the `meta` line under the title, a localized field has `FieldTranslations` beside its label, and closed groups and rows show `MissingTranslations`. Not checked yet: a problem link to another language, and the overlay form beside the live preview.
 2. Run the `reviewer` agent on the last commit (the editor switcher).
 3. The website comparison pages still say "Mica has no language setting":
    - `sites/micacms/content/compare/index.json`
@@ -36,7 +36,11 @@ Delete this file before the merge. It is a note for the next coding agent, not d
    - the list of the locales that an entry is in;
    - `{locale}` in a collection's `url`;
    - a uniqueness check for a localized `id()`.
-6. Optional: the example site (`examples/company-site`) has no locales yet.
+6. The example site (`examples/company-site`) has `en`, `de` and `de-ch` (fallback `de-ch` → `de` → `en`). Uncommitted at the time of this note.
+   - The routes are in `src/pages/[...locale]/`: English without a prefix, so the collections' `url` and the preview stay English.
+   - `src/lib/i18n.ts` has the URL helpers; `src/lib/content.ts` localizes each read, also `related()` entries with `inLocale`.
+   - Known limits: links inside rich text and the labels of select options are not localized.
+   - The type change from this work: after `localize()`, a required localized field is never null (`LocalizedValue<T, R>` in core).
 7. Then open the pull request. Use the structure in AGENTS.md, and say why the API reports (`packages/{core,astro}/api/*.api.md`) change.
 
 ## The user's rules for this work
