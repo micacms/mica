@@ -213,11 +213,19 @@ describe("localize", () => {
 describe("the types of localized fields", () => {
   it("are a value for each locale, and one value after localize", () => {
     type Page = InferCollection<typeof pages>;
-    const title: Equal<Page["title"], LocalizedValue<string>> = true;
-    const localized: Equal<Localize<Page>["title"], string | null> = true;
+    const title: Equal<Page["title"], LocalizedValue<string, string>> = true;
+    const localized: Equal<Localize<Page>["body"], string | null> = true;
     const shared: Equal<Localize<Page>["image"], string | null> = true;
     const row: Equal<Localize<Page>["sections"][number]["heading"], string | null> = true;
     assert.ok(title && localized && shared && row);
+  });
+
+  it("are never null after localize when required, because each fallback chain ends in the default locale", () => {
+    type Page = InferCollection<typeof pages>;
+    const required: Equal<Localize<Page>["title"], string> = true;
+    const notes = collection({ label: "Notes", fields: { id: id(), legal: text({ required: true, localized: { fallback: false } }) } });
+    const noFallback: Equal<Localize<InferCollection<typeof notes>>["legal"], string | null> = true;
+    assert.ok(required && noFallback);
   });
 
   it("leave a singleton without localized fields as it is", () => {

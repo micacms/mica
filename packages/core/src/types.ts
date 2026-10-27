@@ -521,22 +521,32 @@ type NeverNull<F extends AnyField, Own extends boolean> =
 
 declare const LOCALIZED: unique symbol;
 
-/** The stored value of a `localized` field: a value for each locale, null when it is missing. `localize()` resolves it. */
-export type LocalizedValue<T> = { [locale: string]: T | null } & { readonly [LOCALIZED]?: T };
+/**
+ * The stored value of a `localized` field: a value for each locale, null when it is missing. `localize()` resolves it
+ * to `R`: `T` for a required field, whose fallback chain ends in the default locale, else `T | null`.
+ */
+export type LocalizedValue<T, R = T | null> = { [locale: string]: T | null } & { readonly [LOCALIZED]?: R };
+
+/** The value of a localized field after `localize()`: never null when it is required and has a fallback. */
+// prettier-ignore
+type LocalizedResult<F, T> =
+  F extends { localized: { fallback: false } } ? T | null :
+  F extends { required: true } ? T :
+  T | null;
 
 /** `Own`: the field is among a collection's own fields, where an ID is the entry's folder name. */
 // prettier-ignore
 export type InferField<F extends AnyField, Img = never, Own extends boolean = false> =
   // The stored form, an object with one field for each locale: the value of its fields.
   F extends { kind: "object"; localized: true | { fallback: false }; fields: infer M extends FieldMap } ? LocalizedValue<FieldValue<M[keyof M], Img>> :
-  F extends { localized: true | { fallback: false } } ? LocalizedValue<FieldValue<F, Img>> :
+  F extends { localized: true | { fallback: false } } ? LocalizedValue<FieldValue<F, Img>, LocalizedResult<F, FieldValue<F, Img>>> :
   NeverNull<F, Own> extends true ? FieldValue<F, Img> :
   FieldValue<F, Img> | null;
 
 /** A value with each localized value resolved to one locale's value: what `localize()` gives. */
 // prettier-ignore
 export type Localize<T> =
-  typeof LOCALIZED extends keyof T ? (T extends { readonly [LOCALIZED]?: infer V } ? V | null : never) :
+  typeof LOCALIZED extends keyof T ? (T extends { readonly [LOCALIZED]?: infer V } ? V : never) :
   T extends readonly (infer Item)[] ? Localize<Item>[] :
   T extends object ? { [K in keyof T]: Localize<T[K]> } :
   T;

@@ -284,6 +284,7 @@ export const INDEX_FILE = "index.json";
 // @public (undocumented)
 export type InferCollection<C extends Collection, Img = never> = InferFields<C["fields"], Img, true>;
 
+// Warning: (ae-forgotten-export) The symbol "LocalizedResult" needs to be exported by the entry point index.d.ts
 // Warning: (ae-forgotten-export) The symbol "NeverNull" needs to be exported by the entry point index.d.ts
 //
 // @public
@@ -297,7 +298,7 @@ export type InferField<F extends AnyField, Img = never, Own extends boolean = fa
     localized: true | {
         fallback: false;
     };
-} ? LocalizedValue<FieldValue<F, Img>> : NeverNull<F, Own> extends true ? FieldValue<F, Img> : FieldValue<F, Img> | null;
+} ? LocalizedValue<FieldValue<F, Img>, LocalizedResult<F, FieldValue<F, Img>>> : NeverNull<F, Own> extends true ? FieldValue<F, Img> : FieldValue<F, Img> | null;
 
 // @public (undocumented)
 export type InferFields<M extends FieldMap, Img = never, Own extends boolean = false> = {
@@ -323,7 +324,7 @@ export function isValidId(value: string): boolean;
 // @public
 export type Localize<T> = typeof LOCALIZED extends keyof T ? (T extends {
     readonly [LOCALIZED]?: infer V;
-} ? V | null : never) : T extends readonly (infer Item)[] ? Localize<Item>[] : T extends object ? {
+} ? V : never) : T extends readonly (infer Item)[] ? Localize<Item>[] : T extends object ? {
     [K in keyof T]: Localize<T[K]>;
 } : T;
 
@@ -333,10 +334,10 @@ export type Localized = boolean | {
 };
 
 // @public
-export type LocalizedValue<T> = {
+export type LocalizedValue<T, R = T | null> = {
     [locale: string]: T | null;
 } & {
-    readonly [LOCALIZED]?: T;
+    readonly [LOCALIZED]?: R;
 };
 
 // @public
