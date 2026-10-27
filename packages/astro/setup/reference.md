@@ -74,7 +74,7 @@ lists are for.
 
 Options of every field: `label`, `description`, `required`, `listed` (a column
 in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
-`"third"`), `localized` (a value for each locale; see "Several languages").
+`"third"`), `localized` (a value for each locale; see "Localization (i18n)").
 
 | Field | Stored as | Other options |
 | --- | --- | --- |
@@ -234,7 +234,7 @@ const body = await renderRichText(article.data.body, article.data);
   in the editor's order: `entries.sort(inEditorOrder)` (from `@micacms/astro`).
   It follows the collection's `defaultSort`, else the manual order.
 
-### Several languages
+### Localization (i18n)
 
 Give the site its locales, the same as Astro's `i18n`, and mark each field
 that has a translation with `localized: true`:
