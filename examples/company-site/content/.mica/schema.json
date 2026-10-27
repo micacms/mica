@@ -1901,6 +1901,93 @@
                 }
               }
             },
+            "categories": {
+              "kind": "object",
+              "label": "Names of the categories",
+              "description": "As the website shows them. The editor shows the names of the Category field.",
+              "fields": {
+                "strategy": {
+                  "kind": "object",
+                  "label": "Strategy",
+                  "localized": true,
+                  "fields": {
+                    "en": {
+                      "kind": "text",
+                      "label": "Strategy (EN)",
+                      "required": true
+                    },
+                    "de": {
+                      "kind": "text",
+                      "label": "Strategy (DE)"
+                    },
+                    "de-ch": {
+                      "kind": "text",
+                      "label": "Strategy (DE-CH)"
+                    }
+                  }
+                },
+                "operations": {
+                  "kind": "object",
+                  "label": "Operations",
+                  "localized": true,
+                  "fields": {
+                    "en": {
+                      "kind": "text",
+                      "label": "Operations (EN)",
+                      "required": true
+                    },
+                    "de": {
+                      "kind": "text",
+                      "label": "Operations (DE)"
+                    },
+                    "de-ch": {
+                      "kind": "text",
+                      "label": "Operations (DE-CH)"
+                    }
+                  }
+                },
+                "technology": {
+                  "kind": "object",
+                  "label": "Technology",
+                  "localized": true,
+                  "fields": {
+                    "en": {
+                      "kind": "text",
+                      "label": "Technology (EN)",
+                      "required": true
+                    },
+                    "de": {
+                      "kind": "text",
+                      "label": "Technology (DE)"
+                    },
+                    "de-ch": {
+                      "kind": "text",
+                      "label": "Technology (DE-CH)"
+                    }
+                  }
+                },
+                "publicSector": {
+                  "kind": "object",
+                  "label": "Public sector",
+                  "localized": true,
+                  "fields": {
+                    "en": {
+                      "kind": "text",
+                      "label": "Public sector (EN)",
+                      "required": true
+                    },
+                    "de": {
+                      "kind": "text",
+                      "label": "Public sector (DE)"
+                    },
+                    "de-ch": {
+                      "kind": "text",
+                      "label": "Public sector (DE-CH)"
+                    }
+                  }
+                }
+              }
+            },
             "downloads": {
               "kind": "object",
               "label": "Downloads",
@@ -2241,6 +2328,53 @@
                 "de-ch": {
                   "kind": "text",
                   "label": "Format (DE-CH)"
+                }
+              }
+            },
+            "formats": {
+              "kind": "object",
+              "label": "Names of the formats",
+              "description": "As the website shows them. The editor shows the names of the Format field.",
+              "fields": {
+                "inPerson": {
+                  "kind": "object",
+                  "label": "In person",
+                  "localized": true,
+                  "fields": {
+                    "en": {
+                      "kind": "text",
+                      "label": "In person (EN)",
+                      "required": true
+                    },
+                    "de": {
+                      "kind": "text",
+                      "label": "In person (DE)"
+                    },
+                    "de-ch": {
+                      "kind": "text",
+                      "label": "In person (DE-CH)"
+                    }
+                  }
+                },
+                "online": {
+                  "kind": "object",
+                  "label": "Online",
+                  "localized": true,
+                  "fields": {
+                    "en": {
+                      "kind": "text",
+                      "label": "Online (EN)",
+                      "required": true
+                    },
+                    "de": {
+                      "kind": "text",
+                      "label": "Online (DE)"
+                    },
+                    "de-ch": {
+                      "kind": "text",
+                      "label": "Online (DE-CH)"
+                    }
+                  }
                 }
               }
             },

@@ -68,7 +68,7 @@ To check the content without a browser, run `rushx check`. It runs
 - **homePage**: the texts of the home page, a singleton with its page (`url: "/"`)
 - **labels**: the short texts of the templates, in groups: on every page, the footer, each collection's list and pages (such as "Key facts"), and the page for an address that does not exist
 
-Every text that a page shows comes from the content, so an editor can change it and the live preview can open it. The labels of select options, such as "In person", come from the model.
+Every text that a page shows comes from the content, so an editor can change it and the live preview can open it. Also the website's names of select options, such as "In person": they are in Labels, in each language. The labels in the model are the editor's.
 
 **glossary** is an ordinary Astro collection of Markdown files. It is defined
 beside the Mica collections, and the page with the template "Glossary" shows it.

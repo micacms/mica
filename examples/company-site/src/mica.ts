@@ -663,6 +663,16 @@ export const site = defineSite({
               "After the number, like “weeks”.",
             ),
             sector: label("Sector"),
+            categories: object({
+              label: "Names of the categories",
+              description: "As the website shows them. The editor shows the names of the Category field.",
+              fields: {
+                strategy: label("Strategy"),
+                operations: label("Operations"),
+                technology: label("Technology"),
+                publicSector: label("Public sector"),
+              },
+            }),
             downloads: label("Downloads"),
             location: label("Location"),
             team: label("Team"),
@@ -693,6 +703,14 @@ export const site = defineSite({
             when: label("When"),
             until: label("Until", "Between the start and the end."),
             format: label("Format"),
+            formats: object({
+              label: "Names of the formats",
+              description: "As the website shows them. The editor shows the names of the Format field.",
+              fields: {
+                inPerson: label("In person"),
+                online: label("Online"),
+              },
+            }),
             and: label(
               "And",
               "Between two formats, like “In person and Online”.",

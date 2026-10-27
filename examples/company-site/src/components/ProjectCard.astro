@@ -38,7 +38,7 @@ const { projects: labels } = await getLabels(locale);
     </div>
 
     <div class="mt-5">
-      {category && <p class="eyebrow text-accent">{categoryLabel(category)}</p>}
+      {category && <p class="eyebrow text-accent">{categoryLabel(category, labels.categories)}</p>}
       <h3 class="mt-2 text-lg font-semibold leading-snug transition group-hover:text-primary">
         {title}
       </h3>

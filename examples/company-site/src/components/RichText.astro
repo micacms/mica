@@ -10,6 +10,8 @@
 
 import { renderRichText, type RichTextSource } from "@micacms/astro";
 
+import { localePath } from "@/lib/i18n";
+
 interface Props {
   /** Markdoc source, as stored in the entry's `.mdoc` sidecar. */
   text: string | null;
@@ -19,7 +21,9 @@ interface Props {
 }
 
 const { text, from, class: className } = Astro.props;
-const html = await renderRichText(text, from);
+// Editors write one address for all languages, such as /team/: the page of a German text links to /de/team/.
+const locale = Astro.currentLocale;
+const html = await renderRichText(text, from, { link: (href) => localePath(href, locale) });
 ---
 
 {html && <div class:list={["prose-cms", className]} set:html={html} />}

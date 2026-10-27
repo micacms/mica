@@ -58,7 +58,7 @@ const addressLines = [location?.address, [location?.city, location?.country].fil
       <div class="mt-4 max-w-3xl">
         <h1 class="text-4xl font-semibold sm:text-5xl lg:text-6xl">{title}</h1>
         <p class="mt-4 text-lg text-muted">
-          {[category ? categoryLabel(category) : null, location?.city, year]
+          {[category ? categoryLabel(category, texts.categories) : null, location?.city, year]
             .filter(Boolean)
             .join(" · ")}
         </p>

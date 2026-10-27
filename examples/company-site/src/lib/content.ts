@@ -160,8 +160,18 @@ export function optionLabel(field: { options: readonly { label: string; value: s
   return field.options.find((option) => option.value === value)?.label ?? value;
 }
 
-export const categoryLabel = (value: string) => optionLabel(site.collections.projects.fields.category, value);
-export const formatLabel = (value: string) => optionLabel(site.collections.events.fields.format, value);
+/**
+ * The name of an option on the website, in the page's language: from the Labels, whose key is the value in camel
+ * case (`public-sector` is `publicSector`); else the model's label, which is the editor's.
+ */
+function optionName(names: object, field: { options: readonly { label: string; value: string }[] }, value: string): string {
+  const key = value.replace(/-([a-z0-9])/g, (_, letter: string) => letter.toUpperCase());
+  const name = (names as Record<string, string | null | undefined>)[key];
+  return name ?? optionLabel(field, value);
+}
+
+export const categoryLabel = (value: string, names: object) => optionName(names, site.collections.projects.fields.category, value);
+export const formatLabel = (value: string, names: object) => optionName(names, site.collections.events.fields.format, value);
 export const platformLabel = (value: string) => optionLabel(site.singletons.general.fields.social.fields.platform, value);
 
 /** Formats an ISO date for display, in the page's locale. */

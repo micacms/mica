@@ -43,7 +43,7 @@ const groups = [
                         {event.data.title}
                       </h3>
                       <p class="mt-1.5 text-sm text-muted">
-                        {event.data.format.map(formatLabel).join(" · ")}
+                        {event.data.format.map((value) => formatLabel(value, labels.formats)).join(" · ")}
                         {event.data.venue?.name ? ` · ${event.data.venue.name}` : ""}
                       </p>
                       {event.data.summary && (

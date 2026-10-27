@@ -102,6 +102,28 @@
       "de": "Branche",
       "de-ch": null
     },
+    "categories": {
+      "strategy": {
+        "en": "Strategy",
+        "de": "Strategie",
+        "de-ch": null
+      },
+      "operations": {
+        "en": "Operations",
+        "de": "Betrieb",
+        "de-ch": null
+      },
+      "technology": {
+        "en": "Technology",
+        "de": "Technologie",
+        "de-ch": null
+      },
+      "publicSector": {
+        "en": "Public sector",
+        "de": "Öffentlicher Sektor",
+        "de-ch": null
+      }
+    },
     "downloads": {
       "en": "Downloads",
       "de": "Downloads",
@@ -185,6 +207,18 @@
       "en": "Format",
       "de": "Format",
       "de-ch": null
+    },
+    "formats": {
+      "inPerson": {
+        "en": "In person",
+        "de": "Vor Ort",
+        "de-ch": null
+      },
+      "online": {
+        "en": "Online",
+        "de": "Online",
+        "de-ch": null
+      }
     },
     "and": {
       "en": "and",
