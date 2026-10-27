@@ -65,7 +65,7 @@ the local editor needs only `rush build`. See
    image (`apps/self-hosted`, `Dockerfile`) goes on `@micacms/runtime`. CI does
    not find a missing change file for these.
 5. Update the documentation that your change makes wrong. The user guides are
-   on the website, in `sites/micacms/content/docs`. The contributor docs are in
+   on the website, in `sites/website/content/docs`. The contributor docs are in
    `docs/`.
 
 Write each commit message as one short line that says what changed.

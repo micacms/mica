@@ -15,7 +15,7 @@ import { collection, createManifest, defineSite, MANIFEST_PATH, object, richText
 const RECIPES = join(import.meta.dirname, "../recipes");
 // A recipe imports the published package, so it runs on the build output; CI builds before it tests.
 const UNBUILT = !existsSync(join(import.meta.dirname, "../dist/index.js")) && "@micacms/core is not built";
-const PAGE = join(import.meta.dirname, "../../../sites/micacms/content/docs/model-changes/body.mdoc");
+const PAGE = join(import.meta.dirname, "../../../sites/website/content/docs/model-changes/body.mdoc");
 
 const roots: string[] = [];
 after(() => roots.forEach((root) => rmSync(root, { recursive: true, force: true })));

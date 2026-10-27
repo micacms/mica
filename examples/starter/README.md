@@ -1,6 +1,6 @@
 # Mica starter
 
-A small Astro site with [Mica](https://micacms.com): one collection of posts, one
+A small Astro site with [Mica](https://mica.build): one collection of posts, one
 settings page, an image with alt text, and a CI workflow that checks the content.
 
 ## Start
@@ -45,6 +45,6 @@ git push -u origin main
 - `npm run check` runs `mica check` and `astro check` together.
 - A coding agent can edit the content: `.mcp.json` adds Mica to it, and `AGENTS.md`
   says how to work. The agent saves drafts; you publish them in the editor:
-  https://micacms.com/docs/agents/
+  https://mica.build/docs/agents/
 - Let editors who are not developers edit with the self-hosted editor:
-  https://micacms.com/docs/self-hosting/
+  https://mica.build/docs/self-hosting/

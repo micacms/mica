@@ -161,7 +161,7 @@ there. But a check such as `{html && …}` is then always true.
 
 ## Setup guides for coding agents
 
-`setup/` holds the guides that https://micacms.com/setup.md sends a coding
+`setup/` holds the guides that https://mica.build/setup.md sends a coding
 agent to: a new or empty Astro project, and a project with content
 collections. They ship with the package, so they match the installed version.
 

@@ -72,7 +72,7 @@ The level 2 table of V10 has two Accepted rows.
 | N20 | low | The address check of the client document fetch misses some IPv6 ranges: `64:ff9b:1::/48` (local NAT64), `::/96` (IPv4-compatible), `fec0::/10`, `100::/64` and `2001:db8::/32`. On a network with a local NAT64 gateway, a document address can reach a private IPv4 service. Any port is allowed. Only an admitted person who signed in recently can cause a fetch. | `packages/auth/oidc/src/oauth/clients.ts` (`PRIVATE`, `isPublicAddress`) | Add the ranges. Consider port 443 only. **Fixed:** the ranges are in `PRIVATE`. Any port stays allowed. |
 | N21 | none | For a loopback redirect URI on another port, `matchRedirectUri` compares the host name, the path and the query only. A fragment or a user name in the requested URI is accepted and kept. Any private-use scheme, such as `ms-msdt:`, can be registered. | `packages/auth/oidc/src/oauth/clients.ts` (`matchRedirectUri`, `checkRedirectUri`) | Refuse a fragment and a user name on the loopback path. Accept only a reverse-domain scheme (RFC 8252, section 7.1). **Fixed in part:** the loopback path refuses a fragment and a user name. Any private-use scheme stays allowed, because MCP clients use schemes such as `cursor://`. |
 | N22 | low | An MCP tool that fails because the disk is full or read-only answers the agent, but does not write the error to Mica's log. The admin API logs it. The operator does not see the cause. | `packages/mcp/src/server.ts` (`failure`); `packages/runtime/src/middleware/index.ts` (`errorHandler`, `storageError`) | Log `storage_unavailable` as an error in `failure` too. **Fixed:** `failure` logs `storage_unavailable` as an error. |
-| N23 | low | The `hd` check applies only when the issuer is Google. A broker that signs people in with Google, such as Dex, Keycloak or ZITADEL, sends its own issuer and Google's `email_verified`. A domain rule then admits a personal Google account with a company address. The docs say nothing about this case. | `packages/auth/oidc/src/admission.ts` (`hostedDomainAgrees`); `sites/micacms/content/docs/other-providers/body.mdoc` | Say on the security and provider pages: with Google behind a broker, limit the broker to the Workspace domain (for Dex, `hostedDomains`), or use a group or subject rule. **Fixed in the docs:** the security and provider pages say it. |
+| N23 | low | The `hd` check applies only when the issuer is Google. A broker that signs people in with Google, such as Dex, Keycloak or ZITADEL, sends its own issuer and Google's `email_verified`. A domain rule then admits a personal Google account with a company address. The docs say nothing about this case. | `packages/auth/oidc/src/admission.ts` (`hostedDomainAgrees`); `sites/website/content/docs/other-providers/body.mdoc` | Say on the security and provider pages: with Google behind a broker, limit the broker to the Workspace domain (for Dex, `hostedDomains`), or use a group or subject rule. **Fixed in the docs:** the security and provider pages say it. |
 
 ## V1 Encoding and Sanitization
 
@@ -91,7 +91,7 @@ The level 2 table of V10 has two Accepted rows.
 
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
-| 2.1.1 | Validation rules documented | Pass | `sites/micacms/content/docs/reference-fields/body.mdoc`; `docs/adr/0018-media-files.md`; `sites/micacms/content/docs/configuration/body.mdoc` | The field rules, the media types, `MICA_MAX_UPLOAD_BYTES` and the request limits (2 MB for JSON, 64 kB for `/oauth/*`, the upload limit for `/mcp`) are documented. |
+| 2.1.1 | Validation rules documented | Pass | `sites/website/content/docs/reference-fields/body.mdoc`; `docs/adr/0018-media-files.md`; `sites/website/content/docs/configuration/body.mdoc` | The field rules, the media types, `MICA_MAX_UPLOAD_BYTES` and the request limits (2 MB for JSON, 64 kB for `/oauth/*`, the upload limit for `/mcp`) are documented. |
 | 2.2.1 | Positive input validation | Pass | `packages/runtime/src/services/content-store.ts` (`existingId`, `requireCollection`); `packages/mcp/src/server.ts`; `packages/auth/oidc/src/oauth/routes.ts` | Every ID of an existing entry is one segment. The tools have Zod inputs. The authorization server checks `response_type`, PKCE, `resource` and the redirect URI. |
 | 2.2.2 | Validation on the server | Pass | `packages/runtime/src/services/content-store.ts` (`validate`); `packages/auth/oidc/src/config.ts` | The editor and an agent use the same services. |
 | 2.3.1 | Business flow in the expected order | Pass | `packages/runtime/src/services/staging.ts`; `packages/mcp/src/server.ts`; `packages/auth/oidc/src/oauth/tokens.ts` (`open`) | A write carries the revision that the editor or the agent read. Each sealed token has a kind, so a consent request, a code, an access token and a refresh token cannot replace each other. |
@@ -165,7 +165,7 @@ The idle and absolute timeouts are implemented
 
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
-| 8.1.1 | Authorization rules documented | Pass | `packages/auth/oidc/src/admission.ts`; `sites/micacms/content/docs/self-hosting/body.mdoc`; `docs/adr/0029-mica-is-the-authorization-server-for-mcp.md` | The scopes are on the consent page in words (`SCOPE_WORDS`). |
+| 8.1.1 | Authorization rules documented | Pass | `packages/auth/oidc/src/admission.ts`; `sites/website/content/docs/self-hosting/body.mdoc`; `docs/adr/0029-mica-is-the-authorization-server-for-mcp.md` | The scopes are on the consent page in words (`SCOPE_WORDS`). |
 | 8.2.1 | Function-level access control | Pass | `packages/runtime/src/app.ts`; `packages/auth/oidc/src/gate.ts`; `packages/mcp/src/server.ts` (`needs`) | Each tool names its scope, and the MCP SDK refuses a call without it (`insufficient_scope`). `publish` exists only with `MICA_MCP_PUBLISH` and needs `content:publish`. |
 | 8.2.2 | Data-level access (IDOR) | Pass | `packages/runtime/src/app.ts` | One site and one role, by design. |
 | 8.3.1 | Enforced on the server | Pass | `packages/auth/oidc/src/gate.ts`; `packages/auth/oidc/src/oauth/gate.ts` | Admission is checked on every request, also for an agent. |
@@ -228,7 +228,7 @@ Not counted in the summary. The levels and some IDs are approximate.
 
 | ID | Requirement (short) | Status | Evidence | Note |
 | --- | --- | --- | --- | --- |
-| 12.1.1 | Current TLS versions only | N/A | `sites/micacms/content/docs/self-hosting/body.mdoc` | The operator's proxy terminates TLS. |
+| 12.1.1 | Current TLS versions only | N/A | `sites/website/content/docs/self-hosting/body.mdoc` | The operator's proxy terminates TLS. |
 | 12.2.1 | TLS for all connections | Pass | `apps/self-hosted/src/config.ts`; `apps/self-hosted/src/workspace/credentials.ts` (`parseRemote`); `packages/auth/oidc/src/config.ts`; `packages/auth/oidc/src/oauth/clients.ts` (`fetchJson`) | The public URL, the issuer, the repository and the LFS URL need `https://`, except on this machine. A client document is fetched over https only, with certificate checks. |
 | 12.2.2 | Publicly trusted certificates | N/A | — | The proxy holds the certificate. |
 

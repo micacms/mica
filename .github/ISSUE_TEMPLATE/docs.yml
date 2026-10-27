@@ -7,7 +7,7 @@ body:
     attributes:
       label: Page
       description: The address of the page, or "missing".
-      placeholder: https://micacms.com/docs/…
+      placeholder: https://mica.build/docs/…
     validations:
       required: true
   - type: textarea

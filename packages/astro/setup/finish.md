@@ -69,7 +69,7 @@ paths if the project uses others.
   content. Change the content files in the same commit, or ask first.
 - Before a commit that changes `content/`, `npm run check` must pass.
 - To change content, use the Mica MCP tools if you have them
-  (https://micacms.com/docs/agents/). Call `describe_model` first. A save
+  (https://mica.build/docs/agents/). Call `describe_model` first. A save
   is a draft: do not publish unless the user asks.
 ```
 
@@ -115,7 +115,7 @@ on a text in the page opens its field. A save writes files in `content/`;
 Publish commits them, and pushes a new branch the first time.
 `npm run check` checks the content (and the types, if `@astrojs/check` is
 there). On another clone, run `npm install` first. A self-hosted editor for
-other people: https://micacms.com/docs/self-hosting/.
+other people: https://mica.build/docs/self-hosting/.
 ````
 
 - Use the project's lock file (`pnpm-lock.yaml`, `yarn.lock`) and package

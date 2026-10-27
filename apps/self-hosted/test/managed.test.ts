@@ -655,7 +655,7 @@ describe("publishing", () => {
     const result = await s.workspace.policy.push(tree(s), revision);
     assert.equal(result.state, "published");
     const published = devGit(host.bare(s.name), "log", "-1", "--format=%an <%ae>|%cn", "main");
-    assert.equal(published, "Erika Editor <erika@example.com>|Mica CMS");
+    assert.equal(published, "Erika Editor <erika@example.com>|Mica");
   });
 
   it("makes a publication again on top of a competing push", async () => {

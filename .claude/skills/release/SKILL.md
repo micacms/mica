@@ -109,7 +109,7 @@ When the workflow is green, check what reached the user:
   maintainer makes the package public in its settings.
 - The keyless signatures and the SBOMs of both images verify with the
   `cosign verify` and `imagetools inspect` commands on the self-hosting page of
-  micacms.com.
+  mica.build.
   Without `cosign` on this machine, say so: the maintainer runs it.
 
 ## A release candidate (`X.Y.Z-rc.N`)

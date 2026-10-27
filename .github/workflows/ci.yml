@@ -117,17 +117,17 @@ jobs:
         run: node common/scripts/install-run-rush.js build --to @micacms/site
 
       - name: Assert the website's published content model is committed
-        run: git diff --exit-code sites/micacms/content/.mica/schema.json
+        run: git diff --exit-code sites/website/content/.mica/schema.json
 
       - name: Check the website's content
-        run: node apps/local-editor/dist/cli.js check sites/micacms/content
+        run: node apps/local-editor/dist/cli.js check sites/website/content
 
       # The starter installs the published packages, so it is not built here; its
       # content and committed model are checked against this tree.
       - name: Check the starter's content
         run: node apps/local-editor/dist/cli.js check examples/starter/content
 
-  # The supported versions (#131, docs/versions on micacms.com): the newest
+  # The supported versions (#131, docs/versions on mica.build): the newest
   # Node.js line on Linux, and the local editor's platforms with Node.js 24.
   # Windows and macOS run the tests of core and of the local editor, where
   # paths and the `git` binary differ.

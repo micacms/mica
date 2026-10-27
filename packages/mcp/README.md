@@ -27,4 +27,4 @@ It has no authentication of its own. The composing app puts a gate in front of
 | `get_changes`, `discard_changes` | The drafts, and how to throw them away. |
 | `publish` | Only with `MICA_MCP_PUBLISH=true` or `mica mcp --allow-publish`. |
 
-Setup for a person is on the website: [Edit with an agent](https://micacms.com/docs/agents/).
+Setup for a person is on the website: [Edit with an agent](https://mica.build/docs/agents/).

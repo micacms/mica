@@ -8,7 +8,7 @@ The website deploys from `main`, and the packages from a tag. A guide on the web
 
 ## Decision
 
-- `SETUP.md` in the repository root is served at `micacms.com/setup.md`. It only routes: it finds the project's situation, installs the packages and sends the agent to one guide in `@micacms/astro/setup/`. It names no version-specific API.
+- `SETUP.md` in the repository root is served at `mica.build/setup.md`. It only routes: it finds the project's situation, installs the packages and sends the agent to one guide in `@micacms/astro/setup/`. It names no version-specific API.
 - `mica check` is the agent's "done" signal. `mica init` writes the starter files.
 - `mica import` reads Astro's data store (`node_modules/.astro/data-store.json`) and writes each entry into the Mica model by field name, with `--map` and `--order`.
 - `examples/starter` is the minimal starter for `npm create astro -- --template micacms/mica/examples/starter`. It installs the published packages and is not a Rush project. `examples/company-site` shows every feature.

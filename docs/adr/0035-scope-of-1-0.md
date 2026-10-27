@@ -4,7 +4,7 @@
 
 ## Context
 
-A small scope is what one maintainer can keep stable. Each item below can come in a 1.x minor without a break. The "Scope and non-goals" page on micacms.com tells users how to work without them.
+A small scope is what one maintainer can keep stable. Each item below can come in a 1.x minor without a break. The "Scope and non-goals" page on mica.build tells users how to work without them.
 
 ## Decision
 

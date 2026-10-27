@@ -9,7 +9,7 @@
   "clients": [
     {
       "clientId": "mica",
-      "name": "Mica CMS",
+      "name": "Mica",
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,

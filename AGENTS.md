@@ -14,7 +14,7 @@
 - Follow the KISS principle and common conventions of FOSS projects.
 - Prefer established patterns in this repository to new abstractions.
 - Do not do browser tests unless the user asks for them.
-- Change the content of `sites/micacms` and `examples/company-site` with the Mica MCP servers `mica-site` and `mica-example` (`.mcp.json`). They run the local build, so run `rush build` first.
+- Change the content of `sites/website` and `examples/company-site` with the Mica MCP servers `mica-site` and `mica-example` (`.mcp.json`). They run the local build, so run `rush build` first.
 
 ## Approval required
 
@@ -60,7 +60,7 @@ Ask the user before you:
 - Read `docs/brand/voice.md` before you write text that people read, and use the register of the surface:
   - Docs, READMEs, setup guides and CLI help: ASD-STE100 Simplified Technical English.
   - Editor UI: plain and a bit warm, with editors' words and no Git words (Save, Publish, not commit, push).
-  - Website copy, release pages on micacms.com and social posts: warmer, still short. At most one wink per page, never in errors, warnings or security text.
+  - Website copy, release pages on mica.build and social posts: warmer, still short. At most one wink per page, never in errors, warnings or security text.
 - Avoid the words that `voice.md` lists, such as "simply", "easy", "seamless" and "powerful", and exclamation marks.
 - Follow `docs/brand/README.md` for colours, type, logo, motif, imagery and layout. Use the tokens, never hex values. The token values are in `docs/brand/tokens.json`.
 
@@ -81,7 +81,7 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `validator` (Haiku): run the gates and report only failures — after a code change.
 - `reviewer` (Opus): read-only review against these rules and the design docs — before a commit or a PR.
 - `docs-keeper` (Sonnet): fix documentation that disagrees with the code.
-- `site-keeper` (Sonnet): update `sites/micacms` and `examples/company-site` after a release or a relevant change.
+- `site-keeper` (Sonnet): update `sites/website` and `examples/company-site` after a release or a relevant change.
 - `release-prep` (Sonnet): prepare a release in the background. It never commits, tags or pushes; the `/release` skill stays the interactive flow.
 
 ## Git and pull requests
@@ -108,11 +108,11 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `apps/local-editor`: the `npx @micacms/editor` composition — loopback, no auth, no database.
 - `apps/self-hosted`: the Docker composition — runtime and UI behind OIDC, on a Git clone that it keeps, syncs and pushes itself.
 - `apps/preview`: the live preview's image (`docker build --target preview`) — the website's `astro dev` from Mica's clone, beside the self-hosted Mica.
-- `sites/micacms`: public Mica website, and the canonical user documentation (`content/docs`).
+- `sites/website`: public Mica website, and the canonical user documentation (`content/docs`).
 - `examples/company-site`: example website and evolving reference project.
 - `examples/starter`: the minimal starter for `npm create astro -- --template micacms/mica/examples/starter`. It installs the published packages, so it is not a Rush project; each release sets its versions.
-- `SETUP.md`: the entry point for a coding agent that sets up Mica in a user's project, served at `micacms.com/setup.md`. Keep it valid for every version; version-specific steps go in `packages/astro/setup/`.
-- `docs`: architecture and decision documentation for contributors, and the brand book (`docs/brand`). The user guides move to `sites/micacms` (#117).
+- `SETUP.md`: the entry point for a coding agent that sets up Mica in a user's project, served at `mica.build/setup.md`. Keep it valid for every version; version-specific steps go in `packages/astro/setup/`.
+- `docs`: architecture and decision documentation for contributors, and the brand book (`docs/brand`). The user guides move to `sites/website` (#117).
 - `deploy/self-hosted`: the reference deployment — the Compose file and its `.env.example`.
 - `deploy/demo-identity`: the demo stack with ZITADEL.
 - `tests/e2e`: manual deployed-shape environment with Keycloak. Do not treat it as an automated browser test suite.

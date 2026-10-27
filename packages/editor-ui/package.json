@@ -5,7 +5,7 @@
   "type": "module",
   "description": "The Mica editor SPA — identity-neutral Vue administration UI, shipped as built assets and mounted by a composing app.",
   "license": "MIT",
-  "homepage": "https://micacms.com",
+  "homepage": "https://mica.build",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/micacms/mica.git",

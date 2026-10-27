@@ -21,7 +21,7 @@ services:
       # The test changes a template on the Git host: Mica brings it in soon.
       MICA_REPOSITORY_SYNC_SECONDS: "5"
 
-  # Set up as micacms.com/docs/self-hosting/ tells a user to: the image, Mica's volume read-only, and a cache.
+  # Set up as mica.build/docs/self-hosting/ tells a user to: the image, Mica's volume read-only, and a cache.
   preview:
     image: micacms/preview:ci
     build:

@@ -5,7 +5,7 @@
   "type": "module",
   "description": "The live preview's image for the self-hosted Mica: runs the website's astro dev from Mica's clone, on its drafts.",
   "license": "MIT",
-  "homepage": "https://micacms.com",
+  "homepage": "https://mica.build",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/micacms/mica.git",

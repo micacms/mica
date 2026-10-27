@@ -1,0 +1,22 @@
+{
+  "docs": {
+    "eyebrow": "Documentation",
+    "title": "Build the content layer you can keep.",
+    "lead": "Start locally, understand the model, and take the same files to production.",
+    "filterLabel": "Filter guides",
+    "noResults": "No guide matches this filter."
+  },
+  "changelog": {
+    "eyebrow": "Changelog",
+    "title": "What Mica does today.",
+    "lead": "Mica is pre-1.0 and experimental. Read the release notes on GitHub before you upgrade.",
+    "currentLabel": "Current",
+    "sourceNote": "The notes of each release are on GitHub.",
+    "sourceLink": "Read the GitHub releases"
+  },
+  "notFound": {
+    "title": "This file is not in the repository.",
+    "text": "The address does not match a page on mica.build.",
+    "action": "Go to the home page"
+  }
+}

@@ -185,7 +185,7 @@ describe("an admitted session", () => {
     assert.equal(commit.commit.message.trim(), `${message}\n\nPublished-with: Mica`);
     assert.deepEqual(commit.parents.map((parent) => parent.sha), [before]);
     assert.equal(commit.commit.author.email, "alice@gmail.com");
-    assert.equal(commit.commit.committer.name, "Mica CMS");
+    assert.equal(commit.commit.committer.name, "Mica");
     assert.equal((await publishedSite()).tagline.en, tagline);
   });
 

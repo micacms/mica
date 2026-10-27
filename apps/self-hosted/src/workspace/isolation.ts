@@ -30,7 +30,7 @@ export interface ManagedEnvironmentOptions {
 }
 
 /** The committer of every publication; the author is the editor. */
-export const MICA_IDENTITY = { name: "Mica CMS", email: "mica@localhost" } as const;
+export const MICA_IDENTITY = { name: "Mica", email: "mica@localhost" } as const;
 
 /**
  * Answers only Git's `get`, with the username and token from the environment of

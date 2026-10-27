@@ -11,7 +11,7 @@ Mica has one maintainer. A promise that one person cannot keep is worse than non
 - `GOVERNANCE.md` states that Mica is a hobby project of one maintainer, built largely with AI-assisted coding, and kept on a best-effort basis, without response times. 1.0 does not wait for a second maintainer.
 - Nobody outside the project reviews the security before 1.0. CodeQL and a dependency audit run in CI, and the maintainer reviews the authentication, session, CSRF and admission code against OWASP ASVS level 1 (`docs/security-review.md`). `SECURITY.md` says that Mica has no independent audit.
 - The editor aims at WCAG 2.2 AA. The browser test runs axe on each view, and a serious or critical finding fails CI. There is no audit before 1.0, and Mica claims no conformance.
-- The user documentation is Mica content in `sites/micacms/content/docs`, published on micacms.com. `docs/` holds the contributor documents: the architecture, the content format and these records.
+- The user documentation is Mica content in `sites/website/content/docs`, published on mica.build. `docs/` holds the contributor documents: the architecture, the content format and these records.
 
 ## Consequences
 

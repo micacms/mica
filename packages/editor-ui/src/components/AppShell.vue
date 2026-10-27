@@ -240,7 +240,7 @@ async function signOut(): Promise<void> {
             <Settings :size="14" aria-hidden="true" />
             System
           </RouterLink>
-          <a href="https://micacms.com/docs/editing/" target="_blank" rel="noopener noreferrer" class="nav-link">
+          <a href="https://mica.build/docs/editing/" target="_blank" rel="noopener noreferrer" class="nav-link">
             <CircleHelp :size="14" aria-hidden="true" />
             Help for editors
             <span class="sr-only">(opens in a new tab)</span>

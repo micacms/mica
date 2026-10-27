@@ -11,7 +11,7 @@ import { describe, it } from "node:test";
 
 const CLI = path.resolve(import.meta.dirname, "../src/cli.ts");
 const TSX = import.meta.resolve("tsx");
-const PAGE = path.resolve(import.meta.dirname, "../../../sites/micacms/content/docs/reference-cli/body.mdoc");
+const PAGE = path.resolve(import.meta.dirname, "../../../sites/website/content/docs/reference-cli/body.mdoc");
 
 const help = spawnSync(process.execPath, ["--import", TSX, CLI, "--help"], { encoding: "utf8" }).stdout;
 const page = readFileSync(PAGE, "utf8");

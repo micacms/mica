@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The website and the documentation moved to mica.build: the CLI, the setup guides and the editor's Help for editors link point there. The editor shows the mica wordmark.",
+      "type": "patch",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}
