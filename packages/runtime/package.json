@@ -4,7 +4,7 @@
   "type": "module",
   "description": "The Mica single-site runtime: the Hono API, application services and staging orchestration, authentication-neutral. Composed by @micacms/editor locally and @micacms/self-hosted behind OIDC.",
   "license": "MIT",
-  "homepage": "https://micacms.com",
+  "homepage": "https://mica.build",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/micacms/mica.git",

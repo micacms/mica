@@ -3,7 +3,7 @@
 		"mica-site": {
 			"type": "stdio",
 			"command": "node",
-			"args": ["apps/local-editor/dist/cli.js", "mcp", "sites/micacms/content"]
+			"args": ["apps/local-editor/dist/cli.js", "mcp", "sites/website/content"]
 		},
 		"mica-example": {
 			"type": "stdio",

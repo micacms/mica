@@ -24,6 +24,6 @@ that admits everybody its issuer knows is a misconfiguration, not a default.
 With `MICA_MCP=true`, agents connect at `/mcp` over the Model Context Protocol.
 Mica is the OAuth server for them: each person signs in as for the editor and
 allows each agent on a consent page. See
-[Edit with an agent](https://micacms.com/docs/agents/).
+[Edit with an agent](https://mica.build/docs/agents/).
 
 Running Mica on your own machine needs none of this: `npx @micacms/editor start`.

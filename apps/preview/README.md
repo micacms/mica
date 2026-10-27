@@ -63,4 +63,4 @@ reads its own.
 - With the content in a Git submodule, Mica's clone has no website.
 
 A website that needs more runs an image of its own with the same mount and
-variables. See the self-hosting guide on micacms.com.
+variables. See the self-hosting guide on mica.build.

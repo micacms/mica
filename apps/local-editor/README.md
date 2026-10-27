@@ -48,7 +48,7 @@ A coding agent can edit the content too, with the same rules as the editor:
 `npx mica start` serves the tools at `http://localhost:6422/mcp`, and
 `npx mica mcp` serves them over stdio, for an agent that starts Mica itself.
 An agent saves drafts; `MICA_MCP_PUBLISH=true` or `mica mcp --allow-publish`
-also gives it `publish`. See [Edit with an agent](https://micacms.com/docs/agents/).
+also gives it `publish`. See [Edit with an agent](https://mica.build/docs/agents/).
 
 ## More commands
 
@@ -97,7 +97,7 @@ proxies `/api` to the API; the API still needs
 `MICA_ADMIN_ORIGINS=http://localhost:5173` for its Origin check, which
 `dev.env` sets. The published editor reads no `.env` file: the project's `.env`
 belongs to the site. Every variable is at
-<https://micacms.com/docs/configuration/>.
+<https://mica.build/docs/configuration/>.
 
 ## What lives where
 

@@ -5,7 +5,7 @@
   "type": "module",
   "description": "The server-only OIDC gate for Mica: sign-in, sessions and admission around @micacms/runtime. Never enters a browser bundle, and never a dependency of the local editor.",
   "license": "MIT",
-  "homepage": "https://micacms.com",
+  "homepage": "https://mica.build",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/micacms/mica.git",

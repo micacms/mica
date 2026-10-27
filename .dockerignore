@@ -26,6 +26,6 @@ common/deploy
 # structural: no future COPY can put a customer's collections in the image.
 # Rush, though, must see every manifest rush.json lists — the three below are
 # manifests only, never content.
-!sites/micacms/package.json
+!sites/website/package.json
 !examples/company-site/package.json
 !tests/browser/package.json

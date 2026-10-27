@@ -4,7 +4,7 @@
   "type": "module",
   "description": "The Mica tools for agents over the Model Context Protocol: read the model and the content, save drafts, publish when allowed. Composed by @micacms/editor locally and @micacms/self-hosted behind OAuth.",
   "license": "MIT",
-  "homepage": "https://micacms.com",
+  "homepage": "https://mica.build",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/micacms/mica.git",

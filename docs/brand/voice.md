@@ -8,7 +8,7 @@ Mica speaks in one voice with three registers. The facts are the same everywhere
 | --- | --- | --- | --- |
 | Docs | Docs pages, READMEs, setup guides, CLI help | ASD-STE100 Simplified Technical English: short sentences, one instruction each, active voice, approved words | Run `npx mica check`. It checks each entry against the model. |
 | Editor | Every word in the editor UI | Plain and a bit warm. Say what happened and what comes next. | Saved. It goes on the website when you publish. |
-| Website | micacms.com pages, release pages, social posts | Warmer, still short. A wink is allowed in a headline. | Your editors get forms. Your repository gets tidy commits. Nobody gets a database. |
+| Website | mica.build pages, release pages, social posts | Warmer, still short. A wink is allowed in a headline. | Your editors get forms. Your repository gets tidy commits. Nobody gets a database. |
 
 ## Humour
 

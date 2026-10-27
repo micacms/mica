@@ -13,7 +13,7 @@
  *   - it binds to loopback. A container binds 0.0.0.0 because it has to; a
  *     laptop does not, and this editor has no authentication. Anything
  *     reachable by anyone else runs @micacms/self-hosted with an identity
- *     provider — see https://micacms.com/docs/self-hosting/.
+ *     provider — see https://mica.build/docs/self-hosting/.
  *   - it talks to a person instead of to a log collector: one short banner
  *     saying where the editor is and what happens when you save, and the
  *     browser opened on it. `MICA_CLI` is how the server is told which of the
@@ -126,7 +126,7 @@ const USAGE = `
   There is no sign-in here, because there is nothing to sign in to: this mode
   has no identity provider, no account and no user. That is right for your own
   machine and wrong everywhere else — a Mica other people reach runs as a
-  container with an identity provider. See https://micacms.com/docs/self-hosting/.
+  container with an identity provider. See https://mica.build/docs/self-hosting/.
 `;
 
 export function parse(argv: string[], command: Command = "start"): Options {
@@ -301,7 +301,7 @@ function requireContent(content: string): void {
       "  npx astro sync         # or build, or start the dev server once",
       "",
       "If you have not defined a model yet, run `npx mica init`, or see",
-      "https://micacms.com/docs/getting-started/.",
+      "https://mica.build/docs/getting-started/.",
     ]);
     process.exit(78); // EX_CONFIG
   }

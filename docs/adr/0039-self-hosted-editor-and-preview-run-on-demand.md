@@ -18,7 +18,7 @@ A stop loses nothing: the drafts are files on the volume ([7](0007-self-hosted-m
 
 ## Consequences
 
-- While nobody edits, the server keeps the memory of both containers free, most of it the preview's. The CPU saving at rest is small. micacms.com names a saving only after a measurement of the real containers.
+- While nobody edits, the server keeps the memory of both containers free, most of it the preview's. The CPU saving at rest is small. mica.build names a saving only after a measurement of the real containers.
 - The first request waits for the start: a few seconds for the editor, longer for the preview, which copies the website and installs from its cache. The form shows at once, and the page beside it when the dev server answers.
 - A template change costs nothing while both sleep: the preview copies the clone's newest commit at its start. While they run, it follows each sync, as in [38](0038-self-hosted-live-preview.md).
 - While Mica sleeps, it does not sync. It finds conflicts at the next start, as after a long outage of the Git host. When the last push fails too, the publication waits for the next start, and the website changes later.

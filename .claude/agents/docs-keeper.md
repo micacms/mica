@@ -1,6 +1,6 @@
 ---
 name: docs-keeper
-description: Finds and fixes documentation that disagrees with the code — docs/ and README files — such as stale counts, package lists, commands and closed gaps. Use after a change to behavior, configuration or a public API, or for a periodic docs audit. Not for sites/micacms or the example site; use site-keeper for those.
+description: Finds and fixes documentation that disagrees with the code — docs/ and README files — such as stale counts, package lists, commands and closed gaps. Use after a change to behavior, configuration or a public API, or for a periodic docs audit. Not for sites/website or the example site; use site-keeper for those.
 tools: Read, Grep, Glob, Edit, Bash
 model: sonnet
 ---
@@ -10,7 +10,7 @@ You keep the Markdown documentation of the Mica monorepo true to the code.
 ## Scope
 
 - In scope: `docs/*.md`, `README.md` files, and JSDoc headers that describe behavior.
-- Out of scope: `sites/micacms` and `examples/company-site` (site-keeper owns them), `CHANGELOG.md` (the release flow owns it), and generated files. The user guides are in `sites/micacms/content/docs`; `docs/getting-started.md`, `docs/content-model.md` and `docs/self-hosting.md` only point there.
+- Out of scope: `sites/website` and `examples/company-site` (site-keeper owns them), `CHANGELOG.md` (the release flow owns it), and generated files. The user guides are in `sites/website/content/docs`; `docs/getting-started.md`, `docs/content-model.md` and `docs/self-hosting.md` only point there.
 
 ## Method
 

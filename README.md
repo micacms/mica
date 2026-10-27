@@ -4,7 +4,7 @@
 > change without notice. Use it at your own risk. Mica is a hobby project of
 > one maintainer: see [GOVERNANCE.md](./GOVERNANCE.md).
 
-A Git-native content editor for Astro websites.
+Content editing for Astro websites, kept in Git.
 
 Editors get forms. What comes out when they publish is a commit: JSON, Markdoc
 and images in your repository, which your normal build turns into a static
@@ -105,7 +105,7 @@ export const collections = {
 
 Mica edits the ones in the model and does not know the others exist.
 
-Full walkthrough: **[micacms.com/docs/getting-started](https://micacms.com/docs/getting-started/)**.
+Full walkthrough: **[mica.build/docs/getting-started](https://mica.build/docs/getting-started/)**.
 
 ---
 
@@ -149,8 +149,8 @@ npx @micacms/editor start # reads ./content, opens the editor on localhost:6422/
 
 |                 |                                                                                                                                                                                               |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Locally**     | The command above. Loopback only, no identity provider, no account, no user at all, no sign-in screen, nothing written into your repository — see [getting started](https://micacms.com/docs/getting-started/) |
-| **On a server** | One container, an OIDC provider, a token for the repository, and a Git clone on its volume — see [self-hosting](https://micacms.com/docs/self-hosting/). [`deploy/demo-identity/`](./deploy/demo-identity/README.md) runs that whole shape on your machine |
+| **Locally**     | The command above. Loopback only, no identity provider, no account, no user at all, no sign-in screen, nothing written into your repository — see [getting started](https://mica.build/docs/getting-started/) |
+| **On a server** | One container, an OIDC provider, a token for the repository, and a Git clone on its volume — see [self-hosting](https://mica.build/docs/self-hosting/). [`deploy/demo-identity/`](./deploy/demo-identity/README.md) runs that whole shape on your machine |
 
 Deployed, Mica authenticates with **OpenID Connect** and nothing else. No
 passwords, no reset flow, no MFA enrolment, no passkeys, and no breach
@@ -177,11 +177,11 @@ apps/
 ├── local-editor/  @micacms/editor — the npx composition: loopback, no auth, no database
 └── self-hosted/   @micacms/self-hosted — the Docker composition, behind OIDC
 sites/
-└── micacms/             the public micacms.com website
+└── website/             the public mica.build website
 examples/
 ├── company-site/       a complete site to read: every field kind, content, templates
 └── starter/            the minimal starter for `npm create astro --template`
-docs/                    for contributors; the user guides are on micacms.com/docs
+docs/                    for contributors; the user guides are on mica.build/docs
 ├── architecture.md      what Mica is, and why it is shaped this way
 └── adr/                 the decision records: what was decided, and why
 deploy/

@@ -8,7 +8,7 @@ A name without a prefix, such as `SESSION_SECRET`, collides with other software.
 
 ## Decision
 
-- Each Mica environment variable starts with `MICA_`. `PORT` and `HOST` keep their common names. The names are frozen for 1.x. The reference is the configuration page on micacms.com, and a test keeps it complete.
+- Each Mica environment variable starts with `MICA_`. `PORT` and `HOST` keep their common names. The names are frozen for 1.x. The reference is the configuration page on mica.build, and a test keeps it complete.
 - The local editor reads no `.env` file, because the site's `.env` gave it the site's `NODE_ENV` and secrets. It reads the process environment, and its flags win. `MICA_ADMIN_ORIGINS` and `MICA_ADMIN_DIR` are for the local editor only.
 - `NODE_ENV` is not configuration. Plain HTTP is allowed only for an address on the same computer (`localhost`, `127.0.0.1`, `[::1]`): the public URL, the OIDC issuer and the repository URL. A write without an `Origin` header is allowed only when the public URL is on the same computer.
 - The image always needs `MICA_PUBLIC_URL`, an origin without a path, and `MICA_SESSION_SECRET`.

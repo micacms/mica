@@ -11,5 +11,5 @@
   content. Change the content files in the same commit, or ask first.
 - Before a commit that changes `content/`, `npm run check` must pass.
 - To change content, use the Mica MCP tools if you have them
-  (https://micacms.com/docs/agents/). Call `describe_model` first. A save
+  (https://mica.build/docs/agents/). Call `describe_model` first. A save
   is a draft: do not publish unless the user asks.

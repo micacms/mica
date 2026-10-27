@@ -88,7 +88,7 @@ services:
 
   # The live preview, optional: the website's `astro dev` on the drafts, beside
   # the form. Mica's preview image installs and runs the website from Mica's
-  # clone, and follows each sync (https://micacms.com/docs/self-hosting/). Set
+  # clone, and follows each sync (https://mica.build/docs/self-hosting/). Set
   # MICA_PREVIEW_UPSTREAM=http://preview:4321 in .env, and send the name
   # preview.<the editor's name> to Mica's port, as the editor's. The container
   # gets no secret, and nothing publishes its port: only Mica's gate reaches it.

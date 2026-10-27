@@ -2,7 +2,7 @@
 
 The brand book of Mica: who Mica is for, the colours, the type, the logo, the motif and the layout rules, for the website, the docs and the editor. The words are in [voice.md](voice.md). The values of every token, for the light theme (Stone) and the dark theme (Basalt), with their contrast ratios, are in [tokens.json](tokens.json).
 
-The tokens are implemented in two places: `sites/micacms/src/styles/global.css` (the website and the docs) and `packages/editor-ui/src/style.css` (the editor). Each file defines only the tokens that its surface uses: the editor has no strata bands, for example. A change to a token goes into `tokens.json` and into each file that uses it, with its contrast checked in both themes.
+The tokens are implemented in two places: `sites/website/src/styles/global.css` (the website and the docs) and `packages/editor-ui/src/style.css` (the editor). Each file defines only the tokens that its surface uses: the editor has no strata bands, for example. A change to a token goes into `tokens.json` and into each file that uses it, with its contrast checked in both themes.
 
 Mica is a content editor for Astro websites. It keeps the content as plain files in the website's own Git repository: no database, no vendor, one tidy commit for each publish. The brand is **down to earth**: Astro reaches for the stars, Mica is the rock under your content.
 
@@ -59,15 +59,15 @@ The palette is a cross-section through rock: Stone and Sandstone for the ground,
 
 ## Logo
 
-The logo keeps its current shapes: the lowercase **micacms** wordmark and the **m** in a rounded square. Only the colours follow this system. Never redraw them.
+The logo keeps its current shapes: the lowercase **mica** wordmark and the **m** in a rounded square. Only the colours follow this system. Never redraw them.
 
 | File | What it is | Use it |
 | --- | --- | --- |
-| `sites/micacms/public/brand/micacms-wordmark.svg` | The wordmark in Shale (`ink`, #1C2522) | On `ground`, `surface` and `sandstone` |
-| `sites/micacms/public/brand/micacms-wordmark-light.svg` | The wordmark in Stone (#F4F0E6) | On dark grounds, on `primary` and on photos |
-| `sites/micacms/public/favicon.svg` | The **m** in Stone on a Malachite (`primary`) rounded square | The favicon, the app icon and the avatar, on any ground |
+| `sites/website/public/brand/mica-wordmark.svg` | The wordmark in Shale (`ink`, #1C2522) | On `ground`, `surface` and `sandstone` |
+| `sites/website/public/brand/mica-wordmark-light.svg` | The wordmark in Stone (#F4F0E6) | On dark grounds, on `primary` and on photos |
+| `sites/website/public/favicon.svg` | The **m** in Stone on a Malachite (`primary`) rounded square | The favicon, the app icon and the avatar, on any ground |
 
-The editor has copies in `packages/editor-ui/public/brand/` (the icon is `micacms-favicon.svg`). Each file has one ink (the icon: two), so an `<img>` cannot recolour it: pick the file by its ground.
+The editor has copies in `packages/editor-ui/public/brand/` (the icon is `mica-favicon.svg`). Each file has one ink (the icon: two), so an `<img>` cannot recolour it: pick the file by its ground.
 
 - Keep clear space around the wordmark of at least half its height. Do not set the wordmark smaller than 16px high on screen, or the icon smaller than 16px.
 - Never redraw the logo, never set "mica" in Bricolage Grotesque as a logo, never add effects, outlines or a rocket to it, and never place it on a strata band.

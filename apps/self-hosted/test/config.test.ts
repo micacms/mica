@@ -94,7 +94,7 @@ describe("live preview", () => {
 describe("the configuration reference", () => {
   it("names every variable that the image or the local editor reads", () => {
     const reference = readFileSync(
-      join(import.meta.dirname, "../../../sites/micacms/content/docs/configuration/body.mdoc"),
+      join(import.meta.dirname, "../../../sites/website/content/docs/configuration/body.mdoc"),
       "utf8",
     );
     const missing = [...new Set([...KNOWN, ...Object.keys(runtimeEnv)])].filter((name) => !reference.includes(`\`${name}\``));

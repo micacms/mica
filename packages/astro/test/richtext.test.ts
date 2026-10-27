@@ -77,7 +77,7 @@ describe("renderRichText", () => {
 });
 
 describe("a custom tag, as the recipes page shows it", () => {
-  // The configuration on micacms.com/docs/recipes/; change both together.
+  // The configuration on mica.build/docs/recipes/; change both together.
   const config = {
     tags: {
       callout: {

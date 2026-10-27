@@ -8,8 +8,8 @@ reads it with Mica and writes it back byte for byte.
 
 The content model (`src/mica.ts`) defines the collections, the singletons and
 their fields. This document says how their content is stored. The model itself
-is in [Content model](https://micacms.com/docs/content-model/) and
-[Fields](https://micacms.com/docs/reference-fields/).
+is in [Content model](https://mica.build/docs/content-model/) and
+[Fields](https://mica.build/docs/reference-fields/).
 
 ## 1. The content root
 

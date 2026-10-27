@@ -4,7 +4,7 @@ labels: [enhancement]
 body:
   - type: markdown
     attributes:
-      value: Mica is small on purpose. Read "Scope and non-goals" on micacms.com/docs/scope/ first. It may say how to work without the feature.
+      value: Mica is small on purpose. Read "Scope and non-goals" on mica.build/docs/scope/ first. It may say how to work without the feature.
   - type: textarea
     id: problem
     attributes:

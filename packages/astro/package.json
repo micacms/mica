@@ -4,7 +4,7 @@
   "type": "module",
   "description": "Reads a Mica content repository as Astro Content Collections via the Content Layer API.",
   "license": "MIT",
-  "homepage": "https://micacms.com",
+  "homepage": "https://mica.build",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/micacms/mica.git",

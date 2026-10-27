@@ -4,7 +4,7 @@
   "type": "module",
   "description": "The local Mica editor — `npx @micacms/editor` against a checkout on your own machine. No authentication, no database, loopback only.",
   "license": "MIT",
-  "homepage": "https://micacms.com",
+  "homepage": "https://mica.build",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/micacms/mica.git",

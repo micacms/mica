@@ -36,4 +36,4 @@ reporter is credited unless they ask not to be.
 
 The security model — what Mica protects, the trust boundaries, the accepted
 risks and the hardening steps — is on the website:
-<https://micacms.com/docs/security/>.
+<https://mica.build/docs/security/>.

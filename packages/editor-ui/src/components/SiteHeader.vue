@@ -13,7 +13,7 @@ import { useSchema } from "@/stores/schema";
 
 const schema = useSchema();
 const preview = usePreview();
-const icon = `${import.meta.env.BASE_URL}brand/micacms-favicon.svg`;
+const icon = `${import.meta.env.BASE_URL}brand/mica-favicon.svg`;
 
 const state = computed(() => preview.status.value.state);
 /** The word carries the state; the dot of the status pill only repeats it (brand guide). */

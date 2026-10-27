@@ -37,7 +37,7 @@ project=$(post projects '{"name":"Mica"}' | jq -r .id)
 # Mica implements: PKCE, state and nonce, all verified.
 app=$(post "projects/$project/apps/oidc" "$(
   jq -n --arg callback "$CALLBACK_URL" '{
-    name: "Mica CMS",
+    name: "Mica",
     appType: "OIDC_APP_TYPE_WEB",
     responseTypes: ["OIDC_RESPONSE_TYPE_CODE"],
     grantTypes: ["OIDC_GRANT_TYPE_AUTHORIZATION_CODE"],

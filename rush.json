@@ -97,7 +97,7 @@
     // `"private": true` besides.
     {
       "packageName": "@micacms/site",
-      "projectFolder": "sites/micacms",
+      "projectFolder": "sites/website",
       "tags": ["sites"]
     },
     {

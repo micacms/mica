@@ -62,7 +62,7 @@ describe("mica init", () => {
   });
 
   it("is the model that the getting-started page shows", () => {
-    const page = readFileSync(path.resolve(import.meta.dirname, "../../../sites/micacms/content/docs/getting-started/body.mdoc"), "utf8");
+    const page = readFileSync(path.resolve(import.meta.dirname, "../../../sites/website/content/docs/getting-started/body.mdoc"), "utf8");
     assert.ok(page.includes(`\`\`\`ts\n${MODEL}\`\`\``), "the page shows another model");
   });
 

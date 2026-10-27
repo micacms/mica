@@ -3,14 +3,26 @@
   "framework": null,
   "installCommand": "node common/scripts/install-run-rush.js install --to @micacms/site",
   "buildCommand": "node common/scripts/install-run-rush.js build --to @micacms/site",
-  "outputDirectory": "sites/micacms/dist",
+  "outputDirectory": "sites/website/dist",
   "trailingSlash": true,
-  "ignoreCommand": "base=\"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\"; git cat-file -e \"$base^{commit}\" 2>/dev/null && git diff --quiet \"$base\" HEAD -- sites/micacms packages SETUP.md rush.json common/config/rush vercel.json && exit 0; exit 1",
+  "ignoreCommand": "base=\"${VERCEL_GIT_PREVIOUS_SHA:-HEAD^}\"; git cat-file -e \"$base^{commit}\" 2>/dev/null && git diff --quiet \"$base\" HEAD -- sites/website packages SETUP.md rush.json common/config/rush vercel.json && exit 0; exit 1",
   "redirects": [
     {
       "source": "/(.*)",
+      "has": [{ "type": "host", "value": "www.mica.build" }],
+      "destination": "https://mica.build/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
+      "has": [{ "type": "host", "value": "micacms.com" }],
+      "destination": "https://mica.build/$1",
+      "permanent": true
+    },
+    {
+      "source": "/(.*)",
       "has": [{ "type": "host", "value": "www.micacms.com" }],
-      "destination": "https://micacms.com/$1",
+      "destination": "https://mica.build/$1",
       "permanent": true
     }
   ],

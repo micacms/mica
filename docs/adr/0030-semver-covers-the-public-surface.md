@@ -17,7 +17,7 @@ All packages share one lockstep version. If each package were public, each refac
 
 ## Consequences
 
-- The page "Versions and support" on micacms.com states this surface, the deprecation rule, the support window and the version skew between the image and `@micacms/astro`.
+- The page "Versions and support" on mica.build states this surface, the deprecation rule, the support window and the version skew between the image and `@micacms/astro`.
 
 - The API reports in `packages/core/api/` and `packages/astro/api/` show each change of the public TypeScript surface. CI fails when a report is not the built API, so a change is always a decision in a pull request.
 

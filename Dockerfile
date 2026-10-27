@@ -1,4 +1,4 @@
-# Mica CMS — @micacms/self-hosted in one image: the runtime and the editor UI behind an
+# Mica — @micacms/self-hosted in one image: the runtime and the editor UI behind an
 # external OIDC provider. CI builds the public website from the content repository, not here.
 #
 # No content model is baked in: the image reads `.mica/schema.json` from the content
@@ -32,7 +32,7 @@ COPY packages/editor-ui/package.json packages/editor-ui/
 COPY apps/local-editor/package.json apps/local-editor/
 COPY apps/self-hosted/package.json apps/self-hosted/
 COPY apps/preview/package.json apps/preview/
-COPY sites/micacms/package.json sites/micacms/
+COPY sites/website/package.json sites/website/
 COPY examples/company-site/package.json examples/company-site/
 COPY tests/browser/package.json tests/browser/
 

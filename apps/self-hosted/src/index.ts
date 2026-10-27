@@ -308,7 +308,7 @@ async function serve(): Promise<void> {
   workspace.start(() => void lease?.synced());
   void checkWrite(workspace, logger, clean);
 
-  logger.info("Mica CMS started", {
+  logger.info("Mica started", {
     url: config.MICA_PUBLIC_URL,
     auth: authLabel,
     // A rule that admits nobody and one that admits everybody look the same
