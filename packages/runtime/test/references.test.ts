@@ -263,3 +263,19 @@ describe("a settings page in a folder", () => {
     assert.deepEqual(byPath.get("team/anna-meier/index.json"), ["about/index.json"]);
   });
 });
+
+describe("localized IDs at Publish", () => {
+  const localized = defineSite({
+    locales: ["de", "en"],
+    collections: { pages: collection({ label: "Pages", fields: { title: text(), id: id({ from: "title" }), slug: id({ localized: true }) } }) },
+  });
+
+  it("refuses a changed entry whose slug another entry has in the same locale", async () => {
+    const source = memorySource({
+      "pages/about/index.json": JSON.stringify({ title: "About", id: "about", slug: { de: "ueber-uns", en: "about" } }),
+      "pages/team/index.json": JSON.stringify({ title: "Team", id: "team", slug: { de: "ueber-uns", en: "team" } }),
+    });
+    const result = await analyseChanges(localized, source, [update("pages/team/index.json")]);
+    assert.deepEqual(messages(result), ['Pages: Team: slug.de: "ueber-uns" is also the DE value of "about". Each page needs its own.']);
+  });
+});

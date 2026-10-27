@@ -90,6 +90,20 @@ describe("mica check", () => {
     assert.match(formatReport(report, root), /^Could not read the content model/);
   });
 
+  it("reports a localized ID that two entries have in the same locale", async () => {
+    const localized = defineSite({
+      locales: ["de", "en"],
+      collections: { pages: collection({ label: "Pages", fields: { title: text(), id: id({ from: "title" }), slug: id({ localized: true }) } }) },
+    });
+    write(MANIFEST_PATH, createManifest(localized, "test"));
+    write("pages/about/index.json", { title: "About", id: "about", slug: { de: "ueber-uns", en: "about" } });
+    write("pages/team/index.json", { title: "Team", id: "team", slug: { de: "ueber-uns", en: "team" } });
+    assert.deepEqual(problems(await checkContent(root), "error"), [
+      'pages/about/index.json: slug.de: "ueber-uns" is also the DE value of "team". Each page needs its own.',
+      'pages/team/index.json: slug.de: "ueber-uns" is also the DE value of "about". Each page needs its own.',
+    ]);
+  });
+
   it("reports invalid fields, missing media and dangling relations", async () => {
     write("news/hello/index.json", { id: "hello", author: "nobody", cover: "media/gone.jpg" });
     const errors = problems(await checkContent(root), "error");

@@ -13,6 +13,7 @@ import {
   DOCUMENT_EXTENSION,
   documentLinks,
   documentPath,
+  duplicateLocalizedIds,
   entryDataPath,
   entryFolder,
   type FieldMap,
@@ -103,6 +104,8 @@ export async function checkContent(root: string): Promise<CheckReport> {
     report.collections++;
     if (readOnly.has(`collections.${name}`)) continue;
     const idField = resolveIdField(def);
+    // For the localized IDs, which must differ between the entries.
+    const entries: Array<readonly [string, Record<string, unknown>]> = [];
     for (const id of ids.get(name)!) {
       report.entries++;
       const dataPath = entryDataPath(name, id);
@@ -115,6 +118,10 @@ export async function checkContent(root: string): Promise<CheckReport> {
         warning(dataPath, `${idField} is "${stored}", but the entry is named "${id}". Mica uses the name; the next save writes it into the file.`);
       }
       await checkEntry(context, def.fields, data, entryFolder(name, id));
+      entries.push([id, data]);
+    }
+    for (const [id, data] of entries) {
+      for (const issue of duplicateLocalizedIds(site, def.fields, id, data, entries)) error(entryDataPath(name, id), `${issue.path}: ${issue.message}`);
     }
   }
 

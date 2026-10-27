@@ -6,6 +6,7 @@
  */
 
 import type { AnyField, FieldMap, Localize, Site } from "./types.js";
+import type { FieldIssue } from "./validation.js";
 import { isRecord } from "./walk.js";
 
 /** Letters, digits and hyphens, such as `de`, `en-us` or `pt-BR`: a JSON key and a part of a file name. */
@@ -170,6 +171,50 @@ function localizeFields(fields: FieldMap, data: Record<string, unknown>, locales
     }
   }
   return result;
+}
+
+/** The keys of a collection's localized `id()` fields, such as a `slug` for each locale: each value must be unique. */
+export function localizedIdFields(fields: FieldMap): string[] {
+  return Object.entries(fields)
+    .filter(([, field]) => field.kind === "object" && isLocalizedObject(field) && Object.values(field.fields)[0]?.kind === "id")
+    .map(([key]) => key);
+}
+
+/**
+ * The localized IDs of an entry that another entry has in the same locale, such as two German slugs "ueber-uns": the
+ * website then has one page for both. Each locale's value is the one that the website uses, with its fallback. One
+ * issue for each, at the field of the locale.
+ */
+export function duplicateLocalizedIds(
+  site: Pick<Site, "locales" | "defaultLocale" | "fallback">,
+  fields: FieldMap,
+  id: string,
+  data: Record<string, unknown>,
+  others: Iterable<readonly [string, Record<string, unknown>]>,
+): FieldIssue[] {
+  const locales = siteLocales(site);
+  const keys = localizedIdFields(fields);
+  if (!locales || keys.length === 0) return [];
+  const rest = [...others].filter(([other]) => other !== id);
+  const issues: FieldIssue[] = [];
+  for (const key of keys) {
+    const field = fields[key]!;
+    const noFallback = typeof field.localized === "object" && field.localized.fallback === false;
+    const used = (values: unknown, locale: string): unknown => {
+      const record = isRecord(values) ? values : {};
+      const chain = noFallback ? [locale] : fallbackChain(locales, locale);
+      return chain.map((candidate) => record[candidate]).find((value) => !isMissing(value));
+    };
+    for (const locale of locales.locales) {
+      const value = used(data[key], locale);
+      if (typeof value !== "string") continue;
+      const other = rest.find(([, otherData]) => used(otherData[key], locale) === value);
+      if (other) {
+        issues.push({ path: `${key}.${locale}`, message: `"${value}" is also the ${locale.toUpperCase()} value of "${other[0]}". Each page needs its own.` });
+      }
+    }
+  }
+  return issues;
 }
 
 /** No value: null, empty text or an empty list. */

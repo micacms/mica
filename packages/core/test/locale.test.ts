@@ -9,6 +9,7 @@ import {
   createManifest,
   defaultValues,
   defineSite,
+  duplicateLocalizedIds,
   entryTitle,
   id,
   localize,
@@ -232,5 +233,36 @@ describe("the types of localized fields", () => {
     const settings = singleton({ label: "Settings", fields: { name: text() } });
     const same: Equal<Localize<InferCollection<typeof pages>>["id"], string> = true;
     assert.ok(same && settings);
+  });
+});
+
+describe("duplicateLocalizedIds", () => {
+  const model = defineSite({
+    locales: ["de", "en", "fr"],
+    defaultLocale: "de",
+    fallback: { fr: "en" },
+    collections: {
+      pages: collection({ label: "Pages", fields: { id: id(), slug: id({ localized: true }), title: text({ localized: true }) } }),
+    },
+  });
+  const fields = model.collections.pages.fields;
+
+  it("finds a slug that another entry has in the same locale", () => {
+    const issues = duplicateLocalizedIds(model, fields, "about", { slug: { de: "ueber-uns", en: "about-us", fr: null } }, [
+      ["team", { slug: { de: "ueber-uns", en: "team", fr: null } }],
+    ]);
+    assert.deepEqual(issues.map((issue) => issue.path), ["slug.de"]);
+    assert.match(issues[0]!.message, /"ueber-uns" is also the DE value of "team"/);
+  });
+
+  it("compares the values that the website uses, with the fallback", () => {
+    // French falls back to English: both pages are /fr/same.
+    const issues = duplicateLocalizedIds(model, fields, "a", { slug: { de: "a", en: "same", fr: null } }, [["b", { slug: { de: "b", en: null, fr: "same" } }]]);
+    assert.deepEqual(issues.map((issue) => issue.path), ["slug.fr"]);
+  });
+
+  it("does not compare an entry with itself, nor a text that is no ID", () => {
+    const data = { slug: { de: "x", en: null, fr: null }, title: { de: "Gleich", en: null, fr: null } };
+    assert.deepEqual(duplicateLocalizedIds(model, fields, "a", data, [["a", data], ["b", { slug: { de: "y" }, title: { de: "Gleich" } }]]), []);
   });
 });
