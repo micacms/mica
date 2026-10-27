@@ -28,7 +28,7 @@ test("a click in the preview opens the field, and a save shows on the page", asy
 
   // Edit mode: the label names the field, and a click puts the cursor in it.
   // A hover before the script marks the heading finds no field: a person's next move would.
-  await expect(heading).toHaveAttribute("data-mica-field", /"title"/);
+  await expect(heading).toHaveAttribute("data-mica-field", /"title\.en"/);
   await heading.hover();
   await expect(preview.locator("#mica-preview-label")).toContainText("Title");
   await heading.click();

@@ -23,8 +23,8 @@ async function headOfMain(request: APIRequestContext): Promise<string> {
 }
 
 async function publishedTagline(request: APIRequestContext): Promise<string> {
-  const site = (await forgejo(request, "raw/content/general/index.json?ref=main", true)) as { tagline: string };
-  return site.tagline;
+  const site = (await forgejo(request, "raw/content/general/index.json?ref=main", true)) as { tagline: { en: string } };
+  return site.tagline.en;
 }
 
 test("an editor signs in, edits, saves and publishes", async ({ page, request, baseURL }) => {

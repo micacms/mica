@@ -7,7 +7,8 @@
 
 import type { AnyField, FieldMap, Site } from "./types.js";
 
-const PLACEHOLDER = /\{([^}]*)\}/g;
+// A name holds no "{": a long run of "{" stays linear to scan.
+const PLACEHOLDER = /\{([^{}]*)\}/g;
 
 /** What an address with `{locale}` needs of the site. */
 export type AddressLocales = Pick<Site, "locales" | "defaultLocale" | "prefixDefaultLocale">;
@@ -56,6 +57,7 @@ function givesPathPart(field: AnyField | undefined): boolean {
 export function pageUrlProblem(url: unknown, kind: "collection" | "singleton", fields: FieldMap = {}, locales = false): string | null {
   if (typeof url !== "string" || !url.startsWith("/") || url.startsWith("//")) return "it must be a path that starts with one /, such as /news/{id}";
   if (/[\s?#\\]/.test(url)) return "it must be a path without spaces, ? or #";
+  if (/[{}]/.test(url.replace(PLACEHOLDER, ""))) return "it must name each field as {name}, without other { or }";
   const all = pagePlaceholders(url);
   const localeCount = all.filter((name) => name === "locale").length;
   if (localeCount > 0 && !locales && !fields["locale"]) return "{locale} needs the site's locales";

@@ -515,7 +515,7 @@ describe("page addresses", () => {
   });
 
   it("refuses an address that is not a path, or names the id wrongly", () => {
-    for (const url of ["news/{id}", "//evil.example/{id}", "/news", "/news/{id}/{id}", "/news/{year}/{id}", "/news/{id}?x=1"]) {
+    for (const url of ["news/{id}", "//evil.example/{id}", "/news", "/news/{id}/{id}", "/news/{year}/{id}", "/news/{id}?x=1", "/news/{{id}", "/news/{id}}"]) {
       assert.throws(withUrl(url, "collection"), (error: unknown) => error instanceof ModelError && /has the url/.test(error.message), url);
     }
     assert.throws(withUrl("/team/{id}", "singleton"), ModelError);
