@@ -615,4 +615,4 @@ export {
   type RichTextOptions,
   type RichTextSource,
 } from "./richtext.js";
-export { getSingleton, inEditorOrder, localize } from "./helpers.js";
+export { getSingleton, inEditorOrder, localesOf, localize } from "./helpers.js";

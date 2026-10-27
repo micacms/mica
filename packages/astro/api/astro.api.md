@@ -129,6 +129,9 @@ export interface LoaderContext {
 }
 
 // @public
+export function localesOf<S extends Site>(site: S, name: (keyof S["collections"] | keyof S["singletons"]) & string, data: object): string[];
+
+// @public
 export function localize<S extends Site, T>(site: S, name: (keyof S["collections"] | keyof S["singletons"]) & string, data: T, locale?: string): Localize<T>;
 
 // @public

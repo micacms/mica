@@ -276,6 +276,13 @@ export const site = defineSite({
   locale's address has no prefix: `/news/hello`.
 - A localized `id()`, such as a `slug`, must be unique in each locale:
   `npx mica check` and Publish report a duplicate.
+- `localesOf(site, "pages", page.data)` from `@micacms/astro` gives the
+  locales that an entry is in: the default locale, and each locale where every
+  required localized field has its own value. Use it in `getStaticPaths`, a
+  list, the sitemap or `hreflang` only when the user wants no page that shows
+  the fallback. Ask the user first.
+- `npx mica check` lists the missing translations of each locale. They are
+  not errors.
 - Content that is different in each language: one collection for each locale.
 
 ### Images

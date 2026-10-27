@@ -7,7 +7,7 @@ import { z } from "zod";
 
 import { collection, defineSite, id, memorySource, richText, singleton, text } from "@micacms/core/internal";
 
-import { localize, micaCollections, type LoaderContext } from "../src/index.js";
+import { localesOf, localize, micaCollections, type LoaderContext } from "../src/index.js";
 
 const site = defineSite({
   locales: ["de", "en"],
@@ -59,8 +59,17 @@ describe("a localized field on the website", () => {
     assert.equal(localize(site, "settings", settings, "en")["claim"], "Well built");
   });
 
+  it("gives the locales that an entry is in, with localesOf", async () => {
+    const about = (await load("pages")).get("about")!;
+    // The English title is missing, and it is required: the English page shows the German one.
+    assert.deepEqual(localesOf(site, "pages", about), ["de"]);
+    assert.deepEqual(localesOf(site, "pages", { ...about, title: { de: "Über uns", en: "About us" } }), ["de", "en"]);
+    assert.deepEqual(localesOf(site, "settings", (await load("settings")).get("settings")!), ["de", "en"]);
+  });
+
   it("refuses a site without locales", () => {
     const plain = defineSite({ collections: { pages: collection({ label: "Pages", fields: { id: id() } }) } });
     assert.throws(() => localize(plain, "pages", {}, "de"), /no locales/);
+    assert.throws(() => localesOf(plain, "pages", {}), /no locales/);
   });
 });

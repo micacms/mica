@@ -12,8 +12,10 @@ import {
   duplicateLocalizedIds,
   entryTitle,
   id,
+  localesOf,
   localize,
   media,
+  missingTranslations,
   ModelError,
   object,
   parseEntry,
@@ -269,5 +271,46 @@ describe("duplicateLocalizedIds", () => {
   it("does not compare an entry with itself, nor a text that is no ID", () => {
     const data = { slug: { de: "x", en: null, fr: null }, title: { de: "Gleich", en: null, fr: null } };
     assert.deepEqual(duplicateLocalizedIds(model, fields, "a", data, [["a", data], ["b", { slug: { de: "y" }, title: { de: "Gleich" } }]]), []);
+  });
+});
+
+describe("missingTranslations", () => {
+  it("counts the values that the default locale has and a locale does not, in rows too", () => {
+    const model = site();
+    const data = { title: { de: "Über uns", en: "About us", fr: null }, body: { de: "Text", en: null, fr: null }, sections: [{ heading: { de: "Eins", en: null } }] };
+    const fields = model.collections.pages.fields;
+    assert.equal(missingTranslations(model, fields, data, "de"), 0);
+    assert.equal(missingTranslations(model, fields, data, "en"), 2);
+    assert.equal(missingTranslations(model, fields, data, "fr"), 3);
+  });
+
+  it("does not count a value that the default locale lacks too", () => {
+    const model = site();
+    assert.equal(missingTranslations(model, model.collections.pages.fields, { title: { de: "Über uns", en: "About" }, legal: { de: null, en: null } }, "en"), 0);
+  });
+});
+
+describe("localesOf", () => {
+  it("gives the default locale, and each locale with all required localized values of its own", () => {
+    const model = site();
+    const fields = model.collections.pages.fields;
+    assert.deepEqual(localesOf(model, fields, { title: { de: "Über uns", en: "About us", fr: null }, body: { fr: "Texte" } }), ["de", "en"]);
+    // A fallback is no translation: French falls back to English, but has no value of its own.
+    assert.deepEqual(localesOf(model, fields, { title: { de: "Über uns", en: "About us" } }), ["de", "en"]);
+    assert.deepEqual(localesOf(model, fields, { title: { de: "Über uns", fr: "À propos" } }), ["de", "fr"]);
+  });
+
+  it("needs at least one value of its own when no localized field is required", () => {
+    const model = defineSite({ locales: ["de", "en"], collections: { posts: collection({ label: "Posts", fields: { id: id(), title: text({ localized: true }), image: media() } }) } });
+    const fields = model.collections.posts.fields;
+    assert.deepEqual(localesOf(model, fields, { title: { de: "Hallo", en: null } }), ["de"]);
+    assert.deepEqual(localesOf(model, fields, { title: { de: null, en: "Hello" } }), ["de", "en"]);
+  });
+
+  it("gives every locale for a model without localized fields, and none for a site without locales", () => {
+    const model = defineSite({ locales: ["de", "en"], collections: { tags: collection({ label: "Tags", fields: { id: id(), name: text() } }) } });
+    assert.deepEqual(localesOf(model, model.collections.tags.fields, { name: "Astro" }), ["de", "en"]);
+    const plain = defineSite({ collections: { tags: collection({ label: "Tags", fields: { id: id(), name: text() } }) } });
+    assert.deepEqual(localesOf(plain, plain.collections.tags.fields, { name: "Astro" }), []);
   });
 });

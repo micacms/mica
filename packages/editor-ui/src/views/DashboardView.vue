@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Dashboard: counts, where the content lives, and the pending changes.
+ * Dashboard: counts, where the content lives, the pending changes, and on a multilingual site, where translations are missing.
  * No "Rebuild website" button: the published commit triggers the repository's own pipeline.
  * No "recently edited" list: only the repository's history can say that truthfully.
  */
@@ -11,6 +11,7 @@ import { api, messageOf, type Overview } from "@/api";
 import DeveloperDetails from "@/components/DeveloperDetails.vue";
 import PageHeader from "@/components/PageHeader.vue";
 import StatusNotice from "@/components/StatusNotice.vue";
+import { chooseFormLocale } from "@/composables/useFormLocale";
 import { useSession } from "@/stores/session";
 import { useStaging } from "@/stores/staging";
 
@@ -125,6 +126,35 @@ onMounted(load);
           </div>
           <RouterLink :to="{ name: 'changes' }" class="btn-secondary">Review and publish</RouterLink>
         </div>
+      </section>
+
+      <section v-if="overview.translations.length > 0" class="card p-4" aria-labelledby="translations-heading">
+        <h2 id="translations-heading" class="text-sm font-semibold">Translations</h2>
+        <p class="mt-1 text-sm text-muted">Where a translation is missing, the website shows another language.</p>
+
+        <ul class="mt-3 space-y-2 text-sm">
+          <li v-for="item in overview.translations" :key="item.locale" class="flex flex-wrap items-baseline gap-x-4 gap-y-1">
+            <span class="w-8 shrink-0 font-semibold">{{ item.locale.toUpperCase() }}</span>
+            <span v-if="item.collections.length === 0 && item.singletons.length === 0" class="text-muted">Nothing is missing.</span>
+            <RouterLink
+              v-for="collection in item.collections"
+              :key="collection.name"
+              :to="{ name: 'collection', params: { collection: collection.name }, query: { missing: item.locale } }"
+              class="underline"
+            >
+              {{ collection.label }}: {{ collection.entries }} {{ collection.entries === 1 ? "entry" : "entries" }}
+            </RouterLink>
+            <RouterLink
+              v-for="singleton in item.singletons"
+              :key="singleton.name"
+              :to="{ name: 'singleton', params: { name: singleton.name } }"
+              class="underline"
+              @click="chooseFormLocale(item.locale)"
+            >
+              {{ singleton.label }}
+            </RouterLink>
+          </li>
+        </ul>
       </section>
 
       <section class="card p-4" aria-labelledby="storage-heading">

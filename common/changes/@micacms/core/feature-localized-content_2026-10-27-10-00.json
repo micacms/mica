@@ -1,7 +1,7 @@
 {
   "changes": [
     {
-      "comment": "A site can declare locales, defaultLocale and fallback, and a field can be localized: it stores a value for each locale, as the object pattern does. After localize(), a required localized field is never null. A url can name {locale}, with prefixDefaultLocale as in Astro, and the values of a localized id() must be unique in each locale.",
+      "comment": "A site can declare locales, defaultLocale and fallback, and a field can be localized: it stores a value for each locale, as the object pattern does. After localize(), a required localized field is never null. A url can name {locale}, with prefixDefaultLocale as in Astro, and the values of a localized id() must be unique in each locale. localesOf() gives the locales that an entry is in, from its own values, and missingTranslations() counts the translations that a locale misses.",
       "type": "minor",
       "packageName": "@micacms/core"
     }

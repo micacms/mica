@@ -146,6 +146,14 @@ export interface Overview {
   collections: Array<{ name: string; label: string; total: number }>;
   media: MediaUsage;
   repository: string;
+  /** For each locale but the default, where translations are missing; empty for a site without locales. */
+  translations: Array<{
+    locale: string;
+    /** The collections with entries that miss translations, and how many entries. */
+    collections: Array<{ name: string; label: string; entries: number }>;
+    /** The singletons that miss translations, and how many. */
+    singletons: Array<{ name: string; label: string; missing: number }>;
+  }>;
 }
 
 /** `/system`: everything the System page shows. It never holds a secret value. */

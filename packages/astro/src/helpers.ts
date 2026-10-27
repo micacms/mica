@@ -3,7 +3,7 @@
  * and a collection in the editor's order.
  */
 
-import { localize as localizeFields, type Localize, type Site } from "@micacms/core/internal";
+import { localesOf as entryLocales, localize as localizeFields, type Localize, type Site } from "@micacms/core/internal";
 
 import type { SingletonDocument } from "./index.js";
 
@@ -35,8 +35,21 @@ export function localize<S extends Site, T>(
   data: T,
   locale?: string,
 ): Localize<T> {
+  const def = definition(site, name);
+  return localizeFields(site, def.fields, data, locale ?? site.defaultLocale!);
+}
+
+/**
+ * The locales that an entry or a singleton is in, for `getStaticPaths`, a list, the sitemap or `hreflang`: the default
+ * locale, and each locale where every required localized field and at least one localized field has its own value.
+ */
+export function localesOf<S extends Site>(site: S, name: (keyof S["collections"] | keyof S["singletons"]) & string, data: object): string[] {
+  return entryLocales(site, definition(site, name).fields, data as Record<string, unknown>);
+}
+
+function definition(site: Site, name: string) {
   const def = site.collections[name] ?? site.singletons[name];
   if (!def) throw new Error(`"${name}" is not a collection or a singleton of the site.`);
   if (!site.defaultLocale) throw new Error("The site has no locales. Add `locales` to defineSite.");
-  return localizeFields(site, def.fields, data, locale ?? site.defaultLocale);
+  return def;
 }

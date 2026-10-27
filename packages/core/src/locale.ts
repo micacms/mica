@@ -7,7 +7,7 @@
 
 import type { AnyField, FieldMap, Localize, Site } from "./types.js";
 import type { FieldIssue } from "./validation.js";
-import { isRecord } from "./walk.js";
+import { isRecord, walkFields } from "./walk.js";
 
 /** Letters, digits and hyphens, such as `de`, `en-us` or `pt-BR`: a JSON key and a part of a file name. */
 const LOCALE_PATTERN = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/;
@@ -171,6 +171,53 @@ function localizeFields(fields: FieldMap, data: Record<string, unknown>, locales
     }
   }
   return result;
+}
+
+/** How many localized values of `data` are empty in `locale` while the default locale has one: the translations still to write. */
+export function missingTranslations(
+  site: Pick<Site, "locales" | "defaultLocale" | "fallback">,
+  fields: FieldMap,
+  data: Record<string, unknown>,
+  locale: string,
+): number {
+  const locales = siteLocales(site);
+  if (!locales || locale === locales.defaultLocale) return 0;
+  let count = 0;
+  walkFields(fields, data, (field, value) => {
+    if (field.kind !== "object" || !isLocalizedObject(field) || !isRecord(value)) return;
+    if (!isMissing(value[locales.defaultLocale]) && isMissing(value[locale])) count += 1;
+  });
+  return count;
+}
+
+/**
+ * The locales that an entry is in (docs/adr/0044-the-locales-of-an-entry.md): the default locale, and each locale
+ * where every required localized field and at least one localized field has its own value. A fallback does not count.
+ * Without localized fields, every locale of the site.
+ */
+export function localesOf(site: Pick<Site, "locales" | "defaultLocale" | "fallback">, fields: FieldMap, data: Record<string, unknown>): string[] {
+  const locales = siteLocales(site);
+  if (!locales) return [];
+  if (!hasLocalizedFields(fields)) return [...locales.locales];
+  const own = new Set<string>();
+  const lacking = new Set<string>();
+  walkFields(fields, data, (field, value) => {
+    if (field.kind !== "object" || !isLocalizedObject(field)) return;
+    const values = isRecord(value) ? value : {};
+    const required = field.fields[locales.defaultLocale]?.required === true;
+    for (const locale of locales.locales) {
+      if (!isMissing(values[locale])) own.add(locale);
+      else if (required) lacking.add(locale);
+    }
+  });
+  return locales.locales.filter((locale) => locale === locales.defaultLocale || (own.has(locale) && !lacking.has(locale)));
+}
+
+/** Whether a model has a localized field, nested ones included. */
+export function hasLocalizedFields(fields: FieldMap): boolean {
+  return Object.values(fields).some(
+    (field) => (field.kind === "object" && isLocalizedObject(field)) || ((field.kind === "object" || field.kind === "repeater") && hasLocalizedFields(field.fields)),
+  );
 }
 
 /** The keys of a collection's localized `id()` fields, such as a `slug` for each locale: each value must be unique. */

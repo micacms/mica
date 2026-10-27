@@ -1,6 +1,16 @@
 /** The languages of a form: which language a field path is in, what is missing, and what a missing value falls back to. */
 
-import { addressLocale, fallbackChain, isLocalizedObject, walkFields, type AnyField, type FieldMap } from "@micacms/core/internal";
+import {
+  addressLocale,
+  fallbackChain,
+  hasLocalizedFields,
+  isLocalizedObject,
+  missingTranslations as missingIn,
+  type AnyField,
+  type FieldMap,
+} from "@micacms/core/internal";
+
+export { hasLocalizedFields };
 
 /** The site's locales, as the schema gives them: the default locale first. */
 export interface FormLocales {
@@ -39,22 +49,14 @@ export function pathLocale(fields: FieldMap, path: string): string | null {
   return null;
 }
 
-/** Whether a form has a localized field: else its language changes nothing, and the switcher is not needed. */
-export function hasLocalizedFields(fields: FieldMap): boolean {
-  return Object.values(fields).some(
-    (field) => (field.kind === "object" && isLocalizedObject(field)) || ((field.kind === "object" || field.kind === "repeater") && hasLocalizedFields(field.fields)),
-  );
-}
-
 /** How many localized values of `data` are empty in `locale`, where the default locale has one. */
 export function missingTranslations(fields: FieldMap, data: Record<string, unknown>, locale: string, locales: FormLocales): number {
-  if (locale === locales.default) return 0;
-  let count = 0;
-  walkFields(fields, data, (field, value) => {
-    if (field.kind !== "object" || !isLocalizedObject(field) || !isRecord(value)) return;
-    if (!isEmpty(value[locales.default]) && isEmpty(value[locale])) count += 1;
-  });
-  return count;
+  return missingIn(siteOf(locales), fields, data, locale);
+}
+
+/** The locales as core's functions read them. */
+function siteOf(locales: FormLocales) {
+  return { locales: locales.list, defaultLocale: locales.default, fallback: locales.fallback };
 }
 
 /** What the website shows for an empty value in `locale`: the locale and the value it falls back to, or null. */
@@ -65,7 +67,7 @@ export function fallbackFor(
   locales: FormLocales,
 ): { locale: string; value: unknown } | null {
   if (typeof field.localized === "object" && field.localized.fallback === false) return null;
-  const chain = fallbackChain({ locales: locales.list, defaultLocale: locales.default, fallback: locales.fallback }, locale).slice(1);
+  const chain = fallbackChain(siteOf(locales), locale).slice(1);
   const found = chain.find((candidate) => !isEmpty(value[candidate]));
   return found === undefined ? null : { locale: found, value: value[found] };
 }
@@ -89,8 +91,4 @@ export function translationStatus(field: AnyField, value: Record<string, unknown
 
 export function isEmpty(value: unknown): boolean {
   return value === null || value === undefined || value === "" || (Array.isArray(value) && value.length === 0);
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
 }
