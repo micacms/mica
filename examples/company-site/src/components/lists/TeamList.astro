@@ -3,8 +3,10 @@
 import { Image } from "astro:assets";
 
 import { getFeaturedTeam, getLabels } from "@/lib/content";
+import { localePath } from "@/lib/i18n";
 
-const [{ team: labels }, team] = await Promise.all([getLabels(), getFeaturedTeam()]);
+const locale = Astro.currentLocale;
+const [{ team: labels }, team] = await Promise.all([getLabels(locale), getFeaturedTeam(locale)]);
 ---
 
 <div class="container-page pb-8">
@@ -41,7 +43,7 @@ const [{ team: labels }, team] = await Promise.all([getLabels(), getFeaturedTeam
 
             <h2 class="mt-5 text-lg font-semibold">
               {/* The link covers the whole card; the contact links below sit above it. */}
-              <a href={`/team/${member.id}/`} class="transition group-hover:text-primary after:absolute after:inset-0">{member.data.name}</a>
+              <a href={localePath(`/team/${member.id}/`, locale)} class="transition group-hover:text-primary after:absolute after:inset-0">{member.data.name}</a>
             </h2>
             {member.data.role && (
               <p class="eyebrow mt-1 text-accent">{member.data.role}</p>

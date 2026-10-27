@@ -1,5 +1,9 @@
 {
-  "title": "Fix your order-to-cash flow: a half-day workshop",
+  "title": {
+    "en": "Fix your order-to-cash flow: a half-day workshop",
+    "de": "Order-to-Cash verbessern: ein halbtägiger Workshop",
+    "de-ch": null
+  },
   "id": "fix-your-order-to-cash-flow-a-half-day-workshop",
   "startsAt": "2027-04-22T09:00:00+02:00",
   "endsAt": "2027-04-22T13:00:00+02:00",
@@ -21,7 +25,12 @@
     "mateo-fernandez",
     "priya-raman"
   ],
-  "summary": "A hands-on workshop for teams that wait too long for their money. Map your own order-to-cash flow and leave with three changes to make on Monday.",
+  "summary": {
+    "en": "A hands-on workshop for teams that wait too long for their money. Map your own order-to-cash flow and leave with three changes to make on Monday.",
+    "de": "Ein praktischer Workshop für Teams, die zu lange auf ihr Geld warten. Zeichnen Sie Ihren eigenen Ablauf auf, und gehen Sie mit drei Änderungen für Montag nach Hause.",
+    "de-ch": null
+  },
+  "body": {},
   "tags": [
     "workshop",
     "operations"

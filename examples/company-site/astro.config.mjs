@@ -4,6 +4,8 @@ import { micaPreview } from "@micacms/astro/preview";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "astro/config";
 
+import { site as model } from "./src/mica.ts";
+
 /**
  * `SITE_URL` still has to be folded in by hand: Astro exposes `.env` as
  * `import.meta.env`, which does not exist yet while this config is evaluated,
@@ -28,6 +30,18 @@ export default defineConfig({
   // nothing behind it — arrives as an empty string, which Astro rejects as
   // an invalid URL rather than falling back.
   site: process.env.SITE_URL || "http://localhost:4321",
+
+  /**
+   * The locales of the content model, so that `Astro.currentLocale` knows them.
+   * English has no prefix in the URL, the others do: /de/contact/. No
+   * `fallback` here: each page exists in each locale, and `localize()` gives a
+   * missing translation the value of its fallback.
+   */
+  i18n: {
+    locales: model.locales,
+    defaultLocale: model.defaultLocale,
+    routing: { prefixDefaultLocale: false },
+  },
 
   /**
    * The content model, the content root, the collections, publishing the model

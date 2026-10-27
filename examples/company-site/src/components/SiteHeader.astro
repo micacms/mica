@@ -1,23 +1,29 @@
 ---
 import { Image } from "astro:assets";
-/** Header and main menu, both driven by the `navigation` singleton. */
+/** Header, main menu and language menu. The menu is driven by the `navigation` singleton. */
 
 import { getLabels, getNavigation, getSiteSettings } from "@/lib/content";
+import { LOCALES, localeName, localePath, withoutLocale } from "@/lib/i18n";
 
-const settings = await getSiteSettings();
-const navigation = await getNavigation();
-const { general: labels } = await getLabels();
+const locale = Astro.currentLocale;
+const settings = await getSiteSettings(locale);
+const navigation = await getNavigation(locale);
+const { general: labels } = await getLabels(locale);
 
-const path = Astro.url.pathname.replace(/\/$/, "") || "/";
+// The menu's addresses are without a locale, like the editor writes them.
+const path = withoutLocale(Astro.url.pathname, locale).replace(/\/$/, "") || "/";
 const isCurrent = (href: string): boolean => {
   const target = href.replace(/\/$/, "") || "/";
   return target === "/" ? path === "/" : path === target || path.startsWith(`${target}/`);
 };
+
+// This page in each locale.
+const languages = LOCALES.map((code) => ({ code, name: localeName(code), href: localePath(withoutLocale(Astro.url.pathname, locale), code) }));
 ---
 
 <header class="sticky top-0 z-40 border-b border-line/80 bg-canvas/85 backdrop-blur-md">
   <div class="container-page flex h-18 items-center gap-6">
-    <a href="/" class="flex shrink-0 items-center gap-2.5" aria-label={settings.companyName}>
+    <a href={localePath("/", locale)} class="flex shrink-0 items-center gap-2.5" aria-label={settings.companyName}>
       {
         settings.logo ? (
           <Image src={settings.logo} alt={settings.companyName} class="h-8 w-auto" widths={[96, 192]} sizes="96px" />
@@ -55,7 +61,7 @@ const isCurrent = (href: string): boolean => {
             navigation.main.map((item) => (
               <li>
                 <a
-                  href={item.href}
+                  href={localePath(item.href, locale)}
                   class="block py-2 text-base font-medium aria-[current=page]:text-primary"
                   aria-current={isCurrent(item.href) ? "page" : undefined}
                 >
@@ -65,7 +71,7 @@ const isCurrent = (href: string): boolean => {
                   <ul class="ml-4 space-y-1 border-l border-line pl-3">
                     {item.children.map((child) => (
                       <li>
-                        <a href={child.href} class="block py-1.5 text-sm text-muted">
+                        <a href={localePath(child.href, locale)} class="block py-1.5 text-sm text-muted">
                           {child.label}
                         </a>
                       </li>
@@ -85,7 +91,7 @@ const isCurrent = (href: string): boolean => {
           navigation.main.map((item) => (
             <li class="group relative">
               <a
-                href={item.href}
+                href={localePath(item.href, locale)}
                 class="relative block rounded-full px-3.5 py-2 text-sm font-medium text-ink/75 transition hover:bg-sunken hover:text-ink aria-[current=page]:bg-primary/8 aria-[current=page]:text-primary"
                 aria-current={isCurrent(item.href) ? "page" : undefined}
               >
@@ -97,7 +103,7 @@ const isCurrent = (href: string): boolean => {
                   {item.children.map((child) => (
                     <li>
                       <a
-                        href={child.href}
+                        href={localePath(child.href, locale)}
                         class="block px-4 py-1.5 text-sm text-muted transition hover:bg-sunken hover:text-ink"
                       >
                         {child.label}
@@ -106,6 +112,28 @@ const isCurrent = (href: string): boolean => {
                   ))}
                 </ul>
               )}
+            </li>
+          ))
+        }
+      </ul>
+    </nav>
+
+    <nav aria-label={labels.languages}>
+      <ul class="flex items-center gap-0.5 text-xs font-semibold uppercase tracking-wider">
+        {
+          languages.map((language) => (
+            <li>
+              <a
+                href={language.href}
+                hreflang={language.code}
+                lang={language.code}
+                title={language.name}
+                aria-label={language.name}
+                aria-current={language.code === locale ? "true" : undefined}
+                class="block rounded-full px-2 py-1.5 text-muted transition hover:bg-sunken hover:text-ink aria-[current=true]:text-primary"
+              >
+                {language.code}
+              </a>
             </li>
           ))
         }

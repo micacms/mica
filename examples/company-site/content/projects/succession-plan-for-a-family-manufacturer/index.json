@@ -1,5 +1,9 @@
 {
-  "title": "Succession plan for a family manufacturer",
+  "title": {
+    "en": "Succession plan for a family manufacturer",
+    "de": null,
+    "de-ch": null
+  },
   "id": "succession-plan-for-a-family-manufacturer",
   "year": 2023,
   "category": "strategy",
@@ -10,6 +14,7 @@
     "strategy",
     "governance"
   ],
+  "description": {},
   "location": {
     "address": "Via dei Vetrai 31",
     "city": "Vellano",
@@ -17,16 +22,40 @@
   },
   "facts": [
     {
-      "label": "Employees",
-      "value": "140"
+      "label": {
+        "en": "Employees",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "140",
+        "de": null,
+        "de-ch": null
+      }
     },
     {
-      "label": "Handover period",
-      "value": "5 years"
+      "label": {
+        "en": "Handover period",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "5 years",
+        "de": null,
+        "de-ch": null
+      }
     },
     {
-      "label": "Family members involved",
-      "value": "4"
+      "label": {
+        "en": "Family members involved",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "4",
+        "de": null,
+        "de-ch": null
+      }
     }
   ],
   "gallery": [

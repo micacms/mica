@@ -1,38 +1,41 @@
 ---
 import { LocationMap } from "@micacms/astro/components";
 import { relatedAll } from "@micacms/astro/relations";
-import { getCollection, type CollectionEntry } from "astro:content";
 
 import RichText from "@/components/RichText.astro";
 import TagList from "@/components/TagList.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { formatDateTime, formatLabel, getLabels } from "@/lib/content";
+import { formatDateTime, formatLabel, getEvents, getLabels, inLocale, type Entry } from "@/lib/content";
+import { inEachLocale, localePath } from "@/lib/i18n";
 
 export async function getStaticPaths() {
-  const events = await getCollection("events");
-  return events.map((event) => ({
-    params: { id: event.id },
-    props: { event },
-  }));
+  return inEachLocale(async (locale) => {
+    const { upcoming, past } = await getEvents(locale);
+    return [...upcoming, ...past].map((event) => ({
+      params: { id: event.id },
+      props: { event },
+    }));
+  });
 }
 
 interface Props {
-  event: CollectionEntry<"events">;
+  event: Entry<"events">;
 }
 
 const { event } = Astro.props;
 const { title, startsAt, endsAt, format, capacity, venue, registrationUrl, speakers, summary, body, tags } =
   event.data;
+const locale = Astro.currentLocale;
 
-const people = await relatedAll("team", speakers);
-const { events: texts } = await getLabels();
+const people = (await relatedAll("team", speakers)).map((person) => inLocale(person, locale));
+const { events: texts } = await getLabels(locale);
 const isPast = new Date(startsAt).getTime() < Date.now();
 ---
 
 <BaseLayout title={title} description={summary}>
   <article>
     <div class="container-page pb-12 pt-16 sm:pt-24">
-      <a href="/events/" class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> {texts.allLink}</a>
+      <a href={localePath("/events/", locale)} class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> {texts.allLink}</a>
 
       <div class="mt-4 max-w-3xl">
         <h1 class="text-4xl font-semibold sm:text-5xl lg:text-6xl">{title}</h1>
@@ -50,13 +53,13 @@ const isPast = new Date(startsAt).getTime() < Date.now();
         <div>
           <h2 class="eyebrow text-muted">{texts.when}</h2>
           <p class="mt-3 text-sm">
-            <time datetime={startsAt}>{formatDateTime(startsAt)}</time>
+            <time datetime={startsAt}>{formatDateTime(startsAt, locale)}</time>
             {
               endsAt && (
                 <>
                   <br />
                   <span class="text-muted">{texts.until} </span>
-                  <time datetime={endsAt}>{formatDateTime(endsAt)}</time>
+                  <time datetime={endsAt}>{formatDateTime(endsAt, locale)}</time>
                 </>
               )
             }
@@ -100,7 +103,7 @@ const isPast = new Date(startsAt).getTime() < Date.now();
               <ul class="mt-3 space-y-2 text-sm">
                 {people.map((person) => (
                   <li>
-                    <a href={`/team/${person.id}/`} class="font-medium hover:text-primary">
+                    <a href={localePath(`/team/${person.id}/`, locale)} class="font-medium hover:text-primary">
                       {person.data.name}
                     </a>
                     {person.data.role && <span class="block text-muted">{person.data.role}</span>}

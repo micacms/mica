@@ -1,10 +1,12 @@
 ---
 import { getLabels, getListPage, getNavigation, getSiteSettings, platformLabel } from "@/lib/content";
+import { localePath } from "@/lib/i18n";
 
-const settings = await getSiteSettings();
-const navigation = await getNavigation();
-const { footer } = await getLabels();
-const glossary = await getListPage("glossary");
+const locale = Astro.currentLocale;
+const settings = await getSiteSettings(locale);
+const navigation = await getNavigation(locale);
+const { footer } = await getLabels(locale);
+const glossary = await getListPage("glossary", locale);
 ---
 
 <footer class="mt-24 bg-ink text-white/70 sm:mt-32">
@@ -12,7 +14,7 @@ const glossary = await getListPage("glossary");
     <div>
       <p class="text-lg font-semibold tracking-tight text-white">{settings.companyName}</p>
       {settings.tagline && <p class="mt-2 max-w-xs text-sm text-pretty">{settings.tagline}</p>}
-      <a href={footer.link.href} class="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-white hover:underline">
+      <a href={localePath(footer.link.href, locale)} class="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-white hover:underline">
         {footer.link.label} <span aria-hidden="true">→</span>
       </a>
     </div>
@@ -57,14 +59,14 @@ const glossary = await getListPage("glossary");
         {
           navigation.footer.map((item) => (
             <li>
-              <a href={item.href} class="hover:text-white">
+              <a href={localePath(item.href, locale)} class="hover:text-white">
                 {item.label}
               </a>
             </li>
           ))
         }
         {/* Not in the navigation singleton: the developers keep this page's terms, like the collection behind it. */}
-        {glossary && <li><a href={`/${glossary.id}/`} class="hover:text-white">{glossary.data.title}</a></li>}
+        {glossary && <li><a href={localePath(`/${glossary.id}/`, locale)} class="hover:text-white">{glossary.data.title}</a></li>}
       </ul>
 
       {

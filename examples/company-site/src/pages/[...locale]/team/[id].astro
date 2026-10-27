@@ -1,35 +1,37 @@
 ---
 import { Image } from "astro:assets";
-import { getCollection, type CollectionEntry } from "astro:content";
 
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { formatDateTime, getEventsOf, getLabels, getProjectsOf, projectPath } from "@/lib/content";
+import { formatDateTime, getEventsOf, getLabels, getProjectsOf, getTeam, projectPath, type Entry } from "@/lib/content";
+import { inEachLocale, localePath } from "@/lib/i18n";
 
 export async function getStaticPaths() {
-  const team = await getCollection("team");
-  return team.map((member) => ({
-    params: { id: member.id },
-    props: { member },
-  }));
+  return inEachLocale(async (locale) =>
+    (await getTeam(locale)).map((member) => ({
+      params: { id: member.id },
+      props: { member },
+    })),
+  );
 }
 
 interface Props {
-  member: CollectionEntry<"team">;
+  member: Entry<"team">;
 }
 
 const { member } = Astro.props;
 const { name, role, email, phone, portrait, bio } = member.data;
+const locale = Astro.currentLocale;
 
 // Relations shown from the other side: projects and events name the person,
 // the person does not name them. So the page asks each collection and filters.
-const projects = await getProjectsOf(member.id);
-const events = await getEventsOf(member.id);
-const { team: texts } = await getLabels();
+const projects = await getProjectsOf(member.id, locale);
+const events = await getEventsOf(member.id, locale);
+const { team: texts } = await getLabels(locale);
 ---
 
 <BaseLayout title={name} description={bio}>
   <div class="container-page pb-8 pt-16 sm:pt-24">
-    <a href="/team/" class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> {texts.allLink}</a>
+    <a href={localePath("/team/", locale)} class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> {texts.allLink}</a>
 
     <div class="mt-8 grid gap-10 md:grid-cols-[18rem_1fr] lg:gap-16">
       {
@@ -59,7 +61,7 @@ const { team: texts } = await getLabels();
               <ul class="mt-3 divide-y divide-line border-t border-line text-sm">
                 {projects.map((project) => (
                   <li class="py-2.5">
-                    <a href={projectPath(project)} class="font-medium hover:text-primary">
+                    <a href={projectPath(project, locale)} class="font-medium hover:text-primary">
                       {project.data.title}
                     </a>
                     <span class="text-muted"> · {project.data.year}</span>
@@ -77,10 +79,10 @@ const { team: texts } = await getLabels();
               <ul class="mt-3 divide-y divide-line border-t border-line text-sm">
                 {events.map((event) => (
                   <li class="py-2.5">
-                    <a href={`/events/${event.id}/`} class="font-medium hover:text-primary">
+                    <a href={localePath(`/events/${event.id}/`, locale)} class="font-medium hover:text-primary">
                       {event.data.title}
                     </a>
-                    <span class="block text-muted">{formatDateTime(event.data.startsAt)}</span>
+                    <span class="block text-muted">{formatDateTime(event.data.startsAt, locale)}</span>
                   </li>
                 ))}
               </ul>

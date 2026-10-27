@@ -1,5 +1,9 @@
 {
-  "title": "Order-to-cash review",
+  "title": {
+    "en": "Order-to-cash review",
+    "de": "Analyse des Order-to-Cash-Prozesses",
+    "de-ch": null
+  },
   "id": "order-to-cash-review",
   "year": 2025,
   "category": "operations",
@@ -10,6 +14,7 @@
     "finance",
     "people"
   ],
+  "description": {},
   "location": {
     "address": "Foundry Quay 14",
     "city": "Kestrel Bay",
@@ -17,16 +22,40 @@
   },
   "facts": [
     {
-      "label": "Lead time",
-      "value": "−35%"
+      "label": {
+        "en": "Lead time",
+        "de": "Durchlaufzeit",
+        "de-ch": null
+      },
+      "value": {
+        "en": "−35%",
+        "de": null,
+        "de-ch": null
+      }
     },
     {
-      "label": "Team",
-      "value": "3 consultants"
+      "label": {
+        "en": "Team",
+        "de": "Team",
+        "de-ch": null
+      },
+      "value": {
+        "en": "3 consultants",
+        "de": "3 Beratende",
+        "de-ch": null
+      }
     },
     {
-      "label": "Approval time",
-      "value": "−60%"
+      "label": {
+        "en": "Approval time",
+        "de": "Freigabezeit",
+        "de-ch": null
+      },
+      "value": {
+        "en": "−60%",
+        "de": null,
+        "de-ch": null
+      }
     }
   ],
   "gallery": [

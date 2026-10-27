@@ -1,14 +1,39 @@
 {
-  "title": "Legal notice",
+  "title": {
+    "en": "Legal notice",
+    "de": null,
+    "de-ch": null
+  },
   "id": "legal",
   "template": null,
-  "eyebrow": null,
-  "intro": null,
-  "heroImage": null,
+  "eyebrow": {
+    "en": null,
+    "de": null,
+    "de-ch": null
+  },
+  "intro": {
+    "en": null,
+    "de": null,
+    "de-ch": null
+  },
+  "heroImage": {
+    "en": null,
+    "de": null,
+    "de-ch": null
+  },
+  "body": {},
   "sections": [],
   "seo": {
-    "metaTitle": null,
-    "metaDescription": null,
+    "metaTitle": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
+    "metaDescription": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
     "ogImage": null,
     "noindex": false
   }

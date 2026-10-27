@@ -14,18 +14,23 @@ import {
   getProjects,
   getSiteSettings,
 } from "@/lib/content";
+import { LOCALES, localePath, localePrefix } from "@/lib/i18n";
 
-const settings = await getSiteSettings();
-const home = await getHomePage();
-const labels = await getLabels();
+/** The home page of each locale: `/`, `/de/` and `/de-ch/`. */
+export const getStaticPaths = () => LOCALES.map((locale) => ({ params: { locale: localePrefix(locale) } }));
 
-const featured = await getProjects({ featuredOnly: true });
-const allProjects = await getProjects();
+const locale = Astro.currentLocale;
+const settings = await getSiteSettings(locale);
+const home = await getHomePage(locale);
+const labels = await getLabels(locale);
+
+const featured = await getProjects(locale, { featuredOnly: true });
+const allProjects = await getProjects(locale);
 // An empty "featured" list should not produce an empty homepage.
 const showcase = (featured.length > 0 ? featured : allProjects).slice(0, 3);
 
-const news = (await getNews()).slice(0, 3);
-const upcomingEvents = (await getEvents()).upcoming.slice(0, 3);
+const news = (await getNews(locale)).slice(0, 3);
+const upcomingEvents = (await getEvents(locale)).upcoming.slice(0, 3);
 
 // The default sharing image is the company's own picture, so it doubles as the homepage image.
 const heroImage = settings.seo?.defaultImage ?? null;
@@ -47,8 +52,8 @@ const heroImage = settings.seo?.defaultImage ?? null;
       }
 
       <div class="mt-10 flex flex-wrap gap-3">
-        <a href={home.primaryLink.href} class="btn-solid">{home.primaryLink.label}</a>
-        <a href={home.secondaryLink.href} class="btn-outline">{home.secondaryLink.label}</a>
+        <a href={localePath(home.primaryLink.href, locale)} class="btn-solid">{home.primaryLink.label}</a>
+        <a href={localePath(home.secondaryLink.href, locale)} class="btn-outline">{home.secondaryLink.label}</a>
       </div>
     </div>
 
@@ -76,7 +81,7 @@ const heroImage = settings.seo?.defaultImage ?? null;
     showcase.length > 0 && (
       <section class="border-t border-line bg-sunken py-20 sm:py-24" aria-labelledby="projects-heading">
         <div class="container-page">
-          <SectionHeader id="projects-heading" eyebrow={home.projects.eyebrow} title={home.projects.title} href="/projects/" linkLabel={labels.projects.allLink} />
+          <SectionHeader id="projects-heading" eyebrow={home.projects.eyebrow} title={home.projects.title} href={localePath("/projects/", locale)} linkLabel={labels.projects.allLink} />
 
           <div class="mt-12 grid gap-x-8 gap-y-12 sm:grid-cols-2 lg:grid-cols-3">
             {showcase.map((project) => (
@@ -91,14 +96,14 @@ const heroImage = settings.seo?.defaultImage ?? null;
   {
     upcomingEvents.length > 0 && (
       <section class="container-page mt-20 sm:mt-24" aria-labelledby="events-heading">
-        <SectionHeader id="events-heading" eyebrow={home.events.eyebrow} title={home.events.title} href="/events/" linkLabel={labels.events.allLink} />
+        <SectionHeader id="events-heading" eyebrow={home.events.eyebrow} title={home.events.title} href={localePath("/events/", locale)} linkLabel={labels.events.allLink} />
 
         <ul class="mt-12 grid gap-6 md:grid-cols-3">
           {upcomingEvents.map((event) => {
-            const badge = dateBadge(event.data.startsAt);
+            const badge = dateBadge(event.data.startsAt, locale);
             return (
               <li>
-                <a href={`/events/${event.id}/`} class="card-surface group flex h-full gap-5 p-6 transition hover:border-primary/40 hover:shadow-lg hover:shadow-ink/5">
+                <a href={localePath(`/events/${event.id}/`, locale)} class="card-surface group flex h-full gap-5 p-6 transition hover:border-primary/40 hover:shadow-lg hover:shadow-ink/5">
                   {badge && (
                     <div class="flex w-14 shrink-0 flex-col items-center self-start border border-line py-2 text-center" style="border-radius: var(--radius-theme)" aria-hidden="true">
                       <span class="text-[11px] font-semibold uppercase tracking-wider text-accent">{badge.month}</span>
@@ -107,7 +112,7 @@ const heroImage = settings.seo?.defaultImage ?? null;
                   )}
                   <div>
                     <time datetime={event.data.startsAt} class="text-xs text-muted">
-                      {formatDateTime(event.data.startsAt)}
+                      {formatDateTime(event.data.startsAt, locale)}
                     </time>
                     <h3 class="mt-1.5 font-semibold leading-snug group-hover:text-primary">
                       {event.data.title}
@@ -128,12 +133,12 @@ const heroImage = settings.seo?.defaultImage ?? null;
   {
     news.length > 0 && (
       <section class="container-page mt-20 sm:mt-24" aria-labelledby="news-heading">
-        <SectionHeader id="news-heading" eyebrow={home.news.eyebrow} title={home.news.title} href="/news/" linkLabel={labels.news.allLink} />
+        <SectionHeader id="news-heading" eyebrow={home.news.eyebrow} title={home.news.title} href={localePath("/news/", locale)} linkLabel={labels.news.allLink} />
 
         <div class="mt-12 grid gap-x-8 gap-y-12 md:grid-cols-3">
           {news.map((article) => (
             <article>
-              <a href={`/news/${article.id}/`} class="group block">
+              <a href={localePath(`/news/${article.id}/`, locale)} class="group block">
                 {article.data.coverImage && (
                   <div class="media-frame mb-5 aspect-3/2">
                     <Image
@@ -148,7 +153,7 @@ const heroImage = settings.seo?.defaultImage ?? null;
 
                 {article.data.publishDate && (
                   <time datetime={article.data.publishDate} class="text-xs font-medium text-muted">
-                    {formatDate(article.data.publishDate)}
+                    {formatDate(article.data.publishDate, locale)}
                   </time>
                 )}
                 <h3 class="mt-1.5 text-lg font-semibold leading-snug group-hover:text-primary">
@@ -173,7 +178,7 @@ const heroImage = settings.seo?.defaultImage ?? null;
         <h2 id="contact-heading" class="text-3xl font-semibold sm:text-4xl">{home.contact.title}</h2>
         {home.contact.text && <p class="mt-4 text-lg text-white/85 text-pretty">{home.contact.text}</p>}
         <div class="mt-8 flex flex-wrap items-center gap-x-6 gap-y-3">
-          <a href={home.contact.link.href} class="inline-flex items-center justify-center bg-white px-5 py-3 text-sm font-medium text-primary shadow-sm transition hover:-translate-y-px hover:shadow-md" style="border-radius: var(--radius-theme)">
+          <a href={localePath(home.contact.link.href, locale)} class="inline-flex items-center justify-center bg-white px-5 py-3 text-sm font-medium text-primary shadow-sm transition hover:-translate-y-px hover:shadow-md" style="border-radius: var(--radius-theme)">
             {home.contact.link.label}
           </a>
           {settings.email && (

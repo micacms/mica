@@ -1,5 +1,9 @@
 {
-  "title": "Service desk consolidation",
+  "title": {
+    "en": "Service desk consolidation",
+    "de": null,
+    "de-ch": null
+  },
   "id": "service-desk-consolidation",
   "year": 2024,
   "category": "public-sector",
@@ -10,6 +14,7 @@
     "process",
     "software"
   ],
+  "description": {},
   "location": {
     "address": "Corvin Square 7",
     "city": "Halvard",
@@ -17,16 +22,40 @@
   },
   "facts": [
     {
-      "label": "Tickets per month",
-      "value": "2,400"
+      "label": {
+        "en": "Tickets per month",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "2,400",
+        "de": null,
+        "de-ch": null
+      }
     },
     {
-      "label": "Teams merged",
-      "value": "3"
+      "label": {
+        "en": "Teams merged",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "3",
+        "de": null,
+        "de-ch": null
+      }
     },
     {
-      "label": "Average wait",
-      "value": "−40%"
+      "label": {
+        "en": "Average wait",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "−40%",
+        "de": null,
+        "de-ch": null
+      }
     }
   ],
   "gallery": [

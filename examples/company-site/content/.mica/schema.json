@@ -2,6 +2,15 @@
   "protocolVersion": 1,
   "generatedBy": "@micacms/astro",
   "label": "Harbor Lane",
+  "locales": [
+    "en",
+    "de",
+    "de-ch"
+  ],
+  "defaultLocale": "en",
+  "fallback": {
+    "de-ch": "de"
+  },
   "collections": {
     "pages": {
       "type": "collection",
@@ -17,11 +26,28 @@
       "sortable": true,
       "fields": {
         "title": {
-          "kind": "text",
+          "kind": "object",
           "label": "Title",
-          "required": true,
-          "maxLength": 120,
-          "listed": true
+          "listed": true,
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "text",
+              "maxLength": 120,
+              "label": "Title (EN)",
+              "required": true
+            },
+            "de": {
+              "kind": "text",
+              "maxLength": 120,
+              "label": "Title (DE)"
+            },
+            "de-ch": {
+              "kind": "text",
+              "maxLength": 120,
+              "label": "Title (DE-CH)"
+            }
+          }
         },
         "id": {
           "kind": "id",
@@ -63,29 +89,101 @@
           ]
         },
         "eyebrow": {
-          "kind": "text",
+          "kind": "object",
           "label": "Eyebrow",
-          "maxLength": 40,
+          "description": "The short line above the title.",
           "width": "half",
-          "description": "The short line above the title."
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "text",
+              "maxLength": 40,
+              "label": "Eyebrow (EN)"
+            },
+            "de": {
+              "kind": "text",
+              "maxLength": 40,
+              "label": "Eyebrow (DE)"
+            },
+            "de-ch": {
+              "kind": "text",
+              "maxLength": 40,
+              "label": "Eyebrow (DE-CH)"
+            }
+          }
         },
         "intro": {
-          "kind": "textarea",
+          "kind": "object",
           "label": "Introduction",
-          "rows": 3,
-          "maxLength": 400,
-          "description": "Short lead paragraph shown below the page title."
+          "description": "Short lead paragraph shown below the page title.",
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "textarea",
+              "rows": 3,
+              "maxLength": 400,
+              "label": "Introduction (EN)"
+            },
+            "de": {
+              "kind": "textarea",
+              "rows": 3,
+              "maxLength": 400,
+              "label": "Introduction (DE)"
+            },
+            "de-ch": {
+              "kind": "textarea",
+              "rows": 3,
+              "maxLength": 400,
+              "label": "Introduction (DE-CH)"
+            }
+          }
         },
         "heroImage": {
-          "kind": "media",
+          "kind": "object",
           "label": "Hero image",
-          "accept": "image",
-          "alt": "required"
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "media",
+              "accept": "image",
+              "alt": "required",
+              "label": "Hero image (EN)"
+            },
+            "de": {
+              "kind": "media",
+              "accept": "image",
+              "alt": "required",
+              "label": "Hero image (DE)"
+            },
+            "de-ch": {
+              "kind": "media",
+              "accept": "image",
+              "alt": "required",
+              "label": "Hero image (DE-CH)"
+            }
+          }
         },
         "body": {
-          "kind": "richText",
+          "kind": "object",
           "label": "Content",
-          "toolbar": "full"
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "richText",
+              "toolbar": "full",
+              "label": "Content (EN)"
+            },
+            "de": {
+              "kind": "richText",
+              "toolbar": "full",
+              "label": "Content (DE)"
+            },
+            "de-ch": {
+              "kind": "richText",
+              "toolbar": "full",
+              "label": "Content (DE-CH)"
+            }
+          }
         },
         "sections": {
           "kind": "repeater",
@@ -94,13 +192,43 @@
           "addLabel": "Add section",
           "fields": {
             "heading": {
-              "kind": "text",
+              "kind": "object",
               "label": "Heading",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Heading (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Heading (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Heading (DE-CH)"
+                }
+              }
             },
             "text": {
-              "kind": "richText",
-              "label": "Text"
+              "kind": "object",
+              "label": "Text",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "richText",
+                  "label": "Text (EN)"
+                },
+                "de": {
+                  "kind": "richText",
+                  "label": "Text (DE)"
+                },
+                "de-ch": {
+                  "kind": "richText",
+                  "label": "Text (DE-CH)"
+                }
+              }
             },
             "image": {
               "kind": "media",
@@ -137,15 +265,51 @@
           "collapsed": true,
           "fields": {
             "metaTitle": {
-              "kind": "text",
+              "kind": "object",
               "label": "Meta title",
-              "maxLength": 60
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "maxLength": 60,
+                  "label": "Meta title (EN)"
+                },
+                "de": {
+                  "kind": "text",
+                  "maxLength": 60,
+                  "label": "Meta title (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "maxLength": 60,
+                  "label": "Meta title (DE-CH)"
+                }
+              }
             },
             "metaDescription": {
-              "kind": "textarea",
+              "kind": "object",
               "label": "Meta description",
-              "rows": 2,
-              "maxLength": 160
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "textarea",
+                  "rows": 2,
+                  "maxLength": 160,
+                  "label": "Meta description (EN)"
+                },
+                "de": {
+                  "kind": "textarea",
+                  "rows": 2,
+                  "maxLength": 160,
+                  "label": "Meta description (DE)"
+                },
+                "de-ch": {
+                  "kind": "textarea",
+                  "rows": 2,
+                  "maxLength": 160,
+                  "label": "Meta description (DE-CH)"
+                }
+              }
             },
             "ogImage": {
               "kind": "media",
@@ -173,11 +337,28 @@
       },
       "fields": {
         "title": {
-          "kind": "text",
+          "kind": "object",
           "label": "Title",
-          "required": true,
-          "maxLength": 120,
-          "listed": true
+          "listed": true,
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "text",
+              "maxLength": 120,
+              "label": "Title (EN)",
+              "required": true
+            },
+            "de": {
+              "kind": "text",
+              "maxLength": 120,
+              "label": "Title (DE)"
+            },
+            "de-ch": {
+              "kind": "text",
+              "maxLength": 120,
+              "label": "Title (DE-CH)"
+            }
+          }
         },
         "id": {
           "kind": "id",
@@ -249,17 +430,50 @@
           ]
         },
         "description": {
-          "kind": "richText",
+          "kind": "object",
           "label": "Description",
-          "toolbar": [
-            "bold",
-            "italic",
-            "heading",
-            "bulletList",
-            "orderedList",
-            "link",
-            "image"
-          ]
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "richText",
+              "toolbar": [
+                "bold",
+                "italic",
+                "heading",
+                "bulletList",
+                "orderedList",
+                "link",
+                "image"
+              ],
+              "label": "Description (EN)"
+            },
+            "de": {
+              "kind": "richText",
+              "toolbar": [
+                "bold",
+                "italic",
+                "heading",
+                "bulletList",
+                "orderedList",
+                "link",
+                "image"
+              ],
+              "label": "Description (DE)"
+            },
+            "de-ch": {
+              "kind": "richText",
+              "toolbar": [
+                "bold",
+                "italic",
+                "heading",
+                "bulletList",
+                "orderedList",
+                "link",
+                "image"
+              ],
+              "label": "Description (DE-CH)"
+            }
+          }
         },
         "location": {
           "kind": "object",
@@ -289,16 +503,46 @@
           "max": 8,
           "fields": {
             "label": {
-              "kind": "text",
+              "kind": "object",
               "label": "Label",
-              "required": true,
-              "width": "half"
+              "width": "half",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Label (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Label (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Label (DE-CH)"
+                }
+              }
             },
             "value": {
-              "kind": "text",
+              "kind": "object",
               "label": "Value",
-              "required": true,
-              "width": "half"
+              "width": "half",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Value (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Value (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Value (DE-CH)"
+                }
+              }
             }
           }
         },
@@ -352,11 +596,28 @@
       },
       "fields": {
         "title": {
-          "kind": "text",
+          "kind": "object",
           "label": "Title",
-          "required": true,
-          "maxLength": 140,
-          "listed": true
+          "listed": true,
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "text",
+              "maxLength": 140,
+              "label": "Title (EN)",
+              "required": true
+            },
+            "de": {
+              "kind": "text",
+              "maxLength": 140,
+              "label": "Title (DE)"
+            },
+            "de-ch": {
+              "kind": "text",
+              "maxLength": 140,
+              "label": "Title (DE-CH)"
+            }
+          }
         },
         "id": {
           "kind": "id",
@@ -394,10 +655,29 @@
           ]
         },
         "excerpt": {
-          "kind": "textarea",
+          "kind": "object",
           "label": "Teaser",
-          "rows": 3,
-          "maxLength": 300
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "textarea",
+              "rows": 3,
+              "maxLength": 300,
+              "label": "Teaser (EN)"
+            },
+            "de": {
+              "kind": "textarea",
+              "rows": 3,
+              "maxLength": 300,
+              "label": "Teaser (DE)"
+            },
+            "de-ch": {
+              "kind": "textarea",
+              "rows": 3,
+              "maxLength": 300,
+              "label": "Teaser (DE-CH)"
+            }
+          }
         },
         "coverImage": {
           "kind": "media",
@@ -406,8 +686,23 @@
           "alt": "required"
         },
         "body": {
-          "kind": "richText",
-          "label": "Article"
+          "kind": "object",
+          "label": "Article",
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "richText",
+              "label": "Article (EN)"
+            },
+            "de": {
+              "kind": "richText",
+              "label": "Article (DE)"
+            },
+            "de-ch": {
+              "kind": "richText",
+              "label": "Article (DE-CH)"
+            }
+          }
         }
       }
     },
@@ -424,11 +719,28 @@
       },
       "fields": {
         "title": {
-          "kind": "text",
+          "kind": "object",
           "label": "Title",
-          "required": true,
-          "maxLength": 120,
-          "listed": true
+          "listed": true,
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "text",
+              "maxLength": 120,
+              "label": "Title (EN)",
+              "required": true
+            },
+            "de": {
+              "kind": "text",
+              "maxLength": 120,
+              "label": "Title (DE)"
+            },
+            "de-ch": {
+              "kind": "text",
+              "maxLength": 120,
+              "label": "Title (DE-CH)"
+            }
+          }
         },
         "id": {
           "kind": "id",
@@ -507,14 +819,48 @@
           "multiple": true
         },
         "summary": {
-          "kind": "textarea",
+          "kind": "object",
           "label": "Summary",
-          "rows": 3,
-          "maxLength": 300
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "textarea",
+              "rows": 3,
+              "maxLength": 300,
+              "label": "Summary (EN)"
+            },
+            "de": {
+              "kind": "textarea",
+              "rows": 3,
+              "maxLength": 300,
+              "label": "Summary (DE)"
+            },
+            "de-ch": {
+              "kind": "textarea",
+              "rows": 3,
+              "maxLength": 300,
+              "label": "Summary (DE-CH)"
+            }
+          }
         },
         "body": {
-          "kind": "richText",
-          "label": "Programme"
+          "kind": "object",
+          "label": "Programme",
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "richText",
+              "label": "Programme (EN)"
+            },
+            "de": {
+              "kind": "richText",
+              "label": "Programme (DE)"
+            },
+            "de-ch": {
+              "kind": "richText",
+              "label": "Programme (DE-CH)"
+            }
+          }
         },
         "tags": {
           "kind": "tags",
@@ -557,10 +903,25 @@
           "from": "name"
         },
         "role": {
-          "kind": "text",
+          "kind": "object",
           "label": "Role",
           "listed": true,
-          "width": "half"
+          "width": "half",
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "text",
+              "label": "Role (EN)"
+            },
+            "de": {
+              "kind": "text",
+              "label": "Role (DE)"
+            },
+            "de-ch": {
+              "kind": "text",
+              "label": "Role (DE-CH)"
+            }
+          }
         },
         "email": {
           "kind": "email",
@@ -582,10 +943,29 @@
           "alt": "required"
         },
         "bio": {
-          "kind": "textarea",
+          "kind": "object",
           "label": "Short biography",
-          "rows": 4,
-          "maxLength": 600
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "textarea",
+              "rows": 4,
+              "maxLength": 600,
+              "label": "Short biography (EN)"
+            },
+            "de": {
+              "kind": "textarea",
+              "rows": 4,
+              "maxLength": 600,
+              "label": "Short biography (DE)"
+            },
+            "de-ch": {
+              "kind": "textarea",
+              "rows": 4,
+              "maxLength": 600,
+              "label": "Short biography (DE-CH)"
+            }
+          }
         },
         "featured": {
           "kind": "boolean",
@@ -613,9 +993,26 @@
           "accept": "image"
         },
         "tagline": {
-          "kind": "text",
+          "kind": "object",
           "label": "Tagline",
-          "maxLength": 160
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "text",
+              "maxLength": 160,
+              "label": "Tagline (EN)"
+            },
+            "de": {
+              "kind": "text",
+              "maxLength": 160,
+              "label": "Tagline (DE)"
+            },
+            "de-ch": {
+              "kind": "text",
+              "maxLength": 160,
+              "label": "Tagline (DE-CH)"
+            }
+          }
         },
         "address": {
           "kind": "textarea",
@@ -636,10 +1033,27 @@
           "width": "half"
         },
         "openingHours": {
-          "kind": "textarea",
+          "kind": "object",
           "label": "Opening hours",
-          "rows": 3,
-          "group": "Contact"
+          "group": "Contact",
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "textarea",
+              "rows": 3,
+              "label": "Opening hours (EN)"
+            },
+            "de": {
+              "kind": "textarea",
+              "rows": 3,
+              "label": "Opening hours (DE)"
+            },
+            "de-ch": {
+              "kind": "textarea",
+              "rows": 3,
+              "label": "Opening hours (DE-CH)"
+            }
+          }
         },
         "social": {
           "kind": "repeater",
@@ -695,10 +1109,29 @@
               "description": "Appended to every page title, e.g. \" — Harbor Lane Consulting\"."
             },
             "defaultDescription": {
-              "kind": "textarea",
+              "kind": "object",
               "label": "Default description",
-              "rows": 2,
-              "maxLength": 160
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "textarea",
+                  "rows": 2,
+                  "maxLength": 160,
+                  "label": "Default description (EN)"
+                },
+                "de": {
+                  "kind": "textarea",
+                  "rows": 2,
+                  "maxLength": 160,
+                  "label": "Default description (DE)"
+                },
+                "de-ch": {
+                  "kind": "textarea",
+                  "rows": 2,
+                  "maxLength": 160,
+                  "label": "Default description (DE-CH)"
+                }
+              }
             },
             "defaultImage": {
               "kind": "media",
@@ -754,10 +1187,25 @@
           "label": "First button",
           "fields": {
             "label": {
-              "kind": "text",
+              "kind": "object",
               "label": "Text",
-              "required": true,
-              "description": "The text of the link."
+              "description": "The text of the link.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Text (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Text (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Text (DE-CH)"
+                }
+              }
             },
             "href": {
               "kind": "text",
@@ -772,10 +1220,25 @@
           "label": "Second button",
           "fields": {
             "label": {
-              "kind": "text",
+              "kind": "object",
               "label": "Text",
-              "required": true,
-              "description": "The text of the link."
+              "description": "The text of the link.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Text (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Text (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Text (DE-CH)"
+                }
+              }
             },
             "href": {
               "kind": "text",
@@ -790,14 +1253,44 @@
           "label": "Projects section",
           "fields": {
             "eyebrow": {
-              "kind": "text",
+              "kind": "object",
               "label": "Eyebrow",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Eyebrow (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Eyebrow (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Eyebrow (DE-CH)"
+                }
+              }
             },
             "title": {
-              "kind": "text",
+              "kind": "object",
               "label": "Title",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Title (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Title (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Title (DE-CH)"
+                }
+              }
             }
           }
         },
@@ -806,14 +1299,44 @@
           "label": "Events section",
           "fields": {
             "eyebrow": {
-              "kind": "text",
+              "kind": "object",
               "label": "Eyebrow",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Eyebrow (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Eyebrow (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Eyebrow (DE-CH)"
+                }
+              }
             },
             "title": {
-              "kind": "text",
+              "kind": "object",
               "label": "Title",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Title (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Title (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Title (DE-CH)"
+                }
+              }
             }
           }
         },
@@ -822,14 +1345,44 @@
           "label": "News section",
           "fields": {
             "eyebrow": {
-              "kind": "text",
+              "kind": "object",
               "label": "Eyebrow",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Eyebrow (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Eyebrow (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Eyebrow (DE-CH)"
+                }
+              }
             },
             "title": {
-              "kind": "text",
+              "kind": "object",
               "label": "Title",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Title (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Title (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Title (DE-CH)"
+                }
+              }
             }
           }
         },
@@ -838,24 +1391,71 @@
           "label": "Contact box",
           "fields": {
             "title": {
-              "kind": "text",
+              "kind": "object",
               "label": "Title",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Title (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Title (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Title (DE-CH)"
+                }
+              }
             },
             "text": {
-              "kind": "textarea",
+              "kind": "object",
               "label": "Text",
-              "rows": 2
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "textarea",
+                  "rows": 2,
+                  "label": "Text (EN)"
+                },
+                "de": {
+                  "kind": "textarea",
+                  "rows": 2,
+                  "label": "Text (DE)"
+                },
+                "de-ch": {
+                  "kind": "textarea",
+                  "rows": 2,
+                  "label": "Text (DE-CH)"
+                }
+              }
             },
             "link": {
               "kind": "object",
               "label": "Button",
               "fields": {
                 "label": {
-                  "kind": "text",
+                  "kind": "object",
                   "label": "Text",
-                  "required": true,
-                  "description": "The text of the link."
+                  "description": "The text of the link.",
+                  "localized": true,
+                  "fields": {
+                    "en": {
+                      "kind": "text",
+                      "label": "Text (EN)",
+                      "required": true
+                    },
+                    "de": {
+                      "kind": "text",
+                      "label": "Text (DE)"
+                    },
+                    "de-ch": {
+                      "kind": "text",
+                      "label": "Text (DE-CH)"
+                    }
+                  }
                 },
                 "href": {
                   "kind": "text",
@@ -883,28 +1483,109 @@
           "collapsed": true,
           "fields": {
             "skipLink": {
-              "kind": "text",
+              "kind": "object",
               "label": "Skip link",
-              "required": true,
-              "description": "The first link of each page, for keyboard users."
+              "description": "The first link of each page, for keyboard users.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Skip link (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Skip link (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Skip link (DE-CH)"
+                }
+              }
             },
             "menu": {
-              "kind": "text",
+              "kind": "object",
               "label": "Menu button",
-              "required": true,
-              "description": "On small screens. Only screen readers read it."
+              "description": "On small screens. Only screen readers read it.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Menu button (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Menu button (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Menu button (DE-CH)"
+                }
+              }
             },
             "mainMenu": {
-              "kind": "text",
+              "kind": "object",
               "label": "Name of the main menu",
-              "required": true,
-              "description": "Only screen readers read it."
+              "description": "Only screen readers read it.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Name of the main menu (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Name of the main menu (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Name of the main menu (DE-CH)"
+                }
+              }
             },
             "tags": {
-              "kind": "text",
+              "kind": "object",
               "label": "Name of a list of tags",
-              "required": true,
-              "description": "Only screen readers read it."
+              "description": "Only screen readers read it.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Name of a list of tags (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Name of a list of tags (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Name of a list of tags (DE-CH)"
+                }
+              }
+            },
+            "languages": {
+              "kind": "object",
+              "label": "Name of the language menu",
+              "description": "Only screen readers read it.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Name of the language menu (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Name of the language menu (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Name of the language menu (DE-CH)"
+                }
+              }
             }
           }
         },
@@ -920,10 +1601,25 @@
               "label": "Link below the company name",
               "fields": {
                 "label": {
-                  "kind": "text",
+                  "kind": "object",
                   "label": "Text",
-                  "required": true,
-                  "description": "The text of the link."
+                  "description": "The text of the link.",
+                  "localized": true,
+                  "fields": {
+                    "en": {
+                      "kind": "text",
+                      "label": "Text (EN)",
+                      "required": true
+                    },
+                    "de": {
+                      "kind": "text",
+                      "label": "Text (DE)"
+                    },
+                    "de-ch": {
+                      "kind": "text",
+                      "label": "Text (DE-CH)"
+                    }
+                  }
                 },
                 "href": {
                   "kind": "text",
@@ -934,24 +1630,84 @@
               }
             },
             "contact": {
-              "kind": "text",
+              "kind": "object",
               "label": "Contact heading",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Contact heading (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Contact heading (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Contact heading (DE-CH)"
+                }
+              }
             },
             "openingHours": {
-              "kind": "text",
+              "kind": "object",
               "label": "Opening hours heading",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Opening hours heading (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Opening hours heading (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Opening hours heading (DE-CH)"
+                }
+              }
             },
             "more": {
-              "kind": "text",
+              "kind": "object",
               "label": "Heading of the links",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Heading of the links (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Heading of the links (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Heading of the links (DE-CH)"
+                }
+              }
             },
             "sitemap": {
-              "kind": "text",
+              "kind": "object",
               "label": "Sitemap link",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Sitemap link (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Sitemap link (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Sitemap link (DE-CH)"
+                }
+              }
             }
           }
         },
@@ -963,73 +1719,268 @@
           "collapsed": true,
           "fields": {
             "allLink": {
-              "kind": "text",
+              "kind": "object",
               "label": "Link to the list",
-              "required": true,
-              "description": "On the home page and on each project, like “All projects”."
+              "description": "On the home page and on each project, like “All projects”.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Link to the list (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Link to the list (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Link to the list (DE-CH)"
+                }
+              }
             },
             "empty": {
-              "kind": "text",
+              "kind": "object",
               "label": "Text without projects",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Text without projects (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Text without projects (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Text without projects (DE-CH)"
+                }
+              }
             },
             "noImage": {
-              "kind": "text",
+              "kind": "object",
               "label": "Text without an image",
-              "required": true,
-              "description": "On a project's card that has no image."
+              "description": "On a project's card that has no image.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Text without an image (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Text without an image (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Text without an image (DE-CH)"
+                }
+              }
             },
             "keyFacts": {
-              "kind": "text",
+              "kind": "object",
               "label": "Key facts",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Key facts (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Key facts (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Key facts (DE-CH)"
+                }
+              }
             },
             "project": {
-              "kind": "text",
+              "kind": "object",
               "label": "Project details",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Project details (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Project details (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Project details (DE-CH)"
+                }
+              }
             },
             "number": {
-              "kind": "text",
+              "kind": "object",
               "label": "Number",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Number (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Number (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Number (DE-CH)"
+                }
+              }
             },
             "duration": {
-              "kind": "text",
+              "kind": "object",
               "label": "Duration",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Duration (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Duration (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Duration (DE-CH)"
+                }
+              }
             },
             "weeks": {
-              "kind": "text",
+              "kind": "object",
               "label": "Unit of the duration",
-              "required": true,
-              "description": "After the number, like “weeks”."
+              "description": "After the number, like “weeks”.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Unit of the duration (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Unit of the duration (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Unit of the duration (DE-CH)"
+                }
+              }
             },
             "sector": {
-              "kind": "text",
+              "kind": "object",
               "label": "Sector",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Sector (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Sector (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Sector (DE-CH)"
+                }
+              }
             },
             "downloads": {
-              "kind": "text",
+              "kind": "object",
               "label": "Downloads",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Downloads (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Downloads (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Downloads (DE-CH)"
+                }
+              }
             },
             "location": {
-              "kind": "text",
+              "kind": "object",
               "label": "Location",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Location (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Location (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Location (DE-CH)"
+                }
+              }
             },
             "team": {
-              "kind": "text",
+              "kind": "object",
               "label": "Team",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Team (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Team (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Team (DE-CH)"
+                }
+              }
             },
             "gallery": {
-              "kind": "text",
+              "kind": "object",
               "label": "Gallery",
-              "required": true,
-              "description": "Only screen readers read it."
+              "description": "Only screen readers read it.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Gallery (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Gallery (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Gallery (DE-CH)"
+                }
+              }
             }
           }
         },
@@ -1041,31 +1992,106 @@
           "collapsed": true,
           "fields": {
             "allLink": {
-              "kind": "text",
+              "kind": "object",
               "label": "Link to the list",
-              "required": true,
-              "description": "On the home page and on each article, like “All news”."
+              "description": "On the home page and on each article, like “All news”.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Link to the list (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Link to the list (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Link to the list (DE-CH)"
+                }
+              }
             },
             "empty": {
-              "kind": "text",
+              "kind": "object",
               "label": "Text without articles",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Text without articles (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Text without articles (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Text without articles (DE-CH)"
+                }
+              }
             },
             "readMore": {
-              "kind": "text",
+              "kind": "object",
               "label": "Read more",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Read more (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Read more (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Read more (DE-CH)"
+                }
+              }
             },
             "by": {
-              "kind": "text",
+              "kind": "object",
               "label": "By",
-              "required": true,
-              "description": "Before the author's name, like “by”."
+              "description": "Before the author's name, like “by”.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "By (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "By (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "By (DE-CH)"
+                }
+              }
             },
             "relatedProject": {
-              "kind": "text",
+              "kind": "object",
               "label": "Related project",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Related project (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Related project (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Related project (DE-CH)"
+                }
+              }
             }
           }
         },
@@ -1077,79 +2103,289 @@
           "collapsed": true,
           "fields": {
             "allLink": {
-              "kind": "text",
+              "kind": "object",
               "label": "Link to the list",
-              "required": true,
-              "description": "On the home page and on each event, like “All events”."
+              "description": "On the home page and on each event, like “All events”.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Link to the list (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Link to the list (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Link to the list (DE-CH)"
+                }
+              }
             },
             "upcoming": {
-              "kind": "text",
+              "kind": "object",
               "label": "Upcoming events",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Upcoming events (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Upcoming events (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Upcoming events (DE-CH)"
+                }
+              }
             },
             "noUpcoming": {
-              "kind": "text",
+              "kind": "object",
               "label": "Text without upcoming events",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Text without upcoming events (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Text without upcoming events (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Text without upcoming events (DE-CH)"
+                }
+              }
             },
             "past": {
-              "kind": "text",
+              "kind": "object",
               "label": "Past events",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Past events (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Past events (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Past events (DE-CH)"
+                }
+              }
             },
             "when": {
-              "kind": "text",
+              "kind": "object",
               "label": "When",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "When (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "When (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "When (DE-CH)"
+                }
+              }
             },
             "until": {
-              "kind": "text",
+              "kind": "object",
               "label": "Until",
-              "required": true,
-              "description": "Between the start and the end."
+              "description": "Between the start and the end.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Until (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Until (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Until (DE-CH)"
+                }
+              }
             },
             "format": {
-              "kind": "text",
+              "kind": "object",
               "label": "Format",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Format (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Format (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Format (DE-CH)"
+                }
+              }
             },
             "and": {
-              "kind": "text",
+              "kind": "object",
               "label": "And",
-              "required": true,
-              "description": "Between two formats, like “In person and Online”."
+              "description": "Between two formats, like “In person and Online”.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "And (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "And (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "And (DE-CH)"
+                }
+              }
             },
             "seats": {
-              "kind": "text",
+              "kind": "object",
               "label": "Unit of the capacity",
-              "required": true,
-              "description": "After the number, like “seats”."
+              "description": "After the number, like “seats”.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Unit of the capacity (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Unit of the capacity (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Unit of the capacity (DE-CH)"
+                }
+              }
             },
             "venue": {
-              "kind": "text",
+              "kind": "object",
               "label": "Venue",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Venue (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Venue (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Venue (DE-CH)"
+                }
+              }
             },
             "map": {
-              "kind": "text",
+              "kind": "object",
               "label": "Name of the map",
-              "required": true,
-              "description": "Before the venue's name. Only screen readers read it."
+              "description": "Before the venue's name. Only screen readers read it.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Name of the map (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Name of the map (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Name of the map (DE-CH)"
+                }
+              }
             },
             "speakers": {
-              "kind": "text",
+              "kind": "object",
               "label": "Speakers",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Speakers (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Speakers (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Speakers (DE-CH)"
+                }
+              }
             },
             "register": {
-              "kind": "text",
+              "kind": "object",
               "label": "Register",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Register (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Register (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Register (DE-CH)"
+                }
+              }
             },
             "isPast": {
-              "kind": "text",
+              "kind": "object",
               "label": "Text after the event",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Text after the event (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Text after the event (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Text after the event (DE-CH)"
+                }
+              }
             }
           }
         },
@@ -1161,25 +2397,85 @@
           "collapsed": true,
           "fields": {
             "allLink": {
-              "kind": "text",
+              "kind": "object",
               "label": "Link to the list",
-              "required": true,
-              "description": "On each person's page, like “Team”."
+              "description": "On each person's page, like “Team”.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Link to the list (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Link to the list (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Link to the list (DE-CH)"
+                }
+              }
             },
             "empty": {
-              "kind": "text",
+              "kind": "object",
               "label": "Text without team members",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Text without team members (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Text without team members (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Text without team members (DE-CH)"
+                }
+              }
             },
             "projects": {
-              "kind": "text",
+              "kind": "object",
               "label": "Projects",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Projects (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Projects (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Projects (DE-CH)"
+                }
+              }
             },
             "events": {
-              "kind": "text",
+              "kind": "object",
               "label": "Events",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Events (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Events (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Events (DE-CH)"
+                }
+              }
             }
           }
         },
@@ -1191,35 +2487,112 @@
           "collapsed": true,
           "fields": {
             "pageTitle": {
-              "kind": "text",
+              "kind": "object",
               "label": "Title of the browser tab",
-              "required": true,
-              "description": "Search engines also show it."
+              "description": "Search engines also show it.",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Title of the browser tab (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Title of the browser tab (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Title of the browser tab (DE-CH)"
+                }
+              }
             },
             "eyebrow": {
-              "kind": "text",
+              "kind": "object",
               "label": "Eyebrow",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Eyebrow (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Eyebrow (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Eyebrow (DE-CH)"
+                }
+              }
             },
             "title": {
-              "kind": "text",
+              "kind": "object",
               "label": "Title",
-              "required": true
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Title (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Title (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Title (DE-CH)"
+                }
+              }
             },
             "text": {
-              "kind": "textarea",
+              "kind": "object",
               "label": "Text",
-              "rows": 2
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "textarea",
+                  "rows": 2,
+                  "label": "Text (EN)"
+                },
+                "de": {
+                  "kind": "textarea",
+                  "rows": 2,
+                  "label": "Text (DE)"
+                },
+                "de-ch": {
+                  "kind": "textarea",
+                  "rows": 2,
+                  "label": "Text (DE-CH)"
+                }
+              }
             },
             "link": {
               "kind": "object",
               "label": "Button",
               "fields": {
                 "label": {
-                  "kind": "text",
+                  "kind": "object",
                   "label": "Text",
-                  "required": true,
-                  "description": "The text of the link."
+                  "description": "The text of the link.",
+                  "localized": true,
+                  "fields": {
+                    "en": {
+                      "kind": "text",
+                      "label": "Text (EN)",
+                      "required": true
+                    },
+                    "de": {
+                      "kind": "text",
+                      "label": "Text (DE)"
+                    },
+                    "de-ch": {
+                      "kind": "text",
+                      "label": "Text (DE-CH)"
+                    }
+                  }
                 },
                 "href": {
                   "kind": "text",
@@ -1246,10 +2619,25 @@
           "addLabel": "Add menu item",
           "fields": {
             "label": {
-              "kind": "text",
+              "kind": "object",
               "label": "Label",
-              "required": true,
-              "width": "half"
+              "width": "half",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Label (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Label (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Label (DE-CH)"
+                }
+              }
             },
             "href": {
               "kind": "text",
@@ -1265,10 +2653,25 @@
               "addLabel": "Add submenu item",
               "fields": {
                 "label": {
-                  "kind": "text",
+                  "kind": "object",
                   "label": "Label",
-                  "required": true,
-                  "width": "half"
+                  "width": "half",
+                  "localized": true,
+                  "fields": {
+                    "en": {
+                      "kind": "text",
+                      "label": "Label (EN)",
+                      "required": true
+                    },
+                    "de": {
+                      "kind": "text",
+                      "label": "Label (DE)"
+                    },
+                    "de-ch": {
+                      "kind": "text",
+                      "label": "Label (DE-CH)"
+                    }
+                  }
                 },
                 "href": {
                   "kind": "text",
@@ -1287,10 +2690,25 @@
           "addLabel": "Add footer link",
           "fields": {
             "label": {
-              "kind": "text",
+              "kind": "object",
               "label": "Label",
-              "required": true,
-              "width": "half"
+              "width": "half",
+              "localized": true,
+              "fields": {
+                "en": {
+                  "kind": "text",
+                  "label": "Label (EN)",
+                  "required": true
+                },
+                "de": {
+                  "kind": "text",
+                  "label": "Label (DE)"
+                },
+                "de-ch": {
+                  "kind": "text",
+                  "label": "Label (DE-CH)"
+                }
+              }
             },
             "href": {
               "kind": "text",
@@ -1301,9 +2719,26 @@
           }
         },
         "footerNote": {
-          "kind": "textarea",
+          "kind": "object",
           "label": "Footer note",
-          "rows": 2
+          "localized": true,
+          "fields": {
+            "en": {
+              "kind": "textarea",
+              "rows": 2,
+              "label": "Footer note (EN)"
+            },
+            "de": {
+              "kind": "textarea",
+              "rows": 2,
+              "label": "Footer note (DE)"
+            },
+            "de-ch": {
+              "kind": "textarea",
+              "rows": 2,
+              "label": "Footer note (DE-CH)"
+            }
+          }
         }
       }
     },

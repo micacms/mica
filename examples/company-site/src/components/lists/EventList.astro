@@ -2,9 +2,11 @@
 /** The events, below the content of the page with the template "List of events". */
 import TagList from "@/components/TagList.astro";
 import { dateBadge, formatDateTime, formatLabel, getEvents, getLabels } from "@/lib/content";
+import { localePath } from "@/lib/i18n";
 
 // Upcoming events first, then the past ones. Both lists come from one helper.
-const [{ events: labels }, { upcoming, past }] = await Promise.all([getLabels(), getEvents()]);
+const locale = Astro.currentLocale;
+const [{ events: labels }, { upcoming, past }] = await Promise.all([getLabels(locale), getEvents(locale)]);
 const groups = [
   { heading: labels.upcoming, items: upcoming, empty: labels.noUpcoming },
   { heading: labels.past, items: past, empty: "" },
@@ -21,7 +23,7 @@ const groups = [
         ) : (
           <ul class="divide-y divide-line">
             {items.map((event) => {
-              const badge = dateBadge(event.data.startsAt);
+              const badge = dateBadge(event.data.startsAt, locale);
               return (
                 <li class="grid gap-x-8 gap-y-3 py-8 sm:grid-cols-[4.5rem_1fr]">
                   {badge ? (
@@ -33,9 +35,9 @@ const groups = [
                     <div class="hidden sm:block" />
                   )}
                   <div>
-                    <a href={`/events/${event.id}/`} class="group block">
+                    <a href={localePath(`/events/${event.id}/`, locale)} class="group block">
                       <time datetime={event.data.startsAt} class="text-xs font-medium text-muted">
-                        {formatDateTime(event.data.startsAt)}
+                        {formatDateTime(event.data.startsAt, locale)}
                       </time>
                       <h3 class="mt-1.5 text-xl font-semibold group-hover:text-primary sm:text-2xl">
                         {event.data.title}

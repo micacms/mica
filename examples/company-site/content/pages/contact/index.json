@@ -1,17 +1,42 @@
 {
-  "title": "Contact",
+  "title": {
+    "en": "Contact",
+    "de": "Kontakt",
+    "de-ch": null
+  },
   "id": "contact",
   "template": null,
-  "eyebrow": null,
-  "intro": "Come by the studio, or send a message.",
-  "heroImage": {
-    "path": "media/entrance.jpg",
-    "alt": "An open studio entrance with blue tiles and a potted olive tree"
+  "eyebrow": {
+    "en": null,
+    "de": null,
+    "de-ch": null
   },
+  "intro": {
+    "en": "Come by the studio, or send a message.",
+    "de": "Besuchen Sie uns im Studio, oder schreiben Sie uns.",
+    "de-ch": null
+  },
+  "heroImage": {
+    "en": {
+      "path": "media/entrance.jpg",
+      "alt": "An open studio entrance with blue tiles and a potted olive tree"
+    },
+    "de": {
+      "path": "media/entrance.jpg",
+      "alt": "Ein offener Studioeingang mit blauen Fliesen und einem Olivenbaum im Topf"
+    },
+    "de-ch": null
+  },
+  "body": {},
   "sections": [
     {
       "_key": "l38501",
-      "heading": "Find the studio",
+      "heading": {
+        "en": "Find the studio",
+        "de": "So finden Sie uns",
+        "de-ch": null
+      },
+      "text": {},
       "image": {
         "path": "media/city-map.jpg",
         "alt": "City map of fictional Porto Celeste, with Harbor Lane at Via dei Mercanti 27 near Piazza delle Vele, plus Porto Vecchio, Borgo Alto, San Telmo, Parco degli Olivi and Stazione Centrale"
@@ -20,8 +45,16 @@
     }
   ],
   "seo": {
-    "metaTitle": null,
-    "metaDescription": null,
+    "metaTitle": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
+    "metaDescription": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
     "ogImage": null,
     "noindex": false
   }

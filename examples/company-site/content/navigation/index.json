@@ -1,50 +1,90 @@
 {
   "main": [
     {
-      "label": "Services",
+      "label": {
+        "en": "Services",
+        "de": "Leistungen",
+        "de-ch": null
+      },
       "href": "/services",
       "children": []
     },
     {
-      "label": "Projects",
+      "label": {
+        "en": "Projects",
+        "de": "Projekte",
+        "de-ch": null
+      },
       "href": "/projects",
       "children": []
     },
     {
-      "label": "News",
+      "label": {
+        "en": "News",
+        "de": "News",
+        "de-ch": null
+      },
       "href": "/news",
       "children": []
     },
     {
-      "label": "Events",
+      "label": {
+        "en": "Events",
+        "de": "Veranstaltungen",
+        "de-ch": "Anlässe"
+      },
       "href": "/events",
       "children": []
     },
     {
-      "label": "Team",
+      "label": {
+        "en": "Team",
+        "de": "Team",
+        "de-ch": null
+      },
       "href": "/team",
       "children": []
     },
     {
-      "label": "About us",
+      "label": {
+        "en": "About us",
+        "de": "Über uns",
+        "de-ch": null
+      },
       "href": "/about-us",
       "children": []
     },
     {
-      "label": "Contact",
+      "label": {
+        "en": "Contact",
+        "de": "Kontakt",
+        "de-ch": null
+      },
       "href": "/contact",
       "children": []
     }
   ],
   "footer": [
     {
-      "label": "Legal notice",
+      "label": {
+        "en": "Legal notice",
+        "de": "Impressum",
+        "de-ch": null
+      },
       "href": "/legal"
     },
     {
-      "label": "Privacy",
+      "label": {
+        "en": "Privacy",
+        "de": "Datenschutz",
+        "de-ch": null
+      },
       "href": "/privacy"
     }
   ],
-  "footerNote": "© Harbor Lane Consulting"
+  "footerNote": {
+    "en": "© Harbor Lane Consulting",
+    "de": null,
+    "de-ch": null
+  }
 }

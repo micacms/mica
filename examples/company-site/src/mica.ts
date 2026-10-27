@@ -49,22 +49,28 @@ import {
 /**
  * Every text that a page shows is content, also a heading or the label of a
  * link: so an editor can change it, and the live preview can open it. A label
- * is required, because an empty one leaves a gap in the page.
+ * is required in the default locale, because an empty one leaves a gap in the
+ * page. The other locales fall back to it.
  */
 const label = (name: string, description?: string) =>
   text({
     label: name,
     required: true,
+    localized: true,
     ...(description ? { description } : {}),
   });
 
-/** A link of a page: its text and its address. */
+/** A link of a page: its text and its address. The website adds the locale to the address. */
 const link = (name: string) =>
   object({
     label: name,
     fields: {
       label: label("Text", "The text of the link."),
-      href: label("Link", "An address on this website, like /contact/."),
+      href: text({
+        label: "Link",
+        required: true,
+        description: "An address on this website, like /contact/.",
+      }),
     },
   });
 
@@ -94,6 +100,16 @@ export const site = defineSite({
   // The website's name at the top of the editor's menu.
   label: "Harbor Lane",
 
+  /**
+   * The languages of the website, the same as `i18n` in `astro.config.mjs`.
+   * A field with `localized: true` has a value for each. A missing value takes
+   * the value of the next locale in its chain: Swiss German takes German, and
+   * German takes English.
+   */
+  locales: ["en", "de", "de-ch"],
+  defaultLocale: "en",
+  fallback: { "de-ch": "de" },
+
   collections: {
     pages: collection({
       label: "Pages",
@@ -109,6 +125,7 @@ export const site = defineSite({
           required: true,
           maxLength: 120,
           listed: true,
+          localized: true,
         }),
         id: id({
           label: "ID",
@@ -135,29 +152,34 @@ export const site = defineSite({
           maxLength: 40,
           width: "half",
           description: "The short line above the title.",
+          localized: true,
         }),
         intro: textarea({
           label: "Introduction",
           rows: 3,
           maxLength: 400,
           description: "Short lead paragraph shown below the page title.",
+          localized: true,
         }),
+        // An image for each language, so that its alt text has a translation. A language without one shows the English image.
         heroImage: media({
           label: "Hero image",
           accept: "image",
           alt: "required",
+          localized: true,
         }),
         body: richText({
           label: "Content",
           toolbar: "full",
+          localized: true,
         }),
         sections: repeater({
           label: "Extra sections",
           itemLabel: "heading",
           addLabel: "Add section",
           fields: {
-            heading: text({ label: "Heading", required: true }),
-            text: richText({ label: "Text" }),
+            heading: text({ label: "Heading", required: true, localized: true }),
+            text: richText({ label: "Text", localized: true }),
             image: media({ label: "Image", accept: "image", alt: "required" }),
             layout: select({
               label: "Layout",
@@ -176,11 +198,12 @@ export const site = defineSite({
           collapsible: true,
           collapsed: true,
           fields: {
-            metaTitle: text({ label: "Meta title", maxLength: 60 }),
+            metaTitle: text({ label: "Meta title", maxLength: 60, localized: true }),
             metaDescription: textarea({
               label: "Meta description",
               rows: 2,
               maxLength: 160,
+              localized: true,
             }),
             ogImage: media({ label: "Social sharing image", accept: "image" }),
             noindex: boolean({ label: "Hide from search engines" }),
@@ -202,6 +225,7 @@ export const site = defineSite({
           required: true,
           maxLength: 120,
           listed: true,
+          localized: true,
         }),
         id: id({ label: "ID", from: "title" }),
         year: number({
@@ -257,6 +281,7 @@ export const site = defineSite({
         }),
         description: richText({
           label: "Description",
+          localized: true,
           toolbar: [
             "bold",
             "italic",
@@ -281,8 +306,8 @@ export const site = defineSite({
           addLabel: "Add fact",
           max: 8,
           fields: {
-            label: text({ label: "Label", required: true, width: "half" }),
-            value: text({ label: "Value", required: true, width: "half" }),
+            label: text({ label: "Label", required: true, width: "half", localized: true }),
+            value: text({ label: "Value", required: true, width: "half", localized: true }),
           },
         }),
         gallery: media({
@@ -329,6 +354,7 @@ export const site = defineSite({
           required: true,
           maxLength: 140,
           listed: true,
+          localized: true,
         }),
         id: id({ label: "ID", from: "title" }),
         publishDate: date({ label: "Date", listed: true, width: "half" }),
@@ -348,13 +374,13 @@ export const site = defineSite({
           maxLength: 24,
           suggestions: ["research", "careers", "case study", "operations"],
         }),
-        excerpt: textarea({ label: "Teaser", rows: 3, maxLength: 300 }),
+        excerpt: textarea({ label: "Teaser", rows: 3, maxLength: 300, localized: true }),
         coverImage: media({
           label: "Cover image",
           accept: "image",
           alt: "required",
         }),
-        body: richText({ label: "Article" }),
+        body: richText({ label: "Article", localized: true }),
       },
     }),
 
@@ -370,6 +396,7 @@ export const site = defineSite({
           required: true,
           maxLength: 120,
           listed: true,
+          localized: true,
         }),
         id: id({ label: "ID", from: "title" }),
         startsAt: date({
@@ -416,8 +443,8 @@ export const site = defineSite({
           collection: "team",
           multiple: true,
         }),
-        summary: textarea({ label: "Summary", rows: 3, maxLength: 300 }),
-        body: richText({ label: "Programme" }),
+        summary: textarea({ label: "Summary", rows: 3, maxLength: 300, localized: true }),
+        body: richText({ label: "Programme", localized: true }),
         tags: tags({
           label: "Tags",
           max: 5,
@@ -437,7 +464,7 @@ export const site = defineSite({
       fields: {
         name: text({ label: "Name", required: true, listed: true }),
         id: id({ label: "ID", from: "name" }),
-        role: text({ label: "Role", listed: true, width: "half" }),
+        role: text({ label: "Role", listed: true, width: "half", localized: true }),
         email: email({ label: "Email", width: "half" }),
         phone: text({
           label: "Phone",
@@ -451,7 +478,7 @@ export const site = defineSite({
           accept: "image",
           alt: "required",
         }),
-        bio: textarea({ label: "Short biography", rows: 4, maxLength: 600 }),
+        bio: textarea({ label: "Short biography", rows: 4, maxLength: 600, localized: true }),
         featured: boolean({ label: "Show on the team page", default: false }),
       },
     }),
@@ -464,7 +491,7 @@ export const site = defineSite({
       fields: {
         companyName: text({ label: "Company name", required: true }),
         logo: media({ label: "Logo", accept: "image" }),
-        tagline: text({ label: "Tagline", maxLength: 160 }),
+        tagline: text({ label: "Tagline", maxLength: 160, localized: true }),
         address: textarea({ label: "Address", rows: 3, group: "Contact" }),
         email: email({ label: "Email", group: "Contact", width: "half" }),
         phone: text({ label: "Phone", group: "Contact", width: "half" }),
@@ -472,6 +499,7 @@ export const site = defineSite({
           label: "Opening hours",
           rows: 3,
           group: "Contact",
+          localized: true,
         }),
         social: repeater({
           label: "Social links",
@@ -507,6 +535,7 @@ export const site = defineSite({
               label: "Default description",
               rows: 2,
               maxLength: 160,
+              localized: true,
             }),
             defaultImage: media({
               label: "Default sharing image",
@@ -563,7 +592,7 @@ export const site = defineSite({
           label: "Contact box",
           fields: {
             title: label("Title"),
-            text: textarea({ label: "Text", rows: 2 }),
+            text: textarea({ label: "Text", rows: 2, localized: true }),
             link: link("Button"),
           },
         }),
@@ -593,6 +622,10 @@ export const site = defineSite({
             ),
             tags: label(
               "Name of a list of tags",
+              "Only screen readers read it.",
+            ),
+            languages: label(
+              "Name of the language menu",
               "Only screen readers read it.",
             ),
           },
@@ -701,7 +734,7 @@ export const site = defineSite({
             ),
             eyebrow: label("Eyebrow"),
             title: label("Title"),
-            text: textarea({ label: "Text", rows: 2 }),
+            text: textarea({ label: "Text", rows: 2, localized: true }),
             link: link("Button"),
           },
         ),
@@ -717,7 +750,7 @@ export const site = defineSite({
           itemLabel: "label",
           addLabel: "Add menu item",
           fields: {
-            label: text({ label: "Label", required: true, width: "half" }),
+            label: text({ label: "Label", required: true, width: "half", localized: true }),
             href: text({
               label: "Link",
               required: true,
@@ -729,7 +762,7 @@ export const site = defineSite({
               itemLabel: "label",
               addLabel: "Add submenu item",
               fields: {
-                label: text({ label: "Label", required: true, width: "half" }),
+                label: text({ label: "Label", required: true, width: "half", localized: true }),
                 href: text({ label: "Link", required: true, width: "half" }),
               },
             }),
@@ -740,11 +773,11 @@ export const site = defineSite({
           itemLabel: "label",
           addLabel: "Add footer link",
           fields: {
-            label: text({ label: "Label", required: true, width: "half" }),
+            label: text({ label: "Label", required: true, width: "half", localized: true }),
             href: text({ label: "Link", required: true, width: "half" }),
           },
         }),
-        footerNote: textarea({ label: "Footer note", rows: 2 }),
+        footerNote: textarea({ label: "Footer note", rows: 2, localized: true }),
       },
     }),
 

@@ -1,5 +1,9 @@
 {
-  "title": "Pricing review for a logistics group",
+  "title": {
+    "en": "Pricing review for a logistics group",
+    "de": null,
+    "de-ch": null
+  },
   "id": "pricing-review-for-a-logistics-group",
   "year": 2023,
   "category": "strategy",
@@ -10,6 +14,7 @@
     "data",
     "strategy"
   ],
+  "description": {},
   "location": {
     "address": "8 Lantern Quay",
     "city": "Marisport",
@@ -17,16 +22,40 @@
   },
   "facts": [
     {
-      "label": "Routes analysed",
-      "value": "4,000"
+      "label": {
+        "en": "Routes analysed",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "4,000",
+        "de": null,
+        "de-ch": null
+      }
     },
     {
-      "label": "Margin gain",
-      "value": "+2.1 points"
+      "label": {
+        "en": "Margin gain",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "+2.1 points",
+        "de": null,
+        "de-ch": null
+      }
     },
     {
-      "label": "Customers in scope",
-      "value": "3"
+      "label": {
+        "en": "Customers in scope",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "3",
+        "de": null,
+        "de-ch": null
+      }
     }
   ],
   "gallery": [

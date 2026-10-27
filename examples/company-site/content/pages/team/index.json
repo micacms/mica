@@ -1,14 +1,39 @@
 {
-  "title": "Team",
+  "title": {
+    "en": "Team",
+    "de": "Team",
+    "de-ch": null
+  },
   "id": "team",
   "template": "team",
-  "eyebrow": "People",
-  "intro": "The people behind the work.",
-  "heroImage": null,
+  "eyebrow": {
+    "en": "People",
+    "de": "Menschen",
+    "de-ch": null
+  },
+  "intro": {
+    "en": "The people behind the work.",
+    "de": "Die Menschen hinter der Arbeit.",
+    "de-ch": null
+  },
+  "heroImage": {
+    "en": null,
+    "de": null,
+    "de-ch": null
+  },
+  "body": {},
   "sections": [],
   "seo": {
-    "metaTitle": null,
-    "metaDescription": null,
+    "metaTitle": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
+    "metaDescription": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
     "ogImage": null,
     "noindex": false
   }
