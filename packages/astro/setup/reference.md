@@ -270,6 +270,12 @@ export const site = defineSite({
   `/team/`.
 - The labels of `select()` options are the editor's. A name of an option that
   the website shows belongs in a localized field.
+- A `url` can name `{locale}`, such as `/{locale}/news/{id}`, so that the
+  editor's preview and links show the page of the form's language. Without
+  `prefixDefaultLocale: true` in `defineSite`, as in Astro, the default
+  locale's address has no prefix: `/news/hello`.
+- A localized `id()`, such as a `slug`, must be unique in each locale:
+  `npx mica check` and Publish report a duplicate.
 - Content that is different in each language: one collection for each locale.
 
 ### Images

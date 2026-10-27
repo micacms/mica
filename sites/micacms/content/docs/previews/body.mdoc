@@ -13,6 +13,8 @@ Set `MICA_SITE_URL` to the website's address, such as `https://example.com`. The
 
 An address can also name other fields, such as `/{activity}/{id}`. Then an entry with a draft shows no "Open on website", because the draft can move its page. The Publish page links to such a page when the change's comparison has loaded.
 
+On a site in several languages, an address can name `{locale}`, such as `/{locale}/news/{id}`. Then the link and the preview show the page in the language of the form. See [Several languages](/docs/multilingual/).
+
 The link opens the published page. After a Publish, the host needs a few minutes to build it.
 
 ## Preview with the local editor
@@ -46,7 +48,7 @@ Add `micaPreview()` from `@micacms/astro/preview` to `astro.config`. Then start 
 - A rich text has one outline. A click on a paragraph puts the cursor in that paragraph. When the cursor moves to another paragraph, the preview shows it.
 - A click on an image opens its media field. In a gallery, the form goes to that image.
 - A click on the name of a linked entry, such as the author of an article, goes to the field that links to it, such as **Author**. The label also has a button with the entry's name: it opens the entry over the current form, to edit it. In the field, **Edit** next to a chosen entry does the same.
-- In **Browse** mode, the page acts as the website does. Back in Edit mode, the form of the page that the preview shows opens.
+- In **Browse** mode, the page acts as the website does. Back in Edit mode, the form of the page that the preview shows opens, in the language of that page.
 - A field with changes that are not published has a yellow outline. In a rich text, each changed or new paragraph, heading, list or table has it. When the change has no such part, for example when you only deleted a paragraph, the whole text has it.
 - When you click in a field of the form, the preview scrolls to it, and the rest of the page dims. For a field that links to other entries, it shows the linked entry.
 

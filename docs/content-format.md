@@ -320,6 +320,9 @@ path: `body.de.mdoc`, `sections.k7f3a9.text.en.mdoc`.
   file holds only the values that an editor gave.
 - An `object()`, a `repeater()` and the ID field of a collection MUST NOT have
   `localized`. Their fields can. A localized `id()` MUST NOT have `from`.
+- The values of a localized `id()` at the top level of a collection MUST
+  differ between the entries in each locale, with the fallback that the
+  website uses. A checker reports a value that another entry has.
 
 ## 6. Media
 
@@ -400,6 +403,9 @@ JSON object with:
   only in case.
 - `fallback`: only when a locale falls back to another one before the default
   locale, such as `{ "de-ch": "de" }`.
+- `prefixDefaultLocale`: `true` only when the default locale has its prefix in
+  an address with `{locale}`, as in Astro's `i18n.routing`. Absent means
+  `false`.
 - `references`: the reference sets, by name, only when the model has any. Each
   has `label`, `file` (the website's file, from the Astro project root), and
   optionally `id` and `title` (the keys of an item).

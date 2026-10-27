@@ -14,7 +14,7 @@ With the object pattern of record 22, a site in several languages declares an ob
 - `required` and `default` apply to the default locale only. A missing translation never blocks a save or Publish.
 - The fallback is resolved when the website reads the content, never written to a file. A missing value takes the value of the next locale in its chain: `fallback`, then `defaultLocale`. A file holds only real translations, and a Git diff shows only them.
 - The editor shows a form in one locale at a time, with a switcher. A localized field shows the input of that locale, and a button with its value in the other locales, which marks a missing translation. An empty text input shows its fallback as the placeholder. A field that is the same in each locale shows in each locale.
-- An entry is in all locales. The list of locales that an entry is in, `{locale}` in a `url`, and a check that a localized ID is unique come with a later record.
+- An entry is in all locales. The list of locales that an entry is in comes with a later record. `{locale}` in a `url` and a check that a localized ID is unique are in [43](0043-locale-in-page-addresses.md).
 
 ## Consequences
 

@@ -17,9 +17,13 @@ export const site = defineSite({
   defaultLocale: "de",
   // French falls back to English, then to the default locale.
   fallback: { fr: "en" },
+  // As in Astro: the default locale has its prefix too, /de/…
+  prefixDefaultLocale: true,
   collections: {
     pages: collection({
       label: "Pages",
+      // The page in each language: the editor shows the one of the form's language.
+      url: "/{locale}/{id}/",
       fields: {
         // The ID of the entry: the same for each language.
         id: id(),
@@ -28,8 +32,6 @@ export const site = defineSite({
         // One image for all languages.
         image: media({ label: "Image", accept: "image" }),
         imageAlt: text({ label: "Alt text", localized: true }),
-        // A page name for each language, when the names must differ.
-        slug: id({ label: "URL", localized: true }),
       },
     }),
   },
@@ -39,7 +41,7 @@ export const site = defineSite({
 Mica stores a localized value in `index.json`, with one key for each locale, the default locale first, and rich text in one file for each locale:
 
 ```text
-content/pages/about/index.json   { "title": { "de": "Über uns", "en": "About us", "fr": null }, "slug": { "de": "ueber-uns", "en": "about-us", "fr": null } }
+content/pages/about/index.json   { "title": { "de": "Über uns", "en": "About us", "fr": null } }
 content/pages/about/body.de.mdoc
 content/pages/about/body.en.mdoc
 ```
@@ -51,7 +53,7 @@ The rules:
 - An `object()`, a `repeater()` and the ID field of a collection cannot be localized. Localize the fields inside them.
 - A localized `id()` cannot have `from`. Editors write the ID of each language.
 - `localized: { fallback: false }` keeps a missing value empty on the website. Use it for text where the wrong language is worse than no text, such as legal text.
-- The ID of an entry is unique, because it is the name of its folder. A localized `id()` field such as `slug` is not checked: neither `npx mica check` nor Astro finds two pages with the same English URL, and Astro then builds only one of them. Keep these URLs unique.
+- The ID of an entry is unique, because it is the name of its folder. A localized `id()` among the fields of a collection, such as a page name for each language, must be unique in each locale, with its fallback: `npx mica check` and Publish report a value that another entry has.
 - The title of an entry in the editor's lists, a list column, a sort and a new entry's ID use the default locale. When it is empty, they use the next locale that has a value.
 
 ### Add languages to a site
@@ -64,9 +66,11 @@ The rules:
 
 The header of an entry or a singleton has a **Language** switcher, the default locale first. Each language tells how many of its texts are empty while the default locale has them, and marks a language with a problem. A localized field shows the input of the chosen language, and a language button at the end of its label. The button shows the field in the other languages, and it marks a missing translation. An empty text input shows its fallback in grey. A field that is the same in each language shows in each language. See [Edit content](/docs/editing/).
 
+With `{locale}` in the `url` of a collection or a singleton, the preview, **Open on website** and the URL under the ID field show the page of the form's language. When the page in the live preview is in another language, the form changes to that language. Lists, relation pickers and the Publish page show the page of the default locale. `{locale}` is a part of the path alone, between two `/`. Without `prefixDefaultLocale: true`, the default locale's page has no prefix: `/{locale}/{id}/` is `/about/` in the default locale and `/en/about/` in English.
+
 ### The pages
 
-Tell Astro the same languages in `astro.config.mjs`. With `prefixDefaultLocale`, each language has its prefix, also the default one (`/de/…`), as the page below expects:
+Tell Astro the same languages in `astro.config.mjs`, with the same `prefixDefaultLocale`:
 
 ```js
 export default defineConfig({
@@ -85,10 +89,7 @@ import { site } from "../../mica";
 export async function getStaticPaths() {
   const pages = await getCollection("pages");
   return site.locales!.flatMap((lang) =>
-    pages.map((page) => {
-      const data = localize(site, "pages", page.data, lang);
-      return { params: { lang, id: data.slug ?? page.id }, props: { data } };
-    }),
+    pages.map((page) => ({ params: { lang, id: page.id }, props: { data: localize(site, "pages", page.data, lang) } })),
   );
 }
 
@@ -105,6 +106,7 @@ A missing translation shows the fallback here. Choose what your site does: show 
 
 - A link in rich text keeps the address that the editor wrote. The `link` option of `renderRichText` gives each link the address in the page's language.
 - The labels of a `select()` field's options are the editor's. When the website shows the name of an option, keep that name in a localized field, for example in a singleton with the texts of the templates.
+- An address with a page name for each language, such as `/{lang}/{slug}`, is your site's own. The `url` of the model names `{id}`, so the editor's links then go to a page by its ID.
 
 ## One collection per language
 
@@ -119,4 +121,4 @@ Each collection is a list of its own in the editor, with its own folder, URLs an
 
 ## What comes later
 
-A list of the languages that an entry is in, `{locale}` in a collection's `url`, and a check that a localized ID is unique come in later versions. See the decision record [Localized fields](https://github.com/micacms/mica/blob/main/docs/adr/0042-localized-fields.md).
+A list of the languages that an entry is in comes in a later version. See the decision records [Localized fields](https://github.com/micacms/mica/blob/main/docs/adr/0042-localized-fields.md) and [The locale in a page's address](https://github.com/micacms/mica/blob/main/docs/adr/0043-locale-in-page-addresses.md).

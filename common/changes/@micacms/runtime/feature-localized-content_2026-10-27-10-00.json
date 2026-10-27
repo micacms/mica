@@ -1,7 +1,7 @@
 {
   "changes": [
     {
-      "comment": "The self-hosted editor edits localized fields in one language at a time, with a language switcher.",
+      "comment": "The self-hosted editor edits localized fields in one language at a time, with a language switcher. Publish refuses a localized ID that another entry has in the same locale.",
       "type": "minor",
       "packageName": "@micacms/runtime"
     }

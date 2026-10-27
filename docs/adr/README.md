@@ -41,6 +41,7 @@ Each record states a decision that is still true: its context, the decision and 
 - [22. No native multilingual content in 1.0](0022-no-native-multilingual-content.md) (replaced by 42)
 - [41. An entry has an ID, and its page has a URL](0041-the-entry-id-is-not-its-url.md)
 - [42. Localized fields: one entry, a value for each locale](0042-localized-fields.md)
+- [43. The locale in a page's address, and unique localized IDs](0043-locale-in-page-addresses.md)
 
 ## Websites and setup
 
