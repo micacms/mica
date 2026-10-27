@@ -130,6 +130,34 @@
       "href": "/docs/previews/"
     }
   },
+  "languages": {
+    "eyebrow": "Localization",
+    "title": "Every language of a page, in one entry.",
+    "lead": "Mark a field as localized, and it keeps a value for each language of your site, in the same file. Editors choose the language at the top of the form and see what still needs a translation. Astro builds a page for each language, with the locales of its own i18n.",
+    "points": [
+      {
+        "text": "A language switcher in the form, with the number of missing translations"
+      },
+      {
+        "text": "Beside each translated field: its other languages, ready to reuse"
+      },
+      {
+        "text": "A missing translation falls back to another language, such as Swiss German to German"
+      },
+      {
+        "text": "The live preview shows the page in the language of the form"
+      },
+      {
+        "text": "An address for each language, such as /de/news/opening-hours/"
+      }
+    ],
+    "file": "content/news/opening-hours/index.json",
+    "code": "{\n  \"title\": {\n    \"en\": \"New opening hours\",\n    \"de\": \"Neue Öffnungszeiten\",\n    \"de-ch\": null\n  },\n  \"id\": \"opening-hours\",\n  \"summary\": {\n    \"en\": \"Open from 8:00.\",\n    \"de\": \"Ab 8 Uhr geöffnet.\",\n    \"de-ch\": null\n  }\n}",
+    "link": {
+      "label": "Set up localization",
+      "href": "/docs/multilingual/"
+    }
+  },
   "run": {
     "eyebrow": "Run it your way",
     "title": "On your laptop while you build. On your server for your team.",
@@ -267,6 +295,9 @@
     "good": [
       {
         "text": "A content-driven Astro website: a company site, a blog, documentation"
+      },
+      {
+        "text": "A website in one language, or a multilingual one"
       },
       {
         "text": "One developer, and two to five people who write"

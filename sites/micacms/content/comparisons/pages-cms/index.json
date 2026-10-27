@@ -19,6 +19,9 @@
       "text": "You want to see the real Astro page beside the form, with the drafts in it."
     },
     {
+      "text": "Your website is multilingual, and editors translate each page in one form."
+    },
+    {
       "text": "Your repository is on GitLab or another Git host that is not GitHub."
     }
   ],

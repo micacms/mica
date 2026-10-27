@@ -16,6 +16,8 @@ A coding agent, such as Claude Code, Cursor or VS Code, can read and change the 
 
 Every read gives a revision, and every save sends it back. If you saved the same entry in the editor in the meantime, Mica refuses the agent's save, and the agent reads your version first. An agent never overwrites your work.
 
+On a multilingual site, a field with `localized` is an object with a value for each locale, such as `{ "en": "About us", "de": "Über uns" }`. `describe_model` shows the locales of each such field, so an agent can write a translation into the right one. `list_entries` gives `missingTranslations` for each entry, such as `{ "de": 2 }`, and `missing: "de"` lists only the entries that miss German translations.
+
 Mica also refuses every write while a newer content model cannot be read. The answer says why. The agent must stop, and you upgrade Mica or correct the model.
 
 ## On your own machine

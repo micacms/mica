@@ -1043,6 +1043,71 @@
             }
           }
         },
+        "languages": {
+          "kind": "object",
+          "label": "Localization",
+          "required": true,
+          "fields": {
+            "eyebrow": {
+              "kind": "text",
+              "label": "Eyebrow",
+              "required": true
+            },
+            "title": {
+              "kind": "text",
+              "label": "Title",
+              "required": true
+            },
+            "lead": {
+              "kind": "textarea",
+              "label": "Lead",
+              "required": true,
+              "rows": 3
+            },
+            "points": {
+              "kind": "repeater",
+              "label": "Points",
+              "itemLabel": "text",
+              "max": 5,
+              "fields": {
+                "text": {
+                  "kind": "text",
+                  "label": "Point",
+                  "required": true
+                }
+              }
+            },
+            "file": {
+              "kind": "text",
+              "label": "File path",
+              "description": "Shown above the code."
+            },
+            "code": {
+              "kind": "textarea",
+              "label": "Code",
+              "rows": 8
+            },
+            "link": {
+              "kind": "object",
+              "label": "Link",
+              "required": true,
+              "fields": {
+                "label": {
+                  "kind": "text",
+                  "label": "Label",
+                  "required": true,
+                  "width": "half"
+                },
+                "href": {
+                  "kind": "text",
+                  "label": "Link",
+                  "required": true,
+                  "width": "half"
+                }
+              }
+            }
+          }
+        },
         "run": {
           "kind": "object",
           "label": "Ways to run",

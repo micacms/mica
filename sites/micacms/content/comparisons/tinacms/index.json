@@ -19,6 +19,9 @@
       "text": "Your content is on a Git host other than GitHub."
     },
     {
+      "text": "Editors translate in one form, with a language switcher and the number of missing translations."
+    },
+    {
       "text": "You want to run the editor yourself in one container, behind any OpenID Connect provider."
     }
   ],

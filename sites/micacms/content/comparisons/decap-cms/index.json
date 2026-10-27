@@ -27,7 +27,7 @@
       "text": "You want an editorial workflow, with a pull request for each entry."
     },
     {
-      "text": "You need languages as a setting, with three file structures."
+      "text": "You want each language in a file or a folder of its own."
     },
     {
       "text": "Your Git host is Bitbucket or Azure DevOps, or you want a wide choice of Git providers."

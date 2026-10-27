@@ -7,7 +7,7 @@
   "guide": [
     {
       "title": "Choose Mica",
-      "text": "You build with Astro and want content as plain files in Git, a local or self-hosted editor, a live preview of the real page, and agents through MCP, with no database."
+      "text": "You build with Astro and want content as plain files in Git, single-language or multilingual, a local or self-hosted editor, a live preview of the real page, and agents through MCP, with no database."
     },
     {
       "title": "Choose a hosted CMS",
@@ -15,7 +15,7 @@
     },
     {
       "title": "Choose another Git editor",
-      "text": "Its Git hosts, languages, editing experience or way to integrate fit your project better."
+      "text": "Its Git hosts, localization, editing experience or way to integrate fit your project better."
     }
   ],
   "links": [
@@ -108,8 +108,8 @@
     },
     {
       "key": "i18n",
-      "label": "Languages",
-      "mica": "No setting. Two documented patterns."
+      "label": "Localization (i18n)",
+      "mica": "Yes. A field has a value for each language in one entry, with fallbacks. The editor shows one language at a time, and the preview follows it. No machine translation."
     },
     {
       "key": "roles",

@@ -16,9 +16,9 @@ Decap CMS works with GitHub, GitLab, Bitbucket, Gitea, Forgejo and Azure through
 
 The documentation of Decap CMS says that, without Decap Turbo, each file is one request to the host API. Mica reads a Git clone. It is tested with 1,000 entries in a collection, 5,000 files and 5 editors at the same time. These are tested bounds, not proof that Mica is faster. Git LFS and a content submodule also work in Mica; the table shows what Decap CMS documents.
 
-### Review and languages
+### Review and localization
 
-Decap CMS has an editorial workflow with one branch and one pull request for each entry, and content in several languages with three file structures. Mica has no roles and no language setting, only two documented patterns. In Mica, a save writes a draft, and Publish makes one commit of the changes the editor chooses. Review uses a staging branch and a second Mica.
+Decap CMS has an editorial workflow with one branch and one pull request for each entry, and multilingual content with three file structures. Mica has no roles. In Mica, a save writes a draft, and Publish makes one commit of the changes the editor chooses. Review uses a staging branch and a second Mica. Mica keeps the languages of an entry in one entry: a field can have a value for each language, and the editor shows one language at a time.
 
 ### Equal, or not documented
 

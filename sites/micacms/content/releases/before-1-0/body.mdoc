@@ -1,4 +1,4 @@
-Mica is experimental and not ready for production. The API and the content format can still change before 1.0. This is what Mica does today, at 0.15.
+Mica is experimental and not ready for production. The API and the content format can still change before 1.0. This is what Mica does today, at 0.16.
 
 ## The model and the website
 
@@ -6,6 +6,18 @@ Mica is experimental and not ready for production. The API and the content forma
 - An entry has an ID: one part, the name of its folder, and what a relation stores. You declare it with `id()`. The page of an entry has a URL, such as `/news/{id}`.
 - A collection's URL can have more parts, such as `/{activity}/{id}`. A part can be a select, a relation to one entry, or a date without a time.
 - `@micacms/astro` turns the model into Astro collections. The build needs no server, no token and no network. Rich text is Markdoc, and images in it come out as optimised `srcset` images.
+
+## Localization (i18n)
+
+- A site declares its languages with the names of Astro's i18n: `locales`, `defaultLocale`, `fallback` and `prefixDefaultLocale`.
+- A field with `localized: true` has a value for each language, in the same entry. Rich text has one file for each language, such as `body.de.mdoc`. A Git diff shows each translation on its own line.
+- A missing translation falls back to another language, for example Swiss German to German, then to the main language. `localize()` gives a page the values of its language, with the types of the model.
+- A URL can name the language, such as `/{locale}/news/{id}`. A link in rich text can get the address of the page's language.
+- The editor shows a form in one language at a time. The language switcher counts the missing translations, and a button beside each translated field shows the other languages and reuses one.
+- The preview and "Open on website" show the page in the language of the form. A page in another language in the live preview changes the form to that language.
+- `mica check` and Publish report two entries with the same translated ID in one language, because they would have the same address.
+- Find what still needs a translation: the list of a collection counts the missing translations of each entry and filters by language, and the Overview lists them for each language. `list_entries` gives them to an agent, and `mica check` lists them.
+- `localesOf()` gives the languages that an entry has its own text in, so a site can make a page, a sitemap entry or an `hreflang` link only for them.
 
 ## Editing
 
