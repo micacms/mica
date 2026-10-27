@@ -24,24 +24,11 @@ Delete this file before the merge. It is a note for the next coding agent, not d
 
 ## Open
 
-1. The editor's language UX was reworked after a first browser check (screenshots, with the user's permission): the switcher is in the sticky page header (`PageHeader` slot `toolbar`), the status is in the `meta` line under the title, a localized field has `FieldTranslations` beside its label, and closed groups and rows show `MissingTranslations`. Not checked yet: a problem link to another language, and the overlay form beside the live preview.
-2. Run the `reviewer` agent on the last commit (the editor switcher).
-3. The website comparison pages still say "Mica has no language setting":
-   - `sites/micacms/content/compare/index.json`
-   - `sites/micacms/content/comparisons/{decap-cms,sveltia-cms,cloudcannon,pages-cms}`
-
-   Suggestion: `site-keeper` changes them at the release.
-4. The "Change the model" page (`docs/model-changes`) needs a row: when a field with values gets `localized`, its values must move into the default locale. The page holds recipe scripts that `packages/core/test/recipes.test.ts` compares byte for byte, so keep them unchanged when you save through MCP.
-5. Later records (ADR 42 names them):
-   - the list of the locales that an entry is in;
-   - `{locale}` in a collection's `url`;
-   - a uniqueness check for a localized `id()`.
-6. The example site (`examples/company-site`) has `en`, `de` and `de-ch` (fallback `de-ch` → `de` → `en`). Uncommitted at the time of this note.
-   - The routes are in `src/pages/[...locale]/`: English without a prefix, so the collections' `url` and the preview stay English.
-   - `src/lib/i18n.ts` has the URL helpers; `src/lib/content.ts` localizes each read, also `related()` entries with `inLocale`.
-   - Known limits: links inside rich text and the labels of select options are not localized.
-   - The type change from this work: after `localize()`, a required localized field is never null (`LocalizedValue<T, R>` in core).
-7. Then open the pull request. Use the structure in AGENTS.md, and say why the API reports (`packages/{core,astro}/api/*.api.md`) change.
+1. The `reviewer` agent reviewed the editor and the example site. Its findings are fixed (field key per locale, `lang` on the value only, visible "!", header scroll padding, focus after Use, legend, Safari, `reveal` guard, tests, no switcher without localized fields). Not checked in a browser: the overlay form beside the live preview.
+2. The website comparison pages still say "Mica has no language setting": `sites/micacms/content/compare/index.json` and `sites/micacms/content/comparisons/{decap-cms,sveltia-cms,cloudcannon,pages-cms}`. Suggestion: `site-keeper` changes them at the release.
+3. Known gaps for GitHub issues with the label `known-gap` (ask the user first): links in rich text and select option labels are not localized; Preview and "Open on website" open the default locale's page.
+4. Later records (ADR 42 names them): the list of the locales that an entry is in; `{locale}` in a collection's `url`; a uniqueness check for a localized `id()`.
+5. Delete this file, then open the pull request. Use the structure in AGENTS.md, and say why the API reports (`packages/{core,astro}/api/*.api.md`) change.
 
 ## The user's rules for this work
 
