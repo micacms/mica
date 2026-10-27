@@ -3,7 +3,8 @@
 import ProjectCard from "@/components/ProjectCard.astro";
 import { getLabels, getProjects } from "@/lib/content";
 
-const [{ projects: labels }, projects] = await Promise.all([getLabels(), getProjects()]);
+const locale = Astro.currentLocale;
+const [{ projects: labels }, projects] = await Promise.all([getLabels(locale), getProjects(locale)]);
 ---
 
 <div class="container-page pb-8">

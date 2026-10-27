@@ -43,7 +43,7 @@ test("an editor sees the drafts beside the form, behind the preview's gate", asy
     .not.toMatch(/mica_|reloading/);
 
   // Click to edit, as in the local editor.
-  await expect(heading).toHaveAttribute("data-mica-field", /"title"/);
+  await expect(heading).toHaveAttribute("data-mica-field", /"title\.en"/);
   await heading.click();
   await expect(page.getByRole("textbox", { name: "Title (required)" })).toBeFocused();
 

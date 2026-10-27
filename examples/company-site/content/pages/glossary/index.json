@@ -1,14 +1,39 @@
 {
-  "title": "Glossary",
+  "title": {
+    "en": "Glossary",
+    "de": "Glossar",
+    "de-ch": null
+  },
   "id": "glossary",
   "template": "glossary",
-  "eyebrow": "Reference",
-  "intro": "The words we use, and what we mean by them.",
-  "heroImage": null,
+  "eyebrow": {
+    "en": "Reference",
+    "de": "Nachschlagen",
+    "de-ch": null
+  },
+  "intro": {
+    "en": "The words we use, and what we mean by them.",
+    "de": "Die Begriffe, die wir verwenden, und was wir damit meinen.",
+    "de-ch": null
+  },
+  "heroImage": {
+    "en": null,
+    "de": null,
+    "de-ch": null
+  },
+  "body": {},
   "sections": [],
   "seo": {
-    "metaTitle": null,
-    "metaDescription": null,
+    "metaTitle": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
+    "metaDescription": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
     "ogImage": null,
     "noindex": false
   }

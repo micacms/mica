@@ -171,7 +171,7 @@ function onKeydown(event: KeyboardEvent): void {
         </div>
 
         <!-- Only this part scrolls; `overflow-clip` above cannot, so the back link stays in place. -->
-        <div class="min-h-0 flex-1 scroll-pt-28 overflow-y-auto">
+        <div class="min-h-0 flex-1 scroll-pt-40 overflow-y-auto">
           <EntryView
             v-if="target.kind === 'entry'"
             ref="view"

@@ -68,7 +68,7 @@ const _everyKindListed: _EveryKindListed = true;
 void _everyKindListed;
 
 /** The options of every field, as runtime values: a reader names an option that this build does not know. */
-export const COMMON_OPTIONS = ["kind", "label", "description", "required", "listed", "readonly", "hidden", "group", "width"] as const;
+export const COMMON_OPTIONS = ["kind", "label", "description", "required", "listed", "readonly", "hidden", "group", "width", "localized"] as const;
 
 /** The options of each kind beside `COMMON_OPTIONS`. The checks below keep both lists complete. */
 export const FIELD_OPTIONS = {

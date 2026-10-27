@@ -561,3 +561,22 @@ describe("an ID change with its links", () => {
     assert.equal(JSON.parse(await read("home/index.json")).note, "colleague");
   });
 });
+
+describe("a localized entry", () => {
+  const localized = defineSite({
+    locales: ["de", "en"],
+    collections: {
+      pages: collection({ label: "Pages", fields: { title: text({ required: true, localized: true }), id: id({ from: "title" }), body: richText({ localized: true }) } }),
+    },
+  });
+
+  it("gets its ID from the title of the first locale, and a Markdoc file for each locale", async () => {
+    const pages = createContentStore(localized, contentFiles({ root }));
+    const saved = await pages.save("pages", { data: { title: { de: "Über uns", en: "About us" }, body: { de: "Text.", en: "Text." } } });
+
+    assert.equal(saved.id, "ueber-uns");
+    assert.equal(saved.title, "Über uns");
+    assert.deepEqual(await files("pages/ueber-uns"), ["body.de.mdoc", "body.en.mdoc", "index.json"]);
+    assert.deepEqual(JSON.parse(await read("pages/ueber-uns/index.json")).title, { de: "Über uns", en: "About us" });
+  });
+});

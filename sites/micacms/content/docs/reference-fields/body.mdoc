@@ -12,6 +12,7 @@ Import the builders from `@micacms/core`. Each builder gives plain data, so the 
 | `hidden` | Mica keeps the value, but the editor does not show it. |
 | `group` | Fields with the same group show in one box. |
 | `width` | `"full"`, `"half"` or `"third"` of the form row. |
+| `localized` | A value for each locale of the site, stored as `{ "de": …, "en": … }`. `required` and `default` apply to the default locale. `{ fallback: false }` keeps a missing value empty on the website. Not for `object()`, `repeater()` and the ID of a collection. See [Several languages](/docs/multilingual/). |
 
 The build stops on an option that is not in these tables, for example a typo. A field with an option from a newer `@micacms/astro` is read-only in an older Mica until you upgrade it.
 
@@ -47,13 +48,13 @@ A save keeps a key in `index.json` and a `.mdoc` file that the model does not de
 
 ## The ID of a collection
 
-The first `id()` among the fields of a collection is the entry's ID. It is also the name of the entry's folder, so it is never empty. A second `id()` among the same fields stops the build. An `id()` in an object or in a singleton is an ordinary value, for example one page name for each language.
+The first `id()` among the fields of a collection is the entry's ID. It is also the name of the entry's folder, so it is never empty, and it cannot be localized. A second `id()` among the same fields stops the build. An `id()` in an object or in a singleton, or a localized `id()`, is an ordinary value, for example one page name for each language. A localized `id()` among the fields of a collection must be unique in each locale: `npx mica check` and Publish report a value that another entry has.
 
 ## Where an entry is stored
 
 Each entry is a folder `<id>/` with `index.json`, the `.mdoc` files and the entry's media, and each singleton is a folder `<name>/` with the same files. See [Content model](/docs/content-model/).
 
-Each rich-text field has its own `.mdoc` file, named by the field's path: `body.mdoc`, `seo.intro.mdoc`. In a `repeater()`, each row with rich text has a key, `_key`, in `index.json`, and the file names the row by its key: `sections.k3f9a2.body.mdoc`. Then a new order of the rows changes only `index.json`. Mica writes the key; do not change it. Your templates do not get it.
+Each rich-text field has its own `.mdoc` file, named by the field's path: `body.mdoc`, `seo.intro.mdoc`, and `body.de.mdoc` for a localized field. In a `repeater()`, each row with rich text has a key, `_key`, in `index.json`, and the file names the row by its key: `sections.k3f9a2.body.mdoc`. Then a new order of the rows changes only `index.json`. Mica writes the key; do not change it. Your templates do not get it.
 
 ## Collections and singletons
 
@@ -80,9 +81,9 @@ export const site = defineSite({
 | `idField` | The key of the ID. Default: the first `id()`. |
 | `defaultSort` | `{ field, direction }` for the list in the editor. `field` is a field of the collection or `"position"`. Text sorts alphabetically in English, and a date with a time by its instant. `_mica.position` on the website follows it too: sort your pages with `inEditorOrder` from `@micacms/astro`. |
 | `sortable` | Editors can put the entries in an order. Mica keeps it in `_order.json`. |
-| `url` | The page of an entry on the website, with `{id}` once, such as `/news/{id}`. It can also name other fields of the collection with one value, each as a whole part of the path between two `/`: a `select()` or `relation()` without `multiple`, or a `date()` without a time, such as `/{activity}/{id}`. A relation gives the ID of its entry. The address has the saved value, percent-encoded. While one of the fields is empty, the entry has no page. With `MICA_SITE_URL`, an entry shows "Open on website". See [Preview changes](/docs/previews/). |
+| `url` | The page of an entry on the website, with `{id}` once, such as `/news/{id}`. It can also name other fields of the collection with one value, each as a whole part of the path between two `/`: a `select()` or `relation()` without `multiple`, or a `date()` without a time, such as `/{activity}/{id}`. A relation gives the ID of its entry. The address has the saved value, percent-encoded. While one of the fields is empty, the entry has no page. On a site with locales, it can name `{locale}` once, as a whole part of the path, such as `/{locale}/news/{id}`: the editor then shows the page of the form's language. With `MICA_SITE_URL`, an entry shows "Open on website". See [Preview changes](/docs/previews/). |
 
-`singleton()` takes `label`, `description`, `fields` and `url` (its page, such as `/about`, without `{id}`). `defineSite()` takes `root`, `collections`, `singletons` and `references`.
+`singleton()` takes `label`, `description`, `fields` and `url` (its page, such as `/about` or `/{locale}/about`, without `{id}`). `defineSite()` takes `root`, `label`, `collections`, `singletons` and `references`, and for a site in several languages `locales`, `defaultLocale` (default: the first locale), `fallback` and `prefixDefaultLocale` (default: `false`, as in Astro: the default locale's address has no prefix). See [Several languages](/docs/multilingual/).
 
 ## Reference sets
 

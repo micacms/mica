@@ -1,13 +1,21 @@
 {
   "name": "Sofia Martins",
   "id": "sofia-martins",
-  "role": "Studio manager",
+  "role": {
+    "en": "Studio manager",
+    "de": null,
+    "de-ch": null
+  },
   "email": "sofia.martins@harborlane.example",
   "phone": null,
   "portrait": {
     "path": "media/portrait.jpg",
     "alt": "Sofia Martins, studio manager, in a cream blouse and navy cardigan"
   },
-  "bio": "Keeps the Porto Celeste studio running and helps the team prepare client workshops. She plans the rooms, the materials and the coffee, and she makes sure each visitor feels welcome from the first phone call. If you have a question about a visit, she is usually the first person to answer.",
+  "bio": {
+    "en": "Keeps the Porto Celeste studio running and helps the team prepare client workshops. She plans the rooms, the materials and the coffee, and she makes sure each visitor feels welcome from the first phone call. If you have a question about a visit, she is usually the first person to answer.",
+    "de": null,
+    "de-ch": null
+  },
   "featured": true
 }

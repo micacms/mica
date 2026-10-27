@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, coordinates, createManifest, defineSite, MANIFEST_PATH, number, object, PROTOCOL_VERSION, referenceIndexPath, referenceSet, repeater, serializeReferenceIndex, id, text, type FieldMap } from "@micacms/core/internal";
+import { collection, coordinates, createManifest, defineSite, MANIFEST_PATH, number, object, PROTOCOL_VERSION, referenceIndexPath, referenceSet, repeater, serializeReferenceIndex, id, singleton, text, type FieldMap } from "@micacms/core/internal";
 import { Hono } from "hono";
 
 import { clientIp, type Env } from "../src/http.js";
@@ -377,8 +377,50 @@ describe("content", () => {
         other.close();
       }
     };
-    assert.deepEqual(await schema({ MICA_SITE_URL: "https://harborlane.example" }, "Harbor Lane"), { label: "Harbor Lane", url: "https://harborlane.example" });
-    assert.deepEqual(await schema({}), { label: null, url: null });
+    assert.deepEqual(await schema({ MICA_SITE_URL: "https://harborlane.example" }, "Harbor Lane"), { label: "Harbor Lane", url: "https://harborlane.example", locales: null });
+    assert.deepEqual(await schema({}), { label: null, url: null, locales: null });
+  });
+
+  it("gives the site's locales, the default locale first, for the editor's language switcher", async () => {
+    const site = defineSite({ locales: ["en", "de"], defaultLocale: "de", fallback: { en: "de" }, collections: testSite.collections, singletons: testSite.singletons });
+    const other = await createHarness({}, { site });
+    try {
+      const body = (await (await other.request("/api/admin/schema")).json()) as { site: { locales: unknown } };
+      assert.deepEqual(body.site.locales, { list: ["de", "en"], default: "de", fallback: { en: "de" }, prefixDefault: false });
+    } finally {
+      other.close();
+    }
+  });
+
+  it("names, for each locale but the default, what misses translations, for the dashboard", async () => {
+    const site = defineSite({
+      locales: ["de", "en", "fr"],
+      collections: {
+        news: collection({ label: "News", fields: { id: id(), title: text({ required: true, localized: true }), body: text({ localized: true }) } }),
+        tags: collection({ label: "Tags", fields: { id: id(), name: text() } }),
+      },
+      singletons: { settings: singleton({ label: "Settings", fields: { claim: text({ localized: true }), footer: text({ localized: true }) } }) },
+    });
+    const other = await createHarness({}, { site });
+    try {
+      for (const data of [{ id: "a", title: { de: "A", en: "A", fr: null } }, { id: "b", title: { de: "B", en: null, fr: null } }]) {
+        const saved = await other.request("/api/admin/collections/news/entries", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ data }) });
+        assert.equal(saved.status, 201);
+      }
+      const settings = await other.request("/api/admin/singletons/settings", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ data: { claim: { de: "Gut", en: "Good" }, footer: { de: "Fuss" } }, revision: null }),
+      });
+      assert.equal(settings.status, 200);
+      const body = (await (await other.request("/api/admin/overview")).json()) as { translations: unknown };
+      assert.deepEqual(body.translations, [
+        { locale: "en", collections: [{ name: "news", label: "News", entries: 1 }], singletons: [{ name: "settings", label: "Settings", missing: 1 }] },
+        { locale: "fr", collections: [{ name: "news", label: "News", entries: 2 }], singletons: [{ name: "settings", label: "Settings", missing: 2 }] },
+      ]);
+    } finally {
+      other.close();
+    }
   });
 
   it("gives the page address of a collection only with a url in the model and MICA_SITE_URL", async () => {

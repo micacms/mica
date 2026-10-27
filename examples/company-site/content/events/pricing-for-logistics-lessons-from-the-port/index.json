@@ -1,5 +1,9 @@
 {
-  "title": "Pricing for logistics: lessons from the port",
+  "title": {
+    "en": "Pricing for logistics: lessons from the port",
+    "de": null,
+    "de-ch": null
+  },
   "id": "pricing-for-logistics-lessons-from-the-port",
   "startsAt": "2027-06-10T17:30:00+02:00",
   "endsAt": "2027-06-10T20:00:00+02:00",
@@ -22,7 +26,12 @@
     "amara-okafor",
     "lars-nilsson"
   ],
-  "summary": "An evening talk on how a logistics group found out which of its prices lost money. Join us in person or online.",
+  "summary": {
+    "en": "An evening talk on how a logistics group found out which of its prices lost money. Join us in person or online.",
+    "de": null,
+    "de-ch": null
+  },
+  "body": {},
   "tags": [
     "workshop",
     "strategy"

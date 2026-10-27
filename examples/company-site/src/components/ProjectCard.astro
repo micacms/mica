@@ -1,12 +1,11 @@
 ---
 import { Image } from "astro:assets";
-import type { CollectionEntry } from "astro:content";
 
 import TagList from "@/components/TagList.astro";
-import { categoryLabel, getLabels, projectPath } from "@/lib/content";
+import { categoryLabel, getLabels, projectPath, type Entry } from "@/lib/content";
 
 interface Props {
-  project: CollectionEntry<"projects">;
+  project: Entry<"projects">;
   priority?: boolean;
 }
 
@@ -14,11 +13,12 @@ const { project, priority = false } = Astro.props;
 const { title, year, category, gallery, location, tags } = project.data;
 
 const cover = gallery[0] ?? null;
-const { projects: labels } = await getLabels();
+const locale = Astro.currentLocale;
+const { projects: labels } = await getLabels(locale);
 ---
 
 <article class="group">
-  <a href={projectPath(project)} class="block">
+  <a href={projectPath(project, locale)} class="block">
     <div class="media-frame aspect-4/3">
       {
         cover ? (
@@ -38,7 +38,7 @@ const { projects: labels } = await getLabels();
     </div>
 
     <div class="mt-5">
-      {category && <p class="eyebrow text-accent">{categoryLabel(category)}</p>}
+      {category && <p class="eyebrow text-accent">{categoryLabel(category, labels.categories)}</p>}
       <h3 class="mt-2 text-lg font-semibold leading-snug transition group-hover:text-primary">
         {title}
       </h3>

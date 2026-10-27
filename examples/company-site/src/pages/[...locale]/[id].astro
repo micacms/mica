@@ -1,6 +1,6 @@
 ---
 import { Image } from "astro:assets";
-import { getCollection, type CollectionEntry } from "astro:content";
+import { getCollection } from "astro:content";
 
 import EventList from "@/components/lists/EventList.astro";
 import GlossaryList from "@/components/lists/GlossaryList.astro";
@@ -10,13 +10,14 @@ import TeamList from "@/components/lists/TeamList.astro";
 import PageIntro from "@/components/PageIntro.astro";
 import RichText from "@/components/RichText.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { listPageProblems, toPlainText } from "@/lib/content";
+import { getPages, listPageProblems, toPlainText, type Entry } from "@/lib/content";
+import { inEachLocale } from "@/lib/i18n";
 
 /**
- * Catch-all for the `pages` collection — About, Services, Contact and whatever
- * else an editor creates, at the URL they chose. A page with a list template,
- * such as /news/, shows its collection below its content. A new page needs no
- * change of the model; a new kind of list needs a template and an option.
+ * The `pages` collection — About, Services, Contact and whatever else an
+ * editor creates, at the URL they chose, in each locale. A page with a list
+ * template, such as /news/, shows its collection below its content. A new page
+ * needs no change of the model; a new kind of list needs a template and an option.
  */
 export async function getStaticPaths() {
   const pages = await getCollection("pages");
@@ -27,14 +28,16 @@ export async function getStaticPaths() {
     if (import.meta.env.DEV) console.warn(message);
     else throw new Error(message);
   }
-  return pages.map((page) => ({
-    params: { id: page.id },
-    props: { page },
-  }));
+  return inEachLocale(async (locale) =>
+    (await getPages(locale)).map((page) => ({
+      params: { id: page.id },
+      props: { page },
+    })),
+  );
 }
 
 interface Props {
-  page: CollectionEntry<"pages">;
+  page: Entry<"pages">;
 }
 
 const { page } = Astro.props;

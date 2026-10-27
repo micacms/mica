@@ -1,6 +1,6 @@
 /** Display formatting shared by the views. */
 
-import type { AnyField } from "@micacms/core/internal";
+import { isLocalizedObject, singleValue, type AnyField } from "@micacms/core/internal";
 
 const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
 
@@ -88,7 +88,10 @@ export function formatDuration(seconds: number): string {
 }
 
 /** Renders a stored field value as a short string for table cells, in the field's own terms. */
-export function previewValue(value: unknown, field?: AnyField): string {
+export function previewValue(stored: unknown, localizedField?: AnyField): string {
+  // A localized field shows the value of its first locale that has one, as the field of that locale.
+  const value = singleValue(localizedField, stored);
+  const field = localizedField?.kind === "object" && isLocalizedObject(localizedField) ? Object.values(localizedField.fields)[0] : localizedField;
   if (value === null || value === undefined || value === "") return "—";
 
   if (field?.kind === "date" && typeof value === "string") {

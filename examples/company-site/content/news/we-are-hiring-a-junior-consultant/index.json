@@ -1,5 +1,9 @@
 {
-  "title": "We are hiring a junior consultant",
+  "title": {
+    "en": "We are hiring a junior consultant",
+    "de": "Wir suchen eine Junior-Beraterin oder einen Junior-Berater",
+    "de-ch": null
+  },
   "id": "we-are-hiring-a-junior-consultant",
   "publishDate": "2026-07-15",
   "author": "lars-nilsson",
@@ -7,9 +11,14 @@
   "tags": [
     "careers"
   ],
-  "excerpt": "A place for someone who likes spreadsheets and shop floors in equal measure.",
+  "excerpt": {
+    "en": "A place for someone who likes spreadsheets and shop floors in equal measure.",
+    "de": "Eine Stelle für jemanden, der Tabellen und Werkhallen gleich gern mag.",
+    "de-ch": null
+  },
   "coverImage": {
     "path": "media/mentoring.jpg",
     "alt": "A senior consultant and a junior colleague review notes together in the studio"
-  }
+  },
+  "body": {}
 }

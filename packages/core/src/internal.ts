@@ -24,3 +24,4 @@ export * from "./row-key.js";
 export * from "./walk.js";
 export * from "./links.js";
 export * from "./owner.js";
+export * from "./locale.js";

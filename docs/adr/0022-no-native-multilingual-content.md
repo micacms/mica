@@ -1,6 +1,6 @@
 # 22. No native multilingual content in 1.0
 
-**Status:** Accepted
+**Status:** Replaced by [42](0042-localized-fields.md)
 
 ## Context
 

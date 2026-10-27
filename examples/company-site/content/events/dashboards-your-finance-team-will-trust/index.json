@@ -1,5 +1,9 @@
 {
-  "title": "Dashboards your finance team will trust",
+  "title": {
+    "en": "Dashboards your finance team will trust",
+    "de": null,
+    "de-ch": null
+  },
   "id": "dashboards-your-finance-team-will-trust",
   "startsAt": "2027-03-18T12:00:00+00:00",
   "endsAt": "2027-03-18T13:00:00+00:00",
@@ -16,7 +20,12 @@
   "speakers": [
     "priya-raman"
   ],
-  "summary": "A lunchtime webinar on how to build reports with one clear question each. Based on our [warehouse reporting project](/projects/technology/warehouse-reporting-dashboards/).",
+  "summary": {
+    "en": "A lunchtime webinar on how to build reports with one clear question each. Based on our [warehouse reporting project](/projects/technology/warehouse-reporting-dashboards/).",
+    "de": null,
+    "de-ch": null
+  },
+  "body": {},
   "tags": [
     "webinar",
     "data"

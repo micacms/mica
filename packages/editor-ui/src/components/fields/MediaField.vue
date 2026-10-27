@@ -37,7 +37,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [unknown] }>();
 
 const field = computed(() => props.field as MediaField);
-const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked, lang } = useField(props);
 
 const pickerOpen = ref(false);
 /** The form's own `media/` folder; undefined outside an entry or settings form. */
@@ -244,6 +244,7 @@ function setAlt(index: number, event: Event): void {
             <input
               :id="item.altId"
               type="text"
+              :lang="lang"
               :value="item.alt ?? ''"
               :required="field.alt === 'required'"
               :readonly="locked"

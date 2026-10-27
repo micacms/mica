@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The self-hosted editor edits localized fields in one language at a time, with a language switcher. Publish refuses a localized ID that another entry has in the same locale. The schema for the editor names prefixDefaultLocale, so that the self-hosted editor's links and preview show the page of the form's language. The dashboard of the self-hosted editor lists the missing translations of each language.",
+      "type": "minor",
+      "packageName": "@micacms/runtime"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

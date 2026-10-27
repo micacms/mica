@@ -5,7 +5,16 @@
 
 import { Hono } from "hono";
 
-import { listedFields, readReferenceIndex, resolveIdField, resolveTitleField } from "@micacms/core/internal";
+import {
+  hasLocalizedFields,
+  listedFields,
+  missingTranslations,
+  readReferenceIndex,
+  resolveIdField,
+  resolveTitleField,
+  siteLocales,
+  type Site,
+} from "@micacms/core/internal";
 
 import type { Env } from "../http.js";
 import { ApiError } from "../lib/errors.js";
@@ -14,6 +23,7 @@ import { schemaOrigin } from "../schema.js";
 import { recentProblems } from "../lib/logger.js";
 import { VERSION } from "../lib/version.js";
 import { formatBytes } from "../services/media.js";
+import type { ContentStore } from "../services/content-store.js";
 import type { Overview, Schema, SystemInfo } from "./responses.js";
 
 export function adminSystemRoutes(): Hono<Env> {
@@ -51,7 +61,7 @@ export function adminSystemRoutes(): Hono<Env> {
     const page = (url: string | undefined) => (url && config.MICA_SITE_URL ? `${config.MICA_SITE_URL}${url}` : null);
 
     return c.json({
-      site: { label: site.model.label ?? null, url: config.MICA_SITE_URL ?? null },
+      site: { label: site.model.label ?? null, url: config.MICA_SITE_URL ?? null, locales: schemaLocales(site.model) },
       collections: Object.values(site.model.collections).map((def) => ({
         name: def.name,
         label: def.label,
@@ -105,6 +115,7 @@ export function adminSystemRoutes(): Hono<Env> {
         readable: formatBytes(files.reduce((sum, file) => sum + file.size, 0)),
       },
       repository: ctx.site.contentRepository.origin,
+      translations: await missingSummary(ctx.site.model, content),
     } satisfies Overview);
   });
 
@@ -183,4 +194,42 @@ export function adminSystemRoutes(): Hono<Env> {
   });
 
   return app;
+}
+
+/** The locales for the editor's language switcher, the default locale first. */
+function schemaLocales(model: Site): Schema["site"]["locales"] {
+  const locales = siteLocales(model);
+  if (!locales) return null;
+  const list = [locales.defaultLocale, ...locales.locales.filter((locale) => locale !== locales.defaultLocale)];
+  return { list, default: locales.defaultLocale, fallback: locales.fallback, prefixDefault: !!model.prefixDefaultLocale };
+}
+
+/** For each locale but the default: the collections and singletons with missing translations, and how many. */
+async function missingSummary(site: Site, content: ContentStore): Promise<Overview["translations"]> {
+  const locales = siteLocales(site);
+  if (!locales) return [];
+  const others = locales.locales.filter((locale) => locale !== locales.defaultLocale);
+  const collections = await Promise.all(
+    Object.values(site.collections)
+      .filter((def) => hasLocalizedFields(def.fields))
+      .map(async (def) => ({ def, entries: (await content.listReadable(def.name)).entries })),
+  );
+  const singletons = await Promise.all(
+    Object.values(site.singletons)
+      .filter((def) => hasLocalizedFields(def.fields))
+      .map(async (def) => ({ def, data: await content.getSingleton(def.name) })),
+  );
+  return others.map((locale) => ({
+    locale,
+    collections: collections
+      .map(({ def, entries }) => ({
+        name: def.name,
+        label: def.label,
+        entries: entries.filter((entry) => missingTranslations(site, def.fields, entry.data, locale) > 0).length,
+      }))
+      .filter((item) => item.entries > 0),
+    singletons: singletons
+      .map(({ def, data }) => ({ name: def.name, label: def.label, missing: missingTranslations(site, def.fields, data, locale) }))
+      .filter((item) => item.missing > 0),
+  }));
 }

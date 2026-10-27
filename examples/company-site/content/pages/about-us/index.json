@@ -1,30 +1,68 @@
 {
-  "title": "About us",
+  "title": {
+    "en": "About us",
+    "de": "Über uns",
+    "de-ch": null
+  },
   "id": "about-us",
   "template": null,
-  "eyebrow": null,
-  "intro": "An independent consultancy for growing companies, working from Porto Celeste since 2012.",
-  "heroImage": {
-    "path": "/media/studio.jpg",
-    "alt": "A bright consulting studio with an oak meeting table, plants and views over Porto Celeste"
+  "eyebrow": {
+    "en": null,
+    "de": null,
+    "de-ch": null
   },
+  "intro": {
+    "en": "An independent consultancy for growing companies, working from Porto Celeste since 2012.",
+    "de": "Eine unabhängige Beratung für wachsende Unternehmen, seit 2012 in Porto Celeste.",
+    "de-ch": "Eine unabhängige Beratung für wachsende Unternehmen, seit 2012 an der Strasse der Händler in Porto Celeste."
+  },
+  "heroImage": {
+    "en": {
+      "path": "/media/studio.jpg",
+      "alt": "A bright consulting studio with an oak meeting table, plants and views over Porto Celeste"
+    },
+    "de": {
+      "path": "/media/studio.jpg",
+      "alt": "Ein helles Beratungsstudio mit Eichentisch, Pflanzen und Blick über Porto Celeste"
+    },
+    "de-ch": null
+  },
+  "body": {},
   "sections": [
     {
       "_key": "zzk3xj",
-      "heading": "Who we work with",
+      "heading": {
+        "en": "Who we work with",
+        "de": "Mit wem wir arbeiten",
+        "de-ch": null
+      },
+      "text": {},
       "image": null,
       "layout": "full"
     },
     {
       "_key": "q2xss6",
-      "heading": "Our studio",
+      "heading": {
+        "en": "Our studio",
+        "de": "Unser Studio",
+        "de-ch": null
+      },
+      "text": {},
       "image": null,
       "layout": "full"
     }
   ],
   "seo": {
-    "metaTitle": null,
-    "metaDescription": null,
+    "metaTitle": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
+    "metaDescription": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
     "ogImage": null,
     "noindex": false
   }

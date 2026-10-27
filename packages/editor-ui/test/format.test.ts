@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { coordinates, date, media, richText, select } from "@micacms/core/internal";
+import { collection, coordinates, date, defineSite, id, media, richText, select, text } from "@micacms/core/internal";
 
 import { coordinatesFrom, localDate, markdocText, previewValue } from "../src/lib/format.js";
 
@@ -49,5 +49,20 @@ describe("coordinatesFrom", () => {
     assert.equal(coordinatesFrom("47.37", "x"), undefined);
     assert.deepEqual(coordinatesFrom("47.37", "8.54"), { lat: 47.37, lng: 8.54 });
     assert.equal(coordinatesFrom(" ", ""), null);
+  });
+});
+
+describe("previewValue of a localized field", () => {
+  const site = defineSite({
+    locales: ["de", "en"],
+    collections: { pages: collection({ label: "Pages", fields: { id: id(), title: text({ localized: true }), body: richText({ localized: true }) } }) },
+  });
+  const { title, body } = site.collections.pages.fields;
+
+  it("shows the default locale's value, else the next locale that has one", () => {
+    assert.equal(previewValue({ de: "Über uns", en: "About us" }, title), "Über uns");
+    assert.equal(previewValue({ de: null, en: "About us" }, title), "About us");
+    assert.equal(previewValue({ de: "Ein **Text**.", en: null }, body), "Ein Text.");
+    assert.equal(previewValue({ de: null, en: null }, title), "—");
   });
 });

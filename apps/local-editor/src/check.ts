@@ -13,6 +13,7 @@ import {
   DOCUMENT_EXTENSION,
   documentLinks,
   documentPath,
+  duplicateLocalizedIds,
   entryDataPath,
   entryFolder,
   type FieldMap,
@@ -20,6 +21,7 @@ import {
   isRecord,
   isValidId,
   MANIFEST_PATH,
+  missingTranslations,
   needsRowKey,
   ORDER_FILE,
   readManifest,
@@ -33,6 +35,7 @@ import {
   resolveIdField,
   richTextLinks,
   type Site,
+  siteLocales,
   validateFields,
 } from "@micacms/core/internal";
 import { within } from "@micacms/core/node";
@@ -52,12 +55,14 @@ export interface CheckReport {
   collections: number;
   entries: number;
   singletons: number;
+  /** For each locale but the default: the entries and singletons with missing translations, such as `news/opening-hours`. Not a problem. */
+  missing: Record<string, string[]>;
 }
 
 /** Checks the content under `root` against the model in `<root>/.mica/schema.json`. */
 export async function checkContent(root: string): Promise<CheckReport> {
   const files = contentFiles({ root });
-  const report: CheckReport = { problems: [], model: false, collections: 0, entries: 0, singletons: 0 };
+  const report: CheckReport = { problems: [], model: false, collections: 0, entries: 0, singletons: 0, missing: {} };
   const error = (path: string, message: string) => report.problems.push({ level: "error", path, message });
   const warning = (path: string, message: string) => report.problems.push({ level: "warning", path, message });
 
@@ -97,12 +102,19 @@ export async function checkContent(root: string): Promise<CheckReport> {
     }
   }
 
+  const locales = siteLocales(site);
+  const others = locales ? locales.locales.filter((locale) => locale !== locales.defaultLocale) : [];
+  const translations = (fields: FieldMap, data: Record<string, unknown>, name: string) => {
+    for (const locale of others) if (missingTranslations(site, fields, data, locale) > 0) (report.missing[locale] ??= []).push(name);
+  };
   const context: EntryContext = { root, files, site, ids, error, warning };
 
   for (const [name, def] of Object.entries(site.collections)) {
     report.collections++;
     if (readOnly.has(`collections.${name}`)) continue;
     const idField = resolveIdField(def);
+    // For the localized IDs, which must differ between the entries.
+    const entries: Array<readonly [string, Record<string, unknown>]> = [];
     for (const id of ids.get(name)!) {
       report.entries++;
       const dataPath = entryDataPath(name, id);
@@ -115,6 +127,11 @@ export async function checkContent(root: string): Promise<CheckReport> {
         warning(dataPath, `${idField} is "${stored}", but the entry is named "${id}". Mica uses the name; the next save writes it into the file.`);
       }
       await checkEntry(context, def.fields, data, entryFolder(name, id));
+      translations(def.fields, data, `${name}/${id}`);
+      entries.push([id, data]);
+    }
+    for (const [id, data] of entries) {
+      for (const issue of duplicateLocalizedIds(site, def.fields, id, data, entries)) error(entryDataPath(name, id), `${issue.path}: ${issue.message}`);
     }
   }
 
@@ -129,6 +146,7 @@ export async function checkContent(root: string): Promise<CheckReport> {
       continue;
     }
     await checkEntry(context, def.fields, data, entryFolder(name));
+    translations(def.fields, data, name);
   }
 
   return report;
@@ -342,8 +360,19 @@ export function formatReport(report: CheckReport, root: string): string {
     for (const line of problem.message.split("\n")) lines.push(`           ${line.trim()}`);
   }
   if (report.problems.length > 0) lines.push("");
+  const missing = Object.entries(report.missing);
+  if (missing.length > 0) {
+    lines.push("Missing translations (information only):");
+    for (const [locale, names] of missing) lines.push(`  ${locale.padEnd(7)}  ${shortList(names)} (${names.length})`);
+    lines.push("");
+  }
   lines.push(`${errors} ${errors === 1 ? "error" : "errors"}, ${warnings} ${warnings === 1 ? "warning" : "warnings"}.`);
   return `${lines.join("\n")}\n`;
+}
+
+/** The first names of a long list, and how many more. */
+function shortList(names: string[], shown = 5): string {
+  return names.length <= shown ? names.join(", ") : `${names.slice(0, shown).join(", ")} and ${names.length - shown} more`;
 }
 
 /** One top-level value of a JSON file as written, or undefined when it cannot be read. */

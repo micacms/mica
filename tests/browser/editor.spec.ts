@@ -23,8 +23,8 @@ async function headOfMain(request: APIRequestContext): Promise<string> {
 }
 
 async function publishedTagline(request: APIRequestContext): Promise<string> {
-  const site = (await forgejo(request, "raw/content/general/index.json?ref=main", true)) as { tagline: string };
-  return site.tagline;
+  const site = (await forgejo(request, "raw/content/general/index.json?ref=main", true)) as { tagline: { en: string } };
+  return site.tagline.en;
 }
 
 test("an editor signs in, edits, saves and publishes", async ({ page, request, baseURL }) => {
@@ -191,7 +191,8 @@ test("entries and list items change their order in the same way", async ({ page 
   // A list in a form has the same controls: the arrows at the end of the row, the handle at its start.
   await page.goto("/admin/collections/pages/services");
   const sections = page.getByRole("group", { name: "Extra sections" });
-  const headings = sections.locator("li [aria-expanded]");
+  // The headings of the rows: the language button of a field opens a popover too.
+  const headings = sections.locator("li [aria-expanded]:not([data-field-action])");
   await expect(headings.nth(0)).toHaveText("Our approach");
   await sections.getByRole("button", { name: "Move “Our approach” down", exact: true }).click();
   await expect(headings.nth(1)).toHaveText("Our approach");

@@ -5,7 +5,9 @@
 
 import { computed, type ComputedRef } from "vue";
 
-import type { AnyField, FieldIssue } from "@micacms/core/internal";
+import { humanise, type AnyField, type FieldIssue } from "@micacms/core/internal";
+
+import { useFieldTranslations } from "./useFormLocale";
 
 let sequence = 0;
 
@@ -31,6 +33,8 @@ export interface UseField {
    * reader can still read them; `disabled` would take them out of reach.
    */
   locked: ComputedRef<boolean>;
+  /** The language of the value, in a localized field: for the value's control only, not for the editor's own words. */
+  lang: ComputedRef<string | undefined>;
 }
 
 export function useField(props: FieldProps): UseField {
@@ -54,7 +58,10 @@ export function useField(props: FieldProps): UseField {
 
   const locked = computed(() => !!props.disabled || !!props.field.readonly);
 
-  return { inputId, label, error, describedBy, hintId, errorId, locked };
+  const translations = useFieldTranslations();
+  const lang = computed(() => translations.value?.locale);
+
+  return { inputId, label, error, describedBy, hintId, errorId, locked, lang };
 }
 
 function lastSegment(path: string): string {
@@ -62,11 +69,7 @@ function lastSegment(path: string): string {
 }
 
 /** `metaTitle` → `Meta title`, used when a field declares no label. The key `id` is "ID". */
-export function humanise(key: string): string {
-  if (key === "id") return "ID";
-  const spaced = key.replace(/([a-z0-9])([A-Z])/g, "$1 $2").replace(/[_-]+/g, " ");
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
-}
+export { humanise };
 
 const WIDTHS: Record<string, string> = {
   full: "col-span-12",

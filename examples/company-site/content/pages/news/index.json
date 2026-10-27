@@ -1,14 +1,39 @@
 {
-  "title": "News",
+  "title": {
+    "en": "News",
+    "de": "News",
+    "de-ch": null
+  },
   "id": "news",
   "template": "news",
-  "eyebrow": "Journal",
-  "intro": "Updates from our practice.",
-  "heroImage": null,
+  "eyebrow": {
+    "en": "Journal",
+    "de": "Journal",
+    "de-ch": null
+  },
+  "intro": {
+    "en": "Updates from our practice.",
+    "de": "Neues aus unserer Praxis.",
+    "de-ch": null
+  },
+  "heroImage": {
+    "en": null,
+    "de": null,
+    "de-ch": null
+  },
+  "body": {},
   "sections": [],
   "seo": {
-    "metaTitle": null,
-    "metaDescription": null,
+    "metaTitle": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
+    "metaDescription": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
     "ogImage": null,
     "noindex": false
   }

@@ -13,11 +13,14 @@ import { ChevronDown, Copy, Plus, Trash2 } from "@lucide/vue";
 import { defaultValues, needsRowKey, newRowKey, ROW_KEY, type RepeaterField } from "@micacms/core/internal";
 
 import FieldList from "./FieldList.vue";
+import MissingTranslations from "./MissingTranslations.vue";
 import ReorderArrows from "@/components/ReorderArrows.vue";
 import ReorderHandle from "@/components/ReorderHandle.vue";
 import { useField, type FieldProps } from "@/composables/useField";
+import { useFormLocale } from "@/composables/useFormLocale";
 import { useReorder } from "@/composables/useReorder";
 import { entryOptions } from "@/lib/entry-options";
+import { addressOf, missingTranslations } from "@/lib/locales";
 import { rowLabel, rowLabelRelation } from "@/lib/row-label";
 import { useSchema } from "@/stores/schema";
 
@@ -77,7 +80,7 @@ onMounted(async () => {
   const target = rowLabelRelation(field.value);
   if (!target) return;
   try {
-    const options = await entryOptions(target, schema.reference(target) !== undefined, schema.collection(target)?.url);
+    const options = await entryOptions(target, schema.reference(target) !== undefined, schema.collection(target)?.url, addressOf(schema.site.value?.locales));
     titles.value = new Map(options.map((option) => [option.id, option.title]));
   } catch {
     // The rows show the IDs; the relation field in the row says that the list did not load.
@@ -87,6 +90,13 @@ onMounted(async () => {
 /** Row summary: the declared `itemLabel` child, else a positional fallback. */
 function summaryFor(row: Record<string, unknown>, index: number): string {
   return rowLabel(field.value, row, index, (id) => titles.value.get(id));
+}
+
+const form = useFormLocale();
+
+/** In a form with a language: the row's values that this language has not translated yet. */
+function rowMissing(row: Record<string, unknown>): number {
+  return form.value ? missingTranslations(field.value.fields, row, form.value.locale.value, form.value.locales) : 0;
 }
 
 function rowHasIssue(index: number): boolean {
@@ -205,6 +215,7 @@ const reorder = useReorder<Record<string, unknown>>({
             >
               Needs attention
             </span>
+            <MissingTranslations v-if="rowMissing(row)" :count="rowMissing(row)" />
           </button>
 
           <div class="flex shrink-0 items-center gap-0.5">

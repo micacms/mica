@@ -1,14 +1,39 @@
 {
-  "title": "Privacy",
+  "title": {
+    "en": "Privacy",
+    "de": null,
+    "de-ch": null
+  },
   "id": "privacy",
   "template": null,
-  "eyebrow": null,
-  "intro": "What this website stores about you, and why.",
-  "heroImage": null,
+  "eyebrow": {
+    "en": null,
+    "de": null,
+    "de-ch": null
+  },
+  "intro": {
+    "en": "What this website stores about you, and why.",
+    "de": null,
+    "de-ch": null
+  },
+  "heroImage": {
+    "en": null,
+    "de": null,
+    "de-ch": null
+  },
+  "body": {},
   "sections": [],
   "seo": {
-    "metaTitle": null,
-    "metaDescription": "How Harbor Lane Consulting handles personal data on this website.",
+    "metaTitle": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
+    "metaDescription": {
+      "en": "How Harbor Lane Consulting handles personal data on this website.",
+      "de": null,
+      "de-ch": null
+    },
     "ogImage": null,
     "noindex": false
   }

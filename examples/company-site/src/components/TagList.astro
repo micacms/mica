@@ -7,7 +7,7 @@ interface Props {
 }
 
 const { tags } = Astro.props;
-const { general: labels } = await getLabels();
+const { general: labels } = await getLabels(Astro.currentLocale);
 ---
 
 {

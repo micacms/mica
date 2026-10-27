@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { boolean, relation, repeater, text } from "@micacms/core/internal";
+import { boolean, collection, defineSite, id, relation, repeater, text } from "@micacms/core/internal";
 
 import { rowLabel, rowLabelRelation } from "../src/lib/row-label.js";
 
@@ -38,5 +38,23 @@ describe("rowLabel", () => {
     const field = repeater({ itemLabel: "people", fields: { people: relation({ collection: "team", multiple: true }) } });
     assert.equal(rowLabelRelation(field), undefined);
     assert.equal(rowLabel(field, { people: ["anna"] }, 0, titleOf), "Item 1");
+  });
+});
+
+describe("rowLabel of a localized itemLabel", () => {
+  it("shows the default locale's text, else the next locale that has one", () => {
+    const site = defineSite({
+      locales: ["de", "en"],
+      collections: {
+        pages: collection({
+          label: "Pages",
+          fields: { id: id(), sections: repeater({ itemLabel: "heading", addLabel: "Add section", fields: { heading: text({ localized: true }) } }) },
+        }),
+      },
+    });
+    const field = site.collections.pages.fields.sections;
+    assert.equal(rowLabel(field, { heading: { de: "Ablauf", en: "Process" } }, 0), "Ablauf");
+    assert.equal(rowLabel(field, { heading: { de: null, en: "Process" } }, 0), "Process");
+    assert.equal(rowLabel(field, { heading: { de: null, en: null } }, 1), "Section 2");
   });
 });

@@ -2,7 +2,8 @@
 import BaseLayout from "@/layouts/BaseLayout.astro";
 import { getLabels } from "@/lib/content";
 
-const { notFound: texts } = await getLabels();
+// One page for all locales: a static host shows /404.html for each address that it does not know.
+const { notFound: texts } = await getLabels(Astro.currentLocale);
 ---
 
 <BaseLayout title={texts.pageTitle} noindex>

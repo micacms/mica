@@ -157,7 +157,8 @@ describe("an admitted session", () => {
     const { data, revision } = await current.json();
 
     const tagline = `Edited through Dex at ${new Date().toISOString()}`;
-    const edit = { data: { ...data, tagline }, revision };
+    // The tagline has a value for each locale: the edit changes the English one.
+    const edit = { data: { ...data, tagline: { ...data.tagline, en: tagline } }, revision };
 
     const forged = await alice.api("/api/admin/singletons/general", { method: "PUT", body: edit, csrf: false });
     assert.equal(forged.status, 403);
@@ -168,7 +169,7 @@ describe("an admitted session", () => {
 
     // Saved is not published: the repository has not moved.
     assert.equal(await headOfMain(), before);
-    assert.notEqual((await publishedSite()).tagline, tagline);
+    assert.notEqual((await publishedSite()).tagline.en, tagline);
 
     // Publish sends back what the editor reviewed, as the Publish page does.
     const status = await (await alice.api("/api/admin/changes")).json();
@@ -185,7 +186,7 @@ describe("an admitted session", () => {
     assert.deepEqual(commit.parents.map((parent) => parent.sha), [before]);
     assert.equal(commit.commit.author.email, "alice@gmail.com");
     assert.equal(commit.commit.committer.name, "Mica CMS");
-    assert.equal((await publishedSite()).tagline, tagline);
+    assert.equal((await publishedSite()).tagline.en, tagline);
   });
 
   it("shows a change made on the website as a conflict, and publishes the version the editor keeps", async () => {
@@ -196,13 +197,14 @@ describe("an admitted session", () => {
     const mine = `Mine, at ${new Date().toISOString()}`;
     const saved = await alice.api("/api/admin/singletons/general", {
       method: "PUT",
-      body: { data: { ...current.data, tagline: mine }, revision: current.revision },
+      body: { data: { ...current.data, tagline: { ...current.data.tagline, en: mine } }, revision: current.revision },
     });
     assert.equal(saved.status, 200);
 
     // A developer changes the same file on the website, through the Git host.
     const file = await forgejo("contents/content/general/index.json?ref=main");
-    const theirs = { ...JSON.parse(Buffer.from(file.content, "base64").toString()), tagline: "Theirs" };
+    const stored = JSON.parse(Buffer.from(file.content, "base64").toString());
+    const theirs = { ...stored, tagline: { ...stored.tagline, en: "Theirs" } };
     const updated = await fetch(`${FORGEJO}/contents/content/general/index.json`, {
       method: "PUT",
       headers: { authorization: FORGEJO_AUTH, "content-type": "application/json" },
@@ -224,8 +226,8 @@ describe("an admitted session", () => {
     assert.equal(synced.publish.enabled, false);
 
     const compared = await (await alice.api("/api/admin/changes/compare?kind=singleton&name=general&against=origin")).json();
-    assert.equal(compared.before.tagline, "Theirs");
-    assert.equal(compared.after.tagline, mine);
+    assert.equal(compared.before.tagline.en, "Theirs");
+    assert.equal(compared.after.tagline.en, mine);
 
     const resolved = await (
       await alice.api("/api/admin/changes/resolve", { method: "POST", body: { group: "singleton:general", choice: "mine" } })
@@ -239,7 +241,7 @@ describe("an admitted session", () => {
       body: { message: "Keep my tagline", paths },
     });
     assert.equal(published.status, 200, await published.clone().text());
-    assert.equal((await publishedSite()).tagline, mine);
+    assert.equal((await publishedSite()).tagline.en, mine);
     const commit = await forgejo(`git/commits/${await headOfMain()}`);
     assert.deepEqual(commit.parents.map((parent) => parent.sha), [developerCommit]);
   });

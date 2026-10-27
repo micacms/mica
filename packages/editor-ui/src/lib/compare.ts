@@ -7,7 +7,7 @@
  * written the way its field type would show it — never as JSON with quotes.
  */
 
-import type { AnyField, FieldMap } from "@micacms/core/internal";
+import { singleValue, type AnyField, type FieldMap } from "@micacms/core/internal";
 
 import { humanise } from "@/composables/useField";
 
@@ -118,7 +118,7 @@ function repeaterRows(
 
     // Name the item by its summary field where one is set, else its number.
     const caption = (item: Record<string, unknown> | null) => {
-      const value = itemLabel ? item?.[itemLabel] : undefined;
+      const value = itemLabel ? singleValue(fields[itemLabel], item?.[itemLabel]) : undefined;
       return typeof value === "string" && value !== "" ? value : `${index + 1}`;
     };
 

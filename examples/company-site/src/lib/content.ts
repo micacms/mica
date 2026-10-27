@@ -4,25 +4,50 @@
  * Singletons arrive as one-entry collections; `getSingleton` reads one with
  * its model-derived type. Collections that the editor arranges by hand come in
  * the editor's order with `inEditorOrder`.
+ *
+ * Each helper takes the locale of the page, `Astro.currentLocale`, and gives
+ * the values of that locale: `localize` resolves each localized field, and a
+ * missing translation takes the value of its fallback.
  */
 
 import { getCollection, type CollectionEntry } from "astro:content";
 
-import { getSingleton, inEditorOrder, type SingletonDocument } from "@micacms/astro";
+import { getSingleton, inEditorOrder, localize, type SingletonDocument } from "@micacms/astro";
+import type { Localize } from "@micacms/core";
 
 import { site } from "../mica";
+import { localePath } from "./i18n";
 
 type Model = typeof site;
+type MicaCollection = keyof Model["collections"];
+type MicaSingleton = keyof Model["singletons"];
 
-export type SiteSettings = SingletonDocument<Model, "general">;
-export type Navigation = SingletonDocument<Model, "navigation">;
 export type Theme = SingletonDocument<Model, "theme">;
 
-export const getSiteSettings = () => getSingleton(site, "general");
-export const getNavigation = () => getSingleton(site, "navigation");
+type InLocale<E extends { data: unknown }> = Omit<E, "data"> & { data: Localize<E["data"]> };
+
+/** An entry with the values of one locale. */
+export type Entry<K extends MicaCollection> = InLocale<CollectionEntry<K>>;
+
+/** An entry in one locale. Also for an entry from `related()`, which has the stored values. */
+export function inLocale<E extends CollectionEntry<MicaCollection>>(entry: E, locale: string | undefined): InLocale<E> {
+  return { ...entry, data: localize(site, entry.collection, entry.data as E["data"], locale) };
+}
+
+/** The entries of a collection in one locale. */
+async function getEntries<K extends MicaCollection>(name: K, locale: string | undefined): Promise<Entry<K>[]> {
+  return (await getCollection(name)).map((entry) => inLocale(entry, locale));
+}
+
+async function getSingletonIn<K extends MicaSingleton>(name: K, locale: string | undefined) {
+  return localize(site, name, await getSingleton(site, name), locale);
+}
+
+export const getSiteSettings = (locale: string | undefined) => getSingletonIn("general", locale);
+export const getNavigation = (locale: string | undefined) => getSingletonIn("navigation", locale);
 export const getTheme = () => getSingleton(site, "theme");
-export const getLabels = () => getSingleton(site, "labels");
-export const getHomePage = () => getSingleton(site, "homePage");
+export const getLabels = (locale: string | undefined) => getSingletonIn("labels", locale);
+export const getHomePage = (locale: string | undefined) => getSingletonIn("homePage", locale);
 
 /* ------------------------------------------------------------------ *
  * Collection helpers
@@ -36,19 +61,20 @@ export const getHomePage = () => getSingleton(site, "homePage");
  * The old fallback read a database timestamp, so the order of two undated
  * articles depended on when someone last opened them.
  */
-export async function getNews() {
-  const items = await getCollection("news");
+export async function getNews(locale: string | undefined) {
+  const items = await getEntries("news", locale);
   return [...items].sort((a, b) =>
     (b.data.publishDate ?? "").localeCompare(a.data.publishDate ?? ""),
   );
 }
 
-/** The page of a project: its category and its ID, as the model's `url` says. */
-export const projectPath = (project: { id: string; data: { category: string } }): string => `/projects/${project.data.category}/${project.id}/`;
+/** The page of a project: its category and its ID, as the model's `url` says, with the locale's prefix. */
+export const projectPath = (project: { id: string; data: { category: string } }, locale: string | undefined): string =>
+  localePath(`/projects/${project.data.category}/${project.id}/`, locale);
 
 /** Projects in the order the repository records, newest year first. */
-export async function getProjects(options: { featuredOnly?: boolean } = {}) {
-  const items = await getCollection("projects");
+export async function getProjects(locale: string | undefined, options: { featuredOnly?: boolean } = {}) {
+  const items = await getEntries("projects", locale);
   const filtered = options.featuredOnly
     ? items.filter((item) => item.data.featured)
     : items;
@@ -57,21 +83,21 @@ export async function getProjects(options: { featuredOnly?: boolean } = {}) {
 }
 
 /** Team members in the order an editor arranged them. */
-export async function getTeam() {
-  const items = await getCollection("team");
+export async function getTeam(locale: string | undefined) {
+  const items = await getEntries("team", locale);
   return [...items].sort(inEditorOrder);
 }
 
-export async function getFeaturedTeam() {
-  const items = await getCollection("team");
+export async function getFeaturedTeam(locale: string | undefined) {
+  const items = await getEntries("team", locale);
   return [...items]
     .filter((item) => item.data.featured)
     .sort(inEditorOrder);
 }
 
 /** Events with the upcoming ones first (soonest first), then the past ones (latest first). */
-export async function getEvents(now = new Date()) {
-  const items = await getCollection("events");
+export async function getEvents(locale: string | undefined, now = new Date()) {
+  const items = await getEntries("events", locale);
   const time = (item: (typeof items)[number]) => new Date(item.data.startsAt ?? 0).getTime();
   const upcoming = items.filter((item) => time(item) >= now.getTime()).sort((a, b) => time(a) - time(b));
   const past = items.filter((item) => time(item) < now.getTime()).sort((a, b) => time(b) - time(a));
@@ -82,21 +108,21 @@ export async function getEvents(now = new Date()) {
  * A relation seen from the other side. A project names its team, and the team
  * member does not name the project, so the page asks the collection and filters.
  */
-export async function getProjectsOf(memberId: string) {
-  const items = await getProjects();
+export async function getProjectsOf(memberId: string, locale: string | undefined) {
+  const items = await getProjects(locale);
   return items.filter((item) => item.data.team.includes(memberId));
 }
 
 /** The events in which a team member speaks, soonest first. */
-export async function getEventsOf(memberId: string) {
-  const items = await getCollection("events");
+export async function getEventsOf(memberId: string, locale: string | undefined) {
+  const items = await getEntries("events", locale);
   return items
     .filter((item) => item.data.speakers.includes(memberId))
     .sort((a, b) => (a.data.startsAt ?? "").localeCompare(b.data.startsAt ?? ""));
 }
 
-export async function getPages() {
-  const items = await getCollection("pages");
+export async function getPages(locale: string | undefined) {
+  const items = await getEntries("pages", locale);
   return [...items].sort(inEditorOrder);
 }
 
@@ -107,7 +133,7 @@ export async function getPages() {
 export const LIST_PAGES = { projects: "projects", news: "news", events: "events", team: "team", glossary: "glossary" } as const;
 
 /** What is wrong with the list pages: a wrong URL, a template on two pages, or a list without a page. */
-export function listPageProblems(pages: ReadonlyArray<CollectionEntry<"pages">>): string[] {
+export function listPageProblems(pages: ReadonlyArray<{ id: string; data: { template: string | null } }>): string[] {
   const problems: string[] = [];
   for (const [template, id] of Object.entries(LIST_PAGES)) {
     const found = pages.filter((page) => page.data.template === template);
@@ -121,8 +147,8 @@ export function listPageProblems(pages: ReadonlyArray<CollectionEntry<"pages">>)
 }
 
 /** The page with a list template, for a link to it: null while no page has it. */
-export async function getListPage(template: keyof typeof LIST_PAGES) {
-  return (await getCollection("pages")).find((page) => page.data.template === template) ?? null;
+export async function getListPage(template: keyof typeof LIST_PAGES, locale: string | undefined) {
+  return (await getEntries("pages", locale)).find((page) => page.data.template === template) ?? null;
 }
 
 /* ------------------------------------------------------------------ *
@@ -134,11 +160,21 @@ export function optionLabel(field: { options: readonly { label: string; value: s
   return field.options.find((option) => option.value === value)?.label ?? value;
 }
 
-export const categoryLabel = (value: string) => optionLabel(site.collections.projects.fields.category, value);
-export const formatLabel = (value: string) => optionLabel(site.collections.events.fields.format, value);
+/**
+ * The name of an option on the website, in the page's language: from the Labels, whose key is the value in camel
+ * case (`public-sector` is `publicSector`); else the model's label, which is the editor's.
+ */
+function optionName(names: object, field: { options: readonly { label: string; value: string }[] }, value: string): string {
+  const key = value.replace(/-([a-z0-9])/g, (_, letter: string) => letter.toUpperCase());
+  const name = (names as Record<string, string | null | undefined>)[key];
+  return name ?? optionLabel(field, value);
+}
+
+export const categoryLabel = (value: string, names: object) => optionName(names, site.collections.projects.fields.category, value);
+export const formatLabel = (value: string, names: object) => optionName(names, site.collections.events.fields.format, value);
 export const platformLabel = (value: string) => optionLabel(site.singletons.general.fields.social.fields.platform, value);
 
-/** Formats an ISO date for display, in the site's locale. */
+/** Formats an ISO date for display, in the page's locale. */
 export function formatDate(iso: string | null, locale = "en"): string {
   if (!iso) return "";
   const date = new Date(iso);

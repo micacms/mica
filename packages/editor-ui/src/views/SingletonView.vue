@@ -14,6 +14,7 @@ import { api, type SingletonDetail } from "@/api";
 import DocumentStatus from "@/components/DocumentStatus.vue";
 import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
+import LocaleSwitcher from "@/components/LocaleSwitcher.vue";
 import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
 import ModelNotice from "@/components/ModelNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
@@ -23,6 +24,8 @@ import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
 import StatusNotice from "@/components/StatusNotice.vue";
 import { useDocumentEditor } from "@/composables/useDocumentEditor";
+import { provideFormLocale } from "@/composables/useFormLocale";
+import { addressOf, hasLocalizedFields } from "@/lib/locales";
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPage } from "@/composables/usePreviewPane";
 import { formRootOf } from "@/lib/focus";
@@ -46,9 +49,16 @@ const staging = useStaging();
 const toast = useToast();
 
 const definition = computed(() => schema.singleton(props.name));
-const page = computed(() => pageHref(definition.value?.page));
+// For a site with locales: the language that the form shows.
+const { form: formLocale, reveal: revealLocale } = provideFormLocale(() => definition.value?.fields);
+const localized = computed(() => hasLocalizedFields(definition.value?.fields ?? {}));
+/** The value of `{locale}` in the page's address: the page in the form's language. */
+const addressLocale = computed(() => addressOf(schema.site.value?.locales, formLocale.value?.locale.value));
+const page = computed(() => pageHref(definition.value?.page, undefined, undefined, addressLocale.value));
 const devServer = usePreview();
-const preview = computed(() => (devServer.address.value && definition.value?.url ? `${devServer.address.value}${definition.value.url}` : null));
+const preview = computed(() =>
+  devServer.address.value && definition.value?.url ? `${devServer.address.value}${pageHref(definition.value.url, undefined, undefined, addressLocale.value)}` : null,
+);
 // The overlay form shows a document of the main form's page: that page stays in the preview.
 if (!props.embedded) usePreviewPage(preview, computed(() => !!definition.value?.url));
 
@@ -88,14 +98,22 @@ defineExpose({ atRisk: doc.atRisk });
 
 <template>
   <template v-if="definition">
-    <PageHeader :title="definition.label" :subtitle="definition.description" :loading="loading" :embedded="embedded">
+    <PageHeader :title="definition.label" :loading="loading" :embedded="embedded" form>
+      <template v-if="!definition.readOnly && !loadError && !loading" #meta>
+        <DocumentStatus :state="state" :edit="pending" @discarded="doc.reopen()" />
+      </template>
+
       <PreviewLink v-if="preview && !embedded" :href="preview" />
       <PageLink v-if="page" :href="page" />
       <template v-if="!definition.readOnly && !loadError">
-        <DocumentStatus :state="state" :edit="pending" @discarded="doc.reopen()" />
         <button v-if="failed" type="button" class="btn-secondary" :disabled="saving" :title="failed" @click="doc.retry()">
           Try again
         </button>
+        <RouterLink v-if="pending" :to="{ name: 'changes' }" class="btn-primary">Publish…</RouterLink>
+      </template>
+
+      <template v-if="formLocale && localized && !loading && !loadError" #toolbar>
+        <LocaleSwitcher :form="formLocale" :fields="definition.fields" :values="values" :issues="issues" />
       </template>
     </PageHeader>
 
@@ -105,6 +123,7 @@ defineExpose({ atRisk: doc.atRisk });
       <StatusNotice v-else-if="loadError" kind="error" title="These settings could not be loaded" :message="loadError" @retry="doc.load" />
 
       <template v-else>
+        <p v-if="definition.description" class="mb-5 text-sm text-muted">{{ definition.description }}</p>
         <ModelNotice v-if="!definition.readOnly" class="mb-5" />
         <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
 
@@ -134,7 +153,7 @@ defineExpose({ atRisk: doc.atRisk });
         <KeptChangesNotice v-if="kept.offered.value" :at="kept.offered.value.at" @restore="kept.restore()" @forget="kept.forget()" />
         <IssueSummary :issues="issues" />
 
-        <form ref="formElement" novalidate @submit.prevent="doc.autosave()" @focusout="doc.onLeave">
+        <form ref="formElement" novalidate @reveal-field="revealLocale" @submit.prevent="doc.autosave()" @focusout="doc.onLeave">
           <FieldList
             v-model="values"
             :fields="definition.fields"

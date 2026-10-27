@@ -60,6 +60,11 @@ export interface RichTextOptions {
   optimize?: boolean | RichTextImageOptions;
   /** Replaces Astro's `getImage`, for a test. */
   getImage?: GetImage;
+  /**
+   * Changes the address of each link, for example to add the page's locale: `/team/` becomes `/de/team/`. Editors
+   * then write one address for all languages.
+   */
+  link?: (href: string) => string;
 }
 
 const DEFAULT_IMAGES: Required<RichTextImageOptions> = {
@@ -131,6 +136,13 @@ async function imageAttributes(
   return found;
 }
 
+/** Gives each link of a document its new address, before a project's own link node renders it. */
+function rewriteLinks(document: ReturnType<typeof Markdoc.parse>, link: (href: string) => string): void {
+  for (const node of document.walk()) {
+    if (node.type === "link" && typeof node.attributes["href"] === "string") node.attributes["href"] = link(node.attributes["href"]);
+  }
+}
+
 /** The `src` of every image in a document. */
 function imageSources(document: ReturnType<typeof Markdoc.parse>): string[] {
   const sources: string[] = [];
@@ -190,6 +202,7 @@ export async function transformRichText(
   // In the live preview the loader appends a marker; it never reaches Markdoc.
   const { text, markers } = splitMarkers(source);
   const document = Markdoc.parse(text);
+  if (options.link) rewriteLinks(document, options.link);
   const found = await imageAttributes(imageSources(document), from?._mica?.images ?? [], options);
   const tree = Markdoc.transform(document, withImages(options.config ?? {}, found));
   return markers[0] ? markBlocks(tree, markers[0]) : tree;

@@ -2,10 +2,12 @@
 
 import type { Author } from "../workspace/files.js";
 import {
+  collectionIds,
   type Collection,
   type ContentChange,
   type ContentSource,
   createReferenceCheck,
+  duplicateLocalizedIds,
   entryDataPath,
   entryTitle,
   type FieldIssue,
@@ -15,6 +17,7 @@ import {
   type PublishResult,
   readCollectionEntry,
   readOrder,
+  localizedIdFields,
   readSingleton,
   type Site,
   validateFields,
@@ -181,7 +184,8 @@ export async function analyseChanges(
   const titles = new Map<string, string>();
   /**
    * The changed entries, as the source has them; null for one the change set
-   * removes. Only these are read: the rest of a collection is not opened (#76).
+   * removes. Only these are read: the rest of a collection is not opened (#76),
+   * except for a collection with a localized `id()`, whose values must differ.
    */
   const entriesByCollection = new Map<string, Map<string, Record<string, unknown> | null>>();
 
@@ -267,6 +271,34 @@ export async function analyseChanges(
   const validated = new Set<string>();
   // Each linked entry is looked up by its data file: only the targets that a changed document names.
   const targets = createReferenceCheck(model, source);
+  /**
+   * The `index.json` of each entry of a collection with a localized `id()`, read once: its values must differ from
+   * the changed entry's. A localized ID is never rich text, so the `.mdoc` files are not read.
+   */
+  const allEntries = new Map<string, Promise<Array<readonly [string, Record<string, unknown>]>>>();
+  const entriesOf = (name: string) => {
+    if (!allEntries.has(name)) {
+      const read = async () => {
+        const ids = await collectionIds(source, name);
+        const found = await Promise.all(
+          ids.map(async (id) => {
+            const text = await source.read(entryDataPath(name, id)).catch(() => null);
+            try {
+              return [id, text === null ? null : (JSON.parse(text) as unknown)] as const;
+            } catch {
+              // A file that does not parse is a problem of its own entry.
+              return [id, null] as const;
+            }
+          }),
+        );
+        return found.filter((item): item is readonly [string, Record<string, unknown>] => item[1] !== null && typeof item[1] === "object");
+      };
+      allEntries.set(name, read());
+    }
+    return allEntries.get(name)!;
+  };
+  const duplicates = async (name: string, def: Collection, id: string, data: Record<string, unknown>): Promise<FieldIssue[]> =>
+    localizedIdFields(def.fields).length === 0 ? [] : duplicateLocalizedIds(model, def.fields, id, data, await entriesOf(name));
 
   for (const owner of owners) {
     if (owner.kind === "entry") {
@@ -286,7 +318,11 @@ export async function analyseChanges(
         publishedOf.set(entryData, () => readCollectionEntry(published, def, collection, id).catch(() => null));
       }
       const result = validateFields(def.fields, data);
-      const issues = [...(result.ok ? [] : result.issues), ...(await targets.issues(def.fields, data, folderOf(entryData)))];
+      const issues = [
+        ...(result.ok ? [] : result.issues),
+        ...(await targets.issues(def.fields, data, folderOf(entryData))),
+        ...(await duplicates(owner.collection, def, owner.id, data)),
+      ];
       if (issues.length > 0) {
         problems.push({
           path: entryData,

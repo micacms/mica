@@ -11,6 +11,7 @@ The model is code, and the content is files. When you change the model, some cha
 | Add a required field | No | `npx mica check` reports each old entry without a value, and an editor cannot publish a change to it before it has one. Give them a value with `fill-field.mjs`, or let editors do it. |
 | Rename a field | No | The editor and Astro do not see the old key, so the value seems to be lost. It is still in the file. Use `rename-field.mjs`. For a rich-text field, it renames the `.mdoc` file. |
 | Change `text()` or `textarea()` to `richText()` | No | The value moves from the JSON file to a `.mdoc` file. Use `text-to-rich-text.mjs`. |
+| Add `localized` to a field that has values | No | Each value moves into the default locale: `"title": "About"` becomes `"title": { "de": "About" }`, and `body.mdoc` becomes `body.de.mdoc`. `npx mica check` lists the entries. Change them by hand, or change one of the scripts. See [Several languages](/docs/multilingual/). |
 | Change a field to another kind | No | The old values do not validate. `npx mica check` lists them. Change them by hand, or change one of the scripts. |
 | Change the `value` of a `select()` option | No | Like a rename of a value. `npx mica check` lists the entries. |
 | Rename a collection | No | Rename its folder with `git mv content/old content/new`, and change each `relation({ collection })` that names it. |

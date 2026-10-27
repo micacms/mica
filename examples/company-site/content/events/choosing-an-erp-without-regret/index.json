@@ -1,5 +1,9 @@
 {
-  "title": "Choosing an ERP without regret",
+  "title": {
+    "en": "Choosing an ERP without regret",
+    "de": null,
+    "de-ch": null
+  },
   "id": "choosing-an-erp-without-regret",
   "startsAt": "2026-11-12T18:30:00+00:00",
   "endsAt": "2026-11-12T19:30:00+00:00",
@@ -17,7 +21,12 @@
     "priya-raman",
     "mateo-fernandez"
   ],
-  "summary": "A one-hour webinar on how to write requirements, shortlist vendors and negotiate a fair contract. Based on our [retail ERP project](/projects/technology/erp-selection-for-a-regional-retailer/).",
+  "summary": {
+    "en": "A one-hour webinar on how to write requirements, shortlist vendors and negotiate a fair contract. Based on our [retail ERP project](/projects/technology/erp-selection-for-a-regional-retailer/).",
+    "de": null,
+    "de-ch": null
+  },
+  "body": {},
   "tags": [
     "webinar",
     "technology"

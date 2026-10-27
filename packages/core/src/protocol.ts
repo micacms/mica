@@ -40,6 +40,14 @@ export interface ProtocolManifest {
   generatedBy: string;
   /** Only when the model names the site. */
   label?: string;
+  /** Only when the site has locales. */
+  locales?: string[];
+  /** Only when the site has locales. */
+  defaultLocale?: string;
+  /** Only when the site has a fallback beside the default locale. */
+  fallback?: Record<string, string>;
+  /** Only when it is `true`. */
+  prefixDefaultLocale?: boolean;
   collections: Record<string, Collection>;
   singletons: Record<string, Singleton>;
   /** Only when the model has reference sets. */
@@ -51,6 +59,9 @@ export function createManifest(site: Site, generatedBy: string): ProtocolManifes
     protocolVersion: PROTOCOL_VERSION,
     generatedBy,
     ...(site.label !== undefined ? { label: site.label } : {}),
+    ...(site.locales ? { locales: site.locales, defaultLocale: site.defaultLocale } : {}),
+    ...(site.fallback ? { fallback: site.fallback } : {}),
+    ...(site.prefixDefaultLocale ? { prefixDefaultLocale: true } : {}),
     collections: site.collections,
     singletons: site.singletons,
     ...(site.references ? { references: site.references } : {}),

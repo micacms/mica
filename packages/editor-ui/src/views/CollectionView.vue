@@ -4,11 +4,14 @@
  * Columns come from fields marked `listed` in the model.
  *
  * A row says "New" or "Changed" while the entry has saved changes that are
- * not on the website yet; removed entries are counted above the list.
+ * not on the website yet; removed entries are counted above the list. On a
+ * multilingual site, a row counts its missing translations in each language,
+ * and a filter shows the entries that miss one language.
  */
 
 import { computed, onMounted, ref, watch } from "vue";
 import { Plus } from "@lucide/vue";
+import { useRoute, useRouter } from "vue-router";
 
 import { api, messageOf, type EntrySummary, type UnreadableEntry } from "@/api";
 import PageHeader from "@/components/PageHeader.vue";
@@ -16,8 +19,10 @@ import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import ReorderArrows from "@/components/ReorderArrows.vue";
 import ReorderHandle from "@/components/ReorderHandle.vue";
 import StatusNotice from "@/components/StatusNotice.vue";
+import { chooseFormLocale } from "@/composables/useFormLocale";
 import { useReorder } from "@/composables/useReorder";
 import { previewValue } from "@/lib/format";
+import { addressOf as defaultAddress, hasLocalizedFields, missingTranslations } from "@/lib/locales";
 import { entryAddress } from "@/lib/pages";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
@@ -28,6 +33,8 @@ const props = defineProps<{ collection: string }>();
 const schema = useSchema();
 const staging = useStaging();
 const toast = useToast();
+const route = useRoute();
+const router = useRouter();
 
 /** Each entry's pending state, by ID, and the entries that publishing removes. */
 const pendingStates = computed(() => {
@@ -52,7 +59,8 @@ const reordering = ref(false);
 
 const definition = computed(() => schema.collection(props.collection));
 /** Under each title: the page's URL for a collection with a `url`, else the entry's ID, which is one part without a "/". */
-const addressOf = (entry: EntrySummary): string => entryAddress(definition.value?.url, entry.id, entry.data);
+// The default locale's page: a list shows one address for each entry.
+const addressOf = (entry: EntrySummary): string => entryAddress(definition.value?.url, entry.id, entry.data, defaultAddress(schema.site.value?.locales));
 const columns = computed(() => {
   const def = definition.value;
   if (!def) return [];
@@ -60,13 +68,49 @@ const columns = computed(() => {
   return def.listedFields.filter((key) => key !== def.titleField);
 });
 
+/** The languages that can miss translations: all but the default, in a collection with localized fields. */
+const otherLocales = computed(() => {
+  const locales = schema.site.value?.locales;
+  if (!locales || !hasLocalizedFields(definition.value?.fields ?? {})) return [];
+  return locales.list.filter((locale) => locale !== locales.default);
+});
+
+/** The filter "Missing translations" in the address (`?missing=de`), so that the dashboard can link to it. */
+const missingIn = computed<string>({
+  get: () => {
+    const value = route.query["missing"];
+    return typeof value === "string" && otherLocales.value.includes(value) ? value : "";
+  },
+  set: (next) => void router.replace({ query: { ...route.query, missing: next || undefined } }),
+});
+
+/** The missing translations of each entry, by ID: the languages that miss some, and how many. */
+const missing = computed(() => {
+  const result = new Map<string, Array<{ locale: string; count: number }>>();
+  const locales = schema.site.value?.locales;
+  const def = definition.value;
+  if (!locales || !def) return result;
+  for (const entry of entries.value) {
+    const counts = otherLocales.value
+      .map((locale) => ({ locale, count: missingTranslations(def.fields, entry.data, locale, locales) }))
+      .filter((item) => item.count > 0);
+    if (counts.length > 0) result.set(entry.id, counts);
+  }
+  return result;
+});
+
+const filtered = computed(() => Boolean(search.value || missingIn.value));
+
 const matching = computed(() => {
   const term = search.value.trim().toLowerCase();
-  if (!term) return entries.value;
+  const translating = missingIn.value
+    ? entries.value.filter((entry) => missing.value.get(entry.id)?.some((item) => item.locale === missingIn.value))
+    : entries.value;
+  if (!term) return translating;
 
   // In the browser: the whole collection is already here, and a round trip per
   // keystroke would only add latency.
-  return entries.value.filter(
+  return translating.filter(
     (entry) =>
       entry.title.toLowerCase().includes(term) ||
       entry.id.includes(term) ||
@@ -75,8 +119,17 @@ const matching = computed(() => {
 });
 
 const emptyTitle = computed(() =>
-  search.value ? `Nothing matches "${search.value}".` : `No ${definition.value?.label.toLowerCase()} yet.`,
+  search.value
+    ? `Nothing matches "${search.value}".`
+    : missingIn.value
+      ? `No ${missingIn.value.toUpperCase()} translations are missing.`
+      : `No ${definition.value?.label.toLowerCase()} yet.`,
 );
+
+/** With the filter on, the entry opens in the language that it misses. */
+function openIn(): void {
+  if (missingIn.value) chooseFormLocale(missingIn.value);
+}
 
 /** The values of an entry, without its field names: "title" must not match every entry. */
 function searchableText(value: unknown): string {
@@ -146,7 +199,7 @@ watch(loading, (isLoading) => {
 // Reordering a filtered list would move the wrong neighbours.
 const sortable = computed(() => (definition.value?.sortable ?? false) && !definition.value?.readOnly);
 // A new order without the entries that cannot be read would move them to the end.
-const canReorder = computed(() => sortable.value && !search.value && unreadable.value.length === 0);
+const canReorder = computed(() => sortable.value && !filtered.value && unreadable.value.length === 0);
 
 const reorder = useReorder<EntrySummary>({
   scope: () => `entries-${props.collection}`,
@@ -203,9 +256,13 @@ const reorder = useReorder<EntrySummary>({
           :placeholder="`Search ${definition.label.toLowerCase()}…`"
           class="input max-w-64"
           :aria-label="`Search ${definition.label}`"
-          :aria-describedby="sortable && search ? 'order-paused' : undefined"
+          :aria-describedby="sortable && filtered ? 'order-paused' : undefined"
         />
-        <p v-if="sortable && search" id="order-paused" class="text-xs text-muted">Clear the search to change the order.</p>
+        <select v-if="otherLocales.length > 0" v-model="missingIn" class="input w-auto" aria-label="Translations">
+          <option value="">All entries</option>
+          <option v-for="locale in otherLocales" :key="locale" :value="locale">Missing {{ locale.toUpperCase() }} translations</option>
+        </select>
+        <p v-if="sortable && filtered" id="order-paused" class="text-xs text-muted">Show all entries to change the order.</p>
       </div>
       <p id="order-help" class="sr-only">
         To move an entry with the keyboard, press Space on its handle, then the arrow keys, Home or End, and Space
@@ -229,7 +286,7 @@ const reorder = useReorder<EntrySummary>({
           :title="emptyTitle"
         >
           <RouterLink
-            v-if="!search && !definition.readOnly"
+            v-if="!filtered && !definition.readOnly"
             :to="{ name: 'entry-new', params: { collection } }"
             class="btn-primary mt-4"
           >
@@ -279,9 +336,18 @@ const reorder = useReorder<EntrySummary>({
                 <RouterLink
                   :to="{ name: 'entry', params: { collection, id: entry.id } }"
                   class="font-medium group-hover:underline after:absolute after:inset-0 after:content-['']"
+                  @click="openIn"
                 >
                   {{ entry.title }}
                 </RouterLink>
+                <span
+                  v-for="item in missing.get(entry.id) ?? []"
+                  :key="item.locale"
+                  class="count ml-2 bg-glint text-on-glint"
+                >
+                  <span aria-hidden="true">{{ item.locale.toUpperCase() }} {{ item.count }}</span>
+                  <span class="sr-only">{{ item.count }} missing {{ item.locale.toUpperCase() }} translation{{ item.count === 1 ? "" : "s" }}</span>
+                </span>
                 <span v-if="pendingStates.states.has(entry.id)" class="status status-draft ml-2">
                   {{ pendingStates.states.get(entry.id) === "new" ? "New" : "Changed" }} · not published
                 </span>

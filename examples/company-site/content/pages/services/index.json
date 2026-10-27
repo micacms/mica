@@ -1,17 +1,39 @@
 {
-  "title": "Services",
+  "title": {
+    "en": "Services",
+    "de": "Leistungen",
+    "de-ch": null
+  },
   "id": "services",
   "template": null,
-  "eyebrow": null,
-  "intro": "Strategy, operations and technology projects, scoped to what a small team can deliver.",
-  "heroImage": {
-    "path": "media/workshop.jpg",
-    "alt": "Three consultants review process notes together around a meeting table"
+  "eyebrow": {
+    "en": null,
+    "de": null,
+    "de-ch": null
   },
+  "intro": {
+    "en": "Strategy, operations and technology projects, scoped to what a small team can deliver.",
+    "de": "Projekte in Strategie, Betrieb und Technologie, so groß, wie ein kleines Team sie liefern kann.",
+    "de-ch": "Projekte in Strategie, Betrieb und Technologie, so gross, wie ein kleines Team sie liefern kann."
+  },
+  "heroImage": {
+    "en": {
+      "path": "media/workshop.jpg",
+      "alt": "Three consultants review process notes together around a meeting table"
+    },
+    "de": null,
+    "de-ch": null
+  },
+  "body": {},
   "sections": [
     {
       "_key": "rjle54",
-      "heading": "Our approach",
+      "heading": {
+        "en": "Our approach",
+        "de": "Unser Vorgehen",
+        "de-ch": null
+      },
+      "text": {},
       "image": {
         "path": "/media/workspace.jpg",
         "alt": "Sticky notes, a process sketch and a notebook on an oak work table"
@@ -20,20 +42,38 @@
     },
     {
       "_key": "u715at",
-      "heading": "Engagement models",
+      "heading": {
+        "en": "Engagement models",
+        "de": "Formen der Zusammenarbeit",
+        "de-ch": null
+      },
+      "text": {},
       "image": null,
       "layout": "full"
     },
     {
       "_key": "nk21nh",
-      "heading": "After the handover",
+      "heading": {
+        "en": "After the handover",
+        "de": "Nach der Übergabe",
+        "de-ch": null
+      },
+      "text": {},
       "image": null,
       "layout": "full"
     }
   ],
   "seo": {
-    "metaTitle": null,
-    "metaDescription": null,
+    "metaTitle": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
+    "metaDescription": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
     "ogImage": null,
     "noindex": false
   }

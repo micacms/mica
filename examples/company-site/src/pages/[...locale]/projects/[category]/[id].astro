@@ -1,27 +1,28 @@
 ---
 import { Image } from "astro:assets";
 import { related, relatedAll } from "@micacms/astro/relations";
-import { getCollection, type CollectionEntry } from "astro:content";
 
 import RichText from "@/components/RichText.astro";
 import TagList from "@/components/TagList.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { categoryLabel, getLabels, toPlainText } from "@/lib/content";
+import { categoryLabel, getLabels, getProjects, inLocale, toPlainText, type Entry } from "@/lib/content";
+import { inEachLocale, localePath } from "@/lib/i18n";
 
 /**
- * One page per published project, under its category. `entry.id` is the CMS
- * ID, so the URL the editor sees in the admin is exactly the URL that gets built.
+ * One page per published project and locale, under its category. `entry.id` is
+ * the CMS ID, so the URL the editor sees in the admin is exactly the URL that gets built.
  */
 export async function getStaticPaths() {
-  const projects = await getCollection("projects");
-  return projects.map((project) => ({
-    params: { category: project.data.category, id: project.id },
-    props: { project },
-  }));
+  return inEachLocale(async (locale) =>
+    (await getProjects(locale)).map((project) => ({
+      params: { category: project.data.category, id: project.id },
+      props: { project },
+    })),
+  );
 }
 
 interface Props {
-  project: CollectionEntry<"projects">;
+  project: Entry<"projects">;
 }
 
 const { project } = Astro.props;
@@ -30,11 +31,12 @@ const { title, year, category, code, duration, tags, description, location, fact
 
 // Relations are stored as IDs. `relatedAll` resolves them in the editor's
 // order, and a member that was deleted drops out instead of breaking the build.
-const members = await relatedAll("team", team);
+const locale = Astro.currentLocale;
+const members = (await relatedAll("team", team)).map((member) => inLocale(member, locale));
 // A sector is reference data: an Astro collection from a file, which Mica does not edit.
 const industry = await related("sectors", sector);
 
-const { projects: texts } = await getLabels();
+const { projects: texts } = await getLabels(locale);
 
 const cover = gallery[0] ?? null;
 const rest = gallery.slice(1);
@@ -51,12 +53,12 @@ const addressLines = [location?.address, [location?.city, location?.country].fil
 >
   <article>
     <div class="container-page pb-12 pt-16 sm:pt-24">
-      <a href="/projects/" class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> {texts.allLink}</a>
+      <a href={localePath("/projects/", locale)} class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> {texts.allLink}</a>
 
       <div class="mt-4 max-w-3xl">
         <h1 class="text-4xl font-semibold sm:text-5xl lg:text-6xl">{title}</h1>
         <p class="mt-4 text-lg text-muted">
-          {[category ? categoryLabel(category) : null, location?.city, year]
+          {[category ? categoryLabel(category, texts.categories) : null, location?.city, year]
             .filter(Boolean)
             .join(" · ")}
         </p>
@@ -167,7 +169,7 @@ const addressLines = [location?.address, [location?.city, location?.country].fil
               <ul class="mt-3 space-y-2 text-sm">
                 {members.map((member) => (
                   <li>
-                    <a href={`/team/${member.id}/`} class="font-medium hover:text-primary">
+                    <a href={localePath(`/team/${member.id}/`, locale)} class="font-medium hover:text-primary">
                       {member.data.name}
                     </a>
                     {member.data.role && <span class="block text-muted">{member.data.role}</span>}

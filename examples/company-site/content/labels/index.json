@@ -1,71 +1,310 @@
 {
   "general": {
-    "skipLink": "Skip to content",
-    "menu": "Menu",
-    "mainMenu": "Main",
-    "tags": "Tags"
+    "skipLink": {
+      "en": "Skip to content",
+      "de": "Zum Inhalt springen",
+      "de-ch": null
+    },
+    "menu": {
+      "en": "Menu",
+      "de": "Menü",
+      "de-ch": null
+    },
+    "mainMenu": {
+      "en": "Main",
+      "de": "Hauptmenü",
+      "de-ch": null
+    },
+    "tags": {
+      "en": "Tags",
+      "de": "Schlagwörter",
+      "de-ch": null
+    },
+    "languages": {
+      "en": "Language",
+      "de": "Sprache",
+      "de-ch": null
+    }
   },
   "footer": {
     "link": {
-      "label": "Start a conversation",
+      "label": {
+        "en": "Start a conversation",
+        "de": "Gespräch beginnen",
+        "de-ch": null
+      },
       "href": "/contact/"
     },
-    "contact": "Contact",
-    "openingHours": "Opening hours",
-    "more": "More",
-    "sitemap": "Sitemap"
+    "contact": {
+      "en": "Contact",
+      "de": "Kontakt",
+      "de-ch": null
+    },
+    "openingHours": {
+      "en": "Opening hours",
+      "de": "Öffnungszeiten",
+      "de-ch": null
+    },
+    "more": {
+      "en": "More",
+      "de": "Mehr",
+      "de-ch": null
+    },
+    "sitemap": {
+      "en": "Sitemap",
+      "de": "Sitemap",
+      "de-ch": null
+    }
   },
   "projects": {
-    "allLink": "All projects",
-    "empty": "No projects have been published yet.",
-    "noImage": "No image yet",
-    "keyFacts": "Key facts",
-    "project": "Project",
-    "number": "Number",
-    "duration": "Duration",
-    "weeks": "weeks",
-    "sector": "Sector",
-    "downloads": "Downloads",
-    "location": "Location",
-    "team": "Team",
-    "gallery": "Gallery"
+    "allLink": {
+      "en": "All projects",
+      "de": "Alle Projekte",
+      "de-ch": null
+    },
+    "empty": {
+      "en": "No projects have been published yet.",
+      "de": "Noch keine Projekte veröffentlicht.",
+      "de-ch": null
+    },
+    "noImage": {
+      "en": "No image yet",
+      "de": "Noch kein Bild",
+      "de-ch": null
+    },
+    "keyFacts": {
+      "en": "Key facts",
+      "de": "Eckdaten",
+      "de-ch": null
+    },
+    "project": {
+      "en": "Project",
+      "de": "Projekt",
+      "de-ch": null
+    },
+    "number": {
+      "en": "Number",
+      "de": "Nummer",
+      "de-ch": null
+    },
+    "duration": {
+      "en": "Duration",
+      "de": "Dauer",
+      "de-ch": null
+    },
+    "weeks": {
+      "en": "weeks",
+      "de": "Wochen",
+      "de-ch": null
+    },
+    "sector": {
+      "en": "Sector",
+      "de": "Branche",
+      "de-ch": null
+    },
+    "categories": {
+      "strategy": {
+        "en": "Strategy",
+        "de": "Strategie",
+        "de-ch": null
+      },
+      "operations": {
+        "en": "Operations",
+        "de": "Betrieb",
+        "de-ch": null
+      },
+      "technology": {
+        "en": "Technology",
+        "de": "Technologie",
+        "de-ch": null
+      },
+      "publicSector": {
+        "en": "Public sector",
+        "de": "Öffentlicher Sektor",
+        "de-ch": null
+      }
+    },
+    "downloads": {
+      "en": "Downloads",
+      "de": "Downloads",
+      "de-ch": null
+    },
+    "location": {
+      "en": "Location",
+      "de": "Ort",
+      "de-ch": null
+    },
+    "team": {
+      "en": "Team",
+      "de": "Team",
+      "de-ch": null
+    },
+    "gallery": {
+      "en": "Gallery",
+      "de": "Bilder",
+      "de-ch": null
+    }
   },
   "news": {
-    "allLink": "All news",
-    "empty": "Nothing published yet.",
-    "readMore": "Read more",
-    "by": "by",
-    "relatedProject": "Related project"
+    "allLink": {
+      "en": "All news",
+      "de": "Alle News",
+      "de-ch": null
+    },
+    "empty": {
+      "en": "Nothing published yet.",
+      "de": "Noch nichts veröffentlicht.",
+      "de-ch": null
+    },
+    "readMore": {
+      "en": "Read more",
+      "de": "Weiterlesen",
+      "de-ch": null
+    },
+    "by": {
+      "en": "by",
+      "de": "von",
+      "de-ch": null
+    },
+    "relatedProject": {
+      "en": "Related project",
+      "de": "Zugehöriges Projekt",
+      "de-ch": null
+    }
   },
   "events": {
-    "allLink": "All events",
-    "upcoming": "Upcoming",
-    "noUpcoming": "No events are planned right now.",
-    "past": "Past",
-    "when": "When",
-    "until": "until",
-    "format": "Format",
-    "and": "and",
-    "seats": "seats",
-    "venue": "Venue",
-    "map": "Map",
-    "speakers": "Speakers",
-    "register": "Register",
-    "isPast": "This event has taken place."
+    "allLink": {
+      "en": "All events",
+      "de": "Alle Veranstaltungen",
+      "de-ch": null
+    },
+    "upcoming": {
+      "en": "Upcoming",
+      "de": "Demnächst",
+      "de-ch": null
+    },
+    "noUpcoming": {
+      "en": "No events are planned right now.",
+      "de": "Zurzeit sind keine Veranstaltungen geplant.",
+      "de-ch": null
+    },
+    "past": {
+      "en": "Past",
+      "de": "Vergangen",
+      "de-ch": null
+    },
+    "when": {
+      "en": "When",
+      "de": "Wann",
+      "de-ch": null
+    },
+    "until": {
+      "en": "until",
+      "de": "bis",
+      "de-ch": null
+    },
+    "format": {
+      "en": "Format",
+      "de": "Format",
+      "de-ch": null
+    },
+    "formats": {
+      "inPerson": {
+        "en": "In person",
+        "de": "Vor Ort",
+        "de-ch": null
+      },
+      "online": {
+        "en": "Online",
+        "de": "Online",
+        "de-ch": null
+      }
+    },
+    "and": {
+      "en": "and",
+      "de": "und",
+      "de-ch": null
+    },
+    "seats": {
+      "en": "seats",
+      "de": "Plätze",
+      "de-ch": null
+    },
+    "venue": {
+      "en": "Venue",
+      "de": "Ort",
+      "de-ch": null
+    },
+    "map": {
+      "en": "Map",
+      "de": "Karte",
+      "de-ch": null
+    },
+    "speakers": {
+      "en": "Speakers",
+      "de": "Referierende",
+      "de-ch": null
+    },
+    "register": {
+      "en": "Register",
+      "de": "Anmelden",
+      "de-ch": null
+    },
+    "isPast": {
+      "en": "This event has taken place.",
+      "de": "Diese Veranstaltung hat stattgefunden.",
+      "de-ch": null
+    }
   },
   "team": {
-    "allLink": "Team",
-    "empty": "No team members have been published yet.",
-    "projects": "Projects",
-    "events": "Events"
+    "allLink": {
+      "en": "Team",
+      "de": "Team",
+      "de-ch": null
+    },
+    "empty": {
+      "en": "No team members have been published yet.",
+      "de": "Noch keine Teammitglieder veröffentlicht.",
+      "de-ch": null
+    },
+    "projects": {
+      "en": "Projects",
+      "de": "Projekte",
+      "de-ch": null
+    },
+    "events": {
+      "en": "Events",
+      "de": "Veranstaltungen",
+      "de-ch": null
+    }
   },
   "notFound": {
-    "pageTitle": "Page not found",
-    "eyebrow": "404",
-    "title": "This page does not exist",
-    "text": "The address may be out of date, or the page may have been removed.",
+    "pageTitle": {
+      "en": "Page not found",
+      "de": "Seite nicht gefunden",
+      "de-ch": null
+    },
+    "eyebrow": {
+      "en": "404",
+      "de": "404",
+      "de-ch": null
+    },
+    "title": {
+      "en": "This page does not exist",
+      "de": "Diese Seite gibt es nicht",
+      "de-ch": null
+    },
+    "text": {
+      "en": "The address may be out of date, or the page may have been removed.",
+      "de": "Die Adresse ist vielleicht veraltet, oder die Seite wurde entfernt.",
+      "de-ch": null
+    },
     "link": {
-      "label": "Back to the homepage",
+      "label": {
+        "en": "Back to the homepage",
+        "de": "Zur Startseite",
+        "de-ch": null
+      },
       "href": "/"
     }
   }

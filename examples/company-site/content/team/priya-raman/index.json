@@ -1,13 +1,21 @@
 {
   "name": "Priya Raman",
   "id": "priya-raman",
-  "role": "Consultant, data",
+  "role": {
+    "en": "Consultant, data",
+    "de": null,
+    "de-ch": null
+  },
   "email": "priya.raman@harborlane.example",
   "phone": "+990 40 555 0145",
   "portrait": {
     "path": "media/portrait.jpg",
     "alt": "Priya Raman, data consultant, in a teal blouse"
   },
-  "bio": "Builds the reporting that nobody else wants to build. Joined from a software company in Calvera, where she led a team of analysts. She designs dashboards that answer one question well, and she is happy to explain every number in them to a sceptical finance team.",
+  "bio": {
+    "en": "Builds the reporting that nobody else wants to build. Joined from a software company in Calvera, where she led a team of analysts. She designs dashboards that answer one question well, and she is happy to explain every number in them to a sceptical finance team.",
+    "de": null,
+    "de-ch": null
+  },
   "featured": true
 }

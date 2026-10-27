@@ -42,7 +42,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string | null] }>();
 
 const field = computed(() => props.field as RichTextField);
-const { inputId, label, error, describedBy, hintId, errorId, locked } = useField(props);
+const { inputId, label, error, describedBy, hintId, errorId, locked, lang } = useField(props);
 
 const toolbar = computed(() => richTextFeatures(field.value.toolbar));
 const enabled = (feature: RichTextFeature) => toolbar.value.includes(feature);
@@ -67,6 +67,7 @@ function textboxAttributes(): Record<string, string> {
   if (describedBy.value) attributes["aria-describedby"] = describedBy.value;
   if (error.value) attributes["aria-invalid"] = "true";
   if (locked.value) attributes["aria-readonly"] = "true";
+  if (lang.value) attributes["lang"] = lang.value;
   return attributes;
 }
 

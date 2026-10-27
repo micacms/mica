@@ -10,6 +10,7 @@ import type { APIRoute } from "astro";
 import { getCollection } from "astro:content";
 
 import { projectPath } from "@/lib/content";
+import { LOCALES, localePath } from "@/lib/i18n";
 
 export const GET: APIRoute = async ({ site }) => {
   const origin = (site ?? new URL("http://localhost:4321")).origin;
@@ -31,17 +32,18 @@ export const GET: APIRoute = async ({ site }) => {
    * sitemap protocol, and a wrong one is worse than none: it would tell every
    * crawler that the whole site changed on each deploy.
    */
-  const urls: Array<{ path: string; lastmod: string | null }> = [
-    { path: "/", lastmod: null },
+  // Each page is in each locale.
+  const urls: Array<{ path: string; lastmod: string | null }> = LOCALES.flatMap((locale) => [
+    { path: localePath("/", locale), lastmod: null },
     // The list pages, such as /news/, are pages too.
-    ...pages.map((page) => ({ path: `/${page.id}/`, lastmod: null })),
-    ...projects.map((item) => ({ path: projectPath(item), lastmod: null })),
-    ...events.map((item) => ({ path: `/events/${item.id}/`, lastmod: null })),
-    ...team.map((item) => ({ path: `/team/${item.id}/`, lastmod: null })),
+    ...pages.map((page) => ({ path: localePath(`/${page.id}/`, locale), lastmod: null })),
+    ...projects.map((item) => ({ path: projectPath(item, locale), lastmod: null })),
+    ...events.map((item) => ({ path: localePath(`/events/${item.id}/`, locale), lastmod: null })),
+    ...team.map((item) => ({ path: localePath(`/team/${item.id}/`, locale), lastmod: null })),
     // News is the one collection with an editorial date, so it is the one
     // place a truthful `lastmod` is available.
-    ...news.map((item) => ({ path: `/news/${item.id}/`, lastmod: item.data.publishDate })),
-  ];
+    ...news.map((item) => ({ path: localePath(`/news/${item.id}/`, locale), lastmod: item.data.publishDate })),
+  ]);
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">

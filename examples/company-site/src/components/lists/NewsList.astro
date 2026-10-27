@@ -4,8 +4,10 @@ import { Image } from "astro:assets";
 
 import TagList from "@/components/TagList.astro";
 import { formatDate, getLabels, getNews } from "@/lib/content";
+import { localePath } from "@/lib/i18n";
 
-const [{ news: labels }, articles] = await Promise.all([getLabels(), getNews()]);
+const locale = Astro.currentLocale;
+const [{ news: labels }, articles] = await Promise.all([getLabels(locale), getNews(locale)]);
 ---
 
 <div class="container-page pb-8">
@@ -17,7 +19,7 @@ const [{ news: labels }, articles] = await Promise.all([getLabels(), getNews()])
         {articles.map((article) => (
           <li>
             <a
-              href={`/news/${article.id}/`}
+              href={localePath(`/news/${article.id}/`, locale)}
               class="group grid gap-6 pt-10 pb-4 sm:grid-cols-[16rem_1fr] sm:items-start sm:gap-10"
             >
               {article.data.coverImage ? (
@@ -39,7 +41,7 @@ const [{ news: labels }, articles] = await Promise.all([getLabels(), getNews()])
               <div>
                 {article.data.publishDate && (
                   <time datetime={article.data.publishDate} class="text-xs font-medium text-muted">
-                    {formatDate(article.data.publishDate)}
+                    {formatDate(article.data.publishDate, locale)}
                   </time>
                 )}
                 <h2 class="mt-1.5 text-2xl font-semibold group-hover:text-primary">

@@ -90,6 +90,38 @@ describe("mica check", () => {
     assert.match(formatReport(report, root), /^Could not read the content model/);
   });
 
+  it("reports a localized ID that two entries have in the same locale", async () => {
+    const localized = defineSite({
+      locales: ["de", "en"],
+      collections: { pages: collection({ label: "Pages", fields: { title: text(), id: id({ from: "title" }), slug: id({ localized: true }) } }) },
+    });
+    write(MANIFEST_PATH, createManifest(localized, "test"));
+    write("pages/about/index.json", { title: "About", id: "about", slug: { de: "ueber-uns", en: "about" } });
+    write("pages/team/index.json", { title: "Team", id: "team", slug: { de: "ueber-uns", en: "team" } });
+    assert.deepEqual(problems(await checkContent(root), "error"), [
+      'pages/about/index.json: slug.de: "ueber-uns" is also the DE value of "team". Each page needs its own.',
+      'pages/team/index.json: slug.de: "ueber-uns" is also the DE value of "about". Each page needs its own.',
+    ]);
+  });
+
+  it("lists the missing translations of each locale as information, not as a problem", async () => {
+    const localized = defineSite({
+      locales: ["en", "de", "fr"],
+      collections: { pages: collection({ label: "Pages", fields: { title: text({ required: true, localized: true }), id: id(), body: richText({ localized: true }) } }) },
+      singletons: { settings: singleton({ label: "Website", fields: { claim: text({ localized: true }) } }) },
+    });
+    write(MANIFEST_PATH, createManifest(localized, "test"));
+    write("pages/about/index.json", { title: { en: "About", de: "Über uns", fr: null }, id: "about", body: {} });
+    write("pages/about/body.en.mdoc", "Text.\n");
+    write("pages/team/index.json", { title: { en: "Team", de: "Team", fr: "Équipe" }, id: "team" });
+    write("settings/index.json", { claim: { en: "Well built", de: null, fr: null } });
+    const report = await checkContent(root);
+    assert.deepEqual(report.problems, []);
+    assert.deepEqual(report.missing, { de: ["pages/about", "settings"], fr: ["pages/about", "settings"] });
+    assert.match(formatReport(report, root), /Missing translations \(information only\):\n {2}de {7}pages\/about, settings \(2\)\n/);
+    assert.match(formatReport(report, root), /0 errors, 0 warnings\./);
+  });
+
   it("reports invalid fields, missing media and dangling relations", async () => {
     write("news/hello/index.json", { id: "hello", author: "nobody", cover: "media/gone.jpg" });
     const errors = problems(await checkContent(root), "error");

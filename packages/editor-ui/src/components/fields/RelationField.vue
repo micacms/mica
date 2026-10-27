@@ -27,6 +27,7 @@ import { useReorder } from "@/composables/useReorder";
 import { announce } from "@/lib/announce";
 import { focusListItem, reportListItem } from "@/lib/focus";
 import { entryOptions, type RelationOption } from "@/lib/entry-options";
+import { addressOf } from "@/lib/locales";
 import { useSchema } from "@/stores/schema";
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
@@ -50,7 +51,8 @@ const aSingular = computed(() => `${/^[aeiou]/.test(singular.value) ? "an" : "a"
 
 onMounted(async () => {
   try {
-    options.value = await entryOptions(field.value.collection, reference.value !== undefined, target.value?.url);
+    // The default locale's page: the choices show one address for each entry.
+    options.value = await entryOptions(field.value.collection, reference.value !== undefined, target.value?.url, addressOf(schema.site.value?.locales));
   } catch {
     failed.value = true;
   } finally {

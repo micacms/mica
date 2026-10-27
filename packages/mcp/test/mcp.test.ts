@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 
-import { collection, createManifest, defineSite, MANIFEST_PATH, media, PROTOCOL_VERSION, referenceIndexPath, referenceSet, richText, serializeReferenceIndex, singleton, id, text } from "@micacms/core/internal";
+import { collection, createManifest, defineSite, MANIFEST_PATH, media, PROTOCOL_VERSION, referenceIndexPath, referenceSet, richText, serializeReferenceIndex, singleton, id, text, type Site } from "@micacms/core/internal";
 import { contentFiles, createApp, createLogger, createRuntimeContext, MODEL_UNREADABLE, type Env, type OwnerPolicy, type RuntimeContext } from "@micacms/runtime";
 import type { MiddlewareHandler } from "hono";
 
@@ -57,7 +57,7 @@ const commitOnly: OwnerPolicy = {
   push: async (_tree, revision) => ({ state: "published", revision }),
 };
 
-function harness(options: Partial<McpRoutesOptions> = {}): Harness {
+function harness(options: Partial<McpRoutesOptions> = {}, model: Site = site): Harness {
   const root = mkdtempSync(join(tmpdir(), "mica-mcp-test-"));
   git(root, "init", "-q", "-b", "main");
   git(root, "config", "user.email", "test@example.com");
@@ -80,7 +80,7 @@ function harness(options: Partial<McpRoutesOptions> = {}): Harness {
       contentRoot: root,
       adminOrigins: [],
     },
-    model: site,
+    model,
     files: contentFiles({ root }),
     logger: createLogger({ level: "silent", pretty: false }),
     policy: commitOnly,
@@ -250,6 +250,41 @@ describe("the MCP tools", () => {
   it("refuses a page on another site", async () => {
     const response = await h.rpc("tools/list", {}, { origin: "https://evil.example" });
     assert.equal(response.status, 403);
+  });
+});
+
+describe("missing translations", () => {
+  const multilingual = defineSite({
+    locales: ["en", "de", "fr"],
+    collections: { news: collection({ label: "News", fields: { id: id(), title: text({ required: true, localized: true }), summary: text({ localized: true }) } }) },
+  });
+  let h: Harness;
+  before(async () => {
+    h = harness({}, multilingual);
+    for (const data of [
+      { id: "done", title: { en: "Done", de: "Fertig", fr: "Fini" } },
+      { id: "half", title: { en: "Half", de: "Halb", fr: null }, summary: { en: "Short", de: null, fr: null } },
+    ]) {
+      const saved = await h.call("save_entry", { collection: "news", data });
+      assert.equal(saved.error, false, String(saved.value));
+    }
+  });
+  after(() => h.close());
+
+  it("lists the count of each locale with missing translations", async () => {
+    const listed = await h.call("list_entries", { collection: "news" });
+    assert.deepEqual(listed.value.entries, [
+      { id: "done", title: "Done" },
+      { id: "half", title: "Half", missingTranslations: { de: 1, fr: 2 } },
+    ]);
+  });
+
+  it("lists only the entries that miss a locale, and refuses an unknown one", async () => {
+    const listed = await h.call("list_entries", { collection: "news", missing: "fr" });
+    assert.deepEqual(listed.value.entries.map((entry: { id: string }) => entry.id), ["half"]);
+    const unknown = await h.call("list_entries", { collection: "news", missing: "en" });
+    assert.equal(unknown.error, true);
+    assert.match(unknown.value, /Use one of: de, fr/);
   });
 });
 

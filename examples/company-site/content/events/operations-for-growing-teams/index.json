@@ -1,5 +1,9 @@
 {
-  "title": "Operations for growing teams",
+  "title": {
+    "en": "Operations for growing teams",
+    "de": null,
+    "de-ch": null
+  },
   "id": "operations-for-growing-teams",
   "startsAt": "2026-09-17T09:00:00+01:00",
   "endsAt": "2026-09-17T13:00:00+01:00",
@@ -21,7 +25,12 @@
     "mateo-fernandez",
     "priya-raman"
   ],
-  "summary": "A half-day workshop on the processes that break first when a company doubles in size, and how to fix the three that matter most.",
+  "summary": {
+    "en": "A half-day workshop on the processes that break first when a company doubles in size, and how to fix the three that matter most.",
+    "de": null,
+    "de-ch": null
+  },
+  "body": {},
   "tags": [
     "workshop",
     "operations"

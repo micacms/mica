@@ -1,5 +1,9 @@
 {
-  "title": "Warehouse reporting dashboards",
+  "title": {
+    "en": "Warehouse reporting dashboards",
+    "de": null,
+    "de-ch": null
+  },
   "id": "warehouse-reporting-dashboards",
   "year": 2024,
   "category": "technology",
@@ -10,6 +14,7 @@
     "software",
     "process"
   ],
+  "description": {},
   "location": {
     "address": "200 Ferrier Street West",
     "city": "Northwick",
@@ -17,16 +22,40 @@
   },
   "facts": [
     {
-      "label": "Spreadsheets replaced",
-      "value": "11"
+      "label": {
+        "en": "Spreadsheets replaced",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "11",
+        "de": null,
+        "de-ch": null
+      }
     },
     {
-      "label": "Report time",
-      "value": "−80%"
+      "label": {
+        "en": "Report time",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "−80%",
+        "de": null,
+        "de-ch": null
+      }
     },
     {
-      "label": "Warehouses connected",
-      "value": "5"
+      "label": {
+        "en": "Warehouses connected",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "5",
+        "de": null,
+        "de-ch": null
+      }
     }
   ],
   "gallery": [

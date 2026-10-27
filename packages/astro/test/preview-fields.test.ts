@@ -30,6 +30,15 @@ const { startsAt, venue: place, title } = event.data;
     assert.deepEqual(fieldsIn(template), ["article: ↑", "time: startsAt", "p: venue.name", "h1: title", "p: location.city"]);
   });
 
+  it("follows an entry's data through localize", () => {
+    const template = `---
+const { event } = Astro.props;
+const data = localize(site, "events", event.data, Astro.currentLocale);
+---
+<article><time datetime={data.startsAt}>{format(data.startsAt)}</time><h1>{data.title}</h1></article>`;
+    assert.deepEqual(fieldsIn(template), ["article: ↑", "time: startsAt", "h1: title"]);
+  });
+
   it("keeps the fields of a computed value, and of the items of a loop", () => {
     const template = `---
 const events = await getCollection("events");

@@ -30,6 +30,14 @@ describe("renderRichText", () => {
     assert.match(html, /<a href="https:\/\/example\.com">Contact<\/a>/);
   });
 
+  it("gives each link the address that the link option returns, such as the page's locale", async () => {
+    const html = await renderRichText("See [the team](/team/) and [us](https://example.com).", null, {
+      link: (href) => (href.startsWith("/") ? `/de${href}` : href),
+    });
+    assert.match(html, /<a href="\/de\/team\/">the team<\/a>/);
+    assert.match(html, /<a href="https:\/\/example.com">us<\/a>/);
+  });
+
   it("returns an empty string for an empty field", async () => {
     assert.equal(await renderRichText(null), "");
     assert.equal(await renderRichText(""), "");

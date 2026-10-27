@@ -230,8 +230,8 @@ img.ProseMirror-separator {
 @layer base {
   html {
     -webkit-text-size-adjust: 100%;
-    /* A field that gets the focus scrolls into view below the sticky page header. */
-    scroll-padding-top: 8rem;
+    /* A field that gets the focus scrolls into view below the sticky page header, which says how far down it ends. */
+    scroll-padding-top: calc(var(--page-header-end, 7rem) + 1rem);
   }
 
   body {
@@ -345,6 +345,26 @@ img.ProseMirror-separator {
 @utility badge {
   @apply inline-flex items-center gap-1.5 rounded-sm border border-transparent bg-subtle px-2 py-0.5
     font-mono text-xs font-medium text-ink-soft;
+}
+
+/*
+ * A short text below its control, on hover or keyboard focus, after a moment: in a `group` with
+ * `group-hover:tooltip-shown group-focus-visible:tooltip-shown`, and a side such as `left-1/2 -translate-x-1/2`.
+ * The control's own text says it to a screen reader.
+ */
+@utility tooltip {
+  @apply pointer-events-none absolute top-full z-30 mt-1.5 rounded-sm bg-ink px-2 py-1 text-xs font-medium whitespace-nowrap
+    text-ground opacity-0 transition-opacity;
+}
+
+@utility tooltip-shown {
+  @apply opacity-100 delay-300;
+}
+
+/* A number in a small round pill, such as the missing translations of a language. */
+@utility count {
+  @apply inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[11px] leading-none
+    font-semibold tabular-nums;
 }
 
 /* A state as a word with a dot (brand guide, Status): the word carries the meaning. */

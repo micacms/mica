@@ -52,7 +52,7 @@ test("an editor creates an entry with an image, changes its ID, discards another
   const name = `Browser Tester ${stamp}`;
   const id = `moved-${stamp}`;
   const folder = `content/team/${id}`;
-  const taglineBefore = (JSON.parse(await publishedFile(request, "content/general/index.json")) as { tagline: string }).tagline;
+  const taglineBefore = (JSON.parse(await publishedFile(request, "content/general/index.json")) as { tagline: unknown }).tagline;
 
   await signIn(page);
 
@@ -97,7 +97,7 @@ test("an editor creates an entry with an image, changes its ID, discards another
     portrait: { path: `media/portrait-${stamp}.png`, alt: "A test portrait" },
   });
   expect(await published(request, `${folder}/media/portrait-${stamp}.png`)).toBe(true);
-  expect((JSON.parse(await publishedFile(request, "content/general/index.json")) as { tagline: string }).tagline).toBe(taglineBefore);
+  expect((JSON.parse(await publishedFile(request, "content/general/index.json")) as { tagline: unknown }).tagline).toEqual(taglineBefore);
 
   // Delete it, with its image, and publish the deletion.
   await page.goto(`/admin/collections/team/${id}`);

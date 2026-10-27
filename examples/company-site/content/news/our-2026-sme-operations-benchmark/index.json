@@ -1,5 +1,9 @@
 {
-  "title": "Our 2026 operations benchmark",
+  "title": {
+    "en": "Our 2026 operations benchmark",
+    "de": null,
+    "de-ch": null
+  },
   "id": "our-2026-sme-operations-benchmark",
   "publishDate": "2026-04-21",
   "author": "priya-raman",
@@ -8,9 +12,14 @@
     "research",
     "operations"
   ],
-  "excerpt": "We asked 120 owner-led businesses where their week actually goes. The answers were not flattering.",
+  "excerpt": {
+    "en": "We asked 120 owner-led businesses where their week actually goes. The answers were not flattering.",
+    "de": null,
+    "de-ch": null
+  },
   "coverImage": {
     "path": "media/research.jpg",
     "alt": "Survey reports with charts, a notebook and coffee on a research desk"
-  }
+  },
+  "body": {}
 }

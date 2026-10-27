@@ -1,29 +1,73 @@
 {
   "primaryLink": {
-    "label": "See our work",
+    "label": {
+      "en": "See our work",
+      "de": "Unsere Arbeit",
+      "de-ch": null
+    },
     "href": "/projects/"
   },
   "secondaryLink": {
-    "label": "Get in touch",
+    "label": {
+      "en": "Get in touch",
+      "de": "Kontakt aufnehmen",
+      "de-ch": null
+    },
     "href": "/contact/"
   },
   "projects": {
-    "eyebrow": "Our work",
-    "title": "Selected projects"
+    "eyebrow": {
+      "en": "Our work",
+      "de": "Unsere Arbeit",
+      "de-ch": null
+    },
+    "title": {
+      "en": "Selected projects",
+      "de": "Ausgewählte Projekte",
+      "de-ch": null
+    }
   },
   "events": {
-    "eyebrow": "Meet us",
-    "title": "Upcoming events"
+    "eyebrow": {
+      "en": "Meet us",
+      "de": "Treffen Sie uns",
+      "de-ch": null
+    },
+    "title": {
+      "en": "Upcoming events",
+      "de": "Nächste Veranstaltungen",
+      "de-ch": "Nächste Anlässe"
+    }
   },
   "news": {
-    "eyebrow": "Journal",
-    "title": "Latest news"
+    "eyebrow": {
+      "en": "Journal",
+      "de": "Journal",
+      "de-ch": null
+    },
+    "title": {
+      "en": "Latest news",
+      "de": "Neuigkeiten",
+      "de-ch": null
+    }
   },
   "contact": {
-    "title": "Have a project in mind?",
-    "text": "Tell us where you are and where you want to go. The first conversation is free.",
+    "title": {
+      "en": "Have a project in mind?",
+      "de": "Haben Sie ein Projekt im Kopf?",
+      "de-ch": null
+    },
+    "text": {
+      "en": "Tell us where you are and where you want to go. The first conversation is free.",
+      "de": "Sagen Sie uns, wo Sie stehen und wohin Sie wollen. Das erste Gespräch ist kostenlos.",
+      "de-ch": "Sagen Sie uns, wo Sie stehen und wohin Sie wollen. Das erste Gespräch ist gratis."
+    },
     "link": {
-      "label": "Get in touch",
+      "label": {
+        "en": "Get in touch",
+        "de": "Kontakt aufnehmen",
+        "de-ch": null
+      },
       "href": "/contact/"
     }
   }

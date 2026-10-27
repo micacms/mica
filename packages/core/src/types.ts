@@ -46,7 +46,16 @@ export interface BaseFieldOptions {
   group?: string;
   /** How much of the form's width the field takes. Defaults to `"full"`. */
   width?: "full" | "half" | "third";
+  /**
+   * A value for each of the site's `locales`, stored as an object keyed by locale. `required` and `default` apply to
+   * the default locale. With `{ fallback: false }`, a missing value stays empty on the website. Not for `object` and
+   * `repeater`: localize the fields inside.
+   */
+  localized?: Localized;
 }
+
+/** The `localized` option: `true`, or `{ fallback: false }` to keep a missing value empty. */
+export type Localized = boolean | { fallback: false };
 
 export interface BaseField extends BaseFieldOptions {
   kind: FieldKind;
@@ -328,7 +337,8 @@ export interface CollectionOptions {
   sortable?: boolean;
   /**
    * The page of an entry on the website, such as `/news/{id}`, or `/{activity}/{id}` with the value of a
-   * select, relation or date field as a whole part of the path. With `MICA_SITE_URL`, the editor links to it.
+   * select, relation or date field as a whole part of the path. On a site with locales, `{locale}` is the page's
+   * language, such as `/{locale}/news/{id}`. With `MICA_SITE_URL`, the editor links to it.
    */
   url?: string;
 }
@@ -354,7 +364,7 @@ export interface SingletonOptions {
   label: string;
   description?: string;
   fields: FieldMap;
-  /** Its page on the website, such as `/about`. With `MICA_SITE_URL`, the editor links to it. */
+  /** Its page on the website, such as `/about`, or `/{locale}/about` on a site with locales. With `MICA_SITE_URL`, the editor links to it. */
   url?: string;
 }
 
@@ -399,6 +409,17 @@ export interface SiteOptions {
   root?: string;
   /** The website's name for its editors, such as "Harbor Lane Consulting": the editor shows it at the top of its menu. */
   label?: string;
+  /** The locales of the site, such as `["de", "en"]`, as in Astro's `i18n.locales`. A `localized` field has a value for each. */
+  locales?: string[];
+  /** The locale whose value a missing translation falls back to, and that `required` applies to. Defaults to the first locale. */
+  defaultLocale?: string;
+  /** A locale that falls back to another one before the default locale, such as `{ "de-ch": "de" }`, as in Astro's `i18n.fallback`. */
+  fallback?: Record<string, string>;
+  /**
+   * `true`: the default locale has its prefix in an address with `{locale}` too, as `prefixDefaultLocale` in Astro's
+   * `i18n.routing`. Default: `false`, so that `/{locale}/news/{id}` is `/news/…` in the default locale.
+   */
+  prefixDefaultLocale?: boolean;
   collections: Record<string, Collection>;
   singletons?: Record<string, Singleton>;
   references?: Record<string, ReferenceSet>;
@@ -412,6 +433,18 @@ export interface Site<
   root?: string;
   /** See `SiteOptions.label`. */
   label?: string;
+  /** See `SiteOptions.locales`. With them, `defaultLocale` is set too. */
+  locales?: string[];
+  /** See `SiteOptions.defaultLocale`. */
+  defaultLocale?: string;
+  /** See `SiteOptions.fallback`. */
+  fallback?: Record<string, string>;
+  /** See `SiteOptions.prefixDefaultLocale`. Only when it is `true`. */
+  prefixDefaultLocale?: boolean;
+  /**
+   * The collections. `defineSite` expands a `localized` field into an object with one field for each locale, the
+   * form that the content stores; the field's type stays as declared.
+   */
   collections: C;
   singletons: S;
   /** The reference sets, when the model has any. */
@@ -494,10 +527,37 @@ type NeverNull<F extends AnyField, Own extends boolean> =
   F extends IdField ? Own :
   false;
 
+declare const LOCALIZED: unique symbol;
+
+/**
+ * The stored value of a `localized` field: a value for each locale, null when it is missing. `localize()` resolves it
+ * to `R`: `T` for a required field, whose fallback chain ends in the default locale, else `T | null`.
+ */
+export type LocalizedValue<T, R = T | null> = { [locale: string]: T | null } & { readonly [LOCALIZED]?: R };
+
+/** The value of a localized field after `localize()`: never null when it is required and has a fallback. */
+// prettier-ignore
+type LocalizedResult<F, T> =
+  F extends { localized: { fallback: false } } ? T | null :
+  F extends { required: true } ? T :
+  T | null;
+
 /** `Own`: the field is among a collection's own fields, where an ID is the entry's folder name. */
-export type InferField<F extends AnyField, Img = never, Own extends boolean = false> = NeverNull<F, Own> extends true
-  ? FieldValue<F, Img>
-  : FieldValue<F, Img> | null;
+// prettier-ignore
+export type InferField<F extends AnyField, Img = never, Own extends boolean = false> =
+  // The stored form, an object with one field for each locale: the value of its fields.
+  F extends { kind: "object"; localized: true | { fallback: false }; fields: infer M extends FieldMap } ? LocalizedValue<FieldValue<M[keyof M], Img>> :
+  F extends { localized: true | { fallback: false } } ? LocalizedValue<FieldValue<F, Img>, LocalizedResult<F, FieldValue<F, Img>>> :
+  NeverNull<F, Own> extends true ? FieldValue<F, Img> :
+  FieldValue<F, Img> | null;
+
+/** A value with each localized value resolved to one locale's value: what `localize()` gives. */
+// prettier-ignore
+export type Localize<T> =
+  typeof LOCALIZED extends keyof T ? (T extends { readonly [LOCALIZED]?: infer V } ? V : never) :
+  T extends readonly (infer Item)[] ? Localize<Item>[] :
+  T extends object ? { [K in keyof T]: Localize<T[K]> } :
+  T;
 
 export type InferFields<M extends FieldMap, Img = never, Own extends boolean = false> = {
   [K in keyof M]: InferField<M[K], Img, Own>;

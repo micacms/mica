@@ -17,7 +17,7 @@ const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [string[]] }>();
 
 const field = computed(() => props.field as TagsField);
-const { inputId, label, error: ownError, describedBy: ownDescribedBy, hintId, errorId, locked } = useField(props);
+const { inputId, label, error: ownError, describedBy: ownDescribedBy, hintId, errorId, locked, lang } = useField(props);
 
 /** The list's own problem, or one of a single tag (`tags.2`), which names the tag in its message. */
 const error = computed(
@@ -93,6 +93,7 @@ function onKeydown(event: KeyboardEvent): void {
         :id="inputId"
         v-model="draft"
         type="text"
+        :lang="lang"
         class="min-w-24 flex-1 border-0 bg-transparent p-0 text-sm outline-none focus:ring-0"
         :list="field.suggestions?.length ? listId : undefined"
         :maxlength="field.maxLength"

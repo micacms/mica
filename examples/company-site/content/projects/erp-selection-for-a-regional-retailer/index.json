@@ -1,5 +1,9 @@
 {
-  "title": "ERP selection for a regional retailer",
+  "title": {
+    "en": "ERP selection for a regional retailer",
+    "de": null,
+    "de-ch": null
+  },
   "id": "erp-selection-for-a-regional-retailer",
   "year": 2025,
   "category": "technology",
@@ -10,6 +14,7 @@
     "finance",
     "process"
   ],
+  "description": {},
   "location": {
     "address": "22 Millrace Lane",
     "city": "Eastvale",
@@ -17,16 +22,40 @@
   },
   "facts": [
     {
-      "label": "Vendors assessed",
-      "value": "9"
+      "label": {
+        "en": "Vendors assessed",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "9",
+        "de": null,
+        "de-ch": null
+      }
     },
     {
-      "label": "Licence cost",
-      "value": "−22%"
+      "label": {
+        "en": "Licence cost",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "−22%",
+        "de": null,
+        "de-ch": null
+      }
     },
     {
-      "label": "Requirements studied",
-      "value": "20 processes"
+      "label": {
+        "en": "Requirements studied",
+        "de": null,
+        "de-ch": null
+      },
+      "value": {
+        "en": "20 processes",
+        "de": null,
+        "de-ch": null
+      }
     }
   ],
   "gallery": [

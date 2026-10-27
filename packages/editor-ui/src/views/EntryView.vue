@@ -13,13 +13,14 @@
 import { computed, onMounted, provide, ref, watch } from "vue";
 import { useRouter } from "vue-router";
 
-import { defaultValues, isValidId, pagePlaceholders } from "@micacms/core/internal";
+import { defaultValues, isValidId, pagePlaceholders, singleValue } from "@micacms/core/internal";
 
 import { api, messageOf, type EntryDetail, type Referrer, type SavedEntry } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import DocumentStatus from "@/components/DocumentStatus.vue";
 import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
+import LocaleSwitcher from "@/components/LocaleSwitcher.vue";
 import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
 import ModelNotice from "@/components/ModelNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
@@ -28,6 +29,8 @@ import PreviewLink from "@/components/PreviewLink.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
 import { useDocumentEditor } from "@/composables/useDocumentEditor";
+import { provideFormLocale } from "@/composables/useFormLocale";
+import { addressOf, hasLocalizedFields } from "@/lib/locales";
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPage } from "@/composables/usePreviewPane";
 import type { Edit } from "@/lib/edits";
@@ -47,6 +50,11 @@ const staging = useStaging();
 const toast = useToast();
 
 const definition = computed(() => schema.collection(props.collection));
+// For a site with locales: the language that the form shows.
+const { form: formLocale, reveal: revealLocale } = provideFormLocale(() => definition.value?.fields);
+const localized = computed(() => hasLocalizedFields(definition.value?.fields ?? {}));
+/** The value of `{locale}` in the page's address: the page in the form's language. */
+const addressLocale = computed(() => addressOf(schema.site.value?.locales, formLocale.value?.locale.value));
 const updateLinks = ref(true);
 const formElement = ref<HTMLFormElement | null>(null);
 
@@ -115,7 +123,7 @@ const idChanging = computed<boolean>(() => !!props.id && newId.value !== props.i
 const linkers = ref<Referrer[] | null>(null);
 /** Where the page moves with the new ID, for a collection with a `url`: the old and the new address. */
 const movedPage = computed(() =>
-  movedPageOf(definition.value?.url, { id: props.id ?? "", data: saved.value }, { id: newId.value, data: values.value }),
+  movedPageOf(definition.value?.url, { id: props.id ?? "", data: saved.value }, { id: newId.value, data: values.value }, addressLocale.value),
 );
 
 // Uploads go into the entry's folder: the saved ID's, or for a new entry a valid ID in the form.
@@ -149,10 +157,13 @@ const withAddress = (address: string, path: string | null): string | null => (pa
 /** The saved data: the dev server shows it, not what the form holds before the next save. */
 const saved = computed(() => doc.version.value?.data);
 /** An address with other names than {id}, such as /{activity}/{id}: a draft of such a field moves the page. */
-const addressNamesFields = computed(() => pagePlaceholders(definition.value?.url ?? "").some((name) => name !== "id"));
+// On a site with locales, {locale} is the page's language, not a field.
+const addressNamesFields = computed(() =>
+  pagePlaceholders(definition.value?.url ?? "").some((name) => name !== "id" && !(name === "locale" && schema.site.value?.locales)),
+);
 /** Its page in the dev server, which reads the saved drafts: also for one that was never published. */
 const preview = computed(() =>
-  props.id && devServer.address.value && definition.value?.url ? withAddress(devServer.address.value, pageHref(definition.value.url, props.id, saved.value)) : null,
+  props.id && devServer.address.value && definition.value?.url ? withAddress(devServer.address.value, pageHref(definition.value.url, props.id, saved.value, addressLocale.value)) : null,
 );
 // The overlay form shows a document of the main form's page: that page stays in the preview.
 if (!props.embedded) usePreviewPage(preview, computed(() => !!props.id && !!definition.value?.url));
@@ -163,20 +174,20 @@ if (!props.embedded) usePreviewPage(preview, computed(() => !!props.id && !!defi
  */
 const page = computed(() =>
   props.id && !(pending.value && (pending.value.state === "new" || addressNamesFields.value))
-    ? pageHref(definition.value?.page, props.id, saved.value)
+    ? pageHref(definition.value?.page, props.id, saved.value, addressLocale.value)
     : null,
 );
 
 const title = computed(() => {
   const def = definition.value;
   if (!def) return "Entry";
-  const value = def.titleField ? values.value[def.titleField] : undefined;
+  const value = def.titleField ? singleValue(def.fields[def.titleField], values.value[def.titleField]) : undefined;
   if (typeof value === "string" && value.trim()) return value.trim();
   return isNew ? `New ${def.labelSingular.toLowerCase()}` : "Untitled";
 });
 
-/** The entry's folder, from the server. */
-const location = computed(() => doc.version.value?.path ?? "Not saved yet");
+/** The entry's folder, from the server, below the form. */
+const location = computed(() => doc.version.value?.path ?? "");
 
 onMounted(async () => {
   if (!definition.value) {
@@ -257,22 +268,30 @@ defineExpose({ atRisk: doc.atRisk });
   <template v-if="definition">
     <PageHeader
       :title="title"
-      :subtitle="location"
       :loading="loading"
       :back="embedded ? null : { name: 'collection', params: { collection } }"
       :back-label="definition.label"
       :embedded="embedded"
+      form
     >
+      <template v-if="!definition.readOnly && !loading" #meta>
+        <DocumentStatus :state="state" :edit="pending" @discarded="discarded" />
+      </template>
+
       <PreviewLink v-if="preview && !embedded" :href="preview" />
       <PageLink v-if="page" :href="page" />
       <template v-if="!definition.readOnly">
-        <DocumentStatus :state="state" :edit="pending" @discarded="discarded" />
         <button v-if="isNew" type="button" class="btn-primary" :disabled="saving" @click="doc.save()">
           {{ saving ? "Creating…" : "Create" }}
         </button>
         <button v-else-if="failed" type="button" class="btn-secondary" :disabled="saving" :title="failed" @click="doc.retry()">
           Try again
         </button>
+        <RouterLink v-if="pending" :to="{ name: 'changes' }" class="btn-primary">Publish…</RouterLink>
+      </template>
+
+      <template v-if="formLocale && localized && !loading" #toolbar>
+        <LocaleSwitcher :form="formLocale" :fields="definition.fields" :values="values" :issues="issues" />
       </template>
     </PageHeader>
 
@@ -344,7 +363,7 @@ defineExpose({ atRisk: doc.atRisk });
           </div>
         </div>
 
-        <form ref="formElement" novalidate @submit.prevent="isNew ? doc.save() : doc.autosave()" @focusout="doc.onLeave">
+        <form ref="formElement" novalidate @reveal-field="revealLocale" @submit.prevent="isNew ? doc.save() : doc.autosave()" @focusout="doc.onLeave">
           <FieldList
             v-model="values"
             :fields="definition.fields"
@@ -358,8 +377,9 @@ defineExpose({ atRisk: doc.atRisk });
           <button v-if="!definition.readOnly" type="submit" class="sr-only">Save</button>
         </form>
 
-        <div v-if="!isNew && !definition.readOnly && !embedded" class="mt-10 border-t border-line pt-5">
-          <button type="button" class="btn-danger" @click="askDelete">
+        <div v-if="!isNew" class="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
+          <p class="text-xs text-muted">Folder: <span class="font-mono">{{ location }}</span></p>
+          <button v-if="!definition.readOnly && !embedded" type="button" class="btn-danger" @click="askDelete">
             Delete this {{ definition.labelSingular.toLowerCase() }}
           </button>
         </div>

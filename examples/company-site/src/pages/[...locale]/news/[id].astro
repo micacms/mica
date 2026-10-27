@@ -1,31 +1,34 @@
 ---
 import { Image } from "astro:assets";
 import { related } from "@micacms/astro/relations";
-import { getCollection, type CollectionEntry } from "astro:content";
 
 import RichText from "@/components/RichText.astro";
 import TagList from "@/components/TagList.astro";
 import BaseLayout from "@/layouts/BaseLayout.astro";
-import { formatDate, getLabels, projectPath, toPlainText } from "@/lib/content";
+import { formatDate, getLabels, getNews, inLocale, projectPath, toPlainText, type Entry } from "@/lib/content";
+import { inEachLocale, localePath } from "@/lib/i18n";
 
 export async function getStaticPaths() {
-  const articles = await getCollection("news");
-  return articles.map((article) => ({
-    params: { id: article.id },
-    props: { article },
-  }));
+  return inEachLocale(async (locale) =>
+    (await getNews(locale)).map((article) => ({
+      params: { id: article.id },
+      props: { article },
+    })),
+  );
 }
 
 interface Props {
-  article: CollectionEntry<"news">;
+  article: Entry<"news">;
 }
 
 const { article } = Astro.props;
 const { title, publishDate, excerpt, coverImage, body, author, relatedProject, tags } = article.data;
+const locale = Astro.currentLocale;
 
 const writer = await related("team", author);
-const project = await related("projects", relatedProject);
-const { news: texts } = await getLabels();
+const found = await related("projects", relatedProject);
+const project = found && inLocale(found, locale);
+const { news: texts } = await getLabels(locale);
 ---
 
 <BaseLayout
@@ -35,17 +38,17 @@ const { news: texts } = await getLabels();
 >
   <article>
     <div class="container-prose pb-10 pt-16 sm:pt-24">
-      <a href="/news/" class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> {texts.allLink}</a>
+      <a href={localePath("/news/", locale)} class="group inline-flex items-center gap-1.5 text-sm font-medium text-muted hover:text-primary"><span aria-hidden="true" class="transition-transform group-hover:-translate-x-0.5">←</span> {texts.allLink}</a>
 
       <h1 class="mt-4 text-4xl font-semibold sm:text-5xl">{title}</h1>
 
       <p class="mt-5 text-sm text-muted">
-        {publishDate && <time datetime={publishDate}>{formatDate(publishDate)}</time>}
+        {publishDate && <time datetime={publishDate}>{formatDate(publishDate, locale)}</time>}
         {
           writer && (
             <span>
               {publishDate ? " · " : ""}{texts.by}{" "}
-              <a href={`/team/${writer.id}/`} class="font-medium text-ink hover:text-primary">{writer.data.name}</a>
+              <a href={localePath(`/team/${writer.id}/`, locale)} class="font-medium text-ink hover:text-primary">{writer.data.name}</a>
             </span>
           )
         }
@@ -77,7 +80,7 @@ const { news: texts } = await getLabels();
 
       {
         project && (
-          <a href={projectPath(project)} class="card-surface group mt-12 flex items-center justify-between gap-4 p-5 transition hover:border-primary/40">
+          <a href={projectPath(project, locale)} class="card-surface group mt-12 flex items-center justify-between gap-4 p-5 transition hover:border-primary/40">
             <span>
               <span class="eyebrow block text-muted">{texts.relatedProject}</span>
               <span class="mt-1 block font-semibold group-hover:text-primary">{project.data.title}</span>

@@ -1,14 +1,39 @@
 {
-  "title": "Events",
+  "title": {
+    "en": "Events",
+    "de": "Veranstaltungen",
+    "de-ch": "Anlässe"
+  },
   "id": "events",
   "template": "events",
-  "eyebrow": "Meet us",
-  "intro": "Workshops and talks, in person and online.",
-  "heroImage": null,
+  "eyebrow": {
+    "en": "Meet us",
+    "de": "Treffen Sie uns",
+    "de-ch": null
+  },
+  "intro": {
+    "en": "Workshops and talks, in person and online.",
+    "de": "Workshops und Vorträge, vor Ort und online.",
+    "de-ch": null
+  },
+  "heroImage": {
+    "en": null,
+    "de": null,
+    "de-ch": null
+  },
+  "body": {},
   "sections": [],
   "seo": {
-    "metaTitle": null,
-    "metaDescription": null,
+    "metaTitle": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
+    "metaDescription": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
     "ogImage": null,
     "noindex": false
   }

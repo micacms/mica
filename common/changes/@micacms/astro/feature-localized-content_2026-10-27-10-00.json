@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "localize(site, name, data, locale) gives an entry or a singleton in one locale, with the fallback of each localized field. renderRichText takes a link option that gives each link its address, for example in the page's locale. localesOf(site, name, data) gives the locales that an entry is in: the default locale, and each locale where it has its own values, for getStaticPaths, lists, the sitemap and hreflang.",
+      "type": "minor",
+      "packageName": "@micacms/astro"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

@@ -10,7 +10,7 @@ import { stat } from "node:fs/promises";
 import path from "node:path";
 import { Readable } from "node:stream";
 
-import { compareEntries, entryFolder, entryTitle, MEDIA_FILE_TYPE_NAMES, readReferenceIndex, type AccessContext, type MediaAccept, type MediaFileType } from "@micacms/core/internal";
+import { compareEntries, entryFolder, entryTitle, MEDIA_FILE_TYPE_NAMES, missingTranslations, siteLocales, readReferenceIndex, type AccessContext, type MediaAccept, type MediaFileType } from "@micacms/core/internal";
 import { AGENT_SCOPES, ApiError, apiErrorOf, ConflictError, publishChanges, refuseWhileModelUnreadable, storeUpload, VERSION, type RuntimeContext } from "@micacms/runtime";
 import { McpServer, type CallToolResult, type ScopeChallengeHandler } from "@modelcontextprotocol/server";
 import { z } from "zod";
@@ -159,23 +159,37 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
     {
       title: "List entries",
       description:
-        "The entries of a collection, in the website's order: ID and title. `search` finds a text in any field. `orderRevision` is for reorder_entries.",
+        "The entries of a collection, in the website's order: ID and title. `search` finds a text in any field. `orderRevision` is for reorder_entries. " +
+        "On a multilingual site, `missingTranslations` counts, for each locale, the values that the default locale has and that locale does not; " +
+        "`missing` lists only the entries with missing translations in one locale.",
       inputSchema: z.object({
         collection: z.string().describe("The collection's name, from describe_model."),
         search: z.string().optional().describe("Only entries that contain this text."),
+        missing: z.string().optional().describe("Only entries with missing translations in this locale, such as \"de\"."),
       }),
       ...read,
     },
-    run(async ({ collection, search }: { collection: string; search?: string | undefined }) => {
+    run(async ({ collection, search, missing }: { collection: string; search?: string | undefined; missing?: string | undefined }) => {
       const def = content().requireCollection(collection);
+      const site = ctx.site.model;
+      const locales = siteLocales(site);
+      const others = locales ? locales.locales.filter((locale) => locale !== locales.defaultLocale) : [];
+      if (missing !== undefined && !others.includes(missing)) {
+        throw new ApiError("bad_request", `"${missing}" is not a locale of the site other than the default. Use one of: ${others.join(", ") || "none"}.`);
+      }
       // Before the list: the revision is never newer than the order the agent sees.
       const orderRevision = await content().orderRevision(collection);
       const needle = search?.trim().toLowerCase();
       const entries = (await content().list(collection))
         .filter((entry) => !needle || JSON.stringify(entry.data).toLowerCase().includes(needle))
+        .filter((entry) => missing === undefined || missingTranslations(site, def.fields, entry.data, missing) > 0)
         .map((entry) => ({ id: entry.id, position: entry.position, title: entryTitle(def, entry.data), data: entry.data }))
         .sort(compareEntries(def));
-      return { entries: entries.map(({ id, title }) => ({ id, title })), orderRevision };
+      const summary = ({ id, title, data }: (typeof entries)[number]) => {
+        const counts = Object.fromEntries(others.map((locale) => [locale, missingTranslations(site, def.fields, data, locale)]).filter(([, count]) => count !== 0));
+        return Object.keys(counts).length > 0 ? { id, title, missingTranslations: counts } : { id, title };
+      };
+      return { entries: entries.map(summary), orderRevision };
     }),
   );
 

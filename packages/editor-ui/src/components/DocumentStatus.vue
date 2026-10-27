@@ -1,9 +1,9 @@
 <script setup lang="ts">
 /**
- * The status of an entry or settings in the page header: saving, saved and not
- * on the website yet, with when it was saved or what stops its publication,
- * and the way to publish it and the way back. Its size does not change while
- * the status does, so that the header stays still while the editor types.
+ * The status of an entry or settings, in the line below the page's title:
+ * saving, saved and not on the website yet, with when it was saved or what
+ * stops its publication, and the way back. The line does not wrap, so that the
+ * header stays still while the editor types. "Publish…" is in the actions.
  */
 
 import { computed, ref } from "vue";
@@ -64,22 +64,18 @@ async function discard(): Promise<void> {
 </script>
 
 <template>
-  <div class="flex items-center gap-2">
-    <!-- A fixed width and two lines, also when the second is empty: the status changes, the header does not move. -->
-    <div class="flex w-44 flex-col items-end">
-      <span :class="['status', state.tone]">{{ state.label }}</span>
-      <span
-        :class="['mt-0.5 h-4 max-w-full truncate text-xs leading-4', missing.length > 0 ? 'font-medium text-warning' : 'text-muted']"
-        :title="detail || undefined"
-      >
-        {{ detail }}
-      </span>
-    </div>
-    <template v-if="edit">
-      <RouterLink :to="{ name: 'changes' }" class="btn-secondary">Publish…</RouterLink>
-      <button type="button" class="btn-ghost" @click="confirming = true">Discard changes</button>
-    </template>
-  </div>
+  <span :class="['status shrink-0', state.tone]">{{ state.label }}</span>
+  <span v-if="detail" :class="['min-w-0 truncate text-xs', missing.length > 0 ? 'font-medium text-warning' : 'text-muted']" :title="detail">
+    {{ detail }}
+  </span>
+  <button
+    v-if="edit"
+    type="button"
+    class="shrink-0 rounded-sm text-xs font-medium text-muted underline-offset-2 hover:text-ink hover:underline"
+    @click="confirming = true"
+  >
+    Discard changes
+  </button>
 
   <ConfirmDialog
     :open="confirming"

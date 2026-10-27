@@ -1,13 +1,21 @@
 {
   "name": "Mateo Fernández",
   "id": "mateo-fernandez",
-  "role": "Senior consultant, operations",
+  "role": {
+    "en": "Senior consultant, operations",
+    "de": null,
+    "de-ch": null
+  },
   "email": "mateo.fernandez@harborlane.example",
   "phone": "+990 40 555 0144",
   "portrait": {
     "path": "media/portrait.jpg",
     "alt": "Mateo Fernández, operations consultant, in a blue shirt"
   },
-  "bio": "Operations and process work. Spends most weeks on client sites across the Halden Coast and the Sable Highlands. He trained as an engineer and still measures everything twice. He believes that most process problems are visible on the shop floor long before they appear in a report, so that is where he starts.",
+  "bio": {
+    "en": "Operations and process work. Spends most weeks on client sites across the Halden Coast and the Sable Highlands. He trained as an engineer and still measures everything twice. He believes that most process problems are visible on the shop floor long before they appear in a report, so that is where he starts.",
+    "de": null,
+    "de-ch": null
+  },
   "featured": true
 }

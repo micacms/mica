@@ -115,6 +115,9 @@ function evaluate(node: unknown, scope: Scope): Value {
     }
     case "CallExpression": {
       const callee = node["callee"];
+      // `localize(site, "pages", entry.data, locale)` gives the entry's data in one locale: the fields of its data.
+      const args = node["arguments"] as unknown[];
+      if (isNode(callee) && callee.type === "Identifier" && callee["name"] === "localize" && args[2] !== undefined) return evaluate(args[2], scope);
       const target = isNode(callee) && callee.type === "MemberExpression" ? evaluate(callee["object"], scope) : NOTHING;
       const parts = [target, ...(node["arguments"] as unknown[]).map((argument) => callbackValue(argument, target, scope))];
       return union(...parts);

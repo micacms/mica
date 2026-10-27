@@ -74,7 +74,7 @@ lists are for.
 
 Options of every field: `label`, `description`, `required`, `listed` (a column
 in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
-`"third"`).
+`"third"`), `localized` (a value for each locale; see "Localization (i18n)").
 
 | Field | Stored as | Other options |
 | --- | --- | --- |
@@ -233,6 +233,57 @@ const body = await renderRichText(article.data.body, article.data);
 - Do not depend on the order of `getCollection()`. Sort by a date field, or
   in the editor's order: `entries.sort(inEditorOrder)` (from `@micacms/astro`).
   It follows the collection's `defaultSort`, else the manual order.
+
+### Localization (i18n)
+
+Give the site its locales, the same as Astro's `i18n`, and mark each field
+that has a translation with `localized: true`:
+
+```ts
+export const site = defineSite({
+  locales: ["de", "en"],
+  defaultLocale: "de",
+  collections: {
+    pages: collection({
+      label: "Pages",
+      fields: {
+        id: id(),
+        title: text({ required: true, localized: true }),
+        body: richText({ localized: true }),
+        image: media({ accept: "image" }),
+      },
+    }),
+  },
+});
+```
+
+- A localized field is stored as `{ "de": …, "en": … }`, and rich text as
+  `body.de.mdoc` and `body.en.mdoc`. `required` applies to the default locale.
+- `localize(site, "pages", page.data, Astro.currentLocale)` from
+  `@micacms/astro` gives the data in one locale. A missing value falls back to
+  `fallback`, then to `defaultLocale`. `localized: { fallback: false }` keeps
+  it empty.
+- An `object()`, a `repeater()` and a collection's ID field cannot be
+  localized. Localize the fields inside.
+- Links in rich text: `renderRichText(text, data, { link })` gives each link
+  the address in the page's locale, so editors write one address, such as
+  `/team/`.
+- The labels of `select()` options are the editor's. A name of an option that
+  the website shows belongs in a localized field.
+- A `url` can name `{locale}`, such as `/{locale}/news/{id}`, so that the
+  editor's preview and links show the page of the form's language. Without
+  `prefixDefaultLocale: true` in `defineSite`, as in Astro, the default
+  locale's address has no prefix: `/news/hello`.
+- A localized `id()`, such as a `slug`, must be unique in each locale:
+  `npx mica check` and Publish report a duplicate.
+- `localesOf(site, "pages", page.data)` from `@micacms/astro` gives the
+  locales that an entry is in: the default locale, and each locale where every
+  required localized field has its own value. Use it in `getStaticPaths`, a
+  list, the sitemap or `hreflang` only when the user wants no page that shows
+  the fallback. Ask the user first.
+- `npx mica check` lists the missing translations of each locale. They are
+  not errors.
+- Content that is different in each language: one collection for each locale.
 
 ### Images
 

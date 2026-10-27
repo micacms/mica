@@ -1,14 +1,39 @@
 {
-  "title": "Projects",
+  "title": {
+    "en": "Projects",
+    "de": "Projekte",
+    "de-ch": null
+  },
   "id": "projects",
   "template": "projects",
-  "eyebrow": "Portfolio",
-  "intro": "A selection of our completed work.",
-  "heroImage": null,
+  "eyebrow": {
+    "en": "Portfolio",
+    "de": "Portfolio",
+    "de-ch": null
+  },
+  "intro": {
+    "en": "A selection of our completed work.",
+    "de": "Eine Auswahl abgeschlossener Projekte.",
+    "de-ch": null
+  },
+  "heroImage": {
+    "en": null,
+    "de": null,
+    "de-ch": null
+  },
+  "body": {},
   "sections": [],
   "seo": {
-    "metaTitle": null,
-    "metaDescription": null,
+    "metaTitle": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
+    "metaDescription": {
+      "en": null,
+      "de": null,
+      "de-ch": null
+    },
     "ogImage": null,
     "noindex": false
   }

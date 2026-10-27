@@ -21,6 +21,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
 import { ChevronLeft, ChevronRight, ExternalLink, LoaderCircle, RotateCw, TriangleAlert } from "@lucide/vue";
 
+import { chooseFormLocale } from "@/composables/useFormLocale";
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPane, type PreviewMode } from "@/composables/usePreviewPane";
 import { fieldAt, fieldLabel, fieldPaths } from "@/lib/field-labels";
@@ -275,7 +276,7 @@ function sitePath(path: string): string {
   return base && path.startsWith(base) ? path.slice(base.length) || "/" : path;
 }
 
-/** In Edit mode, the form follows the page in the preview, when that page has a document of its own. */
+/** In Edit mode, the form follows the page in the preview, when that page has a document of its own, and its language. */
 async function follow(): Promise<void> {
   if (pane.mode.value !== "edit" || !pane.visible.value || !shown.value) return;
   // Only a document that the page shows: an address such as /news/unknown/ matches a pattern, but has no entry.
@@ -284,20 +285,35 @@ async function follow(): Promise<void> {
     const id = candidate.params["id"] ?? candidate.params["name"];
     return markers.value.some((marker) => marker.document === document && marker.id === id);
   });
-  if (!target || router.resolve(target).path === route.path) return;
-  await openForm(target);
+  if (!target) return;
+  const form = { name: target.name, params: target.params };
+  if (router.resolve(form).path === route.path) {
+    if (target.locale) chooseFormLocale(target.locale);
+    return;
+  }
+  // The language changes with the new form, not before: the old form would send its own page to the frame.
+  following = true;
+  try {
+    if ((await openForm(form)) && target.locale) chooseFormLocale(target.locale);
+  } finally {
+    following = false;
+  }
 }
+
+/** While the form follows the page of the frame, the frame keeps that page, also when the form's language changes. */
+let following = false;
 
 /**
  * Opens another main form. The overlay belongs to the page that it was opened
  * on, so it closes first; when the form below keeps its page (the editor chose
  * to stay), the address loses the overlay too.
  */
-async function openForm(target: RouteLocationRaw): Promise<void> {
+async function openForm(target: RouteLocationRaw): Promise<boolean> {
   const hadOverlay = !!pane.overlay.value;
-  if (!pane.closeOverlay()) return;
+  if (!pane.closeOverlay()) return false;
   const failure = await router.push(target);
   if (failure && hadOverlay) await router.replace({ query: withoutOverlay(route.query) });
+  return !failure;
 }
 
 function onMessage(event: MessageEvent): void {
@@ -346,7 +362,7 @@ let loadedIn: HTMLIFrameElement | null = null;
 watch(
   [() => pane.frame.value, iframe],
   ([url, element]) => {
-    if (!url || !element || (element === loadedIn && sameAddress(url, shown.value))) return;
+    if (!url || !element || (element === loadedIn && (following || sameAddress(url, shown.value)))) return;
     element.src = url;
     loadedIn = element;
   },

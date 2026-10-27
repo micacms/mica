@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "On a multilingual site, list_entries gives the missing translations of each entry, and its option missing lists the entries that miss one locale.",
+      "type": "minor",
+      "packageName": "@micacms/mcp"
+    }
+  ],
+  "packageName": "@micacms/mcp",
+  "email": "alexander@muedespacher.ch"
+}
