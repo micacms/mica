@@ -57,12 +57,12 @@ The rules:
 ### Add languages to a site
 
 - A site that used an `object()` with one field for each language changes each object to one field with `localized: true`. When the keys of the object are the locales, the files do not change.
-- A field that has values already changes their shape when it gets `localized`: `"title": "About"` must become `"title": { "de": "About" }`. Move the values in the same commit as the model change, and run `npx mica check`.
+- A field that has values already changes their shape when it gets `localized`: `"title": "About"` must become `"title": { "de": "About" }`, and the rich-text file `body.mdoc` becomes `body.de.mdoc`. Move the values in the same commit as the model change, and run `npx mica check`. See [Change the model](/docs/model-changes/).
 - Upgrade Mica together with `@micacms/astro`: an older Mica cannot read a model with locales.
 
 ### In the editor
 
-The form of an entry or a singleton has a **Language** switcher, the default locale first. A localized field shows the input of the chosen language, and an empty one shows its fallback in grey. Each language tells how many of its texts are empty while the default locale has them, and marks a language with a problem. A field that is the same in each language shows in each language. See [Edit content](/docs/editing/).
+The header of an entry or a singleton has a **Language** switcher, the default locale first. Each language tells how many of its texts are empty while the default locale has them, and marks a language with a problem. A localized field shows the input of the chosen language, and a language button at the end of its label. The button shows the field in the other languages, and it marks a missing translation. An empty text input shows its fallback in grey. A field that is the same in each language shows in each language. See [Edit content](/docs/editing/).
 
 ### The pages
 

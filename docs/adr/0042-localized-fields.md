@@ -13,7 +13,7 @@ With the object pattern of record 22, a site in several languages declares an ob
 - Storage is the object pattern of record 22: `{ "de": …, "en": … }` in `index.json`, and `body.de.mdoc` for rich text. `defineSite` expands a localized field into an object with one field for each locale, the default locale first, so validation, serialization, the manifest, the editor and the MCP tools read it as an object. The object keeps `localized`, so that the editor and the website know it.
 - `required` and `default` apply to the default locale only. A missing translation never blocks a save or Publish.
 - The fallback is resolved when the website reads the content, never written to a file. A missing value takes the value of the next locale in its chain: `fallback`, then `defaultLocale`. A file holds only real translations, and a Git diff shows only them.
-- The editor shows a form in one locale at a time, with a switcher. A localized field shows the input of that locale, and its fallback when it is empty. A field that is the same in each locale shows in each locale.
+- The editor shows a form in one locale at a time, with a switcher. A localized field shows the input of that locale, and a button with its value in the other locales, which marks a missing translation. An empty text input shows its fallback as the placeholder. A field that is the same in each locale shows in each locale.
 - An entry is in all locales. The list of locales that an entry is in, `{locale}` in a `url`, and a check that a localized ID is unique come with a later record.
 
 ## Consequences
