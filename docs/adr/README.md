@@ -38,8 +38,9 @@ Each record states a decision that is still true: its context, the decision and 
 - [19. Links are checked at Publish; reference data is an index](0019-links-and-reference-data.md)
 - [20. Rich text is Markdoc, and Mica never loses what it cannot show](0020-rich-text-is-markdoc.md)
 - [21. Rules of the field kinds](0021-field-rules.md)
-- [22. No native multilingual content in 1.0](0022-no-native-multilingual-content.md)
+- [22. No native multilingual content in 1.0](0022-no-native-multilingual-content.md) (replaced by 42)
 - [41. An entry has an ID, and its page has a URL](0041-the-entry-id-is-not-its-url.md)
+- [42. Localized fields: one entry, a value for each locale](0042-localized-fields.md)
 
 ## Websites and setup
 
