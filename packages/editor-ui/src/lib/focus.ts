@@ -44,7 +44,13 @@ export function focusField(path: string, root: ParentNode = document, options: {
         'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"], button:not([disabled])',
       ) ??
       wrapper;
-    wrapper.dispatchEvent(new CustomEvent(REVEAL_FIELD, { bubbles: true }));
+    // `detail` is the whole path: a form that shows one language changes to the field's language, and cancels.
+    const reveal = new CustomEvent(REVEAL_FIELD, { bubbles: true, cancelable: true, detail: path });
+    wrapper.dispatchEvent(reveal);
+    if (current !== path && reveal.defaultPrevented) {
+      void nextTick(() => focusField(path, root, options));
+      return true;
+    }
     // After the opened groups are on the page.
     void nextTick(() => {
       if (options.block !== undefined && current === path) {

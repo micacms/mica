@@ -38,12 +38,15 @@ For a reference set of the model, the loader also writes its index to `<content 
 
 `_mica` has no `id` or `collection`. Use `entry.id` and the name of the collection. There are no dates in `_mica`, because in Git a date is commit data. Add a `date()` field when editors must see or set a date.
 
+A localized field is an object with a value for each locale, such as `{ de: "Über uns", en: null }`. `localize` gives the data in one locale.
+
 ## Helpers for pages
 
 | Helper | Gives |
 | --- | --- |
 | `inEditorOrder` | A function for `sort`: it puts the entries in the order that the editor shows. `(await getCollection("team")).sort(inEditorOrder)` |
 | `getSingleton(site, name)` | The data of a singleton, typed by the model. It stops the build with a clear message when nobody saved the singleton yet. |
+| `localize(site, name, data, locale)` | The data of an entry or a singleton in one locale, such as `Astro.currentLocale`, typed by the model. Each localized field gives the value of that locale, or of the next locale in its chain: `fallback`, then `defaultLocale`. Without `locale`, the default locale. See [Several languages](/docs/multilingual/). |
 | `mediaFile(site, path)` | The file on disk for a media path, to read a GPX track or another file at build time. A `..` in the path is refused. |
 
 See [Recipes](/docs/recipes/) for each one in use.
@@ -139,7 +142,7 @@ Start the dev server with `MICA_PREVIEW=1 astro dev`. Only then does the integra
 In each `astro dev`, also without `MICA_PREVIEW`, the integration tells the local editor the port that the dev server listens on. So the editor finds the dev server also when Astro takes another port, because the port of the config is busy.
 
 - The loaders append invisible characters to the values of text, textarea and rich-text fields, and to the alt text of images. Values that look like an address or a phone number get none, because a template puts them in a link. In the preview, a template that compares a text value or makes an address from it can act differently.
-- A value that the page shows formatted, such as a date, a number, an option, a map or an image without alt text, cannot carry the characters. The dev server reads each `.astro` template with Astro's own parser before Astro compiles it, and adds `data-mica-fields` to each element, with the fields that its expressions read. The file on disk does not change. A value that another module reads and formats by itself is not found.
+- A value that the page shows formatted, such as a date, a number, an option, a map or an image without alt text, cannot carry the characters. The dev server reads each `.astro` template with Astro's own parser before Astro compiles it, and adds `data-mica-fields` to each element, with the fields that its expressions read. The file on disk does not change. A value that another module reads and formats by itself is not found. The data that `localize(site, name, entry.data, locale)` gives keeps the fields of `entry.data`.
 - The parser is `@astrojs/compiler-rs`, the one that the site's Astro installs. You install nothing for it. At the start, the dev server checks that the parser places the fields right. The parser of Astro 7.0 to 7.2 does not: then only the marked values can be clicked, and the dev server says so. Astro 7.3 or newer has a parser that works.
 - `renderRichText` and `transformRichText` take the characters off a rich text. They mark the whole text with its field (`data-mica-field`) and each top-level block with its place (`data-mica-block`). A template that renders rich text in another way gets no marks for it.
 - A component gets its values as props. The element that uses it reads the fields, such as `<TagList tags={tags} />`, and the root element of the component gets them too.

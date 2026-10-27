@@ -1,15 +1,20 @@
 <script setup lang="ts">
 /**
- * Nested object. Recurses through `FieldList`, so nesting depth is unbounded.
+ * Nested object. Recurses through `FieldList`, so nesting depth is unbounded. A localized field is an object with one
+ * field for each locale: in a form with a language, it shows the input of that language only.
  */
 
 import { computed, ref } from "vue";
 import { ChevronDown } from "@lucide/vue";
 
-import type { ObjectField } from "@micacms/core/internal";
+import { isLocalizedObject, type AnyField, type ObjectField } from "@micacms/core/internal";
 
 import FieldList from "./FieldList.vue";
+import FieldRenderer from "./FieldRenderer.vue";
 import { useField, type FieldProps } from "@/composables/useField";
+import { useFormLocale } from "@/composables/useFormLocale";
+import { fallbackFor } from "@/lib/locales";
+import { previewValue } from "@/lib/format";
 
 const props = defineProps<
   FieldProps & { modelValue: unknown; collection?: string; entryId?: string }
@@ -33,12 +38,57 @@ const hasIssueInside = computed(
 );
 
 const expanded = computed(() => open.value || hasIssueInside.value);
+
+const form = useFormLocale();
+
+/** In a form with a language: the locale whose input a localized field shows. */
+const locale = computed(() => (form.value && isLocalizedObject(field.value) ? form.value.locale.value : null));
+
+/** What the website shows while this language is empty: the value of the next locale in its chain. */
+const fallback = computed(() => {
+  if (!locale.value || !form.value) return null;
+  const own = value.value[locale.value];
+  if (own !== null && own !== undefined && own !== "" && !(Array.isArray(own) && own.length === 0)) return null;
+  return fallbackFor(field.value, value.value, locale.value, form.value.locales);
+});
+
+const PLACEHOLDER_KINDS = new Set(["text", "textarea", "email", "url"]);
+
+/** The field of the shown locale, with the description of the whole field, and the fallback as its placeholder. */
+const shown = computed<AnyField | null>(() => {
+  const own = locale.value ? field.value.fields[locale.value] : undefined;
+  if (!own) return null;
+  const placeholder = fallback.value && PLACEHOLDER_KINDS.has(own.kind) ? { placeholder: String(fallback.value.value) } : {};
+  return { ...own, ...(field.value.description ? { description: field.value.description } : {}), ...placeholder, ...(field.value.readonly ? { readonly: true } : {}) } as AnyField;
+});
+
+const fallbackHint = computed(() => {
+  if (!fallback.value || !shown.value) return null;
+  const from = fallback.value.locale.toUpperCase();
+  return PLACEHOLDER_KINDS.has(shown.value.kind)
+    ? `Empty: the website shows the ${from} text.`
+    : `Empty: the website shows the ${from} value, ${previewValue(fallback.value.value, shown.value)}.`;
+});
 </script>
 
 <template>
+  <div v-if="shown && locale" :data-field-path="`${path}.${locale}`">
+    <FieldRenderer
+      :field="shown"
+      :path="`${path}.${locale}`"
+      :model-value="value[locale] ?? null"
+      :issues="issues"
+      :disabled="disabled"
+      :collection="collection"
+      :entry-id="entryId"
+      @update:model-value="emit('update:modelValue', { ...value, [locale]: $event })"
+    />
+    <p v-if="fallbackHint" class="mt-1 text-xs text-muted">{{ fallbackHint }}</p>
+  </div>
+
   <!-- A field inside that must take the focus opens the group (`focusField`). -->
   <!-- No clipping, so that a list in a field can open over the edge (#350). -->
-  <fieldset class="card" @reveal-field="open = true">
+  <fieldset v-else class="card" @reveal-field="open = true">
     <legend class="sr-only">{{ label }}</legend>
 
     <component

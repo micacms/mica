@@ -5,7 +5,7 @@
 
 import { Hono } from "hono";
 
-import { listedFields, readReferenceIndex, resolveIdField, resolveTitleField } from "@micacms/core/internal";
+import { listedFields, readReferenceIndex, resolveIdField, resolveTitleField, siteLocales, type Site } from "@micacms/core/internal";
 
 import type { Env } from "../http.js";
 import { ApiError } from "../lib/errors.js";
@@ -51,7 +51,7 @@ export function adminSystemRoutes(): Hono<Env> {
     const page = (url: string | undefined) => (url && config.MICA_SITE_URL ? `${config.MICA_SITE_URL}${url}` : null);
 
     return c.json({
-      site: { label: site.model.label ?? null, url: config.MICA_SITE_URL ?? null },
+      site: { label: site.model.label ?? null, url: config.MICA_SITE_URL ?? null, locales: schemaLocales(site.model) },
       collections: Object.values(site.model.collections).map((def) => ({
         name: def.name,
         label: def.label,
@@ -183,4 +183,12 @@ export function adminSystemRoutes(): Hono<Env> {
   });
 
   return app;
+}
+
+/** The locales for the editor's language switcher, the default locale first. */
+function schemaLocales(model: Site): Schema["site"]["locales"] {
+  const locales = siteLocales(model);
+  if (!locales) return null;
+  const list = [locales.defaultLocale, ...locales.locales.filter((locale) => locale !== locales.defaultLocale)];
+  return { list, default: locales.defaultLocale, fallback: locales.fallback };
 }

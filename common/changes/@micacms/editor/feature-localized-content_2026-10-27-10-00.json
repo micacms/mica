@@ -1,7 +1,7 @@
 {
   "changes": [
     {
-      "comment": "The editor edits localized fields, with one input for each locale.",
+      "comment": "The editor edits localized fields in one language at a time, with a language switcher, the fallback of an empty field and the translations that are missing.",
       "type": "minor",
       "packageName": "@micacms/editor"
     }

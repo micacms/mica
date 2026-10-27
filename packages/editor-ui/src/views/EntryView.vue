@@ -20,6 +20,7 @@ import ConfirmDialog from "@/components/ConfirmDialog.vue";
 import DocumentStatus from "@/components/DocumentStatus.vue";
 import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
+import LocaleSwitcher from "@/components/LocaleSwitcher.vue";
 import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
 import ModelNotice from "@/components/ModelNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
@@ -28,6 +29,7 @@ import PreviewLink from "@/components/PreviewLink.vue";
 import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
 import { useDocumentEditor } from "@/composables/useDocumentEditor";
+import { provideFormLocale } from "@/composables/useFormLocale";
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPage } from "@/composables/usePreviewPane";
 import type { Edit } from "@/lib/edits";
@@ -47,6 +49,8 @@ const staging = useStaging();
 const toast = useToast();
 
 const definition = computed(() => schema.collection(props.collection));
+// For a site with locales: the language that the form shows.
+const { form: formLocale, reveal: revealLocale } = provideFormLocale(() => definition.value?.fields);
 const updateLinks = ref(true);
 const formElement = ref<HTMLFormElement | null>(null);
 
@@ -307,6 +311,7 @@ defineExpose({ atRisk: doc.atRisk });
         />
 
         <KeptChangesNotice v-if="kept.offered.value" :at="kept.offered.value.at" @restore="kept.restore()" @forget="kept.forget()" />
+        <LocaleSwitcher v-if="formLocale" :form="formLocale" :fields="definition.fields" :values="values" :issues="issues" />
         <IssueSummary :issues="issues" />
 
         <div v-if="idChanging" role="status" class="mb-5 rounded-md border border-line bg-subtle p-4">
@@ -344,7 +349,7 @@ defineExpose({ atRisk: doc.atRisk });
           </div>
         </div>
 
-        <form ref="formElement" novalidate @submit.prevent="isNew ? doc.save() : doc.autosave()" @focusout="doc.onLeave">
+        <form ref="formElement" novalidate @reveal-field="revealLocale" @submit.prevent="isNew ? doc.save() : doc.autosave()" @focusout="doc.onLeave">
           <FieldList
             v-model="values"
             :fields="definition.fields"

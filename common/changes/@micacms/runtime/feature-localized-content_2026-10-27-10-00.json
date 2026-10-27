@@ -1,7 +1,7 @@
 {
   "changes": [
     {
-      "comment": "The self-hosted editor edits localized fields, with one input for each locale.",
+      "comment": "The self-hosted editor edits localized fields in one language at a time, with a language switcher.",
       "type": "minor",
       "packageName": "@micacms/runtime"
     }

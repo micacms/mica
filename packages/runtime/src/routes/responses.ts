@@ -57,6 +57,8 @@ export interface SchemaSite {
   label: string | null;
   /** `MICA_SITE_URL`, the published website; null without it. */
   url: string | null;
+  /** The site's locales, the default locale first, with their fallbacks; null for a site without locales. */
+  locales: { list: string[]; default: string; fallback: Record<string, string> } | null;
 }
 
 /** Where the live preview stands: off, starting, live, or stopped after it ran or failed. */

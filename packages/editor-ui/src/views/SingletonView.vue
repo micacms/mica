@@ -14,6 +14,7 @@ import { api, type SingletonDetail } from "@/api";
 import DocumentStatus from "@/components/DocumentStatus.vue";
 import FieldList from "@/components/fields/FieldList.vue";
 import IssueSummary from "@/components/IssueSummary.vue";
+import LocaleSwitcher from "@/components/LocaleSwitcher.vue";
 import KeptChangesNotice from "@/components/KeptChangesNotice.vue";
 import ModelNotice from "@/components/ModelNotice.vue";
 import PageHeader from "@/components/PageHeader.vue";
@@ -23,6 +24,7 @@ import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
 import StatusNotice from "@/components/StatusNotice.vue";
 import { useDocumentEditor } from "@/composables/useDocumentEditor";
+import { provideFormLocale } from "@/composables/useFormLocale";
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPage } from "@/composables/usePreviewPane";
 import { formRootOf } from "@/lib/focus";
@@ -46,6 +48,8 @@ const staging = useStaging();
 const toast = useToast();
 
 const definition = computed(() => schema.singleton(props.name));
+// For a site with locales: the language that the form shows.
+const { form: formLocale, reveal: revealLocale } = provideFormLocale(() => definition.value?.fields);
 const page = computed(() => pageHref(definition.value?.page));
 const devServer = usePreview();
 const preview = computed(() => (devServer.address.value && definition.value?.url ? `${devServer.address.value}${definition.value.url}` : null));
@@ -132,9 +136,10 @@ defineExpose({ atRisk: doc.atRisk });
         />
 
         <KeptChangesNotice v-if="kept.offered.value" :at="kept.offered.value.at" @restore="kept.restore()" @forget="kept.forget()" />
+        <LocaleSwitcher v-if="formLocale" :form="formLocale" :fields="definition.fields" :values="values" :issues="issues" />
         <IssueSummary :issues="issues" />
 
-        <form ref="formElement" novalidate @submit.prevent="doc.autosave()" @focusout="doc.onLeave">
+        <form ref="formElement" novalidate @reveal-field="revealLocale" @submit.prevent="doc.autosave()" @focusout="doc.onLeave">
           <FieldList
             v-model="values"
             :fields="definition.fields"

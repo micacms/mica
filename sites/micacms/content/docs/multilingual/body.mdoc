@@ -58,7 +58,11 @@ The rules:
 
 - A site that used an `object()` with one field for each language changes each object to one field with `localized: true`. When the keys of the object are the locales, the files do not change.
 - A field that has values already changes their shape when it gets `localized`: `"title": "About"` must become `"title": { "de": "About" }`. Move the values in the same commit as the model change, and run `npx mica check`.
-- Upgrade Mica before the model gets locales. An older Mica makes a collection with localized fields read-only, and it does not start with a locale code that has a hyphen or a capital letter, such as `en-us`.
+- Upgrade Mica together with `@micacms/astro`: an older Mica cannot read a model with locales.
+
+### In the editor
+
+The form of an entry or a singleton has a **Language** switcher, the default locale first. A localized field shows the input of the chosen language, and an empty one shows its fallback in grey. Each language tells how many of its texts are empty while the default locale has them, and marks a language with a problem. A field that is the same in each language shows in each language. See [Edit content](/docs/editing/).
 
 ### The pages
 
@@ -110,4 +114,4 @@ Each collection is a list of its own in the editor, with its own folder, URLs an
 
 ## What comes later
 
-The editor shows a localized field as a group, with one input for each locale. A switcher that shows one language at a time, a list of the languages that an entry is in, and `{locale}` in a collection's `url` come in later versions. See the decision record [Localized fields](https://github.com/micacms/mica/blob/main/docs/adr/0042-localized-fields.md).
+A list of the languages that an entry is in, `{locale}` in a collection's `url`, and a check that a localized ID is unique come in later versions. See the decision record [Localized fields](https://github.com/micacms/mica/blob/main/docs/adr/0042-localized-fields.md).

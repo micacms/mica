@@ -377,8 +377,19 @@ describe("content", () => {
         other.close();
       }
     };
-    assert.deepEqual(await schema({ MICA_SITE_URL: "https://harborlane.example" }, "Harbor Lane"), { label: "Harbor Lane", url: "https://harborlane.example" });
-    assert.deepEqual(await schema({}), { label: null, url: null });
+    assert.deepEqual(await schema({ MICA_SITE_URL: "https://harborlane.example" }, "Harbor Lane"), { label: "Harbor Lane", url: "https://harborlane.example", locales: null });
+    assert.deepEqual(await schema({}), { label: null, url: null, locales: null });
+  });
+
+  it("gives the site's locales, the default locale first, for the editor's language switcher", async () => {
+    const site = defineSite({ locales: ["en", "de"], defaultLocale: "de", fallback: { en: "de" }, collections: testSite.collections, singletons: testSite.singletons });
+    const other = await createHarness({}, { site });
+    try {
+      const body = (await (await other.request("/api/admin/schema")).json()) as { site: { locales: unknown } };
+      assert.deepEqual(body.site.locales, { list: ["de", "en"], default: "de", fallback: { en: "de" } });
+    } finally {
+      other.close();
+    }
   });
 
   it("gives the page address of a collection only with a url in the model and MICA_SITE_URL", async () => {
