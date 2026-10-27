@@ -191,7 +191,8 @@ test("entries and list items change their order in the same way", async ({ page 
   // A list in a form has the same controls: the arrows at the end of the row, the handle at its start.
   await page.goto("/admin/collections/pages/services");
   const sections = page.getByRole("group", { name: "Extra sections" });
-  const headings = sections.locator("li [aria-expanded]");
+  // The headings of the rows: the language button of a field opens a popover too.
+  const headings = sections.locator("li [aria-expanded]:not([data-field-action])");
   await expect(headings.nth(0)).toHaveText("Our approach");
   await sections.getByRole("button", { name: "Move “Our approach” down", exact: true }).click();
   await expect(headings.nth(1)).toHaveText("Our approach");
