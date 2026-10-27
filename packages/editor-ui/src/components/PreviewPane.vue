@@ -286,22 +286,34 @@ async function follow(): Promise<void> {
     return markers.value.some((marker) => marker.document === document && marker.id === id);
   });
   if (!target) return;
-  if (target.locale) chooseFormLocale(target.locale);
   const form = { name: target.name, params: target.params };
-  if (router.resolve(form).path === route.path) return;
-  await openForm(form);
+  if (router.resolve(form).path === route.path) {
+    if (target.locale) chooseFormLocale(target.locale);
+    return;
+  }
+  // The language changes with the new form, not before: the old form would send its own page to the frame.
+  following = true;
+  try {
+    if ((await openForm(form)) && target.locale) chooseFormLocale(target.locale);
+  } finally {
+    following = false;
+  }
 }
+
+/** While the form follows the page of the frame, the frame keeps that page, also when the form's language changes. */
+let following = false;
 
 /**
  * Opens another main form. The overlay belongs to the page that it was opened
  * on, so it closes first; when the form below keeps its page (the editor chose
  * to stay), the address loses the overlay too.
  */
-async function openForm(target: RouteLocationRaw): Promise<void> {
+async function openForm(target: RouteLocationRaw): Promise<boolean> {
   const hadOverlay = !!pane.overlay.value;
-  if (!pane.closeOverlay()) return;
+  if (!pane.closeOverlay()) return false;
   const failure = await router.push(target);
   if (failure && hadOverlay) await router.replace({ query: withoutOverlay(route.query) });
+  return !failure;
 }
 
 function onMessage(event: MessageEvent): void {
@@ -350,7 +362,7 @@ let loadedIn: HTMLIFrameElement | null = null;
 watch(
   [() => pane.frame.value, iframe],
   ([url, element]) => {
-    if (!url || !element || (element === loadedIn && sameAddress(url, shown.value))) return;
+    if (!url || !element || (element === loadedIn && (following || sameAddress(url, shown.value)))) return;
     element.src = url;
     loadedIn = element;
   },

@@ -10,6 +10,7 @@ import {
   color,
   compareEntries,
   coordinates,
+  createManifest,
   date,
   defaultValues,
   defineSite,
@@ -22,6 +23,7 @@ import {
   number,
   pageUrl,
   object,
+  readManifest,
   relation,
   repeater,
   resolveMap,
@@ -590,9 +592,50 @@ describe("page addresses", () => {
       assert.throws(localized("/{locale}/news/{id}", "collection", false), /needs the site's locales/);
     });
 
+    it("is a field on a site without locales, and an error beside a field locale on a site with them", () => {
+      const withField = (locales: boolean) => () =>
+        defineSite({
+          ...(locales ? { locales: ["en", "de"] } : {}),
+          collections: {
+            news: collection({
+              label: "News",
+              url: "/{locale}/{id}",
+              fields: { title: text(), id: id({ from: "title" }), locale: select({ options: [{ label: "English", value: "en" }] }) },
+            }),
+          },
+        });
+      assert.doesNotThrow(withField(false));
+      assert.throws(withField(true), /rename the field "locale"/);
+      assert.equal(pageUrl("/{locale}/{id}", "hello", { locale: "en" }), "/en/hello", "without a locale, {locale} is the field");
+      assert.equal(addressLocale({}, "en"), undefined, "a site without locales has no locale in its addresses");
+      assert.deepEqual(idAtPath("/{locale}/{id}", "/en/hello"), { id: "hello", locale: null, literal: 2 });
+    });
+
+    it("fills and finds {locale} in the middle of the path", () => {
+      assert.equal(pageUrl("/news/{locale}/{id}/", "hello", {}, "de"), "/news/de/hello/");
+      assert.equal(pageUrl("/news/{locale}/{id}/", "hello", {}, ""), "/news/hello/");
+      assert.deepEqual(idAtPath("/news/{locale}/{id}", "/news/de/hello", site), { id: "hello", locale: "de", literal: 6 });
+      assert.deepEqual(idAtPath("/news/{locale}/{id}", "/news/hello", site), { id: "hello", locale: "en", literal: 6 });
+    });
+
+    it("keeps prefixDefaultLocale and {locale} through the manifest, and leaves out such a url without locales", () => {
+      const model = defineSite({ locales: ["en", "de"], prefixDefaultLocale: true, collections: { news: collection({ label: "News", url: "/{locale}/news/{id}", fields: { title: text(), id: id({ from: "title" }) } }) } });
+      const read = readManifest(JSON.parse(JSON.stringify(createManifest(model, "test"))));
+      assert.equal(read.site.prefixDefaultLocale, true);
+      assert.equal(read.site.collections.news!.url, "/{locale}/news/{id}");
+      const manifest = JSON.parse(JSON.stringify(createManifest(model, "test")));
+      delete manifest.locales;
+      delete manifest.defaultLocale;
+      delete manifest.prefixDefaultLocale;
+      const older = readManifest(manifest);
+      assert.equal(older.site.collections.news!.url, undefined);
+      assert.ok(older.warnings.some((warning) => warning.includes("/{locale}/news/{id}")));
+    });
+
     it("refuses prefixDefaultLocale that is no boolean, or without locales", () => {
       assert.throws(() => defineSite({ locales: ["en"], prefixDefaultLocale: "yes" as unknown as boolean, collections: {} }), /true or false/);
       assert.throws(() => defineSite({ prefixDefaultLocale: true, collections: {} }), /needs `locales`/);
+      assert.doesNotThrow(() => defineSite({ prefixDefaultLocale: false, collections: {} }));
       assert.equal(defineSite({ locales: ["en"], prefixDefaultLocale: true, collections: {} }).prefixDefaultLocale, true);
     });
 
@@ -603,9 +646,9 @@ describe("page addresses", () => {
       assert.equal(addressLocale(prefixed, undefined), "en");
       assert.equal(pageUrl("/{locale}/news/{id}/", "hello", {}, ""), "/news/hello/");
       assert.equal(pageUrl("/{locale}/news/{id}/", "hello", {}, "de"), "/de/news/hello/");
-      assert.equal(pageUrl("/{locale}/"), "/");
+      assert.equal(pageUrl("/{locale}/", undefined, {}, ""), "/");
       assert.equal(pageUrl("/{locale}/", undefined, {}, "de"), "/de/");
-      assert.equal(pageUrl("/{locale}"), "/");
+      assert.equal(pageUrl("/{locale}", undefined, {}, ""), "/");
     });
 
     it("finds the locale of a page, the default locale without a prefix", () => {

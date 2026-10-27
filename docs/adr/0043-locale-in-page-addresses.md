@@ -8,11 +8,11 @@ Record 42 gives a field a value for each locale, and the editor shows a form in 
 
 ## Decision
 
-- A `url` can name `{locale}` once, as a whole part of the path: `/{locale}/news/{id}`. Only a site with `locales` can, and a singleton can too: `/{locale}/`.
+- A `url` can name `{locale}` once, as a whole part of the path: `/{locale}/news/{id}`. Only a site with `locales` can, and a singleton can too: `/{locale}/`. On such a site, a field named `locale` cannot be in the `url`. On a site without locales, `{locale}` names a field, as before.
 - The site option `prefixDefaultLocale`, with the name and the default of Astro's `i18n.routing`, says whether the default locale has its prefix. Without it (`false`), `{locale}` and its `/` are not in the address of the default locale: `/{locale}/news/{id}` is `/news/hello` in English and `/de/news/hello` in German.
 - The editor fills `{locale}` with the form's language: the Preview, the live preview, "Open on website" and the address under the ID field show the page of that language. A list, a relation picker and the Publish page show the page of the default locale.
 - The live preview reads the locale back from the path of its page. When the page in the preview is in another language, the form changes to that language.
-- The values of a localized `id()` at the top level of a collection must differ between the entries, in each locale. The value of a locale is the one that the website uses, with its fallback. `mica check` and Publish report a value that another entry has. Publish reads the other entries of such a collection, and only of such a collection.
+- The values of a localized `id()` at the top level of a collection must differ between the entries, in each locale. The value of a locale is the one that the website uses, with its fallback. `mica check` and the check of the pending changes (the editor's status and Publish) report a value that another entry has, in the locales where one of the two entries has its own value. That check reads the `index.json` of the other entries of such a collection, and only of such a collection.
 - A localized field in the address, such as `/{locale}/{slug}`, is not part of this record: the editor reads an entry back from its path by `{id}`.
 
 ## Consequences

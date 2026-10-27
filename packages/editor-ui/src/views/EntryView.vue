@@ -157,7 +157,10 @@ const withAddress = (address: string, path: string | null): string | null => (pa
 /** The saved data: the dev server shows it, not what the form holds before the next save. */
 const saved = computed(() => doc.version.value?.data);
 /** An address with other names than {id}, such as /{activity}/{id}: a draft of such a field moves the page. */
-const addressNamesFields = computed(() => pagePlaceholders(definition.value?.url ?? "").some((name) => name !== "id" && name !== "locale"));
+// On a site with locales, {locale} is the page's language, not a field.
+const addressNamesFields = computed(() =>
+  pagePlaceholders(definition.value?.url ?? "").some((name) => name !== "id" && !(name === "locale" && schema.site.value?.locales)),
+);
 /** Its page in the dev server, which reads the saved drafts: also for one that was never published. */
 const preview = computed(() =>
   props.id && devServer.address.value && definition.value?.url ? withAddress(devServer.address.value, pageHref(definition.value.url, props.id, saved.value, addressLocale.value)) : null,

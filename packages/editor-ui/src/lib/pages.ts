@@ -12,10 +12,10 @@ import { addressLocales, addressOf } from "@/lib/locales";
 /**
  * The page of an entry, with the values of `data` for the other names of its
  * address, such as `{activity}`; of a singleton without `id`. `locale` is the
- * value of `{locale}`, from `addressOf`: the default locale's page without it.
+ * value of `{locale}`, from `addressOf`; undefined on a site without locales.
  * Null without a page in the model, or while a value of the address is empty.
  */
-export const pageHref = (page: string | null | undefined, id?: string, data?: Record<string, unknown>, locale = ""): string | null =>
+export const pageHref = (page: string | null | undefined, id?: string, data?: Record<string, unknown>, locale?: string): string | null =>
   page ? pageUrl(page, id, data, locale) : null;
 
 /** The page that a published change shows on, if the model has one, in the default locale. An address with other names than `{id}` needs the entry's `data`. */
@@ -74,9 +74,9 @@ export interface PageAddress {
  * `locale`. An empty one shows the label of its field, such as ‹Activity›: the
  * page has no address without it.
  */
-export function pageAddress(url: string, values: Record<string, unknown>, labelOf: (name: string) => string, locale = ""): PageAddress {
+export function pageAddress(url: string, values: Record<string, unknown>, labelOf: (name: string) => string, locale?: string): PageAddress {
   const missing: string[] = [];
-  url = url.replace("/{locale}", locale ? `/${locale}` : "") || "/";
+  if (locale !== undefined) url = url.replace("/{locale}", locale ? `/${locale}` : "") || "/";
   const fill = (part: string) =>
     part.replace(/\{([^}]*)\}/g, (_match, name: string) => {
       const value = values[name];
@@ -89,7 +89,7 @@ export function pageAddress(url: string, values: Record<string, unknown>, labelO
 }
 
 /** What a list shows for an entry: the page's URL when the collection has a `url` and the address is complete, else the ID. */
-export function entryAddress(url: string | null | undefined, id: string, data: Record<string, unknown>, locale = ""): string {
+export function entryAddress(url: string | null | undefined, id: string, data: Record<string, unknown>, locale?: string): string {
   return (url ? pageHref(url, id, data, locale) : null) ?? id;
 }
 
@@ -98,7 +98,7 @@ export function movedPage(
   url: string | null | undefined,
   from: { id: string; data: Record<string, unknown> | undefined },
   to: { id: string; data: Record<string, unknown> },
-  locale = "",
+  locale?: string,
 ): { from: string; to: string } | null {
   if (!url || !from.id || !to.id) return null;
   const old = pageHref(url, from.id, from.data, locale);

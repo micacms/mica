@@ -18,9 +18,9 @@ const cache = new Map<string, Promise<RelationOption[]>>();
  * set, from the cache of the current page. With the collection's `url`, each
  * entry also has its page's URL, with `locale` as the value of `{locale}`.
  */
-export function entryOptions(target: string, reference = false, url?: string | null, locale = ""): Promise<RelationOption[]> {
+export function entryOptions(target: string, reference = false, url?: string | null, locale?: string): Promise<RelationOption[]> {
   // The url is part of the key: a list without the pages' URLs must not stand in for one with them.
-  const key = `${reference ? "reference" : "collection"}:${target}:${url ?? ""}:${locale}`;
+  const key = `${reference ? "reference" : "collection"}:${target}:${url ?? ""}:${locale ?? ""}`;
   let pending = cache.get(key);
   if (!pending) {
     pending = reference
@@ -34,7 +34,7 @@ export function entryOptions(target: string, reference = false, url?: string | n
 }
 
 /** The choices of a collection's entries, each with its page's URL when the collection has a `url`. */
-export function toOptions(items: ReadonlyArray<{ id: string; title: string; data: Record<string, unknown> }>, url?: string | null, locale = ""): RelationOption[] {
+export function toOptions(items: ReadonlyArray<{ id: string; title: string; data: Record<string, unknown> }>, url?: string | null, locale?: string): RelationOption[] {
   return items.map((item) => ({ id: item.id, title: item.title, url: url ? pageHref(url, item.id, item.data, locale) : null }));
 }
 

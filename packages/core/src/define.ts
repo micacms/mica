@@ -60,7 +60,7 @@ export function defineSite<
   if (options.prefixDefaultLocale !== undefined && typeof options.prefixDefaultLocale !== "boolean") {
     throw new ModelError("`prefixDefaultLocale` must be true or false.");
   }
-  if (options.prefixDefaultLocale !== undefined && !locales) throw new ModelError("`prefixDefaultLocale` needs `locales`.");
+  if (options.prefixDefaultLocale && !locales) throw new ModelError("`prefixDefaultLocale` needs `locales`.");
 
   const collections = {} as C;
   for (const [name, def] of Object.entries(options.collections)) {

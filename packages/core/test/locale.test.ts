@@ -261,6 +261,11 @@ describe("duplicateLocalizedIds", () => {
     assert.deepEqual(issues.map((issue) => issue.path), ["slug.fr"]);
   });
 
+  it("reports one shared value once, in the locale where the entries have it, not in the locales that fall back to it", () => {
+    const issues = duplicateLocalizedIds(model, fields, "a", { slug: { de: "x", en: null, fr: null } }, [["b", { slug: { de: "x", en: null, fr: null } }]]);
+    assert.deepEqual(issues.map((issue) => issue.path), ["slug.de"]);
+  });
+
   it("does not compare an entry with itself, nor a text that is no ID", () => {
     const data = { slug: { de: "x", en: null, fr: null }, title: { de: "Gleich", en: null, fr: null } };
     assert.deepEqual(duplicateLocalizedIds(model, fields, "a", data, [["a", data], ["b", { slug: { de: "y" }, title: { de: "Gleich" } }]]), []);

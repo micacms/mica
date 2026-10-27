@@ -16,8 +16,11 @@ export function addressLocales(locales: FormLocales | null | undefined) {
   return locales ? { locales: locales.list, defaultLocale: locales.default, prefixDefaultLocale: locales.prefixDefault } : null;
 }
 
-/** The value of `{locale}` in an address of `locale`, else of the default locale: empty for the default locale without a prefix. */
-export function addressOf(locales: FormLocales | null | undefined, locale?: string | null): string {
+/**
+ * The value of `{locale}` in an address of `locale`, else of the default locale: empty for the default locale without
+ * a prefix; undefined for a site without locales, whose `{locale}` can be a field.
+ */
+export function addressOf(locales: FormLocales | null | undefined, locale?: string | null): string | undefined {
   return addressLocale(addressLocales(locales), locale);
 }
 

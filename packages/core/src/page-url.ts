@@ -14,12 +14,14 @@ export type AddressLocales = Pick<Site, "locales" | "defaultLocale" | "prefixDef
 
 /**
  * The value of `{locale}` in the address of `locale`, else of the default locale: empty for the default locale
- * without a prefix (`prefixDefaultLocale`), so that `/{locale}/news` is `/news`.
+ * without a prefix (`prefixDefaultLocale`), so that `/{locale}/news` is `/news`. Undefined for a site without
+ * locales, whose `{locale}` can be a field.
  */
-export function addressLocale(site: AddressLocales | null | undefined, locale?: string | null): string {
-  const main = site?.defaultLocale ?? "";
+export function addressLocale(site: AddressLocales | null | undefined, locale?: string | null): string | undefined {
+  if (!site?.locales) return undefined;
+  const main = site.defaultLocale ?? "";
   const chosen = locale ?? main;
-  return chosen === main && !site?.prefixDefaultLocale ? "" : chosen;
+  return chosen === main && !site.prefixDefaultLocale ? "" : chosen;
 }
 
 /** The names in an address, in their order: `/{activity}/{id}` gives `activity` and `id`. */
@@ -48,17 +50,19 @@ function givesPathPart(field: AnyField | undefined): boolean {
  * Why a `url` option is not valid, or null. A collection's address names
  * `{id}` once, and other fields of the collection with one value, each as a
  * whole part of the path; a singleton's names nothing. On a site with
- * `locales`, both can name `{locale}` once, as a whole part of the path.
+ * `locales`, both can name `{locale}` once, as a whole part of the path: the
+ * page's language. On a site without, `{locale}` can be a field.
  */
 export function pageUrlProblem(url: unknown, kind: "collection" | "singleton", fields: FieldMap = {}, locales = false): string | null {
   if (typeof url !== "string" || !url.startsWith("/") || url.startsWith("//")) return "it must be a path that starts with one /, such as /news/{id}";
   if (/[\s?#\\]/.test(url)) return "it must be a path without spaces, ? or #";
   const all = pagePlaceholders(url);
   const localeCount = all.filter((name) => name === "locale").length;
-  if (localeCount > 0 && !locales) return "{locale} needs the site's locales";
-  if (localeCount > 1) return "it can name {locale} once";
-  if (localeCount === 1 && !url.split("/").includes("{locale}")) return "{locale} must be a part alone, between two /, such as /{locale}/news/{id}";
-  const names = all.filter((name) => name !== "locale");
+  if (localeCount > 0 && !locales && !fields["locale"]) return "{locale} needs the site's locales";
+  if (localeCount > 0 && locales && fields["locale"]) return "{locale} is the page's language on a site with locales: rename the field \"locale\"";
+  if (localeCount > 1 && locales) return "it can name {locale} once";
+  if (localeCount === 1 && locales && !url.split("/").includes("{locale}")) return "{locale} must be a part alone, between two /, such as /{locale}/news/{id}";
+  const names = locales ? all.filter((name) => name !== "locale") : all;
   if (kind === "singleton") return names.length === 0 ? null : "a singleton has one page, so its address has no {id}";
   if (names.filter((name) => name === "id").length !== 1) return "a collection's address must name {id} once";
   const other = names.find((name) => name !== "id" && !givesPathPart(fields[name]));
@@ -75,9 +79,10 @@ export function pageUrlProblem(url: unknown, kind: "collection" | "singleton", f
  * Null when a value is empty, because the page has no address then. Without
  * `id`, the address of a singleton.
  */
-export function pageUrl(url: string, id?: string, data: Record<string, unknown> = {}, locale = ""): string | null {
+export function pageUrl(url: string, id?: string, data: Record<string, unknown> = {}, locale?: string): string | null {
   // An empty {locale}, of the default locale without a prefix, goes with its "/": /{locale}/news is /news.
-  const located = url.replace("/{locale}", locale ? `/${locale}` : "") || "/";
+  // Without a locale, on a site without locales, {locale} is a field.
+  const located = locale === undefined ? url : url.replace("/{locale}", locale ? `/${locale}` : "") || "/";
   if (id === undefined) return located;
   let empty = false;
   const page = located.replace(PLACEHOLDER, (_match, name: string) => {
@@ -98,16 +103,18 @@ export function pageUrl(url: string, id?: string, data: Record<string, unknown> 
 export function idAtPath(url: string, path: string, site?: AddressLocales | null): { id: string; locale: string | null; literal: number } | null {
   const parts = url.split(PLACEHOLDER);
   const named = (name: string) => parts.some((part, index) => index % 2 === 1 && part === name);
+  // On a site without locales, {locale} is a field like another one.
+  const language = !!site?.locales;
   let pattern = "";
   let literal = 0;
   parts.forEach((part, index) => {
     // split() with a group gives the text and the names in turn: even indexes are text.
     if (index % 2 === 0) {
       // "/{locale}": the "/" belongs to the locale, which the default locale leaves out without a prefix.
-      const text = parts[index + 1] === "locale" && part.endsWith("/") ? part.slice(0, -1) : part;
+      const text = language && parts[index + 1] === "locale" && part.endsWith("/") ? part.slice(0, -1) : part;
       pattern += text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
       literal += text.length;
-    } else if (part === "locale") {
+    } else if (language && part === "locale") {
       pattern += site?.prefixDefaultLocale ? "/(?<locale>[^/]+)" : "(?:/(?<locale>[^/]+))?";
     } else pattern += part === "id" ? "(?<id>[^/]+)" : "[^/]+";
   });
@@ -118,7 +125,7 @@ export function idAtPath(url: string, path: string, site?: AddressLocales | null
   const groups = match.groups ?? {};
 
   let locale: string | null = null;
-  if (named("locale")) {
+  if (language && named("locale")) {
     const found = groups["locale"];
     const main = site?.defaultLocale ?? null;
     // A prefix that is not a locale, or the default locale's that the site does not write, is another page.

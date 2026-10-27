@@ -271,21 +271,34 @@ export async function analyseChanges(
   const validated = new Set<string>();
   // Each linked entry is looked up by its data file: only the targets that a changed document names.
   const targets = createReferenceCheck(model, source);
-  /** Each entry of a collection with a localized `id()`, read once: its values must differ from the changed entry's. */
+  /**
+   * The `index.json` of each entry of a collection with a localized `id()`, read once: its values must differ from
+   * the changed entry's. A localized ID is never rich text, so the `.mdoc` files are not read.
+   */
   const allEntries = new Map<string, Promise<Array<readonly [string, Record<string, unknown>]>>>();
-  const entriesOf = (name: string, def: Collection) => {
+  const entriesOf = (name: string) => {
     if (!allEntries.has(name)) {
       const read = async () => {
         const ids = await collectionIds(source, name);
-        const found = await Promise.all(ids.map(async (id) => [id, await readCollectionEntry(source, def, name, id).catch(() => null)] as const));
-        return found.filter((item): item is readonly [string, Record<string, unknown>] => item[1] !== null);
+        const found = await Promise.all(
+          ids.map(async (id) => {
+            const text = await source.read(entryDataPath(name, id)).catch(() => null);
+            try {
+              return [id, text === null ? null : (JSON.parse(text) as unknown)] as const;
+            } catch {
+              // A file that does not parse is a problem of its own entry.
+              return [id, null] as const;
+            }
+          }),
+        );
+        return found.filter((item): item is readonly [string, Record<string, unknown>] => item[1] !== null && typeof item[1] === "object");
       };
       allEntries.set(name, read());
     }
     return allEntries.get(name)!;
   };
   const duplicates = async (name: string, def: Collection, id: string, data: Record<string, unknown>): Promise<FieldIssue[]> =>
-    localizedIdFields(def.fields).length === 0 ? [] : duplicateLocalizedIds(model, def.fields, id, data, await entriesOf(name, def));
+    localizedIdFields(def.fields).length === 0 ? [] : duplicateLocalizedIds(model, def.fields, id, data, await entriesOf(name));
 
   for (const owner of owners) {
     if (owner.kind === "entry") {

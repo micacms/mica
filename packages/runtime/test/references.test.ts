@@ -278,4 +278,14 @@ describe("localized IDs at Publish", () => {
     const result = await analyseChanges(localized, source, [update("pages/team/index.json")]);
     assert.deepEqual(messages(result), ['Pages: Team: slug.de: "ueber-uns" is also the DE value of "about". Each page needs its own.']);
   });
+
+  it("compares the values that the website uses, with the fallback, and leaves out an entry that the change deletes", async () => {
+    const source = memorySource({
+      // English falls back to German: both pages are /en/ueber-uns.
+      "pages/about/index.json": JSON.stringify({ title: "About", id: "about", slug: { de: "ueber-uns", en: null } }),
+      "pages/team/index.json": JSON.stringify({ title: "Team", id: "team", slug: { de: "team", en: "ueber-uns" } }),
+    });
+    const result = await analyseChanges(localized, source, [update("pages/team/index.json"), remove("pages/old/index.json")]);
+    assert.deepEqual(messages(result), ['Pages: Team: slug.en: "ueber-uns" is also the EN value of "about". Each page needs its own.']);
+  });
 });

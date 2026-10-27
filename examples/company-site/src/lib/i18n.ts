@@ -1,7 +1,7 @@
 /**
  * The languages of the website in its URLs.
  *
- * The default locale has no prefix (`/contact/`), the others have one
+ * The default locale has no prefix (`/contact/`), unless the model sets `prefixDefaultLocale`; the others have one
  * (`/de/contact/`). Each page is in `src/pages/[...locale]/`: a rest parameter
  * can be empty, so one file makes the page of each locale. The content's
  * fallback is `localize()`'s work, not Astro's, so `astro.config.mjs` sets no
@@ -13,8 +13,8 @@ import { site } from "../mica";
 /** The locales, as `defineSite` names them. */
 export const LOCALES = site.locales!;
 
-/** The URL prefix of a locale, and its `locale` parameter in `getStaticPaths`: none for the default locale. */
-export const localePrefix = (locale: string): string | undefined => (locale === site.defaultLocale ? undefined : locale);
+/** The URL prefix of a locale, and its `locale` parameter in `getStaticPaths`: none for the default locale, unless `prefixDefaultLocale`. */
+export const localePrefix = (locale: string): string | undefined => (locale === site.defaultLocale && !site.prefixDefaultLocale ? undefined : locale);
 
 /** For `getStaticPaths`: the paths of each locale, each with its `locale` parameter. */
 export async function inEachLocale<P extends { params: object }>(paths: (locale: string) => Promise<P[]>) {

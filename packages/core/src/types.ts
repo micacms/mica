@@ -337,7 +337,8 @@ export interface CollectionOptions {
   sortable?: boolean;
   /**
    * The page of an entry on the website, such as `/news/{id}`, or `/{activity}/{id}` with the value of a
-   * select, relation or date field as a whole part of the path. With `MICA_SITE_URL`, the editor links to it.
+   * select, relation or date field as a whole part of the path. On a site with locales, `{locale}` is the page's
+   * language, such as `/{locale}/news/{id}`. With `MICA_SITE_URL`, the editor links to it.
    */
   url?: string;
 }
@@ -363,7 +364,7 @@ export interface SingletonOptions {
   label: string;
   description?: string;
   fields: FieldMap;
-  /** Its page on the website, such as `/about`. With `MICA_SITE_URL`, the editor links to it. */
+  /** Its page on the website, such as `/about`, or `/{locale}/about` on a site with locales. With `MICA_SITE_URL`, the editor links to it. */
   url?: string;
 }
 

@@ -85,6 +85,8 @@ describe("the document of a preview page", () => {
     );
     assert.equal(pageHref("/{locale}/news/{id}/", "hello", {}, "de"), "/de/news/hello/");
     assert.deepEqual(pageAddress("/{locale}/news/{id}/", {}, (name) => name, "de"), { before: "/de/news/", after: "/", missing: [] });
+    // A site without locales: {locale} is a field.
+    assert.deepEqual(pageAddress("/{locale}/{id}/", { locale: "en" }, (name) => name), { before: "/en/", after: "/", missing: [] });
   });
 
   it("gives null for a page without a document of its own", () => {

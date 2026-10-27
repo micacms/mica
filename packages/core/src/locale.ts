@@ -183,7 +183,8 @@ export function localizedIdFields(fields: FieldMap): string[] {
 /**
  * The localized IDs of an entry that another entry has in the same locale, such as two German slugs "ueber-uns": the
  * website then has one page for both. Each locale's value is the one that the website uses, with its fallback. One
- * issue for each, at the field of the locale.
+ * issue for each, at the field of the locale; not for a locale where both values are fallbacks, which the locale of
+ * their own value reports already.
  */
 export function duplicateLocalizedIds(
   site: Pick<Site, "locales" | "defaultLocale" | "fallback">,
@@ -205,10 +206,13 @@ export function duplicateLocalizedIds(
       const chain = noFallback ? [locale] : fallbackChain(locales, locale);
       return chain.map((candidate) => record[candidate]).find((value) => !isMissing(value));
     };
+    const own = (values: unknown, locale: string): boolean => isRecord(values) && !isMissing(values[locale]);
     for (const locale of locales.locales) {
       const value = used(data[key], locale);
       if (typeof value !== "string") continue;
-      const other = rest.find(([, otherData]) => used(otherData[key], locale) === value);
+      const other = rest.find(
+        ([, otherData]) => used(otherData[key], locale) === value && (own(data[key], locale) || own(otherData[key], locale)),
+      );
       if (other) {
         issues.push({ path: `${key}.${locale}`, message: `"${value}" is also the ${locale.toUpperCase()} value of "${other[0]}". Each page needs its own.` });
       }
