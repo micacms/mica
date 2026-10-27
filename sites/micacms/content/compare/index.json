@@ -109,7 +109,7 @@
     {
       "key": "i18n",
       "label": "Languages",
-      "mica": "No setting. Two documented patterns."
+      "mica": "Yes. A field has a value for each language in one entry, with fallbacks. The editor shows one language at a time, and the preview follows it. No machine translation."
     },
     {
       "key": "roles",
