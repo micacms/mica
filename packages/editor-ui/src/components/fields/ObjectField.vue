@@ -1,20 +1,21 @@
 <script setup lang="ts">
 /**
  * Nested object. Recurses through `FieldList`, so nesting depth is unbounded. A localized field is an object with one
- * field for each locale: in a form with a language, it shows the input of that language only.
+ * field for each locale: in a form with a language, it shows the input of that language only, with the button of its
+ * other languages beside the label, and the language's fallback as the placeholder of an empty text.
  */
 
-import { computed, ref } from "vue";
+import { computed, nextTick, ref } from "vue";
 import { ChevronDown } from "@lucide/vue";
 
 import { isLocalizedObject, type AnyField, type ObjectField } from "@micacms/core/internal";
 
 import FieldList from "./FieldList.vue";
 import FieldRenderer from "./FieldRenderer.vue";
+import MissingTranslations from "./MissingTranslations.vue";
 import { useField, type FieldProps } from "@/composables/useField";
-import { useFormLocale } from "@/composables/useFormLocale";
-import { fallbackFor } from "@/lib/locales";
-import { previewValue } from "@/lib/format";
+import { provideFieldTranslations, useFormLocale } from "@/composables/useFormLocale";
+import { fallbackFor, missingTranslations } from "@/lib/locales";
 
 const props = defineProps<
   FieldProps & { modelValue: unknown; collection?: string; entryId?: string }
@@ -52,27 +53,61 @@ const fallback = computed(() => {
   return fallbackFor(field.value, value.value, locale.value, form.value.locales);
 });
 
+/** For a group in a form with a language: the values inside that this language has not translated yet. */
+const missingInside = computed(() =>
+  form.value && !locale.value ? missingTranslations(field.value.fields, value.value, form.value.locale.value, form.value.locales) : 0,
+);
+
 const PLACEHOLDER_KINDS = new Set(["text", "textarea", "email", "url"]);
 
-/** The field of the shown locale, with the description of the whole field, and the fallback as its placeholder. */
+/**
+ * The field of the shown locale, with the label and the description of the whole field: the language is in the page
+ * header. The fallback is its placeholder.
+ */
 const shown = computed<AnyField | null>(() => {
   const own = locale.value ? field.value.fields[locale.value] : undefined;
   if (!own) return null;
   const placeholder = fallback.value && PLACEHOLDER_KINDS.has(own.kind) ? { placeholder: String(fallback.value.value) } : {};
-  return { ...own, ...(field.value.description ? { description: field.value.description } : {}), ...placeholder, ...(field.value.readonly ? { readonly: true } : {}) } as AnyField;
+  return {
+    ...own,
+    label: label.value,
+    ...(field.value.description ? { description: field.value.description } : {}),
+    ...placeholder,
+    ...(field.value.readonly ? { readonly: true } : {}),
+  } as AnyField;
 });
 
-const fallbackHint = computed(() => {
-  if (!fallback.value || !shown.value) return null;
-  const from = fallback.value.locale.toUpperCase();
-  return PLACEHOLDER_KINDS.has(shown.value.kind)
-    ? `Empty: the website shows the ${from} text.`
-    : `Empty: the website shows the ${from} value, ${previewValue(fallback.value.value, shown.value)}.`;
-});
+const container = ref<HTMLElement | null>(null);
+
+/** Another language's value as the start of this one's: a copy, and the focus in the input to change it. */
+async function use(from: string): Promise<void> {
+  if (!locale.value) return;
+  const copy: unknown = JSON.parse(JSON.stringify(value.value[from] ?? null));
+  emit("update:modelValue", { ...value.value, [locale.value]: copy });
+  await nextTick();
+  container.value?.querySelector<HTMLElement>('input:not([type="hidden"]), textarea, [contenteditable="true"]')?.focus();
+}
+
+// Also null, for a group that is not localized: the translations stop at the field that they belong to.
+provideFieldTranslations(
+  computed(() =>
+    locale.value && form.value
+      ? {
+          field: field.value,
+          value: value.value,
+          locale: locale.value,
+          locales: form.value.locales,
+          label: label.value,
+          locked: !!props.disabled || !!field.value.readonly,
+          use,
+        }
+      : null,
+  ),
+);
 </script>
 
 <template>
-  <div v-if="shown && locale" :data-field-path="`${path}.${locale}`">
+  <div v-if="shown && locale" ref="container" :data-field-path="`${path}.${locale}`">
     <FieldRenderer
       :field="shown"
       :path="`${path}.${locale}`"
@@ -83,7 +118,6 @@ const fallbackHint = computed(() => {
       :entry-id="entryId"
       @update:model-value="emit('update:modelValue', { ...value, [locale]: $event })"
     />
-    <p v-if="fallbackHint" class="mt-1 text-xs text-muted">{{ fallbackHint }}</p>
   </div>
 
   <!-- A field inside that must take the focus opens the group (`focusField`). -->
@@ -110,6 +144,7 @@ const fallbackHint = computed(() => {
       >
         Needs attention
       </span>
+      <MissingTranslations v-if="missingInside" :count="missingInside" />
 
       <ChevronDown
         v-if="field.collapsible"

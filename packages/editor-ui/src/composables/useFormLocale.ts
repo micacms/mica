@@ -5,7 +5,7 @@
 
 import { computed, inject, provide, ref, type ComputedRef, type InjectionKey, type Ref } from "vue";
 
-import type { FieldMap } from "@micacms/core/internal";
+import type { FieldMap, ObjectField } from "@micacms/core/internal";
 
 import { pathLocale, type FormLocales } from "@/lib/locales";
 import { useSchema } from "@/stores/schema";
@@ -58,4 +58,31 @@ export function provideFormLocale(fields: () => FieldMap | undefined): { form: C
 /** The form's language, or null outside a form with one, such as a field in an overlay: it shows each language. */
 export function useFormLocale(): ComputedRef<FormLocale | null> {
   return inject(FORM_LOCALE, computed(() => null));
+}
+
+/** A localized field that shows the input of one language: the button beside its label shows the other languages. */
+export interface FieldTranslations {
+  /** The localized field: an object with one field for each locale. */
+  field: ObjectField;
+  /** Its value: one value for each locale. */
+  value: Record<string, unknown>;
+  locale: string;
+  locales: FormLocales;
+  label: string;
+  /** The value cannot change. */
+  locked: boolean;
+  /** Puts the value of `from` into the shown language. */
+  use: (from: string) => void;
+}
+
+const FIELD_TRANSLATIONS: InjectionKey<ComputedRef<FieldTranslations | null>> = Symbol("field-translations");
+
+/** For each object field: a localized one gives its translations to the input inside, any other one null, so that they stop there. */
+export function provideFieldTranslations(translations: ComputedRef<FieldTranslations | null>): void {
+  provide(FIELD_TRANSLATIONS, translations);
+}
+
+/** For the label of a field's input: the translations of the localized field around it, or null. */
+export function useFieldTranslations(): ComputedRef<FieldTranslations | null> {
+  return inject(FIELD_TRANSLATIONS, computed(() => null));
 }

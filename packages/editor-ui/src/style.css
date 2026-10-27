@@ -347,6 +347,26 @@ img.ProseMirror-separator {
     font-mono text-xs font-medium text-ink-soft;
 }
 
+/*
+ * A short text below its control, on hover or keyboard focus, after a moment: in a `group` with
+ * `group-hover:tooltip-shown group-focus-visible:tooltip-shown`, and a side such as `left-1/2 -translate-x-1/2`.
+ * The control's own text says it to a screen reader.
+ */
+@utility tooltip {
+  @apply pointer-events-none absolute top-full z-30 mt-1.5 rounded-sm bg-ink px-2 py-1 text-xs font-medium whitespace-nowrap
+    text-ground opacity-0 transition-opacity;
+}
+
+@utility tooltip-shown {
+  @apply opacity-100 delay-300;
+}
+
+/* A number in a small round pill, such as the missing translations of a language. */
+@utility count {
+  @apply inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1.5 text-[11px] leading-none
+    font-semibold tabular-nums;
+}
+
 /* A state as a word with a dot (brand guide, Status): the word carries the meaning. */
 @utility status {
   @apply inline-flex items-center gap-2 rounded-full bg-subtle py-0.5 pr-2.5 pl-2 text-xs font-semibold

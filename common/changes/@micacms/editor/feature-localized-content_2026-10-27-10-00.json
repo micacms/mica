@@ -1,7 +1,7 @@
 {
   "changes": [
     {
-      "comment": "The editor edits localized fields in one language at a time, with a language switcher, the fallback of an empty field and the translations that are missing.",
+      "comment": "The editor edits localized fields in one language at a time. The language switcher is in the page header, with the number of missing translations. A button beside each localized field shows its other languages and can use one of them, and marks a missing translation. The page header is tidier: the status is below the title, and the entry's folder is below the form.",
       "type": "minor",
       "packageName": "@micacms/editor"
     }

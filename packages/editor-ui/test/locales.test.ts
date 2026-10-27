@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 
 import { collection, defineSite, id, media, repeater, text } from "@micacms/core/internal";
 
-import { fallbackFor, missingTranslations, pathLocale, type FormLocales } from "../src/lib/locales.js";
+import { fallbackFor, missingTranslations, pathLocale, translationStatus, type FormLocales } from "../src/lib/locales.js";
 
 const site = defineSite({
   locales: ["de", "en", "fr"],
@@ -60,5 +60,24 @@ describe("fallbackFor", () => {
   it("has none with fallback: false, and none for the default locale", () => {
     assert.equal(fallbackFor(fields.legal!, { de: "AGB", en: null, fr: null }, "en", locales), null);
     assert.equal(fallbackFor(fields.title!, { de: null, en: "About us", fr: null }, "de", locales), null);
+  });
+});
+
+describe("translationStatus", () => {
+  it("is translated when the locale has a value", () => {
+    assert.deepEqual(translationStatus(fields.title!, { de: "Über uns", en: "About us", fr: null }, "en", locales), { kind: "translated" });
+  });
+
+  it("names the locale that the website shows instead", () => {
+    assert.deepEqual(translationStatus(fields.title!, { de: "Über uns", en: "About us", fr: null }, "fr", locales), { kind: "fallback", locale: "en" });
+  });
+
+  it("is missing when the website shows nothing: fallback: false, or an empty default locale", () => {
+    assert.deepEqual(translationStatus(fields.legal!, { de: "AGB", en: null, fr: null }, "en", locales), { kind: "missing" });
+    assert.deepEqual(translationStatus(fields.title!, { de: null, en: "About us", fr: null }, "de", locales), { kind: "missing" });
+  });
+
+  it("is empty when no locale has a value", () => {
+    assert.deepEqual(translationStatus(fields.title!, { de: null, en: "", fr: null }, "fr", locales), { kind: "empty" });
   });
 });

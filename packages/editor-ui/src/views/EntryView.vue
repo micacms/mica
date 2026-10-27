@@ -179,8 +179,8 @@ const title = computed(() => {
   return isNew ? `New ${def.labelSingular.toLowerCase()}` : "Untitled";
 });
 
-/** The entry's folder, from the server. */
-const location = computed(() => doc.version.value?.path ?? "Not saved yet");
+/** The entry's folder, from the server, below the form. */
+const location = computed(() => doc.version.value?.path ?? "");
 
 onMounted(async () => {
   if (!definition.value) {
@@ -261,22 +261,30 @@ defineExpose({ atRisk: doc.atRisk });
   <template v-if="definition">
     <PageHeader
       :title="title"
-      :subtitle="location"
       :loading="loading"
       :back="embedded ? null : { name: 'collection', params: { collection } }"
       :back-label="definition.label"
       :embedded="embedded"
+      form
     >
+      <template v-if="!definition.readOnly && !loading" #meta>
+        <DocumentStatus :state="state" :edit="pending" @discarded="discarded" />
+      </template>
+
       <PreviewLink v-if="preview && !embedded" :href="preview" />
       <PageLink v-if="page" :href="page" />
       <template v-if="!definition.readOnly">
-        <DocumentStatus :state="state" :edit="pending" @discarded="discarded" />
         <button v-if="isNew" type="button" class="btn-primary" :disabled="saving" @click="doc.save()">
           {{ saving ? "Creating…" : "Create" }}
         </button>
         <button v-else-if="failed" type="button" class="btn-secondary" :disabled="saving" :title="failed" @click="doc.retry()">
           Try again
         </button>
+        <RouterLink v-if="pending" :to="{ name: 'changes' }" class="btn-primary">Publish…</RouterLink>
+      </template>
+
+      <template v-if="formLocale && !loading" #toolbar>
+        <LocaleSwitcher :form="formLocale" :fields="definition.fields" :values="values" :issues="issues" />
       </template>
     </PageHeader>
 
@@ -311,7 +319,6 @@ defineExpose({ atRisk: doc.atRisk });
         />
 
         <KeptChangesNotice v-if="kept.offered.value" :at="kept.offered.value.at" @restore="kept.restore()" @forget="kept.forget()" />
-        <LocaleSwitcher v-if="formLocale" :form="formLocale" :fields="definition.fields" :values="values" :issues="issues" />
         <IssueSummary :issues="issues" />
 
         <div v-if="idChanging" role="status" class="mb-5 rounded-md border border-line bg-subtle p-4">
@@ -363,8 +370,9 @@ defineExpose({ atRisk: doc.atRisk });
           <button v-if="!definition.readOnly" type="submit" class="sr-only">Save</button>
         </form>
 
-        <div v-if="!isNew && !definition.readOnly && !embedded" class="mt-10 border-t border-line pt-5">
-          <button type="button" class="btn-danger" @click="askDelete">
+        <div v-if="!isNew" class="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
+          <p class="text-xs text-muted">Folder: <span class="font-mono">{{ location }}</span></p>
+          <button v-if="!definition.readOnly && !embedded" type="button" class="btn-danger" @click="askDelete">
             Delete this {{ definition.labelSingular.toLowerCase() }}
           </button>
         </div>

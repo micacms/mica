@@ -48,7 +48,24 @@ export function fallbackFor(
   return found === undefined ? null : { locale: found, value: value[found] };
 }
 
-function isEmpty(value: unknown): boolean {
+/**
+ * A localized value in `locale`: `translated`; `empty` in each locale; else empty here, and the website shows the
+ * value of the `fallback` locale, or nothing (`missing`).
+ */
+export type TranslationStatus =
+  | { kind: "translated" }
+  | { kind: "empty" }
+  | { kind: "fallback"; locale: string }
+  | { kind: "missing" };
+
+export function translationStatus(field: AnyField, value: Record<string, unknown>, locale: string, locales: FormLocales): TranslationStatus {
+  if (!isEmpty(value[locale])) return { kind: "translated" };
+  if (locales.list.every((other) => isEmpty(value[other]))) return { kind: "empty" };
+  const fallback = fallbackFor(field, value, locale, locales);
+  return fallback ? { kind: "fallback", locale: fallback.locale } : { kind: "missing" };
+}
+
+export function isEmpty(value: unknown): boolean {
   return value === null || value === undefined || value === "" || (Array.isArray(value) && value.length === 0);
 }
 

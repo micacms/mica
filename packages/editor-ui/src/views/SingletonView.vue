@@ -92,14 +92,22 @@ defineExpose({ atRisk: doc.atRisk });
 
 <template>
   <template v-if="definition">
-    <PageHeader :title="definition.label" :subtitle="definition.description" :loading="loading" :embedded="embedded">
+    <PageHeader :title="definition.label" :loading="loading" :embedded="embedded" form>
+      <template v-if="!definition.readOnly && !loadError && !loading" #meta>
+        <DocumentStatus :state="state" :edit="pending" @discarded="doc.reopen()" />
+      </template>
+
       <PreviewLink v-if="preview && !embedded" :href="preview" />
       <PageLink v-if="page" :href="page" />
       <template v-if="!definition.readOnly && !loadError">
-        <DocumentStatus :state="state" :edit="pending" @discarded="doc.reopen()" />
         <button v-if="failed" type="button" class="btn-secondary" :disabled="saving" :title="failed" @click="doc.retry()">
           Try again
         </button>
+        <RouterLink v-if="pending" :to="{ name: 'changes' }" class="btn-primary">Publish…</RouterLink>
+      </template>
+
+      <template v-if="formLocale && !loading && !loadError" #toolbar>
+        <LocaleSwitcher :form="formLocale" :fields="definition.fields" :values="values" :issues="issues" />
       </template>
     </PageHeader>
 
@@ -109,6 +117,7 @@ defineExpose({ atRisk: doc.atRisk });
       <StatusNotice v-else-if="loadError" kind="error" title="These settings could not be loaded" :message="loadError" @retry="doc.load" />
 
       <template v-else>
+        <p v-if="definition.description" class="mb-5 text-sm text-muted">{{ definition.description }}</p>
         <ModelNotice v-if="!definition.readOnly" class="mb-5" />
         <ReadOnlyNotice v-if="definition.readOnly" :reason="definition.readOnly" />
 
@@ -136,7 +145,6 @@ defineExpose({ atRisk: doc.atRisk });
         />
 
         <KeptChangesNotice v-if="kept.offered.value" :at="kept.offered.value.at" @restore="kept.restore()" @forget="kept.forget()" />
-        <LocaleSwitcher v-if="formLocale" :form="formLocale" :fields="definition.fields" :values="values" :issues="issues" />
         <IssueSummary :issues="issues" />
 
         <form ref="formElement" novalidate @reveal-field="revealLocale" @submit.prevent="doc.autosave()" @focusout="doc.onLeave">

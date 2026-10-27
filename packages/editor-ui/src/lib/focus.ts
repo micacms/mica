@@ -41,7 +41,7 @@ export function focusField(path: string, root: ParentNode = document, options: {
     const control =
       wrapper.querySelector<HTMLElement>('[role="combobox"]') ??
       wrapper.querySelector<HTMLElement>(
-        'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"], button:not([disabled])',
+        'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"], button:not([disabled]):not([data-field-action])',
       ) ??
       wrapper;
     // `detail` is the whole path: a form that shows one language changes to the field's language, and cancels.
