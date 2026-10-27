@@ -1,12 +1,24 @@
 /** The languages of a form: which language a field path is in, what is missing, and what a missing value falls back to. */
 
-import { fallbackChain, isLocalizedObject, walkFields, type AnyField, type FieldMap } from "@micacms/core/internal";
+import { addressLocale, fallbackChain, isLocalizedObject, walkFields, type AnyField, type FieldMap } from "@micacms/core/internal";
 
 /** The site's locales, as the schema gives them: the default locale first. */
 export interface FormLocales {
   list: string[];
   default: string;
   fallback: Record<string, string>;
+  /** The default locale has its prefix in an address with `{locale}` too. */
+  prefixDefault: boolean;
+}
+
+/** The site's locales as core's address functions read them; null for a site without locales. */
+export function addressLocales(locales: FormLocales | null | undefined) {
+  return locales ? { locales: locales.list, defaultLocale: locales.default, prefixDefaultLocale: locales.prefixDefault } : null;
+}
+
+/** The value of `{locale}` in an address of `locale`, else of the default locale: empty for the default locale without a prefix. */
+export function addressOf(locales: FormLocales | null | undefined, locale?: string | null): string {
+  return addressLocale(addressLocales(locales), locale);
 }
 
 /** The locale of a dotted field path, such as `sections.0.title.en`; null for a field that is the same in each locale. */

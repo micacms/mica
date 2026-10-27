@@ -414,6 +414,11 @@ export interface SiteOptions {
   defaultLocale?: string;
   /** A locale that falls back to another one before the default locale, such as `{ "de-ch": "de" }`, as in Astro's `i18n.fallback`. */
   fallback?: Record<string, string>;
+  /**
+   * `true`: the default locale has its prefix in an address with `{locale}` too, as `prefixDefaultLocale` in Astro's
+   * `i18n.routing`. Default: `false`, so that `/{locale}/news/{id}` is `/news/…` in the default locale.
+   */
+  prefixDefaultLocale?: boolean;
   collections: Record<string, Collection>;
   singletons?: Record<string, Singleton>;
   references?: Record<string, ReferenceSet>;
@@ -433,6 +438,8 @@ export interface Site<
   defaultLocale?: string;
   /** See `SiteOptions.fallback`. */
   fallback?: Record<string, string>;
+  /** See `SiteOptions.prefixDefaultLocale`. Only when it is `true`. */
+  prefixDefaultLocale?: boolean;
   /**
    * The collections. `defineSite` expands a `localized` field into an object with one field for each locale, the
    * form that the content stores; the field's type stays as declared.

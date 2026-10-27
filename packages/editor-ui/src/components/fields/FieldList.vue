@@ -13,6 +13,8 @@ import { singleValue, type AnyField, type FieldIssue, type FieldMap } from "@mic
 
 import FieldRenderer from "./FieldRenderer.vue";
 import { humanise, widthClass } from "@/composables/useField";
+import { useFormLocale } from "@/composables/useFormLocale";
+import { addressOf } from "@/lib/locales";
 import { pageAddress, type PageAddress } from "@/lib/pages";
 import { useSchema } from "@/stores/schema";
 
@@ -70,12 +72,14 @@ function sourceLabelFor(field: AnyField): string | undefined {
 }
 
 const schema = useSchema();
+const form = useFormLocale();
 
 /** The entry's ID field shows the page's address around it, from the collection's `url`. Not an ID in an object or a row. */
 function addressFor(field: AnyField): PageAddress | null {
   if (field.kind !== "id" || props.path || !props.collection) return null;
   const url = schema.collection(props.collection)?.url;
-  return url ? pageAddress(url, props.modelValue, (name) => props.fields[name]?.label ?? humanise(name)) : null;
+  const locale = addressOf(schema.site.value?.locales, form.value?.locale.value);
+  return url ? pageAddress(url, props.modelValue, (name) => props.fields[name]?.label ?? humanise(name), locale) : null;
 }
 
 /** ID fields follow a sibling; hand them its current value. */

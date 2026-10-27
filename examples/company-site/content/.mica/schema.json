@@ -18,7 +18,7 @@
       "label": "Pages",
       "labelSingular": "Page",
       "description": "Standalone pages such as About us, Services or Contact.",
-      "url": "/{id}/",
+      "url": "/{locale}/{id}/",
       "defaultSort": {
         "field": "position",
         "direction": "asc"
@@ -330,7 +330,7 @@
       "label": "Projects",
       "labelSingular": "Project",
       "description": "Client projects shown in the portfolio.",
-      "url": "/projects/{category}/{id}/",
+      "url": "/{locale}/projects/{category}/{id}/",
       "defaultSort": {
         "field": "year",
         "direction": "desc"
@@ -589,7 +589,7 @@
       "name": "news",
       "label": "News",
       "labelSingular": "Article",
-      "url": "/news/{id}/",
+      "url": "/{locale}/news/{id}/",
       "defaultSort": {
         "field": "publishDate",
         "direction": "desc"
@@ -712,7 +712,7 @@
       "label": "Events",
       "labelSingular": "Event",
       "description": "Workshops and talks, in person or online.",
-      "url": "/events/{id}/",
+      "url": "/{locale}/events/{id}/",
       "defaultSort": {
         "field": "startsAt",
         "direction": "desc"
@@ -884,7 +884,7 @@
       "name": "team",
       "label": "Team",
       "labelSingular": "Team member",
-      "url": "/team/{id}/",
+      "url": "/{locale}/team/{id}/",
       "defaultSort": {
         "field": "position",
         "direction": "asc"
@@ -1180,7 +1180,7 @@
       "name": "homePage",
       "label": "Home page",
       "description": "The texts of the home page. Its title and introduction are the tagline and the description in General.",
-      "url": "/",
+      "url": "/{locale}/",
       "fields": {
         "primaryLink": {
           "kind": "object",

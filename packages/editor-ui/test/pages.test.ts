@@ -47,17 +47,17 @@ describe("the document of a preview page", () => {
   } as unknown as Schema;
 
   it("finds the entry or the settings whose page it is, the most specific address first", () => {
-    assert.deepEqual(documentAtPath("/news/hello/", schema), { name: "entry", params: { collection: "news", id: "hello" } });
-    assert.deepEqual(documentAtPath("/news", schema), { name: "entry", params: { collection: "pages", id: "news" } });
-    assert.deepEqual(documentAtPath("/", schema), { name: "singleton", params: { name: "homePage" } });
-    assert.deepEqual(documentAtPath("/gr%C3%BCezi/", schema), { name: "entry", params: { collection: "pages", id: "grüezi" } });
+    assert.deepEqual(documentAtPath("/news/hello/", schema), { name: "entry", params: { collection: "news", id: "hello" }, locale: null });
+    assert.deepEqual(documentAtPath("/news", schema), { name: "entry", params: { collection: "pages", id: "news" }, locale: null });
+    assert.deepEqual(documentAtPath("/", schema), { name: "singleton", params: { name: "homePage" }, locale: null });
+    assert.deepEqual(documentAtPath("/gr%C3%BCezi/", schema), { name: "entry", params: { collection: "pages", id: "grüezi" }, locale: null });
   });
 
   it("matches each other field of an address with one part of the path", () => {
     const withTours = { ...schema, collections: [...schema.collections, { name: "tours", url: "/{activity}/{id}" }] } as unknown as Schema;
-    assert.deepEqual(documentAtPath("/hochtouren/breithorn/", withTours), { name: "entry", params: { collection: "tours", id: "breithorn" } });
-    assert.deepEqual(documentAtPath("/news/hello", withTours), { name: "entry", params: { collection: "news", id: "hello" } }, "its own text makes /news/{id} more specific");
-    assert.deepEqual(documentAtPath("/hochtouren", withTours), { name: "entry", params: { collection: "pages", id: "hochtouren" } });
+    assert.deepEqual(documentAtPath("/hochtouren/breithorn/", withTours), { name: "entry", params: { collection: "tours", id: "breithorn" }, locale: null });
+    assert.deepEqual(documentAtPath("/news/hello", withTours), { name: "entry", params: { collection: "news", id: "hello" }, locale: null }, "its own text makes /news/{id} more specific");
+    assert.deepEqual(documentAtPath("/hochtouren", withTours), { name: "entry", params: { collection: "pages", id: "hochtouren" }, locale: null });
   });
 
   it("gives every document that the path can be, the most specific first, for addresses that are equally specific", () => {
@@ -67,6 +67,24 @@ describe("the document of a preview page", () => {
       ["tours", "news"],
       "the preview takes the first one whose entry the page shows",
     );
+  });
+
+  it("finds the locale of a page with {locale}, the default locale without a prefix", () => {
+    const localized = {
+      site: { locales: { list: ["en", "de"], default: "en", fallback: {}, prefixDefault: false } },
+      collections: [{ name: "news", url: "/{locale}/news/{id}/" }, { name: "pages", url: "/{locale}/{id}/" }],
+      singletons: [{ name: "homePage", url: "/{locale}/" }],
+    } as unknown as Schema;
+    assert.deepEqual(documentAtPath("/de/news/hello/", localized), { name: "entry", params: { collection: "news", id: "hello" }, locale: "de" });
+    assert.deepEqual(documentAtPath("/news/hello/", localized), { name: "entry", params: { collection: "news", id: "hello" }, locale: "en" });
+    assert.deepEqual(documentAtPath("/", localized), { name: "singleton", params: { name: "homePage" }, locale: "en" });
+    assert.deepEqual(
+      documentsAtPath("/de/", localized).map((document) => [document.name, document.locale]),
+      [["singleton", "de"], ["entry", "en"]],
+      "the German home page, before a page with the ID de",
+    );
+    assert.equal(pageHref("/{locale}/news/{id}/", "hello", {}, "de"), "/de/news/hello/");
+    assert.deepEqual(pageAddress("/{locale}/news/{id}/", {}, (name) => name, "de"), { before: "/de/news/", after: "/", missing: [] });
   });
 
   it("gives null for a page without a document of its own", () => {

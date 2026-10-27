@@ -20,7 +20,7 @@ import { useField, type FieldProps } from "@/composables/useField";
 import { useFormLocale } from "@/composables/useFormLocale";
 import { useReorder } from "@/composables/useReorder";
 import { entryOptions } from "@/lib/entry-options";
-import { missingTranslations } from "@/lib/locales";
+import { addressOf, missingTranslations } from "@/lib/locales";
 import { rowLabel, rowLabelRelation } from "@/lib/row-label";
 import { useSchema } from "@/stores/schema";
 
@@ -80,7 +80,7 @@ onMounted(async () => {
   const target = rowLabelRelation(field.value);
   if (!target) return;
   try {
-    const options = await entryOptions(target, schema.reference(target) !== undefined, schema.collection(target)?.url);
+    const options = await entryOptions(target, schema.reference(target) !== undefined, schema.collection(target)?.url, addressOf(schema.site.value?.locales));
     titles.value = new Map(options.map((option) => [option.id, option.title]));
   } catch {
     // The rows show the IDs; the relation field in the row says that the list did not load.

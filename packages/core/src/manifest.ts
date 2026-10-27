@@ -60,7 +60,7 @@ export function readManifest(raw: unknown, origin = "the manifest"): ReadManifes
   // Left out, not refused: only a link in the editor depends on it.
   for (const [kind, defs] of [["collection", collections], ["singleton", singletons]] as const) {
     for (const [name, def] of Object.entries(defs)) {
-      if (def.url === undefined || !pageUrlProblem(def.url, kind, def.fields)) continue;
+      if (def.url === undefined || !pageUrlProblem(def.url, kind, def.fields, raw.locales !== undefined)) continue;
       warnings.push(`"${name}" has the url "${String(def.url)}", which this version of Mica cannot read. The editor shows no link to its page.`);
       delete def.url;
     }
@@ -91,7 +91,15 @@ export function readManifest(raw: unknown, origin = "the manifest"): ReadManifes
   let site: Site;
   try {
     const references = raw.references !== null && typeof raw.references === "object" ? raw.references : undefined;
-    const locales = raw.locales === undefined ? {} : { locales: raw.locales, defaultLocale: raw.defaultLocale, ...(raw.fallback === undefined ? {} : { fallback: raw.fallback }) };
+    const locales =
+      raw.locales === undefined
+        ? {}
+        : {
+            locales: raw.locales,
+            defaultLocale: raw.defaultLocale,
+            ...(raw.fallback === undefined ? {} : { fallback: raw.fallback }),
+            ...(raw.prefixDefaultLocale === undefined ? {} : { prefixDefaultLocale: raw.prefixDefaultLocale }),
+          };
     site = defineSite({ ...(label !== undefined ? { label } : {}), ...locales, collections, singletons, ...(references ? { references } : {}) });
   } catch (error) {
     throw new ManifestError(`${origin} is not a valid content model.\n  ${(error as Error).message}`);

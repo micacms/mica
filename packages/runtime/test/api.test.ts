@@ -386,7 +386,7 @@ describe("content", () => {
     const other = await createHarness({}, { site });
     try {
       const body = (await (await other.request("/api/admin/schema")).json()) as { site: { locales: unknown } };
-      assert.deepEqual(body.site.locales, { list: ["de", "en"], default: "de", fallback: { en: "de" } });
+      assert.deepEqual(body.site.locales, { list: ["de", "en"], default: "de", fallback: { en: "de" }, prefixDefault: false });
     } finally {
       other.close();
     }

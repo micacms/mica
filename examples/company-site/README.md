@@ -131,7 +131,7 @@ the file name says otherwise.
 | Languages                                | `locales`, `defaultLocale` and `fallback` in `src/mica.ts`: English, German and Swiss German, which falls back to German. `i18n` in `astro.config.mjs` reads them |
 | Localized fields                         | `localized: true` on the texts in `src/mica.ts`; `content/pages/contact/` has a value in each language, `content/pages/legal/` only in English                    |
 | A localized image                        | `pages.heroImage`: an image for each language, so that its alt text has a translation                                                                            |
-| A page in each language                  | `src/pages/[...locale]/`: English at `/contact/`, the others at `/de/contact/`. `localize` in `src/lib/content.ts`; the language menu in `src/components/SiteHeader.astro` |
+| A page in each language                  | `{locale}` in each `url` of `src/mica.ts`, so the editor's preview follows the form's language. `src/pages/[...locale]/`: English at `/contact/`, the others at `/de/contact/`. `localize` in `src/lib/content.ts`; the language menu in `src/components/SiteHeader.astro` |
 | Files for download                       | `mediaFile` from `@micacms/astro` in `src/pages/files/[...path].ts` copies the downloads into the built site                                                      |
 | Optimized images in rich text            | `src/components/RichText.astro` passes the entry's data to `renderRichText`, which lets Astro optimize each image                                                |
 

@@ -25,7 +25,7 @@ import SaveConflict from "@/components/SaveConflict.vue";
 import StatusNotice from "@/components/StatusNotice.vue";
 import { useDocumentEditor } from "@/composables/useDocumentEditor";
 import { provideFormLocale } from "@/composables/useFormLocale";
-import { hasLocalizedFields } from "@/lib/locales";
+import { addressOf, hasLocalizedFields } from "@/lib/locales";
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPage } from "@/composables/usePreviewPane";
 import { formRootOf } from "@/lib/focus";
@@ -52,9 +52,13 @@ const definition = computed(() => schema.singleton(props.name));
 // For a site with locales: the language that the form shows.
 const { form: formLocale, reveal: revealLocale } = provideFormLocale(() => definition.value?.fields);
 const localized = computed(() => hasLocalizedFields(definition.value?.fields ?? {}));
-const page = computed(() => pageHref(definition.value?.page));
+/** The value of `{locale}` in the page's address: the page in the form's language. */
+const addressLocale = computed(() => addressOf(schema.site.value?.locales, formLocale.value?.locale.value));
+const page = computed(() => pageHref(definition.value?.page, undefined, undefined, addressLocale.value));
 const devServer = usePreview();
-const preview = computed(() => (devServer.address.value && definition.value?.url ? `${devServer.address.value}${definition.value.url}` : null));
+const preview = computed(() =>
+  devServer.address.value && definition.value?.url ? `${devServer.address.value}${pageHref(definition.value.url, undefined, undefined, addressLocale.value)}` : null,
+);
 // The overlay form shows a document of the main form's page: that page stays in the preview.
 if (!props.embedded) usePreviewPage(preview, computed(() => !!definition.value?.url));
 

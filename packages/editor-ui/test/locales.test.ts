@@ -24,7 +24,7 @@ const site = defineSite({
   },
 });
 const fields = site.collections.pages.fields;
-const locales: FormLocales = { list: ["de", "en", "fr"], default: "de", fallback: { fr: "en" } };
+const locales: FormLocales = { list: ["de", "en", "fr"], default: "de", fallback: { fr: "en" }, prefixDefault: false };
 
 describe("pathLocale", () => {
   it("names the locale of a localized field, also in a repeater's row", () => {

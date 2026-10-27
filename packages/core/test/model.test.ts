@@ -31,6 +31,7 @@ import {
   select,
   singleton,
   id,
+  addressLocale,
   idAtPath,
   toId,
   text,
@@ -562,13 +563,61 @@ describe("page addresses", () => {
   });
 
   it("finds the id of a page, and how specific the address is", () => {
-    assert.deepEqual(idAtPath("/{activity}/{id}", "/hochtouren/breithorn"), { id: "breithorn", literal: 2 });
-    assert.deepEqual(idAtPath("/news/{id}", "/news/z%C3%BCrich"), { id: "zürich", literal: 6 });
+    assert.deepEqual(idAtPath("/{activity}/{id}", "/hochtouren/breithorn"), { id: "breithorn", locale: null, literal: 2 });
+    assert.deepEqual(idAtPath("/news/{id}", "/news/z%C3%BCrich"), { id: "zürich", locale: null, literal: 6 });
     assert.equal(idAtPath("/{activity}/{id}", "/hochtouren"), null);
     assert.equal(idAtPath("/{activity}/{id}", "/a/b/c"), null);
     assert.equal(idAtPath("/news.{id}", "/newsXhello"), null, "the address's own text is literal");
-    assert.deepEqual(idAtPath("/{activity}/tour-{id}", "/hochtouren/tour-piz-palue"), { id: "piz-palue", literal: 7 });
+    assert.deepEqual(idAtPath("/{activity}/tour-{id}", "/hochtouren/tour-piz-palue"), { id: "piz-palue", locale: null, literal: 7 });
     assert.equal(idAtPath("/news/{id}", "/news/100%"), null, "a stray % is no id");
+  });
+
+  describe("with {locale}", () => {
+    const localized = (url: string, kind: "collection" | "singleton", locales = true) => () =>
+      kind === "collection"
+        ? defineSite({ ...(locales ? { locales: ["en", "de"] } : {}), collections: { news: collection({ label: "News", url, fields: { title: text(), id: id({ from: "title" }) } }) } })
+        : defineSite({ ...(locales ? { locales: ["en", "de"] } : {}), collections: {}, singletons: { home: singleton({ label: "Home", url, fields: { title: text() } }) } });
+    const site = { locales: ["en", "de", "de-ch"], defaultLocale: "en" };
+    const prefixed = { ...site, prefixDefaultLocale: true };
+
+    it("takes {locale} once, as a whole part of the path, on a site with locales, also for a singleton", () => {
+      assert.doesNotThrow(localized("/{locale}/news/{id}/", "collection"));
+      assert.doesNotThrow(localized("/news/{locale}/{id}", "collection"));
+      assert.doesNotThrow(localized("/{locale}/", "singleton"));
+      for (const url of ["/{locale}-{id}", "/{locale}/{locale}/{id}", "/x{locale}/{id}"]) {
+        assert.throws(localized(url, "collection"), (error: unknown) => error instanceof ModelError && /has the url/.test(error.message), url);
+      }
+      assert.throws(localized("/{locale}/news/{id}", "collection", false), /needs the site's locales/);
+    });
+
+    it("refuses prefixDefaultLocale that is no boolean, or without locales", () => {
+      assert.throws(() => defineSite({ locales: ["en"], prefixDefaultLocale: "yes" as unknown as boolean, collections: {} }), /true or false/);
+      assert.throws(() => defineSite({ prefixDefaultLocale: true, collections: {} }), /needs `locales`/);
+      assert.equal(defineSite({ locales: ["en"], prefixDefaultLocale: true, collections: {} }).prefixDefaultLocale, true);
+    });
+
+    it("leaves out the default locale without a prefix", () => {
+      assert.equal(addressLocale(site, "en"), "");
+      assert.equal(addressLocale(site, undefined), "");
+      assert.equal(addressLocale(site, "de-ch"), "de-ch");
+      assert.equal(addressLocale(prefixed, undefined), "en");
+      assert.equal(pageUrl("/{locale}/news/{id}/", "hello", {}, ""), "/news/hello/");
+      assert.equal(pageUrl("/{locale}/news/{id}/", "hello", {}, "de"), "/de/news/hello/");
+      assert.equal(pageUrl("/{locale}/"), "/");
+      assert.equal(pageUrl("/{locale}/", undefined, {}, "de"), "/de/");
+      assert.equal(pageUrl("/{locale}"), "/");
+    });
+
+    it("finds the locale of a page, the default locale without a prefix", () => {
+      assert.deepEqual(idAtPath("/{locale}/news/{id}", "/news/hello", site), { id: "hello", locale: "en", literal: 6 });
+      assert.deepEqual(idAtPath("/{locale}/news/{id}", "/de-ch/news/hello", site), { id: "hello", locale: "de-ch", literal: 6 });
+      assert.equal(idAtPath("/{locale}/news/{id}", "/en/news/hello", site), null, "the default locale has no prefix");
+      assert.equal(idAtPath("/{locale}/news/{id}", "/fr/news/hello", site), null, "not a locale of the site");
+      assert.deepEqual(idAtPath("/{locale}/news/{id}", "/en/news/hello", prefixed), { id: "hello", locale: "en", literal: 6 });
+      assert.equal(idAtPath("/{locale}/news/{id}", "/news/hello", prefixed), null);
+      assert.deepEqual(idAtPath("/{locale}", "/", site), { id: "", locale: "en", literal: 0 });
+      assert.deepEqual(idAtPath("/{locale}", "/de", site), { id: "", locale: "de", literal: 0 });
+    });
   });
 });
 

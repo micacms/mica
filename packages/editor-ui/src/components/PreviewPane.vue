@@ -21,6 +21,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import { useRoute, useRouter, type RouteLocationRaw } from "vue-router";
 import { ChevronLeft, ChevronRight, ExternalLink, LoaderCircle, RotateCw, TriangleAlert } from "@lucide/vue";
 
+import { chooseFormLocale } from "@/composables/useFormLocale";
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPane, type PreviewMode } from "@/composables/usePreviewPane";
 import { fieldAt, fieldLabel, fieldPaths } from "@/lib/field-labels";
@@ -275,7 +276,7 @@ function sitePath(path: string): string {
   return base && path.startsWith(base) ? path.slice(base.length) || "/" : path;
 }
 
-/** In Edit mode, the form follows the page in the preview, when that page has a document of its own. */
+/** In Edit mode, the form follows the page in the preview, when that page has a document of its own, and its language. */
 async function follow(): Promise<void> {
   if (pane.mode.value !== "edit" || !pane.visible.value || !shown.value) return;
   // Only a document that the page shows: an address such as /news/unknown/ matches a pattern, but has no entry.
@@ -284,8 +285,11 @@ async function follow(): Promise<void> {
     const id = candidate.params["id"] ?? candidate.params["name"];
     return markers.value.some((marker) => marker.document === document && marker.id === id);
   });
-  if (!target || router.resolve(target).path === route.path) return;
-  await openForm(target);
+  if (!target) return;
+  if (target.locale) chooseFormLocale(target.locale);
+  const form = { name: target.name, params: target.params };
+  if (router.resolve(form).path === route.path) return;
+  await openForm(form);
 }
 
 /**

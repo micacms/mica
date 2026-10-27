@@ -18,6 +18,7 @@ import ReorderHandle from "@/components/ReorderHandle.vue";
 import StatusNotice from "@/components/StatusNotice.vue";
 import { useReorder } from "@/composables/useReorder";
 import { previewValue } from "@/lib/format";
+import { addressOf as defaultAddress } from "@/lib/locales";
 import { entryAddress } from "@/lib/pages";
 import { useSchema } from "@/stores/schema";
 import { useStaging } from "@/stores/staging";
@@ -52,7 +53,8 @@ const reordering = ref(false);
 
 const definition = computed(() => schema.collection(props.collection));
 /** Under each title: the page's URL for a collection with a `url`, else the entry's ID, which is one part without a "/". */
-const addressOf = (entry: EntrySummary): string => entryAddress(definition.value?.url, entry.id, entry.data);
+// The default locale's page: a list shows one address for each entry.
+const addressOf = (entry: EntrySummary): string => entryAddress(definition.value?.url, entry.id, entry.data, defaultAddress(schema.site.value?.locales));
 const columns = computed(() => {
   const def = definition.value;
   if (!def) return [];

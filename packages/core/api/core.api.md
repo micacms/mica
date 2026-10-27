@@ -454,6 +454,7 @@ export interface ProtocolManifest {
     generatedBy: string;
     label?: string;
     locales?: string[];
+    prefixDefaultLocale?: boolean;
     // (undocumented)
     protocolVersion: number;
     references?: Record<string, ReferenceSet>;
@@ -629,6 +630,7 @@ export interface Site<C extends Record<string, Collection> = Record<string, Coll
     fallback?: Record<string, string>;
     label?: string;
     locales?: string[];
+    prefixDefaultLocale?: boolean;
     references?: Record<string, ReferenceSet>;
     root?: string;
     // (undocumented)
@@ -643,6 +645,7 @@ export interface SiteOptions {
     fallback?: Record<string, string>;
     label?: string;
     locales?: string[];
+    prefixDefaultLocale?: boolean;
     // (undocumented)
     references?: Record<string, ReferenceSet>;
     root?: string;

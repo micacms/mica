@@ -30,7 +30,7 @@ import ReadOnlyNotice from "@/components/ReadOnlyNotice.vue";
 import SaveConflict from "@/components/SaveConflict.vue";
 import { useDocumentEditor } from "@/composables/useDocumentEditor";
 import { provideFormLocale } from "@/composables/useFormLocale";
-import { hasLocalizedFields } from "@/lib/locales";
+import { addressOf, hasLocalizedFields } from "@/lib/locales";
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPage } from "@/composables/usePreviewPane";
 import type { Edit } from "@/lib/edits";
@@ -53,6 +53,8 @@ const definition = computed(() => schema.collection(props.collection));
 // For a site with locales: the language that the form shows.
 const { form: formLocale, reveal: revealLocale } = provideFormLocale(() => definition.value?.fields);
 const localized = computed(() => hasLocalizedFields(definition.value?.fields ?? {}));
+/** The value of `{locale}` in the page's address: the page in the form's language. */
+const addressLocale = computed(() => addressOf(schema.site.value?.locales, formLocale.value?.locale.value));
 const updateLinks = ref(true);
 const formElement = ref<HTMLFormElement | null>(null);
 
@@ -121,7 +123,7 @@ const idChanging = computed<boolean>(() => !!props.id && newId.value !== props.i
 const linkers = ref<Referrer[] | null>(null);
 /** Where the page moves with the new ID, for a collection with a `url`: the old and the new address. */
 const movedPage = computed(() =>
-  movedPageOf(definition.value?.url, { id: props.id ?? "", data: saved.value }, { id: newId.value, data: values.value }),
+  movedPageOf(definition.value?.url, { id: props.id ?? "", data: saved.value }, { id: newId.value, data: values.value }, addressLocale.value),
 );
 
 // Uploads go into the entry's folder: the saved ID's, or for a new entry a valid ID in the form.
@@ -155,10 +157,10 @@ const withAddress = (address: string, path: string | null): string | null => (pa
 /** The saved data: the dev server shows it, not what the form holds before the next save. */
 const saved = computed(() => doc.version.value?.data);
 /** An address with other names than {id}, such as /{activity}/{id}: a draft of such a field moves the page. */
-const addressNamesFields = computed(() => pagePlaceholders(definition.value?.url ?? "").some((name) => name !== "id"));
+const addressNamesFields = computed(() => pagePlaceholders(definition.value?.url ?? "").some((name) => name !== "id" && name !== "locale"));
 /** Its page in the dev server, which reads the saved drafts: also for one that was never published. */
 const preview = computed(() =>
-  props.id && devServer.address.value && definition.value?.url ? withAddress(devServer.address.value, pageHref(definition.value.url, props.id, saved.value)) : null,
+  props.id && devServer.address.value && definition.value?.url ? withAddress(devServer.address.value, pageHref(definition.value.url, props.id, saved.value, addressLocale.value)) : null,
 );
 // The overlay form shows a document of the main form's page: that page stays in the preview.
 if (!props.embedded) usePreviewPage(preview, computed(() => !!props.id && !!definition.value?.url));
@@ -169,7 +171,7 @@ if (!props.embedded) usePreviewPage(preview, computed(() => !!props.id && !!defi
  */
 const page = computed(() =>
   props.id && !(pending.value && (pending.value.state === "new" || addressNamesFields.value))
-    ? pageHref(definition.value?.page, props.id, saved.value)
+    ? pageHref(definition.value?.page, props.id, saved.value, addressLocale.value)
     : null,
 );
 

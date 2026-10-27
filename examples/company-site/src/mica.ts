@@ -116,7 +116,8 @@ export const site = defineSite({
       labelSingular: "Page",
       description: "Standalone pages such as About us, Services or Contact.",
       // The page of an entry: with MICA_SITE_URL the editor links to it, and the local editor shows Preview.
-      url: "/{id}/",
+      // {locale} is the form's language: nothing for English, /de for German.
+      url: "/{locale}/{id}/",
       defaultSort: { field: "position", direction: "asc" },
       sortable: true,
       fields: {
@@ -217,7 +218,7 @@ export const site = defineSite({
       labelSingular: "Project",
       description: "Client projects shown in the portfolio.",
       // The category is a part of the address: Mica fills it in from the entry, for its links and the preview.
-      url: "/projects/{category}/{id}/",
+      url: "/{locale}/projects/{category}/{id}/",
       defaultSort: { field: "year", direction: "desc" },
       fields: {
         title: text({
@@ -346,7 +347,7 @@ export const site = defineSite({
     news: collection({
       label: "News",
       labelSingular: "Article",
-      url: "/news/{id}/",
+      url: "/{locale}/news/{id}/",
       defaultSort: { field: "publishDate", direction: "desc" },
       fields: {
         title: text({
@@ -388,7 +389,7 @@ export const site = defineSite({
       label: "Events",
       labelSingular: "Event",
       description: "Workshops and talks, in person or online.",
-      url: "/events/{id}/",
+      url: "/{locale}/events/{id}/",
       defaultSort: { field: "startsAt", direction: "desc" },
       fields: {
         title: text({
@@ -458,7 +459,7 @@ export const site = defineSite({
     team: collection({
       label: "Team",
       labelSingular: "Team member",
-      url: "/team/{id}/",
+      url: "/{locale}/team/{id}/",
       defaultSort: { field: "position", direction: "asc" },
       sortable: true,
       fields: {
@@ -572,7 +573,7 @@ export const site = defineSite({
       label: "Home page",
       description:
         "The texts of the home page. Its title and introduction are the tagline and the description in General.",
-      url: "/",
+      url: "/{locale}/",
       fields: {
         primaryLink: link("First button"),
         secondaryLink: link("Second button"),

@@ -40,7 +40,7 @@ export default defineConfig({
   i18n: {
     locales: model.locales,
     defaultLocale: model.defaultLocale,
-    routing: { prefixDefaultLocale: false },
+    routing: { prefixDefaultLocale: model.prefixDefaultLocale ?? false },
   },
 
   /**

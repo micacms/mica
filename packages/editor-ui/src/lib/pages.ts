@@ -7,23 +7,27 @@
 import { pageUrl, idAtPath } from "@micacms/core/internal";
 
 import type { ChangeOwner, Schema } from "@/api";
+import { addressLocales, addressOf } from "@/lib/locales";
 
 /**
  * The page of an entry, with the values of `data` for the other names of its
- * address, such as `{activity}`; of a singleton without `id`. Null without a
- * page in the model, or while a value of the address is empty.
+ * address, such as `{activity}`; of a singleton without `id`. `locale` is the
+ * value of `{locale}`, from `addressOf`: the default locale's page without it.
+ * Null without a page in the model, or while a value of the address is empty.
  */
-export const pageHref = (page: string | null | undefined, id?: string, data?: Record<string, unknown>): string | null =>
-  page ? pageUrl(page, id, data) : null;
+export const pageHref = (page: string | null | undefined, id?: string, data?: Record<string, unknown>, locale = ""): string | null =>
+  page ? pageUrl(page, id, data, locale) : null;
 
-/** The page that a published change shows on, if the model has one. An address with other names than `{id}` needs the entry's `data`. */
+/** The page that a published change shows on, if the model has one, in the default locale. An address with other names than `{id}` needs the entry's `data`. */
 export function pageOfOwner(owner: ChangeOwner, schema: Schema | null, data?: Record<string, unknown> | null): string | null {
-  if (owner.kind === "entry") return pageHref(schema?.collections.find((item) => item.name === owner.collection)?.page, owner.id, data ?? undefined);
-  if (owner.kind === "singleton") return pageHref(schema?.singletons.find((item) => item.name === owner.name)?.page);
+  const locale = addressOf(schema?.site?.locales);
+  if (owner.kind === "entry") return pageHref(schema?.collections.find((item) => item.name === owner.collection)?.page, owner.id, data ?? undefined, locale);
+  if (owner.kind === "singleton") return pageHref(schema?.singletons.find((item) => item.name === owner.name)?.page, undefined, undefined, locale);
   return null;
 }
 
-type DocumentAtPath = { name: string; params: Record<string, string> };
+/** A form, and the locale of the page: null for an address without `{locale}`. */
+type DocumentAtPath = { name: string; params: Record<string, string>; locale: string | null };
 
 /**
  * The forms of the documents whose page `path` can be, from the model's `url`
@@ -34,18 +38,21 @@ type DocumentAtPath = { name: string; params: Record<string, string> };
 export function documentsAtPath(path: string, schema: Schema | null): DocumentAtPath[] {
   const trim = (value: string) => value.replace(/\/+$/, "") || "/";
   const wanted = trim(path);
+  const site = addressLocales(schema?.site?.locales);
   const found: Array<DocumentAtPath & { literal: number }> = [];
   for (const item of schema?.collections ?? []) {
     if (!item.url) continue;
     // Each other name of the address, such as {activity}, matches one part of the path.
-    const match = idAtPath(trim(item.url), wanted);
-    if (match) found.push({ name: "entry", params: { collection: item.name, id: match.id }, literal: match.literal });
+    const match = idAtPath(trim(item.url), wanted, site);
+    if (match) found.push({ name: "entry", params: { collection: item.name, id: match.id }, locale: match.locale, literal: match.literal });
   }
   for (const item of schema?.singletons ?? []) {
-    if (item.url && trim(item.url) === wanted) found.push({ name: "singleton", params: { name: item.name }, literal: wanted.length + 1 });
+    const match = item.url ? idAtPath(trim(item.url), wanted, site) : null;
+    // A singleton's address is all its own text: it wins over a collection's pattern.
+    if (match) found.push({ name: "singleton", params: { name: item.name }, locale: match.locale, literal: wanted.length + 1 });
   }
   // A stable sort keeps the model's order between addresses that are equally specific.
-  return found.sort((a, b) => b.literal - a.literal).map(({ name, params }) => ({ name, params }));
+  return found.sort((a, b) => b.literal - a.literal).map(({ name, params, locale }) => ({ name, params, locale }));
 }
 
 /** The form of the document whose page is `path`: the most specific address; null for a page without a document. */
@@ -63,11 +70,13 @@ export interface PageAddress {
 
 /**
  * The address around an ID field, from the collection's `url`, with the other
- * names filled in from the form, as the editor types. An empty one shows the
- * label of its field, such as ‹Activity›: the page has no address without it.
+ * names filled in from the form, as the editor types, and `{locale}` with
+ * `locale`. An empty one shows the label of its field, such as ‹Activity›: the
+ * page has no address without it.
  */
-export function pageAddress(url: string, values: Record<string, unknown>, labelOf: (name: string) => string): PageAddress {
+export function pageAddress(url: string, values: Record<string, unknown>, labelOf: (name: string) => string, locale = ""): PageAddress {
   const missing: string[] = [];
+  url = url.replace("/{locale}", locale ? `/${locale}` : "") || "/";
   const fill = (part: string) =>
     part.replace(/\{([^}]*)\}/g, (_match, name: string) => {
       const value = values[name];
@@ -80,8 +89,8 @@ export function pageAddress(url: string, values: Record<string, unknown>, labelO
 }
 
 /** What a list shows for an entry: the page's URL when the collection has a `url` and the address is complete, else the ID. */
-export function entryAddress(url: string | null | undefined, id: string, data: Record<string, unknown>): string {
-  return (url ? pageHref(url, id, data) : null) ?? id;
+export function entryAddress(url: string | null | undefined, id: string, data: Record<string, unknown>, locale = ""): string {
+  return (url ? pageHref(url, id, data, locale) : null) ?? id;
 }
 
 /** Where a page moves when its entry gets a new ID: the old address with the saved data, the new one with the form's. */
@@ -89,10 +98,11 @@ export function movedPage(
   url: string | null | undefined,
   from: { id: string; data: Record<string, unknown> | undefined },
   to: { id: string; data: Record<string, unknown> },
+  locale = "",
 ): { from: string; to: string } | null {
   if (!url || !from.id || !to.id) return null;
-  const old = pageHref(url, from.id, from.data);
-  const next = pageHref(url, to.id, to.data);
+  const old = pageHref(url, from.id, from.data, locale);
+  const next = pageHref(url, to.id, to.data, locale);
   return old && next ? { from: old, to: next } : null;
 }
 

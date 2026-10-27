@@ -56,6 +56,11 @@ export function provideFormLocale(fields: () => FieldMap | undefined): { form: C
   return { form: value, reveal };
 }
 
+/** Shows the forms in `locale`, such as the language of the page in the live preview. */
+export function chooseFormLocale(locale: string): void {
+  chosen.value = locale;
+}
+
 /** The form's language, or null outside a form with one, such as a field in a dialog: it shows each language. */
 export function useFormLocale(): ComputedRef<FormLocale | null> {
   return inject(FORM_LOCALE, computed(() => null));

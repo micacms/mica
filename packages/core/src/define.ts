@@ -57,6 +57,10 @@ export function defineSite<
   const problem = options.locales === undefined ? null : localesProblem(options.locales, options.defaultLocale, options.fallback);
   if (problem) throw new ModelError(`The site's locales are not valid: ${problem}.`);
   const locales = options.locales === undefined ? null : siteLocales(options);
+  if (options.prefixDefaultLocale !== undefined && typeof options.prefixDefaultLocale !== "boolean") {
+    throw new ModelError("`prefixDefaultLocale` must be true or false.");
+  }
+  if (options.prefixDefaultLocale !== undefined && !locales) throw new ModelError("`prefixDefaultLocale` needs `locales`.");
 
   const collections = {} as C;
   for (const [name, def] of Object.entries(options.collections)) {
@@ -83,6 +87,7 @@ export function defineSite<
     site.locales = locales.locales;
     site.defaultLocale = locales.defaultLocale;
     if (Object.keys(locales.fallback).length > 0) site.fallback = locales.fallback;
+    if (options.prefixDefaultLocale) site.prefixDefaultLocale = true;
   }
   if (options.references && Object.keys(options.references).length > 0) {
     site.references = Object.fromEntries(Object.entries(options.references).map(([name, def]) => [name, { ...def, type: "reference", name }]));
@@ -180,7 +185,7 @@ function assertValidSite(site: Site): void {
       );
     }
 
-    const urlProblem = def.url === undefined ? null : pageUrlProblem(def.url, "collection", def.fields);
+    const urlProblem = def.url === undefined ? null : pageUrlProblem(def.url, "collection", def.fields, !!site.locales);
     if (urlProblem) throw new ModelError(`Collection "${name}" has the url "${def.url}": ${urlProblem}.`);
 
     const sortField = def.defaultSort?.field;
@@ -212,7 +217,7 @@ function assertValidSite(site: Site): void {
       );
     }
     checkFields(def.fields, `singletons.${name}`, relationTargets);
-    const pageProblem = def.url === undefined ? null : pageUrlProblem(def.url, "singleton");
+    const pageProblem = def.url === undefined ? null : pageUrlProblem(def.url, "singleton", {}, !!site.locales);
     if (pageProblem) throw new ModelError(`Singleton "${name}" has the url "${def.url}": ${pageProblem}.`);
   }
 }

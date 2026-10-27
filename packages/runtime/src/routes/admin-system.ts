@@ -190,5 +190,5 @@ function schemaLocales(model: Site): Schema["site"]["locales"] {
   const locales = siteLocales(model);
   if (!locales) return null;
   const list = [locales.defaultLocale, ...locales.locales.filter((locale) => locale !== locales.defaultLocale)];
-  return { list, default: locales.defaultLocale, fallback: locales.fallback };
+  return { list, default: locales.defaultLocale, fallback: locales.fallback, prefixDefault: !!model.prefixDefaultLocale };
 }
