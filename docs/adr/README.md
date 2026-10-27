@@ -42,6 +42,7 @@ Each record states a decision that is still true: its context, the decision and 
 - [41. An entry has an ID, and its page has a URL](0041-the-entry-id-is-not-its-url.md)
 - [42. Localized fields: one entry, a value for each locale](0042-localized-fields.md)
 - [43. The locale in a page's address, and unique localized IDs](0043-locale-in-page-addresses.md)
+- [44. The locales of an entry come from its values](0044-the-locales-of-an-entry.md)
 
 ## Websites and setup
 
