@@ -79,13 +79,16 @@ const shown = computed<AnyField | null>(() => {
 
 const container = ref<HTMLElement | null>(null);
 
-/** Another language's value as the start of this one's: a copy, and the focus in the input to change it. */
+/** The control to change a value in, as `focusField` finds it; else the translations button, so that the focus stays. */
+const CONTROL = 'input:not([type="hidden"]):not([disabled]), textarea:not([disabled]), select:not([disabled]), [contenteditable="true"], [role="combobox"]';
+
+/** Another language's value as the start of this one's: a copy, and the focus in its control to change it. */
 async function use(from: string): Promise<void> {
   if (!locale.value) return;
   const copy: unknown = JSON.parse(JSON.stringify(value.value[from] ?? null));
   emit("update:modelValue", { ...value.value, [locale.value]: copy });
   await nextTick();
-  container.value?.querySelector<HTMLElement>('input:not([type="hidden"]), textarea, [contenteditable="true"]')?.focus();
+  (container.value?.querySelector<HTMLElement>(CONTROL) ?? container.value?.querySelector<HTMLElement>("[data-field-action]"))?.focus();
 }
 
 // Also null, for a group that is not localized: the translations stop at the field that they belong to.
@@ -108,7 +111,9 @@ provideFieldTranslations(
 
 <template>
   <div v-if="shown && locale" ref="container" :data-field-path="`${path}.${locale}`">
+    <!-- A new control for each language: an upload, a tag draft or an undo stays in the language where it began. -->
     <FieldRenderer
+      :key="locale"
       :field="shown"
       :path="`${path}.${locale}`"
       :model-value="value[locale] ?? null"

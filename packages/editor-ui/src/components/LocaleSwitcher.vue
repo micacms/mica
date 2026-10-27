@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * The language that the form shows, in the page header of a site with locales. A pill tells how many translations
- * of a language are missing, red when one of its fields needs attention; the words are in its tooltip.
+ * of a language are missing, and a red "!" that one of its fields needs attention; the words are in the tooltip.
  */
 
 import { computed, useId } from "vue";
@@ -39,13 +39,8 @@ const options = computed(() =>
       >
         <span :lang="option.locale">{{ option.locale.toUpperCase() }}</span>
         <span v-if="option.locale === form.locales.default" class="sr-only">(default language)</span>
-        <span
-          v-if="option.missing || option.problem"
-          :class="['count', option.problem ? 'bg-danger text-on-danger' : 'bg-glint text-on-glint']"
-          aria-hidden="true"
-        >
-          {{ option.missing || "!" }}
-        </span>
+        <span v-if="option.missing" class="count bg-glint text-on-glint" aria-hidden="true">{{ option.missing }}</span>
+        <span v-if="option.problem" class="count bg-danger text-on-danger" aria-hidden="true">!</span>
         <template v-if="option.hint">
           <span class="sr-only">, {{ option.hint }}</span>
           <span class="tooltip left-1/2 -translate-x-1/2 group-hover:tooltip-shown group-focus-visible:tooltip-shown" aria-hidden="true">{{ option.hint }}</span>

@@ -25,6 +25,7 @@ import SaveConflict from "@/components/SaveConflict.vue";
 import StatusNotice from "@/components/StatusNotice.vue";
 import { useDocumentEditor } from "@/composables/useDocumentEditor";
 import { provideFormLocale } from "@/composables/useFormLocale";
+import { hasLocalizedFields } from "@/lib/locales";
 import { usePreview } from "@/composables/usePreview";
 import { usePreviewPage } from "@/composables/usePreviewPane";
 import { formRootOf } from "@/lib/focus";
@@ -50,6 +51,7 @@ const toast = useToast();
 const definition = computed(() => schema.singleton(props.name));
 // For a site with locales: the language that the form shows.
 const { form: formLocale, reveal: revealLocale } = provideFormLocale(() => definition.value?.fields);
+const localized = computed(() => hasLocalizedFields(definition.value?.fields ?? {}));
 const page = computed(() => pageHref(definition.value?.page));
 const devServer = usePreview();
 const preview = computed(() => (devServer.address.value && definition.value?.url ? `${devServer.address.value}${definition.value.url}` : null));
@@ -106,7 +108,7 @@ defineExpose({ atRisk: doc.atRisk });
         <RouterLink v-if="pending" :to="{ name: 'changes' }" class="btn-primary">Publish…</RouterLink>
       </template>
 
-      <template v-if="formLocale && !loading && !loadError" #toolbar>
+      <template v-if="formLocale && localized && !loading && !loadError" #toolbar>
         <LocaleSwitcher :form="formLocale" :fields="definition.fields" :values="values" :issues="issues" />
       </template>
     </PageHeader>

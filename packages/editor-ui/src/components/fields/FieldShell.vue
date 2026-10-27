@@ -7,7 +7,8 @@
  * element and names itself with `aria-labelledby` (`text`).
  *
  * The input of a localized field has the button of its translations at the end
- * of the label's line, and the language of its value.
+ * of the label's line. The control of its value has the value's language
+ * (`useField`), for the spelling check and a screen reader.
  */
 
 import FieldTranslations from "./FieldTranslations.vue";
@@ -35,17 +36,18 @@ withDefaults(
 </script>
 
 <template>
-  <fieldset v-if="as === 'group' && !bare" :aria-describedby="describedBy">
-    <legend class="field-label flex w-full items-center justify-between gap-2">
-      <span>
-        {{ label }}
-        <span v-if="required" class="text-danger" aria-hidden="true">*</span>
-        <span v-if="required" class="sr-only">(required)</span>
-      </span>
-      <FieldTranslations v-if="translations" :translations="translations" />
+  <fieldset v-if="as === 'group' && !bare" :aria-describedby="describedBy" class="relative">
+    <!-- The button is not in the legend, which names the group: it is at the end of the legend's line. -->
+    <legend :class="['field-label', translations && 'pr-8']">
+      {{ label }}
+      <span v-if="required" class="text-danger" aria-hidden="true">*</span>
+      <span v-if="required" class="sr-only">(required)</span>
     </legend>
+    <div v-if="translations" class="absolute top-0 right-0">
+      <FieldTranslations :translations="translations" />
+    </div>
 
-    <div class="mt-1.5" :lang="translations?.locale">
+    <div class="mt-1.5">
       <slot />
     </div>
 
@@ -68,8 +70,7 @@ withDefaults(
       <FieldTranslations v-if="translations" :translations="translations" />
     </div>
 
-    <!-- The language of the value, for the spelling check and a screen reader. -->
-    <div :class="bare ? '' : 'mt-1.5'" :lang="translations?.locale">
+    <div :class="bare ? '' : 'mt-1.5'">
       <slot />
     </div>
 

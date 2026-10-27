@@ -47,7 +47,8 @@ export function provideFormLocale(fields: () => FieldMap | undefined): { form: C
     const model = fields();
     if (!value.value || !model || typeof path !== "string") return;
     const target = pathLocale(model, path);
-    if (target === null || target === locale.value) return;
+    // Not a language of the site: the form cannot show it, and `focusField` must not try again.
+    if (target === null || target === locale.value || !value.value.locales.list.includes(target)) return;
     locale.value = target;
     // The field of that language is on the page after the next render: `focusField` looks again then.
     event.preventDefault();
@@ -55,7 +56,7 @@ export function provideFormLocale(fields: () => FieldMap | undefined): { form: C
   return { form: value, reveal };
 }
 
-/** The form's language, or null outside a form with one, such as a field in an overlay: it shows each language. */
+/** The form's language, or null outside a form with one, such as a field in a dialog: it shows each language. */
 export function useFormLocale(): ComputedRef<FormLocale | null> {
   return inject(FORM_LOCALE, computed(() => null));
 }

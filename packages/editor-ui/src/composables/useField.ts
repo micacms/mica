@@ -7,6 +7,8 @@ import { computed, type ComputedRef } from "vue";
 
 import { humanise, type AnyField, type FieldIssue } from "@micacms/core/internal";
 
+import { useFieldTranslations } from "./useFormLocale";
+
 let sequence = 0;
 
 export interface FieldProps {
@@ -31,6 +33,8 @@ export interface UseField {
    * reader can still read them; `disabled` would take them out of reach.
    */
   locked: ComputedRef<boolean>;
+  /** The language of the value, in a localized field: for the value's control only, not for the editor's own words. */
+  lang: ComputedRef<string | undefined>;
 }
 
 export function useField(props: FieldProps): UseField {
@@ -54,7 +58,10 @@ export function useField(props: FieldProps): UseField {
 
   const locked = computed(() => !!props.disabled || !!props.field.readonly);
 
-  return { inputId, label, error, describedBy, hintId, errorId, locked };
+  const translations = useFieldTranslations();
+  const lang = computed(() => translations.value?.locale);
+
+  return { inputId, label, error, describedBy, hintId, errorId, locked, lang };
 }
 
 function lastSegment(path: string): string {

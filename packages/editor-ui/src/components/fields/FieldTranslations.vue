@@ -1,8 +1,8 @@
 <script setup lang="ts">
 /**
  * The button beside the label of a localized field: it shows the field's value in the other languages, and an editor
- * can use one of them as the start of this language's value. Its colour marks a missing translation: amber when the
- * website shows the value of another language, red when it shows nothing.
+ * can use one of them as the start of this language's value. A filled button marks a missing translation: amber when
+ * the website shows the value of another language, red with "!" when it shows nothing.
  */
 
 import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from "vue";
@@ -82,8 +82,10 @@ function onPointerDown(event: PointerEvent): void {
   if (root.value && !root.value.contains(event.target as Node)) close(false);
 }
 
+/** The focus that moves to another control closes the panel. Without a target, as after a click in Safari, the click decides. */
 function onFocusOut(event: FocusEvent): void {
-  if (open.value && root.value && !root.value.contains(event.relatedTarget as Node | null)) close(false);
+  const target = event.relatedTarget as Node | null;
+  if (open.value && target && root.value && !root.value.contains(target)) close(false);
 }
 
 watch(open, async (isOpen) => {
@@ -106,13 +108,14 @@ onBeforeUnmount(() => document.removeEventListener("pointerdown", onPointerDown)
       ref="button"
       type="button"
       data-field-action
-      :class="['group relative grid h-6 w-6 place-items-center rounded-sm transition', tone]"
+      :class="['group relative flex h-6 min-w-6 items-center justify-center gap-0.5 rounded-sm px-1 transition', tone]"
       :aria-expanded="open"
       aria-haspopup="dialog"
       :aria-controls="open ? id : undefined"
       @click="toggle"
     >
       <Languages :size="14" aria-hidden="true" />
+      <span v-if="status.kind === 'missing'" class="text-xs leading-none font-bold" aria-hidden="true">!</span>
       <span class="sr-only">{{ translations.label }}: {{ hint }}</span>
       <span v-if="!open" class="tooltip right-0 group-hover:tooltip-shown group-focus-visible:tooltip-shown" aria-hidden="true">{{ hint }}</span>
     </button>

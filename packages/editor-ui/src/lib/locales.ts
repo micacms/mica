@@ -24,6 +24,13 @@ export function pathLocale(fields: FieldMap, path: string): string | null {
   return null;
 }
 
+/** Whether a form has a localized field: else its language changes nothing, and the switcher is not needed. */
+export function hasLocalizedFields(fields: FieldMap): boolean {
+  return Object.values(fields).some(
+    (field) => (field.kind === "object" && isLocalizedObject(field)) || ((field.kind === "object" || field.kind === "repeater") && hasLocalizedFields(field.fields)),
+  );
+}
+
 /** How many localized values of `data` are empty in `locale`, where the default locale has one. */
 export function missingTranslations(fields: FieldMap, data: Record<string, unknown>, locale: string, locales: FormLocales): number {
   if (locale === locales.default) return 0;

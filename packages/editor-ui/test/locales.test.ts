@@ -5,7 +5,7 @@ import { describe, it } from "node:test";
 
 import { collection, defineSite, id, media, repeater, text } from "@micacms/core/internal";
 
-import { fallbackFor, missingTranslations, pathLocale, translationStatus, type FormLocales } from "../src/lib/locales.js";
+import { fallbackFor, hasLocalizedFields, missingTranslations, pathLocale, translationStatus, type FormLocales } from "../src/lib/locales.js";
 
 const site = defineSite({
   locales: ["de", "en", "fr"],
@@ -79,5 +79,17 @@ describe("translationStatus", () => {
 
   it("is empty when no locale has a value", () => {
     assert.deepEqual(translationStatus(fields.title!, { de: null, en: "", fr: null }, "fr", locales), { kind: "empty" });
+  });
+});
+
+describe("hasLocalizedFields", () => {
+  it("finds a localized field, also in a repeater's rows", () => {
+    assert.equal(hasLocalizedFields(fields), true);
+    const nested = defineSite({ locales: ["de", "en"], collections: { pages: collection({ label: "Pages", fields: { id: id(), rows: repeater({ fields: { heading: text({ localized: true }) } }) } }) } });
+    assert.equal(hasLocalizedFields(nested.collections.pages.fields), true);
+  });
+
+  it("is false for a form whose fields are the same in each language", () => {
+    assert.equal(hasLocalizedFields({ image: media(), heading: text() }), false);
   });
 });
