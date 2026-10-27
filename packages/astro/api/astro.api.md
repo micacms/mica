@@ -204,6 +204,7 @@ export interface RichTextImageOptions {
 export interface RichTextOptions {
     config?: Config;
     getImage?: GetImage;
+    link?: (href: string) => string;
     optimize?: boolean | RichTextImageOptions;
 }
 

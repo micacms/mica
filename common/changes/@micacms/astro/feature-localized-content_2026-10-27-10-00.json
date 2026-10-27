@@ -1,7 +1,7 @@
 {
   "changes": [
     {
-      "comment": "localize(site, name, data, locale) gives an entry or a singleton in one locale, with the fallback of each localized field.",
+      "comment": "localize(site, name, data, locale) gives an entry or a singleton in one locale, with the fallback of each localized field. renderRichText takes a link option that gives each link its address, for example in the page's locale.",
       "type": "minor",
       "packageName": "@micacms/astro"
     }

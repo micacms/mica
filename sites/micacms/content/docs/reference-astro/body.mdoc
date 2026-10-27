@@ -92,6 +92,7 @@ The second argument is the data of the entry or the singleton. `renderRichText` 
 | --- | --- |
 | `config` | A Markdoc configuration. Add your own tags there; a tag that the configuration does not declare gives no output. |
 | `optimize` | `false` writes the original files with their width and height. An object sets `widths`, `sizes` and `format` (`"webp"`, `"avif"`, `"png"` or `"jpeg"`). |
+| `link` | A function that gives each link its address, for example with the page's locale: `/team/` becomes `/de/team/`. Editors then write one address for all languages. |
 
 Markdoc refuses `javascript:` and `data:` links in its own nodes, but not in a tag or node that you add: check every URL attribute of your own tags, so that an editor cannot add a script link. Raw HTML in the source is not rendered. See [Recipes](/docs/recipes/) for a custom tag.
 

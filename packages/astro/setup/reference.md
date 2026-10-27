@@ -265,6 +265,11 @@ export const site = defineSite({
   it empty.
 - An `object()`, a `repeater()` and a collection's ID field cannot be
   localized. Localize the fields inside.
+- Links in rich text: `renderRichText(text, data, { link })` gives each link
+  the address in the page's locale, so editors write one address, such as
+  `/team/`.
+- The labels of `select()` options are the editor's. A name of an option that
+  the website shows belongs in a localized field.
 - Content that is different in each language: one collection for each locale.
 
 ### Images

@@ -93,13 +93,18 @@ export async function getStaticPaths() {
 }
 
 const { data } = Astro.props;
-const body = await renderRichText(data.body, data);
+const { lang } = Astro.params;
+// Editors write one address for all languages, such as /team/. The page adds its language.
+const body = await renderRichText(data.body, data, { link: (href) => (href.startsWith("/") ? `/${lang}${href}` : href) });
 ---
 <h1>{data.title}</h1>
 <Fragment set:html={body} />
 ```
 
 A missing translation shows the fallback here. Choose what your site does: show the fallback, or make no page.
+
+- A link in rich text keeps the address that the editor wrote. The `link` option of `renderRichText` gives each link the address in the page's language.
+- The labels of a `select()` field's options are the editor's. When the website shows the name of an option, keep that name in a localized field, for example in a singleton with the texts of the templates.
 
 ## One collection per language
 
