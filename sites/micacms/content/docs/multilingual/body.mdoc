@@ -119,6 +119,6 @@ newsEn: collection({ label: "News (English)", fields: { title: text({ required: 
 
 Each collection is a list of its own in the editor, with its own folder, URLs and order. When a text has a translation, a `relation()` field can name it.
 
-## What comes later
+## Limits
 
-A list of the languages that an entry is in comes in a later version. See the decision records [Localized fields](https://github.com/micacms/mica/blob/main/docs/adr/0042-localized-fields.md) and [The locale in a page's address](https://github.com/micacms/mica/blob/main/docs/adr/0043-locale-in-page-addresses.md).
+Each entry is in all languages of the site. A page without a translation shows the text of its fallback language. A list of the languages that an entry is in is an open request: [issue #365](https://github.com/micacms/mica/issues/365). The decision records [Localized fields](https://github.com/micacms/mica/blob/main/docs/adr/0042-localized-fields.md) and [The locale in a page's address](https://github.com/micacms/mica/blob/main/docs/adr/0043-locale-in-page-addresses.md) give the reasons for the design.

@@ -10,7 +10,7 @@ import Strata from "@/components/Strata.astro";
 import { renderRichText } from "@micacms/astro";
 import { getHome, getSite } from "@/lib/content";
 const [home, site] = await Promise.all([getHome(), getSite()]);
-const { hero, architecture, benefits, start, preview, run, agents, capabilities, fit, cta } = home;
+const { hero, architecture, benefits, start, preview, languages, run, agents, capabilities, fit, cta } = home;
 const icons = { images: Images, map: Map, files: Files, database: Database, eye: Eye, git: GitBranch, relations: Waypoints, repository: FolderGit2 };
 const lead = await renderRichText(hero.lead, home);
 ---
@@ -111,6 +111,23 @@ const lead = await renderRichText(hero.lead, home);
       </div>
       <!-- The brand's rule for screenshots: radius-l, a line border, no frame, tilt or shadow. -->
       <Image {...preview.image} widths={[720, 1440, 2160, 2880]} sizes="(min-width: 1280px) 1200px, 92vw" class="mt-12 h-auto w-full rounded-lg border border-line md:mt-16" />
+    </div>
+  </section>
+
+  <section id="languages" class="section scroll-mt-20 border-b border-line">
+    <div class="wrap grid items-center gap-10 md:grid-cols-[5fr_7fr] md:gap-14">
+      <CodeBlock class="min-w-0 max-md:order-last" file={languages.file} code={languages.code ?? ""} />
+      <div class="max-w-xl">
+        <p class="eyebrow">{languages.eyebrow}</p>
+        <h2 class="title-1 m-0">{languages.title}</h2>
+        <p class="lead mt-5">{languages.lead}</p>
+        <ul class="m-0 mt-6 flex list-none flex-col gap-2.5 p-0">
+          {languages.points.map((point) => (
+            <li class="flex gap-2.5"><Check size={20} class="mt-0.5 shrink-0 text-primary" aria-hidden="true" />{point.text}</li>
+          ))}
+        </ul>
+        <a class="link mt-8 inline-flex items-center gap-1.5" href={languages.link.href}>{languages.link.label}<ArrowRight size={16} aria-hidden="true" /></a>
+      </div>
     </div>
   </section>
 

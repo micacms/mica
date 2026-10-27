@@ -5,8 +5,17 @@ Mica is experimental and not ready for production. The API and the content forma
 - You write the content model in TypeScript: collections, singletons and fields for text, rich text, media, relations, places on a map and more.
 - An entry has an ID: one part, the name of its folder, and what a relation stores. You declare it with `id()`. The page of an entry has a URL, such as `/news/{id}`.
 - A collection's URL can have more parts, such as `/{activity}/{id}`. A part can be a select, a relation to one entry, or a date without a time.
-- A site can have several languages. A field with `localized: true` has a value for each language in the same entry, and a missing translation falls back to another language. A URL can name the language, such as `/{locale}/news/{id}`.
 - `@micacms/astro` turns the model into Astro collections. The build needs no server, no token and no network. Rich text is Markdoc, and images in it come out as optimised `srcset` images.
+
+## Several languages
+
+- A site declares its languages with the names of Astro's i18n: `locales`, `defaultLocale`, `fallback` and `prefixDefaultLocale`.
+- A field with `localized: true` has a value for each language, in the same entry. Rich text has one file for each language, such as `body.de.mdoc`. A Git diff shows each translation on its own line.
+- A missing translation falls back to another language, for example Swiss German to German, then to the main language. `localize()` gives a page the values of its language, with the types of the model.
+- A URL can name the language, such as `/{locale}/news/{id}`. A link in rich text can get the address of the page's language.
+- The editor shows a form in one language at a time. The language switcher counts the missing translations, and a button beside each translated field shows the other languages and reuses one.
+- The preview and "Open on website" show the page in the language of the form. A page in another language in the live preview changes the form to that language.
+- `mica check` and Publish report two entries with the same translated ID in one language, because they would have the same address.
 
 ## Editing
 
@@ -14,8 +23,7 @@ Mica is experimental and not ready for production. The API and the content forma
 - The self-hosted editor is one Docker container with OpenID Connect sign-in. Editors who are not developers use it. With Google, a domain rule admits only accounts of your Workspace domain.
 - The editor saves by itself. A save is a draft. Publish makes one Git commit of the changes that the editor chooses, also when there are thousands of them.
 - The editor shows the page's URL under the ID field, in the list of a collection and in the pickers of relations. A relation to one entry has Edit, Change and Remove.
-- On a site with several languages, the editor shows a form in one language at a time. The language switcher counts the missing translations, and a button beside each translated field shows the other languages.
-- The live preview shows the real page of the website beside the form, with the drafts in it, in the language of the form. A click on a text, an image, a date or an option in the page opens its field. The self-hosted editor shows it with the optional preview container `ghcr.io/micacms/preview`.
+- The live preview shows the real page of the website beside the form, with the drafts in it. A click on a text, an image, a date or an option in the page opens its field. The self-hosted editor shows it with the optional preview container `ghcr.io/micacms/preview`.
 - Coding agents can edit the content over MCP, and they follow the same rules as the editor. An agent needs your consent, and the consent page waits one second before it accepts Allow.
 
 ## Content in Git

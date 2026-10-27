@@ -87,6 +87,30 @@ A relation field stores the ID of the target entry. `defineSite` refuses a relat
 
 A coordinates field stores `{ lat, lng }`. With the option `map`, the editor shows a map to click on, and the value also holds the `zoom` of the map. The website draws the same place with `LocationMap` from `@micacms/astro/components`. The map tiles come from OpenFreeMap or from a style that you name. See [Field reference](/docs/reference-fields/) and [Recipes](/docs/recipes/).
 
+## Several languages
+
+A site can have more than one language. Declare the languages in `defineSite()` with `locales` and `defaultLocale`, and give each field that has a translation the option `localized: true`:
+
+```ts
+export const site = defineSite({
+  locales: ["en", "de"],
+  defaultLocale: "en",
+  collections: {
+    news: collection({
+      label: "News",
+      url: "/{locale}/news/{id}",
+      fields: {
+        title: text({ label: "Title", required: true, localized: true }),
+        id: id({ from: "title" }),
+        body: richText({ label: "Text", localized: true }),
+      },
+    }),
+  },
+});
+```
+
+A localized field keeps a value for each language in the same entry: `"title": { "en": "Opening hours", "de": "Öffnungszeiten" }`. A rich-text field has one file for each language, such as `body.de.mdoc`. `required` applies to the main language. On the website, `localize()` gives the values of one language, with the fallback for a missing translation. [Several languages](/docs/multilingual/) shows the Astro side, the addresses and the editor.
+
 ## The file layout
 
 Each entry and each singleton is a folder with an `index.json` file. Rich text and media go into the same folder. Astro does the same: its `glob()` loader gives `house-a/index.json` the ID `house-a`.

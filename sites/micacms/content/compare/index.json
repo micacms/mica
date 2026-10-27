@@ -7,7 +7,7 @@
   "guide": [
     {
       "title": "Choose Mica",
-      "text": "You build with Astro and want content as plain files in Git, a local or self-hosted editor, a live preview of the real page, and agents through MCP, with no database."
+      "text": "You build with Astro and want content as plain files in Git, in one language or several, a local or self-hosted editor, a live preview of the real page, and agents through MCP, with no database."
     },
     {
       "title": "Choose a hosted CMS",
