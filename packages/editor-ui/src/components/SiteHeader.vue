@@ -18,9 +18,9 @@ const icon = `${import.meta.env.BASE_URL}brand/mica-favicon.svg`;
 const state = computed(() => preview.status.value.state);
 /** The word carries the state; the dot of the status pill only repeats it (brand guide). */
 const STATES = {
-  live: { words: "Preview live", variant: "status-published" },
-  starting: { words: "Preview starting", variant: "status-starting" },
-  stopped: { words: "Preview stopped", variant: "status-stopped" },
+  live: { words: "Preview live", variant: "status-success" },
+  starting: { words: "Preview starting", variant: "status-busy" },
+  stopped: { words: "Preview stopped", variant: "status-error" },
   off: { words: "Preview off", variant: "" },
 } as const;
 </script>
@@ -63,7 +63,7 @@ const STATES = {
         :href="preview.address.value"
         target="_blank"
         rel="noopener noreferrer"
-        :class="['status hover:underline', preview.status.value.detail ? 'status-draft' : 'status-published']"
+        :class="['status hover:underline', preview.status.value.detail ? 'status-warning' : 'status-success']"
         :title="preview.status.value.detail ?? 'Opens the preview with the saved changes, before you publish them'"
       >
         {{ preview.status.value.detail ? "Preview not confirmed" : "Preview live" }}

@@ -283,6 +283,24 @@ describe("concurrency", () => {
     assert.equal(await readFile(join(root, "projects/haus-a", body!), "utf8"), "New body from the website\n");
   });
 
+  it("accepts a save after an upload into the entry's media folder, also with an ID change", async () => {
+    await store.save("projects", { data: { title: "Haus A" } });
+    const opened = await store.revisionOf("projects", "haus-a");
+
+    // The editor uploads into the open entry's folder, then saves the form.
+    await contentFiles({ root }).apply({
+      changes: [{ type: "write", path: "projects/haus-a/media/photo.jpg", contents: "bytes" }],
+    });
+    assert.equal(await store.revisionOf("projects", "haus-a"), opened);
+
+    await store.save("projects", {
+      id: "haus-a",
+      data: { title: "Haus A", id: "haus-b", cover: "projects/haus-a/media/photo.jpg" },
+      expectedRevision: opened,
+    });
+    assert.equal(await read("projects/haus-b/media/photo.jpg"), "bytes");
+  });
+
   it("refuses a create that would overwrite an entry added in the meantime", async () => {
     await store.save("projects", { data: { title: "Haus A" } });
 

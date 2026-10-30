@@ -156,13 +156,13 @@ export function useDocumentEditor<Version extends SavedVersion, Saved extends { 
   }
 
   const state = computed(() => {
-    if (isNew) return { label: "Not saved yet", tone: "status-unsaved" };
-    if (conflict.state.value !== "none") return { label: "Not saved: choose a version", tone: "status-unsaved" };
-    if (saving.value || (changed.value && autosaves.value)) return { label: "Saving…", tone: "status-unsaved" };
-    if (failed.value) return { label: "Not saved", tone: "status-unsaved" };
-    if (changed.value) return { label: "Not saved: check the fields", tone: "status-unsaved" };
+    if (isNew) return { label: "Not saved yet", tone: "" };
+    if (conflict.state.value !== "none") return { label: "Not saved: choose a version", tone: "status-error" };
+    if (saving.value || (changed.value && autosaves.value)) return { label: "Saving…", tone: "status-busy" };
+    if (failed.value) return { label: "Not saved", tone: "status-error" };
+    if (changed.value) return { label: "Not saved: check the fields", tone: "status-warning" };
     if (pending.value) return { label: "Saved · not published", tone: "status-draft" };
-    return staging.knowsPublished.value ? { label: "Published", tone: "status-published" } : { label: "Saved", tone: "" };
+    return { label: staging.knowsPublished.value ? "Published" : "Saved", tone: "status-success" };
   });
 
   function setBaseline(next: Version | null): void {

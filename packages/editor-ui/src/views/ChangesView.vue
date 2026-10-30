@@ -207,6 +207,21 @@ function plural(count: number, one: string, many: string): string {
         </DeveloperDetails>
       </div>
 
+      <div v-if="status.ignored.length > 0" role="alert" class="rounded-md border border-warning/15 bg-warning-soft p-4">
+        <p class="text-sm font-medium text-warning">Some saved content never reaches the website</p>
+        <p class="mt-1 text-xs text-muted">
+          The website's setup leaves it out of every publication, so it is not in the list below. It stays saved. Ask the
+          developer to include it.
+        </p>
+        <DeveloperDetails>
+          <p>A <code>.gitignore</code> rule matches these paths in the content folder, so Git never commits them:</p>
+          <ul class="list-inside list-disc">
+            <li v-for="path in status.ignored" :key="path"><code>{{ path }}</code></li>
+          </ul>
+          <p>Remove the rule, or move the content out of its reach.</p>
+        </DeveloperDetails>
+      </div>
+
       <div
         v-if="!status.validation.ok"
         role="alert"

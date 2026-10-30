@@ -78,6 +78,7 @@ export default defineConfig({
     // MICA_ADMIN_ORIGINS=http://localhost:5173 for its Origin check.
     proxy: {
       "/api": { target: API_TARGET, changeOrigin: false },
+      "/health": { target: API_TARGET, changeOrigin: false },
     },
   },
 });

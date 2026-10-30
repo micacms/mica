@@ -80,6 +80,28 @@ export async function listTreeChanges(tree: GitTree): Promise<TreeChange[]> {
 }
 
 /**
+ * The content files that `.gitignore` hides, so that no publication can take
+ * them. An ignored folder is one path that ends in `/`. A name that starts with
+ * a dot, such as `.DS_Store`, is never Mica's, so it is left out.
+ */
+export async function listIgnoredContent(tree: GitTree): Promise<string[]> {
+  const raw = await tree.git.run(
+    [LITERAL, "status", "--porcelain=v1", "-z", "-uall", "--ignored=matching", "--", tree.prefix === "" ? "." : tree.prefix],
+    { env: { GIT_OPTIONAL_LOCKS: "0" } },
+  );
+  const ignored: string[] = [];
+  for (const { x, path } of parseStatusEntries(raw)) {
+    if (x !== "!") continue;
+    const inContent = relativeToContent(path, tree.prefix);
+    if (inContent === null || temporaryOf(inContent)) continue;
+    if (inContent.split("/").some((segment) => segment.startsWith("."))) continue;
+    // The whole content folder: Git names it, and nothing in it is ever published.
+    ignored.push(inContent === "" ? "./" : inContent);
+  }
+  return ignored;
+}
+
+/**
  * Stages and commits only `paths` (content-root relative) and returns the new
  * HEAD. The pathspec limits both steps, so all other staged or unstaged work
  * stays. Without `author`, Git's configured identity applies.

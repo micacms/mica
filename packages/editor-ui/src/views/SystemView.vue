@@ -75,9 +75,9 @@ const REPORTED_PREVIEW_LINES = 10;
 
 /** The word carries the state; the dot of the status pill only repeats it (brand guide). */
 const PREVIEW = {
-  live: { word: "Live", variant: "status-published" },
-  starting: { word: "Starting", variant: "status-starting" },
-  stopped: { word: "Stopped", variant: "status-stopped" },
+  live: { word: "Live", variant: "status-success" },
+  starting: { word: "Starting", variant: "status-busy" },
+  stopped: { word: "Stopped", variant: "status-error" },
   off: { word: "Off", variant: "" },
 } as const;
 
@@ -206,7 +206,7 @@ async function copyReport(): Promise<void> {
         <ol v-else class="mt-3 max-h-96 divide-y divide-line overflow-y-auto" tabindex="0" aria-label="Warnings and errors, the newest first">
           <li v-for="(line, index) in info.problems" :key="index" class="py-2.5 text-sm">
             <div class="flex flex-wrap items-center gap-2">
-              <span :class="['status', line.level === 'error' && 'status-stopped']">{{ line.level === "error" ? "Error" : "Warning" }}</span>
+              <span :class="['status', line.level === 'error' ? 'status-error' : 'status-warning']">{{ line.level === "error" ? "Error" : "Warning" }}</span>
               <time :datetime="line.time" class="text-xs text-muted tabular-nums">{{ absoluteTime(line.time) }}</time>
             </div>
             <p class="mt-1">{{ line.message }}</p>

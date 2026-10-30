@@ -268,6 +268,8 @@ describe("mica check", () => {
     ]);
     assert.deepEqual(markdocWarnings("Plain **Markdown** with a [link](https://example.com).\n"), []);
     assert.deepEqual(markdocWarnings("````md\n```html\n<div>inner</div>\n```\n<p>still code</p>\n````\n"), []);
+    assert.deepEqual(markdocWarnings("\\<Bericht tbd>\n"), []);
+    assert.deepEqual(markdocWarnings("\\\\<br>\n"), ["Raw HTML (<br>) is not rendered: Markdoc escapes it."]);
   });
 
   it("reports a field kind from a newer @micacms/astro, and checks the rest", async () => {

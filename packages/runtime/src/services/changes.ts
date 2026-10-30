@@ -88,6 +88,8 @@ export interface StagingStatus {
    */
   detached: DetachedHead | null;
   changes: AnnotatedChange[];
+  /** Content files and folders (`…/`) that `.gitignore` hides: saved, and never published. */
+  ignored: string[];
   validation: StagingValidation;
   /** Where a clone that Mica keeps stands against its remote. Null for the developer's checkout. */
   sync: SyncStatus | null;

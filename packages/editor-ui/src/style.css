@@ -373,23 +373,25 @@ img.ProseMirror-separator {
     whitespace-nowrap text-ink before:h-2 before:w-2 before:shrink-0 before:rounded-full before:bg-muted before:content-[''];
 }
 
+/* Saved, and not published yet: a success, with the glint dot of Not published (brand guide, Colour). */
 @utility status-draft {
-  @apply bg-warning-soft before:bg-glint before:ring-1 before:ring-on-glint before:ring-inset;
+  @apply bg-success-soft before:bg-glint before:ring-1 before:ring-on-glint before:ring-inset;
 }
 
-@utility status-published {
+@utility status-success {
   @apply bg-success-soft before:bg-primary;
 }
 
-@utility status-unsaved {
-  @apply bg-info-soft before:bg-info;
-}
-
-@utility status-starting {
+/* Under way, or not known yet: the neutral pill with a pulsing dot. */
+@utility status-busy {
   @apply before:motion-safe:animate-pulse;
 }
 
-@utility status-stopped {
+@utility status-warning {
+  @apply bg-warning-soft before:bg-warning;
+}
+
+@utility status-error {
   @apply bg-danger-soft before:bg-danger;
 }
 

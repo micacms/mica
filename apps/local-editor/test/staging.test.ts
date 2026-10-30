@@ -174,6 +174,18 @@ describe("status", () => {
     assert.equal(byPath.has(".mica/schema.json"), false);
   });
 
+  it("names the content files that .gitignore hides, which no publication can take (#306)", async () => {
+    const { root, contentRoot, service } = makeRepo();
+    writeFileSync(join(root, ".gitignore"), "content/projects/haus-b/\ncontent/projects/haus-a/media/\n.DS_Store\n");
+    writeFileSync(join(contentRoot, "projects/haus-b/index.json"), JSON.stringify({ title: "Haus B", id: "haus-b" }));
+    writeFileSync(join(contentRoot, "projects/haus-a/media/photo.jpg"), "bytes");
+    writeFileSync(join(contentRoot, "projects/.DS_Store"), "");
+
+    const status = await service.status();
+    assert.deepEqual(status.ignored.sort(), ["projects/haus-a/media/", "projects/haus-b/"]);
+    assert.equal(status.changes.some((change) => change.path.startsWith("projects/haus-b/")), false);
+  });
+
   it("a rename the developer staged reads as create plus delete", async () => {
     const { root, service } = makeRepo();
     git(root, "mv", "content/projects/haus-a", "content/projects/haus-z");

@@ -68,6 +68,24 @@ describe("readResponse", () => {
   });
 });
 
+describe("api.health", () => {
+  const answering = async (answer: () => Promise<Response>): Promise<boolean> => {
+    const original = globalThis.fetch;
+    globalThis.fetch = answer;
+    try {
+      return await api.health();
+    } finally {
+      globalThis.fetch = original;
+    }
+  };
+
+  it("is true only when Mica answers, not when a proxy answers for a stopped Mica", async () => {
+    assert.equal(await answering(async () => json(200, { status: "ok" })), true);
+    assert.equal(await answering(async () => new Response("Bad gateway", { status: 502 })), false);
+    assert.equal(await answering(() => Promise.reject(new TypeError("Failed to fetch"))), false);
+  });
+});
+
 describe("the schema store", () => {
   it("forgets a failed request, so that the next navigation tries again", async () => {
     const schema: Schema = { collections: [], singletons: [], references: [], revision: "r1" };
@@ -75,7 +93,7 @@ describe("the schema store", () => {
     let calls = 0;
     api.schema = async () => {
       calls += 1;
-      if (calls === 1) throw new ApiError(0, "network_error", "Could not reach the server.");
+      if (calls === 1) throw new ApiError(0, "network_error", "Could not reach Mica.");
       return schema;
     };
     try {
