@@ -72,7 +72,7 @@ test("a click in the preview opens the field, and a save shows on the page", asy
   // The form saves by itself, the page loads again with the new text, and marks it as not published.
   const intro = "Typed in the browser, and shown in the preview.";
   await page.getByRole("textbox", { name: "Introduction" }).fill(intro);
-  await expect(page.getByText("Saved · not published")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Saved, (new|changed)/ })).toBeVisible();
   await expect(preview.locator("[data-mica-changed]", { hasText: intro })).toBeVisible({ timeout: 15_000 });
   expect(site.git("rev-parse", "HEAD")).toBe(head);
 

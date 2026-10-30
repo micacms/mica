@@ -66,19 +66,19 @@ test("an editor creates an entry with an image, changes its ID, discards another
   await expect(picker).toBeHidden();
   await page.getByLabel("Alt text").fill("A test portrait");
   await page.getByRole("button", { name: "Create" }).click();
-  await expect(page.getByText("Saved · not published")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Saved, (new|changed)/ })).toBeVisible();
 
   // Change the ID: it waits for its button, and the entry and its image move together.
   await page.getByLabel("ID", { exact: true }).fill(id);
   await page.getByRole("button", { name: "Change ID" }).click();
   await expect(page).toHaveURL(new RegExp(`/admin/collections/team/${id}$`));
-  await expect(page.getByText("Saved · not published")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Saved, (new|changed)/ })).toBeVisible();
 
   // Another edit, which the editor then discards on the Publish page.
   await page.getByRole("complementary").getByRole("link", { name: "General" }).click();
   // It saves by itself.
   await page.getByLabel("Tagline").fill(`Not to be published ${stamp}`);
-  await expect(page.getByText("Saved · not published")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Saved, (new|changed)/ })).toBeVisible();
 
   await page.getByRole("complementary").getByRole("link", { name: /Publish/ }).click();
   await expect(page.getByRole("checkbox", { name: `Publish Team member: ${name}` })).toBeChecked();
