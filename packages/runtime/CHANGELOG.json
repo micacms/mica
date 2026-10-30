@@ -2,6 +2,24 @@
   "name": "@micacms/runtime",
   "entries": [
     {
+      "version": "0.16.1",
+      "tag": "@micacms/runtime_v0.16.1",
+      "date": "Fri, 30 Oct 2026 14:29:32 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "The change status names the content files and folders that `.gitignore` hides (`ignored`), because no publication can take them."
+          },
+          {
+            "comment": "An upload into an entry's media folder while the form is open no longer makes the next save a conflict."
+          },
+          {
+            "comment": "The self-hosted editor commits as \"Mica\" in place of \"Mica CMS\", and its links point to mica.build."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.16.0",
       "tag": "@micacms/runtime_v0.16.0",
       "date": "Tue, 27 Oct 2026 16:53:31 GMT",

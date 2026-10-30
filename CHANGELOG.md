@@ -10,6 +10,39 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.16.1] — 2026-10-30
+
+This version makes the state of an entry and of the preview clearer, and moves
+Mica to mica.build. It also fixes some bugs.
+
+### Changed
+
+- **One status for an entry or settings.** Its colour and word say whether
+  the work is saved: grey while it saves, green when it is saved, yellow when
+  a field needs a check, and red when the save failed. Its dot says whether
+  there is something to publish, and a warning sign says that it cannot be
+  published yet. Select it for when it was saved, what stops its publication,
+  and "Discard changes". The editor no longer says "Published" for an entry.
+- **The preview status** in the menu opens its details in the same way: why
+  the preview starts, stopped or is missing and what to do, and, while it is
+  live, its address and "Open in a new tab". "Preview off" is now "No preview".
+- **When Mica stops** or cannot be reached, an open editor tab shows a cover
+  that says so, and continues by itself when Mica is back.
+- **The Publish page warns** about saved content that `.gitignore` hides from
+  every publication, and names the paths for the developer. The change status
+  of the API gives them as `ignored`.
+- **mica.build.** The website and the documentation moved to mica.build. The
+  CLI, the setup guides, the package homepages and Help for editors point
+  there, and the editor shows the mica wordmark. The self-hosted editor
+  commits as "Mica" in place of "Mica CMS".
+
+### Fixed
+
+- An upload into an entry's media folder while the form is open no longer
+  makes the next save a conflict.
+- `mica check` no longer gives a raw HTML warning for a `<` with a backslash
+  before it, such as `\<tag>`.
+
 ## [0.16.0] — 2026-10-27
 
 This version adds localization (i18n). One entry holds the text of each

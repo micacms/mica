@@ -1,6 +1,13 @@
 # Change Log - @micacms/core
 
-This log was last generated on Tue, 27 Oct 2026 16:53:31 GMT and should not be manually modified.
+This log was last generated on Fri, 30 Oct 2026 14:29:32 GMT and should not be manually modified.
+
+## 0.16.1
+Fri, 30 Oct 2026 14:29:32 GMT
+
+### Updates
+
+- The package homepage is mica.build.
 
 ## 0.16.0
 Tue, 27 Oct 2026 16:53:31 GMT

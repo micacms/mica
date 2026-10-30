@@ -2,6 +2,18 @@
   "name": "@micacms/mcp",
   "entries": [
     {
+      "version": "0.16.1",
+      "tag": "@micacms/mcp_v0.16.1",
+      "date": "Fri, 30 Oct 2026 14:29:32 GMT",
+      "comments": {
+        "none": [
+          {
+            "comment": "The package homepage is mica.build."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.16.0",
       "tag": "@micacms/mcp_v0.16.0",
       "date": "Tue, 27 Oct 2026 16:53:31 GMT",

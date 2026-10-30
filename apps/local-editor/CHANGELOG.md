@@ -1,6 +1,19 @@
 # Change Log - @micacms/editor
 
-This log was last generated on Tue, 27 Oct 2026 16:53:31 GMT and should not be manually modified.
+This log was last generated on Fri, 30 Oct 2026 14:29:32 GMT and should not be manually modified.
+
+## 0.16.1
+Fri, 30 Oct 2026 14:29:32 GMT
+
+### Patches
+
+- mica check: a `<` with a backslash before it, such as `\<tag>`, is text and no longer gives a raw HTML warning.
+- When Mica stops or cannot be reached, an open editor tab shows a cover that says so, and continues by itself when Mica is back. The editor's messages name Mica, not a server.
+- The Publish page warns about saved content that `.gitignore` hides from every publication, and names the paths for the developer.
+- The save status of a form is green when it is saved, grey while it saves, yellow when a field needs a check and red when the save failed. Saved changes that are not published keep the yellow dot.
+- The website and the documentation moved to mica.build: the CLI, the setup guides and the editor's Help for editors link point there. The editor shows the mica wordmark.
+- One status for an entry or settings: its colour and word say whether the work is saved, and its dot says whether there is something to publish. Select it for when it was saved, what stops its publication, and "Discard changes". The editor no longer says "Published" for an entry.
+- The preview status in the menu opens its details like the status of an entry: why the preview starts, stopped or is missing and what to do, and, while it is live, its address and "Open in a new tab". "Preview off" is now "No preview".
 
 ## 0.16.0
 Tue, 27 Oct 2026 16:53:31 GMT

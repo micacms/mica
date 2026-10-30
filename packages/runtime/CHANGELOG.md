@@ -1,6 +1,15 @@
 # Change Log - @micacms/runtime
 
-This log was last generated on Tue, 27 Oct 2026 16:53:31 GMT and should not be manually modified.
+This log was last generated on Fri, 30 Oct 2026 14:29:32 GMT and should not be manually modified.
+
+## 0.16.1
+Fri, 30 Oct 2026 14:29:32 GMT
+
+### Patches
+
+- The change status names the content files and folders that `.gitignore` hides (`ignored`), because no publication can take them.
+- An upload into an entry's media folder while the form is open no longer makes the next save a conflict.
+- The self-hosted editor commits as "Mica" in place of "Mica CMS", and its links point to mica.build.
 
 ## 0.16.0
 Tue, 27 Oct 2026 16:53:31 GMT
