@@ -5,24 +5,15 @@
  * icon stays beside the name, and both lead to the Overview.
  */
 
-import { computed } from "vue";
 import { ExternalLink } from "@lucide/vue";
 
+import PreviewStatus from "@/components/PreviewStatus.vue";
 import { usePreview } from "@/composables/usePreview";
 import { useSchema } from "@/stores/schema";
 
 const schema = useSchema();
 const preview = usePreview();
 const icon = `${import.meta.env.BASE_URL}brand/mica-favicon.svg`;
-
-const state = computed(() => preview.status.value.state);
-/** The word carries the state; the dot of the status pill only repeats it (brand guide). */
-const STATES = {
-  live: { words: "Preview live", variant: "status-success" },
-  starting: { words: "Preview starting", variant: "status-busy" },
-  stopped: { words: "Preview stopped", variant: "status-error" },
-  off: { words: "Preview off", variant: "" },
-} as const;
 </script>
 
 <template>
@@ -55,25 +46,9 @@ const STATES = {
       </div>
     </div>
 
-    <!-- One status pill at the left edge: the words carry the state. Hidden until the first answer, so that it does not say "off" for a moment. -->
+    <!-- Hidden until the first answer, so that it does not say "No preview" for a moment. -->
     <div v-if="preview.loaded.value" class="mt-2.5">
-      <!-- A live preview whose address Mica cannot confirm can be another website: the pill says so, and why. -->
-      <a
-        v-if="state === 'live' && preview.address.value"
-        :href="preview.address.value"
-        target="_blank"
-        rel="noopener noreferrer"
-        :class="['status hover:underline', preview.status.value.detail ? 'status-warning' : 'status-success']"
-        :title="preview.status.value.detail ?? 'Opens the preview with the saved changes, before you publish them'"
-      >
-        {{ preview.status.value.detail ? "Preview not confirmed" : "Preview live" }}
-        <ExternalLink :size="11" aria-hidden="true" />
-        <span class="sr-only">(opens a new tab)<template v-if="preview.status.value.detail">. {{ preview.status.value.detail }}</template></span>
-      </a>
-      <p v-else :class="['status w-fit', STATES[state].variant]" :title="preview.status.value.detail ?? undefined">
-        {{ STATES[state].words }}
-        <span v-if="preview.status.value.detail" class="sr-only">. {{ preview.status.value.detail }}</span>
-      </p>
+      <PreviewStatus />
     </div>
   </div>
 </template>

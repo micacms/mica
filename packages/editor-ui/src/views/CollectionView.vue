@@ -349,7 +349,8 @@ const reorder = useReorder<EntrySummary>({
                   <span class="sr-only">{{ item.count }} missing {{ item.locale.toUpperCase() }} translation{{ item.count === 1 ? "" : "s" }}</span>
                 </span>
                 <span v-if="pendingStates.states.has(entry.id)" class="status status-draft ml-2">
-                  {{ pendingStates.states.get(entry.id) === "new" ? "New" : "Changed" }} · not published
+                  <template v-if="pendingStates.states.get(entry.id) === 'new'">New<span class="sr-only">, not published yet</span></template>
+                  <template v-else>Changed<span class="sr-only"> since the last publication</span></template>
                 </span>
                 <span class="block font-mono text-xs text-muted">{{ addressOf(entry) }}</span>
               </td>

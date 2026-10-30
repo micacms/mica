@@ -78,7 +78,7 @@ const PREVIEW = {
   live: { word: "Live", variant: "status-success" },
   starting: { word: "Starting", variant: "status-busy" },
   stopped: { word: "Stopped", variant: "status-error" },
-  off: { word: "Off", variant: "" },
+  off: { word: "None", variant: "" },
 } as const;
 
 /** The report a support request should carry, as plain text. */

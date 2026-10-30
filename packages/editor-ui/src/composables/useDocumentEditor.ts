@@ -21,7 +21,7 @@ import { ROW_KEY, validateFields, type FieldMap } from "@micacms/core/internal";
 import { ApiError, messageOf } from "@/api";
 import { fieldPathOf, useFormIssues } from "@/composables/useFormIssues";
 import { useKeptChanges } from "@/composables/useKeptChanges";
-import { useSaveConflict, type SaveBasis, type SavedVersion } from "@/composables/useSaveConflict";
+import { useSaveConflict, type ConflictState, type SaveBasis, type SavedVersion } from "@/composables/useSaveConflict";
 import { useUnsavedChanges } from "@/composables/useUnsavedChanges";
 import { debounce } from "@/lib/debounce";
 import { focusField } from "@/lib/focus";
@@ -51,6 +51,40 @@ export interface DocumentSource<Version extends SavedVersion, Saved extends { re
   root?: () => ParentNode | null;
   /** A field whose change waits for a button, such as a new URL: autosave writes its saved value. Null while none waits. */
   heldField?: () => string | null;
+}
+
+/**
+ * The save state of a form. `waiting`: the rest is saved, and a held field waits for its button.
+ * `invalid`: a value breaks a rule, so autosave waits. `message`: why the save failed.
+ */
+export interface SaveState {
+  kind: "new" | "saving" | "saved" | "waiting" | "invalid" | "failed" | "conflict";
+  label: string;
+  /** The `status-*` utility of the pill; empty for the neutral one. */
+  tone: string;
+  message?: string;
+}
+
+/** Whether the work in the form is safe. Whether it waits to be published is the pending edit's part. */
+export function saveStateOf(form: {
+  isNew: boolean;
+  conflict: ConflictState;
+  /** A save runs, or autosave writes the changes after the pause. */
+  saving: boolean;
+  failed: string | null;
+  /** The form differs from what is saved. */
+  changed: boolean;
+  /** A held field waits for its button. */
+  held: boolean;
+}): SaveState {
+  if (form.isNew) return { kind: "new", label: "Not saved yet", tone: "" };
+  if (form.conflict === "loaded") return { kind: "conflict", label: "Not saved: choose a version", tone: "status-error" };
+  if (form.conflict !== "none") return { kind: "conflict", label: "Not saved", tone: "status-error" };
+  if (form.saving) return { kind: "saving", label: "Saving…", tone: "status-busy" };
+  if (form.failed) return { kind: "failed", label: "Not saved", tone: "status-error", message: form.failed };
+  if (form.changed) return { kind: "invalid", label: "Not saved: check the fields", tone: "status-warning" };
+  if (form.held) return { kind: "waiting", label: "Saved · new ID waits", tone: "" };
+  return { kind: "saved", label: "Saved", tone: "status-success" };
 }
 
 /** The pause in typing after which a document saves by itself. */
@@ -155,15 +189,16 @@ export function useDocumentEditor<Version extends SavedVersion, Saved extends { 
     return dirty.value && (!autosaves.value || JSON.stringify(autoData()) !== JSON.stringify(values.value) || !valid());
   }
 
-  const state = computed(() => {
-    if (isNew) return { label: "Not saved yet", tone: "" };
-    if (conflict.state.value !== "none") return { label: "Not saved: choose a version", tone: "status-error" };
-    if (saving.value || (changed.value && autosaves.value)) return { label: "Saving…", tone: "status-busy" };
-    if (failed.value) return { label: "Not saved", tone: "status-error" };
-    if (changed.value) return { label: "Not saved: check the fields", tone: "status-warning" };
-    if (pending.value) return { label: "Saved · not published", tone: "status-draft" };
-    return { label: staging.knowsPublished.value ? "Published" : "Saved", tone: "status-success" };
-  });
+  const state = computed(() =>
+    saveStateOf({
+      isNew,
+      conflict: conflict.state.value,
+      saving: saving.value || (changed.value && autosaves.value),
+      failed: failed.value,
+      changed: changed.value,
+      held: !!source.heldField?.(),
+    }),
+  );
 
   function setBaseline(next: Version | null): void {
     version.value = next;
@@ -378,6 +413,16 @@ export function useDocumentEditor<Version extends SavedVersion, Saved extends { 
     await write(values.value, options);
   }
 
+  /** Goes to what stops the save: the fields that break a rule, or the two versions of a conflict. */
+  async function fix(): Promise<void> {
+    if (conflict.state.value !== "none") {
+      (source.root?.() ?? document).querySelector<HTMLElement>("[data-save-conflict]")?.focus();
+      return;
+    }
+    form.checkAll();
+    await showIssues();
+  }
+
   /** "Try again" after a failed autosave. */
   function retry(): Promise<void> {
     failed.value = null;
@@ -411,5 +456,6 @@ export function useDocumentEditor<Version extends SavedVersion, Saved extends { 
     save,
     autosave,
     retry,
+    fix,
   };
 }

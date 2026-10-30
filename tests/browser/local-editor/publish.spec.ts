@@ -42,7 +42,7 @@ test("two pages that save the same entry meet the save conflict, and Keep mine w
   await second.goto(entry);
 
   await saveTeaser(first, "Saved in the first page.");
-  await expect(first.getByText("Saved · not published")).toBeVisible();
+  await expect(first.getByRole("button", { name: /^Saved, (new|changed)/ })).toBeVisible();
 
   // The second page still holds the old version: its save finds a newer one.
   await saveTeaser(second, "Saved in the second page.");
@@ -50,7 +50,7 @@ test("two pages that save the same entry meet the save conflict, and Keep mine w
   expect(teaserOnDisk()).toBe("Saved in the first page.");
 
   await second.getByRole("button", { name: "Keep mine" }).click();
-  await expect(second.getByText("Saved · not published")).toBeVisible();
+  await expect(second.getByRole("button", { name: /^Saved, (new|changed)/ })).toBeVisible();
   expect(teaserOnDisk()).toBe("Saved in the second page.");
 });
 
@@ -60,7 +60,7 @@ test("Publish pushes one commit, and a publication that could not be sent is sen
 
   // Publish with the remote in reach: one commit, on the remote too.
   await saveTeaser(page, "Published from a browser.");
-  await expect(page.getByText("Saved · not published")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Saved, (new|changed)/ })).toBeVisible();
   await publish(page, "Change the teaser");
   await expect(page.getByText("Your website is being rebuilt now.")).toBeVisible();
   expect(editor.remoteGit("rev-parse", "main")).toBe(editor.git("rev-parse", "HEAD"));
@@ -70,7 +70,7 @@ test("Publish pushes one commit, and a publication that could not be sent is sen
   const restore = editor.cutRemote();
   await page.goto(`${editor.address}/admin/collections/posts/hello-world`);
   await saveTeaser(page, "Published while offline.");
-  await expect(page.getByText("Saved · not published")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Saved, (new|changed)/ })).toBeVisible();
   await publish(page, "Change the teaser again");
   await expect(page.getByText("Published here, but not sent to the website yet")).toBeVisible();
   const waiting = editor.git("rev-parse", "HEAD");

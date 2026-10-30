@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The preview status in the menu opens its details like the status of an entry: why the preview starts, stopped or is missing and what to do, and, while it is live, its address and \"Open in a new tab\". \"Preview off\" is now \"No preview\".",
+      "type": "patch",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

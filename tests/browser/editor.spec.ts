@@ -65,7 +65,7 @@ test("an editor signs in, edits, saves and publishes", async ({ page, request, b
 
   // It saves by itself after a pause.
   const before = await headOfMain(request);
-  await expect(page.getByText("Saved · not published")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Saved, (new|changed)/ })).toBeVisible();
 
   // Saved is not published: the repository has not moved.
   expect(await headOfMain(request)).toBe(before);
@@ -130,12 +130,13 @@ test("an editor whose session ends signs in again and keeps the unsaved changes"
   await expect(page.getByLabel("Tagline")).toHaveValue(tagline);
 
   // Restored changes save by themselves.
-  await expect(page.getByText("Saved · not published")).toBeVisible();
+  await expect(page.getByRole("button", { name: /^Saved, (new|changed)/ })).toBeVisible();
 
   // Leave nothing pending for the next run.
+  await page.getByRole("button", { name: /^Saved, (new|changed)/ }).click();
   await page.getByRole("button", { name: "Discard changes" }).click();
   await page.getByRole("alertdialog").getByRole("button", { name: "Discard", exact: true }).click();
-  await expect(page.getByText("Saved · not published")).toBeHidden();
+  await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeVisible();
 });
 
 test("the appearance follows the system, or the choice that the browser keeps", async ({ page }) => {
@@ -202,7 +203,7 @@ test("entries and list items change their order in the same way", async ({ page 
   await page.keyboard.press("Space");
   await expect(headings.nth(0)).toHaveText("Our approach");
   // The form is back as it was: nothing was saved, and the page is still as published.
-  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeVisible();
 
   // The chosen entries of a relation: the same controls again.
   await page.goto("/admin/collections/projects/order-to-cash-review");
@@ -215,5 +216,5 @@ test("entries and list items change their order in the same way", async ({ page 
   await page.keyboard.press("ArrowUp");
   await page.keyboard.press("Space");
   await expect(team.nth(0)).toContainText("Amara Okafor");
-  await expect(page.getByText("Published", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Saved", exact: true })).toBeVisible();
 });

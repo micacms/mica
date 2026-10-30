@@ -373,9 +373,9 @@ img.ProseMirror-separator {
     whitespace-nowrap text-ink before:h-2 before:w-2 before:shrink-0 before:rounded-full before:bg-muted before:content-[''];
 }
 
-/* Saved, and not published yet: a success, with the glint dot of Not published (brand guide, Colour). */
+/* New or changed since the last publication: the glint dot (brand guide, Colour). */
 @utility status-draft {
-  @apply bg-success-soft before:bg-glint before:ring-1 before:ring-on-glint before:ring-inset;
+  @apply before:bg-glint before:ring-1 before:ring-on-glint before:ring-inset;
 }
 
 @utility status-success {
