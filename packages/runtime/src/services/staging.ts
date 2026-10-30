@@ -29,6 +29,7 @@ import {
   headRevision,
   headSource,
   overlaySource,
+  listIgnoredContent,
   listTreeChanges,
   locateTree,
   publicationMessage,
@@ -250,16 +251,18 @@ export function createWorkingTreeStagingService(
           unpushed: null,
           detached: null,
           changes: [],
+          ignored: [],
           validation: emptyValidation(),
           sync,
         };
       }
 
-      const { changes, validation, head, branch } = await locks.tree.read(async () => {
+      const { changes, ignored, validation, head, branch } = await locks.tree.read(async () => {
         const analysed = await analyse(tree, await listTreeChanges(tree));
         return {
           ...analysed,
           changes: await withSavedAt(await withRevisions(analysed.changes)),
+          ignored: await listIgnoredContent(tree),
           head: await headRevision(tree),
           branch: await currentBranch(tree),
         };
@@ -278,6 +281,7 @@ export function createWorkingTreeStagingService(
         unpushed: policy.owner === "developer" ? await unpushedCommits(tree) : null,
         detached,
         changes,
+        ignored,
         validation,
         sync,
       };
