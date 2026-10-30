@@ -3,8 +3,9 @@ import { config as zodConfig } from "zod";
 
 import App from "@/App.vue";
 import { router } from "@/router";
-import { ApiError, messageOf, whenModelUnreadable, whenSessionExpiry, whenUnauthenticated } from "@/api";
+import { ApiError, messageOf, whenModelUnreadable, whenSessionExpiry, whenUnauthenticated, whenUnreachable } from "@/api";
 import { applyColorScheme } from "@/composables/useColorScheme";
+import { useConnection } from "@/stores/connection";
 import { useSession } from "@/stores/session";
 import { useStaging } from "@/stores/staging";
 import { useToast } from "@/stores/toast";
@@ -24,6 +25,9 @@ whenUnauthenticated(() => useSession().markEnded());
 whenSessionExpiry((at) => useSession().noteExpiry(at));
 // The change list carries the reason, and the notices by Save and Publish show it.
 whenModelUnreadable(() => void useStaging().refresh());
+// A failed request asks at once whether Mica still runs; the regular checks find a stop in an idle tab.
+whenUnreachable(() => void useConnection().check());
+useConnection().start();
 
 /**
  * Anything that escapes a component's own handling lands here, and so does a

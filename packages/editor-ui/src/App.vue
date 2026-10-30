@@ -3,6 +3,7 @@ import { computed } from "vue";
 import { useRoute, useRouter, type RouteLocationNormalizedLoaded } from "vue-router";
 
 import AppShell from "@/components/AppShell.vue";
+import ConnectionLost from "@/components/ConnectionLost.vue";
 import ToastStack from "@/components/ToastStack.vue";
 import { withoutOverlay } from "@/lib/overlay-address";
 import { useSession } from "@/stores/session";
@@ -22,6 +23,7 @@ const chrome = computed(() => session.isActive.value && !route.meta.public);
 
 <template>
   <ToastStack />
+  <ConnectionLost />
 
   <AppShell v-if="chrome">
     <RouterView v-slot="{ Component, route: current }">

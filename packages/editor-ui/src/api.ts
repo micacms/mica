@@ -68,6 +68,7 @@ export type PublishOutcome = PublishResult;
 export type MediaItem = MediaFile;
 
 const BASE = "/api";
+const HEALTH_TIMEOUT_MS = 5_000;
 
 export class ApiError extends Error {
   readonly status: number;
@@ -117,6 +118,7 @@ interface RequestOptions {
 let onUnauthenticated: (() => void) | null = null;
 let onSessionExpiry: ((at: string) => void) | null = null;
 let onModelUnreadable: (() => void) | null = null;
+let onUnreachable: (() => void) | null = null;
 
 /** Called on every 401, so that the shell can say that the session ended. */
 export function whenUnauthenticated(handler: () => void): void {
@@ -131,6 +133,11 @@ export function whenSessionExpiry(handler: (at: string) => void): void {
 /** Called when the server refuses a write because it cannot read a newer content model, so that Save and Publish can say why. */
 export function whenModelUnreadable(handler: () => void): void {
   onModelUnreadable = handler;
+}
+
+/** Called when a request does not reach the server, so that the shell can check whether Mica still runs. */
+export function whenUnreachable(handler: () => void): void {
+  onUnreachable = handler;
 }
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -165,7 +172,8 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     });
   } catch (error) {
     if ((error as Error).name === "AbortError") throw error;
-    throw new ApiError(0, "network_error", "Could not reach the server. Check your connection.");
+    onUnreachable?.();
+    throw new ApiError(0, "network_error", "Could not reach Mica. Check your connection.");
   }
 
   const expires = response.headers.get("x-mica-session-expires");
@@ -207,13 +215,13 @@ interface ErrorEnvelope {
 
 const isJson = (response: Response): boolean => /[/+]json\b/.test(response.headers.get("content-type") ?? "");
 
-const unreadable = (status: number) => new ApiError(status, "unreadable_response", "The server sent an answer that the editor cannot read. Try again.");
+const unreadable = (status: number) => new ApiError(status, "unreadable_response", "Mica sent an answer that the editor cannot read. Try again.");
 
 /** Words for a refusal without Mica's own message, such as one from a proxy. */
 function statusMessage(status: number): string {
   if (status === 401) return "Your session has ended. Sign in again.";
-  if (status === 413) return "This is too large for the server. Try a smaller file.";
-  if (status === 502 || status === 503 || status === 504) return "The server cannot be reached just now. Try again in a moment.";
+  if (status === 413) return "This file is too large to upload. Try a smaller file.";
+  if (status === 502 || status === 503 || status === 504) return "Mica cannot be reached just now. Try again in a moment.";
   return `The request failed (${status}). Try again.`;
 }
 
@@ -245,6 +253,16 @@ export interface AuthConfig {
  * ------------------------------------------------------------------ */
 
 export const api = {
+  /** Whether the server answers. Its `/health` reads nothing, and a proxy's 502 for a stopped server is no answer. */
+  async health(): Promise<boolean> {
+    try {
+      const response = await fetch("/health", { cache: "no-store", signal: AbortSignal.timeout(HEALTH_TIMEOUT_MS) });
+      return response.ok;
+    } catch {
+      return false;
+    }
+  },
+
   auth: {
     me: () =>
       request<{ identity: Identity | null; csrfToken: string; expiresAt: string }>("/auth/me"),
