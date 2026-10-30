@@ -297,7 +297,8 @@ function existsUnder(root: string, path: string): boolean {
 export function markdocWarnings(source: string): string[] {
   const prose = source.replace(/^(`{3,}|~{3,})[^\n]*\n[\s\S]*?^\1[ \t]*$/gm, "").replace(/`[^`\n]*`/g, "");
   const messages: string[] = [];
-  const html = [...new Set([...prose.matchAll(/<\/?([a-zA-Z][a-zA-Z0-9-]*)(?=[\s/>])[^>\n]*>/g)].map((match) => match[1]!.toLowerCase()))];
+  // A `<` after an odd number of backslashes is escaped text, not HTML.
+  const html = [...new Set([...prose.matchAll(/(?<=(?:^|[^\\])(?:\\\\)*)<\/?([a-zA-Z][a-zA-Z0-9-]*)(?=[\s/>])[^>\n]*>/g)].map((match) => match[1]!.toLowerCase()))];
   if (html.length > 0) {
     messages.push(`Raw HTML (${html.map((tag) => `<${tag}>`).join(", ")}) is not rendered: Markdoc escapes it.`);
   }
