@@ -7,11 +7,12 @@
  * The pill does not wrap, so that the header stays still while the editor types.
  */
 
-import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from "vue";
-import { ChevronDown, TriangleAlert } from "@lucide/vue";
+import { computed, ref } from "vue";
+import { TriangleAlert } from "@lucide/vue";
 
 import { api, messageOf } from "@/api";
 import ConfirmDialog from "@/components/ConfirmDialog.vue";
+import StatusPopover from "@/components/StatusPopover.vue";
 import type { SaveState } from "@/composables/useDocumentEditor";
 import { problemsByEdit, reviewedPaths, type Edit } from "@/lib/edits";
 import { relativeTime } from "@/lib/format";
@@ -29,7 +30,6 @@ const emit = defineEmits<{ discarded: [edit: Edit]; retry: []; fix: [] }>();
 
 const staging = useStaging();
 const toast = useToast();
-const id = useId();
 
 /** What stops it from being published, such as a required value that is still empty. */
 const missing = computed(() => {
@@ -68,70 +68,8 @@ const name = computed(() =>
 /** A save that did not happen is said at once; "Saving…" and "Saved" are not, as they change at each pause. */
 const alertText = computed(() => (props.state.kind === "failed" || props.state.kind === "conflict" ? props.state.label : ""));
 
-/* The popover: a click or Enter keeps it open, a hover shows it while the pointer stays. */
-const open = ref(false);
-const byHover = ref(false);
-const root = ref<HTMLElement | null>(null);
-const button = ref<HTMLButtonElement | null>(null);
-const panel = ref<HTMLElement | null>(null);
-
-function toggle(): void {
-  if (open.value && byHover.value) {
-    byHover.value = false;
-    void nextTick(() => panel.value?.focus());
-    return;
-  }
-  byHover.value = false;
-  open.value = !open.value;
-}
-
-function close(focusButton: boolean): void {
-  open.value = false;
-  byHover.value = false;
-  if (focusButton) button.value?.focus();
-}
-
-function onPointerEnter(event: PointerEvent): void {
-  if (event.pointerType !== "mouse" || open.value) return;
-  byHover.value = true;
-  open.value = true;
-}
-
-function onPointerLeave(): void {
-  if (byHover.value) close(false);
-}
-
-/** Escape closes the open panel, and goes no further: an overlay around the form stays open. */
-function onEscape(event: KeyboardEvent): void {
-  if (!open.value) return;
-  event.stopPropagation();
-  close(true);
-}
-
-function onPointerDown(event: PointerEvent): void {
-  if (root.value && !root.value.contains(event.target as Node)) close(false);
-}
-
-/** The focus that moves to another control closes the panel. Without a target, as after a click in Safari, the click decides. */
-function onFocusOut(event: FocusEvent): void {
-  const target = event.relatedTarget as Node | null;
-  if (open.value && target && root.value && !root.value.contains(target)) close(false);
-}
-
-watch(open, async (isOpen) => {
-  if (isOpen) {
-    document.addEventListener("pointerdown", onPointerDown);
-    await nextTick();
-    if (!byHover.value) panel.value?.focus();
-  } else {
-    document.removeEventListener("pointerdown", onPointerDown);
-  }
-});
-
-onBeforeUnmount(() => document.removeEventListener("pointerdown", onPointerDown));
-
-function act(event: "retry" | "fix"): void {
-  close(false);
+function act(close: () => void, event: "retry" | "fix"): void {
+  close();
   if (event === "retry") emit("retry");
   else emit("fix");
 }
@@ -140,8 +78,8 @@ function act(event: "retry" | "fix"): void {
 const confirming = ref(false);
 const discarding = ref(false);
 
-function askDiscard(): void {
-  close(false);
+function askDiscard(close: () => void): void {
+  close();
   confirming.value = true;
 }
 
@@ -166,16 +104,8 @@ async function discard(): Promise<void> {
 </script>
 
 <template>
-  <div ref="root" class="relative shrink-0" @focusout="onFocusOut" @keydown.esc="onEscape" @pointerenter="onPointerEnter" @pointerleave="onPointerLeave">
-    <button
-      ref="button"
-      type="button"
-      :class="['status cursor-pointer before:hidden hover:ring-1 hover:ring-line-strong', state.tone]"
-      :aria-expanded="open"
-      aria-haspopup="dialog"
-      :aria-controls="open ? id : undefined"
-      @click="toggle"
-    >
+  <StatusPopover :name="name" :tone="`before:hidden ${state.tone}`">
+    <template #pill>
       <span
         v-if="edit || state.kind === 'saving'"
         :class="[
@@ -187,27 +117,16 @@ async function discard(): Promise<void> {
       />
       <span aria-hidden="true">{{ state.label }}</span>
       <TriangleAlert v-if="blocked" :size="12" aria-hidden="true" />
-      <ChevronDown :size="12" class="-mr-1 text-muted" aria-hidden="true" />
-      <span class="sr-only">{{ name }}</span>
-    </button>
-    <span class="sr-only" role="alert">{{ alertText }}</span>
+    </template>
 
-    <div
-      v-if="open"
-      :id="id"
-      ref="panel"
-      role="dialog"
-      :aria-label="name"
-      tabindex="-1"
-      class="absolute top-full left-0 z-30 mt-1.5 w-72 max-w-[calc(100vw-2rem)] space-y-2 rounded-md border border-line bg-surface p-3 text-xs text-ink-soft shadow-lg outline-none"
-    >
+    <template #default="{ close }">
       <div>
         <p :class="state.kind === 'failed' ? 'text-danger' : ''">{{ saveLine }}</p>
-        <button v-if="state.kind === 'failed'" type="button" class="btn-secondary mt-2 px-2.5 py-1 text-xs" @click="act('retry')">Try again</button>
-        <button v-else-if="state.kind === 'invalid'" type="button" class="btn-secondary mt-2 px-2.5 py-1 text-xs" @click="act('fix')">
+        <button v-if="state.kind === 'failed'" type="button" class="btn-secondary mt-2 px-2.5 py-1 text-xs" @click="act(close, 'retry')">Try again</button>
+        <button v-else-if="state.kind === 'invalid'" type="button" class="btn-secondary mt-2 px-2.5 py-1 text-xs" @click="act(close, 'fix')">
           Show the fields
         </button>
-        <button v-else-if="state.kind === 'conflict'" type="button" class="btn-secondary mt-2 px-2.5 py-1 text-xs" @click="act('fix')">
+        <button v-else-if="state.kind === 'conflict'" type="button" class="btn-secondary mt-2 px-2.5 py-1 text-xs" @click="act(close, 'fix')">
           Choose a version
         </button>
       </div>
@@ -218,17 +137,18 @@ async function discard(): Promise<void> {
         <p v-if="missing.length > 0">Cannot be published yet: {{ missing.join(" ") }}</p>
         <p v-if="websiteConflict">
           Changed on the website while you edited.
-          <RouterLink :to="{ name: 'changes' }" class="underline underline-offset-2 hover:no-underline" @click="close(false)">Choose a version</RouterLink>
+          <RouterLink :to="{ name: 'changes' }" class="underline underline-offset-2 hover:no-underline" @click="close()">Choose a version</RouterLink>
         </p>
       </div>
 
       <div v-if="edit" class="border-t border-line pt-2">
-        <button type="button" class="font-medium text-muted underline-offset-2 hover:text-ink hover:underline" @click="askDiscard">
+        <button type="button" class="font-medium text-muted underline-offset-2 hover:text-ink hover:underline" @click="askDiscard(close)">
           Discard changes
         </button>
       </div>
-    </div>
-  </div>
+    </template>
+  </StatusPopover>
+  <span class="sr-only" role="alert">{{ alertText }}</span>
 
   <ConfirmDialog
     :open="confirming"

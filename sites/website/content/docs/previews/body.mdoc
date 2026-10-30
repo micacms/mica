@@ -23,7 +23,7 @@ Start the local editor with `npx mica start --preview`. It also starts the websi
 
 The local editor finds the dev server at the base path of the Astro config, on the port that the dev server listens on. When the port of the config is busy, Astro takes another one. `mica start --preview` reads the address that its `astro dev` prints, and `micaPreview()` in `astro.config` tells the editor the port of each `astro dev`. Without either, the editor uses the port of the config, `4321` by default. It then shows **Preview not confirmed** and a note above the page, because another website can answer there.
 
-The top of the editor's menu shows the state of the preview: **Preview live**, **Preview starting**, **Preview stopped** or **Preview off**. While it is live, a click opens the preview in a new tab. When a form has a page and the preview starts or stopped, the place of the page says so, and why. The System page shows the last lines of the dev server that `mica start --preview` started.
+The top of the editor's menu shows the state of the preview: **Preview live**, **Preview starting**, **Preview stopped** or **No preview**. A click on the status, or the pointer on it, tells why and what to do. While the preview is live, it shows the preview's address and opens the preview in a new tab. When a form has a page and the preview starts or stopped, the place of the page says so, and why. The System page shows the last lines of the dev server that `mica start --preview` started.
 
 ## Preview in the self-hosted Mica
 
@@ -33,7 +33,7 @@ The preview has a host name of its own, such as `preview.cms.example.com` beside
 
 A change of a template shows in the preview after Mica's next sync of the branch, by default within a minute. Mica does not start, stop or build the preview. The setup is in [Add the live preview](/docs/self-hosting/).
 
-Mica's preview image tells Mica its state on a port inside the network. So the menu shows **Preview starting** while it copies, installs or starts the website, **Preview live** when it answers, and **Preview stopped** with the reason when it failed. The System page shows the reason and its last lines. With an image of your own that does not tell its state, Mica sees only whether the preview answers: **Preview starting** for five minutes, then **Preview stopped**. Without `MICA_PREVIEW_UPSTREAM`, the menu shows **Preview off**.
+Mica's preview image tells Mica its state on a port inside the network. So the menu shows **Preview starting** while it copies, installs or starts the website, **Preview live** when it answers, and **Preview stopped** with the reason when it failed. The System page shows the reason and its last lines. With an image of your own that does not tell its state, Mica sees only whether the preview answers: **Preview starting** for five minutes, then **Preview stopped**. Without `MICA_PREVIEW_UPSTREAM`, the menu shows **No preview**.
 
 ## Click a text to edit it
 
