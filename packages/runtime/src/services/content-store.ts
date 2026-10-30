@@ -24,6 +24,7 @@ import {
   INDEX_FILE,
   isValidId,
   mapMedia,
+  MEDIA_DIR,
   ORDER_FILE,
   readCollection,
   readReadableCollection,
@@ -171,11 +172,13 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
    * one of them makes the next save a conflict, not an overwrite.
    */
   const documentRevision = async (folder: string, files: ContentFiles = workspace): Promise<string | null> =>
-    hashFiles(await documentFiles(folder, files));
+    hashFiles(folder, await documentFiles(folder, files));
 
-  const hashFiles = (files: Map<string, string> | null): string | null => {
+  /** The hash of an entry's files. Its uploads are not content: an upload while the form is open is no conflict. */
+  const hashFiles = (folder: string, files: Map<string, string> | null): string | null => {
     if (files === null) return null;
-    const parts = [...files].map(([path, revision]) => `${path}\u0000${revision}`);
+    const media = `${folder}/${MEDIA_DIR}/`;
+    const parts = [...files].filter(([path]) => !path.startsWith(media)).map(([path, revision]) => `${path}\u0000${revision}`);
     return createHash("sha256").update(parts.sort().join("\n")).digest("hex").slice(0, 16);
   };
 
@@ -208,7 +211,7 @@ export function createContentStore(site: Site, workspace: ContentFiles, readOnly
     if (expected === undefined) return undefined;
     const dataFile = `${folder}/${INDEX_FILE}`;
     const files = await documentFiles(folder);
-    if (hashFiles(files) !== expected) {
+    if (hashFiles(folder, files) !== expected) {
       throw new ConflictError("This content changed after you opened it. Reload to see the current version.", [dataFile]);
     }
     return files === null ? { [dataFile]: null } : Object.fromEntries(files);
