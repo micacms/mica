@@ -21,7 +21,7 @@ const emit = defineEmits<{ keep: []; take: [] }>();
 </script>
 
 <template>
-  <div role="alert" class="mb-5 rounded-md border border-warning/15 bg-warning-soft p-4">
+  <div role="alert" data-save-conflict tabindex="-1" class="mb-5 rounded-md border border-warning/15 bg-warning-soft p-4 focus:outline-none">
     <p class="text-sm font-medium text-warning">Somebody else saved this while you were editing</p>
     <p v-if="state === 'loading'" role="status" class="mt-1 text-xs text-muted">Loading their version…</p>
     <template v-else-if="state === 'loaded' && theirs">

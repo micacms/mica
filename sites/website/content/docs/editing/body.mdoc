@@ -4,17 +4,24 @@ This guide is for the people who write and change the content of a website in Mi
 
 Mica has two steps.
 
-1. **Save**: Mica saves your changes by itself, about one second after you stop typing, and when you leave a field. The page shows "Saving…", then "Saved · not published". The website does not change yet.
+1. **Save**: Mica saves your changes by itself, about one second after you stop typing, and when you leave a field. The status below the title shows "Saving…", then "Saved". The website does not change yet.
 2. **Publish** sends your saved changes to the website. The website is built again, which usually takes a few minutes.
 
 ![The form of a project, with its status Published at the top, and the folded preview at the right edge](media/entry.webp)
 
 A saved change is safe: you can close the browser and come back tomorrow.
 
+The status below the title tells you two things:
+
+- Its colour and its word tell you if your changes are saved. It is grey while Mica saves, green when your changes are saved, yellow when a field has a problem, and red when Mica cannot save.
+- A yellow dot tells you that the entry has changes that are not published. A warning sign tells you that you cannot publish the entry yet, for example because a required field is empty.
+
+Select the status to see when Mica saved the entry and what stops its publication, and to discard the changes.
+
 Two changes wait for a button:
 
 - **A new entry**: write its title, then select **Create**. After that, Mica saves the entry by itself.
-- **A new ID** of an entry: select **Change ID**. The note above the form names the old and the new URL of the page. Mica can then also change the links in other entries to the new ID. **Keep the old ID** undoes the change. Your other changes save as usual.
+- **A new ID** of an entry: select **Change ID**. Until then, the status shows "Saved · new ID waits". The note above the form names the old and the new URL of the page. Mica can then also change the links in other entries to the new ID. **Keep the old ID** undoes the change. Your other changes save as usual.
 
 The ID field shows the page's URL under it, such as "URL: /news/hello". The collection list and the pickers of relations show the URL too. You change only the ID. The other parts of the URL come from the website, and some from other fields of the entry, such as a category: they change when you change that field.
 
@@ -50,7 +57,7 @@ Mica publishes a file together with the text that links to it. It does not let y
 
 ## Discard a change
 
-To remove a saved change, select **Discard changes** on the entry, or **Discard** next to the change on the Publish page. The entry goes back to the version on the website.
+To remove a saved change, select the status of the entry, then **Discard changes**. You can also select **Discard** next to the change on the Publish page. The entry goes back to the version on the website.
 
 Mica discards, deletes and publishes only what you saw. When a colleague saved the entry or moved an entry in the list after you opened it, Mica stops and shows the newer version. Look at it, then try again.
 

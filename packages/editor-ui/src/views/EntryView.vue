@@ -275,7 +275,7 @@ defineExpose({ atRisk: doc.atRisk });
       form
     >
       <template v-if="!definition.readOnly && !loading" #meta>
-        <DocumentStatus :state="state" :edit="pending" @discarded="discarded" />
+        <DocumentStatus :state="state" :edit="pending" :website-conflict="websiteConflict" @discarded="discarded" @retry="doc.retry()" @fix="doc.fix()" />
       </template>
 
       <PreviewLink v-if="preview && !embedded" :href="preview" />

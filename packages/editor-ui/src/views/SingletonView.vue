@@ -100,7 +100,7 @@ defineExpose({ atRisk: doc.atRisk });
   <template v-if="definition">
     <PageHeader :title="definition.label" :loading="loading" :embedded="embedded" form>
       <template v-if="!definition.readOnly && !loadError && !loading" #meta>
-        <DocumentStatus :state="state" :edit="pending" @discarded="doc.reopen()" />
+        <DocumentStatus :state="state" :edit="pending" :website-conflict="websiteConflict" @discarded="doc.reopen()" @retry="doc.retry()" @fix="doc.fix()" />
       </template>
 
       <PreviewLink v-if="preview && !embedded" :href="preview" />
