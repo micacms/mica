@@ -10,6 +10,17 @@ published packages and the CMS image.
 While the major version is `0`, a minor bump may break something. Read the
 release note before upgrading.
 
+## [0.16.2] — 2026-11-10
+
+This version fixes the sign-in of the self-hosted editor behind a reverse proxy.
+
+### Fixed
+
+- **Sign-in behind a proxy that ends TLS**, such as Traefik, Caddy or nginx.
+  The token request now repeats the redirect URI of `MICA_PUBLIC_URL`, not the
+  `http://` address of the forwarded request, so a provider such as Pocket ID
+  no longer refuses the code with `invalid_grant`.
+
 ## [0.16.1] — 2026-10-30
 
 This version makes the state of an entry and of the preview clearer, and moves

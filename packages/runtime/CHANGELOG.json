@@ -2,6 +2,18 @@
   "name": "@micacms/runtime",
   "entries": [
     {
+      "version": "0.16.2",
+      "tag": "@micacms/runtime_v0.16.2",
+      "date": "Tue, 10 Nov 2026 04:42:58 GMT",
+      "comments": {
+        "patch": [
+          {
+            "comment": "Sign-in behind a proxy that ends TLS: the token request repeats the redirect URI of `MICA_PUBLIC_URL`, not the `http://` address of the forwarded request. Before, a provider such as Pocket ID refused the code with `invalid_grant`."
+          }
+        ]
+      }
+    },
+    {
       "version": "0.16.1",
       "tag": "@micacms/runtime_v0.16.1",
       "date": "Fri, 30 Oct 2026 14:29:32 GMT",

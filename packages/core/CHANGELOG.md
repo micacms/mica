@@ -1,6 +1,11 @@
 # Change Log - @micacms/core
 
-This log was last generated on Fri, 30 Oct 2026 14:29:32 GMT and should not be manually modified.
+This log was last generated on Tue, 10 Nov 2026 04:42:58 GMT and should not be manually modified.
+
+## 0.16.2
+Tue, 10 Nov 2026 04:42:58 GMT
+
+_Version update only_
 
 ## 0.16.1
 Fri, 30 Oct 2026 14:29:32 GMT
