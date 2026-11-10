@@ -23,6 +23,7 @@ Mica is experimental and not ready for production. The API and the content forma
 
 - The local editor runs with `npx mica start`. It has no sign-in and listens only on your machine. `npx mica start --preview` also starts the website's `astro dev`, and it finds the right address when port 4321 is busy.
 - The self-hosted editor is one Docker container with OpenID Connect sign-in. Editors who are not developers use it. With Google, a domain rule admits only accounts of your Workspace domain.
+- The sign-in works behind a reverse proxy that ends TLS, such as Traefik, Caddy or nginx. If you have no sign-in provider, we suggest [Pocket ID](/docs/other-providers/).
 - The editor saves by itself. A save is a draft. Publish makes one Git commit of the changes that the editor chooses, also when there are thousands of them.
 - An entry or the settings have one status. Its colour and word say if the work is saved: grey while it saves, green when it is saved, yellow when a field needs a check, red when the save failed. Its dot says that there is something to publish. Select it to see when the work was saved, what stops its publication, and to use Discard changes.
 - The preview status in the menu opens its details in the same way: why the preview starts, stopped or is missing and what to do, and, while it is live, its address and Open in a new tab.
