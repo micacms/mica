@@ -13,7 +13,7 @@ docker compose -f tests/e2e/compose.yml up --build
 Then open <http://localhost:6422/admin/>.
 
 It is the *fast* rig: everything runs on your machine, so it starts in about
-a minute. [`tests/oidc/`](../oidc/README.md) is the automated version with Dex. For the deployed shape — Mica against ZITADEL and a
+a minute. [`tests/oidc/`](../oidc/README.md) is the automated version with Dex and Pocket ID. For the deployed shape — Mica against Pocket ID and a
 real repository on github.com or gitlab.com — see [deploy/demo-identity/](../../deploy/demo-identity/README.md).
 
 > Deliberately insecure and deliberately local: plain HTTP, a committed client

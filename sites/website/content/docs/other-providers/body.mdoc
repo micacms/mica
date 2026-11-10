@@ -1,4 +1,4 @@
-Mica works with any OpenID Connect provider. Google has its own page: [Sign in with Google](/docs/sign-in-with-google/). This page covers the others.
+Mica works with any OpenID Connect provider. Google has its own page: [Sign in with Google](/docs/sign-in-with-google/). This page covers the others. If you have no provider yet, we suggest Pocket ID.
 
 Every provider needs the same four things:
 
@@ -8,6 +8,33 @@ Every provider needs the same four things:
 - At least one admission rule. See [Self-hosting](/docs/self-hosting/), step 4.
 
 The provider must report a verified email address if you use the email or domain rule.
+
+## Pocket ID: our suggestion
+
+[Pocket ID](https://pocket-id.org) is a small OpenID Connect provider that you host yourself. People sign in with passkeys, so you store no passwords. It has user groups, and it needs no separate database server.
+
+1. Run Pocket ID on its own HTTPS host, for example `https://id.example.com`. Set `APP_URL` to that address. Read the [Pocket ID documentation](https://pocket-id.org/docs) for deployment.
+2. In the settings of Pocket ID, open **OIDC clients** and add a client. Use the callback URL `<MICA_PUBLIC_URL>/api/auth/callback`. Choose the client type **Confidential**, and copy the client ID and the client secret. A client of the type **Public** uses PKCE alone and has no secret: omit `MICA_OIDC_CLIENT_SECRET` for it.
+3. Set the sign-in in the configuration of Mica. The issuer is the `APP_URL` of Pocket ID, without a path:
+
+```env
+MICA_OIDC_ISSUER=https://id.example.com
+MICA_OIDC_CLIENT_ID=
+MICA_OIDC_CLIENT_SECRET=
+```
+
+4. Choose a rule. For a group rule, open **Groups** in Pocket ID, add a group such as `mica-editors`, and add your editors to it. Then set:
+
+```env
+MICA_ADMIT_GROUPS=mica-editors
+MICA_OIDC_SCOPE=openid profile email groups
+```
+
+Pocket ID sends the `groups` claim only when Mica asks for the `groups` scope. Without `MICA_OIDC_SCOPE`, a group member is refused. The group names arrive as plain names, and the claim is `groups`.
+
+Pocket ID also signs in a person whose email address is not verified. Mica refuses that person under the email rule and the domain rule. For these rules, make sure that the address of each editor is verified in Pocket ID. The group rule and the subject rule do not use the address.
+
+The Mica repository tests against Pocket ID in `tests/oidc/`, together with Dex. The test pins one version of Pocket ID. The email, domain, group, and refusal rules all pass there. The test logs in with a one-time access token, not with a passkey. Mica gets the same kind of ID token for both.
 
 ## Dex: a small option
 
@@ -36,7 +63,7 @@ A change of group membership at the provider counts from the next sign-in. Keep 
 
 ## Check the groups claim
 
-If a person signs in and sees "No access to this site", the group claim may not arrive. Set `MICA_LOG_LEVEL=debug`, restart, and sign in again. The log names the reason. Compare the claim name and the group name with the rule.
+If a person signs in and sees "No access to this site", the group claim may not arrive. Some providers, such as Pocket ID and Dex, send the groups only for the `groups` scope: set `MICA_OIDC_SCOPE=openid profile email groups`. Set `MICA_LOG_LEVEL=debug`, restart, and sign in again. The log names the reason. Compare the claim name and the group name with the rule.
 
 ## Next
 
