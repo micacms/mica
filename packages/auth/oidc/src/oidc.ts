@@ -136,6 +136,16 @@ export function redirectUri(config: AuthConfig): string {
   return new URL("/api/auth/callback", config.MICA_PUBLIC_URL).toString();
 }
 
+/**
+ * The callback URL to complete the flow with: the redirect URI and the query of the request.
+ * Behind a proxy that ends TLS, the request arrives as http://, and the token request must repeat the redirect URI of the authorization request exactly.
+ */
+export function callbackUrl(config: AuthConfig, requestUrl: URL): URL {
+  const url = new URL(redirectUri(config));
+  url.search = requestUrl.search;
+  return url;
+}
+
 /** Asks the issuer for its configuration. Throws what openid-client throws, such as an issuer mismatch. */
 export function discover(config: AuthConfig): Promise<client.Configuration> {
   return client.discovery(
@@ -224,7 +234,7 @@ export function createOidcService(deps: OidcServiceDeps) {
 
       let tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers;
       try {
-        tokens = await client.authorizationCodeGrant(as, currentUrl, {
+        tokens = await client.authorizationCodeGrant(as, callbackUrl(config, currentUrl), {
           pkceCodeVerifier: transaction.verifier,
           expectedState: transaction.state,
           expectedNonce: transaction.nonce,

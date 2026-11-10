@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
 import { describe, it } from "node:test";
 
-import { emailFrom, openTransaction, sealTransaction, type OidcTransaction } from "../src/oidc.js";
+import type { AuthConfig } from "../src/config.js";
+import { callbackUrl, emailFrom, openTransaction, sealTransaction, type OidcTransaction } from "../src/oidc.js";
 
 const SECRET = "0".repeat(32);
 const transaction: OidcTransaction = {
@@ -61,5 +62,19 @@ describe("emailFrom", () => {
 
   it("reports no address as unverified", () => {
     assert.deepEqual(emailFrom({ email_verified: true }), { email: "", emailVerified: false });
+  });
+});
+
+describe("callbackUrl", () => {
+  const config = { MICA_PUBLIC_URL: "https://cms.example" } as AuthConfig;
+
+  it("keeps the public origin when a proxy forwards the callback over http", () => {
+    const url = callbackUrl(config, new URL("http://cms.example/api/auth/callback?code=c1&state=s1&iss=https%3A%2F%2Fid.example"));
+    assert.equal(url.href, "https://cms.example/api/auth/callback?code=c1&state=s1&iss=https%3A%2F%2Fid.example");
+  });
+
+  it("keeps the public origin when the request names an internal host", () => {
+    const url = callbackUrl(config, new URL("http://0.0.0.0:6422/api/auth/callback?code=c1&state=s1"));
+    assert.equal(url.href, "https://cms.example/api/auth/callback?code=c1&state=s1");
   });
 });
