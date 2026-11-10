@@ -139,7 +139,8 @@ jobs:
       # The whole deployed shape, automated: the image just built, behind a
       # real Dex, publishing to a stand-in for the GitHub API. `--wait` is the
       # health check; the test then signs in, is admitted or refused, edits,
-      # and publishes — see tests/oidc/README.md.
+      # and publishes — see tests/oidc/README.md. The last steps of this job
+      # run the same test behind a real Pocket ID.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: 24
@@ -204,6 +205,20 @@ jobs:
           path: tests/browser/playwright-report
           if-no-files-found: ignore
 
+      # The same round trip with Pocket ID as the provider. A new stack on the
+      # same ports, so the stack above goes first.
+      - name: Start Mica behind Pocket ID
+        run: |
+          docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml down -v
+          docker compose -f tests/oidc/compose.pocket-id.yml up -d --no-build --wait
+
+      - name: Sign in, edit and publish through Pocket ID
+        env:
+          OIDC_PROVIDER: pocket-id
+        run: node --test tests/oidc/flow.test.mjs
+
       - name: Logs of the test stack
         if: failure()
-        run: docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml logs
+        run: |
+          docker compose -f tests/oidc/compose.pocket-id.yml logs
+          docker compose -f tests/oidc/compose.yml -f tests/preview/compose.yml logs

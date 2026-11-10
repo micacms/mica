@@ -186,10 +186,10 @@ docs/                    for contributors; the user guides are on mica.build/doc
 └── adr/                 the decision records: what was decided, and why
 deploy/
 ├── self-hosted/         the reference deployment: compose.yml + .env.example
-└── demo-identity/       the deployed shape on your machine: Mica + ZITADEL
+└── demo-identity/       the deployed shape on your machine: Mica + Pocket ID
 tests/
 ├── e2e/                 a fast sign-in rig: Mica + Keycloak + Forgejo
-├── oidc/                the automated OIDC round trip: the real image + Dex + Forgejo
+├── oidc/                the automated OIDC round trip: the real image + Dex or Pocket ID + Forgejo
 └── browser/             an automated browser test of the editor UI
 ```
 

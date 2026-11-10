@@ -6,15 +6,15 @@
 # What a self-hosted Mica consists of, and nothing more:
 #
 #   mica        Mica itself: one Node process, and its clone of your repository
-#   zitadel     the identity provider, with its database
+#   pocket-id   the identity provider, with its own small database file
 #
 # Your content repository, on any Git host over HTTPS, is not in here, on purpose:
 # Mica pushes to a repository you own, and CI builds the website from it without Mica.
 #
-# Nothing has to be clicked. ZITADEL generates its own credentials on first boot,
-# so a seed job registers Mica and creates the three demo people over ZITADEL's API.
+# Nothing has to be configured. A seed job registers Mica in Pocket ID, creates the
+# three demo people over its API, and prints a sign-in link for each of them.
 #
-# Deliberately local: plain HTTP, passwords in this file, a master key anybody
+# Deliberately local: plain HTTP, an encryption key and an API key that anybody
 # can read. Do not copy it to a server — copy deploy/self-hosted/compose.yml,
 # which is the reference deployment.
 
@@ -22,91 +22,48 @@ name: mica-demo
 
 services:
   # ------------------------------------------------------------ identity
-  zitadel:
-    image: ghcr.io/zitadel/zitadel:v3.4.15
-    command: >
-      start-from-init
-      --masterkey "MicaDemoMasterkey32CharactersXX"
-      --tlsMode disabled
-    depends_on:
-      db:
-        condition: service_healthy
-      prepare:
-        condition: service_completed_successfully
-
+  pocket-id:
+    image: ghcr.io/pocket-id/pocket-id:v2.19.2
     environment:
-      ZITADEL_DATABASE_POSTGRES_HOST: db
-      ZITADEL_DATABASE_POSTGRES_PORT: 5432
-      ZITADEL_DATABASE_POSTGRES_DATABASE: zitadel
-      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: zitadel
-      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: zitadel
-      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
-      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: postgres
-      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: postgres
-      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
-
       # Mica and your browser must reach the issuer at the *same* URL, or the
       # `iss` claim will not match what discovery returned.
-      ZITADEL_EXTERNALDOMAIN: localhost
-      ZITADEL_EXTERNALPORT: 8080
-      ZITADEL_EXTERNALSECURE: false
-
-      # The console account, for looking around: admin, Admin-Demo1.
-      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: admin
-      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: Admin-Demo1
-      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: false
-
-      # A service account whose token ZITADEL writes to the shared volume. The
-      # seed job uses it to register Mica and create the demo people.
-      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: seed
-      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: Demo seed
-      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: 2100-01-01T00:00:00Z
-      ZITADEL_FIRSTINSTANCE_PATPATH: /seed/zitadel.pat
+      APP_URL: http://localhost:1411
+      # Demo values that anybody can read. Generate your own: `openssl rand -base64 32`.
+      ENCRYPTION_KEY: MicaDemoEncryptionKey32CharsXXXX
+      # Lets the seed job call the admin API. It is how the demo needs no click.
+      STATIC_API_KEY: mica-demo-api-key-not-for-production
+      ANALYTICS_DISABLED: "true"
 
     # Mica's port is published here too: the CMS shares this container's network
     # namespace, so this is the only place either port can be exposed from.
     ports:
-      - "127.0.0.1:8080:8080"
+      - "127.0.0.1:1411:1411"
       - "127.0.0.1:6422:6422"
 
     volumes:
-      - seed:/seed
+      - pocket-id-data:/app/data
 
-  db:
-    image: postgres:17-alpine
-    environment:
-      PGUSER: postgres
-      POSTGRES_PASSWORD: postgres
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready", "-d", "zitadel", "-U", "postgres"]
-      interval: 10s
-      timeout: 30s
-      retries: 5
-      start_period: 20s
-    volumes:
-      - db-data:/var/lib/postgresql/data
+      test: ["CMD", "/app/pocket-id", "healthcheck"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
-  # ZITADEL runs unprivileged and writes its service-account token into the
-  # shared volume, which Docker creates owned by root. One chmod, once.
-  prepare:
-    image: alpine:3.22
-    command: ["/bin/sh", "-c", "chmod 0777 /seed"]
-    volumes:
-      - seed:/seed
-
-  # Registers Mica as an OIDC application and creates alice, bob and mallory.
-  # Runs once: it stops at the first line if it has run before.
+  # Registers Mica as an OIDC client, creates alice, bob and mallory, and prints
+  # a sign-in link for each. Runs once: a second start only says that it ran.
+  # `docker compose run --rm seed-identity link alice` prints a fresh link.
   seed-identity:
     image: alpine:3.22
     depends_on:
-      zitadel:
-        condition: service_started
-    # Shares ZITADEL's network namespace, so this calls the instance by the one
-    # name ZITADEL answers to.
-    network_mode: "service:zitadel"
-    command: ["/bin/sh", "/opt/seed-identity.sh"]
+      pocket-id:
+        condition: service_healthy
+    # Shares Pocket ID's network namespace, so this calls the instance by the one
+    # name Pocket ID answers to.
+    network_mode: "service:pocket-id"
+    entrypoint: ["/bin/sh", "/opt/seed-identity.sh"]
     environment:
-      ZITADEL_URL: http://localhost:8080
+      POCKET_ID_URL: http://localhost:1411
+      POCKET_ID_API_KEY: mica-demo-api-key-not-for-production
       CALLBACK_URL: http://localhost:6422/api/auth/callback
     volumes:
       - ./seed/seed-identity.sh:/opt/seed-identity.sh:ro
@@ -126,11 +83,11 @@ services:
       seed-identity:
         condition: service_completed_successfully
 
-    # Shares ZITADEL's network namespace, so `localhost:8080` means the same
+    # Shares Pocket ID's network namespace, so `localhost:1411` means the same
     # thing here as it does in your browser.
-    network_mode: "service:zitadel"
+    network_mode: "service:pocket-id"
 
-    # ZITADEL generates the client credentials and the subjects on first boot. The seed job
+    # Pocket ID generates the client secret and the subjects. The seed job
     # leaves them in the volume, MICA_ADMIT_SUBJECTS too; this entrypoint reads them first.
     entrypoint:
       - /sbin/tini
@@ -146,7 +103,7 @@ services:
       MICA_PUBLIC_URL: http://localhost:6422
       MICA_SESSION_SECRET: demo-session-secret-0000000000000
 
-      MICA_OIDC_ISSUER: http://localhost:8080
+      MICA_OIDC_ISSUER: http://localhost:1411
 
       # Your repository, from deploy/demo-identity/.env.
       MICA_REPOSITORY_URL: ${MICA_REPOSITORY_URL:?set MICA_REPOSITORY_URL in deploy/demo-identity/.env}
@@ -160,7 +117,7 @@ services:
       - mica-data:/data
 
 volumes:
-  db-data:
+  pocket-id-data:
   mica-data:
-  # The credentials ZITADEL generated for this demo.
+  # The client secret and the admission list that the seed job made for this demo.
   seed:

@@ -1,0 +1,145 @@
+# The automated OIDC test with Pocket ID as the provider: the real Mica image
+# against a real Pocket ID, publishing to a real Git host (Forgejo) over HTTP.
+#
+#   docker compose -f tests/oidc/compose.pocket-id.yml up -d --build --wait
+#   OIDC_PROVIDER=pocket-id node --test tests/oidc/flow.test.mjs
+#   docker compose -f tests/oidc/compose.pocket-id.yml down -v
+#
+# The test seeds Pocket ID itself, over its API. See README.md. The Forgejo
+# and Mica services repeat those of compose.yml, where Dex is the provider.
+
+name: mica-oidc-pocket-id-test
+
+services:
+  pocket-id:
+    image: ghcr.io/pocket-id/pocket-id:v2.19.2
+    environment:
+      APP_URL: http://localhost:1411
+      # Test values, not for production.
+      ENCRYPTION_KEY: 0123456789abcdef0123456789abcdef
+      STATIC_API_KEY: oidc-test-api-key-not-for-production
+      ANALYTICS_DISABLED: "true"
+      # The test logs in 11 times from one address. The limit on one-time tokens is 5, then 1 in 10 seconds.
+      DISABLE_RATE_LIMITING: "true"
+
+    # Mica and Forgejo share this network namespace (see below), so every port
+    # is published here.
+    ports:
+      - "127.0.0.1:1411:1411"
+      # Mica's port on this machine; MICA_PORT=6423 when 6422 is in use. Inside, it stays 6422.
+      - "127.0.0.1:${MICA_PORT:-6422}:6422"
+      # Forgejo's port on this machine; FORGEJO_PORT=3001 when 3000 is in use. Inside, it stays 3000.
+      - "127.0.0.1:${FORGEJO_PORT:-3000}:3000"
+
+    healthcheck:
+      test: ["CMD", "/app/pocket-id", "healthcheck"]
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+  # The repository: a real Git host. Plain HTTP on localhost, which Mica
+  # accepts only for an address on this machine.
+  forgejo:
+    image: data.forgejo.org/forgejo/forgejo:15.0.9
+    network_mode: "service:pocket-id"
+    depends_on:
+      pocket-id:
+        condition: service_started
+    environment:
+      FORGEJO__security__INSTALL_LOCK: "true"
+      FORGEJO__database__DB_TYPE: sqlite3
+      FORGEJO__server__ROOT_URL: http://localhost:3000/
+      FORGEJO__server__HTTP_PORT: "3000"
+      FORGEJO__server__DISABLE_SSH: "true"
+      FORGEJO__service__DISABLE_REGISTRATION: "true"
+      FORGEJO__log__LEVEL: Warn
+      # Git LFS, for the PNG files that the seed gives to it. A test secret, not for production.
+      FORGEJO__server__LFS_START_SERVER: "true"
+      FORGEJO__server__LFS_JWT_SECRET: t9C-MQHtGeRGichgWOQbsCEFvRYHTKl8IKmxM0JTv04
+    volumes:
+      - forgejo-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/v1/version"]
+      interval: 2s
+      timeout: 2s
+      retries: 60
+
+  # One user, one repository, the example content. Runs once.
+  forgejo-seed:
+    image: data.forgejo.org/forgejo/forgejo:15.0.9
+    network_mode: "service:pocket-id"
+    user: "1000:1000"
+    entrypoint: ["/bin/sh", "/seed.sh"]
+    depends_on:
+      forgejo:
+        condition: service_healthy
+    environment:
+      FORGEJO_PASSWORD: Forgejo-test-password-not-for-production
+    volumes:
+      - forgejo-data:/data
+      - ./forgejo-seed.sh:/seed.sh:ro
+      - ../../examples/company-site/content:/seed:ro
+
+  mica:
+    image: micacms/editor:ci
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    depends_on:
+      pocket-id:
+        condition: service_healthy
+      forgejo-seed:
+        condition: service_completed_successfully
+
+    # `localhost:1411` must mean the same issuer to Mica as to the test, or
+    # the ID token's `iss` would not match what discovery returned.
+    network_mode: "service:pocket-id"
+
+    # Hardened like deploy/self-hosted/compose.yml, so that CI proves the image
+    # runs this way. /data is the anonymous volume that the image declares.
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 512m
+
+    environment:
+      # Plain-HTTP discovery is allowed only for a provider on this machine.
+      # Everything else is production-shaped.
+      MICA_LOG_LEVEL: info
+
+      MICA_PUBLIC_URL: http://localhost:${MICA_PORT:-6422}
+      MICA_OIDC_ISSUER: http://localhost:1411
+      # A public client: PKCE alone, no secret. The test registers it at start.
+      MICA_OIDC_CLIENT_ID: mica
+
+      MICA_ADMIT_EMAILS: alice@gmail.com
+      MICA_ADMIT_DOMAINS: harborlane.example
+      # Pocket ID sends the groups claim only for the `groups` scope.
+      MICA_ADMIT_GROUPS: mica-editors
+      MICA_OIDC_SCOPE: openid profile email groups
+      # The flow test signs in 11 times from one address. The default limit is 10.
+      MICA_SIGNIN_MAX_ATTEMPTS: "50"
+
+      MICA_REPOSITORY_URL: http://localhost:3000/editor/site.git
+      MICA_REPOSITORY_USERNAME: editor
+      # Forgejo accepts the account password where a token would go.
+      MICA_REPOSITORY_TOKEN: Forgejo-test-password-not-for-production
+
+      MICA_SESSION_SECRET: oidc-test-session-secret-00000000000
+
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:6422/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 2s
+      timeout: 2s
+      retries: 30
+
+volumes:
+  forgejo-data:

@@ -1,16 +1,91 @@
 /**
- * The OIDC round trip against the real image and a real Dex — see README.md.
+ * The OIDC round trip against the real image and a real provider — see README.md.
+ * The provider is Dex, or Pocket ID with `OIDC_PROVIDER=pocket-id`.
  *
- * No browser and no dependencies: `fetch` follows the redirects by hand,
- * carries the cookies, and posts Dex's login form the way a browser would.
+ * No browser and no dependencies: `fetch` follows the redirects by hand and
+ * carries the cookies. For Dex it posts the login form the way a browser would.
+ * Pocket ID signs in with passkeys, so the test logs in with a one-time access
+ * token from its API. The authorization request then goes straight back to Mica.
  */
 
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { before, describe, it } from "node:test";
 
-const MICA = "http://localhost:6422";
+const PROVIDER = process.env.OIDC_PROVIDER ?? "dex";
+assert.ok(["dex", "pocket-id"].includes(PROVIDER), `OIDC_PROVIDER must be dex or pocket-id, not ${PROVIDER}`);
+const PROVIDER_NAME = PROVIDER === "dex" ? "Dex" : "Pocket ID";
+
+const MICA = `http://localhost:${process.env.MICA_PORT ?? "6422"}`;
 const FORGEJO = `http://localhost:${process.env.FORGEJO_PORT ?? "3000"}/api/v1/repos/editor/site`;
 const FORGEJO_AUTH = `Basic ${Buffer.from("editor:Forgejo-test-password-not-for-production").toString("base64")}`;
+
+const POCKET_ID = "http://localhost:1411";
+
+/** The people of dex.yaml, for Pocket ID: the same five, with the same groups. */
+const POCKET_ID_USERS = [
+  { username: "alice", email: "alice@gmail.com", groups: [] },
+  { username: "bob", email: "bob@harborlane.example", groups: [] },
+  { username: "carol", email: "carol@pinecrest.example", groups: ["mica-editors"] },
+  { username: "dave", email: "dave@pinecrest.example", groups: ["everyone"] },
+  { username: "mallory", email: "mallory@gmail.com", groups: [] },
+];
+
+/** Pocket ID's admin API, with the static API key of compose.pocket-id.yml. */
+const pocketId = {
+  async api(path, { method = "GET", body } = {}) {
+    const response = await fetch(`${POCKET_ID}/api${path}`, {
+      method,
+      headers: { "x-api-key": "oidc-test-api-key-not-for-production", "content-type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    assert.equal(response.ok, true, `Pocket ID: ${method} ${path} answered ${response.status} ${await response.clone().text()}`);
+    return response.json();
+  },
+
+  async users() {
+    return (await this.api("/users?pagination[limit]=100")).data;
+  },
+
+  /** Registers Mica as a public client, and creates the people and the groups. Safe to run twice. */
+  async seed() {
+    const clients = await this.api("/oidc/clients?pagination[limit]=100");
+    if (!clients.data.some((client) => client.id === "mica")) {
+      await this.api("/oidc/clients", {
+        method: "POST",
+        // No consent step: it proves nothing about Mica, and the sign-in then needs no call to the web app of Pocket ID.
+        body: { id: "mica", name: "Mica", callbackURLs: [`${MICA}/api/auth/callback`], isPublic: true, pkceEnabled: true, skipConsent: true },
+      });
+    }
+
+    const known = new Map((await this.users()).map((user) => [user.email, user.id]));
+    for (const { username, email } of POCKET_ID_USERS) {
+      if (known.has(email)) continue;
+      // Verified, as Dex reports its addresses: the email and domain rules need `email_verified`.
+      const created = await this.api("/users", {
+        method: "POST",
+        body: { username, email, emailVerified: true, firstName: username, lastName: "Test", isAdmin: false, disabled: false },
+      });
+      known.set(email, created.id);
+    }
+
+    const groupNames = [...new Set(POCKET_ID_USERS.flatMap((user) => user.groups))];
+    const groups = new Map((await this.api("/user-groups?pagination[limit]=100")).data.map((group) => [group.name, group.id]));
+    for (const name of groupNames) {
+      if (!groups.has(name)) groups.set(name, (await this.api("/user-groups", { method: "POST", body: { name, friendlyName: name } })).id);
+      const userIds = POCKET_ID_USERS.filter((user) => user.groups.includes(name)).map((user) => known.get(user.email));
+      await this.api(`/user-groups/${groups.get(name)}/users`, { method: "PUT", body: { userIds } });
+    }
+  },
+
+  /** A one-time token that logs the person in without a passkey. */
+  async oneTimeToken(email) {
+    const user = (await this.users()).find((candidate) => candidate.email === email);
+    assert.ok(user, `Pocket ID has no user ${email}`);
+    return (await this.api(`/users/${user.id}/one-time-access-token`, { method: "POST", body: {} })).token;
+  },
+};
+
+if (PROVIDER === "pocket-id") before(() => pocketId.seed());
 
 /** Reads the Git host directly, to see what reached the repository. */
 async function forgejo(path, raw = false) {
@@ -62,12 +137,21 @@ class Browser {
     return { response, url: current };
   }
 
-  /** Mica's sign-in: Mica → Dex → login form → Dex → Mica's callback. */
+  /** Mica's sign-in: Mica → the provider → Mica's callback. */
   async signIn(email) {
     const start = await this.fetch(`${MICA}/api/auth/login?returnTo=/admin/`);
     assert.equal(start.status, 302, `sign-in did not start: ${start.status} ${await start.text()}`);
-    let { response, url } = await this.follow(new URL(start.headers.get("location"), MICA));
+    const authorizeUrl = new URL(start.headers.get("location"), MICA);
 
+    const url = PROVIDER === "dex" ? await this.signInAtDex(authorizeUrl, email) : await this.signInAtPocketId(authorizeUrl, email);
+
+    assert.equal(url.origin, MICA, `sign-in ended at ${url}`);
+    return url;
+  }
+
+  /** Dex: follow to its login form, post the password, follow back. */
+  async signInAtDex(authorizeUrl, email) {
+    let { response, url } = await this.follow(authorizeUrl);
     if (url.origin !== MICA) {
       const html = await response.text();
       const action = html.match(/<form[^>]*action="([^"]+)"/i)?.[1];
@@ -79,9 +163,17 @@ class Browser {
         body: new URLSearchParams({ login: email, password: "password" }),
       }));
     }
-
-    assert.equal(url.origin, MICA, `sign-in ended at ${url}`);
     return url;
+  }
+
+  /** Pocket ID: log in with a one-time token, then follow the authorization request back. */
+  async signInAtPocketId(authorizeUrl, email) {
+    const token = await pocketId.oneTimeToken(email);
+    const login = await this.fetch(`${POCKET_ID}/api/one-time-access-token/${token}`, { method: "POST" });
+    assert.equal(login.status, 200, `Pocket ID refused the one-time token: ${login.status}`);
+
+    // The person is logged in and the client needs no consent, so Pocket ID asks nothing more.
+    return (await this.follow(authorizeUrl)).url;
   }
 
   /** An admin API call the way the SPA makes it: Origin plus the CSRF header. */
@@ -97,7 +189,7 @@ class Browser {
   }
 }
 
-describe("signing in through Dex", () => {
+describe(`signing in through ${PROVIDER_NAME}`, () => {
   it("refuses the admin API without a session", async () => {
     const response = await new Browser().api("/api/admin/schema");
     assert.equal(response.status, 401);
@@ -156,7 +248,7 @@ describe("an admitted session", () => {
     assert.equal(current.status, 200);
     const { data, revision } = await current.json();
 
-    const tagline = `Edited through Dex at ${new Date().toISOString()}`;
+    const tagline = `Edited through ${PROVIDER_NAME} at ${new Date().toISOString()}`;
     // The tagline has a value for each locale: the edit changes the English one.
     const edit = { data: { ...data, tagline: { ...data.tagline, en: tagline } }, revision };
 

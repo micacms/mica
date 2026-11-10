@@ -1,87 +1,111 @@
 #!/bin/sh
-# Registers Mica with ZITADEL and creates the three demo people.
+# Registers Mica with Pocket ID and creates the three demo people.
 #
-# ZITADEL generates the client id and secret when the application is created,
-# and the subject of every person it creates, so none of them can be written
-# into the Compose file. This creates them over the API and leaves them in the
-# shared volume, where the CMS reads them at start.
+# Pocket ID generates the client secret when the client is created, and the
+# subject of every person it creates, so none of them can be written into the
+# Compose file. This creates them over the API and leaves them in the shared
+# volume, where the CMS reads them at start.
 #
-# Runs once. A second start finds oidc.env and stops.
-set -eu
+# Pocket ID signs in with passkeys, so the demo people have no password. The
+# script prints one sign-in link for each person instead. Open it, and then add
+# a passkey in the account page to sign in again.
+#
+# Runs once. A second start finds oidc.env and stops. If a run fails, start
+# again from nothing: `docker compose down -v`.
+# `seed-identity.sh link <user>` prints a fresh sign-in link for a person.
+#
+# pipefail and `jq -e`: a refused API call must stop the seed, not write an empty value.
+set -euo pipefail
 
 env_file=/seed/oidc.env
-pat_file=/seed/zitadel.pat
-
-if [ -f "$env_file" ]; then
-  echo "seed: ZITADEL is already set up"
-  exit 0
-fi
+api="$POCKET_ID_URL/api"
 
 apk add --no-cache curl jq >/dev/null
 
-echo "seed: waiting for ZITADEL"
-while [ ! -f "$pat_file" ]; do sleep 2; done
-until curl -sf "$ZITADEL_URL/debug/ready" >/dev/null; do sleep 2; done
-
-auth="Authorization: Bearer $(cat "$pat_file")"
-api="$ZITADEL_URL/management/v1"
-
-post() {
-  curl -sfS -X POST "$api/$1" -H "$auth" -H "Content-Type: application/json" -d "$2"
+call() {
+  method=$1
+  path=$2
+  shift 2
+  curl -sfS -X "$method" "$api$path" -H "X-API-KEY: $POCKET_ID_API_KEY" -H "Content-Type: application/json" "$@"
 }
 
-echo "seed: registering Mica"
-project=$(post projects '{"name":"Mica"}' | jq -r .id)
+# A sign-in link for the person with this name and ID. It works once, within a day.
+link() {
+  token=$(call POST "/users/$2/one-time-access-token" -d '{"ttl":"24h"}' | jq -er .token)
+  echo "  $1: $POCKET_ID_URL/lc/$token"
+}
 
+echo "seed: waiting for Pocket ID"
+until curl -sf "$POCKET_ID_URL/.well-known/openid-configuration" >/dev/null; do sleep 2; done
+
+if [ "${1:-}" = "link" ]; then
+  name=${2:?usage: link <alice|bob|mallory>}
+  id=$(call GET "/users?pagination%5Blimit%5D=100" | jq -er --arg name "$name" 'first(.data[] | select(.username == $name) | .id)') ||
+    { echo "seed: no person called $name" >&2; exit 1; }
+  link "$name" "$id"
+  exit 0
+fi
+
+if [ -f "$env_file" ]; then
+  echo "seed: Pocket ID is already set up"
+  exit 0
+fi
+
+echo "seed: registering Mica"
 # A confidential web client on the authorization code flow, which is the one
 # Mica implements: PKCE, state and nonce, all verified.
-app=$(post "projects/$project/apps/oidc" "$(
+client=$(call POST /oidc/clients -d "$(
   jq -n --arg callback "$CALLBACK_URL" '{
+    id: "mica",
     name: "Mica",
-    appType: "OIDC_APP_TYPE_WEB",
-    responseTypes: ["OIDC_RESPONSE_TYPE_CODE"],
-    grantTypes: ["OIDC_GRANT_TYPE_AUTHORIZATION_CODE"],
-    authMethodType: "OIDC_AUTH_METHOD_TYPE_BASIC",
-    accessTokenType: "OIDC_TOKEN_TYPE_BEARER",
-    redirectUris: [$callback],
-    postLogoutRedirectUris: [$callback | sub("/api/auth/callback$"; "/admin/")],
-    devMode: true
+    callbackURLs: [$callback],
+    logoutCallbackURLs: [($callback | sub("/api/auth/callback$"; "/admin/"))],
+    isPublic: false,
+    pkceEnabled: true,
+    skipConsent: true
   }'
 )")
 
 # Three people, chosen to make the outcomes visible. Mallory is the point:
-# ZITADEL vouches for her and Mica turns her away, because she is not on the
+# Pocket ID vouches for her and Mica turns her away, because she is not on the
 # list of subjects the CMS was told to admit.
 #
-# Prints the subject ZITADEL assigned, which is what admission is keyed on. An
-# email address would be the wrong key: ZITADEL lets a person change theirs,
-# and Mica would then be admitting whoever holds it next.
+# Prints the subject Pocket ID assigned, which is what admission is keyed on. An
+# email address would be the wrong key: a person can change it, and Mica would
+# then be admitting whoever holds it next.
 person() {
-  post users/human/_import "$(
-    jq -n --arg user "$1" --arg first "$2" --arg mail "$3" --arg password "$4" '{
-      userName: $user,
-      profile: { firstName: $first, lastName: "Demo" },
-      email: { email: $mail, isEmailVerified: true },
-      password: $password,
-      passwordChangeRequired: false
+  call POST /users -d "$(
+    jq -n --arg user "$1" --arg first "$2" --arg mail "$3" --argjson admin "$4" '{
+      username: $user,
+      firstName: $first,
+      lastName: "Demo",
+      email: $mail,
+      emailVerified: true,
+      isAdmin: $admin,
+      disabled: false
     }'
-  )" | jq -r .userId
+  )" | jq -er .id
 }
 
 echo "seed: creating alice, bob and mallory"
-alice=$(person alice Alice alice@example.com Alice-Demo1)
-bob=$(person bob Bob bob@example.com Bob-Demo1)
-person mallory Mallory mallory@example.com Mallory-Demo1 >/dev/null
+# Alice may also open Pocket ID's own settings; being an administrator there has no meaning for Mica.
+alice=$(person alice Alice alice@example.com true)
+bob=$(person bob Bob bob@example.com false)
+mallory=$(person mallory Mallory mallory@example.com false)
+
+links=$(link alice "$alice"; link bob "$bob"; link mallory "$mallory")
+secret=$(echo "$client" | jq -er .createdSecret.secret)
 
 umask 022
 {
-  echo "MICA_OIDC_CLIENT_ID='$(echo "$app" | jq -r .clientId)'"
-  echo "MICA_OIDC_CLIENT_SECRET='$(echo "$app" | jq -r .clientSecret)'"
+  echo "MICA_OIDC_CLIENT_ID='mica'"
+  echo "MICA_OIDC_CLIENT_SECRET='$secret'"
   # Who may edit. Mica has no user table and no invitation screen, so this is
   # the whole of authorization — two subjects, keyed by the issuer that made
   # them. A real deployment would normally use MICA_ADMIT_GROUPS against a
   # group its provider already manages.
-  echo "MICA_ADMIT_SUBJECTS='$ZITADEL_URL|$alice,$ZITADEL_URL|$bob'"
+  echo "MICA_ADMIT_SUBJECTS='$POCKET_ID_URL|$alice,$POCKET_ID_URL|$bob'"
 } > "$env_file"
 
-echo "seed: done — alice and bob may edit, mallory may not"
+echo "seed: done — alice and bob may edit, mallory may not. Sign-in links, each for one sign-in within a day:"
+echo "$links"

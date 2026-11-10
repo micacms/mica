@@ -114,7 +114,7 @@ The agents in `.claude/agents/` do recurring work. Use them where they fit:
 - `SETUP.md`: the entry point for a coding agent that sets up Mica in a user's project, served at `mica.build/setup.md`. Keep it valid for every version; version-specific steps go in `packages/astro/setup/`.
 - `docs`: architecture and decision documentation for contributors, and the brand book (`docs/brand`). The user guides move to `sites/website` (#117).
 - `deploy/self-hosted`: the reference deployment — the Compose file and its `.env.example`.
-- `deploy/demo-identity`: the demo stack with ZITADEL.
+- `deploy/demo-identity`: the demo stack with Pocket ID.
 - `tests/e2e`: manual deployed-shape environment with Keycloak. Do not treat it as an automated browser test suite.
-- `tests/oidc`: automated OIDC round trip — the real image against Dex and a Forgejo Git host, run by CI. No browser.
+- `tests/oidc`: automated OIDC round trip — the real image against Dex and against Pocket ID, each with a Forgejo Git host, run by CI. No browser.
 - `tests/browser`: automated browser test — Playwright drives the editor UI on the `tests/oidc` stack, run by CI.
