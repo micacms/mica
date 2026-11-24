@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Experimental: `plugins` in `defineSite` names the plugins of the site, as plain data (`name`, `package`, `options`), and the manifest carries the list. A reader leaves out a plugin item that it cannot read, with a warning. New types: `Plugin`, `PluginDeclaration` and `PluginCapability`. Mica does not load plugins yet.",
+      "type": "minor",
+      "packageName": "@micacms/core"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

@@ -252,3 +252,60 @@ describe("options that this build does not know", () => {
     assert.equal(readManifest(raw).warnings.length, 2);
   });
 });
+
+describe("what a newer model adds", () => {
+  it("ignores a top-level key that this build does not know", () => {
+    const raw = { ...validSite(), blocks: { cta: { label: "Call to action" } } };
+    const read = readManifest(raw);
+    assert.equal(read.readOnly.size, 0);
+    assert.deepEqual(read.warnings, []);
+    assert.equal("blocks" in read.site, false);
+  });
+
+  // No plugin is loaded here: a plugin only advises, so nothing is locked for it.
+  it("keeps a named plugin that is not loaded, which locks nothing, while an unknown kind locks its collection", () => {
+    const raw = { ...validSite(), plugins: [{ name: "spellcheck", package: "mica-plugin-spellcheck", options: { dictionary: "glossary" } }] };
+    (raw.collections as Record<string, unknown>)["places"] = {
+      type: "collection",
+      label: "Places",
+      fields: { title: { kind: "text" }, id: { kind: "id" }, route: { kind: "gpx-route" } },
+    };
+
+    const read = readManifest(raw);
+    assert.deepEqual(read.site.plugins, raw.plugins);
+    assert.deepEqual([...read.readOnly.keys()], ["collections.places"]);
+  });
+
+  it("leaves out a plugin item that it cannot read, with a warning, and still starts", () => {
+    const raw = {
+      ...validSite(),
+      plugins: [
+        { name: "spellcheck", package: "mica-plugin-spellcheck" },
+        { name: "dam", package: "mica-plugin-dam", version: 2 },
+        { name: "spellcheck", package: "other-spellcheck" },
+      ],
+    };
+    const read = readManifest(raw);
+    assert.deepEqual(read.site.plugins, [{ name: "spellcheck", package: "mica-plugin-spellcheck" }]);
+    assert.deepEqual(read.warnings, [
+      "The plugin at position 2 has keys that a plugin item does not have: version. Mica leaves it out.",
+      'Two plugins have the name "spellcheck". Mica uses the first.',
+    ]);
+  });
+
+  it("leaves out plugins that are not a list, or an item that is not an object", () => {
+    assert.deepEqual(readManifest({ ...validSite(), plugins: {} }).warnings, ["The model's plugins are not a list. Mica loads no plugin."]);
+    const read = readManifest({ ...validSite(), plugins: ["mica-plugin-spellcheck"] });
+    assert.equal(read.site.plugins, undefined);
+    assert.match(read.warnings[0]!, /position 1 must be an object/);
+  });
+
+  it("writes the plugins into the manifest only when the model names one", () => {
+    const pages = collection({ label: "Pages", fields: { title: text(), id: id({ from: "title" }) } });
+    assert.equal("plugins" in createManifest(defineSite({ collections: { pages } }), "test"), false);
+
+    const plugins = [{ name: "spellcheck", package: "@acme/mica-spellcheck", options: { languages: ["en", "de"] } }];
+    const manifest = createManifest(defineSite({ collections: { pages }, plugins }), "test");
+    assert.deepEqual(readManifest(JSON.parse(JSON.stringify(manifest))).site.plugins, plugins);
+  });
+});

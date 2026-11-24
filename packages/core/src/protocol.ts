@@ -14,7 +14,7 @@
  * The version is the backstop for changes that cannot be detected by looking.
  */
 
-import type { Collection, ReferenceSet, Singleton, Site } from "./types.js";
+import type { Collection, Plugin, ReferenceSet, Singleton, Site } from "./types.js";
 
 /**
  * Bumped only when an older reader would *misinterpret* a newer manifest.
@@ -52,6 +52,11 @@ export interface ProtocolManifest {
   singletons: Record<string, Singleton>;
   /** Only when the model has reference sets. */
   references?: Record<string, ReferenceSet>;
+  /**
+   * Only when the model names a plugin.
+   * @beta
+   */
+  plugins?: Plugin[];
 }
 
 export function createManifest(site: Site, generatedBy: string): ProtocolManifest {
@@ -65,6 +70,7 @@ export function createManifest(site: Site, generatedBy: string): ProtocolManifes
     collections: site.collections,
     singletons: site.singletons,
     ...(site.references ? { references: site.references } : {}),
+    ...(site.plugins ? { plugins: site.plugins } : {}),
   };
 }
 

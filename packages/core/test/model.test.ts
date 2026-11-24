@@ -39,6 +39,7 @@ import {
   text,
   type FieldMap,
   type InferFields,
+  type Plugin,
   url,
   validateFields,
   withEmptyValues,
@@ -750,4 +751,40 @@ describe("coordinates maps", () => {
       );
     }
   });
+});
+
+describe("plugins in defineSite", () => {
+  const pages = collection({ label: "Pages", fields: { title: text(), id: id({ from: "title" }) } });
+  const site = (plugins: unknown) => defineSite({ collections: { pages }, plugins: plugins as Plugin[] });
+  const cyclic = () => {
+    const options: Record<string, unknown> = {};
+    options["self"] = options;
+    return options;
+  };
+
+  it("keeps the plugins, and leaves out an empty list", () => {
+    const plugins = [{ name: "spellcheck", package: "mica-plugin-spellcheck", options: { dictionary: "glossary" } }];
+    assert.deepEqual(site(plugins).plugins, plugins);
+    assert.equal("plugins" in site([]), false);
+
+    const given = [{ name: "spellcheck", package: "mica-plugin-spellcheck" }];
+    const model = site(given);
+    given.push({ name: "dam", package: "mica-plugin-dam" });
+    assert.equal(model.plugins?.length, 1);
+  });
+
+  for (const [label, plugins, message] of [
+    ["a list", { name: "spellcheck" }, /`plugins` must be a list/],
+    ["a name", [{ package: "mica-plugin-spellcheck" }], /position 1 needs a `name`/],
+    ["a name in lower case", [{ name: "SpellCheck", package: "mica-plugin-spellcheck" }], /needs a `name`/],
+    ["an npm package name", [{ name: "spellcheck", package: "../spellcheck" }], /needs a `package`/],
+    ["options that are JSON", [{ name: "spellcheck", package: "mica-plugin-spellcheck", options: { since: new Date() } }], /not a JSON object/],
+    ["only the keys of an item", [{ name: "spellcheck", package: "mica-plugin-spellcheck", secret: "x" }], /keys that a plugin item does not have: secret/],
+    ["names that differ", [{ name: "dam", package: "a" }, { name: "dam", package: "b" }], /two plugins have the name "dam"/],
+    ["options without a cycle", [{ name: "dam", package: "a", options: cyclic() }], /not a JSON object/],
+  ] as const) {
+    it(`needs ${label}`, () => {
+      assert.throws(() => site(plugins), (error: unknown) => error instanceof ModelError && message.test(error.message));
+    });
+  }
 });

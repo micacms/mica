@@ -423,6 +423,11 @@ export interface SiteOptions {
   collections: Record<string, Collection>;
   singletons?: Record<string, Singleton>;
   references?: Record<string, ReferenceSet>;
+  /**
+   * The plugins of the site, each from its package's model entry point.
+   * @beta Experimental: outside the semver surface (decision record 45).
+   */
+  plugins?: Plugin[];
 }
 
 export interface Site<
@@ -449,6 +454,51 @@ export interface Site<
   singletons: S;
   /** The reference sets, when the model has any. */
   references?: Record<string, ReferenceSet>;
+  /**
+   * See `SiteOptions.plugins`. Only when the model names a plugin.
+   * @beta
+   */
+  plugins?: Plugin[];
+}
+
+/* ------------------------------------------------------------------ *
+ * Plugins
+ * ------------------------------------------------------------------ */
+
+/**
+ * A plugin that the model names. It is plain data: the model entry point of
+ * the plugin's package returns it, and the manifest carries it.
+ * @beta Experimental: outside the semver surface (decision record 45).
+ */
+export interface Plugin {
+  /** The plugin's name, such as `spellcheck`: lower-case letters, digits and `-`, starting with a letter. Unique in the model. */
+  name: string;
+  /** The npm package, such as `mica-plugin-spellcheck`. Its `./server` entry point has the hooks. */
+  package: string;
+  /** The content options, as JSON data. The plugin checks them. Never a secret: that is an environment variable. */
+  options?: Record<string, unknown>;
+}
+
+/**
+ * What a plugin can provide.
+ * @beta
+ */
+export type PluginCapability = "issues" | "suggestions" | "mediaProvider" | "field";
+
+/**
+ * What a plugin does, as static data: the `declaration` export of its server entry point.
+ * Mica checks it at start and shows it to the operator.
+ * @beta Experimental: outside the semver surface (decision record 45).
+ */
+export interface PluginDeclaration {
+  /** The same name as in the plugin's `Plugin` item. */
+  name: string;
+  /** Each host that the plugin calls, such as `api.example.com`. */
+  hosts: string[];
+  /** Each environment variable that the plugin reads. */
+  env: string[];
+  /** The hook types that its server entry point has. */
+  provides: PluginCapability[];
 }
 
 /* ------------------------------------------------------------------ *

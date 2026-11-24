@@ -9,9 +9,10 @@ import { defineSite, labelProblem } from "./define.js";
 import { COMMON_OPTIONS, FIELD_OPTIONS, isFieldKind } from "./fields.js";
 import { isMediaFileType } from "./media-types.js";
 import { pageUrlProblem } from "./page-url.js";
+import { pluginProblem } from "./plugin.js";
 import { checkCompatibility, isProtocolManifest, PROTOCOL_VERSION } from "./protocol.js";
 import { RICH_TEXT_TOOLBARS } from "./rich-text.js";
-import type { Collection, FieldMap, Singleton, Site } from "./types.js";
+import type { Collection, FieldMap, Plugin, Singleton, Site } from "./types.js";
 
 export class ManifestError extends Error {
   override name = "ManifestError";
@@ -21,14 +22,15 @@ export interface ReadManifest {
   site: Site;
   /** From `readOnlyParts`: the collections and singletons this build must not write, with the reason. */
   readOnly: Map<string, string>;
-  /** What the reader left out because only the editor's buttons or a list order depend on it. */
+  /** What the reader left out, and why: a part that no stored value depends on, such as a toolbar button, a list order or a plugin item. */
   warnings: string[];
 }
 
 /**
  * Checks a manifest and returns its model. A newer `protocolVersion` is
  * refused. A field kind or an option that this build does not know is not: it
- * makes its collection or singleton read-only (`readOnlyParts`).
+ * makes its collection or singleton read-only (`readOnlyParts`). A plugin item
+ * that it cannot read is left out, with a warning.
  */
 export function readManifest(raw: unknown, origin = "the manifest"): ReadManifest {
   if (!isProtocolManifest(raw)) {
@@ -88,6 +90,17 @@ export function readManifest(raw: unknown, origin = "the manifest"): ReadManifes
     else label = raw.label;
   }
 
+  // Left out, not refused: a plugin only advises, and a field kind that needs it is unknown, so read-only.
+  const plugins: Plugin[] = [];
+  if (raw.plugins !== undefined && !Array.isArray(raw.plugins)) warnings.push("The model's plugins are not a list. Mica loads no plugin.");
+  for (const [index, item] of (Array.isArray(raw.plugins) ? raw.plugins : []).entries()) {
+    const problem = pluginProblem(item);
+    const name = (item as Partial<Plugin> | null)?.name;
+    if (!problem && plugins.some((plugin) => plugin.name === name)) warnings.push(`Two plugins have the name "${name}". Mica uses the first.`);
+    else if (problem) warnings.push(`The plugin at position ${index + 1} ${problem}. Mica leaves it out.`);
+    else plugins.push(item);
+  }
+
   let site: Site;
   try {
     const references = raw.references !== null && typeof raw.references === "object" ? raw.references : undefined;
@@ -100,7 +113,14 @@ export function readManifest(raw: unknown, origin = "the manifest"): ReadManifes
             ...(raw.fallback === undefined ? {} : { fallback: raw.fallback }),
             ...(raw.prefixDefaultLocale === undefined ? {} : { prefixDefaultLocale: raw.prefixDefaultLocale }),
           };
-    site = defineSite({ ...(label !== undefined ? { label } : {}), ...locales, collections, singletons, ...(references ? { references } : {}) });
+    site = defineSite({
+      ...(label !== undefined ? { label } : {}),
+      ...locales,
+      collections,
+      singletons,
+      ...(references ? { references } : {}),
+      ...(plugins.length > 0 ? { plugins } : {}),
+    });
   } catch (error) {
     throw new ManifestError(`${origin} is not a valid content model.\n  ${(error as Error).message}`);
   }

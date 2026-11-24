@@ -442,6 +442,24 @@ export function parseEntry(fields: FieldMap, files: EntryFiles): Record<string, 
 // @public
 export type PathSegment = string | number;
 
+// @beta
+export interface Plugin {
+    name: string;
+    options?: Record<string, unknown>;
+    package: string;
+}
+
+// @beta
+export type PluginCapability = "issues" | "suggestions" | "mediaProvider" | "field";
+
+// @beta
+export interface PluginDeclaration {
+    env: string[];
+    hosts: string[];
+    name: string;
+    provides: PluginCapability[];
+}
+
 // @public
 export const PROTOCOL_VERSION = 1;
 
@@ -454,6 +472,8 @@ export interface ProtocolManifest {
     generatedBy: string;
     label?: string;
     locales?: string[];
+    // @beta
+    plugins?: Plugin[];
     prefixDefaultLocale?: boolean;
     // (undocumented)
     protocolVersion: number;
@@ -630,6 +650,8 @@ export interface Site<C extends Record<string, Collection> = Record<string, Coll
     fallback?: Record<string, string>;
     label?: string;
     locales?: string[];
+    // @beta
+    plugins?: Plugin[];
     prefixDefaultLocale?: boolean;
     references?: Record<string, ReferenceSet>;
     root?: string;
@@ -645,6 +667,8 @@ export interface SiteOptions {
     fallback?: Record<string, string>;
     label?: string;
     locales?: string[];
+    // @beta
+    plugins?: Plugin[];
     prefixDefaultLocale?: boolean;
     // (undocumented)
     references?: Record<string, ReferenceSet>;
