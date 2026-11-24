@@ -271,7 +271,7 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
     "list_media",
     {
       title: "List media",
-      description: "Every media file in the content: its path, which a media field stores, its type and its size.",
+      description: "Every media file in the content: its path, which a media field stores as `{ \"path\": … }`, its type and its size.",
       inputSchema: z.object({}),
       ...read,
     },
@@ -376,7 +376,7 @@ export function createMcpServer(ctx: RuntimeContext, options: McpOptions, caller
     {
       title: "Upload a file",
       description:
-        `Adds a file to the content, as a draft: an image, a PDF, or a GPX, KML, GeoJSON, ZIP or CSV file. The result's \`path\` is the value for a media field. ${options.localFiles ? "Give the file's path on this machine in `file`, or its bytes as base64 in `content`." : "Send its bytes as base64 in `content`."}`,
+        `Adds a file to the content, as a draft: an image, a PDF, or a GPX, KML, GeoJSON, ZIP or CSV file. A media field takes the result's \`path\` as \`{ "path": … }\`. ${options.localFiles ? "Give the file's path on this machine in `file`, or its bytes as base64 in `content`." : "Send its bytes as base64 in `content`."}`,
       // Without local files, `file` is not offered at all, and `uploadBody` refuses it.
       inputSchema: options.localFiles ? uploadInput : (uploadInput.omit({ file: true }) as unknown as typeof uploadInput),
       ...write,

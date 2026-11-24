@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Breaking: a `media({ accept: \"image\" })` field is `{ src, alt }` in each case, with `\"\"` for no alt text; before, a field without the `alt` option was the image itself. Another media field is `{ path, alt }`, not a path.",
+      "type": "minor",
+      "packageName": "@micacms/astro"
+    }
+  ],
+  "packageName": "@micacms/astro",
+  "email": "alexander@muedespacher.ch"
+}

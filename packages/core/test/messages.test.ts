@@ -72,7 +72,7 @@ describe("validation messages", () => {
       gallery: media({ label: "Gallery", multiple: true, max: 1 }),
       steps: repeater({ label: "Steps", min: 2, fields: { name: text() } }),
     };
-    assert.deepEqual(messages(fields, { gallery: ["a.png", "b.png"], steps: [{ name: "One" }] }), [
+    assert.deepEqual(messages(fields, { gallery: [{ path: "a.png" }, { path: "b.png" }], steps: [{ name: "One" }] }), [
       "Gallery allows at most 1 file.",
       "Steps needs at least 2 items.",
     ]);

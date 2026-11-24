@@ -27,7 +27,9 @@
       "de": "Unabhängige Beratung für wachsende Unternehmen. Projekte in Strategie, Betrieb und Technologie, mit Kunden in vielen Ländern.",
       "de-ch": null
     },
-    "defaultImage": "/media/studio.jpg"
+    "defaultImage": {
+      "path": "/media/studio.jpg"
+    }
   },
   "analytics": {
     "provider": "none",

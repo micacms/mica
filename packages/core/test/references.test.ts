@@ -49,8 +49,8 @@ describe("documentLinks", () => {
       author: "anna",
       reviewers: ["bob", ""],
       cover: { path: "news/hello/media/a.jpg", alt: null },
-      seo: { image: "media/og.png" },
-      sections: [{ contact: "carla", photos: ["news/hello/media/b.jpg"] }, { contact: null, photos: [] }],
+      seo: { image: { path: "media/og.png" } },
+      sections: [{ contact: "carla", photos: [{ path: "news/hello/media/b.jpg" }] }, { contact: null, photos: [] }],
     }, "news/hello");
 
     assert.deepEqual(found, [

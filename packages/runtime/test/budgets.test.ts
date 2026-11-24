@@ -101,7 +101,7 @@ before(() => {
   for (const name of Object.keys(site.collections)) {
     for (let index = 0; index < ENTRIES[name]!; index++) {
       const idValue = `${name}-${index}`;
-      write(`${name}/${idValue}/index.json`, JSON.stringify({ title: `${name} ${index}`, id: idValue, cover: "media/cover.png" }));
+      write(`${name}/${idValue}/index.json`, JSON.stringify({ title: `${name} ${index}`, id: idValue, cover: { path: "media/cover.png" } }));
       write(`${name}/${idValue}/body.mdoc`, `Text of ${name} ${index}.\n`);
       write(`${name}/${idValue}/media/cover.png`, png);
     }

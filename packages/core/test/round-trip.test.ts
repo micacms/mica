@@ -112,7 +112,7 @@ function valueOf(field: AnyField): fc.Arbitrary<unknown> {
       return maybe(fc.record({ lat: finite, lng: finite }, { noNullPrototype: true }));
     case "media":
       if (field.alt) return maybe(fc.record({ path, alt: maybe(plain) }, { noNullPrototype: true }));
-      return field.multiple ? fc.array(path, { maxLength: 3 }) : maybe(path);
+      return field.multiple ? fc.array(fc.record({ path }, { noNullPrototype: true }), { maxLength: 3 }) : maybe(fc.record({ path }, { noNullPrototype: true }));
     case "select":
     case "relation":
       return field.multiple ? fc.array(fc.constantFrom("a", "b"), { maxLength: 2 }) : maybe(fc.constantFrom("a", "b"));
@@ -183,7 +183,7 @@ describe("media paths (property)", () => {
   it("a path from the content root survives the trip to the file and back", () => {
     fc.assert(
       fc.property(base, fromRoot, fc.array(fromRoot, { maxLength: 3 }), fromRoot, (folder, cover, gallery, image) => {
-        const data = { cover, gallery, image: { path: image, alt: "Alt" } };
+        const data = { cover: { path: cover }, gallery: gallery.map((path) => ({ path })), image: { path: image, alt: "Alt" } };
         assert.deepStrictEqual(resolveMedia(fields, relativizeMedia(fields, data, folder), folder), data);
       }),
     );
@@ -192,11 +192,11 @@ describe("media paths (property)", () => {
   it("a file in the entry's folder is written next to the entry, and any other from the root", () => {
     fc.assert(
       fc.property(base, fromRoot, (folder, file) => {
-        const own = relativizeMedia(fields, { cover: `${folder}/${file}` }, folder);
-        assert.equal(own["cover"], file);
+        const own = relativizeMedia(fields, { cover: { path: `${folder}/${file}` } }, folder);
+        assert.deepEqual(own["cover"], { path: file });
         // Longer than any first segment of `base`, so it is never the entry's folder.
-        const shared = relativizeMedia(fields, { cover: `sharedfiles/${file}` }, folder);
-        assert.equal(shared["cover"], `/sharedfiles/${file}`);
+        const shared = relativizeMedia(fields, { cover: { path: `sharedfiles/${file}` } }, folder);
+        assert.deepEqual(shared["cover"], { path: `/sharedfiles/${file}` });
       }),
     );
   });

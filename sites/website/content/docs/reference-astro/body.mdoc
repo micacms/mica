@@ -55,9 +55,8 @@ See [Recipes](/docs/recipes/) for each one in use.
 
 | Field | Value in Astro |
 | --- | --- |
-| `media({ accept: "image" })` | An image (`ImageMetadata`), ready for `<Image src={...} />`. |
-| `media({ accept: "image", alt: "required" })` or `"optional"` | `{ src, alt }`, so `<Image {...entry.data.cover} />` is enough. A missing optional alt text is `""`. |
-| `media()` with another `accept` | The path of the file from the content root, as a string, or `{ path, alt }` with `alt`. Astro does not copy such a file. Read it with `mediaFile`, or copy it in an endpoint. |
+| `media({ accept: "image" })` | `{ src, alt }`, where `src` is an image (`ImageMetadata`), so `<Image {...entry.data.cover} />` is enough. Without alt text, `alt` is `""`. |
+| `media()` with another `accept` | `{ path, alt }`, with the path of the file from the content root. Without alt text, `alt` is `null`. Astro does not copy such a file. Read it with `mediaFile`, or copy it in an endpoint. |
 | `multiple: true` | A list of the values above. |
 
 ## Relations

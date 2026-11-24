@@ -1,4 +1,4 @@
-/** `media({ alt })`: the field stores `{ path, alt }`, and a plain `media()` keeps storing a path. */
+/** A media value is one object: `{ path, alt }` for a file in the content repository, `{ provider, id, … }` for a file at a provider. */
 
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
@@ -8,6 +8,7 @@ import { z } from "zod";
 import {
   collection,
   defineSite,
+  documentLinks,
   media,
   memorySource,
   readCollection,
@@ -17,7 +18,7 @@ import {
   text,
   validateFields,
   type InferFields,
-  type MediaWithAlt,
+  type MediaFileValue,
 } from "../src/internal.js";
 
 const fields = {
@@ -33,12 +34,22 @@ type Equal<A, B> = (<T>() => T extends A ? 1 : 2) extends <T>() => T extends B ?
 type Expect<T extends true> = T;
 type Inferred = InferFields<typeof fields>;
 /* eslint-disable @typescript-eslint/no-unused-vars */
-type _Required = Expect<Equal<Inferred["cover"], { path: string; alt: string } | null>>;
-type _Optional = Expect<Equal<Inferred["gallery"], MediaWithAlt[]>>;
-type _Plain = Expect<Equal<Inferred["file"], string | null>>;
+type _Required = Expect<Equal<Inferred["cover"], (MediaFileValue & { alt: string }) | null>>;
+type _Optional = Expect<Equal<Inferred["gallery"], MediaFileValue[]>>;
+type _Plain = Expect<Equal<Inferred["file"], MediaFileValue | null>>;
 /* eslint-enable @typescript-eslint/no-unused-vars */
 
-describe("media with alt text", () => {
+const external = {
+  provider: "acme-dam",
+  id: "a1b2",
+  alt: "The harbour",
+  url: "https://cdn.example/a1b2.jpg",
+  type: "image/jpeg",
+  width: 2400,
+  height: 1600,
+};
+
+describe("a media value", () => {
   it("accepts a path with alt text, and refuses a required one without it", () => {
     assert.equal(validateFields(fields, { cover: { path: "media/a.jpg", alt: "A house" } }).ok, true);
 
@@ -52,23 +63,61 @@ describe("media with alt text", () => {
     assert.deepEqual(draft.ok && draft.data["cover"], { path: "media/a.jpg", alt: null });
   });
 
-  it("reads a path saved before the field asked for alt text", () => {
-    const result = validateFields(fields, { gallery: ["media/a.jpg"] });
-    assert.deepEqual(result.ok && result.data["gallery"], [{ path: "media/a.jpg", alt: null }]);
+  it("is an object also in a field that asks for no alt text", () => {
+    const result = validateFields(fields, { file: { path: "media/a.pdf" } });
+    assert.deepEqual(result.ok && result.data["file"], { path: "media/a.pdf", alt: null });
   });
 
-  it("reads a stored { path, alt } as its path after the option is removed", () => {
-    const result = validateFields({ file: media() }, { file: { path: "media/a.pdf", alt: "Plan" } });
-    assert.equal(result.ok && result.data["file"], "media/a.pdf");
+  it("refuses a plain path, with the shape in the message", () => {
+    const result = validateFields(fields, { file: "media/a.pdf", gallery: ["media/a.jpg"] }, { enforceRequired: false });
+    assert.deepEqual(!result.ok && result.issues, [
+      { path: "gallery.0", message: 'gallery must be a file: { "path": "…" }.' },
+      { path: "file", message: 'file must be a file: { "path": "…" }.' },
+    ]);
   });
 
-  it("writes the path and the alt text in a fixed order", () => {
+  it("refuses a path that leaves the content root", () => {
+    const result = validateFields(fields, { file: { path: "../secret.pdf" } }, { enforceRequired: false });
+    assert.deepEqual(!result.ok && result.issues, [{ path: "file.path", message: "file must be a file inside the content root." }]);
+  });
+
+  it("keeps the properties, and drops a key that is not part of the value", () => {
+    const result = validateFields(fields, { file: { path: "media/a.pdf", properties: { pages: 4 }, other: 1 } }, { enforceRequired: false });
+    assert.deepEqual(result.ok && result.data["file"], { path: "media/a.pdf", alt: null, properties: { pages: 4 } });
+  });
+
+  it("refuses a file at a provider that Mica does not know, and names what it lacks", () => {
+    const unknown = { path: "cover.provider", message: 'cover: Mica does not know the media provider "acme-dam".' };
+    const result = validateFields(fields, { cover: external });
+    assert.deepEqual(!result.ok && result.issues, [unknown]);
+
+    const address = { path: "cover.url", message: "cover needs a web address that starts with http:// or https://." };
+    const { url: _url, ...withoutAddress } = external;
+    const missing = validateFields(fields, { cover: withoutAddress });
+    assert.deepEqual(!missing.ok && missing.issues, [unknown, address]);
+
+    const script = validateFields(fields, { cover: { ...external, url: "javascript:alert(1)" } });
+    assert.deepEqual(!script.ok && script.issues, [unknown, address]);
+  });
+
+  it("writes the keys in a fixed order, and the alt text only where it is asked for or present", () => {
     const { data } = serializeEntry(fields, {
       cover: { alt: "A house", path: "media/a.jpg" },
-      gallery: [{ alt: null, path: "media/b.jpg" }],
+      gallery: [{ properties: { credit: "Ada" }, alt: null, path: "media/b.jpg" }],
+      file: { alt: null, properties: {}, path: "media/plan.pdf" },
     });
-    assert.match(data, /"cover": \{\n {4}"path": "media\/a\.jpg",\n {4}"alt": "A house"\n {2}\}/);
-    assert.match(data, /"gallery": \[\n {4}\{\n {6}"path": "media\/b\.jpg",\n {6}"alt": null/);
+    const stored = JSON.parse(data) as Record<string, unknown>;
+    assert.equal(JSON.stringify(stored["cover"]), '{"path":"media/a.jpg","alt":"A house"}');
+    assert.equal(JSON.stringify(stored["gallery"]), '[{"path":"media/b.jpg","alt":null,"properties":{"credit":"Ada"}}]');
+    assert.equal(JSON.stringify(stored["file"]), '{"path":"media/plan.pdf"}');
+  });
+
+  it("writes a file at a provider in a fixed order", () => {
+    const { data } = serializeEntry(fields, { cover: { height: 1600, width: 2400, type: "image/jpeg", url: external.url, alt: null, id: "a1b2", provider: "acme-dam" } });
+    assert.equal(
+      JSON.stringify((JSON.parse(data) as Record<string, unknown>)["cover"]),
+      '{"provider":"acme-dam","id":"a1b2","alt":null,"url":"https://cdn.example/a1b2.jpg","type":"image/jpeg","width":2400,"height":1600}',
+    );
   });
 
   it("resolves only the path against the entry, and turns it back on save", async () => {
@@ -78,19 +127,27 @@ describe("media with alt text", () => {
         title: "Haus",
         id: "haus",
         cover: { path: "media/a.jpg", alt: "A house" },
-        gallery: [{ path: "/shared/b.jpg", alt: null }],
-        file: "media/plan.pdf",
+        gallery: [{ path: "/shared/b.jpg", alt: null }, external],
+        file: { path: "media/plan.pdf" },
       }),
     });
 
     const [entry] = await readCollection(source, site.collections["projects"]!, "projects");
     assert.deepEqual(entry!.data["cover"], { path: "projects/haus/media/a.jpg", alt: "A house" });
-    assert.deepEqual(entry!.data["gallery"], [{ path: "shared/b.jpg", alt: null }]);
-    assert.equal(entry!.data["file"], "projects/haus/media/plan.pdf");
+    assert.deepEqual(entry!.data["gallery"], [{ path: "shared/b.jpg", alt: null }, external]);
+    assert.deepEqual(entry!.data["file"], { path: "projects/haus/media/plan.pdf" });
 
     const back = relativizeMedia(fields, entry!.data, "projects/haus");
     assert.deepEqual(back["cover"], { path: "media/a.jpg", alt: "A house" });
-    assert.deepEqual(back["gallery"], [{ path: "/shared/b.jpg", alt: null }]);
+    assert.deepEqual(back["gallery"], [{ path: "/shared/b.jpg", alt: null }, external]);
+  });
+
+  it("counts a file in the content repository as a link, and a file at a provider as none", () => {
+    const links = documentLinks(fields, { cover: external, gallery: [{ path: "shared/b.jpg", alt: null }], file: { path: "x/plan.pdf" } }, "x");
+    assert.deepEqual(links, [
+      { kind: "media", field: "gallery.0", path: "shared/b.jpg" },
+      { kind: "media", field: "file", path: "x/plan.pdf" },
+    ]);
   });
 });
 
@@ -99,12 +156,12 @@ describe("an image that the site framework resolves", () => {
   const image = () => z.string().transform((path) => ({ resolved: path }));
   const images = { cover: media({ accept: "image", alt: "required" }), logo: media({ accept: "image" }), file: media() };
 
-  it("gives the image, and { src, alt } with alt text; other media stay paths", () => {
-    const result = validateFields(images, { cover: { path: "./media/a.jpg", alt: "A house" }, logo: "./logo.png", file: "media/a.pdf" }, { image });
+  it("gives { src, alt } for an image, with \"\" for no alt text; other media stay stored values", () => {
+    const result = validateFields(images, { cover: { path: "./media/a.jpg", alt: "A house" }, logo: { path: "./logo.png" }, file: { path: "media/a.pdf" } }, { image });
     assert.ok(result.ok);
     assert.deepEqual(result.data["cover"], { src: { resolved: "./media/a.jpg" }, alt: "A house" });
-    assert.deepEqual(result.data["logo"], { resolved: "./logo.png" });
-    assert.equal(result.data["file"], "media/a.pdf");
+    assert.deepEqual(result.data["logo"], { src: { resolved: "./logo.png" }, alt: "" });
+    assert.deepEqual(result.data["file"], { path: "media/a.pdf", alt: null });
   });
 
   it("still refuses a required image without alt text", () => {

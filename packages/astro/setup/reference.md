@@ -91,7 +91,7 @@ in the entry list), `readonly`, `hidden`, `group`, `width` (`"full"`, `"half"`,
 | `object()` | object | `fields` (required), `collapsible`, `collapsed` |
 | `repeater()` | array of objects | `fields` (required), `min`, `max`, `itemLabel`, `addLabel` |
 | `relation()` | the ID of an entry | `collection` (required), `multiple` |
-| `media()` | a file path, or `{ path, alt }` with `alt` | `accept: "image" \| "document" \| "any"`, `multiple`, `max`, `alt: "required" \| "optional"` |
+| `media()` | `{ path }`, or `{ path, alt }` with `alt` | `accept: "image" \| "document" \| "any"`, `multiple`, `max`, `alt: "required" \| "optional"` |
 | `color()` | `"#rrggbb"` | `presets`, `default` |
 | `coordinates()` | `{ "lat": 47.37, "lng": 8.54 }` | `map`: a map in the editor to pick the place. `"liberty"`, `"bright"` or `"positron"` (OpenFreeMap styles), or `{ style, hosts }` with `https` addresses. Without `map`, there is no map |
 | `tags()` | `["design", "web"]` | `max`, `maxLength`, `suggestions`, `default` |
@@ -171,7 +171,7 @@ export async function writeOrder(collection, ids) {
 }
 
 // Example: `data` has every field, rich text as a Markdoc string, and media as
-// `media/<file>`, or `{ path, alt }` for a `media({ alt })` field.
+// `{ path: "media/<file>" }`, or `{ path, alt }` for a `media({ alt })` field.
 // await writeEntry("news", "hello-world", {
 //   title: "Hello, world",
 //   id: "hello-world",
@@ -288,8 +288,8 @@ export const site = defineSite({
 ### Images
 
 A `media({ accept: "image" })` field reaches Astro as an image that Astro
-optimizes, the same as `image()` in an Astro collection: `ImageMetadata`. With
-`alt`, it is `{ src, alt }`. No helper is needed:
+optimizes, the same as `image()` in an Astro collection. The value is
+`{ src, alt }`, where `src` is `ImageMetadata`. No helper is needed:
 
 ```astro
 ---
@@ -299,15 +299,16 @@ const { cover } = article.data; // media({ accept: "image", alt: "required" })
 {cover && <Image {...cover} />}
 ```
 
-- Without `alt`, the field is the image itself: `<Image src={logo} alt="" />`.
+- Without the `alt` option, `alt` is `""`: `<Image {...logo} />`, or
+  `<Image src={logo.src} alt={companyName} />`.
 - A `media({ accept: "image", multiple: true })` field is an array of them.
-- On disk, the field still holds `media/cover.jpg`, or `{ path, alt }`.
+- On disk, the field holds `{ "path": "media/cover.jpg" }`, or `{ path, alt }`.
 - An image in rich text (`![Alt](media/plan.png)`, from the entry's folder, or
   `/media/logo.png` from the content root) gets its file from the entry's data:
   `await renderRichText(entry.data.body, entry.data)`. Astro optimizes it.
   The site needs Astro's image service, `sharp`, as for `<Image>`.
-- A `media()` without `accept: "image"`, for example a PDF, is a path from the
-  content root: `news/hello-world/media/plan.pdf`. To link to it, use
+- A `media()` without `accept: "image"`, for example a PDF, is `{ path, alt }`
+  with a path from the content root: `news/hello-world/media/plan.pdf`. To link to it, use
   `import.meta.glob("../../content/**/*.pdf", { query: "?url", import: "default", eager: true })`.
 
 ### What Markdoc renders differently from Astro's Markdown

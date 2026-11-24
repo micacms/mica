@@ -58,7 +58,7 @@ const SECTION_LAYOUTS: Record<string, string> = {
 <BaseLayout
   title={seo?.metaTitle ?? title}
   description={seo?.metaDescription ?? intro ?? toPlainText(body)}
-  image={seo?.ogImage ?? heroImage?.src}
+  image={seo?.ogImage?.src ?? heroImage?.src}
   noindex={seo?.noindex ?? false}
 >
   {

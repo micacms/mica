@@ -1,5 +1,7 @@
 {
   "name": "Example",
   "live": true,
-  "logo": "/media/logo.png"
+  "logo": {
+    "path": "/media/logo.png"
+  }
 }

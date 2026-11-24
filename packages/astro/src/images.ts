@@ -1,7 +1,7 @@
 /**
  * Image fields reach Astro through its own `image()`, which resolves a path
  * against the entry's file, optimizes the image and gives `ImageMetadata`. A
- * site then needs no helper: `<Image {...entry.data.cover} />`.
+ * site then needs no helper: `<Image {...entry.data.cover} />`, which is `{ src, alt }`.
  */
 
 import { posix } from "node:path";
@@ -25,8 +25,9 @@ export function imagePathsFromEntry(
     const result = posix.relative(from, path);
     return result.startsWith(".") ? result : `./${result}`;
   };
+  // A file at a provider has no path.
   const one = (value: unknown): unknown =>
-    isRecord(value) ? { ...value, path: relative(value["path"]) } : relative(value);
+    isRecord(value) && "path" in value ? { ...value, path: relative(value["path"]) } : value;
 
   return mapFields(fields, data, (field, value) => {
     if (field.kind !== "media" || field.accept !== "image") return value;

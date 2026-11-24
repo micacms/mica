@@ -39,8 +39,8 @@ const pageTitle = title
 const metaDescription =
   description ?? settings.seo?.defaultDescription ?? settings.tagline ?? "";
 
-const socialImage = await toStaticUrl(image ?? settings.seo?.defaultImage, Astro.site);
-const favicon = await toStaticUrl(settings.logo, Astro.site, { maxWidth: 64 });
+const socialImage = await toStaticUrl(image ?? settings.seo?.defaultImage?.src, Astro.site);
+const favicon = await toStaticUrl(settings.logo?.src, Astro.site, { maxWidth: 64 });
 const canonical = new URL(Astro.url.pathname, Astro.site ?? Astro.url).href;
 // This page in each locale, for search engines. The default locale is also the one for all other languages.
 const page = withoutLocale(Astro.url.pathname, locale);

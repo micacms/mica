@@ -358,8 +358,8 @@ describe("defineSite", () => {
 describe("media paths (#213, N15)", () => {
   it("must stay inside the content root", () => {
     const fields = { cover: media() };
-    assert.equal(validateFields(fields, { cover: "news/a/media/x.jpg" }).ok, true);
-    const outside = validateFields(fields, { cover: "../../etc/passwd" });
+    assert.equal(validateFields(fields, { cover: { path: "news/a/media/x.jpg" } }).ok, true);
+    const outside = validateFields(fields, { cover: { path: "../../etc/passwd" } });
     assert.equal(outside.ok, false);
     assert.match(outside.ok ? "" : outside.issues[0]!.message, /inside the content root/);
   });

@@ -113,7 +113,7 @@ describe("compareRows", () => {
     assert.equal(displayValue(fields["published"]!, true), "Yes");
     assert.equal(displayValue(fields["published"]!, false), "No");
     assert.equal(displayValue(fields["category"]!, "news"), "News");
-    assert.equal(displayValue(fields["hero"]!, "media/team-photo.jpg"), "team-photo.jpg");
+    assert.equal(displayValue(fields["hero"]!, { path: "media/team-photo.jpg" }), "team-photo.jpg");
     assert.equal(
       displayValue(media({ alt: "optional", multiple: true }), [{ path: "media/a.jpg", alt: "A house" }, { path: "media/b.jpg", alt: null }]),
       'a.jpg ("A house"), b.jpg',

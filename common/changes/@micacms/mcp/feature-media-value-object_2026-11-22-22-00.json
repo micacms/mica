@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "`describe_model` describes a media value as an object: `{ path }`, or `{ path, alt }`.",
+      "type": "patch",
+      "packageName": "@micacms/mcp"
+    }
+  ],
+  "packageName": "@micacms/mcp",
+  "email": "alexander@muedespacher.ch"
+}

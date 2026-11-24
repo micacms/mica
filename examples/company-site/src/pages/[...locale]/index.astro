@@ -33,7 +33,7 @@ const news = (await getNews(locale)).slice(0, 3);
 const upcomingEvents = (await getEvents(locale)).upcoming.slice(0, 3);
 
 // The default sharing image is the company's own picture, so it doubles as the homepage image.
-const heroImage = settings.seo?.defaultImage ?? null;
+const heroImage = settings.seo?.defaultImage?.src ?? null;
 ---
 
 <BaseLayout>

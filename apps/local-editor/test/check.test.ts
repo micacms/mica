@@ -64,7 +64,7 @@ beforeEach(() => {
   root = mkdtempSync(path.join(tmpdir(), "mica-check-"));
   write(MANIFEST_PATH, createManifest(site, "test"));
   write("team/anna/index.json", { name: "Anna", id: "anna" });
-  write("news/hello/index.json", { title: "Hello", id: "hello", author: "anna", cover: "media/cover.jpg" });
+  write("news/hello/index.json", { title: "Hello", id: "hello", author: "anna", cover: { path: "media/cover.jpg" } });
   write("news/hello/media/cover.jpg", "jpeg");
   write("news/hello/body.mdoc", "Hello, **world**.\n");
   write("settings/index.json", { siteName: "Example" });
@@ -123,11 +123,17 @@ describe("mica check", () => {
   });
 
   it("reports invalid fields, missing media and dangling relations", async () => {
-    write("news/hello/index.json", { id: "hello", author: "nobody", cover: "media/gone.jpg" });
+    write("news/hello/index.json", { id: "hello", author: "nobody", cover: { path: "media/gone.jpg" } });
     const errors = problems(await checkContent(root), "error");
     assert.ok(errors.some((line) => line.startsWith("news/hello/index.json: title")), errors.join("\n"));
     assert.ok(errors.some((line) => line.includes('there is no "nobody" in "team"')), errors.join("\n"));
     assert.ok(errors.some((line) => line.includes('"news/hello/media/gone.jpg" does not exist')), errors.join("\n"));
+  });
+
+  it("reports a media value that is a plain path, with the shape that it needs", async () => {
+    write("news/hello/index.json", { title: "Hello", id: "hello", author: "anna", cover: "media/cover.jpg" });
+    const errors = problems(await checkContent(root), "error");
+    assert.ok(errors.some((line) => line.includes('must be a file: { "path": "…" }')), errors.join("\n"));
   });
 
   it("checks a relation to a reference set against its index, and names a missing index (#280)", async () => {

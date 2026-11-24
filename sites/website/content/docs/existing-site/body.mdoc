@@ -79,7 +79,7 @@ The command lists each key that it did not import, each Astro id that gives the 
 
 - Replace `<Content />` from `render(entry)` with the HTML of `await renderRichText(entry.data.body, entry.data)`. The second argument gives the images of the entry, and Astro makes them smaller.
 - Format and sort dates from the text `"2026-01-15"`.
-- Read an image with alt text as `{ src, alt }`: `<Image {...entry.data.cover} />`.
+- Read an image as `{ src, alt }`: `<Image {...entry.data.cover} />`.
 - Sort a sortable collection with `.sort(inEditorOrder)` from `@micacms/astro`.
 
 Run `npx mica check` and `npx astro build`, and compare `dist` with `../dist-before`. Visitors should see no difference, except what you decided to change.

@@ -58,6 +58,7 @@ const site = defineSite({
         seo: object({ fields: { title: text() } }),
         author: relation({ collection: "team" }),
         cover: media({ accept: "image", alt: "required" }),
+        thumbnail: media({ accept: "image" }),
         topics: tags(),
         body: richText(),
       },
@@ -107,7 +108,7 @@ describe("mica import", () => {
       blog: [
         {
           id: "2026/second-post",
-          data: { title: "Second", published: new Date("2026-02-01T00:00:00Z"), author: { collection: "team", id: "anna" }, image: "__ASTRO_IMAGE_./photo.jpg", imageAlt: "A photo", order: 2, topics: ["astro", " web ", "Astro"] },
+          data: { title: "Second", published: new Date("2026-02-01T00:00:00Z"), author: { collection: "team", id: "anna" }, image: "__ASTRO_IMAGE_./photo.jpg", imageAlt: "A photo", thumb: "__ASTRO_IMAGE_./photo.jpg", order: 2, topics: ["astro", " web ", "Astro"] },
           body: "# Second\n\nText.\n",
           filePath: "src/content/blog/second.md",
         },
@@ -120,7 +121,7 @@ describe("mica import", () => {
       root,
       project,
       store: from,
-      map: { "blog.cover": "image", "blog.cover.alt": "imageAlt" },
+      map: { "blog.cover": "image", "blog.cover.alt": "imageAlt", "blog.thumbnail": "thumb" },
       order: { blog: "order" },
     });
 
@@ -135,6 +136,7 @@ describe("mica import", () => {
       seo: { title: null },
       author: "anna",
       cover: { path: "media/photo.jpg", alt: "A photo" },
+      thumbnail: { path: "media/photo-2.jpg" },
       topics: ["astro", "web"],
     });
     assert.deepEqual(JSON.parse(readFileSync(path.join(root, "blog/first/index.json"), "utf8")).topics, ["news", "mica"]);

@@ -22,17 +22,17 @@ describe("imagePathsFromEntry", () => {
       {
         title: "Haus",
         cover: { path: "projects/haus/media/a.jpg", alt: "A house" },
-        gallery: ["projects/haus/media/b.jpg", "shared/c.jpg"],
-        file: "projects/haus/media/plan.pdf",
-        seo: { image: "projects/haus/media/og.png" },
+        gallery: [{ path: "projects/haus/media/b.jpg" }, { path: "shared/c.jpg" }],
+        file: { path: "projects/haus/media/plan.pdf" },
+        seo: { image: { path: "projects/haus/media/og.png" } },
       },
       "projects/haus/index.json",
     );
 
     assert.deepEqual(data["cover"], { path: "./media/a.jpg", alt: "A house" });
-    assert.deepEqual(data["gallery"], ["./media/b.jpg", "../../shared/c.jpg"]);
-    assert.equal(data["file"], "projects/haus/media/plan.pdf");
-    assert.deepEqual(data["seo"], { image: "./media/og.png" });
+    assert.deepEqual(data["gallery"], [{ path: "./media/b.jpg" }, { path: "../../shared/c.jpg" }]);
+    assert.deepEqual(data["file"], { path: "projects/haus/media/plan.pdf" });
+    assert.deepEqual(data["seo"], { image: { path: "./media/og.png" } });
   });
 
   it("leaves empty values as they are", () => {
@@ -45,6 +45,6 @@ describe("imagePathsFromEntry", () => {
 describe("an image path out of the content root (#213, N15)", () => {
   it("never reaches Astro's image()", () => {
     const fields = { cover: media({ accept: "image" }) };
-    assert.throws(() => imagePathsFromEntry(fields, { cover: "../../etc/x.png" }, "news/a/index.json"), /relative segment/);
+    assert.throws(() => imagePathsFromEntry(fields, { cover: { path: "../../etc/x.png" } }, "news/a/index.json"), /relative segment/);
   });
 });

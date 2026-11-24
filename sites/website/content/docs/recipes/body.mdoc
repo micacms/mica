@@ -107,14 +107,14 @@ From `src/pages/events/[id].astro` of the example. Add `maplibre-gl` to the depe
 
 ## Read a file at build time
 
-An image reaches Astro as an image. Another file, such as a GPX track, reaches Astro as a path from the content root. `mediaFile` gives the file on disk:
+An image reaches Astro as an image. Another file, such as a GPX track, reaches Astro as `{ path, alt }`, with a path from the content root. `mediaFile` gives the file on disk:
 
 ```ts
 import { readFile } from "node:fs/promises";
 import { mediaFile } from "@micacms/astro";
 import { site } from "./mica";
 
-const track = await readFile(mediaFile(site, entry.data.track), "utf8");
+const track = await readFile(mediaFile(site, entry.data.track.path), "utf8");
 ```
 
 The example copies the downloads of its projects into the built site in `src/pages/files/[...path].ts`.

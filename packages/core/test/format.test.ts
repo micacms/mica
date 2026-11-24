@@ -106,7 +106,7 @@ const payload = {
     { _key: "kbrief", heading: "Brief", body: "The brief was..." },
     { _key: "kresult", heading: "Result", body: null },
   ],
-  cover: "media/exterior.jpg",
+  cover: { path: "media/exterior.jpg" },
 };
 
 describe("serializeEntry", () => {
@@ -137,7 +137,7 @@ describe("serializeEntry", () => {
   });
 
   it("orders keys by the model, not by the payload", () => {
-    const shuffled = { cover: "media/a.jpg", year: 2024, title: "A", id: "a" };
+    const shuffled = { cover: { path: "media/a.jpg" }, year: 2024, title: "A", id: "a" };
     const { data } = serializeEntry(fields, shuffled);
 
     assert.deepEqual(Object.keys(JSON.parse(data) as object), [

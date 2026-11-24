@@ -24,6 +24,7 @@ import {
   defaultValues,
   type InferCollection,
   type InferSingleton,
+  type MediaFileValue,
 } from "../src/internal.js";
 
 /** Compiles only when `A` and `B` are the same type. */
@@ -57,8 +58,8 @@ describe("inferred entry types", () => {
     expectType<Equal<Project["id"], string>>();
     expectType<Equal<Project["year"], number | null>>();
     expectType<Equal<Project["featured"], boolean>>();
-    expectType<Equal<Project["cover"], { path: string; alt: string } | null>>();
-    expectType<Equal<Project["gallery"], string[]>>();
+    expectType<Equal<Project["cover"], (MediaFileValue & { alt: string }) | null>>();
+    expectType<Equal<Project["gallery"], MediaFileValue[]>>();
     expectType<Equal<Project["lead"], string | null>>();
     expectType<Equal<Project["meta"], { note: string | null; idDe: string | null }>>();
     expectType<Equal<Project["steps"], Array<{ label: string }>>>();

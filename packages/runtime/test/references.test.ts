@@ -28,7 +28,7 @@ const model = defineSite({
 
 const files = {
   "team/anna/index.json": JSON.stringify({ name: "Anna", id: "anna" }),
-  "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", author: "anna", cover: "/media/logo.png", sections: [] }),
+  "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", author: "anna", cover: { path: "/media/logo.png" }, sections: [] }),
   "media/logo.png": "png",
 };
 
@@ -46,7 +46,7 @@ describe("references at Publish", () => {
       ...files,
       "team/ben/index.json": JSON.stringify({ name: "Ben", id: "ben" }),
       "media/new.png": "png",
-      "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", author: "ben", cover: "/media/new.png", sections: [{ contact: "anna" }] }),
+      "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", author: "ben", cover: { path: "/media/new.png" }, sections: [{ contact: "anna" }] }),
     });
     const result = await analyseChanges(model, source, [
       update("news/hello/index.json"),
@@ -75,7 +75,7 @@ describe("references at Publish", () => {
     const source = memorySource({
       ...rest,
       "team/anna-meier/index.json": JSON.stringify({ name: "Anna", id: "anna-meier" }),
-      "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", author: "anna-meier", cover: "/media/logo.png", sections: [] }),
+      "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", author: "anna-meier", cover: { path: "/media/logo.png" }, sections: [] }),
     });
     const result = await analyseChanges(
       model,
@@ -118,7 +118,7 @@ describe("references at Publish", () => {
         title: "Hello",
         id: "hello",
         author: "nobody",
-        cover: "media/gone.jpg",
+        cover: { path: "media/gone.jpg" },
         sections: [{ contact: "carla" }],
       }),
     });
@@ -176,7 +176,7 @@ describe("references at Publish", () => {
   it("refuses to delete an entry whose media another entry still shows (#224)", async () => {
     const source = memorySource({
       "team/anna/index.json": JSON.stringify({ name: "Anna", id: "anna" }),
-      "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", cover: "/team/gone/media/photo.jpg", sections: [] }),
+      "news/hello/index.json": JSON.stringify({ title: "Hello", id: "hello", cover: { path: "/team/gone/media/photo.jpg" }, sections: [] }),
     });
     const result = await analyseChanges(model, source, [remove("team/gone/index.json"), remove("team/gone/media/photo.jpg")]);
     assert.deepEqual(messages(result), [

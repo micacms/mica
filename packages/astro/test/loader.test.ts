@@ -53,7 +53,7 @@ const files: Record<string, string> = {
     title: "Haus A",
     id: "haus-a",
     year: 2024,
-    cover: "media/exterior.jpg",
+    cover: { path: "media/exterior.jpg" },
   }),
   "projects/haus-a/description.mdoc": "# Haus A\n\nA housing project.\n",
   "projects/haus-b/index.json": JSON.stringify({
@@ -244,7 +244,7 @@ describe("collections", () => {
     const context = createContext(collections.projects.schema);
     await collections.projects.loader.load(context);
 
-    assert.equal(context.entries.get("haus-a")?.cover, "projects/haus-a/media/exterior.jpg");
+    assert.deepEqual(context.entries.get("haus-a")?.cover, { path: "projects/haus-a/media/exterior.jpg", alt: null });
   });
 
   it("treats a leading slash as a path from the content root", async () => {
@@ -252,13 +252,13 @@ describe("collections", () => {
       "projects/haus-a/index.json": JSON.stringify({
         title: "Haus A",
         id: "haus-a",
-        cover: "/shared/logo.svg",
+        cover: { path: "/shared/logo.svg" },
       }),
     });
     const context = createContext(collections.projects.schema);
     await collections.projects.loader.load(context);
 
-    assert.equal(context.entries.get("haus-a")?.cover, "shared/logo.svg");
+    assert.deepEqual(context.entries.get("haus-a")?.cover, { path: "shared/logo.svg", alt: null });
   });
 
   it("attaches entry metadata under _mica", async () => {

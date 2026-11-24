@@ -13,7 +13,7 @@ describe("previewValue", () => {
     assert.equal(previewValue("l", size), "Large");
     assert.equal(previewValue(["s", "l"], select({ multiple: true, options: size.options })), "Small, Large");
     assert.equal(previewValue("## Hello\n\nSee **the** [map](https://example.com).", richText()), "Hello See the map.");
-    assert.equal(previewValue("projects/a/media/front.jpg", media()), "front.jpg");
+    assert.equal(previewValue({ path: "projects/a/media/front.jpg" }, media()), "front.jpg");
     assert.equal(previewValue({ path: "media/x.png", alt: "X" }, media({ alt: "optional" })), "x.png");
     assert.equal(previewValue({ lat: 47.37691, lng: 8.54169 }, coordinates()), "47.3769, 8.5417");
   });

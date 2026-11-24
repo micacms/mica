@@ -141,7 +141,7 @@ const addressLines = [location?.address, [location?.city, location?.country].fil
             <div>
               <h2 class="eyebrow text-muted">{texts.downloads}</h2>
               <ul class="mt-3 space-y-2 text-sm">
-                {downloads.map((path) => (
+                {downloads.map(({ path }) => (
                   <li>
                     <a href={`/files/${path}`} download class="font-medium underline underline-offset-4 hover:text-primary">
                       {path.split("/").at(-1)}

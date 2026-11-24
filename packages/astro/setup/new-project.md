@@ -21,8 +21,8 @@ Ask these questions, and wait for the answers:
    carries meaning gets `media({ accept: "image", alt: "required" })`, so that
    editors write its alt text. A decorative image gets
    `media({ accept: "image" })`. `accept: "image"` makes the field an Astro
-   image on the pages; without it, the field is a path, for a PDF or another
-   file.
+   image on the pages, `{ src, alt }`; without it, the field is `{ path, alt }`,
+   for a PDF or another file.
 6. Do they want example content, so that the pages show something at once?
 
 Then show one proposal, and wait for a short approval or correction before

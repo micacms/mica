@@ -243,7 +243,7 @@ export interface MediaField extends BaseField {
   accept?: MediaAccept;
   /** The most files, with `multiple`. */
   max?: number;
-  /** Stores `{ path, alt }` and asks for alt text. `"required"` refuses an empty one. */
+  /** Asks for alt text. `"required"` refuses an empty one. */
   alt?: "required" | "optional";
 }
 
@@ -253,11 +253,32 @@ export type MediaFileType = "image" | "pdf" | "gpx" | "kml" | "geojson" | "zip" 
 /** What a `media()` field accepts: a group, or a list of types. */
 export type MediaAccept = "image" | "document" | "any" | MediaFileType[];
 
-/** What a `media({ alt })` field stores for one file. */
-export interface MediaWithAlt {
+/** A file in the content repository, as validation gives it. A stored value can leave out `alt`: it is then `null`. */
+export interface MediaFileValue {
+  /** The path of the file: from the entry's folder, or from the content root with a leading slash. */
   path: string;
   alt: string | null;
+  /** Data of the site. Mica keeps it and does not read it. */
+  properties?: Record<string, unknown>;
 }
+
+/** A file at a media provider, with a copy of what the website needs to show it. */
+export interface ExternalMediaValue {
+  provider: string;
+  /** The file's ID at the provider. */
+  id: string;
+  alt: string | null;
+  url: string;
+  /** The MIME type, such as `image/jpeg`. */
+  type: string;
+  width?: number;
+  height?: number;
+  /** Data of the provider or of the site. Mica keeps it and does not read it. */
+  properties?: Record<string, unknown>;
+}
+
+/** What a `media()` field stores for one file. */
+export type MediaValue = MediaFileValue | ExternalMediaValue;
 
 export interface ColorField extends BaseField {
   kind: "color";
@@ -470,20 +491,18 @@ type Multiple<F, T> = F extends { multiple: true } ? T[] : T;
 
 // prettier-ignore
 type StoredMedia<F> =
-  F extends { alt: "required" } ? { path: string; alt: string } :
-  F extends { alt: "optional" } ? MediaWithAlt :
-  string;
+  F extends { alt: "required" } ? MediaFileValue & { alt: string } :
+  MediaFileValue;
 
 /**
  * `Img` is the type of an image that a site framework resolves, such as Astro's
- * `ImageMetadata`. With it, `media({ accept: "image" })` is that image, and
- * with `alt`, `{ src, alt }`. Without it (`never`), every media value is stored.
+ * `ImageMetadata`. With it, `media({ accept: "image" })` is `{ src, alt }`, with
+ * "" for no alt text. Without it (`never`), every media value is stored.
  */
 // prettier-ignore
-type MediaValue<F, Img> =
+type MediaOf<F, Img> =
   [Img] extends [never] ? StoredMedia<F> :
-  F extends { accept: "image"; alt: "required" | "optional" } ? { src: Img; alt: string } :
-  F extends { accept: "image" } ? Img :
+  F extends { accept: "image" } ? { src: Img; alt: string } :
   StoredMedia<F>;
 
 /** The runtime value of a field, ignoring nullability. */
@@ -502,8 +521,8 @@ export type FieldValue<F extends AnyField, Img = never> =
   F extends ColorField ? string :
   F extends CoordinatesField ? Coordinates :
   F extends TagsField ? string[] :
-  // A path into the content repository; with the `alt` option, the path and its alt text.
-  F extends MediaField ? Multiple<F, MediaValue<F, Img>> :
+  // A file in the content repository, with its alt text.
+  F extends MediaField ? Multiple<F, MediaOf<F, Img>> :
   F extends RelationField ? Multiple<F, string> :
   F extends ObjectField ? InferFields<F["fields"], Img> :
   F extends RepeaterField ? Array<InferFields<F["fields"], Img>> :
