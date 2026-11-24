@@ -106,7 +106,7 @@ describe("saving an entry", () => {
         year: 2024,
         description: "Body text.",
         // Root-relative, as `get` and an upload return it.
-        cover: "projects/haus-a/media/photo.jpg",
+        cover: { path: "projects/haus-a/media/photo.jpg" },
       },
     });
 
@@ -114,21 +114,21 @@ describe("saving an entry", () => {
     assert.equal(entry?.data.title, "Haus A");
     assert.equal(entry?.data.year, 2024);
     assert.equal(entry?.data.description, "Body text.");
-    assert.equal(entry?.data.cover, "projects/haus-a/media/photo.jpg");
+    assert.deepEqual(entry?.data.cover, { path: "projects/haus-a/media/photo.jpg" });
   });
 
   it("stores a colocated media path relative to the entry", async () => {
     await store.save("projects", {
-      data: { title: "Haus A", year: 2024, cover: "projects/haus-a/media/photo.jpg" },
+      data: { title: "Haus A", year: 2024, cover: { path: "projects/haus-a/media/photo.jpg" } },
     });
 
     const onDisk = JSON.parse(await read("projects/haus-a/index.json"));
-    assert.equal(onDisk.cover, "media/photo.jpg");
+    assert.deepEqual(onDisk.cover, { path: "media/photo.jpg" });
   });
 
   it("does not accumulate the entry directory over repeated saves", async () => {
     await store.save("projects", {
-      data: { title: "Haus A", year: 2024, cover: "projects/haus-a/media/photo.jpg" },
+      data: { title: "Haus A", year: 2024, cover: { path: "projects/haus-a/media/photo.jpg" } },
     });
 
     // Saving what `get` returned must not bury the media path one directory deeper each time.
@@ -138,7 +138,7 @@ describe("saving an entry", () => {
     }
 
     const entry = await store.get("projects", "haus-a");
-    assert.equal(entry?.data.cover, "projects/haus-a/media/photo.jpg");
+    assert.deepEqual(entry?.data.cover, { path: "projects/haus-a/media/photo.jpg" });
   });
 
   it("stores a media value with alt text relative to the entry, and reads it back", async () => {
@@ -163,11 +163,11 @@ describe("saving an entry", () => {
 
   it("keeps a media path from outside the entry pointing where it did", async () => {
     await store.save("projects", {
-      data: { title: "Haus A", year: 2024, cover: "media/shared-logo.svg" },
+      data: { title: "Haus A", year: 2024, cover: { path: "media/shared-logo.svg" } },
     });
 
     const entry = await store.get("projects", "haus-a");
-    assert.equal(entry?.data.cover, "media/shared-logo.svg");
+    assert.deepEqual(entry?.data.cover, { path: "media/shared-logo.svg" });
   });
 
   it("refuses a payload the model rejects, and names the fields", async () => {
@@ -223,7 +223,7 @@ describe("renaming an entry", () => {
         title: "Haus B",
         id: "haus-b",
         description: "Body.",
-        cover: "projects/haus-a/media/photo.jpg",
+        cover: { path: "projects/haus-a/media/photo.jpg" },
       },
       expectedRevision: revision,
     });
@@ -233,7 +233,7 @@ describe("renaming an entry", () => {
     assert.deepEqual(await files("projects"), ["haus-b"]);
     assert.equal(await read("projects/haus-b/media/photo.jpg"), "bytes");
     // The reference follows the file instead of naming the deleted directory.
-    assert.equal(JSON.parse(await read("projects/haus-b/index.json")).cover, "media/photo.jpg");
+    assert.deepEqual(JSON.parse(await read("projects/haus-b/index.json")).cover, { path: "media/photo.jpg" });
     assert.equal(await read("projects/haus-b/description.mdoc"), "Body.\n");
   });
 });
@@ -295,7 +295,7 @@ describe("concurrency", () => {
 
     await store.save("projects", {
       id: "haus-a",
-      data: { title: "Haus A", id: "haus-b", cover: "projects/haus-a/media/photo.jpg" },
+      data: { title: "Haus A", id: "haus-b", cover: { path: "projects/haus-a/media/photo.jpg" } },
       expectedRevision: opened,
     });
     assert.equal(await read("projects/haus-b/media/photo.jpg"), "bytes");

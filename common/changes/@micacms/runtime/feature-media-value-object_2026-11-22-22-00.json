@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Tests use the media value object.",
+      "type": "none",
+      "packageName": "@micacms/runtime"
+    }
+  ],
+  "packageName": "@micacms/runtime",
+  "email": "alexander@muedespacher.ch"
+}

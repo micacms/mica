@@ -150,9 +150,9 @@ export function displayValue(field: AnyField, value: unknown): string {
     if (values.length === 0) return "Empty";
     return values
       .map((entry) => {
-        // `media({ alt })` stores `{ path, alt }`.
-        const { path, alt } = typeof entry === "string" ? { path: entry, alt: null } : (asRecord(entry) ?? {});
-        const name = String(path).split("/").at(-1) ?? String(path);
+        // A media value is `{ path, alt }`, or `{ provider, id, … }` for a file at a provider.
+        const { path, alt, id } = asRecord(entry) ?? {};
+        const name = typeof path === "string" ? (path.split("/").at(-1) ?? path) : String(id ?? "");
         return typeof alt === "string" && alt ? `${name} ("${alt}")` : name;
       })
       .join(", ");

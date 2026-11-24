@@ -66,8 +66,8 @@ code. Map the fields with the table in step 4. Use this form:
    write it right under the photo, and Mica does not save a photo without it.
    In `TeamSection.astro`, two lines read the photo and its alt text in the
    new place. Visitors see no difference.
-   Recommended. Other option: keep the alt text as its own field; then this
-   file does not change.
+   Recommended. Other option: keep the alt text as its own field; then one
+   line changes, which reads the photo in the new place.
 2. …
 
 ## What cannot move as it is
@@ -93,7 +93,8 @@ here may change later. The usual items:
   `--map <collection>.<image>.alt=<field>`). Editors see it under the image,
   and Mica requires it. The page then reads `entry.data.<image>.src` and
   `.alt`, or `<Image {...entry.data.<image>} />`. Other option: keep the
-  separate field, with no page change.
+  separate field. The page then changes only where it reads the image:
+  `entry.data.<image>.src`.
 - **Dates.** A date becomes text such as `2026-01-15`. Each page that formats
   or sorts it changes (step 7). Visitors see the same date.
 - **Bodies.** The Markdown body becomes Markdoc: `<Content />` is replaced
@@ -232,8 +233,8 @@ components, stylesheets and endpoints such as `rss.xml.js`. See
     strings gives `NaN`, and the list is then not sorted, with no error.
   - Where an API needs a `Date`, such as the RSS `pubDate`, pass
     `new Date(entry.data.pubDate)`.
-- An `image()` field is still `ImageMetadata` with `media({ accept: "image" })`,
-  so its pages do not change. With `alt`, the value is `{ src, alt }`: use
+- An `image()` field was `ImageMetadata`. With `media({ accept: "image" })`,
+  the value is `{ src, alt }`, where `src` is that `ImageMetadata`: use
   `entry.data.cover.src` where the page used `entry.data.cover`, and
   `entry.data.cover.alt` in place of the old alt-text field, or spread it:
   `<Image {...entry.data.cover} />`. See

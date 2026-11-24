@@ -73,10 +73,10 @@ hands a loader exactly what they require:
   one entry produces (`debounceMs`, 100 ms by default).
 
 Image fields reach Astro as Astro images: a `media({ accept: "image" })` field
-is `ImageMetadata`, optimised like Astro's own `image()`, and with `alt` it is
-`{ src, alt }` — `<Image {...entry.data.cover} />` needs no helper. Other media,
-such as PDF, GPX or ZIP files, stay paths from the content root. To read one at
-build time, `mediaFile(site, path)` gives the file on disk:
+is `{ src, alt }`, where `src` is `ImageMetadata`, optimised like Astro's own
+`image()` — `<Image {...entry.data.cover} />` needs no helper. Other media,
+such as PDF, GPX or ZIP files, are `{ path, alt }` with a path from the content
+root. To read one at build time, `mediaFile(site, path)` gives the file on disk:
 
 ```ts
 import { readFile } from "node:fs/promises";

@@ -934,13 +934,13 @@ describe("media in an entry's folder, and media delete", () => {
     const staged = await uploadTo("projects/first-title/media", "front.png");
     assert.equal(staged, "projects/first-title/media/front.png");
 
-    const created = await json("/api/admin/collections/projects/entries", "POST", { data: { title: "Final title", cover: staged } });
+    const created = await json("/api/admin/collections/projects/entries", "POST", { data: { title: "Final title", cover: { path: staged } } });
     assert.equal(created.status, 201);
 
     assert.ok(existsSync(join(harness.contentRoot, "projects/final-title/media/front.png")));
     assert.ok(!existsSync(join(harness.contentRoot, staged)));
     const stored = JSON.parse(readFileSync(join(harness.contentRoot, "projects/final-title/index.json"), "utf8"));
-    assert.equal(stored.cover, "media/front.png");
+    assert.deepEqual(stored.cover, { path: "media/front.png" });
   });
 
   it("gives one file's dimensions, and answers 304 for an unchanged file", async () => {
@@ -960,7 +960,7 @@ describe("media in an entry's folder, and media delete", () => {
 
   it("keeps a new entry's URL when its uploads went into the folder of that URL", async () => {
     const staged = await uploadTo("projects/same-title/media", "front.png");
-    const created = await json("/api/admin/collections/projects/entries", "POST", { data: { title: "Same title", cover: staged } });
+    const created = await json("/api/admin/collections/projects/entries", "POST", { data: { title: "Same title", cover: { path: staged } } });
     assert.equal(((await created.json()) as { id: string }).id, "same-title");
   });
 
@@ -985,7 +985,7 @@ describe("media in an entry's folder, and media delete", () => {
     const shared = await uploadTo("media", "logo.png");
     const linked = await uploadTo("media", "plan.png");
     await json("/api/admin/collections/projects/entries", "POST", {
-      data: { title: "Uses", cover: shared, summary: "See the [plan](/media/plan.png)." },
+      data: { title: "Uses", cover: { path: shared }, summary: "See the [plan](/media/plan.png)." },
     });
 
     const usage = await harness.request(`/api/admin/media/usage?path=${shared}&path=${linked}`);

@@ -270,8 +270,8 @@ async function readEntry(source: ContentSource, fields: FieldMap, folder: string
 }
 
 /**
- * Applies `mapOne` to every media path in a payload, nested fields included;
- * `{ path, alt }` keeps its alt text.
+ * Applies `mapOne` to every media path in a payload, nested fields included.
+ * A value keeps its other keys, and a file at a provider has no path.
  *
  * The two directions below have to agree about *which* values are media, so
  * they share one traversal rather than each keeping their own copy of the rules.
@@ -281,9 +281,8 @@ export function mapMedia(
   data: Record<string, unknown>,
   mapOne: (value: unknown) => unknown,
 ): Record<string, unknown> {
-  // `media({ alt })` stores `{ path, alt }`: only the path is a path.
   const item = (one: unknown): unknown =>
-    isRecord(one) && typeof one["path"] === "string" ? { ...one, path: mapOne(one["path"]) } : mapOne(one);
+    isRecord(one) && typeof one["path"] === "string" ? { ...one, path: mapOne(one["path"]) } : one;
   return mapFields(fields, data, (field, value) =>
     field.kind !== "media" ? value : Array.isArray(value) ? value.map(item) : item(value),
   );

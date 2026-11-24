@@ -1,6 +1,6 @@
 # 21. Rules of the field kinds
 
-**Status:** Accepted
+**Status:** Accepted. Its decision for the value of a media field is replaced by [46](0046-media-values-and-providers.md).
 
 ## Context
 

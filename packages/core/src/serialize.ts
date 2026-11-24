@@ -22,6 +22,7 @@
 import { documentName, type PathSegment } from "./layout.js";
 import { needsRowKey, ROW_KEY, rowKeys } from "./row-key.js";
 import type { AnyField, FieldMap } from "./types.js";
+import { isRecord } from "./walk.js";
 
 export interface SerializedEntry {
   /** Contents of `index.json`. */
@@ -105,11 +106,24 @@ function projectValue(
     }));
   }
 
-  if (field.kind === "media" && field.alt) {
-    // Fixed key order, so that the same value always gives the same bytes.
+  if (field.kind === "media") {
     const one = (item: unknown): unknown => {
       const record = asRecord(item);
-      return typeof record["path"] === "string" ? { path: record["path"], alt: record["alt"] ?? null } : item;
+      const keys = "provider" in record ? PROVIDER_MEDIA_KEYS : typeof record["path"] === "string" ? FILE_MEDIA_KEYS : null;
+      if (!keys) return item;
+      const out: Record<string, unknown> = {};
+      for (const key of keys) {
+        const part = record[key];
+        // A field that asks for alt text always writes the key; another field keeps an alt text that it has.
+        if (key === "alt") {
+          if (field.alt || (typeof part === "string" && part !== "")) out[key] = part ?? null;
+        } else if (key === "properties") {
+          if (isRecord(part) && Object.keys(part).length > 0) out[key] = part;
+        } else if (part !== undefined) {
+          out[key] = part;
+        }
+      }
+      return out;
     };
     return Array.isArray(value) ? value.map(one) : value == null ? null : one(value);
   }
@@ -117,6 +131,10 @@ function projectValue(
   // Everything else is already JSON: the DSL admits no value that is not.
   return value ?? null;
 }
+
+/** The keys of a media value in the order of the file, so that the same value always gives the same bytes. */
+const FILE_MEDIA_KEYS = ["path", "alt", "properties"];
+const PROVIDER_MEDIA_KEYS = ["provider", "id", "alt", "url", "type", "width", "height", "properties"];
 
 /** Markdoc body for a rich-text value, or null when there is nothing to write. */
 function asDocument(value: unknown): string | null {

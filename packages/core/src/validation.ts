@@ -4,7 +4,7 @@
  * Zod is an implementation detail: the DSL is the public API because a field
  * descriptor carries editorial semantics (labels, groups, widths, presets) that
  * a validator cannot express. This module projects descriptors onto Zod for the
- * stored shape: media and relations are paths and IDs.
+ * stored shape: a media value names its file by a path, and a relation is an ID.
  */
 
 import { z } from "zod";
@@ -14,6 +14,7 @@ import { textPattern } from "./pattern.js";
 import { isValidId } from "./to-id.js";
 import { needsRowKey, ROW_KEY } from "./row-key.js";
 import { contentPath } from "./source.js";
+import { isRecord } from "./walk.js";
 
 /** Whether a path from the content root stays inside it. */
 function insideContentRoot(path: string): boolean {
@@ -41,8 +42,8 @@ export interface SchemaOptions {
   rowKeys?: boolean;
   /**
    * Resolves an image path the way a site framework does, such as Astro's
-   * `image()`. `media({ accept: "image" })` then gives the resolved image, and
-   * with `alt`, `{ src, alt }`, ready for an image component.
+   * `image()`. `media({ accept: "image" })` then gives `{ src, alt }` with the
+   * resolved image, ready for an image component.
    */
   image?: () => z.ZodType;
 }
@@ -94,17 +95,12 @@ function countLimit(name: string, limit: "least" | "most", count: number, noun: 
   return `${name} ${limit === "least" ? "needs at least" : "allows at most"} ${count} ${noun}${count === 1 ? "" : "s"}.`;
 }
 
-/** A path. `{ path, alt }`, saved while the field had the `alt` option, reads as its path. */
-function plainMedia(path: z.ZodType): z.ZodType {
-  return z.preprocess(
-    (value) => (value !== null && typeof value === "object" && "path" in value ? (value as { path: unknown }).path : value),
-    path,
-  );
-}
-
-/** `{ path, alt }`. A plain path, saved before the field asked for alt text, reads as one without alt text. */
-function mediaWithAlt(
-  alt: "required" | "optional",
+/**
+ * One media value: a file in the content repository, `{ path, alt }`, or a file
+ * at a provider, `{ provider, id, … }`. A stored value can leave out `alt`.
+ */
+function mediaValue(
+  alt: "required" | "optional" | undefined,
   name: string,
   options: SchemaOptions,
   path: z.ZodType,
@@ -112,16 +108,44 @@ function mediaWithAlt(
 ): z.ZodType {
   const text = z.preprocess(
     (value) => (value === undefined || (typeof value === "string" && value.trim() === "") ? null : value),
-    z.string().trim().nullable(),
+    z.string({ error: `${name}: the alt text must be text.` }).trim().nullable(),
   );
-  const shape = z.object({ path, alt: text }).strip();
-  const lifted = z.preprocess((value) => (typeof value === "string" ? { path: value, alt: null } : value), shape);
-  const one =
-    alt === "optional" || options.enforceRequired === false
-      ? lifted
-      : lifted.refine((value) => value.alt !== null, { message: `${name} needs alt text.`, path: ["alt"] });
+  const properties = z.record(z.string(), z.unknown(), { error: `${name}: the properties must be an object.` }).optional();
+  const word = (key: string) => z.string({ error: `${name} needs ${key}.` }).min(1, { error: `${name} needs ${key}.` });
+  const size = (key: string) =>
+    z.number({ error: `${name}: the ${key} must be a whole number above 0.` }).int().positive().optional();
+
+  const file = z.object({ source: z.literal("file"), path, alt: text, properties });
+  const external = z.object({
+    source: z.literal("provider"),
+    // A plugin gives a provider. Without one, Mica knows none.
+    provider: word("a provider").refine(() => false, {
+      error: (issue) => `${name}: Mica does not know the media provider "${String(issue.input)}".`,
+    }),
+    id: word("an ID"),
+    alt: text,
+    url: z.url({ protocol: /^https?$/, error: `${name} needs a web address that starts with http:// or https://.` }),
+    type: word("a type"),
+    width: size("width"),
+    height: size("height"),
+    properties,
+  });
+  // The key `provider` tells the two shapes apart, so that each one gives its own messages.
+  const one = z
+    .preprocess(
+      (value) => (isRecord(value) ? { ...value, source: "provider" in value ? "provider" : "file" } : value),
+      z.discriminatedUnion("source", [file, external], { error: `${name} must be a file: { "path": "…" }.` }),
+    )
+    .transform(({ source: _source, ...value }) => value as Record<string, unknown>);
+
+  const checked =
+    alt !== "required" || options.enforceRequired === false
+      ? one
+      : one.refine((value) => value["alt"] !== null, { message: `${name} needs alt text.`, path: ["alt"] });
   // A resolved image goes to an image component: `{ src, alt }`, and "" for no alt text.
-  return resolved ? one.transform((value) => ({ src: value.path, alt: value.alt ?? "" })) : one;
+  return resolved
+    ? checked.transform((value) => ("path" in value ? { src: value["path"], alt: value["alt"] ?? "" } : value))
+    : checked;
 }
 
 /** The inner schema for a field, before nullability and defaults are applied. */
@@ -240,7 +264,7 @@ function innerSchema(
           .min(1, { error: `${name} must be a file path.` })
           // A `..` from a hand edit would point the website's build at a file outside the content root.
           .refine(insideContentRoot, { error: `${name} must be a file inside the content root.` });
-      const one = field.alt ? mediaWithAlt(field.alt, name, options, path, image !== undefined) : plainMedia(path);
+      const one = mediaValue(field.alt, name, options, path, image !== undefined);
       if (!field.multiple) return one;
       let list = z.array(one, { error: `${name} must be a list of files.` });
       if (field.max !== undefined) list = list.max(field.max, { error: countLimit(name, "most", field.max, "file") });

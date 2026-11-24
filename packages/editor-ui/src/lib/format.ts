@@ -111,7 +111,7 @@ export function previewValue(stored: unknown, localizedField?: AnyField): string
 
   if (typeof value === "boolean") return value ? "Yes" : "No";
   if (typeof value === "number") return String(value);
-  // `media({ alt })`: the file name says more than the alt text in a list.
+  // A media value: the file name says more than the alt text in a list.
   if (typeof value === "object" && !Array.isArray(value) && typeof (value as { path?: unknown }).path === "string") {
     return fileName((value as { path: string }).path);
   }
@@ -122,11 +122,11 @@ export function previewValue(stored: unknown, localizedField?: AnyField): string
       return String(value.length);
     }
     const parts = value.map((item) =>
-      typeof item === "string" ? (field?.kind === "media" ? fileName(item) : item) : previewValue(item, field?.kind === "media" ? field : undefined),
+      typeof item === "string" ? item : previewValue(item, field?.kind === "media" ? field : undefined),
     );
     return short(parts.join(", "));
   }
-  if (typeof value === "string") return short(field?.kind === "media" ? fileName(value) : value);
+  if (typeof value === "string") return short(value);
 
   return "—";
 }

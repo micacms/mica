@@ -78,13 +78,13 @@ describe("field markers", () => {
 
   it("marks the alt text of an image, with its place in a gallery, and leaves its source as it is", () => {
     const fields = { hero: media({ accept: "image", alt: "required" }), gallery: media({ accept: "image", alt: "optional", multiple: true }), logo: media({ accept: "image" }) };
-    const data = { hero: { src: "__ASTRO_IMAGE_./media/a.jpg", alt: "A" }, gallery: [{ src: "x", alt: "" }, { src: "y", alt: "Y" }], logo: "__ASTRO_IMAGE_./media/logo.png" };
+    const data = { hero: { src: "__ASTRO_IMAGE_./media/a.jpg", alt: "A" }, gallery: [{ src: "x", alt: "" }, { src: "y", alt: "Y" }], logo: { src: "__ASTRO_IMAGE_./media/logo.png", alt: "" } };
     const marked = markFields(fields, data, "pages", "home") as typeof data;
     assert.equal(marked.hero.src, data.hero.src);
     assert.deepEqual(decodeMarkers(marked.hero.alt), [{ document: "pages", id: "home", path: "hero" }]);
     assert.deepEqual(decodeMarkers(marked.gallery[1]!.alt), [{ document: "pages", id: "home", path: "gallery", block: 1 }]);
     assert.deepEqual(decodeMarkers(marked.gallery[0]!.alt), [{ document: "pages", id: "home", path: "gallery", block: 0 }]);
-    assert.equal(marked.logo, data.logo);
+    assert.equal(marked.logo.src, data.logo.src);
   });
 
   it("finds the field of a path that a template reads: the longest start of it that the model has", () => {

@@ -2,12 +2,13 @@
 /**
  * Media field.
  *
- * The value is a path into the content repository. The path *is* the reference:
- * the preview URL follows from it and the filename is its last segment, so
- * there is nothing to resolve and no registry to keep in step. With the `alt`
- * option, each value is `{ path, alt }`, and an alt-text input sits under the
- * preview. Several files change their order as every list does (`useReorder`),
- * in reading order: a handle, and arrows for earlier and later.
+ * Each value is `{ path, alt }`, with a path into the content repository. The
+ * path *is* the reference: the preview URL follows from it and the filename is
+ * its last segment, so there is nothing to resolve and no registry to keep in
+ * step. With the `alt` option, an alt-text input sits under the preview. A file
+ * at a provider, `{ provider, id, … }`, shows by its name and keeps its keys.
+ * Several files change their order as every list does (`useReorder`), in
+ * reading order: a handle, and arrows for earlier and later.
  */
 
 import { computed, inject, ref } from "vue";
@@ -29,9 +30,17 @@ import { MEDIA_FOLDER } from "@/lib/media-folder";
 import { addPaths, roomFor } from "@/lib/uploads";
 
 interface Value {
+  /** Empty for a file at a provider. */
   path: string;
   alt: string | null;
+  /** The stored value, whose other keys a change keeps. */
+  stored: Record<string, unknown>;
 }
+
+const fresh = (path: string): Value => ({ path, alt: null, stored: { path } });
+/** What tells one value from another: the path, or the provider and the ID. */
+const keyOf = (value: Value): string => value.path || `${String(value.stored.provider)}:${String(value.stored.id)}`;
+const nameOf = (value: Value): string => (value.path ? (value.path.split("/").pop() ?? value.path) : keyOf(value));
 
 const props = defineProps<FieldProps & { modelValue: unknown }>();
 const emit = defineEmits<{ "update:modelValue": [unknown] }>();
@@ -43,29 +52,29 @@ const pickerOpen = ref(false);
 /** The form's own `media/` folder; undefined outside an entry or settings form. */
 const mediaFolder = inject(MEDIA_FOLDER, undefined);
 
-/** A path saved before the field asked for alt text reads as one without it. */
 function toValue(raw: unknown): Value {
-  if (typeof raw === "string") return { path: raw, alt: null };
-  const record = (raw ?? {}) as { path?: unknown; alt?: unknown };
+  const stored = raw !== null && typeof raw === "object" && !Array.isArray(raw) ? (raw as Record<string, unknown>) : {};
   return {
-    path: typeof record.path === "string" ? record.path : "",
-    alt: typeof record.alt === "string" ? record.alt : null,
+    path: typeof stored.path === "string" ? stored.path : "",
+    alt: typeof stored.alt === "string" ? stored.alt : null,
+    stored,
   };
 }
 
 const values = computed<Value[]>(() => {
   const raw = field.value.multiple
     ? Array.isArray(props.modelValue) ? props.modelValue : []
-    : props.modelValue == null || props.modelValue === "" ? [] : [props.modelValue];
-  return raw.map(toValue).filter((value) => value.path !== "");
+    : props.modelValue == null ? [] : [props.modelValue];
+  return raw.map(toValue).filter((value) => value.path !== "" || typeof value.stored.provider === "string");
 });
 
-const paths = computed(() => values.value.map((value) => value.path));
+const paths = computed(() => values.value.map((value) => value.path).filter((path) => path !== ""));
 
 const items = computed(() =>
   values.value.map((value, index) => ({
     ...value,
-    filename: value.path.split("/").pop() ?? value.path,
+    key: keyOf(value),
+    filename: nameOf(value),
     url: api.media.url(value.path),
     // From the extension: the picker knows the real type, but a field rendering
     // a saved path has only the path.
@@ -80,23 +89,27 @@ const items = computed(() =>
 
 const atLimit = computed(
   () =>
-    field.value.multiple && field.value.max !== undefined && paths.value.length >= field.value.max,
+    field.value.multiple && field.value.max !== undefined && values.value.length >= field.value.max,
 );
 
 function update(next: Value[]): void {
-  const out = field.value.alt ? next : next.map((value) => value.path);
+  // A field that asks for no alt text keeps one that the value has.
+  const out = next.map(({ stored, alt }) => {
+    const { alt: _alt, ...rest } = stored;
+    return field.value.alt || alt !== null ? { ...rest, alt } : rest;
+  });
   emit("update:modelValue", field.value.multiple ? out : (out[0] ?? null));
 }
 
 function onChoose(chosen: MediaItem[]): void {
   if (!field.value.multiple) {
-    update(chosen[0] ? [{ path: chosen[0].path, alt: null }] : []);
+    update(chosen[0] ? [fresh(chosen[0].path)] : []);
     return;
   }
 
   // Skip anything already present rather than duplicating it.
   const next = [...values.value];
-  for (const item of chosen) if (!paths.value.includes(item.path)) next.push({ path: item.path, alt: null });
+  for (const item of chosen) if (!paths.value.includes(item.path)) next.push(fresh(item.path));
   update(field.value.max ? next.slice(0, field.value.max) : next);
 }
 
@@ -117,7 +130,7 @@ async function onDrop(event: DragEvent): Promise<void> {
     dropNote.value = "Give it a title or a valid ID first. Its files then get their own folder, and you can upload here.";
     return;
   }
-  const room = field.value.multiple ? roomFor(paths.value.length, field.value.max) : 1;
+  const room = field.value.multiple ? roomFor(values.value.length, field.value.max) : 1;
   const toSend = files.slice(0, room);
   uploads.clear();
   const folder = mediaFolder?.value;
@@ -134,11 +147,11 @@ async function retry(): Promise<void> {
 
 function addUploaded(uploaded: MediaItem[], notSent: number): void {
   if (!field.value.multiple) {
-    if (uploaded[0]) update([{ path: uploaded[0].path, alt: null }]);
+    if (uploaded[0]) update([fresh(uploaded[0].path)]);
   } else if (uploaded.length > 0) {
-    const { next, skipped } = addPaths(paths.value, uploaded.map((item) => item.path), field.value.max);
-    const byPath = new Map(values.value.map((value) => [value.path, value]));
-    update(next.map((path) => byPath.get(path) ?? { path, alt: null }));
+    const { next, skipped } = addPaths(values.value.map(keyOf), uploaded.map((item) => item.path), field.value.max);
+    const byKey = new Map(values.value.map((value) => [keyOf(value), value]));
+    update(next.map((key) => byKey.get(key) ?? fresh(key)));
     notSent += skipped;
   }
   if (notSent > 0) {
@@ -158,8 +171,8 @@ const reorder = useReorder<Value>({
   show: update,
   // The form keeps the order: the next save writes it.
   commit: () => {},
-  id: (value) => value.path,
-  label: (value) => value.path.split("/").pop() ?? value.path,
+  id: keyOf,
+  label: nameOf,
   disabled: () => locked.value,
   layout: "grid",
 });
@@ -203,7 +216,7 @@ function setAlt(index: number, event: Event): void {
       >
         <li
           v-for="(item, index) in items"
-          :key="item.path"
+          :key="item.key"
           :class="[
             'group relative overflow-hidden rounded-lg border border-line bg-canvas',
             field.multiple ? '' : field.alt ? 'w-64' : 'w-40',

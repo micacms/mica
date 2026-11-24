@@ -16,7 +16,7 @@ import { site } from "../../mica";
 
 export const getStaticPaths = (async () => {
   const projects = await getCollection("projects");
-  return [...new Set(projects.flatMap((project) => project.data.downloads))].map((path) => ({ params: { path } }));
+  return [...new Set(projects.flatMap((project) => project.data.downloads.map((file) => file.path)))].map((path) => ({ params: { path } }));
 }) satisfies GetStaticPaths;
 
 export const GET: APIRoute = async ({ params }) => new Response(await readFile(mediaFile(site, params.path!)));

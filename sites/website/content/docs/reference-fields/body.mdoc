@@ -33,7 +33,7 @@ The build stops on an option that is not in these tables, for example a typo. A 
 | `object({ fields })` | An object with the given fields. | `fields`, `collapsible`, `collapsed`. |
 | `repeater({ fields })` | A list of objects. | `fields`, `min`, `max`, `itemLabel` (the key of the field that names a row: a text, or a single relation, which shows the title of its entry), `addLabel`. |
 | `relation({ collection })` | The ID of an entry, or a list with `multiple`. For a reference set, the id of an item. | `collection`: a collection of the model, or a reference set. `multiple`. |
-| `media()` | The path of a file, or `{ path, alt }` with `alt`. A list with `multiple`. | `accept`: `"image"` (JPEG, PNG, GIF, WebP, AVIF), `"document"` (PDF), `"any"` (every type that Mica knows), or a list of `image`, `pdf`, `gpx`, `kml`, `geojson`, `zip` and `csv`. `multiple`, `max`, `alt`: `"required"` or `"optional"`. |
+| `media()` | An object with the path of a file: `{ path }`, or `{ path, alt }` with `alt`. A list of them with `multiple`. | `accept`: `"image"` (JPEG, PNG, GIF, WebP, AVIF), `"document"` (PDF), `"any"` (every type that Mica knows), or a list of `image`, `pdf`, `gpx`, `kml`, `geojson`, `zip` and `csv`. `multiple`, `max`, `alt`: `"required"` or `"optional"`. |
 | `color()` | A hex colour, for example `"#0f766e"`. | `presets`: colours to choose from. `default`. |
 | `coordinates()` | `{ lat, lng }`. With a map also `zoom`, from 0 to 22. | `map`: `"liberty"`, `"bright"` or `"positron"` (OpenFreeMap), or `{ style, hosts }` for a style of your own, with `https` only. The editor's browser loads the tiles from that host. |
 | `tags()` | A list of short words, never null: no tags is `[]`. | `max`, `maxLength`, `suggestions`, `default`. |

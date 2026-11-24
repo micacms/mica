@@ -1,6 +1,6 @@
 # 23. `@micacms/astro` gives what each website needs
 
-**Status:** Accepted
+**Status:** Accepted. Its decision for the value of a media field in Astro is replaced by [46](0046-media-values-and-providers.md).
 
 ## Context
 

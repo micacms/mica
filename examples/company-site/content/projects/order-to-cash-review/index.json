@@ -70,8 +70,12 @@
   ],
   "sector": "G",
   "downloads": [
-    "media/order-to-cash-case-study.pdf",
-    "media/order-to-cash-figures.csv"
+    {
+      "path": "media/order-to-cash-case-study.pdf"
+    },
+    {
+      "path": "media/order-to-cash-figures.csv"
+    }
   ],
   "featured": true
 }

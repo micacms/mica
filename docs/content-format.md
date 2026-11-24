@@ -119,7 +119,9 @@ site/
 {
   "name": "Example",
   "live": true,
-  "logo": "/media/logo.png"
+  "logo": {
+    "path": "/media/logo.png"
+  }
 }
 ```
 
@@ -183,9 +185,9 @@ A path that leads above the content root MUST NOT be resolved.
 | `select({ multiple: true })` | list of `value`s | `[]` | `["buyers", "press"]` |
 | `relation()` | ID of an entry | `null` | `"contact"` |
 | `relation({ multiple: true })` | list of IDs | `[]` | `["contact"]` |
-| `media()` | path (section 6) | `null` | `"media/cover.jpg"` |
-| `media({ multiple: true })` | list of paths | `[]` | |
-| `media({ alt })` | `{ "path": …, "alt": … }`, keys in this order | `null` | section 2.1 |
+| `media()` | media value (section 6) | `null` | `{ "path": "media/cover.jpg" }` |
+| `media({ multiple: true })` | list of media values | `[]` | |
+| `media({ alt })` | media value with `"alt"`: text or `null` | `null` | `{ "path": "media/cover.jpg", "alt": "The house from the street" }` |
 | `color()` | `#rgb`, `#rrggbb` or `#rrggbbaa` | `null` | `"#17694f"` |
 | `coordinates()` | `{ "lat": …, "lng": … }`, and `"zoom"` (0 to 22) from a field with a map, keys in this order | `null` | `{ "lat": 47.3769, "lng": 8.5417, "zoom": 15 }` |
 | `tags()` | list of strings | `[]` | `["news"]` |
@@ -329,7 +331,14 @@ path: `body.de.mdoc`, `sections.k7f3a9.text.en.mdoc`.
 - An entry's own media are in its folder, in `media/`.
 - Shared media are in `media/` at the content root. A name of a file in
   `media/` SHOULD be lower case, with `-` between words.
-- A `media()` value is written in one of two forms:
+- A media value is a JSON object. A plain path is not a media value.
+- A file in the content repository has these keys, in this order:
+  - `"path"` (required);
+  - `"alt"`: text or `null`. A field with the `alt` option always writes it.
+    Another field writes it only when the value has an alt text;
+  - `"properties"`: an object of the site's own data. A writer keeps it, and
+    leaves the key out when the object is empty.
+- A `"path"` is written in one of two forms:
   - a path from the entry's folder, for a file in the entry's own `media/`:
     `"media/cover.jpg"`;
   - a path from the content root, with a leading `/`, for any other file:
@@ -338,6 +347,26 @@ path: `body.de.mdoc`, `sections.k7f3a9.text.en.mdoc`.
   writer MUST write the first form for a file in the entry's folder and the
   second for any other.
 - A media path MUST stay inside the content root (section 1.2).
+- A file at a media provider has no `"path"`. It has these keys, in this order:
+  `"provider"` and `"id"` (required), `"alt"`, `"url"` and `"type"` (required:
+  the address of the file and its MIME type), `"width"`, `"height"` and
+  `"properties"`. The key `"provider"` tells the two shapes apart. A reader
+  MUST refuse a provider that it does not know.
+
+  ```json
+  {
+    "provider": "acme-dam",
+    "id": "a1b2",
+    "alt": "The harbour at night",
+    "url": "https://cdn.example/a1b2.jpg",
+    "type": "image/jpeg",
+    "width": 2400,
+    "height": 1600
+  }
+  ```
+
+- A writer writes only the keys of this section. It drops any other key of a
+  media value.
 - The value has the same form for every file type. Which types a field takes
   is the `accept` option of its model, not a part of the stored value.
 

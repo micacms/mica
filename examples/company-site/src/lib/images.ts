@@ -1,6 +1,6 @@
 /**
  * Images for meta tags. Mica's loader gives every `media({ accept: "image" })`
- * field as Astro's `ImageMetadata`, so pages use `<Image>` directly; meta tags
+ * field as `{ src, alt }` with Astro's `ImageMetadata`, so pages use `<Image>` directly; meta tags
  * need an absolute URL string, which is what this module makes.
  */
 

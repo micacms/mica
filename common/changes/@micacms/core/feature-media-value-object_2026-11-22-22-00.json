@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "Breaking: a media value is one object. A `media()` field stores `{ \"path\": \u2026 }`, and `{ \"path\": \u2026, \"alt\": \u2026 }` with the `alt` option; a plain path is refused with a message that names the shape. The value can hold free `properties`, and the format has a second shape for a file at a media provider (`provider`, `id`, `url`, `type`). The type `MediaWithAlt` is now `MediaFileValue`.",
+      "type": "minor",
+      "packageName": "@micacms/core"
+    }
+  ],
+  "packageName": "@micacms/core",
+  "email": "alexander@muedespacher.ch"
+}

@@ -22,7 +22,7 @@ export const VALUE_FORMATS: Record<FieldKind, string> = {
   relation:
     "The ID of an entry in `collection`, or the id of an item when `collection` names a reference set (`find_reference_items`). With `multiple`, a list.",
   media:
-    "The path of a file, relative to the content root, from `list_media` or `upload_media`. With `alt`, an object `{ path, alt }`. With `multiple`, a list.",
+    "An object `{ path }`, with the path of a file relative to the content root, from `list_media` or `upload_media`. With `alt`, `{ path, alt }`. With `multiple`, a list of these objects.",
   color: "A hex colour such as #1a2b3c.",
   coordinates: "An object `{ lat, lng }`. A field with a map can also store `zoom`, from 0 to 22.",
   tags: "A list of short texts. Never null: empty is [].",

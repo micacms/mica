@@ -1,6 +1,6 @@
 # 20. Rich text is Markdoc, and Mica never loses what it cannot show
 
-**Status:** Accepted
+**Status:** Accepted. Its decisions for an image and for a tag that the model defines are replaced by [47](0047-blocks.md).
 
 ## Context
 

@@ -236,6 +236,23 @@ export function entryFiles(folder: string, serialized: {
 // @public
 export function entryFolder(name: string, id?: string): string;
 
+// @public
+export interface ExternalMediaValue {
+    // (undocumented)
+    alt: string | null;
+    // (undocumented)
+    height?: number;
+    id: string;
+    properties?: Record<string, unknown>;
+    // (undocumented)
+    provider: string;
+    type: string;
+    // (undocumented)
+    url: string;
+    // (undocumented)
+    width?: number;
+}
+
 // @public (undocumented)
 export interface FieldIssue {
     // (undocumented)
@@ -253,10 +270,10 @@ export type FieldMap = Record<string, AnyField>;
 export function fieldsSchema(fields: FieldMap, options?: SchemaOptions): z.ZodObject<z.ZodRawShape>;
 
 // Warning: (ae-forgotten-export) The symbol "Multiple" needs to be exported by the entry point index.d.ts
-// Warning: (ae-forgotten-export) The symbol "MediaValue" needs to be exported by the entry point index.d.ts
+// Warning: (ae-forgotten-export) The symbol "MediaOf" needs to be exported by the entry point index.d.ts
 //
 // @public
-export type FieldValue<F extends AnyField, Img = never> = F extends TextField ? string : F extends TextareaField ? string : F extends RichTextField ? string : F extends NumberField ? number : F extends BooleanField ? boolean : F extends DateField ? string : F extends EmailField ? string : F extends UrlField ? string : F extends IdField ? string : F extends SelectField ? Multiple<F, string> : F extends ColorField ? string : F extends CoordinatesField ? Coordinates : F extends TagsField ? string[] : F extends MediaField ? Multiple<F, MediaValue<F, Img>> : F extends RelationField ? Multiple<F, string> : F extends ObjectField ? InferFields<F["fields"], Img> : F extends RepeaterField ? Array<InferFields<F["fields"], Img>> : never;
+export type FieldValue<F extends AnyField, Img = never> = F extends TextField ? string : F extends TextareaField ? string : F extends RichTextField ? string : F extends NumberField ? number : F extends BooleanField ? boolean : F extends DateField ? string : F extends EmailField ? string : F extends UrlField ? string : F extends IdField ? string : F extends SelectField ? Multiple<F, string> : F extends ColorField ? string : F extends CoordinatesField ? Coordinates : F extends TagsField ? string[] : F extends MediaField ? Multiple<F, MediaOf<F, Img>> : F extends RelationField ? Multiple<F, string> : F extends ObjectField ? InferFields<F["fields"], Img> : F extends RepeaterField ? Array<InferFields<F["fields"], Img>> : never;
 
 // @public (undocumented)
 export class FormatError extends Error {
@@ -380,16 +397,19 @@ export interface MediaField extends BaseField {
 // @public
 export type MediaFileType = "image" | "pdf" | "gpx" | "kml" | "geojson" | "zip" | "csv";
 
+// @public
+export interface MediaFileValue {
+    // (undocumented)
+    alt: string | null;
+    path: string;
+    properties?: Record<string, unknown>;
+}
+
 // @public (undocumented)
 export type MediaOptions = Omit<MediaField, "kind">;
 
 // @public
-export interface MediaWithAlt {
-    // (undocumented)
-    alt: string | null;
-    // (undocumented)
-    path: string;
-}
+export type MediaValue = MediaFileValue | ExternalMediaValue;
 
 // @public
 export function memorySource(files: Record<string, string>, origin?: string): ContentSource;

@@ -28,8 +28,8 @@ export function documentLinks(fields: FieldMap, data: Record<string, unknown>, f
       const many = Array.isArray(value) ? value : value == null ? [] : [value];
       many.forEach((item, index) => {
         const name = field.multiple ? `${here}.${index}` : here;
-        // `media({ alt })` stores `{ path, alt }`.
-        const target = field.kind === "media" && isRecord(item) ? item["path"] : item;
+        // A media value is `{ path, alt }`. A file at a provider has no path, and is no link.
+        const target = field.kind === "media" ? (isRecord(item) ? item["path"] : undefined) : item;
         if (typeof target !== "string" || target === "") return;
         found.push(field.kind === "relation" ? { kind: "relation", field: name, collection: field.collection, id: target } : { kind: "media", field: name, path: target });
       });

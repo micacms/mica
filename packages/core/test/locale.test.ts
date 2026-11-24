@@ -29,6 +29,7 @@ import {
   type InferCollection,
   type Localize,
   type LocalizedValue,
+  type MediaFileValue,
 } from "../src/internal.js";
 
 /** Compiles only when `A` and `B` are the same type. */
@@ -180,7 +181,7 @@ describe("localize", () => {
     title: { de: "Über uns", en: "About us", fr: null },
     body: { de: "Text.", en: null, fr: null },
     legal: { de: "AGB", en: null, fr: null },
-    image: "media/a.png",
+    image: { path: "media/a.png" },
     sections: [{ heading: { de: "Eins", en: "One", fr: "Un" } }],
   };
 
@@ -191,7 +192,7 @@ describe("localize", () => {
       title: "Über uns",
       body: "Text.",
       legal: "AGB",
-      image: "media/a.png",
+      image: { path: "media/a.png" },
       sections: [{ heading: "Eins" }],
     });
   });
@@ -218,7 +219,7 @@ describe("the types of localized fields", () => {
     type Page = InferCollection<typeof pages>;
     const title: Equal<Page["title"], LocalizedValue<string, string>> = true;
     const localized: Equal<Localize<Page>["body"], string | null> = true;
-    const shared: Equal<Localize<Page>["image"], string | null> = true;
+    const shared: Equal<Localize<Page>["image"], MediaFileValue | null> = true;
     const row: Equal<Localize<Page>["sections"][number]["heading"], string | null> = true;
     assert.ok(title && localized && shared && row);
   });

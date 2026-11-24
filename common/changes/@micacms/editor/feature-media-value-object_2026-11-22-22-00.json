@@ -1,0 +1,11 @@
+{
+  "changes": [
+    {
+      "comment": "The media field reads and writes the media value object, and keeps the keys that it does not show. `mica import` writes `{ \"path\": \u2026 }` for a media field without alt text, and `mica check` reports a media value that is a plain path.",
+      "type": "minor",
+      "packageName": "@micacms/editor"
+    }
+  ],
+  "packageName": "@micacms/editor",
+  "email": "alexander@muedespacher.ch"
+}

@@ -235,7 +235,8 @@ function convert(field: AnyField, value: unknown, at: string, context: Context):
     case "media": {
       const one = (item: unknown, index?: number) => {
         const stored = copyMedia(item, `${where}${index === undefined ? "" : `.${index}`}`, context);
-        if (stored === null || !field.alt) return stored;
+        if (stored === null) return null;
+        if (!field.alt) return { path: stored };
         const alt = context.map[`${context.name}.${at}.alt`];
         if (alt !== undefined) context.used.add(alt.split(".")[0]!);
         const text = alt === undefined ? null : alt.split(".").reduce<unknown>((v, p) => (isRecord(v) ? v[p] : undefined), context.entry.data);

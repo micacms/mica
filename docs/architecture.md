@@ -415,8 +415,10 @@ composition root. The local editor reads the model from the checkout.
 - **No build webhook.** A push is the trigger, which every CI system already
   understands.
 - **No media server.** Images are repository files, processed by Astro at build
-  time.
-- **No passwords, no GraphQL, no plugin architecture, no page builder, no
+  time. A file of an external media provider stays on that provider's system
+  ([ADR 46](adr/0046-media-values-and-providers.md)).
+- **No passwords, no GraphQL, no plugin code in the editor page
+  ([ADR 45](adr/0045-plugins.md)), no page builder, no
   approval workflows.**
 
 The test for any future feature:
