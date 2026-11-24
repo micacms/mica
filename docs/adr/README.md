@@ -43,6 +43,12 @@ Each record states a decision that is still true: its context, the decision and 
 - [42. Localized fields: one entry, a value for each locale](0042-localized-fields.md)
 - [43. The locale in a page's address, and unique localized IDs](0043-locale-in-page-addresses.md)
 - [44. The locales of an entry come from its values](0044-the-locales-of-an-entry.md)
+- [46. A media value is one object, and Git is the built-in media provider](0046-media-values-and-providers.md)
+- [47. Blocks: one definition for the blocks field and for rich text](0047-blocks.md)
+
+## Plugins
+
+- [45. Plugins: packages that the model names and the operator permits](0045-plugins.md)
 
 ## Websites and setup
 

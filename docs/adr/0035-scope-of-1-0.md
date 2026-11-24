@@ -1,6 +1,6 @@
 # 35. What 1.0 does not do
 
-**Status:** Accepted
+**Status:** Accepted. Its item for a blocks field is replaced by [47](0047-blocks.md).
 
 ## Context
 
