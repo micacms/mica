@@ -409,6 +409,11 @@ JSON object with:
 - `references`: the reference sets, by name, only when the model has any. Each
   has `label`, `file` (the website's file, from the Astro project root), and
   optionally `id` and `title` (the keys of an item).
+- `plugins`: only when the model names a plugin. A list of items, each with
+  `name` (lower-case letters, digits and `-`, starting with a letter, unique
+  in the list), `package` (an npm package name) and optionally `options` (a
+  JSON object), and no other key. This key is experimental: it can change in a
+  minor version.
 
 A definition keeps every field option as the model gives it, also an option
 that changes only the editor, for example `"map": "liberty"` on a
@@ -421,6 +426,12 @@ above the one it knows. `protocolVersion` changes only when an older reader
 would misread a newer manifest. A field kind or a field option that a reader
 does not know MUST make its collection or singleton read-only for that reader:
 an option can change what is stored.
+
+A reader MUST ignore a top-level key that it does not know. A reader MUST
+leave out a plugin item that it cannot read, such as an item with another key,
+and the second item with the same `name`, and still read the model. A plugin
+that the reader has not loaded makes only the parts that need it read-only: a
+field kind that the reader does not know.
 
 ### 9.1 The index of a reference set
 

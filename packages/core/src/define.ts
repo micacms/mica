@@ -24,6 +24,7 @@ import { expandLocalized, isLocalizedObject, localesProblem, singleValue, siteLo
 import { mapProblem } from "./map.js";
 import { isMediaFileType, MEDIA_FILE_TYPE_NAMES } from "./media-types.js";
 import { pageUrlProblem } from "./page-url.js";
+import { pluginsProblem } from "./plugin.js";
 import { nestedRepeat, textPattern } from "./pattern.js";
 import { RICH_TEXT_TOOLBARS } from "./rich-text.js";
 import { compareDates, validateFields } from "./validation.js";
@@ -61,6 +62,8 @@ export function defineSite<
     throw new ModelError("`prefixDefaultLocale` must be true or false.");
   }
   if (options.prefixDefaultLocale && !locales) throw new ModelError("`prefixDefaultLocale` needs `locales`.");
+  const pluginProblem = options.plugins === undefined ? null : pluginsProblem(options.plugins);
+  if (pluginProblem) throw new ModelError(`The site's plugins are not valid: ${pluginProblem}.`);
 
   const collections = {} as C;
   for (const [name, def] of Object.entries(options.collections)) {
@@ -92,6 +95,8 @@ export function defineSite<
   if (options.references && Object.keys(options.references).length > 0) {
     site.references = Object.fromEntries(Object.entries(options.references).map(([name, def]) => [name, { ...def, type: "reference", name }]));
   }
+
+  if (options.plugins && options.plugins.length > 0) site.plugins = options.plugins.map((plugin) => ({ ...plugin }));
 
   assertValidSite(site);
   return site;
